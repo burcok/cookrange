@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "624768719440",
+    "project_id": "cookrange-app",
+    "storage_bucket": "cookrange-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:624768719440:android:6e762e988ba00350ba4f55",
+        "android_client_info": {
+          "package_name": "com.cookrange_android.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsDnYLCim5q83XO0tzqVeW-9vplA2td-g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
