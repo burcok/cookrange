@@ -4,7 +4,7 @@ Cookrange is an innovative mobile application powered by artificial intelligence
 
 ## Features
 
-- **Personalized Meal Plans:** Weekly/monthly meal suggestions based on your goals (muscle gain, fat loss, general fitness, etc.) and preferences.
+- **Personalized Meal Plans:** Daily/weekly meal suggestions based on your goals (muscle gain, fat loss, general fitness, etc.) and preferences.
 - **AI-Powered Assistant:** Guidance on meal selection and achieving nutrition goals.
 - **Calorie and Nutrient Tracking:** Detailed calorie and macro/micro nutrient analysis for each meal.
 - **User Profile:** Plans fully compatible with personal information such as gender, age, height, weight, activity level, and target weight.
@@ -44,7 +44,8 @@ Cookrange is an innovative mobile application powered by artificial intelligence
 
 3. **Install Dependencies:**
     ```bash
-    flutter pub upgrade --major-versions && flutter pub get
+    flutter pub upgrade --major-versions
+    flutter pub get
     ```
 
 4. **Set Up Environment Files:**
