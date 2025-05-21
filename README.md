@@ -16,7 +16,7 @@ Cookrange is an innovative mobile application powered by artificial intelligence
 
 | Onboarding | Home Screen | Meal Details |
 |------------|-------------|--------------|
-|             will be added               |
+|will be added|will be added|will be added|
 
 <!-- | ![Onboarding](assets/images/onboarding/onboarding-1.png) | ![Logo](cookrange-logo.png) | ![Onboarding](assets/images/onboarding/onboarding-2-1.png) | -->
 
