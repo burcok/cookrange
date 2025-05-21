@@ -245,7 +245,10 @@ class _SplashScreenState extends State<SplashScreen>
           _textFadeController.forward(),
           _iconShrinkController.forward(),
         ]).then((_) {
-          _colorTransitionController.forward();
+          _colorTransitionController.forward().then((_) {
+            // Cache widgets after all animations are complete
+            _precacheWidgets();
+          });
         });
       });
     });
@@ -320,15 +323,12 @@ class _SplashScreenState extends State<SplashScreen>
       // 1. Firebase, Crashlytics, Analytics
       await CrashlyticsService().initialize();
       await AnalyticsService().initialize();
-      // 2. Hive, Dotenv, SharedPreferences
-      await _initializeHive();
+      // 2. Dotenv, SharedPreferences
       await _initializeEnvironment();
       await _initializePreferences();
       // 3. Asset ve font cache
       await _precacheAssets();
-      // 4. Widget cache
-      await _precacheWidgets();
-      // 5. Diğer preload işlemleri
+      // 4. Diğer preload işlemleri
       await _preloadResources();
       if (mounted) {
         setState(() {
@@ -350,17 +350,6 @@ class _SplashScreenState extends State<SplashScreen>
         });
       }
     }
-  }
-
-  Future<void> _initializeHive() async {
-    final appDocumentDir = await getApplicationDocumentsDirectory();
-    await Hive.initFlutter(appDocumentDir.path);
-
-    await Future.wait<void>([
-      Hive.openBox('appBox'),
-      Hive.openBox('userBox'),
-      Hive.openBox('settingsBox'),
-    ]);
   }
 
   Future<void> _initializeEnvironment() async {
@@ -467,21 +456,8 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _precacheWidgets() async {
-    // Widget'ları bir kez build edip dispose etmek için Overlay kullan
+    // Sadece gerekli widget'ları cache'le
     final widgets = [
-      DatePickerModal(
-        initialDate: DateTime.now(),
-        minDate: DateTime(1900),
-        maxDate: DateTime(2100),
-        onSelected: (_) {},
-      ),
-      NumberPickerModal(
-        title: 'Test',
-        min: 0,
-        max: 10,
-        unit: '',
-        initialValue: 5,
-      ),
       GenderPickerModal(
         selectedGender: null,
         onSelected: (_) {},

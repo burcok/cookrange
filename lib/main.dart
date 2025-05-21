@@ -6,6 +6,8 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/providers/language_provider.dart';
@@ -18,6 +20,14 @@ Future<void> main() async {
   try {
     // Initialize Firebase
     await Firebase.initializeApp();
+
+    // Initialize Hive
+    final appDocumentDir = await getApplicationDocumentsDirectory();
+    await Hive.initFlutter(appDocumentDir.path);
+    await Hive.openBox('appBox');
+    await Hive.openBox('userBox');
+    await Hive.openBox('settingsBox');
+    await Hive.openBox<Map<dynamic, Object>>('analytics_cache');
 
     if (kReleaseMode) {
       debugPrint = (String? message, {int? wrapWidth}) {};

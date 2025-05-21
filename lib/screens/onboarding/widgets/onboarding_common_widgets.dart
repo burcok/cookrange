@@ -19,51 +19,103 @@ class OnboardingNextButton extends StatefulWidget {
 }
 
 class _OnboardingNextButtonState extends State<OnboardingNextButton>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _tapController;
   late Animation<double> _scaleAnim;
+  bool _isButtonEnabled = true;
+  late double _currentProgress;
+  late AnimationController _progressController;
+  late Animation<double> _progressAnimation;
 
   @override
   void initState() {
     super.initState();
+    _currentProgress = widget.step / 4.0;
     _initializeAnimations();
   }
 
   void _initializeAnimations() {
     _tapController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 100),
+      duration: const Duration(milliseconds: 300),
       lowerBound: 0.0,
       upperBound: 1.0,
     );
 
     _scaleAnim = Tween<double>(begin: 1.0, end: 0.95).animate(
         CurvedAnimation(parent: _tapController, curve: Curves.easeInOut));
+
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+
+    _progressAnimation = Tween<double>(
+      begin: _currentProgress,
+      end: _currentProgress,
+    ).animate(CurvedAnimation(
+      parent: _progressController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void didUpdateWidget(OnboardingNextButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.step != widget.step) {
+      final newProgress = widget.step / 4.0;
+      _progressAnimation = Tween<double>(
+        begin: _currentProgress,
+        end: newProgress,
+      ).animate(CurvedAnimation(
+        parent: _progressController,
+        curve: Curves.easeInOut,
+      ));
+      _currentProgress = newProgress;
+      _progressController.forward(from: 0.0);
+    }
+  }
+
+  Future<void> _handleTap() async {
+    if (!_isButtonEnabled) return;
+
+    setState(() {
+      _isButtonEnabled = false;
+    });
+
+    await _tapController.forward();
+    await _tapController.reverse();
+
+    if (widget.onNext != null) {
+      widget.onNext!();
+    }
+
+    await Future.delayed(const Duration(seconds: 1));
+    if (mounted) {
+      setState(() {
+        _isButtonEnabled = true;
+      });
+    }
   }
 
   @override
   void dispose() {
     _tapController.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final progress = (widget.step + 1) / 5.0;
     final colorScheme = Theme.of(context).colorScheme;
     final localizations = AppLocalizations.of(context);
     final isLastStep = widget.step == 4;
 
     return Center(
       child: GestureDetector(
-        onTapDown: (_) => _tapController.forward(),
-        onTapUp: (_) {
-          _tapController.reverse();
-          widget.onNext?.call();
-        },
-        onTapCancel: () => _tapController.reverse(),
+        onTap: _isButtonEnabled ? _handleTap : null,
         child: AnimatedBuilder(
-          animation: _scaleAnim,
+          animation: Listenable.merge([_scaleAnim, _progressAnimation]),
           builder: (context, child) {
             return Transform.scale(
               scale: _scaleAnim.value,
@@ -74,7 +126,8 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
                     width: 124,
                     height: 124,
                     child: CustomPaint(
-                      painter: _ProgressCirclePainterV2(progress, colorScheme),
+                      painter: _ProgressCirclePainterV2(
+                          _progressAnimation.value, colorScheme),
                     ),
                   ),
                   Container(
@@ -118,22 +171,26 @@ class _ProgressCirclePainterV2 extends CustomPainter {
     final Paint bgPaint = Paint()
       ..color = colorScheme.onboardingNextButtonBorderColor.withOpacity(0.18)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
+      ..strokeWidth = 3;
     final Paint fgPaint = Paint()
       ..color = colorScheme.onboardingNextButtonColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
+      ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
 
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - 5) / 2;
+    final radius = (size.width - 6) / 2;
+
+    // Draw background circle
     canvas.drawCircle(center, radius, bgPaint);
-    final sweepAngle = 2 * 3.141592653589793 * progress;
+
+    // Draw progress arc
     if (progress > 0) {
+      final rect = Rect.fromCircle(center: center, radius: radius);
       canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        -3.141592653589793 / 2,
-        sweepAngle,
+        rect,
+        -1.5708, // -90 degrees in radians
+        6.2832 * progress, // 360 degrees * progress
         false,
         fgPaint,
       );
@@ -142,8 +199,8 @@ class _ProgressCirclePainterV2 extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ProgressCirclePainterV2 oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.colorScheme != colorScheme;
+    // Always repaint to ensure smooth animation
+    return true;
   }
 }
 

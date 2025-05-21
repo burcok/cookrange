@@ -53,6 +53,9 @@ class AnalyticsService {
       print('AnalyticsService: Starting initialization...');
 
       // Hive box'ı başlat
+      if (Hive.isBoxOpen('analytics_cache')) {
+        await Hive.close();
+      }
       _analyticsBox =
           await Hive.openBox<Map<dynamic, Object>>('analytics_cache');
 
@@ -215,7 +218,8 @@ class AnalyticsService {
 
   Future<void> _cacheEvent(AnalyticsEvent event) async {
     try {
-      await _analyticsBox.add(event.toMap());
+      final eventMap = Map<dynamic, Object>.from(event.toMap());
+      await _analyticsBox.add(eventMap);
     } catch (e) {
       print('AnalyticsService: Error caching event: $e');
     }
@@ -224,7 +228,8 @@ class AnalyticsService {
   Future<void> _cacheBatch(List<AnalyticsEvent> batch) async {
     try {
       for (final event in batch) {
-        await _analyticsBox.add(event.toMap());
+        final eventMap = Map<dynamic, Object>.from(event.toMap());
+        await _analyticsBox.add(eventMap);
       }
     } catch (e) {
       print('AnalyticsService: Error caching batch: $e');
@@ -981,7 +986,11 @@ class AnalyticsEvent {
   factory AnalyticsEvent.fromMap(Map<dynamic, dynamic> map) {
     return AnalyticsEvent(
       name: map['name'] as String,
-      parameters: Map<String, Object>.from(map['parameters'] as Map),
+      parameters: Map<String, Object>.from(
+        (map['parameters'] as Map).map(
+          (key, value) => MapEntry(key.toString(), value as Object),
+        ),
+      ),
     );
   }
 }
