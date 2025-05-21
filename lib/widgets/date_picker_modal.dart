@@ -18,8 +18,8 @@ class DatePickerModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     DateTime now = DateTime.now();
-    DateTime displayMonth = DateTime(initialDate.year, initialDate.month);
-    DateTime? tempDate = initialDate;
+    DateTime displayMonth = DateTime(now.year, now.month);
+    DateTime? tempDate;
     final localizations = AppLocalizations.of(context);
     return StatefulBuilder(
       builder: (context, setModalState) {
@@ -358,9 +358,7 @@ class DatePickerModal extends StatelessWidget {
                               ? Theme.of(context)
                                   .colorScheme
                                   .onboardingNextButtonColor
-                              : isToday
-                                  ? Colors.grey[200]
-                                  : null,
+                              : null,
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -370,8 +368,11 @@ class DatePickerModal extends StatelessWidget {
                               color: isSelected
                                   ? Colors.white
                                   : isToday
-                                      ? Colors.black
-                                      : Colors.grey[600],
+                                      ? Colors.red
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onboardingOptionTextColor
+                                          .withOpacity(0.7),
                               fontSize: 14,
                             ),
                           ),

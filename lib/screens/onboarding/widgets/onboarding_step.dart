@@ -7,6 +7,7 @@ import '../steps/onboarding_page2.dart';
 import '../steps/onboarding_page3.dart';
 import '../steps/onboarding_page4.dart';
 import '../steps/onboarding_page5.dart';
+import '../../../../core/localization/app_localizations.dart';
 
 class OnboardingStep extends StatelessWidget {
   final int step;
@@ -122,23 +123,24 @@ class OnboardingStep extends StatelessWidget {
       BuildContext context, OnboardingProvider onboarding, String field) {
     int min, max, initialValue;
     String unit, title;
+    final localizations = AppLocalizations.of(context);
     if (field == 'weight') {
       min = 40;
       max = 150;
       unit = 'kg';
-      title = 'Kilonu Seç';
+      title = localizations.translate('profile.weight.title');
       initialValue = onboarding.weight?.toInt() ?? 70;
     } else if (field == 'height') {
       min = 140;
       max = 220;
       unit = 'cm';
-      title = 'Boyunu Seç';
+      title = localizations.translate('profile.height.title');
       initialValue = onboarding.height?.toInt() ?? 170;
     } else {
       min = 40;
       max = 150;
       unit = 'kg';
-      title = 'Hedef Kilonu Seç';
+      title = localizations.translate('profile.targetWeight.title');
       initialValue = onboarding.targetWeight?.toInt() ?? 60;
     }
     showModalBottomSheet<int>(

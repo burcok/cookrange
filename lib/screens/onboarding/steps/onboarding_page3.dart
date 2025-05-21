@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../constants.dart';
 import '../../../core/theme/app_theme.dart';
-import 'package:provider/provider.dart';
 import '../../../providers/onboarding_provider.dart';
 import '../widgets/onboarding_common_widgets.dart';
 import '../../../../widgets/gender_picker_modal.dart';
@@ -164,25 +162,27 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
         'timestamp': DateTime.now().toIso8601String(),
       },
     );
+    final localizations = AppLocalizations.of(context);
+
     int min, max, initialValue;
     String unit, title;
     if (field == 'weight') {
       min = 40;
       max = 150;
       unit = 'kg';
-      title = 'Kilonu Seç';
+      title = localizations.translate('profile.weight.title');
       initialValue = onboarding.weight?.toInt() ?? 70;
     } else if (field == 'height') {
       min = 140;
       max = 220;
       unit = 'cm';
-      title = 'Boyunu Seç';
+      title = localizations.translate('profile.height.title');
       initialValue = onboarding.height?.toInt() ?? 170;
     } else {
       min = 40;
       max = 150;
       unit = 'kg';
-      title = 'Hedef Kilonu Seç';
+      title = localizations.translate('profile.targetWeight.title');
       initialValue = onboarding.targetWeight?.toInt() ?? 60;
     }
     showModalBottomSheet<int>(
@@ -227,284 +227,295 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
       child: Container(
         color: colorScheme.background,
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 0),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 32),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              _analyticsService.logUserInteraction(
-                                interactionType: 'navigation',
-                                target: 'back_button',
-                                parameters: {
-                                  'step': 3,
-                                  'timestamp': DateTime.now().toIso8601String(),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 32),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  _analyticsService.logUserInteraction(
+                                    interactionType: 'navigation',
+                                    target: 'back_button',
+                                    parameters: {
+                                      'step': 3,
+                                      'timestamp':
+                                          DateTime.now().toIso8601String(),
+                                    },
+                                  );
+                                  widget.onBack?.call();
                                 },
-                              );
-                              widget.onBack?.call();
-                            },
-                            child: Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: colorScheme.onboardingTitleColor
-                                      .withOpacity(0.1),
-                                  width: 1,
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: colorScheme.onboardingTitleColor
+                                          .withOpacity(0.1),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.arrow_back,
+                                    color: colorScheme.onboardingTitleColor,
+                                    size: 24,
+                                  ),
                                 ),
                               ),
-                              child: Icon(
-                                Icons.arrow_back,
-                                color: colorScheme.onboardingTitleColor,
-                                size: 24,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Center(
-                              child: Text(
-                                '3/5',
-                                style: TextStyle(
-                                  color: colorScheme.onboardingTitleColor,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: 1.2,
-                                  fontFamily: 'Poppins',
+                              Expanded(
+                                child: Center(
+                                  child: Text(
+                                    '3/5',
+                                    style: TextStyle(
+                                      color: colorScheme.onboardingTitleColor,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: 1.2,
+                                      fontFamily: 'Poppins',
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                              const SizedBox(width: 48),
+                            ],
                           ),
-                          const SizedBox(width: 48),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          RichText(
-                            textAlign: TextAlign.center,
-                            text: TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: localizations.translate(
-                                      'onboarding.page3.title.text1'),
+                        ),
+                        const SizedBox(height: 14),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              RichText(
+                                textAlign: TextAlign.center,
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: localizations.translate(
+                                          'onboarding.page3.title.text1'),
+                                      style: TextStyle(
+                                        color: colorScheme
+                                            .onboardingNextButtonBorderColor,
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.w800,
+                                        fontFamily: 'Poppins',
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: localizations.translate(
+                                          'onboarding.page3.title.text2'),
+                                      style: TextStyle(
+                                        color: colorScheme
+                                            .onboardingOptionTextColor,
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.w800,
+                                        fontFamily: 'Poppins',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 32),
+                                child: Text(
+                                  localizations.translate(
+                                      'onboarding.page3.description'),
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: colorScheme
-                                        .onboardingNextButtonBorderColor,
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.w800,
+                                    color: colorScheme.onboardingSubtitleColor,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w500,
                                     fontFamily: 'Poppins',
                                   ),
                                 ),
-                                TextSpan(
-                                  text: localizations.translate(
-                                      'onboarding.page3.title.text2'),
-                                  style: TextStyle(
-                                    color:
-                                        colorScheme.onboardingOptionTextColor,
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.w800,
-                                    fontFamily: 'Poppins',
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              // Cinsiyet Modal
+                              GestureDetector(
+                                onTap: () =>
+                                    _showGenderPicker(context, onboarding),
+                                child: OnboardingCardInput(
+                                  icon: Icons.person,
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          selectedGender ??
+                                              localizations.translate(
+                                                  'profile.gender.title'),
+                                          style: TextStyle(
+                                            color: colorScheme
+                                                .onboardingOptionTextColor,
+                                            fontSize: 17,
+                                            fontFamily: 'Poppins',
+                                          ),
+                                        ),
+                                      ),
+                                      Icon(Icons.keyboard_arrow_down,
+                                          color: colorScheme
+                                              .onboardingOptionTextColor),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Text(
-                              localizations
-                                  .translate('onboarding.page3.description'),
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: colorScheme.onboardingSubtitleColor,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w500,
-                                fontFamily: 'Poppins',
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          // Cinsiyet Modal
-                          GestureDetector(
-                            onTap: () => _showGenderPicker(context, onboarding),
-                            child: OnboardingCardInput(
-                              icon: Icons.person,
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      selectedGender ??
-                                          localizations.translate(
-                                              'profile.gender.title'),
-                                      style: TextStyle(
-                                        color: colorScheme
-                                            .onboardingOptionTextColor,
-                                        fontSize: 17,
-                                        fontFamily: 'Poppins',
-                                      ),
+                              const SizedBox(height: 16),
+                              // Doğum Tarihi
+                              GestureDetector(
+                                onTap: () =>
+                                    _showDatePicker(context, onboarding),
+                                child: OnboardingCardInput(
+                                  icon: Icons.calendar_today,
+                                  child: Text(
+                                    birthDateController.text.isNotEmpty
+                                        ? birthDateController.text
+                                        : localizations.translate(
+                                            'profile.birthday.title'),
+                                    style: TextStyle(
+                                      color:
+                                          colorScheme.onboardingOptionTextColor,
+                                      fontSize: 17,
+                                      fontFamily: 'Poppins',
                                     ),
                                   ),
-                                  Icon(Icons.keyboard_arrow_down,
-                                      color: colorScheme
-                                          .onboardingOptionTextColor),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // Doğum Tarihi
-                          GestureDetector(
-                            onTap: () => _showDatePicker(context, onboarding),
-                            child: OnboardingCardInput(
-                              icon: Icons.calendar_today,
-                              child: Text(
-                                birthDateController.text.isNotEmpty
-                                    ? birthDateController.text
-                                    : localizations
-                                        .translate('profile.birthday.title'),
-                                style: TextStyle(
-                                  color: colorScheme.onboardingOptionTextColor,
-                                  fontSize: 17,
-                                  fontFamily: 'Poppins',
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // Kilo
-                          GestureDetector(
-                            onTap: () =>
-                                _showNumberInput(context, onboarding, 'weight'),
-                            child: OnboardingCardInput(
-                              icon: Icons.monitor_weight,
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      weightController.text.isNotEmpty
-                                          ? weightController.text
-                                          : localizations.translate(
-                                              'profile.weight.title'),
-                                      style: TextStyle(
-                                        color: colorScheme
-                                            .onboardingOptionTextColor,
-                                        fontSize: 17,
-                                        fontFamily: 'Poppins',
+                              const SizedBox(height: 16),
+                              // Kilo
+                              GestureDetector(
+                                onTap: () => _showNumberInput(
+                                    context, onboarding, 'weight'),
+                                child: OnboardingCardInput(
+                                  icon: Icons.monitor_weight,
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          weightController.text.isNotEmpty
+                                              ? weightController.text
+                                              : localizations.translate(
+                                                  'profile.weight.title'),
+                                          style: TextStyle(
+                                            color: colorScheme
+                                                .onboardingOptionTextColor,
+                                            fontSize: 17,
+                                            fontFamily: 'Poppins',
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      Text(
+                                          localizations
+                                              .translate('profile.weight.unit'),
+                                          style: TextStyle(
+                                              color: colorScheme
+                                                  .onboardingOptionTextColor,
+                                              fontSize: 17,
+                                              fontFamily: 'Poppins')),
+                                    ],
                                   ),
-                                  Text(
-                                      localizations.translate(
-                                          'profile.weight.unit'),
-                                      style: TextStyle(
-                                          color: colorScheme
-                                              .onboardingOptionTextColor,
-                                          fontSize: 17,
-                                          fontFamily: 'Poppins')),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // Boy
-                          GestureDetector(
-                            onTap: () =>
-                                _showNumberInput(context, onboarding, 'height'),
-                            child: OnboardingCardInput(
-                              icon: Icons.height,
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      heightController.text.isNotEmpty
-                                          ? heightController.text
-                                          : localizations.translate(
-                                              'profile.height.title'),
-                                      style: TextStyle(
-                                        color: colorScheme
-                                            .onboardingOptionTextColor,
-                                        fontSize: 17,
-                                        fontFamily: 'Poppins',
+                              const SizedBox(height: 16),
+                              // Boy
+                              GestureDetector(
+                                onTap: () => _showNumberInput(
+                                    context, onboarding, 'height'),
+                                child: OnboardingCardInput(
+                                  icon: Icons.height,
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          heightController.text.isNotEmpty
+                                              ? heightController.text
+                                              : localizations.translate(
+                                                  'profile.height.title'),
+                                          style: TextStyle(
+                                            color: colorScheme
+                                                .onboardingOptionTextColor,
+                                            fontSize: 17,
+                                            fontFamily: 'Poppins',
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      Text(
+                                          localizations
+                                              .translate('profile.height.unit'),
+                                          style: TextStyle(
+                                              color: colorScheme
+                                                  .onboardingOptionTextColor,
+                                              fontSize: 17,
+                                              fontFamily: 'Poppins')),
+                                    ],
                                   ),
-                                  Text(
-                                      localizations.translate(
-                                          'profile.height.unit'),
-                                      style: TextStyle(
-                                          color: colorScheme
-                                              .onboardingOptionTextColor,
-                                          fontSize: 17,
-                                          fontFamily: 'Poppins')),
-                                ],
+                                ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 24,
-                  child: IgnorePointer(
-                    ignoring: !_isFormValid(),
-                    child: Opacity(
-                      opacity: _isFormValid() ? 1.0 : 0.5,
-                      child: OnboardingNextButton(
-                        step: widget.step,
-                        previousStep: widget.previousStep,
-                        onNext: () {
-                          _analyticsService.logUserInteraction(
-                            interactionType: 'button_click',
-                            target: 'next_button',
-                            parameters: {
-                              'step': 3,
-                              'gender': onboarding.gender ?? '',
-                              'birth_date': (onboarding.birthDate != null
-                                  ? onboarding.birthDate!.toIso8601String()
-                                  : ''),
-                              'weight': onboarding.weight ?? 0,
-                              'height': onboarding.height ?? 0,
-                              'timestamp': DateTime.now().toIso8601String(),
-                            },
-                          );
-                          widget.onNext?.call();
-                        },
-                      ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 24,
+                child: IgnorePointer(
+                  ignoring: !_isFormValid(),
+                  child: Opacity(
+                    opacity: _isFormValid() ? 1.0 : 0.5,
+                    child: OnboardingNextButton(
+                      step: widget.step,
+                      previousStep: widget.previousStep,
+                      onNext: () {
+                        _analyticsService.logUserInteraction(
+                          interactionType: 'button_click',
+                          target: 'next_button',
+                          parameters: {
+                            'step': 3,
+                            'gender': onboarding.gender ?? '',
+                            'birth_date': (onboarding.birthDate != null
+                                ? onboarding.birthDate!.toIso8601String()
+                                : ''),
+                            'weight': onboarding.weight ?? 0,
+                            'height': onboarding.height ?? 0,
+                            'timestamp': DateTime.now().toIso8601String(),
+                          },
+                        );
+                        widget.onNext?.call();
+                      },
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

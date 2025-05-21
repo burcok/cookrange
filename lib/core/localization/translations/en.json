@@ -109,6 +109,10 @@
       "title": "Select Your Weight",
       "unit": "kg"
     },
+    "targetWeight": {
+      "title": "Select Your Target Weight",
+      "unit": "kg"
+    },
     "activity_level": "Activity Level",
     "goals": "Goals",
     "save": "Save Changes"

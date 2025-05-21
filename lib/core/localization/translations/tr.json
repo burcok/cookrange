@@ -90,6 +90,10 @@
       "title": "Kilonuzu Seçin",
       "unit": "kg"
     },
+    "targetWeight": {
+      "title": "Hedef Kilonuzu Seçin",
+      "unit": "kg"
+    },
     "activity_level": "Aktivite Seviyesi",
     "goals": "Hedefler",
     "save": "Değişiklikleri Kaydet",
