@@ -8,6 +8,7 @@ import '../../../../widgets/gender_picker_modal.dart';
 import '../../../../widgets/date_picker_modal.dart';
 import '../../../../widgets/number_picker_modal.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../../core/localization/app_localizations.dart';
 
 class OnboardingPage3 extends StatefulWidget {
   final int step;
@@ -219,6 +220,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final onboarding = widget.onboarding;
+    final localizations = AppLocalizations.of(context);
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onTap: () => FocusScope.of(context).unfocus(),
@@ -298,19 +300,11 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                             text: TextSpan(
                               children: [
                                 TextSpan(
-                                  text: 'Profilini ',
+                                  text: localizations
+                                      .translate('onboarding.page3.title'),
                                   style: TextStyle(
                                     color: colorScheme
                                         .onboardingNextButtonBorderColor,
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.w800,
-                                    fontFamily: 'Poppins',
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: 'tamamlayalım',
-                                  style: TextStyle(
-                                    color: colorScheme.onboardingTitleColor,
                                     fontSize: 36,
                                     fontWeight: FontWeight.w800,
                                     fontFamily: 'Poppins',
@@ -323,7 +317,8 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 32),
                             child: Text(
-                              'Bu bilgileri sana daha iyi bir hizmet sunmak için kullanacağız.',
+                              localizations
+                                  .translate('onboarding.page3.description'),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: colorScheme.onboardingSubtitleColor,
@@ -351,7 +346,9 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      selectedGender ?? 'Cinsiyetin',
+                                      selectedGender ??
+                                          localizations.translate(
+                                              'profile.gender.title'),
                                       style: TextStyle(
                                         color: colorScheme
                                             .onboardingOptionTextColor,
@@ -376,7 +373,8 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                               child: Text(
                                 birthDateController.text.isNotEmpty
                                     ? birthDateController.text
-                                    : 'Doğum Tarihin',
+                                    : localizations
+                                        .translate('profile.birthday.title'),
                                 style: TextStyle(
                                   color: colorScheme.onboardingOptionTextColor,
                                   fontSize: 17,
@@ -399,7 +397,8 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                                     child: Text(
                                       weightController.text.isNotEmpty
                                           ? weightController.text
-                                          : 'Kilon',
+                                          : localizations.translate(
+                                              'profile.weight.title'),
                                       style: TextStyle(
                                         color: colorScheme
                                             .onboardingOptionTextColor,
@@ -408,7 +407,9 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                                       ),
                                     ),
                                   ),
-                                  Text('kg',
+                                  Text(
+                                      localizations.translate(
+                                          'profile.weight.unit'),
                                       style: TextStyle(
                                           color: colorScheme
                                               .onboardingOptionTextColor,
@@ -432,7 +433,8 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                                     child: Text(
                                       heightController.text.isNotEmpty
                                           ? heightController.text
-                                          : 'Boyun',
+                                          : localizations.translate(
+                                              'profile.height.title'),
                                       style: TextStyle(
                                         color: colorScheme
                                             .onboardingOptionTextColor,
@@ -441,7 +443,9 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                                       ),
                                     ),
                                   ),
-                                  Text('cm',
+                                  Text(
+                                      localizations.translate(
+                                          'profile.height.unit'),
                                       style: TextStyle(
                                           color: colorScheme
                                               .onboardingOptionTextColor,
@@ -473,11 +477,12 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                             target: 'next_button',
                             parameters: {
                               'step': 3,
-                              'gender': onboarding.gender,
-                              'birth_date':
-                                  onboarding.birthDate?.toIso8601String(),
-                              'weight': onboarding.weight,
-                              'height': onboarding.height,
+                              'gender': onboarding.gender ?? '',
+                              'birth_date': (onboarding.birthDate != null
+                                  ? onboarding.birthDate!.toIso8601String()
+                                  : ''),
+                              'weight': onboarding.weight ?? 0,
+                              'height': onboarding.height ?? 0,
                               'timestamp': DateTime.now().toIso8601String(),
                             },
                           );

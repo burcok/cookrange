@@ -44,7 +44,7 @@ Cookrange is an innovative mobile application powered by artificial intelligence
 
 3. **Install Dependencies:**
     ```bash
-    flutter pub get
+    flutter pub upgrade --major-versions && flutter pub get
     ```
 
 4. **Set Up Environment Files:**

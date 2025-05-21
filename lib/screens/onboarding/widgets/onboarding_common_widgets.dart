@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/localization/app_localizations.dart';
 
 class OnboardingNextButton extends StatefulWidget {
   final int step;
@@ -50,6 +51,8 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
   Widget build(BuildContext context) {
     final progress = (widget.step + 1) / 5.0;
     final colorScheme = Theme.of(context).colorScheme;
+    final localizations = AppLocalizations.of(context);
+    final isLastStep = widget.step == 4;
 
     return Center(
       child: GestureDetector(
@@ -81,8 +84,19 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
                       color: colorScheme.onboardingNextButtonColor,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.arrow_forward,
-                        color: colorScheme.backgroundColor2, size: 28),
+                    child: isLastStep
+                        ? Text(
+                            localizations.translate('onboarding.get_started'),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: colorScheme.backgroundColor2,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Poppins',
+                            ),
+                          )
+                        : Icon(Icons.arrow_forward,
+                            color: colorScheme.backgroundColor2, size: 28),
                   ),
                 ],
               ),
@@ -207,6 +221,32 @@ class OnboardingCardInput extends StatelessWidget {
           const SizedBox(width: 16),
           Expanded(child: child),
         ],
+      ),
+    );
+  }
+}
+
+class OnboardingSkipButton extends StatelessWidget {
+  final VoidCallback? onSkip;
+
+  const OnboardingSkipButton({
+    Key? key,
+    this.onSkip,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+    return TextButton(
+      onPressed: onSkip,
+      child: Text(
+        localizations.translate('onboarding.skip'),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onboardingOptionTextColor,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          fontFamily: 'Poppins',
+        ),
       ),
     );
   }

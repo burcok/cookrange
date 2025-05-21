@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/analytics_service.dart';
+// import '../../../constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/onboarding_common_widgets.dart';
+import '../../../core/localization/app_localizations.dart';
 
 class OnboardingPage5 extends StatelessWidget {
   final int step;
@@ -18,9 +21,11 @@ class OnboardingPage5 extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    // final size = MediaQuery.of(context).size;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final localizations = AppLocalizations.of(context);
+    final analyticsService = AnalyticsService();
     return Stack(
       children: [
         Container(color: colorScheme.background),
@@ -81,19 +86,11 @@ class OnboardingPage5 extends StatelessWidget {
                         text: TextSpan(
                           children: [
                             TextSpan(
-                              text: 'Neredeyse ',
+                              text: localizations
+                                  .translate('onboarding.page5.title'),
                               style: TextStyle(
                                 color:
                                     colorScheme.onboardingNextButtonBorderColor,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                            TextSpan(
-                              text: 'bitti!',
-                              style: TextStyle(
-                                color: colorScheme.onboardingTitleColor,
                                 fontSize: 32,
                                 fontWeight: FontWeight.w800,
                                 fontFamily: 'Poppins',
@@ -106,7 +103,8 @@ class OnboardingPage5 extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 32),
                         child: Text(
-                          'Son olarak sizin için özel oluşturulacak yemek programı için özel isteklerinizi belirtin! Örnek olarak "süte alerjim var bu yüzden süt ürünlerini istemiyorum" veya "tavuk ağırlıklı bir program istiyorum" gibi.',
+                          localizations
+                              .translate('onboarding.page5.description'),
                           textAlign: TextAlign.left,
                           style: TextStyle(
                             color: colorScheme.onboardingSubtitleColor,
@@ -143,7 +141,20 @@ class OnboardingPage5 extends StatelessWidget {
           right: 0,
           bottom: 24,
           child: OnboardingNextButton(
-              step: step, previousStep: previousStep, onNext: onNext),
+            step: step,
+            previousStep: previousStep,
+            onNext: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('onboarding_completed', true);
+              await analyticsService.logEvent(
+                name: 'onboarding_completed',
+                parameters: {
+                  'timestamp': DateTime.now().toIso8601String(),
+                },
+              );
+              if (onNext != null) onNext!();
+            },
+          ),
         ),
       ],
     );

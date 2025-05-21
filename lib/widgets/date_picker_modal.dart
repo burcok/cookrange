@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/localization/app_localizations.dart';
 
 class DatePickerModal extends StatelessWidget {
   final DateTime initialDate;
@@ -19,6 +20,7 @@ class DatePickerModal extends StatelessWidget {
     DateTime now = DateTime.now();
     DateTime displayMonth = DateTime(initialDate.year, initialDate.month);
     DateTime? tempDate = initialDate;
+    final localizations = AppLocalizations.of(context);
     return StatefulBuilder(
       builder: (context, setModalState) {
         void goToPrevMonth() {
@@ -43,18 +45,18 @@ class DatePickerModal extends StatelessWidget {
 
         Future<void> selectMonth() async {
           final months = [
-            'Ocak',
-            'Şubat',
-            'Mart',
-            'Nisan',
-            'Mayıs',
-            'Haziran',
-            'Temmuz',
-            'Ağustos',
-            'Eylül',
-            'Ekim',
-            'Kasım',
-            'Aralık',
+            localizations.translate('profile.birthday.months.january'),
+            localizations.translate('profile.birthday.months.february'),
+            localizations.translate('profile.birthday.months.march'),
+            localizations.translate('profile.birthday.months.april'),
+            localizations.translate('profile.birthday.months.may'),
+            localizations.translate('profile.birthday.months.june'),
+            localizations.translate('profile.birthday.months.july'),
+            localizations.translate('profile.birthday.months.august'),
+            localizations.translate('profile.birthday.months.september'),
+            localizations.translate('profile.birthday.months.october'),
+            localizations.translate('profile.birthday.months.november'),
+            localizations.translate('profile.birthday.months.december'),
           ];
           int initialIndex = displayMonth.month - 1;
           int? selected = await showModalBottomSheet<int>(
@@ -69,9 +71,11 @@ class DatePickerModal extends StatelessWidget {
                 child: Column(
                   children: [
                     const SizedBox(height: 12),
-                    const Text('Ay Seç',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    Text(
+                      localizations.translate('profile.birthday.select_month'),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
                     Expanded(
                       child: ListWheelScrollView.useDelegate(
                         itemExtent: 44,
@@ -112,9 +116,9 @@ class DatePickerModal extends StatelessWidget {
                           onPressed: () {
                             Navigator.of(context).pop(tempIndex + 1);
                           },
-                          child: const Text(
-                            'Seç',
-                            style: TextStyle(
+                          child: Text(
+                            localizations.translate('common.select'),
+                            style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white),
@@ -151,9 +155,11 @@ class DatePickerModal extends StatelessWidget {
                 child: Column(
                   children: [
                     const SizedBox(height: 12),
-                    const Text('Yıl Seç',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    Text(
+                      localizations.translate('profile.birthday.select_year'),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
                     Expanded(
                       child: ListWheelScrollView.useDelegate(
                         itemExtent: 44,
@@ -194,9 +200,9 @@ class DatePickerModal extends StatelessWidget {
                           onPressed: () {
                             Navigator.of(context).pop(years[tempIndex]);
                           },
-                          child: const Text(
-                            'Seç',
-                            style: TextStyle(
+                          child: Text(
+                            localizations.translate('common.select'),
+                            style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white),
@@ -217,20 +223,20 @@ class DatePickerModal extends StatelessWidget {
         }
 
         String _monthName(int month) {
-          const months = [
+          final months = [
             '',
-            'Ocak',
-            'Şubat',
-            'Mart',
-            'Nisan',
-            'Mayıs',
-            'Haziran',
-            'Temmuz',
-            'Ağustos',
-            'Eylül',
-            'Ekim',
-            'Kasım',
-            'Aralık',
+            localizations.translate('profile.birthday.months.january'),
+            localizations.translate('profile.birthday.months.february'),
+            localizations.translate('profile.birthday.months.march'),
+            localizations.translate('profile.birthday.months.april'),
+            localizations.translate('profile.birthday.months.may'),
+            localizations.translate('profile.birthday.months.june'),
+            localizations.translate('profile.birthday.months.july'),
+            localizations.translate('profile.birthday.months.august'),
+            localizations.translate('profile.birthday.months.september'),
+            localizations.translate('profile.birthday.months.october'),
+            localizations.translate('profile.birthday.months.november'),
+            localizations.translate('profile.birthday.months.december'),
           ];
           return months[month];
         }
@@ -251,118 +257,123 @@ class DatePickerModal extends StatelessWidget {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const Text('Doğum Tarihini Seç',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 12),
+                Text(
+                  localizations.translate('profile.birthday.title'),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                        icon: const Icon(Icons.chevron_left),
-                        onPressed: goToPrevMonth),
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: selectMonth,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(_monthName(displayMonth.month),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    decoration: TextDecoration.underline)),
-                          ),
+                      onPressed: goToPrevMonth,
+                      icon: const Icon(Icons.chevron_left),
+                    ),
+                    GestureDetector(
+                      onTap: selectMonth,
+                      child: Text(
+                        _monthName(displayMonth.month),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
                         ),
-                        GestureDetector(
-                          onTap: selectYear,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(displayMonth.year.toString(),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    decoration: TextDecoration.underline)),
-                          ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: selectYear,
+                      child: Text(
+                        displayMonth.year.toString(),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
                         ),
-                      ],
+                      ),
                     ),
                     IconButton(
-                        icon: const Icon(Icons.chevron_right),
-                        onPressed: goToNextMonth),
+                      onPressed: goToNextMonth,
+                      icon: const Icon(Icons.chevron_right),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text('Pzt'),
-                    Text('Sal'),
-                    Text('Çar'),
-                    Text('Per'),
-                    Text('Cum'),
-                    Text('Cmt'),
-                    Text('Paz'),
-                  ],
-                ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 16),
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 7,
-                    mainAxisSpacing: 4,
-                    crossAxisSpacing: 4,
-                    childAspectRatio: 1.2,
+                    childAspectRatio: 1,
                   ),
-                  itemCount: daysInMonth(displayMonth) +
-                      firstWeekdayOfMonth(displayMonth) -
-                      1,
+                  itemCount: 7,
                   itemBuilder: (context, index) {
-                    int firstDayOffset = firstWeekdayOfMonth(displayMonth) - 1;
-                    if (index < firstDayOffset) {
-                      return const SizedBox();
-                    }
-                    int day = index - firstDayOffset + 1;
-                    DateTime thisDay =
-                        DateTime(displayMonth.year, displayMonth.month, day);
-                    bool isSelected = tempDate != null &&
-                        tempDate!.year == thisDay.year &&
-                        tempDate!.month == thisDay.month &&
-                        tempDate!.day == thisDay.day;
-                    bool isFuture = thisDay.isAfter(now);
+                    final weekdays = ['P', 'P', 'S', 'Ç', 'P', 'C', 'C'];
+                    return Center(
+                      child: Text(
+                        weekdays[index],
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 7,
+                    childAspectRatio: 1,
+                  ),
+                  itemCount: 42,
+                  itemBuilder: (context, index) {
+                    final firstWeekday = firstWeekdayOfMonth(displayMonth);
+                    final daysInCurrentMonth = daysInMonth(displayMonth);
+                    final day = index - firstWeekday + 1;
+                    final isCurrentMonth = day > 0 && day <= daysInCurrentMonth;
+                    final isSelected = isCurrentMonth &&
+                        day == tempDate?.day &&
+                        displayMonth.month == tempDate?.month &&
+                        displayMonth.year == tempDate?.year;
+                    final isToday = isCurrentMonth &&
+                        day == now.day &&
+                        displayMonth.month == now.month &&
+                        displayMonth.year == now.year;
+
                     return GestureDetector(
-                      onTap: isFuture
-                          ? null
-                          : () {
+                      onTap: isCurrentMonth
+                          ? () {
                               setModalState(() {
-                                tempDate = thisDay;
+                                tempDate = DateTime(
+                                    displayMonth.year, displayMonth.month, day);
                               });
-                            },
+                            }
+                          : null,
                       child: Container(
+                        margin: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           color: isSelected
                               ? Theme.of(context)
                                   .colorScheme
                                   .onboardingNextButtonColor
-                              : null,
-                          borderRadius: BorderRadius.circular(8),
+                              : isToday
+                                  ? Colors.grey[200]
+                                  : null,
+                          shape: BoxShape.circle,
                         ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '$day',
-                          style: TextStyle(
-                            color: isFuture
-                                ? Colors.grey
-                                : isSelected
-                                    ? Colors.white
-                                    : Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge
-                                        ?.color,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                        child: Center(
+                          child: Text(
+                            isCurrentMonth ? day.toString() : '',
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : isToday
+                                      ? Colors.black
+                                      : Colors.grey[600],
+                              fontSize: 14,
+                            ),
                           ),
                         ),
                       ),
@@ -380,9 +391,6 @@ class DatePickerModal extends StatelessWidget {
                       foregroundColor: Theme.of(context)
                           .colorScheme
                           .onboardingNextButtonBorderColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
                     ),
                     onPressed: tempDate != null
                         ? () {
@@ -390,16 +398,16 @@ class DatePickerModal extends StatelessWidget {
                             Navigator.of(context).pop();
                           }
                         : null,
-                    child: const Text(
-                      'Seç',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white),
+                    child: Text(
+                      localizations.translate('common.save'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
               ],
             ),
           ),

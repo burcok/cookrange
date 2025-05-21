@@ -1,0 +1,165 @@
+{
+  "@@locale": "tr",
+  "appName": "Cookrange",
+  "welcome": "Cookrange'a Hoş Geldiniz",
+  "splashLoadingMessage0": "Tencereleri ısıtıyoruz...",
+  "splashLoadingMessage1": "Mutfak robotlarını çalıştırıyoruz...",
+  "splashLoadingMessage2": "Baharatları karıştırıyoruz...",
+  "splashLoadingMessage3": "Tarifleri sıralıyoruz...",
+  "splashLoadingMessage4": "Mutfak önlüklerini ütülüyoruz...",
+  "splashLoadingMessage5": "Taze malzemeleri hazırlıyoruz...",
+  "splashLoadingMessage6": "Fırını önceden ısıtıyoruz...",
+  "splashLoadingMessage7": "Mutfak terazilerini kalibre ediyoruz...",
+  "splashLoadingMessage8": "Yemek kitaplarını düzenliyoruz...",
+  "splashLoadingMessage9": "Mutfak robotlarını programlıyoruz...",
+  
+  "onboarding": {
+    "page1": {
+      "title": "Cookrange'a Hoş Geldiniz",
+      "description": "Lezzetli yemekler yaratmanıza ve mutfağınızı verimli bir şekilde yönetmenize yardımcı olan kişisel yemek arkadaşınız."
+    },
+    "page2": {
+      "title": "Hedefin nedir?",
+      "description": "Bu bilgileri sana daha iyi bir hizmet sunmak için kullanacağız."
+    },
+    "page3": {
+      "title": "Profilini tamamlayalım",
+      "description": "Bu bilgileri sana daha iyi bir hizmet sunmak için kullanacağız."
+    },
+    "page4": {
+      "title": "Profilini tamamlayalım",
+      "description": "Bu bilgileri sana daha iyi bir hizmet sunmak için kullanacağız."
+    },
+    "page5": {
+      "title": "Neredeyse bitti!",
+      "description": "Son olarak sizin için özel oluşturulacak yemek programı için özel isteklerinizi belirtin! Örnek olarak \"süte alerjim var bu yüzden süt ürünlerini istemiyorum\" veya \"tavuk ağırlıklı bir program istiyorum\" gibi."
+    },
+    "get_started": "Başla",
+    "skip": "Atla",
+    "next": "İleri",
+    "back": "Geri",
+    "goals": {
+      "lose_weight": "Kilo vermek",
+      "gain_weight": "Kilo kazanmak",
+      "build_muscle": "Kas kütlesini arttırmak",
+      "shape_body": "Vücut şekillendirmek"
+    },
+    "validation": {
+      "select_goal": "Lütfen bir hedef seçin",
+      "select_gender": "Lütfen cinsiyetinizi seçin",
+      "select_birth_date": "Lütfen doğum tarihinizi seçin",
+      "enter_weight": "Lütfen kilonuzu girin",
+      "enter_height": "Lütfen boyunuzu girin",
+      "complete_profile": "Lütfen tüm profil bilgilerinizi doldurun",
+      "select_activity": "Lütfen aktivite seviyenizi seçin",
+      "enter_target_weight": "Lütfen hedef kilonuzu girin",
+      "complete_activity": "Lütfen aktivite seviyenizi ve hedef kilonuzu seçin",
+      "fill_required": "Lütfen gerekli alanları doldurun"
+    }
+  },
+
+  "auth": {
+    "login": "Giriş Yap",
+    "signup": "Kayıt Ol",
+    "email": "E-posta",
+    "password": "Şifre",
+    "forgot_password": "Şifremi Unuttum?",
+    "or": "veya",
+    "continue_with_google": "Google ile Devam Et",
+    "continue_with_apple": "Apple ile Devam Et",
+    "dont_have_account": "Hesabınız yok mu?",
+    "already_have_account": "Zaten hesabınız var mı?"
+  },
+
+  "profile": {
+    "title": "Profil",
+    "edit_profile": "Profili Düzenle",
+    "personal_info": "Kişisel Bilgiler",
+    "name": "Ad",
+    "age": "Yaş",
+    "gender": {
+      "title": "Cinsiyetinizi Seçin",
+      "female": "Kadın",
+      "male": "Erkek"
+    },
+    "height": {
+      "title": "Boyunuzu Seçin",
+      "unit": "cm"
+    },
+    "weight": {
+      "title": "Kilonuzu Seçin",
+      "unit": "kg"
+    },
+    "activity_level": "Aktivite Seviyesi",
+    "goals": "Hedefler",
+    "save": "Değişiklikleri Kaydet",
+    "birthday": {
+      "title": "Doğum Tarihinizi Seçin",
+      "select_month": "Ay Seçin",
+      "select_year": "Yıl Seçin",
+      "months": {
+        "january": "Ocak",
+        "february": "Şubat",
+        "march": "Mart",
+        "april": "Nisan",
+        "may": "Mayıs",
+        "june": "Haziran",
+        "july": "Temmuz",
+        "august": "Ağustos",
+        "september": "Eylül",
+        "october": "Ekim",
+        "november": "Kasım",
+        "december": "Aralık"
+      }
+    }
+  },
+
+  "settings": {
+    "title": "Ayarlar",
+    "language": "Dil",
+    "notifications": "Bildirimler",
+    "privacy_policy": "Gizlilik Politikası",
+    "terms_of_service": "Kullanım Koşulları",
+    "about": "Hakkında",
+    "logout": "Çıkış Yap",
+    "dark_mode": "Karanlık Mod",
+    "units": "Birimler",
+    "metric": "Metrik",
+    "imperial": "İmparatorluk"
+  },
+
+  "notifications": {
+    "meal_reminder": "Yemek Hatırlatıcısı",
+    "water_reminder": "Su Hatırlatıcısı",
+    "goal_achievement": "Hedef Başarısı",
+    "weekly_report": "Haftalık Rapor",
+    "enable_notifications": "Bildirimleri Etkinleştir",
+    "notification_settings": "Bildirim Ayarları",
+    "reminder_times": "Hatırlatma Zamanları",
+    "morning": "Sabah",
+    "afternoon": "Öğleden Sonra",
+    "evening": "Akşam",
+    "success": "Başarılı",
+    "error": "Hata",
+    "warning": "Uyarı",
+    "info": "Bilgi"
+  },
+
+  "common": {
+    "save": "Kaydet",
+    "select": "Seç",
+    "cancel": "İptal",
+    "confirm": "Onayla",
+    "back": "Geri",
+    "done": "Tamam"
+  },
+
+  "errors": {
+    "general": "Bir şeyler yanlış gitti",
+    "network": "Ağ hatası oluştu",
+    "invalid_email": "Geçersiz e-posta adresi",
+    "invalid_password": "Geçersiz şifre",
+    "required_field": "Bu alan zorunludur",
+    "weak_password": "Şifre çok zayıf"
+  }
+} 

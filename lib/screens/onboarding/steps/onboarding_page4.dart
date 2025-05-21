@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../providers/onboarding_provider.dart';
 import '../widgets/onboarding_common_widgets.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../../core/localization/app_localizations.dart';
 
 class OnboardingPage4 extends StatefulWidget {
   final int step;
@@ -107,6 +108,7 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
     final size = MediaQuery.of(context).size;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final localizations = AppLocalizations.of(context);
     return Stack(
       children: [
         Container(color: colorScheme.background),
@@ -180,19 +182,11 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
                         text: TextSpan(
                           children: [
                             TextSpan(
-                              text: 'Profilini ',
+                              text: localizations
+                                  .translate('onboarding.page4.title'),
                               style: TextStyle(
                                 color:
                                     colorScheme.onboardingNextButtonBorderColor,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                            TextSpan(
-                              text: 'tamamlayalım',
-                              style: TextStyle(
-                                color: colorScheme.onboardingTitleColor,
                                 fontSize: 32,
                                 fontWeight: FontWeight.w800,
                                 fontFamily: 'Poppins',
@@ -205,7 +199,8 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 32),
                         child: Text(
-                          'Bu bilgileri sana daha iyi bir hizmet sunmak için kullanacağız.',
+                          localizations
+                              .translate('onboarding.page4.description'),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: colorScheme.onboardingSubtitleColor,
@@ -224,8 +219,10 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
                   child: Column(
                     children: [
                       ProfileInput(
-                        label: 'Hareket Sıklığınız Nedir?',
-                        value: widget.onboarding.activityLevel ?? 'Seçiniz',
+                        label:
+                            localizations.translate('profile.activity_level'),
+                        value: widget.onboarding.activityLevel ??
+                            localizations.translate('common.select'),
                         onTap: () {
                           _analyticsService.logUserInteraction(
                             interactionType: 'modal_open',
@@ -240,9 +237,9 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
                       ),
                       const SizedBox(height: 12),
                       ProfileInput(
-                        label: 'Hedef Kilon',
-                        value:
-                            widget.onboarding.targetWeight?.toString() ?? 'kg',
+                        label: localizations.translate('profile.weight.title'),
+                        value: widget.onboarding.targetWeight?.toString() ??
+                            localizations.translate('profile.weight.unit'),
                         onTap: () {
                           _analyticsService.logUserInteraction(
                             interactionType: 'modal_open',
@@ -287,8 +284,8 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
                     target: 'next_button',
                     parameters: {
                       'step': 4,
-                      'activity_level': widget.onboarding.activityLevel,
-                      'target_weight': widget.onboarding.targetWeight,
+                      'activity_level': widget.onboarding.activityLevel ?? '',
+                      'target_weight': widget.onboarding.targetWeight ?? 0,
                       'timestamp': DateTime.now().toIso8601String(),
                     },
                   );

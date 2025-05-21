@@ -52,6 +52,7 @@ dependencies:
   # Utilities
   flutter_dotenv: ^5.1.0
   permission_handler: ^11.4.0
+  flutter_svg: ^2.1.0
 
 dev_dependencies:
   flutter_test:
@@ -103,11 +104,15 @@ flutter:
   # Assets Configuration
   assets:
     - assets/images/onboarding/
-    - .env
+    - assets/images/splash/
     - assets/icons/
     - assets/images/
     - assets/fonts/
-    - assets/animations/
+    - lib/core/localization/translations/
+    - .env
+
+  # Localization Configuration
+  generate: true
 
   # Fonts Configuration
   fonts:

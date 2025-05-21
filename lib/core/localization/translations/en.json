@@ -1,0 +1,172 @@
+{
+  "@@locale": "en",
+  "appName": "Cookrange",
+  "welcome": "Welcome to Cookrange",
+  "splashLoadingMessage0": "Heating up the pots...",
+  "splashLoadingMessage1": "Starting up the kitchen robots...",
+  "splashLoadingMessage2": "Mixing the spices...",
+  "splashLoadingMessage3": "Sorting the recipes...",
+  "splashLoadingMessage4": "Ironing the aprons...",
+  "splashLoadingMessage5": "Preparing fresh ingredients...",
+  "splashLoadingMessage6": "Preheating the oven...",
+  "splashLoadingMessage7": "Calibrating kitchen scales...",
+  "splashLoadingMessage8": "Organizing cookbooks...",
+  "splashLoadingMessage9": "Programming kitchen robots...",
+  
+  "onboarding": {
+    "page1": {
+      "title": "Welcome to Cookrange",
+      "description": "Your personal cooking companion that helps you create delicious meals and manage your kitchen efficiently."
+    },
+    "page2": {
+      "title": "What's your goal?",
+      "description": "We'll use this information to provide you with better service."
+    },
+    "page3": {
+      "title": "Complete Your Profile",
+      "description": "We'll use this information to provide you with better service."
+    },
+    "page4": {
+      "title": "Complete Your Profile",
+      "description": "We'll use this information to provide you with better service."
+    },
+    "page5": {
+      "title": "Almost Done!",
+      "description": "Finally, let us know your special requests for your personalized meal program! For example, \"I'm allergic to milk so I don't want dairy products\" or \"I want a chicken-heavy program\"."
+    },
+    "get_started": "Get Started",
+    "skip": "Skip",
+    "next": "Next",
+    "back": "Back",
+    "goals": {
+      "lose_weight": "Lose Weight",
+      "gain_weight": "Gain Weight",
+      "build_muscle": "Build Muscle Mass",
+      "shape_body": "Shape Body"
+    },
+    "validation": {
+      "select_goal": "Please select a goal",
+      "select_gender": "Please select your gender",
+      "select_birth_date": "Please select your birth date",
+      "enter_weight": "Please enter your weight",
+      "enter_height": "Please enter your height",
+      "complete_profile": "Please complete all profile information",
+      "select_activity": "Please select your activity level",
+      "enter_target_weight": "Please enter your target weight",
+      "complete_activity": "Please select your activity level and target weight",
+      "fill_required": "Please fill in all required fields"
+    }
+  },
+
+  "auth": {
+    "login": "Login",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "forgot_password": "Forgot Password?",
+    "or": "or",
+    "continue_with_google": "Continue with Google",
+    "continue_with_apple": "Continue with Apple",
+    "dont_have_account": "Don't have an account?",
+    "already_have_account": "Already have an account?"
+  },
+
+  "profile": {
+    "title": "Profile",
+    "edit_profile": "Edit Profile",
+    "personal_info": "Personal Information",
+    "name": "Name",
+    "age": "Age",
+    "gender": {
+      "title": "Select Your Gender",
+      "female": "Female",
+      "male": "Male"
+    },
+    "birthday": {
+      "title": "Select Your Birthday",
+      "select_month": "Select Month",
+      "select_year": "Select Year",
+      "months": {
+        "january": "January",
+        "february": "February",
+        "march": "March",
+        "april": "April",
+        "may": "May",
+        "june": "June",
+        "july": "July",
+        "august": "August",
+        "september": "September",
+        "october": "October",
+        "november": "November",
+        "december": "December"
+      }
+    },
+    "height": {
+      "title": "Select Your Height",
+      "unit": "cm"
+    },
+    "weight": {
+      "title": "Select Your Weight",
+      "unit": "kg"
+    },
+    "activity_level": "Activity Level",
+    "goals": "Goals",
+    "save": "Save Changes"
+  },
+
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "notifications": "Notifications",
+    "privacy_policy": "Privacy Policy",
+    "terms_of_service": "Terms of Service",
+    "about": "About",
+    "logout": "Logout",
+    "dark_mode": "Dark Mode",
+    "units": "Units",
+    "metric": "Metric",
+    "imperial": "Imperial"
+  },
+
+  "notifications": {
+    "meal_reminder": "Meal Reminder",
+    "water_reminder": "Water Reminder",
+    "goal_achievement": "Goal Achievement",
+    "weekly_report": "Weekly Report",
+    "enable_notifications": "Enable Notifications",
+    "notification_settings": "Notification Settings",
+    "reminder_times": "Reminder Times",
+    "morning": "Morning",
+    "afternoon": "Afternoon",
+    "evening": "Evening",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning",
+    "info": "Information"
+  },
+
+  "common": {
+    "save": "Save",
+    "select": "Select",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "back": "Back",
+    "done": "Done",
+    "loading": "Loading...",
+    "retry": "Retry",
+    "no_internet": "No Internet Connection",
+    "try_again": "Try Again",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK"
+  },
+
+  "errors": {
+    "general": "Something went wrong",
+    "network": "Network error occurred",
+    "invalid_email": "Invalid email address",
+    "invalid_password": "Invalid password",
+    "required_field": "This field is required",
+    "weak_password": "Password is too weak"
+  }
+} 

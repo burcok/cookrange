@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../providers/onboarding_provider.dart';
 import '../widgets/onboarding_common_widgets.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../../core/localization/app_localizations.dart';
 
 class OnboardingPage2 extends StatefulWidget {
   final int step;
@@ -76,6 +77,7 @@ class _OnboardingPage2State extends State<OnboardingPage2> {
     final size = MediaQuery.of(context).size;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final localizations = AppLocalizations.of(context);
     return Stack(
       children: [
         Container(color: Theme.of(context).colorScheme.background),
@@ -149,19 +151,11 @@ class _OnboardingPage2State extends State<OnboardingPage2> {
                         text: TextSpan(
                           children: [
                             TextSpan(
-                              text: 'Hedefin ',
+                              text: localizations
+                                  .translate('onboarding.page2.title'),
                               style: TextStyle(
                                 color:
                                     colorScheme.onboardingNextButtonBorderColor,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                            TextSpan(
-                              text: 'nedir?',
-                              style: TextStyle(
-                                color: colorScheme.onboardingTitleColor,
                                 fontSize: 32,
                                 fontWeight: FontWeight.w800,
                                 fontFamily: 'Poppins',
@@ -174,7 +168,8 @@ class _OnboardingPage2State extends State<OnboardingPage2> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 32),
                         child: Text(
-                          'Bu bilgileri sana daha iyi bir hizmet sunmak için kullanacağız.',
+                          localizations
+                              .translate('onboarding.page2.description'),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: colorScheme.onboardingSubtitleColor,
@@ -193,44 +188,62 @@ class _OnboardingPage2State extends State<OnboardingPage2> {
                   child: Column(
                     children: [
                       _GoalOptionV2(
-                        label: 'Kilo vermek',
-                        selected: widget.onboarding.goal == 'Kilo vermek',
+                        label: localizations
+                            .translate('onboarding.goals.lose_weight'),
+                        selected: widget.onboarding.goal ==
+                            localizations
+                                .translate('onboarding.goals.lose_weight'),
                         icon: 'assets/images/onboarding/onboarding-2-1.png',
                         onTap: () {
-                          _logGoalSelection('Kilo vermek');
-                          widget.onboarding.setGoal('Kilo vermek');
+                          _logGoalSelection(localizations
+                              .translate('onboarding.goals.lose_weight'));
+                          widget.onboarding.setGoal(localizations
+                              .translate('onboarding.goals.lose_weight'));
                         },
                       ),
                       const SizedBox(height: 16),
                       _GoalOptionV2(
-                        label: 'Kilo kazanmak',
-                        selected: widget.onboarding.goal == 'Kilo kazanmak',
+                        label: localizations
+                            .translate('onboarding.goals.gain_weight'),
+                        selected: widget.onboarding.goal ==
+                            localizations
+                                .translate('onboarding.goals.gain_weight'),
                         icon: 'assets/images/onboarding/onboarding-2-2.png',
                         onTap: () {
-                          _logGoalSelection('Kilo kazanmak');
-                          widget.onboarding.setGoal('Kilo kazanmak');
+                          _logGoalSelection(localizations
+                              .translate('onboarding.goals.gain_weight'));
+                          widget.onboarding.setGoal(localizations
+                              .translate('onboarding.goals.gain_weight'));
                         },
                       ),
                       const SizedBox(height: 16),
                       _GoalOptionV2(
-                        label: 'Kas kütlesini arttırmak',
-                        selected:
-                            widget.onboarding.goal == 'Kas kütlesini arttırmak',
+                        label: localizations
+                            .translate('onboarding.goals.build_muscle'),
+                        selected: widget.onboarding.goal ==
+                            localizations
+                                .translate('onboarding.goals.build_muscle'),
                         icon: 'assets/images/onboarding/onboarding-2-3.png',
                         onTap: () {
-                          _logGoalSelection('Kas kütlesini arttırmak');
-                          widget.onboarding.setGoal('Kas kütlesini arttırmak');
+                          _logGoalSelection(localizations
+                              .translate('onboarding.goals.build_muscle'));
+                          widget.onboarding.setGoal(localizations
+                              .translate('onboarding.goals.build_muscle'));
                         },
                       ),
                       const SizedBox(height: 16),
                       _GoalOptionV2(
-                        label: 'Vücut şekillendirmek',
-                        selected:
-                            widget.onboarding.goal == 'Vücut şekillendirmek',
+                        label: localizations
+                            .translate('onboarding.goals.shape_body'),
+                        selected: widget.onboarding.goal ==
+                            localizations
+                                .translate('onboarding.goals.shape_body'),
                         icon: 'assets/images/onboarding/onboarding-2-4.png',
                         onTap: () {
-                          _logGoalSelection('Vücut şekillendirmek');
-                          widget.onboarding.setGoal('Vücut şekillendirmek');
+                          _logGoalSelection(localizations
+                              .translate('onboarding.goals.shape_body'));
+                          widget.onboarding.setGoal(localizations
+                              .translate('onboarding.goals.shape_body'));
                         },
                       ),
                     ],
@@ -257,7 +270,7 @@ class _OnboardingPage2State extends State<OnboardingPage2> {
                     target: 'next_button',
                     parameters: {
                       'step': 2,
-                      'selected_goal': widget.onboarding.goal,
+                      'selected_goal': widget.onboarding.goal ?? '',
                       'timestamp': DateTime.now().toIso8601String(),
                     },
                   );

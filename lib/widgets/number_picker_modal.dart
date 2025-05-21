@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/localization/app_localizations.dart';
 
 class NumberPickerModal extends StatelessWidget {
   final String title;
@@ -19,14 +20,16 @@ class NumberPickerModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     int tempIndex = initialValue - min;
+    final localizations = AppLocalizations.of(context);
     return SizedBox(
       height: 300,
       child: Column(
         children: [
           const SizedBox(height: 12),
-          Text(title,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
           Expanded(
             child: ListWheelScrollView.useDelegate(
               itemExtent: 44,
@@ -41,8 +44,10 @@ class NumberPickerModal extends StatelessWidget {
                 builder: (context, i) {
                   if (i < 0 || i > max - min) return null;
                   return Center(
-                    child: Text('${min + i} $unit',
-                        style: const TextStyle(fontSize: 20)),
+                    child: Text(
+                      '${min + i} $unit',
+                      style: const TextStyle(fontSize: 20),
+                    ),
                   );
                 },
                 childCount: max - min + 1,
@@ -64,12 +69,13 @@ class NumberPickerModal extends StatelessWidget {
                 onPressed: () {
                   Navigator.of(context).pop(min + tempIndex);
                 },
-                child: const Text(
-                  'Seç',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
+                child: Text(
+                  localizations.translate('common.select'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

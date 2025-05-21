@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'widgets/onboarding_step.dart';
 import 'package:provider/provider.dart';
 import '../../providers/onboarding_provider.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
 import '../../core/services/analytics_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+import '../../core/localization/app_localizations.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -18,8 +16,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentStep = 0;
   int _previousStep = -1;
-  bool _isPageChanging = false;
-  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
   final _analyticsService = AnalyticsService();
   DateTime? _screenStartTime;
 
@@ -123,27 +119,39 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   String _getRequiredFieldsMessage(OnboardingProvider onboarding) {
+    final localizations = AppLocalizations.of(context);
     switch (_currentStep) {
       case 1:
-        return 'Lütfen bir hedef seçin';
+        return localizations.translate('onboarding.validation.select_goal');
       case 2:
-        if (onboarding.gender == null) return 'Lütfen cinsiyetinizi seçin';
-        if (onboarding.birthDate == null) {
-          return 'Lütfen doğum tarihinizi seçin';
+        if (onboarding.gender == null) {
+          return localizations.translate('onboarding.validation.select_gender');
         }
-        if (onboarding.weight == null) return 'Lütfen kilonuzu girin';
-        if (onboarding.height == null) return 'Lütfen boyunuzu girin';
-        return 'Lütfen tüm profil bilgilerinizi doldurun';
+        if (onboarding.birthDate == null) {
+          return localizations
+              .translate('onboarding.validation.select_birth_date');
+        }
+        if (onboarding.weight == null) {
+          return localizations.translate('onboarding.validation.enter_weight');
+        }
+        if (onboarding.height == null) {
+          return localizations.translate('onboarding.validation.enter_height');
+        }
+        return localizations
+            .translate('onboarding.validation.complete_profile');
       case 3:
         if (onboarding.activityLevel == null) {
-          return 'Lütfen aktivite seviyenizi seçin';
+          return localizations
+              .translate('onboarding.validation.select_activity');
         }
         if (onboarding.targetWeight == null) {
-          return 'Lütfen hedef kilonuzu girin';
+          return localizations
+              .translate('onboarding.validation.enter_target_weight');
         }
-        return 'Lütfen aktivite seviyenizi ve hedef kilonuzu seçin';
+        return localizations
+            .translate('onboarding.validation.complete_activity');
       default:
-        return 'Lütfen gerekli alanları doldurun';
+        return localizations.translate('onboarding.validation.fill_required');
     }
   }
 

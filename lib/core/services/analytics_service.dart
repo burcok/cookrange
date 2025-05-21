@@ -26,7 +26,7 @@ class AnalyticsService {
   static const Duration _processInterval = Duration(seconds: 30);
 
   // Hive box için
-  late Box<Map<dynamic, dynamic>> _analyticsBox;
+  late Box<Map<dynamic, Object>> _analyticsBox;
 
   // Singleton pattern
   static final AnalyticsService _instance = AnalyticsService._internal();
@@ -54,7 +54,7 @@ class AnalyticsService {
 
       // Hive box'ı başlat
       _analyticsBox =
-          await Hive.openBox<Map<dynamic, dynamic>>('analytics_cache');
+          await Hive.openBox<Map<dynamic, Object>>('analytics_cache');
 
       // PackageInfo'yu ana thread'de al
       _packageInfo = await PackageInfo.fromPlatform();
@@ -339,7 +339,7 @@ class AnalyticsService {
   // Enhanced event logging methods with lazy initialization and caching
   Future<void> logEvent({
     required String name,
-    Map<String, dynamic>? parameters,
+    Map<String, Object>? parameters,
   }) async {
     if (!_isInitialized) {
       await initialize();
@@ -356,7 +356,7 @@ class AnalyticsService {
       final event = AnalyticsEvent(
         name: name,
         parameters: {
-          ...parameters ?? {},
+          ...?parameters,
           'session_id': DateTime.now().millisecondsSinceEpoch.toString(),
           'build_mode': kReleaseMode ? 'release' : 'debug',
           'debug_mode': kDebugMode.toString(),
@@ -389,7 +389,7 @@ class AnalyticsService {
   Future<void> logScreenView({
     required String screenName,
     String? screenClass,
-    Map<String, dynamic>? additionalParams,
+    Map<String, Object>? additionalParams,
   }) async {
     if (!_isInitialized) {
       await initialize();
@@ -404,7 +404,7 @@ class AnalyticsService {
         'screen_name': screenName,
         'screen_class': screenClass ?? screenName,
         'timestamp': DateTime.now().toIso8601String(),
-        if (additionalParams != null) ...additionalParams,
+        ...?additionalParams,
       };
 
       // Log screen view in background
@@ -431,14 +431,14 @@ class AnalyticsService {
   Future<void> logUserAction({
     required String action,
     required String category,
-    Map<String, dynamic>? parameters,
+    Map<String, Object>? parameters,
   }) async {
     try {
       final eventParams = {
         'action': action,
         'category': category,
         'timestamp': DateTime.now().toIso8601String(),
-        if (parameters != null) ...parameters,
+        ...?parameters,
       };
 
       await logEvent(
@@ -456,7 +456,7 @@ class AnalyticsService {
     required String errorName,
     required String errorDescription,
     String? errorCode,
-    Map<String, dynamic>? parameters,
+    Map<String, Object>? parameters,
   }) async {
     try {
       final eventParams = {
@@ -464,12 +464,12 @@ class AnalyticsService {
         'error_description': errorDescription,
         'error_code': errorCode,
         'timestamp': DateTime.now().toIso8601String(),
-        if (parameters != null) ...parameters,
+        ...?parameters,
       };
 
       await logEvent(
         name: _errorEvent,
-        parameters: eventParams,
+        parameters: Map<String, Object>.from(eventParams),
       );
     } catch (e) {
       print('AnalyticsService: Error logging error event: $e');
@@ -482,7 +482,7 @@ class AnalyticsService {
     required String metricName,
     required num value,
     String? unit,
-    Map<String, dynamic>? parameters,
+    Map<String, Object>? parameters,
   }) async {
     try {
       final eventParams = {
@@ -490,12 +490,12 @@ class AnalyticsService {
         'value': value,
         'unit': unit,
         'timestamp': DateTime.now().toIso8601String(),
-        if (parameters != null) ...parameters,
+        ...?parameters,
       };
 
       await logEvent(
         name: _performanceEvent,
-        parameters: eventParams,
+        parameters: Map<String, Object>.from(eventParams),
       );
     } catch (e) {
       print('AnalyticsService: Error logging performance event: $e');
@@ -507,14 +507,14 @@ class AnalyticsService {
   Future<void> logFeatureUsage({
     required String featureName,
     required String action,
-    Map<String, dynamic>? parameters,
+    Map<String, Object>? parameters,
   }) async {
     try {
       final eventParams = {
         'feature_name': featureName,
         'action': action,
         'timestamp': DateTime.now().toIso8601String(),
-        if (parameters != null) ...parameters,
+        ...?parameters,
       };
 
       await logEvent(
@@ -534,7 +534,7 @@ class AnalyticsService {
       await logUserAction(
         action: 'login',
         category: 'authentication',
-        parameters: {'method': method},
+        parameters: {'method': method ?? ''},
       );
     } catch (e) {
       print('AnalyticsService: Error logging login: $e');
@@ -548,7 +548,7 @@ class AnalyticsService {
       await logUserAction(
         action: 'signup',
         category: 'authentication',
-        parameters: {'method': method},
+        parameters: {'method': method ?? ''},
       );
     } catch (e) {
       print('AnalyticsService: Error logging sign up: $e');
@@ -610,7 +610,7 @@ class AnalyticsService {
         parameters: {
           'content_type': contentType,
           'item_id': itemId,
-          'method': method,
+          'method': method ?? '',
         },
       );
     } catch (e) {
@@ -653,7 +653,7 @@ class AnalyticsService {
       await logEvent(
         name: 'user_identification',
         parameters: {
-          'user_id': userId,
+          'user_id': userId ?? '',
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -694,7 +694,7 @@ class AnalyticsService {
       await logEvent(
         name: 'session_start',
         parameters: {
-          'session_id': _currentSessionId,
+          'session_id': _currentSessionId ?? '',
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -709,7 +709,7 @@ class AnalyticsService {
         await logEvent(
           name: 'session_end',
           parameters: {
-            'session_id': _currentSessionId,
+            'session_id': _currentSessionId ?? '',
             'duration': DateTime.now().millisecondsSinceEpoch -
                 int.parse(_currentSessionId!),
             'timestamp': DateTime.now().toIso8601String(),
@@ -766,7 +766,7 @@ class AnalyticsService {
     required String errorType,
     required String errorMessage,
     String? stackTrace,
-    Map<String, dynamic>? additionalData,
+    Map<String, Object>? additionalData,
   }) async {
     try {
       await logEvent(
@@ -775,7 +775,7 @@ class AnalyticsService {
           'error_type': errorType,
           'error_message': errorMessage,
           if (stackTrace != null) 'stack_trace': stackTrace,
-          if (additionalData != null) ...additionalData,
+          ...?additionalData,
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -811,7 +811,7 @@ class AnalyticsService {
     required String flowName,
     required String step,
     required String action,
-    Map<String, dynamic>? parameters,
+    Map<String, Object>? parameters,
   }) async {
     try {
       await logEvent(
@@ -820,7 +820,7 @@ class AnalyticsService {
           'flow_name': flowName,
           'step': step,
           'action': action,
-          if (parameters != null) ...parameters,
+          ...?parameters,
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -851,7 +851,7 @@ class AnalyticsService {
     required String interactionType,
     required String target,
     Duration? duration,
-    Map<String, dynamic>? parameters,
+    Map<String, Object>? parameters,
   }) async {
     try {
       await logEvent(
@@ -860,7 +860,7 @@ class AnalyticsService {
           'interaction_type': interactionType,
           'target': target,
           if (duration != null) 'duration_seconds': duration.inSeconds,
-          if (parameters != null) ...parameters,
+          ...?parameters,
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -874,7 +874,7 @@ class AnalyticsService {
     required String platform,
     required String contentType,
     required String contentId,
-    Map<String, dynamic>? parameters,
+    Map<String, Object>? parameters,
   }) async {
     try {
       await logEvent(
@@ -883,7 +883,7 @@ class AnalyticsService {
           'platform': platform,
           'content_type': contentType,
           'content_id': contentId,
-          if (parameters != null) ...parameters,
+          ...?parameters,
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -896,7 +896,7 @@ class AnalyticsService {
     required String platform,
     required String contentType,
     required String contentId,
-    Map<String, dynamic>? parameters,
+    Map<String, Object>? parameters,
   }) async {
     try {
       await logEvent(
@@ -905,7 +905,7 @@ class AnalyticsService {
           'platform': platform,
           'content_type': contentType,
           'content_id': contentId,
-          if (parameters != null) ...parameters,
+          ...?parameters,
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -919,7 +919,7 @@ class AnalyticsService {
     required String contentType,
     required String contentId,
     Duration? duration,
-    Map<String, dynamic>? parameters,
+    Map<String, Object>? parameters,
   }) async {
     try {
       await logEvent(
@@ -928,7 +928,7 @@ class AnalyticsService {
           'content_type': contentType,
           'content_id': contentId,
           if (duration != null) 'duration_seconds': duration.inSeconds,
-          if (parameters != null) ...parameters,
+          ...?parameters,
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -941,7 +941,7 @@ class AnalyticsService {
     required String contentType,
     required String contentId,
     required double progress,
-    Map<String, dynamic>? parameters,
+    Map<String, Object>? parameters,
   }) async {
     try {
       await logEvent(
@@ -950,7 +950,7 @@ class AnalyticsService {
           'content_type': contentType,
           'content_id': contentId,
           'progress_percentage': progress,
-          if (parameters != null) ...parameters,
+          ...?parameters,
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
@@ -962,7 +962,7 @@ class AnalyticsService {
 
 class AnalyticsEvent {
   final String name;
-  final Map<String, dynamic> parameters;
+  final Map<String, Object> parameters;
   final String timestamp;
 
   AnalyticsEvent({
@@ -970,7 +970,7 @@ class AnalyticsEvent {
     required this.parameters,
   }) : timestamp = DateTime.now().toIso8601String();
 
-  Map<String, dynamic> toMap() {
+  Map<String, Object> toMap() {
     return {
       'name': name,
       'parameters': parameters,
@@ -981,7 +981,7 @@ class AnalyticsEvent {
   factory AnalyticsEvent.fromMap(Map<dynamic, dynamic> map) {
     return AnalyticsEvent(
       name: map['name'] as String,
-      parameters: Map<String, dynamic>.from(map['parameters'] as Map),
+      parameters: Map<String, Object>.from(map['parameters'] as Map),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../widgets/onboarding_common_widgets.dart';
 import '../../../core/services/analytics_service.dart';
 
@@ -59,6 +60,8 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
     final size = MediaQuery.of(context).size;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final localizations = AppLocalizations.of(context);
+
     return Stack(
       children: [
         Container(color: theme.scaffoldBackgroundColor),
@@ -132,17 +135,18 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Ne Yediğini Bil',
+                  localizations.translate('onboarding.page1.title'),
                   style: TextStyle(
                     color: colorScheme.onboardingTitleColor,
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
                     fontFamily: 'Poppins',
                   ),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Yapay zeka destekli cookrange ile tüm yemek planını saniyeler içinde oluştur veya düzenle!',
+                  localizations.translate('onboarding.page1.description'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: colorScheme.onboardingSubtitleColor,
