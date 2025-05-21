@@ -152,10 +152,20 @@ class _OnboardingPage2State extends State<OnboardingPage2> {
                           children: [
                             TextSpan(
                               text: localizations
-                                  .translate('onboarding.page2.title'),
+                                  .translate('onboarding.page2.title.text1'),
                               style: TextStyle(
                                 color:
                                     colorScheme.onboardingNextButtonBorderColor,
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                            TextSpan(
+                              text: localizations
+                                  .translate('onboarding.page2.title.text2'),
+                              style: TextStyle(
+                                color: colorScheme.onboardingOptionTextColor,
                                 fontSize: 32,
                                 fontWeight: FontWeight.w800,
                                 fontFamily: 'Poppins',

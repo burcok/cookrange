@@ -87,10 +87,20 @@ class OnboardingPage5 extends StatelessWidget {
                           children: [
                             TextSpan(
                               text: localizations
-                                  .translate('onboarding.page5.title'),
+                                  .translate('onboarding.page5.title.text1'),
                               style: TextStyle(
                                 color:
                                     colorScheme.onboardingNextButtonBorderColor,
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
+                            TextSpan(
+                              text: localizations
+                                  .translate('onboarding.page5.title.text2'),
+                              style: TextStyle(
+                                color: colorScheme.onboardingOptionTextColor,
                                 fontSize: 32,
                                 fontWeight: FontWeight.w800,
                                 fontFamily: 'Poppins',

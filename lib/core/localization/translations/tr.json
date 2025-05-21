@@ -15,23 +15,23 @@
   
   "onboarding": {
     "page1": {
-      "title": "Cookrange'a Hoş Geldiniz",
-      "description": "Lezzetli yemekler yaratmanıza ve mutfağınızı verimli bir şekilde yönetmenize yardımcı olan kişisel yemek arkadaşınız."
+      "title": "Ne Yediğini Bil",
+      "description": "Yapay zeka destekli cookrange ile tüm yemek planını saniyeler içinde oluştur veya düzenle!"
     },
     "page2": {
-      "title": "Hedefin nedir?",
+      "title": {"text1":"Hedefin", "text2":" Nedir?"},
       "description": "Bu bilgileri sana daha iyi bir hizmet sunmak için kullanacağız."
     },
     "page3": {
-      "title": "Profilini tamamlayalım",
+      "title": {"text1":"Profilini", "text2":" Tamamlayalım"},
       "description": "Bu bilgileri sana daha iyi bir hizmet sunmak için kullanacağız."
     },
     "page4": {
-      "title": "Profilini tamamlayalım",
+      "title": {"text1":"Profilini", "text2":" Tamamlayalım"},
       "description": "Bu bilgileri sana daha iyi bir hizmet sunmak için kullanacağız."
     },
     "page5": {
-      "title": "Neredeyse bitti!",
+      "title": {"text1":"Neredeyse", "text2":" Bitti!"},
       "description": "Son olarak sizin için özel oluşturulacak yemek programı için özel isteklerinizi belirtin! Örnek olarak \"süte alerjim var bu yüzden süt ürünlerini istemiyorum\" veya \"tavuk ağırlıklı bir program istiyorum\" gibi."
     },
     "get_started": "Başla",

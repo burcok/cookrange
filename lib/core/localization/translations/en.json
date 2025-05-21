@@ -15,23 +15,23 @@
   
   "onboarding": {
     "page1": {
-      "title": "Welcome to Cookrange",
+      "title": "Know What You Eat",
       "description": "Your personal cooking companion that helps you create delicious meals and manage your kitchen efficiently."
     },
     "page2": {
-      "title": "What's your goal?",
+      "title": {"text1": "What Is", "text2": " Your Goal?"},
       "description": "We'll use this information to provide you with better service."
     },
     "page3": {
-      "title": "Complete Your Profile",
+      "title": {"text1": "Let's Complete", "text2": " Your Profile"},
       "description": "We'll use this information to provide you with better service."
     },
     "page4": {
-      "title": "Complete Your Profile",
+      "title": {"text1": "Let's Complete", "text2": " Your Profile"},
       "description": "We'll use this information to provide you with better service."
     },
     "page5": {
-      "title": "Almost Done!",
+      "title": {"text1": "Almost", "text2": " Done!"},
       "description": "Finally, let us know your special requests for your personalized meal program! For example, \"I'm allergic to milk so I don't want dairy products\" or \"I want a chicken-heavy program\"."
     },
     "get_started": "Get Started",
