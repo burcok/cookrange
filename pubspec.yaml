@@ -26,7 +26,6 @@ dependencies:
   # UI & Design
   cupertino_icons: ^1.0.6
   flutter_screenutil: ^5.9.0
-  webview_flutter: ^4.7.0
 
   # State Management
   provider: ^6.1.1
