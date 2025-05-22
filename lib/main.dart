@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -21,13 +20,33 @@ Future<void> main() async {
     // Initialize Firebase
     await Firebase.initializeApp();
 
-    // Initialize Hive
-    final appDocumentDir = await getApplicationDocumentsDirectory();
-    await Hive.initFlutter(appDocumentDir.path);
-    await Hive.openBox('appBox');
-    await Hive.openBox('userBox');
-    await Hive.openBox('settingsBox');
-    await Hive.openBox<Map<dynamic, Object>>('analytics_cache');
+    // Initialize Hive with proper error handling
+    try {
+      final appDocumentDir = await getApplicationDocumentsDirectory();
+      await Hive.initFlutter(appDocumentDir.path);
+
+      // Register adapters if needed
+      // Hive.registerAdapter(YourAdapter());
+
+      // Open boxes with error handling and ensure they're not already open
+      await Future.wait([
+        Hive.isBoxOpen('appBox')
+            ? Future.value(Hive.box('appBox'))
+            : Hive.openBox('appBox'),
+        Hive.isBoxOpen('userBox')
+            ? Future.value(Hive.box('userBox'))
+            : Hive.openBox('userBox'),
+        Hive.isBoxOpen('settingsBox')
+            ? Future.value(Hive.box('settingsBox'))
+            : Hive.openBox('settingsBox'),
+        Hive.isBoxOpen('analytics_cache')
+            ? Future.value(Hive.box<Map<dynamic, Object>>('analytics_cache'))
+            : Hive.openBox<Map<dynamic, Object>>('analytics_cache'),
+      ]);
+    } catch (e) {
+      print('Error initializing Hive: $e');
+      // Continue app execution even if Hive fails
+    }
 
     if (kReleaseMode) {
       debugPrint = (String? message, {int? wrapWidth}) {};
@@ -51,6 +70,7 @@ Future<void> main() async {
   } catch (e, stack) {
     print('Fatal error in main: $e');
     print('Stack trace: $stack');
+    // Show error UI or handle fatal error appropriately
   }
 }
 

@@ -59,13 +59,41 @@ class AppLocalizations {
 
       if (value is String) {
         return value;
+      } else if (value is List) {
+        return value.join(',');
       } else {
-        print('Translation value is not a string for key: $key');
+        print('Translation value is not a string or array for key: $key');
         return key;
       }
     } catch (e) {
       print('Error translating key $key: $e');
       return key;
+    }
+  }
+
+  List<String> translateArray(String key) {
+    try {
+      final keys = key.split('.');
+      dynamic value = _localizedStrings;
+
+      for (var k in keys) {
+        if (value is Map && value.containsKey(k)) {
+          value = value[k];
+        } else {
+          print('Translation not found for key: $key');
+          return [];
+        }
+      }
+
+      if (value is List) {
+        return value.map((e) => e.toString()).toList();
+      } else {
+        print('Translation value is not an array for key: $key');
+        return [];
+      }
+    } catch (e) {
+      print('Error translating array key $key: $e');
+      return [];
     }
   }
 }

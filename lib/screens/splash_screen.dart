@@ -1,21 +1,19 @@
+import 'package:cookrange/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:flutter_svg/svg.dart' show SvgPicture;
 import 'dart:async';
 import '../core/services/analytics_service.dart';
 import '../core/services/crashlytics_service.dart';
 import '../core/localization/app_localizations.dart';
 import 'onboarding/onboarding_screen.dart';
-import '../widgets/date_picker_modal.dart';
-import '../widgets/number_picker_modal.dart';
 import '../widgets/gender_picker_modal.dart';
-import '../widgets/language_selector.dart';
 import '../widgets/custom_back_button.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import '../widgets/date_picker_modal.dart';
+import '../widgets/number_picker_modal.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -26,18 +24,26 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  final _analyticsService = AnalyticsService();
   bool _isInitialized = false;
-  String? _error;
   bool _showSplash = true;
   Timer? _splashTimer;
+  Timer? _connectivityTimer;
+  int _countdownSeconds = 10;
   bool _isLoading = true;
   bool _isIconLoaded = false;
   bool _isTextLoaded = false;
   bool _isResourcesLoaded = false;
   DateTime? _startTime;
+  DateTime? _cacheStartTime;
   bool _hasPrecachedImages = false;
   bool _shouldPreloadOnboardingImages = false;
+  bool _isCacheComplete = false;
+  bool _hasReachedMinimumTime = false;
+  bool _isOffline = false;
+  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
+      _snackBarController;
+  OverlayEntry? _overlayEntry;
 
   // Animation Controllers
   late AnimationController _mainController;
@@ -72,6 +78,376 @@ class _SplashScreenState extends State<SplashScreen>
     _checkConnectivity();
     _initialize();
     _initializeAnimations();
+    _setupConnectivityListener();
+    _startConnectivityTimer();
+  }
+
+  void _setupConnectivityListener() {
+    _connectivitySubscription = Connectivity()
+        .onConnectivityChanged
+        .listen((ConnectivityResult result) {
+      if (result != ConnectivityResult.none && _isOffline) {
+        setState(() {
+          _isOffline = false;
+        });
+        _removeNoInternetOverlay();
+        _connectivityTimer?.cancel();
+        // Bağlantı geldiğinde kaldığımız yerden devam et
+        if (!_isInitialized) {
+          _initialize();
+        }
+      } else if (result == ConnectivityResult.none && !_isOffline) {
+        setState(() {
+          _isOffline = true;
+        });
+      }
+    });
+  }
+
+  void _startConnectivityTimer() {
+    _connectivityTimer?.cancel();
+    _connectivityTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_isOffline && mounted) {
+        setState(() {
+          _countdownSeconds--;
+        });
+        if (_overlayEntry != null) {
+          _overlayEntry!.markNeedsBuild();
+        }
+        if (_countdownSeconds <= 0) {
+          _countdownSeconds = 10;
+          _checkConnectivity();
+        }
+      }
+    });
+  }
+
+  void _showNoInternetOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = OverlayEntry(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: Text(
+                    '${AppLocalizations.of(context).translate('common.no_internet')}\n${AppLocalizations.of(context).translate('common.retry_in_seconds').replaceAll('{seconds}', _countdownSeconds.toString())}',
+                    style: const TextStyle(color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _removeNoInternetOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final localizations = AppLocalizations.of(context);
+    _loadingMessages = localizations.translateArray('splash.loading_messages');
+    _remainingMessageIndices = List.generate(_loadingMessages.length, (i) => i);
+    _updateColorAnimations(context);
+    if (!_hasPrecachedImages) {
+      _hasPrecachedImages = true;
+      _isOnboardingCompleted().then((completed) {
+        if (!completed) {
+          _shouldPreloadOnboardingImages = true;
+          _preloadImages();
+        }
+      });
+    }
+  }
+
+  void _updateColorAnimations(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    // Color transitions
+    _backgroundColorAnimation = ColorTween(
+      begin: colorScheme.onboardingOptionBgColor,
+      end: colorScheme.primary,
+    ).animate(
+      CurvedAnimation(
+        parent: _colorTransitionController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _iconColorAnimation = ColorTween(
+      begin: colorScheme.primary,
+      end: colorScheme.secondary,
+    ).animate(
+      CurvedAnimation(
+        parent: _colorTransitionController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _textColorAnimation = ColorTween(
+      begin: colorScheme.primary,
+      end: colorScheme.secondary,
+    ).animate(
+      CurvedAnimation(
+        parent: _colorTransitionController,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _splashTimer?.cancel();
+    _connectivityTimer?.cancel();
+    _connectivitySubscription?.cancel();
+    _removeNoInternetOverlay();
+    _mainController.dispose();
+    _iconInitialController.dispose();
+    _iconSecondSlideController.dispose();
+    _iconShrinkController.dispose();
+    _textFadeController.dispose();
+    _colorTransitionController.dispose();
+    _greetingTextController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initialize() async {
+    try {
+      _startTime = DateTime.now();
+      // 1. Firebase, Crashlytics, Analytics
+      await CrashlyticsService().initialize();
+      await AnalyticsService().initialize();
+      // 2. Dotenv, SharedPreferences
+      await _initializeEnvironment();
+      await _initializePreferences();
+      // 3. Asset ve font cache
+      _cacheStartTime = DateTime.now();
+      await _precacheAssets();
+      // 4. Diğer preload işlemleri
+      await _preloadResources();
+      if (mounted) {
+        setState(() {
+          _isResourcesLoaded = true;
+          _isCacheComplete = true;
+        });
+        _checkInitializationComplete();
+      }
+    } catch (e, stack) {
+      print('Error during initialization: $e');
+      print('Stack trace: $stack');
+      await CrashlyticsService().log(e.toString());
+      await CrashlyticsService().log(stack.toString());
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+          _isLoading = false;
+          _isCacheComplete = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _initializeEnvironment() async {
+    await dotenv.load(fileName: ".env");
+  }
+
+  Future<void> _initializePreferences() async {
+    await SharedPreferences.getInstance();
+  }
+
+  Future<void> _preloadResources() async {
+    // Preload all necessary resources here
+    await Future.wait<void>([
+      _preloadFonts(),
+      _preloadData(),
+    ]);
+  }
+
+  Future<void> _preloadImages() async {
+    // Preload onboarding images only if needed
+    if (!_shouldPreloadOnboardingImages) return;
+    final imagePaths = [
+      'assets/images/onboarding/onboarding-1.png',
+      'assets/images/onboarding/onboarding-2-1.png',
+      'assets/images/onboarding/onboarding-2-2.png',
+      'assets/images/onboarding/onboarding-2-3.png',
+      'assets/images/onboarding/onboarding-2-4.png',
+      'assets/images/onboarding/onboarding-5.png',
+      // Add other image paths that need to be preloaded
+    ];
+    for (final path in imagePaths) {
+      await precacheImage(AssetImage(path), context);
+    }
+  }
+
+  Future<void> _preloadFonts() async {
+    // Preload fonts
+    await Future.wait<void>([
+      // Add font preloading if needed
+    ]);
+  }
+
+  Future<void> _preloadData() async {
+    // Preload any necessary data
+    await Future.wait<void>([
+      // Add data preloading tasks here
+    ]);
+  }
+
+  Future<bool> _isOnboardingCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Adjust the key according to your onboarding completion logic
+    return prefs.getBool('onboarding_completed') ?? false;
+  }
+
+  void _checkInitializationComplete() {
+    if (_isResourcesLoaded) {
+      final elapsedTime = DateTime.now().difference(_startTime!);
+      const minimumDisplayTime = Duration(seconds: 7);
+
+      if (elapsedTime < minimumDisplayTime) {
+        // If less than minimum time has passed, wait for the remaining time
+        Future.delayed(minimumDisplayTime - elapsedTime, () {
+          if (mounted) {
+            setState(() {
+              _hasReachedMinimumTime = true;
+            });
+            _checkShouldProceed();
+          }
+        });
+      } else {
+        // If minimum time has passed, check if we can proceed
+        if (mounted) {
+          setState(() {
+            _hasReachedMinimumTime = true;
+          });
+          _checkShouldProceed();
+        }
+      }
+    }
+  }
+
+  void _checkShouldProceed() {
+    if (_hasReachedMinimumTime && _isCacheComplete && !_isOffline) {
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _precacheAssets() async {
+    // Sık kullanılan görselleri ve fontları cache'le
+    final imagePaths = [
+      'assets/images/onboarding/onboarding-1.png',
+      'assets/images/onboarding/onboarding-2-1.png',
+      'assets/images/onboarding/onboarding-2-2.png',
+      'assets/images/onboarding/onboarding-2-3.png',
+      'assets/images/onboarding/onboarding-2-4.png',
+      'assets/images/onboarding/onboarding-5.png',
+      'assets/images/splash/cookrange-icon.svg',
+      'assets/images/splash/cookrange-text.svg',
+      // ... diğer assetler ...
+    ];
+    for (final path in imagePaths) {
+      if (!path.endsWith('.svg')) {
+        await precacheImage(AssetImage(path), context);
+      }
+    }
+    // Fontlar pubspec.yaml ile otomatik cache'lenir, ekstra gerek yok.
+  }
+
+  Future<void> _precacheWidgets() async {
+    if (!mounted) return;
+
+    // Widget'ları build et ve hemen kaldır
+    final overlay = Overlay.of(context);
+    if (overlay == null) return;
+
+    // Tüm widget'ları tek bir overlay entry'de build et
+    final entry = OverlayEntry(
+      builder: (_) => Opacity(
+        opacity: 0.0,
+        child: Material(
+          color: Colors.transparent,
+          child: Stack(
+            children: [
+              GenderPickerModal(
+                selectedGender: null,
+                onSelected: (_) {},
+              ),
+              DatePickerModal(
+                initialDate: DateTime.now(),
+                minDate: DateTime(1900),
+                maxDate: DateTime.now(),
+                onSelected: (_) {},
+              ),
+              const NumberPickerModal(
+                title: 'Select Number',
+                min: 0,
+                max: 100,
+                initialValue: 0,
+                unit: '',
+              ),
+              CustomBackButton(onTap: () {}),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Widget'ları build et ve hemen kaldır
+    overlay.insert(entry);
+    entry.remove();
+  }
+
+  Future<void> _checkConnectivity() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (!mounted) return;
+
+    if (connectivityResult == ConnectivityResult.none) {
+      setState(() {
+        _isOffline = true;
+        _countdownSeconds = 10;
+      });
+      // Bağlantı yoksa kullanıcıya bildirim göster
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showNoInternetOverlay();
+      });
+    } else {
+      setState(() {
+        _isOffline = false;
+      });
+      _removeNoInternetOverlay();
+      _connectivityTimer?.cancel();
+      // Bağlantı geldiğinde proceed kontrolü yap
+      _checkShouldProceed();
+    }
   }
 
   void _initializeAnimations() {
@@ -115,6 +491,26 @@ class _SplashScreenState extends State<SplashScreen>
     _greetingTextController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
+    );
+
+    _greetingTextSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _greetingTextController,
+        curve: Curves.easeOut,
+      ),
+    );
+
+    _greetingTextOpacityAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(
+      CurvedAnimation(
+        parent: _greetingTextController,
+        curve: Curves.easeIn,
+      ),
     );
 
     // Icon initial animations
@@ -177,58 +573,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Color transitions
-    _backgroundColorAnimation = ColorTween(
-      begin: Colors.white,
-      end: const Color(0xFFFFB33A),
-    ).animate(
-      CurvedAnimation(
-        parent: _colorTransitionController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    _iconColorAnimation = ColorTween(
-      begin: const Color(0xFFFFB33A),
-      end: const Color(0xFF171F34),
-    ).animate(
-      CurvedAnimation(
-        parent: _colorTransitionController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    _textColorAnimation = ColorTween(
-      begin: const Color(0xFFFFB33A),
-      end: const Color(0xFF171F34),
-    ).animate(
-      CurvedAnimation(
-        parent: _colorTransitionController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    // Greeting text animation
-    _greetingTextOpacityAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _greetingTextController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    _greetingTextSlideAnimation = Tween<Offset>(
-      begin: const Offset(0, 2.5),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _greetingTextController,
-        curve: Curves.easeOutBack,
-      ),
-    );
-
     // Start greeting text animation after color transition
     _colorTransitionController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -246,262 +590,58 @@ class _SplashScreenState extends State<SplashScreen>
           _iconShrinkController.forward(),
         ]).then((_) {
           _colorTransitionController.forward().then((_) {
-            // Cache widgets after all animations are complete
-            _precacheWidgets();
+            // Start the main controller for transition
+            _mainController.forward();
+            // Cache widgets after starting the transition
+            if (mounted) {
+              _precacheWidgets();
+            }
           });
         });
       });
-    });
-
-    _splashTimer = Timer(const Duration(seconds: 10), () {
-      if (mounted && _isInitialized) {
-        setState(() {
-          _showSplash = false;
-        });
-      }
     });
   }
 
   void _startGreetingTextAnimation() {
     _greetingTextController.forward().then((_) {
       Future.delayed(const Duration(milliseconds: 1500), () {
-        _greetingTextController.reverse().then((_) {
-          Future.delayed(const Duration(milliseconds: 100), () {
-            setState(() {
-              if (_remainingMessageIndices.isEmpty) {
-                // Tüm mesajlar gösterildiyse, tekrar başlat
-                _remainingMessageIndices =
-                    List.generate(_loadingMessages.length, (i) => i);
-              }
-              // Şu anki mesajı tekrar göstermemek için mevcut indexi çıkar
-              _remainingMessageIndices.remove(_currentMessageIndex);
-              if (_remainingMessageIndices.isNotEmpty) {
-                _currentMessageIndex =
-                    (_remainingMessageIndices..shuffle()).first;
-              }
-            });
-            _startGreetingTextAnimation();
+        if (mounted) {
+          _greetingTextController.reverse().then((_) {
+            if (mounted) {
+              Future.delayed(const Duration(milliseconds: 100), () {
+                setState(() {
+                  if (_remainingMessageIndices.isEmpty) {
+                    _remainingMessageIndices =
+                        List.generate(_loadingMessages.length, (i) => i);
+                  }
+                  _remainingMessageIndices.remove(_currentMessageIndex);
+                  if (_remainingMessageIndices.isNotEmpty) {
+                    _currentMessageIndex =
+                        (_remainingMessageIndices..shuffle()).first;
+                  }
+                });
+                _startGreetingTextAnimation();
+              });
+            }
           });
-        });
+        }
       });
     });
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final localizations = AppLocalizations.of(context);
-    _loadingMessages = List.generate(
-        10, (index) => localizations.translate('splashLoadingMessage$index'));
-    _remainingMessageIndices = List.generate(_loadingMessages.length, (i) => i);
-    if (!_hasPrecachedImages) {
-      _hasPrecachedImages = true;
-      _isOnboardingCompleted().then((completed) {
-        if (!completed) {
-          _shouldPreloadOnboardingImages = true;
-          _preloadImages();
-        }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _splashTimer?.cancel();
-    _mainController.dispose();
-    _iconInitialController.dispose();
-    _iconSecondSlideController.dispose();
-    _iconShrinkController.dispose();
-    _textFadeController.dispose();
-    _colorTransitionController.dispose();
-    _greetingTextController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _initialize() async {
-    try {
-      // 1. Firebase, Crashlytics, Analytics
-      await CrashlyticsService().initialize();
-      await AnalyticsService().initialize();
-      // 2. Dotenv, SharedPreferences
-      await _initializeEnvironment();
-      await _initializePreferences();
-      // 3. Asset ve font cache
-      await _precacheAssets();
-      // 4. Diğer preload işlemleri
-      await _preloadResources();
-      if (mounted) {
-        setState(() {
-          _isResourcesLoaded = true;
-        });
-        _checkInitializationComplete();
-      }
-    } catch (e, stack) {
-      // Sadece logla, kullanıcıya gösterme
-      print('Error during initialization: $e');
-      print('Stack trace: $stack');
-      await CrashlyticsService().log(e.toString());
-      await CrashlyticsService().log(stack.toString());
-      // Hata UI'da gösterilmeyecek
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _initializeEnvironment() async {
-    await dotenv.load(fileName: ".env");
-  }
-
-  Future<void> _initializePreferences() async {
-    await SharedPreferences.getInstance();
-  }
-
-  Future<void> _preloadResources() async {
-    // Preload all necessary resources here
-    await Future.wait<void>([
-      _preloadFonts(),
-      _preloadData(),
-    ]);
-  }
-
-  Future<void> _preloadImages() async {
-    // Preload onboarding images only if needed
-    if (!_shouldPreloadOnboardingImages) return;
-    final imagePaths = [
-      'assets/images/onboarding/onboarding-1.png',
-      'assets/images/onboarding/onboarding-2-1.png',
-      'assets/images/onboarding/onboarding-2-2.png',
-      'assets/images/onboarding/onboarding-2-3.png',
-      'assets/images/onboarding/onboarding-2-4.png',
-      'assets/images/onboarding/onboarding-5.png',
-      // Add other image paths that need to be preloaded
-    ];
-    for (final path in imagePaths) {
-      await precacheImage(AssetImage(path), context);
-    }
-  }
-
-  Future<void> _preloadFonts() async {
-    // Preload fonts
-    await Future.wait<void>([
-      // Add font preloading if needed
-    ]);
-  }
-
-  Future<void> _preloadData() async {
-    // Preload any necessary data
-    await Future.wait<void>([
-      // Add data preloading tasks here
-    ]);
-  }
-
-  Future<bool> _isOnboardingCompleted() async {
-    final prefs = await SharedPreferences.getInstance();
-    // Adjust the key according to your onboarding completion logic
-    return prefs.getBool('onboarding_completed') ?? false;
-  }
-
-  void _checkInitializationComplete() {
-    if (_isResourcesLoaded) {
-      final elapsedTime = DateTime.now().difference(_startTime!);
-      const minimumDisplayTime = Duration(seconds: 5);
-
-      if (elapsedTime < minimumDisplayTime) {
-        // If less than 5 seconds have passed, wait for the remaining time
-        Future.delayed(minimumDisplayTime - elapsedTime, () {
-          if (mounted) {
-            setState(() {
-              _isInitialized = true;
-              _isLoading = false;
-              _showSplash = false;
-            });
-          }
-        });
-      } else {
-        // If more than 5 seconds have passed, proceed immediately
+  Widget build(BuildContext context) {
+    if (_isInitialized) {
+      _mainController.forward().then((_) {
         if (mounted) {
           setState(() {
-            _isInitialized = true;
-            _isLoading = false;
             _showSplash = false;
           });
         }
-      }
-    }
-  }
-
-  Future<void> _precacheAssets() async {
-    // Sık kullanılan görselleri ve fontları cache'le
-    final imagePaths = [
-      'assets/images/onboarding/onboarding-1.png',
-      'assets/images/onboarding/onboarding-2-1.png',
-      'assets/images/onboarding/onboarding-2-2.png',
-      'assets/images/onboarding/onboarding-2-3.png',
-      'assets/images/onboarding/onboarding-2-4.png',
-      'assets/images/onboarding/onboarding-5.png',
-      'assets/images/splash/cookrange-icon.svg',
-      'assets/images/splash/cookrange-text.svg',
-      // ... diğer assetler ...
-    ];
-    for (final path in imagePaths) {
-      if (!path.endsWith('.svg')) {
-        await precacheImage(AssetImage(path), context);
-      }
-    }
-    // Fontlar pubspec.yaml ile otomatik cache'lenir, ekstra gerek yok.
-  }
-
-  Future<void> _precacheWidgets() async {
-    // Sadece gerekli widget'ları cache'le
-    final widgets = [
-      GenderPickerModal(
-        selectedGender: null,
-        onSelected: (_) {},
-      ),
-      const LanguageSelector(),
-      CustomBackButton(onTap: () {}),
-    ];
-    for (final widget in widgets) {
-      final overlay = Overlay.of(context);
-      if (overlay != null) {
-        final entry = OverlayEntry(builder: (_) => Material(child: widget));
-        overlay.insert(entry);
-        await Future.delayed(const Duration(milliseconds: 10));
-        entry.remove();
-      }
-    }
-  }
-
-  Future<void> _checkConnectivity() async {
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (!mounted) return;
-    if (connectivityResult == ConnectivityResult.none) {
-      // Bağlantı yoksa kullanıcıya bildirim göster
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final localizations = AppLocalizations.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(localizations.translate('common.no_internet')),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: localizations.translate('common.retry'),
-              textColor: Colors.white,
-              onPressed: _checkConnectivity,
-            ),
-          ),
-        );
       });
     }
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    if (!_showSplash && _isInitialized) {
+    if (!_showSplash) {
       return const OnboardingScreen();
     }
 
@@ -625,10 +765,10 @@ class _SplashScreenState extends State<SplashScreen>
                       child: Text(
                         _loadingMessages[_currentMessageIndex],
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 16,
-                          color: Color(0xFF171F34),
+                          color: Theme.of(context).colorScheme.secondary,
                           fontWeight: FontWeight.w400,
                         ),
                       ),
@@ -667,6 +807,31 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                           Text(
                             'Color Transition: ${(_colorTransitionController.value * 100).toStringAsFixed(1)}%',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Total Time: ${_startTime != null ? DateTime.now().difference(_startTime!).inMilliseconds / 1000 : 0} seconds',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          Text(
+                            'Cache Time: ${_cacheStartTime != null ? DateTime.now().difference(_cacheStartTime!).inMilliseconds / 1000 : 0} seconds',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          Text(
+                            'Min Duration: 7 seconds',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          Text(
+                            'Cache Complete: ${_isCacheComplete ? "Yes" : "No"}',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          Text(
+                            'Min Time Reached: ${_hasReachedMinimumTime ? "Yes" : "No"}',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          Text(
+                            'Offline Mode: ${_isOffline ? "Yes" : "No"}',
                             style: const TextStyle(color: Colors.white),
                           ),
                         ],

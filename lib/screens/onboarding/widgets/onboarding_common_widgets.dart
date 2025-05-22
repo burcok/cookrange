@@ -47,7 +47,7 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
 
     _progressController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 1500),
     );
 
     _progressAnimation = Tween<double>(
@@ -90,7 +90,7 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
       widget.onNext!();
     }
 
-    await Future.delayed(const Duration(seconds: 1));
+    await Future.delayed(const Duration(milliseconds: 500));
     if (mounted) {
       setState(() {
         _isButtonEnabled = true;

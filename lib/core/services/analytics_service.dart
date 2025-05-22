@@ -52,12 +52,15 @@ class AnalyticsService {
     try {
       print('AnalyticsService: Starting initialization...');
 
-      // Hive box'ı başlat
+      // Check if box is already open and use it, otherwise open it
       if (Hive.isBoxOpen('analytics_cache')) {
-        await Hive.close();
+        _analyticsBox = Hive.box<Map<dynamic, Object>>('analytics_cache');
+        print('AnalyticsService: Using existing analytics_cache box');
+      } else {
+        _analyticsBox =
+            await Hive.openBox<Map<dynamic, Object>>('analytics_cache');
+        print('AnalyticsService: Opened new analytics_cache box');
       }
-      _analyticsBox =
-          await Hive.openBox<Map<dynamic, Object>>('analytics_cache');
 
       // PackageInfo'yu ana thread'de al
       _packageInfo = await PackageInfo.fromPlatform();
