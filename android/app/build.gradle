@@ -78,6 +78,7 @@ android {
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
+        minSdkVersion 23
     }
 
     signingConfigs {

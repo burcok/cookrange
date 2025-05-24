@@ -470,14 +470,18 @@ class AnalyticsService {
       final eventParams = {
         'error_name': errorName,
         'error_description': errorDescription,
-        'error_code': errorCode,
+        if (errorCode != null) 'error_code': errorCode,
         'timestamp': DateTime.now().toIso8601String(),
         ...?parameters,
       };
-
+      // Null value'ları filtrele
+      final filteredParams = <String, Object>{};
+      eventParams.forEach((key, value) {
+        if (value != null) filteredParams[key] = value;
+      });
       await logEvent(
         name: _errorEvent,
-        parameters: Map<String, Object>.from(eventParams),
+        parameters: filteredParams,
       );
     } catch (e) {
       print('AnalyticsService: Error logging error event: $e');
@@ -964,6 +968,24 @@ class AnalyticsService {
       );
     } catch (e) {
       print('AnalyticsService: Error logging content progress: $e');
+    }
+  }
+
+  Future<void> removeFromCache(String key) async {
+    try {
+      final box = await Hive.openBox<Map<String, dynamic>>('analytics_cache');
+      await box.delete(key);
+    } catch (e) {
+      print('AnalyticsService: Error removing from cache: $e');
+    }
+  }
+
+  Future<void> addToCache(String key, Map<String, dynamic> data) async {
+    try {
+      final box = await Hive.openBox<Map<String, dynamic>>('analytics_cache');
+      await box.put(key, data);
+    } catch (e) {
+      print('AnalyticsService: Error adding to cache: $e');
     }
   }
 }

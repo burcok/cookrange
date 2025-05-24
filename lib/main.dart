@@ -7,18 +7,22 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/providers/language_provider.dart';
 import 'providers/onboarding_provider.dart';
 import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // Initialize Firebase
-    await Firebase.initializeApp();
+    // Initialize Firebase with options
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
     // Initialize Hive with proper error handling
     try {
@@ -99,6 +103,10 @@ class MyApp extends StatelessWidget {
                 darkTheme: AppTheme.darkTheme,
                 themeMode: ThemeMode.system,
                 home: const SplashScreen(),
+                routes: {
+                  '/login': (context) => const LoginScreen(),
+                  // Diğer authentication ekranları buraya eklenecek
+                },
                 navigatorObservers: [
                   FirebaseAnalyticsObserver(
                       analytics: FirebaseAnalytics.instance),

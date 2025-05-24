@@ -150,12 +150,12 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: colorScheme.onboardingSubtitleColor,
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.w400,
                     fontFamily: 'Poppins',
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 OnboardingNextButton(
                   step: widget.step,
                   previousStep: widget.previousStep,
@@ -171,6 +171,25 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                     widget.onNext?.call();
                   },
                 ),
+                const SizedBox(height: 16),
+                Center(
+                    child: GestureDetector(
+                  onTap: () {
+                    Navigator.pushNamed(context, "/login");
+                  },
+                  child: Text(
+                    localizations
+                        .translate('onboarding.page1.already_have_account'),
+                    style: TextStyle(
+                      color: colorScheme.onboardingOptionTextColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w300,
+                      decoration: TextDecoration.underline,
+                      fontFamily: 'Poppins',
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                )),
               ],
             ),
           ),

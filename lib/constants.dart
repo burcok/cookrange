@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-const Color schemaPreferredColor = Color(0xFFEEF1F8);
-const Color schemaPreferredColorDark = Color(0xFF17203A);
+const Color schemaPreferredColor = Color.fromARGB(255, 30, 30, 30);
+const Color schemaPreferredColorDark = Color(0xFFEEF1F8);
 
 const Color primaryColor = Color.fromRGBO(255, 179, 58, 1);
 const Color primaryColorDark = Color.fromRGBO(46, 58, 89, 1);

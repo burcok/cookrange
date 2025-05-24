@@ -12,7 +12,12 @@
           "package_name": "com.cookrange_android.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "624768719440-6acl7pqst25k3dgob310trvbdmitlhu1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDsDnYLCim5q83XO0tzqVeW-9vplA2td-g"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "624768719440-6acl7pqst25k3dgob310trvbdmitlhu1.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "624768719440-nai0dc6vsbmdok9qev7dhsofs9fdgm6k.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.cookrange-ios.app"
+              }
+            }
+          ]
         }
       }
     }

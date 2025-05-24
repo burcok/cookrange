@@ -79,7 +79,8 @@
   "onboarding": {
     "page1": {
       "title": "Ne Yediğini Bil",
-      "description": "Yapay zeka destekli cookrange ile tüm yemek planını saniyeler içinde oluştur veya düzenle!"
+      "description": "Yapay zeka destekli cookrange ile tüm yemek planını saniyeler içinde oluştur veya düzenle!",
+      "already_have_account": "Zaten Hesabım Var"
     },
     "page2": {
       "title": {"text1":"Hedefin", "text2":" Nedir?"},
@@ -122,6 +123,10 @@
   },
 
   "auth": {
+    "welcome_back": "Hey, Hoş Geldin!",
+    "login_with_google": "Google ile Giriş Yap",
+    "no_account": "Hesabınız yok mu?",
+    "register_now": "Kayıt Ol",
     "login": "Giriş Yap",
     "signup": "Kayıt Ol",
     "email": "E-posta",
@@ -130,8 +135,13 @@
     "or": "veya",
     "continue_with_google": "Google ile Devam Et",
     "continue_with_apple": "Apple ile Devam Et",
-    "dont_have_account": "Hesabınız yok mu?",
-    "already_have_account": "Zaten hesabınız var mı?"
+    "already_have_account": "Zaten hesabınız var mı?",
+    "google_login_error": "Google ile giriş yapılırken bir hata oluştu. Lütfen tekrar deneyin.",
+    
+    "login_error": "Giriş yapılırken bir hata oluştu. Lütfen tekrar deneyin.",
+    "invalid_credentials": "Kullanıcı bulunamadı. Lütfen e-posta ve şifrenizi kontrol edin.",
+    "network_error": "Ağ hatası. Lütfen internet bağlantınızı kontrol edin ve tekrar deneyin.",
+    "empty_fields": "Lütfen tüm alanları doldurun."
   },
 
   "profile": {

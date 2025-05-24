@@ -40,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen>
   bool _isCacheComplete = false;
   bool _hasReachedMinimumTime = false;
   bool _isOffline = false;
-  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
       _snackBarController;
   OverlayEntry? _overlayEntry;
@@ -85,7 +85,9 @@ class _SplashScreenState extends State<SplashScreen>
   void _setupConnectivityListener() {
     _connectivitySubscription = Connectivity()
         .onConnectivityChanged
-        .listen((ConnectivityResult result) {
+        .listen((List<ConnectivityResult> results) {
+      final result =
+          results.isNotEmpty ? results.first : ConnectivityResult.none;
       if (result != ConnectivityResult.none && _isOffline) {
         setState(() {
           _isOffline = false;
@@ -326,7 +328,7 @@ class _SplashScreenState extends State<SplashScreen>
   void _checkInitializationComplete() {
     if (_isResourcesLoaded) {
       final elapsedTime = DateTime.now().difference(_startTime!);
-      const minimumDisplayTime = Duration(seconds: 7);
+      const minimumDisplayTime = Duration(seconds: 5);
 
       if (elapsedTime < minimumDisplayTime) {
         // If less than minimum time has passed, wait for the remaining time
@@ -819,7 +821,7 @@ class _SplashScreenState extends State<SplashScreen>
                             style: const TextStyle(color: Colors.white),
                           ),
                           Text(
-                            'Min Duration: 7 seconds',
+                            'Min Duration: 5 seconds',
                             style: const TextStyle(color: Colors.white),
                           ),
                           Text(

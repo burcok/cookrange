@@ -30,6 +30,7 @@ migrate_working_dir/
 .flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
+pubspec.lock
 .pub/
 /build/
 
@@ -44,4 +45,12 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Firebase
+firebase-debug.log
+firebase-debug.*.log
+
+# Environment variables
 .env
+/android/app/google-services.json
+/ios/Runner/GoogleService-Info.plist
+/lib/firebase_options.dart

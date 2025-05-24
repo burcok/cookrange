@@ -139,4 +139,4 @@ For any questions or suggestions, please contact us at [email](mailto:burakderel
 
 ---
 
-> **Note:** Please refer to the `.env` file and related documentation for developer documentation, API keys, and special settings.
+> **Note:** Please refer to the `.env`, `firebase_options.dart`, `google-services.json`, `GoogleService-Info.plist` files and related documentation for developer documentation, API keys, and special settings.
