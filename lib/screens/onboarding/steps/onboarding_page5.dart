@@ -1,12 +1,12 @@
+import 'package:cookrange/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/analytics_service.dart';
-// import '../../../constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/onboarding_common_widgets.dart';
 import '../../../core/localization/app_localizations.dart';
 
-class OnboardingPage5 extends StatelessWidget {
+class OnboardingPage5 extends StatefulWidget {
   final int step;
   final int previousStep;
   final void Function()? onNext;
@@ -20,8 +20,48 @@ class OnboardingPage5 extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<OnboardingPage5> createState() => _OnboardingPage5State();
+}
+
+class _OnboardingPage5State extends State<OnboardingPage5> {
+  final _analyticsService = AnalyticsService();
+
+  DateTime? _stepStartTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _stepStartTime = DateTime.now();
+    _logStepView();
+  }
+
+  @override
+  void dispose() {
+    if (_stepStartTime != null) {
+      final duration = DateTime.now().difference(_stepStartTime!);
+      _analyticsService.logScreenTime(
+        screenName: 'onboarding_step_5',
+        duration: duration,
+      );
+    }
+    super.dispose();
+  }
+
+  void _logStepView() {
+    _analyticsService.logUserFlow(
+      flowName: 'onboarding',
+      step: 'welcome',
+      action: 'view',
+      parameters: {
+        'step_number': 1,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // final size = MediaQuery.of(context).size;
+    final size = MediaQuery.of(context).size;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final localizations = AppLocalizations.of(context);
@@ -41,7 +81,7 @@ class OnboardingPage5 extends StatelessWidget {
                   child: Row(
                     children: [
                       GestureDetector(
-                        onTap: () => onBack?.call(),
+                        onTap: () => widget.onBack?.call(),
                         child: Container(
                           width: 48,
                           height: 48,
@@ -128,18 +168,28 @@ class OnboardingPage5 extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Image(
-                    image: const AssetImage(
-                        'assets/images/onboarding/onboarding-5.png'),
-                    width: 220,
-                    height: 180,
+                Center(
+                  child: Image.asset(
+                    'assets/images/onboarding/onboarding-5.png',
+                    width: size.width * 0.9,
+                    height: size.width * 0.8,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => Icon(
-                        Icons.image,
+                    errorBuilder: (context, error, stackTrace) {
+                      _analyticsService.logError(
+                        errorName: 'image_load_error',
+                        errorDescription: 'Failed to load onboarding-1.png',
+                        parameters: {
+                          'step': 1,
+                          'error': error.toString(),
+                          'stack_trace': stackTrace.toString(),
+                        },
+                      );
+                      return const Icon(
+                        Icons.emoji_food_beverage,
                         size: 80,
-                        color: colorScheme.onboardingNextButtonBorderColor),
+                        color: primaryColor,
+                      );
+                    },
                   ),
                 ),
               ],
@@ -151,8 +201,8 @@ class OnboardingPage5 extends StatelessWidget {
           right: 0,
           bottom: 24,
           child: OnboardingNextButton(
-            step: step,
-            previousStep: previousStep,
+            step: widget.step,
+            previousStep: widget.previousStep,
             onNext: () async {
               final prefs = await SharedPreferences.getInstance();
               await prefs.setBool('onboarding_completed', true);
@@ -162,7 +212,7 @@ class OnboardingPage5 extends StatelessWidget {
                   'timestamp': DateTime.now().toIso8601String(),
                 },
               );
-              if (onNext != null) onNext!();
+              if (widget.onNext != null) widget.onNext!();
             },
           ),
         ),

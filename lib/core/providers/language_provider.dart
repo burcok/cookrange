@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LanguageProvider extends ChangeNotifier {
   static const String _languageKey = 'language_code';
   late SharedPreferences _prefs;
-  late Locale _currentLocale;
+  Locale _currentLocale = const Locale('en');
   bool _isInitialized = false;
 
   LanguageProvider() {

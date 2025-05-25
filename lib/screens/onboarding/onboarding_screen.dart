@@ -166,20 +166,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         },
       );
       _logOnboardingStep(_currentStep + 1);
-      _pageController
-          .animateToPage(
-        _currentStep + 1,
+
+      setState(() {
+        _previousStep = _currentStep;
+        _currentStep++;
+      });
+
+      _pageController.animateToPage(
+        _currentStep,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
-      )
-          .then((_) {
-        if (mounted) {
-          setState(() {
-            _previousStep = _currentStep;
-            _currentStep++;
-          });
-        }
-      });
+      );
     }
   }
 
@@ -245,19 +242,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       return;
                     }
 
-                    _analyticsService.logUserInteraction(
-                      interactionType: 'page_change',
-                      target: 'step_$index',
-                      parameters: {
-                        'from_step': _currentStep,
-                        'to_step': index,
-                      },
-                    );
-                    _logOnboardingStep(index);
-                    setState(() {
-                      _previousStep = _currentStep;
-                      _currentStep = index;
-                    });
+                    if (index < _currentStep) {
+                      _analyticsService.logUserInteraction(
+                        interactionType: 'page_change',
+                        target: 'step_$index',
+                        parameters: {
+                          'from_step': _currentStep,
+                          'to_step': index,
+                        },
+                      );
+                      _logOnboardingStep(index);
+                      setState(() {
+                        _previousStep = _currentStep;
+                        _currentStep = index;
+                      });
+                    }
                   },
                   physics: _CustomScrollPhysics(
                     parent: const PageScrollPhysics(),
