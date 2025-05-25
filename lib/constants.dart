@@ -30,7 +30,7 @@ const Color onboardingSubtitleDark = Color.fromRGBO(197, 197, 197, 1);
 const Color onboardingNextButtonColor = Color.fromRGBO(46, 58, 89, 1);
 const Color onboardingNextButtonColorDark = Color.fromRGBO(255, 179, 58, 1);
 
-const Color onboardingNextButtonBorderColor = Color.fromRGBO(255, 179, 58, 1);
+const Color onboardingNextButtonBorderColor = Color.fromRGBO(46, 58, 89, 1);
 const Color onboardingNextButtonBorderColorDark =
     Color.fromRGBO(255, 179, 58, 1);
 

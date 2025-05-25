@@ -1,6 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+class AuthException implements Exception {
+  final String code;
+  AuthException(this.code);
+
+  @override
+  String toString() => code;
+}
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -16,22 +24,21 @@ class AuthService {
           email: email, password: password);
       return result.user;
     } on FirebaseAuthException catch (e) {
-      print("Sign in with email error: ${e.code} - ${e.message}");
       switch (e.code) {
         case 'user-not-found':
-          throw Exception('user-not-found');
+          throw AuthException('user-not-found');
         case 'wrong-password':
-          throw Exception('wrong-password');
+          throw AuthException('wrong-password');
         case 'invalid-email':
-          throw Exception('invalid-email');
+          throw AuthException('invalid-email');
         case 'user-disabled':
-          throw Exception('user-disabled');
+          throw AuthException('user-disabled');
         case 'too-many-requests':
-          throw Exception('too-many-requests');
+          throw AuthException('too-many-requests');
         case 'network-request-failed':
-          throw Exception('network-error');
+          throw AuthException('network-error');
         default:
-          throw Exception('error-unknown');
+          throw AuthException('error-unknown');
       }
     } catch (e) {
       print("Unexpected error during sign in: $e");

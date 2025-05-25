@@ -30,14 +30,14 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
   @override
   void initState() {
     super.initState();
-    _currentProgress = widget.step / 4.0;
+    _currentProgress = widget.previousStep * 0.25;
     _initializeAnimations();
   }
 
   void _initializeAnimations() {
     _tapController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 100),
       lowerBound: 0.0,
       upperBound: 1.0,
     );
@@ -52,25 +52,30 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
 
     _progressAnimation = Tween<double>(
       begin: _currentProgress,
-      end: _currentProgress,
+      end: widget.step * 0.25,
     ).animate(CurvedAnimation(
       parent: _progressController,
       curve: Curves.easeInOut,
     ));
+
+    _progressController.forward();
   }
 
   @override
   void didUpdateWidget(OnboardingNextButton oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.step != widget.step) {
-      final newProgress = widget.step / 4.0;
+    if (widget.previousStep != oldWidget.previousStep ||
+        widget.step != oldWidget.step) {
+      final newProgress = widget.step * 0.25;
+
       _progressAnimation = Tween<double>(
-        begin: _currentProgress,
+        begin: widget.previousStep * 0.25,
         end: newProgress,
       ).animate(CurvedAnimation(
         parent: _progressController,
         curve: Curves.easeInOut,
       ));
+
       _currentProgress = newProgress;
       _progressController.forward(from: 0.0);
     }
@@ -83,18 +88,32 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
       _isButtonEnabled = false;
     });
 
-    await _tapController.forward();
-    await _tapController.reverse();
+    try {
+      await _tapController.forward();
+      await _tapController.reverse();
 
-    if (widget.onNext != null) {
-      widget.onNext!();
-    }
+      if (widget.onNext != null) {
+        widget.onNext!();
+      }
 
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (mounted) {
-      setState(() {
-        _isButtonEnabled = true;
-      });
+      // Animasyonun tamamlanmasını bekle
+      await _progressController.forward();
+
+      // Kısa bir gecikme ekle
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      if (mounted) {
+        setState(() {
+          _isButtonEnabled = true;
+        });
+      }
+    } catch (e) {
+      // Hata durumunda butonu tekrar aktif et
+      if (mounted) {
+        setState(() {
+          _isButtonEnabled = true;
+        });
+      }
     }
   }
 
@@ -109,7 +128,7 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final localizations = AppLocalizations.of(context);
-    final isLastStep = widget.step == 4;
+    final isLastStep = widget.step == 5;
 
     return Center(
       child: GestureDetector(
@@ -169,7 +188,8 @@ class _ProgressCirclePainterV2 extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint bgPaint = Paint()
-      ..color = colorScheme.onboardingNextButtonBorderColor.withOpacity(0.18)
+      ..color =
+          colorScheme.onboardingNextButtonBorderColor.withValues(alpha: 0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
     final Paint fgPaint = Paint()

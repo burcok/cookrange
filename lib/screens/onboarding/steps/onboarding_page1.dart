@@ -85,8 +85,8 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
               Center(
                 child: Image.asset(
                   'assets/images/onboarding/onboarding-1.png',
-                  width: size.width * 0.7,
-                  height: size.width * 0.7,
+                  width: size.width * 0.9,
+                  height: size.width * 0.8,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
                     _analyticsService.logError(
@@ -106,7 +106,6 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                   },
                 ),
               ),
-              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -116,7 +115,7 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
             width: double.infinity,
             margin: const EdgeInsets.symmetric(horizontal: 0),
             padding:
-                const EdgeInsets.only(top: 36, left: 24, right: 24, bottom: 24),
+                const EdgeInsets.only(top: 24, left: 24, right: 24, bottom: 24),
             decoration: BoxDecoration(
               color: colorScheme.backgroundColor2,
               borderRadius: const BorderRadius.only(
@@ -144,13 +143,13 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Text(
                   localizations.translate('onboarding.page1.description'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: colorScheme.onboardingSubtitleColor,
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w400,
                     fontFamily: 'Poppins',
                   ),

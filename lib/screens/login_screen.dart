@@ -62,7 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       String msg;
-      print(e.toString() == 'invalid-email');
+      print(e.toString().trim() == 'invalid-email');
+      print(e.toString());
       switch (e.toString()) {
         case 'empty-fields':
           msg = AppLocalizations.of(context).translate('auth.empty_fields');

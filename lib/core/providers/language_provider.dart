@@ -4,38 +4,63 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LanguageProvider extends ChangeNotifier {
   static const String _languageKey = 'language_code';
   late SharedPreferences _prefs;
-  Locale _currentLocale = const Locale('en');
+  late Locale _currentLocale;
+  bool _isInitialized = false;
 
   LanguageProvider() {
-    _loadLanguage();
+    _initializeLanguage();
   }
 
   Locale get currentLocale => _currentLocale;
 
-  Future<void> _loadLanguage() async {
-    _prefs = await SharedPreferences.getInstance();
-    final String? savedLanguageCode = _prefs.getString(_languageKey);
-
-    if (savedLanguageCode != null) {
-      // If there's a saved language preference, use it
-      _currentLocale = Locale(savedLanguageCode);
-    } else {
-      // If no saved preference, check device language
+  Future<void> _initializeLanguage() async {
+    try {
+      _prefs = await SharedPreferences.getInstance();
+      final String? savedLanguageCode = _prefs.getString(_languageKey);
       final String deviceLanguage =
           WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-      if (deviceLanguage == 'tr') {
-        _currentLocale = const Locale('tr');
-        await _prefs.setString(_languageKey, 'tr');
+      print('Device language: $deviceLanguage');
+      print('Saved language code: $savedLanguageCode');
+
+      // Eğer kayıtlı dil yoksa veya ilk kurulum ise telefonun dilini kullan
+      if (savedLanguageCode == null) {
+        if (deviceLanguage == 'tr') {
+          _currentLocale = const Locale('tr');
+          // Bu kısımda dilleri set etmiyoruz çünkü default olarak
+          // uygulama dilini kaydetmemeli
+          // TODO: Ayarlardan dil değiştirildiği zaman
+          // await _prefs.setString(_languageKey, languageCode); kaydedilmeli.
+        } else {
+          _currentLocale = const Locale('en');
+        }
       } else {
-        _currentLocale = const Locale('en');
-        await _prefs.setString(_languageKey, 'en');
+        // Kayıtlı dil varsa onu kullan
+        _currentLocale = Locale(savedLanguageCode);
+        print('Using saved language: $savedLanguageCode');
       }
+
+      _isInitialized = true;
+      notifyListeners();
+    } catch (e) {
+      print('Error initializing language: $e');
+      // Hata durumunda telefonun dilini kullan
+      final String deviceLanguage =
+          WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+      _currentLocale =
+          deviceLanguage == 'tr' ? const Locale('tr') : const Locale('en');
+      _isInitialized = true;
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   Future<void> setLanguage(String languageCode) async {
+    if (!_isInitialized) {
+      print('Language provider not initialized yet');
+      return;
+    }
+
     if (_currentLocale.languageCode != languageCode) {
+      print('Changing language to: $languageCode');
       _currentLocale = Locale(languageCode);
       await _prefs.setString(_languageKey, languageCode);
       notifyListeners();

@@ -30,14 +30,25 @@ class AppLocalizations {
 
   Future<bool> load() async {
     try {
-      String jsonString = await rootBundle.loadString(
-          'lib/core/localization/translations/${locale.languageCode}.json');
+      // Debug için mevcut locale bilgisini yazdır
+      print('Current locale: ${locale.languageCode}');
+
+      // Dil dosyası yolunu oluştur
+      final String languageCode = locale.languageCode == 'tr' ? 'tr' : 'en';
+      final String jsonPath =
+          'lib/core/localization/translations/$languageCode.json';
+      print('Loading translations from: $jsonPath');
+
+      // Dosyayı yükle
+      String jsonString = await rootBundle.loadString(jsonPath);
+      print('Successfully loaded $languageCode translations');
 
       _localizedStrings = json.decode(jsonString);
       return true;
     } catch (e, stack) {
       print('Error loading translations: $e');
       print('Stack trace: $stack');
+      print('Falling back to empty translations');
       _localizedStrings = {};
       return false;
     }
@@ -52,7 +63,8 @@ class AppLocalizations {
         if (value is Map && value.containsKey(k)) {
           value = value[k];
         } else {
-          print('Translation not found for key: $key');
+          print(
+              'Translation not found for key: $key in ${locale.languageCode}');
           return key;
         }
       }
@@ -62,11 +74,12 @@ class AppLocalizations {
       } else if (value is List) {
         return value.join(',');
       } else {
-        print('Translation value is not a string or array for key: $key');
+        print(
+            'Translation value is not a string or array for key: $key in ${locale.languageCode}');
         return key;
       }
     } catch (e) {
-      print('Error translating key $key: $e');
+      print('Error translating key $key in ${locale.languageCode}: $e');
       return key;
     }
   }
@@ -104,6 +117,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) {
+    print('Checking if locale is supported: ${locale.languageCode}');
     return ['en', 'tr'].contains(locale.languageCode);
   }
 
@@ -111,7 +125,14 @@ class _AppLocalizationsDelegate
   Future<AppLocalizations> load(Locale locale) async {
     print('Loading delegate for locale: ${locale.languageCode}');
     AppLocalizations localizations = AppLocalizations(locale);
-    await localizations.load();
+    final success = await localizations.load();
+    if (!success) {
+      print(
+          'Failed to load translations for ${locale.languageCode}, falling back to English');
+      // Fallback to English if loading fails
+      localizations = AppLocalizations(const Locale('en'));
+      await localizations.load();
+    }
     return localizations;
   }
 
