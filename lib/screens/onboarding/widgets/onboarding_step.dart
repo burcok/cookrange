@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../providers/onboarding_provider.dart';
+import '../../../core/providers/onboarding_provider.dart';
 import '../../../../widgets/number_picker_modal.dart';
 import '../steps/onboarding_page1.dart';
 import '../steps/onboarding_page2.dart';

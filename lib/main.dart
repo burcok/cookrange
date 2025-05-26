@@ -11,11 +11,12 @@ import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/providers/language_provider.dart';
-import 'providers/onboarding_provider.dart';
+import 'core/providers/onboarding_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/home/home.dart';
+import 'screens/auth/verify_email.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -109,6 +110,7 @@ class MyApp extends StatelessWidget {
                   '/login': (context) => const LoginScreen(),
                   '/register': (context) => const RegisterScreen(),
                   '/home': (context) => const HomeScreen(),
+                  '/verify_email': (context) => const VerifyEmailScreen(),
                   // Diğer authentication ekranları buraya eklenecek
                 },
                 navigatorObservers: [

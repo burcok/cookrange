@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'widgets/onboarding_step.dart';
 import 'package:provider/provider.dart';
-import '../../providers/onboarding_provider.dart';
+import '../../core/providers/onboarding_provider.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/localization/app_localizations.dart';
 

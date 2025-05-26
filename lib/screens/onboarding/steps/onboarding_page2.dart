@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../constants.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import '../../../providers/onboarding_provider.dart';
+import '../../../core/providers/onboarding_provider.dart';
 import '../widgets/onboarding_common_widgets.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/localization/app_localizations.dart';

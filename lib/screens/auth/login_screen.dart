@@ -55,13 +55,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final user = await AuthService().signInWithEmail(email, password);
 
-      print('user: $user');
       if (!mounted) return;
-      print('mounted');
 
       if (user != null) {
         if (!user.emailVerified) {
           await AuthService().sendEmailVerification();
+
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            "/verify_email",
+            (route) => false,
+          );
+          return;
         }
 
         Navigator.pushNamedAndRemoveUntil(

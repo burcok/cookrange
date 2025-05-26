@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../providers/onboarding_provider.dart';
+import '../../../core/providers/onboarding_provider.dart';
 import '../widgets/onboarding_common_widgets.dart';
 import '../../../../widgets/gender_picker_modal.dart';
 import '../../../../widgets/date_picker_modal.dart';

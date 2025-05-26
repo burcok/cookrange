@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
 
 class AuthException implements Exception {
   final String code;
@@ -11,6 +13,8 @@ class AuthException implements Exception {
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  static const String _languageKey = 'language_code';
+  late SharedPreferences _prefs;
 
   // Singleton pattern
   static final AuthService _instance = AuthService._internal();
@@ -20,22 +24,32 @@ class AuthService {
   // Email & Password Login
   Future<User?> signInWithEmail(String email, String password) async {
     try {
-      print("Attempting to sign in with email: $email");
+      try {
+        _prefs = await SharedPreferences.getInstance();
+        final String? savedLanguageCode = _prefs.getString(_languageKey);
+        final String deviceLanguage =
+            WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+
+        if (savedLanguageCode != null) {
+          await _auth.setLanguageCode(savedLanguageCode);
+        } else {
+          await _auth.setLanguageCode(deviceLanguage);
+        }
+      } catch (e) {
+        print("Error setting language code: $e");
+      }
+
       final result = await _auth.signInWithEmailAndPassword(
           email: email, password: password);
 
       print("Sign in result: $result");
-      print("User object: ${result.user}");
 
       if (result.user == null) {
-        print("User is null after sign in");
         throw AuthException('user-not-found');
       }
 
       return result.user;
     } on FirebaseAuthException catch (e) {
-      print("Firebase Auth Error during sign in: ${e.code} - ${e.message}");
-      print("Error details: ${e.toString()}");
       throw AuthException(e.code);
     } catch (e, stackTrace) {
       print("Unexpected error during sign in: $e");
