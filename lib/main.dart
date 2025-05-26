@@ -12,6 +12,7 @@ import 'core/theme/app_theme.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/providers/language_provider.dart';
 import 'core/providers/onboarding_provider.dart';
+import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
@@ -111,6 +112,7 @@ class MyApp extends StatelessWidget {
                   '/register': (context) => const RegisterScreen(),
                   '/home': (context) => const HomeScreen(),
                   '/verify_email': (context) => const VerifyEmailScreen(),
+                  '/onboarding': (context) => const OnboardingScreen(),
                   // Diğer authentication ekranları buraya eklenecek
                 },
                 navigatorObservers: [

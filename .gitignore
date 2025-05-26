@@ -40,10 +40,6 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
 
 # Firebase
 firebase-debug.log
@@ -51,6 +47,4 @@ firebase-debug.*.log
 
 # Environment variables
 .env
-/android/app/google-services.json
-/ios/Runner/GoogleService-Info.plist
 /lib/firebase_options.dart

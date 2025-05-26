@@ -124,7 +124,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (user != null) {
         if (!mounted) return;
-        Navigator.pushNamed(context, "/home");
+
+        // Get onboarding data
+        final onboardingData = await AuthService().getOnboardingData();
+
+        // Save user data including onboarding data
+        await AuthService().updateUserData({
+          'onboarding_completed': true,
+          'onboarding_data': onboardingData,
+        });
+
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          "/home",
+          (route) => false,
+        );
       }
     } on AuthException catch (e) {
       if (!mounted) return;
@@ -227,8 +241,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _isLoading = true;
     });
     try {
-      await AuthService().signInWithGoogle();
-      Navigator.pushNamed(context, "/home");
+      final user = await AuthService().signInWithGoogle();
+      if (!mounted) return;
+
+      if (user != null) {
+        // Get onboarding data
+        final onboardingData = await AuthService().getOnboardingData();
+
+        // Save user data including onboarding data
+        await AuthService().updateUserData({
+          'onboarding_completed': true,
+          'onboarding_data': onboardingData,
+        });
+
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          "/home",
+          (route) => false,
+        );
+      }
     } on Exception catch (e) {
       final msg =
           AppLocalizations.of(context).translate('auth.google_register_error');
@@ -255,9 +286,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

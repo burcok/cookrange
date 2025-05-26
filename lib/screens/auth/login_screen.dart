@@ -58,22 +58,37 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (user != null) {
-        if (!user.emailVerified) {
-          await AuthService().sendEmailVerification();
+        try {
+          if (!user.emailVerified) {
+            await AuthService().sendEmailVerification();
 
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            "/verify_email",
-            (route) => false,
-          );
-          return;
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              "/verify_email",
+              (route) => false,
+            );
+            return;
+          }
+        } catch (e) {
+          print("Error sending email verification: $e");
         }
 
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          "/home",
-          (route) => false,
-        );
+        // Check if user has completed onboarding
+        final hasOnboarding = await AuthService().hasCompletedOnboarding();
+        print("Has onboarding: $hasOnboarding");
+        if (!hasOnboarding) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            "/onboarding",
+            (route) => false,
+          );
+        } else {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            "/home",
+            (route) => false,
+          );
+        }
       }
     } on AuthException catch (e) {
       if (!mounted) return;
@@ -170,8 +185,26 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
     try {
-      await AuthService().signInWithGoogle();
-      Navigator.pushNamed(context, "/home");
+      final user = await AuthService().signInWithGoogle();
+      if (!mounted) return;
+
+      if (user != null) {
+        // Check if user has completed onboarding
+        final hasOnboarding = await AuthService().hasCompletedOnboarding();
+        if (!hasOnboarding) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            "/onboarding",
+            (route) => false,
+          );
+        } else {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            "/home",
+            (route) => false,
+          );
+        }
+      }
     } on Exception catch (e) {
       final msg =
           AppLocalizations.of(context).translate('auth.google_login_error');
@@ -198,9 +231,11 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

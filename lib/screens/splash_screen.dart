@@ -14,6 +14,9 @@ import '../widgets/custom_back_button.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../widgets/date_picker_modal.dart';
 import '../widgets/number_picker_modal.dart';
+import '../core/services/auth_service.dart';
+import '../core/providers/device_info_provider.dart';
+import 'package:provider/provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -242,14 +245,37 @@ class _SplashScreenState extends State<SplashScreen>
       // 1. Firebase, Crashlytics, Analytics
       await CrashlyticsService().initialize();
       await AnalyticsService().initialize();
+      await AuthService().initialize();
+
       // 2. Dotenv, SharedPreferences
       await _initializeEnvironment();
       await _initializePreferences();
+
       // 3. Asset ve font cache
       _cacheStartTime = DateTime.now();
       await _precacheAssets();
+
       // 4. Diğer preload işlemleri
       await _preloadResources();
+
+      // Check authentication state
+      final user = AuthService().currentUser;
+      if (user != null) {
+        // Check if user has completed onboarding
+        final hasOnboarding = await AuthService().hasCompletedOnboarding();
+        if (!hasOnboarding) {
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/onboarding');
+            return;
+          }
+        } else {
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/home');
+            return;
+          }
+        }
+      }
+
       if (mounted) {
         setState(() {
           _isResourcesLoaded = true;
@@ -257,6 +283,10 @@ class _SplashScreenState extends State<SplashScreen>
         });
         _checkInitializationComplete();
       }
+
+      // Initialize device info
+      await Provider.of<DeviceInfoProvider>(context, listen: false)
+          .initialize();
     } catch (e, stack) {
       print('Error during initialization: $e');
       print('Stack trace: $stack');
