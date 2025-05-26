@@ -13,7 +13,8 @@ import 'core/localization/app_localizations.dart';
 import 'core/providers/language_provider.dart';
 import 'providers/onboarding_provider.dart';
 import 'screens/splash_screen.dart';
-import 'screens/login_screen.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/auth/register_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -105,6 +106,7 @@ class MyApp extends StatelessWidget {
                 home: const SplashScreen(),
                 routes: {
                   '/login': (context) => const LoginScreen(),
+                  '/register': (context) => const RegisterScreen(),
                   // Diğer authentication ekranları buraya eklenecek
                 },
                 navigatorObservers: [

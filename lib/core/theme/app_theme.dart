@@ -73,6 +73,7 @@ class AppTheme {
         scaffoldBackgroundColor: c.backgroundColorLight,
         fontFamily: 'Poppins',
         useMaterial3: true,
+        extensions: [lightAppColors],
       );
 
   static ThemeData get darkTheme => ThemeData(
@@ -80,6 +81,7 @@ class AppTheme {
         scaffoldBackgroundColor: c.backgroundColorDark,
         fontFamily: 'Poppins',
         useMaterial3: true,
+        extensions: [darkAppColors],
       );
 }
 
@@ -276,3 +278,64 @@ const AppColors darkAppColors = AppColors(
   onboardingOptionSelectedBgColor: c.onboardingOptionSelectedBgColor,
   onboardingOptionSelectedBgColorDark: c.onboardingOptionSelectedBgColorDark,
 );
+
+class AppColorScheme extends ColorScheme {
+  final Color onboardingTitleColor;
+  final Color onboardingSubtitleColor;
+  final Color schemaPreferredColor;
+
+  const AppColorScheme({
+    required super.brightness,
+    required super.primary,
+    required super.onPrimary,
+    required super.secondary,
+    required super.onSecondary,
+    required super.error,
+    required super.onError,
+    required super.background,
+    required super.onBackground,
+    required super.surface,
+    required super.onSurface,
+    required this.onboardingTitleColor,
+    required this.onboardingSubtitleColor,
+    required this.schemaPreferredColor,
+  });
+
+  factory AppColorScheme.light() {
+    return const AppColorScheme(
+      brightness: Brightness.light,
+      primary: Color(0xFF1E88E5),
+      onPrimary: Colors.white,
+      secondary: Color(0xFF2196F3),
+      onSecondary: Colors.white,
+      error: Color(0xFFB00020),
+      onError: Colors.white,
+      background: Colors.white,
+      onBackground: Colors.black,
+      surface: Colors.white,
+      onSurface: Colors.black,
+      onboardingTitleColor: Color(0xFF1E1E1E),
+      onboardingSubtitleColor: Color(0xFF757575),
+      schemaPreferredColor: Color(0xFF2196F3),
+    );
+  }
+
+  factory AppColorScheme.dark() {
+    return const AppColorScheme(
+      brightness: Brightness.dark,
+      primary: Color(0xFF1E88E5),
+      onPrimary: Colors.white,
+      secondary: Color(0xFF2196F3),
+      onSecondary: Colors.white,
+      error: Color(0xFFCF6679),
+      onError: Colors.black,
+      background: Color(0xFF121212),
+      onBackground: Colors.white,
+      surface: Color(0xFF121212),
+      onSurface: Colors.white,
+      onboardingTitleColor: Colors.white,
+      onboardingSubtitleColor: Color(0xFFB0B0B0),
+      schemaPreferredColor: Color(0xFF2196F3),
+    );
+  }
+}

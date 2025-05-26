@@ -1,8 +1,10 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
-import '../core/localization/app_localizations.dart';
-import '../core/services/auth_service.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../core/localization/app_localizations.dart';
+import '../../core/services/auth_service.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -56,27 +58,50 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (mounted) {
-        Navigator.pushNamed(context, "/home");
+        // Navigator.pushNamed(context, "/home");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Giriş Başarılı',
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+                color: Colors.black,
+              ),
+            ),
+            duration: const Duration(seconds: 10),
+            backgroundColor: Colors.green,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            closeIconColor: Colors.white,
+            showCloseIcon: true,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(10),
+          ),
+        );
       }
     } on Exception catch (e) {
       if (!mounted) return;
 
       String msg;
-      print(e.toString().trim() == 'invalid-email');
       print(e.toString());
-      switch (e.toString()) {
-        case 'empty-fields':
-          msg = AppLocalizations.of(context).translate('auth.empty_fields');
-          break;
-        case 'user-not-found' || 'wrong-password' || 'invalid-email':
-          msg = AppLocalizations.of(context)
-              .translate('auth.invalid_credentials');
-          break;
-        case 'network-error':
-          msg = AppLocalizations.of(context).translate('auth.network_error');
-          break;
-        default:
-          msg = AppLocalizations.of(context).translate('auth.login_error');
+      if (e.toString().contains('user-not-found')) {
+        msg = AppLocalizations.of(context)
+            .translate('auth.login_errors.invalid_credentials');
+      } else if (e.toString().contains('wrong-password')) {
+        msg = AppLocalizations.of(context)
+            .translate('auth.login_errors.invalid_credentials');
+      } else if (e.toString().contains('invalid-email')) {
+        msg = AppLocalizations.of(context)
+            .translate('auth.login_errors.invalid_credentials');
+      } else if (e.toString().contains('network-error')) {
+        msg = AppLocalizations.of(context)
+            .translate('auth.login_errors.network_error');
+      } else {
+        msg = AppLocalizations.of(context)
+            .translate('auth.login_errors.login_error');
       }
 
       ScaffoldMessenger.of(context).showSnackBar(

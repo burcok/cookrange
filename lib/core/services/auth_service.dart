@@ -86,12 +86,7 @@ class AuthService {
       return result.user;
     } on FirebaseAuthException catch (e) {
       print("Sign in with google error: ${e.code}");
-      // TODO: Şu anda error doğru şekilde geliyor. channel hatası çözüldü fakat doğru case e girmiyor her zaman invalid
-      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
-        throw Exception('user-not-found');
-      } else {
-        throw Exception('error-unknown');
-      }
+      throw Exception(e.code);
     }
   }
 
@@ -106,4 +101,16 @@ class AuthService {
 
   // Listen to Auth State Changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  Future<void> signUpWithEmail(String email, String password) async {
+    try {
+      await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      print("Sign up with email error: ${e.code}");
+      throw Exception(e.code);
+    }
+  }
 }

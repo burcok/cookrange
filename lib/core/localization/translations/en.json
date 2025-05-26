@@ -124,24 +124,44 @@
 
   "auth": {
     "login": "Login",
-    "welcome_back": "Hey, Welcome Back!",
-    "login_with_google": "Login with Google",
     "signup": "Sign Up",
+
+    "create_account": "Create Your Account and Join Us!",
+    "welcome_back": "Hey, Welcome Back!",
+
+    "login_with_google": "Login with Google",
+    "register_with_google": "Register with Google",
+    
     "email": "Email",
     "password": "Password",
+    "password_again": "Password Again",
     "forgot_password": "Forgot Password?",
+
     "or": "or",
     "continue_with_google": "Continue with Google",
     "continue_with_apple": "Continue with Apple",
+    
     "no_account": "Don't have an account?",
     "register_now": "Register Now",
     "already_have_account": "Already have an account?",
+    "login_now": "Login Now",
+    
     "google_login_error": "Google login failed. Please try again.",
+    "google_register_error": "Google register failed. Please try again.",
 
-    "login_error": "Login failed. Please try again.",
-    "invalid_credentials": "User not found. Please check your email and password.",
-    "network_error": "Network error. Please check your internet connection and try again.",
-    "empty_fields": "Please fill in all fields."
+    "register_errors": {
+      "register_error": "Register failed. Please try again.",
+      "email_already_in_use": "Email already in use. Please try again.",
+      "invalid_email": "Invalid email. Please try again.",
+      "weak_password": "Weak password. Please try again."
+    },
+
+    "login_errors": {
+      "login_error": "Login failed. Please try again.",
+      "invalid_credentials": "User not found. Please check your email and password.",
+      "network_error": "Network error. Please check your internet connection and try again.",
+      "empty_fields": "Please fill in all fields."
+    }
   },
 
   "profile": {
