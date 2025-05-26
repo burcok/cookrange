@@ -221,42 +221,42 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   onPageChanged: (index) {
                     if (!mounted) return;
 
-                    if (index > _currentStep &&
-                        _shouldPreventForwardScroll(onboarding)) {
-                      _analyticsService.logUserInteraction(
-                        interactionType: 'validation_error',
-                        target: 'forward_scroll',
-                        parameters: {
-                          'current_step': _currentStep,
-                          'attempted_step': index,
-                          'error_message':
-                              _getRequiredFieldsMessage(onboarding),
-                        },
-                      );
-                      _pageController.animateToPage(
-                        _currentStep,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOut,
-                      );
-                      _showNotification(_getRequiredFieldsMessage(onboarding));
-                      return;
+                    if (index > _currentStep) {
+                      if (_shouldPreventForwardScroll(onboarding)) {
+                        _analyticsService.logUserInteraction(
+                          interactionType: 'validation_error',
+                          target: 'forward_scroll',
+                          parameters: {
+                            'current_step': _currentStep,
+                            'attempted_step': index,
+                            'error_message':
+                                _getRequiredFieldsMessage(onboarding),
+                          },
+                        );
+                        _pageController.animateToPage(
+                          _currentStep,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                        );
+                        _showNotification(
+                            _getRequiredFieldsMessage(onboarding));
+                        return;
+                      }
                     }
 
-                    if (index < _currentStep) {
-                      _analyticsService.logUserInteraction(
-                        interactionType: 'page_change',
-                        target: 'step_$index',
-                        parameters: {
-                          'from_step': _currentStep,
-                          'to_step': index,
-                        },
-                      );
-                      _logOnboardingStep(index);
-                      setState(() {
-                        _previousStep = _currentStep;
-                        _currentStep = index;
-                      });
-                    }
+                    _analyticsService.logUserInteraction(
+                      interactionType: 'page_change',
+                      target: 'step_$index',
+                      parameters: {
+                        'from_step': _currentStep,
+                        'to_step': index,
+                      },
+                    );
+                    _logOnboardingStep(index);
+                    setState(() {
+                      _previousStep = _currentStep;
+                      _currentStep = index;
+                    });
                   },
                   physics: _CustomScrollPhysics(
                     parent: const PageScrollPhysics(),
@@ -283,7 +283,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   bool _shouldPreventForwardScroll(OnboardingProvider onboarding) {
     switch (_currentStep) {
-      case 0:
+      case 0: // İlk sayfada swipe'ı engelle
         return false;
       case 1: // Hedef seçimi
         return onboarding.goal == null;
