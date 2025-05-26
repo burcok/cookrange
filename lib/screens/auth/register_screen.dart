@@ -117,45 +117,82 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      await AuthService().signUpWithEmail(
+      final user = await AuthService().registerWithEmail(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
 
-      if (mounted) {
+      if (user != null) {
+        if (!mounted) return;
         Navigator.pushNamed(context, "/home");
       }
-    } on Exception catch (e) {
+    } on AuthException catch (e) {
       if (!mounted) return;
 
       String msg;
+      print("Auth error code: ${e.code}");
 
-      if (e.toString().contains('email-already-in-use')) {
-        print('email-already-in-use');
-        msg = AppLocalizations.of(context)
-            .translate('auth.register_errors.email_already_in_use');
-      } else if (e.toString().contains('invalid-email')) {
-        print('invalid-email');
-        msg = AppLocalizations.of(context)
-            .translate('auth.register_errors.invalid_email');
-      } else if (e.toString().contains('weak-password')) {
-        print('weak-password');
-        msg = AppLocalizations.of(context)
-            .translate('auth.register_errors.weak_password');
-      } else if (e.toString().contains('network-error')) {
-        print('network-error');
-        msg = AppLocalizations.of(context)
-            .translate('auth.register_errors.network_error');
-      } else {
-        print('register-error');
-        msg = AppLocalizations.of(context)
-            .translate('auth.register_errors.register_error');
+      switch (e.code) {
+        case 'email-already-in-use':
+          msg = AppLocalizations.of(context)
+              .translate('auth.register_errors.email_already_in_use');
+          break;
+        case 'invalid-email':
+          msg = AppLocalizations.of(context)
+              .translate('auth.register_errors.invalid_email');
+          break;
+        case 'weak-password':
+          msg = AppLocalizations.of(context)
+              .translate('auth.register_errors.weak_password');
+          break;
+        case 'network-error':
+          msg = AppLocalizations.of(context)
+              .translate('auth.register_errors.network_error');
+          break;
+        case 'user-not-found':
+          msg = AppLocalizations.of(context)
+              .translate('auth.register_errors.user_not_found');
+          break;
+        case 'type-error':
+          msg = AppLocalizations.of(context)
+              .translate('auth.register_errors.type_error');
+          break;
+        default:
+          msg = AppLocalizations.of(context)
+              .translate('auth.register_errors.register_error');
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             msg,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 14,
+              color: Colors.white,
+            ),
+          ),
+          duration: const Duration(seconds: 10),
+          backgroundColor: Colors.red,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          closeIconColor: Colors.white,
+          showCloseIcon: true,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
+        ),
+      );
+    } catch (e) {
+      print("Unexpected error during registration: $e");
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)
+                .translate('auth.register_errors.register_error'),
             style: const TextStyle(
               fontFamily: 'Poppins',
               fontSize: 14,

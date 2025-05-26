@@ -39,69 +39,71 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login(BuildContext context) async {
-    if (_isLoading) return; // Prevent multiple login attempts
+    if (_isLoading) return;
 
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Validate inputs before making the API call
-      if (_emailController.text.trim().isEmpty ||
-          _passwordController.text.trim().isEmpty) {
-        throw Exception('empty-fields');
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+
+      if (email.isEmpty || password.isEmpty) {
+        throw AuthException('empty-fields');
       }
 
-      await AuthService().signInWithEmail(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
+      final user = await AuthService().signInWithEmail(email, password);
 
-      if (mounted) {
-        // Navigator.pushNamed(context, "/home");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Giriş Başarılı',
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-                color: Colors.black,
-              ),
-            ),
-            duration: const Duration(seconds: 10),
-            backgroundColor: Colors.green,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            closeIconColor: Colors.white,
-            showCloseIcon: true,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(10),
-            padding: const EdgeInsets.all(10),
-          ),
+      print('user: $user');
+      if (!mounted) return;
+      print('mounted');
+
+      if (user != null) {
+        if (!user.emailVerified) {
+          await AuthService().sendEmailVerification();
+        }
+
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          "/home",
+          (route) => false,
         );
       }
-    } on Exception catch (e) {
+    } on AuthException catch (e) {
       if (!mounted) return;
 
       String msg;
-      print(e.toString());
-      if (e.toString().contains('user-not-found')) {
-        msg = AppLocalizations.of(context)
-            .translate('auth.login_errors.invalid_credentials');
-      } else if (e.toString().contains('wrong-password')) {
-        msg = AppLocalizations.of(context)
-            .translate('auth.login_errors.invalid_credentials');
-      } else if (e.toString().contains('invalid-email')) {
-        msg = AppLocalizations.of(context)
-            .translate('auth.login_errors.invalid_credentials');
-      } else if (e.toString().contains('network-error')) {
-        msg = AppLocalizations.of(context)
-            .translate('auth.login_errors.network_error');
-      } else {
-        msg = AppLocalizations.of(context)
-            .translate('auth.login_errors.login_error');
+      switch (e.code) {
+        case 'user-not-found':
+        case 'wrong-password':
+        case 'invalid-email':
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.invalid_credentials');
+          break;
+        case 'network-error':
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.network_error');
+          break;
+        case 'empty-fields':
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.empty_fields');
+          break;
+        case 'type-error':
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.type_error');
+          break;
+        case 'user-disabled':
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.user_disabled');
+          break;
+        case 'too-many-requests':
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.too_many_requests');
+          break;
+        default:
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.login_error');
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -114,13 +116,36 @@ class _LoginScreenState extends State<LoginScreen> {
               color: Colors.white,
             ),
           ),
-          duration: const Duration(seconds: 10),
+          duration: const Duration(seconds: 5),
           backgroundColor: Colors.red,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          closeIconColor: Colors.white,
-          showCloseIcon: true,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      print("Unexpected error during login: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)
+                .translate('auth.login_errors.unexpected_error'),
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 14,
+              color: Colors.white,
+            ),
+          ),
+          duration: const Duration(seconds: 5),
+          backgroundColor: Colors.red,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(10),
           padding: const EdgeInsets.all(10),

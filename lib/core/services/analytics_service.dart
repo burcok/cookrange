@@ -661,6 +661,7 @@ class AnalyticsService {
   // User Session Management
   Future<void> setUserId(String? userId) async {
     try {
+      print("Setting user ID: $userId");
       await _analytics.setUserId(id: userId);
       await logEvent(
         name: 'user_identification',
@@ -669,8 +670,16 @@ class AnalyticsService {
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
-    } catch (e) {
-      print('AnalyticsService: Error setting user ID: $e');
+      print("User ID set successfully");
+    } catch (e, stackTrace) {
+      print("Error setting user ID: $e");
+      print("Stack trace: $stackTrace");
+      // Hata durumunda işlemi tekrar deneme
+      try {
+        await _analytics.setUserId(id: userId);
+      } catch (retryError) {
+        print("Error during retry of setting user ID: $retryError");
+      }
     }
   }
 

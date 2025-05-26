@@ -20,38 +20,57 @@ class AuthService {
   // Email & Password Login
   Future<User?> signInWithEmail(String email, String password) async {
     try {
+      print("Attempting to sign in with email: $email");
       final result = await _auth.signInWithEmailAndPassword(
           email: email, password: password);
+
+      print("Sign in result: $result");
+      print("User object: ${result.user}");
+
+      if (result.user == null) {
+        print("User is null after sign in");
+        throw AuthException('user-not-found');
+      }
+
       return result.user;
     } on FirebaseAuthException catch (e) {
-      switch (e.code) {
-        case 'user-not-found':
-          throw AuthException('user-not-found');
-        case 'wrong-password':
-          throw AuthException('wrong-password');
-        case 'invalid-email':
-          throw AuthException('invalid-email');
-        case 'user-disabled':
-          throw AuthException('user-disabled');
-        case 'too-many-requests':
-          throw AuthException('too-many-requests');
-        case 'network-request-failed':
-          throw AuthException('network-error');
-        default:
-          throw AuthException('error-unknown');
-      }
-    } catch (e) {
+      print("Firebase Auth Error during sign in: ${e.code} - ${e.message}");
+      print("Error details: ${e.toString()}");
+      throw AuthException(e.code);
+    } catch (e, stackTrace) {
       print("Unexpected error during sign in: $e");
-      throw Exception('error-unknown');
+      print("Stack trace: $stackTrace");
+      if (e is TypeError) {
+        print("Type error details: ${e.toString()}");
+        print("Type error stack trace: ${e.stackTrace}");
+        throw AuthException('type-error');
+      }
+      throw AuthException('error-unknown');
     }
   }
 
   // Email & Password Register
   Future<User?> registerWithEmail(String email, String password) async {
-    final result = await _auth.createUserWithEmailAndPassword(
-        email: email, password: password);
-    await result.user?.sendEmailVerification();
-    return result.user;
+    try {
+      final result = await _auth.createUserWithEmailAndPassword(
+          email: email, password: password);
+
+      if (result.user != null) {
+        await result.user?.sendEmailVerification();
+        return result.user;
+      } else {
+        throw AuthException('user-creation-failed');
+      }
+    } on FirebaseAuthException catch (e) {
+      print("Firebase Auth Error during register: ${e.code} - ${e.message}");
+      throw AuthException(e.code);
+    } catch (e) {
+      print("Unexpected error during register: $e");
+      if (e is TypeError) {
+        print("Type error details: ${e.toString()}");
+      }
+      throw AuthException('error-unknown');
+    }
   }
 
   // Send Password Reset Email
@@ -71,22 +90,21 @@ class AuthService {
   Future<User?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-
       if (googleUser == null) return null;
-
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
-
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-
       final result = await _auth.signInWithCredential(credential);
       return result.user;
     } on FirebaseAuthException catch (e) {
-      print("Sign in with google error: ${e.code}");
-      throw Exception(e.code);
+      print("Sign in with google error: \u001b[31m");
+      throw AuthException(e.code);
+    } catch (e) {
+      print("Unexpected error during Google sign in: $e");
+      throw AuthException('error-unknown');
     }
   }
 
@@ -101,16 +119,4 @@ class AuthService {
 
   // Listen to Auth State Changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  Future<void> signUpWithEmail(String email, String password) async {
-    try {
-      await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-    } on FirebaseAuthException catch (e) {
-      print("Sign up with email error: ${e.code}");
-      throw Exception(e.code);
-    }
-  }
 }
