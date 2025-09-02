@@ -37,6 +37,12 @@ extension CustomColorScheme on ColorScheme {
   Color get backgroundColor2 => brightness == Brightness.dark
       ? c.backgroundColor2Dark
       : c.backgroundColor2;
+  Color get splashPrimaryColor => brightness == Brightness.dark
+      ? c.splashPrimaryColorDark
+      : c.splashPrimaryColor;
+  Color get backgroundColor3 => brightness == Brightness.dark
+      ? c.backgroundColor3Dark
+      : c.backgroundColor3;
 }
 
 // 2. Light ve dark colorScheme oluştur
@@ -112,7 +118,10 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color onboardingOptionTextColorDark;
   final Color onboardingOptionSelectedBgColor;
   final Color onboardingOptionSelectedBgColorDark;
-
+  final Color splashPrimaryColor;
+  final Color splashPrimaryColorDark;
+  final Color backgroundColor3;
+  final Color backgroundColor3Dark;
   const AppColors({
     required this.schemaPreferredColor,
     required this.schemaPreferredColorDark,
@@ -140,6 +149,10 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.onboardingOptionTextColorDark,
     required this.onboardingOptionSelectedBgColor,
     required this.onboardingOptionSelectedBgColorDark,
+    required this.splashPrimaryColor,
+    required this.splashPrimaryColorDark,
+    required this.backgroundColor3,
+    required this.backgroundColor3Dark,
   });
 
   @override
@@ -170,6 +183,10 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? onboardingOptionTextColorDark,
     Color? onboardingOptionSelectedBgColor,
     Color? onboardingOptionSelectedBgColorDark,
+    Color? splashPrimaryColor,
+    Color? splashPrimaryColorDark,
+    Color? backgroundColor3,
+    Color? backgroundColor3Dark,
   }) {
     return AppColors(
       schemaPreferredColor: schemaPreferredColor ?? this.schemaPreferredColor,
@@ -211,6 +228,11 @@ class AppColors extends ThemeExtension<AppColors> {
       onboardingOptionSelectedBgColorDark:
           onboardingOptionSelectedBgColorDark ??
               this.onboardingOptionSelectedBgColorDark,
+      splashPrimaryColor: splashPrimaryColor ?? this.splashPrimaryColor,
+      splashPrimaryColorDark:
+          splashPrimaryColorDark ?? this.splashPrimaryColorDark,
+      backgroundColor3: backgroundColor3 ?? this.backgroundColor3,
+      backgroundColor3Dark: backgroundColor3Dark ?? this.backgroundColor3Dark,
     );
   }
 
@@ -248,6 +270,10 @@ const AppColors lightAppColors = AppColors(
   onboardingOptionTextColorDark: c.onboardingOptionTextColorDark,
   onboardingOptionSelectedBgColor: c.onboardingOptionSelectedBgColor,
   onboardingOptionSelectedBgColorDark: c.onboardingOptionSelectedBgColorDark,
+  splashPrimaryColor: c.splashPrimaryColor,
+  splashPrimaryColorDark: c.splashPrimaryColorDark,
+  backgroundColor3: c.backgroundColor3,
+  backgroundColor3Dark: c.backgroundColor3Dark,
 );
 
 const AppColors darkAppColors = AppColors(
@@ -277,6 +303,10 @@ const AppColors darkAppColors = AppColors(
   onboardingOptionTextColorDark: c.onboardingOptionTextColorDark,
   onboardingOptionSelectedBgColor: c.onboardingOptionSelectedBgColor,
   onboardingOptionSelectedBgColorDark: c.onboardingOptionSelectedBgColorDark,
+  splashPrimaryColor: c.splashPrimaryColor,
+  splashPrimaryColorDark: c.splashPrimaryColorDark,
+  backgroundColor3: c.backgroundColor3,
+  backgroundColor3Dark: c.backgroundColor3Dark,
 );
 
 class AppColorScheme extends ColorScheme {

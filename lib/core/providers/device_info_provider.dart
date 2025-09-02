@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:io';
+import 'package:permission_handler/permission_handler.dart';
 
 class DeviceInfoProvider extends ChangeNotifier {
   final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
@@ -10,12 +11,24 @@ class DeviceInfoProvider extends ChangeNotifier {
   String _deviceOs = 'unknown';
   String _appVersion = 'unknown';
   String _buildNumber = 'unknown';
+  Map<String, String> _permissionStatus = {};
 
   String get deviceType => _deviceType;
   String get deviceModel => _deviceModel;
   String get deviceOs => _deviceOs;
   String get appVersion => _appVersion;
   String get buildNumber => _buildNumber;
+  Map<String, String> get permissionStatus => _permissionStatus;
+
+  // Tüm cihaz bilgilerini içeren map
+  Map<String, dynamic> get allDeviceInfo => {
+        'deviceType': _deviceType,
+        'deviceModel': _deviceModel,
+        'deviceOs': _deviceOs,
+        'appVersion': _appVersion,
+        'buildNumber': _buildNumber,
+        'permissionStatus': _permissionStatus,
+      };
 
   Future<void> initialize() async {
     try {
@@ -35,9 +48,43 @@ class DeviceInfoProvider extends ChangeNotifier {
       _appVersion = packageInfo.version;
       _buildNumber = packageInfo.buildNumber;
 
+      await _getPermissionInfo();
+
       notifyListeners();
     } catch (e) {
       print('Error initializing device info: $e');
+    }
+  }
+
+  Future<void> _getPermissionInfo() async {
+    try {
+      final permissions = [
+        Permission.camera,
+        Permission.microphone,
+        Permission.storage,
+        Permission.location,
+        Permission.notification,
+        Permission.phone,
+        Permission.contacts,
+        Permission.calendar,
+        Permission.sensors,
+        Permission.activityRecognition,
+        Permission.manageExternalStorage,
+        Permission.systemAlertWindow,
+        Permission.accessMediaLocation,
+        Permission.accessNotificationPolicy,
+      ];
+
+      for (final permission in permissions) {
+        try {
+          final status = await permission.status;
+          _permissionStatus[permission.toString()] = status.toString();
+        } catch (e) {
+          _permissionStatus[permission.toString()] = 'unknown';
+        }
+      }
+    } catch (e) {
+      print('Error getting permission info: $e');
     }
   }
 }

@@ -7,6 +7,7 @@ import 'package:flutter_svg/svg.dart' show SvgPicture;
 import 'dart:async';
 import '../core/services/analytics_service.dart';
 import '../core/services/crashlytics_service.dart';
+import '../core/services/device_info_service.dart';
 import '../core/localization/app_localizations.dart';
 import 'onboarding/onboarding_screen.dart';
 import '../widgets/gender_picker_modal.dart';
@@ -194,7 +195,7 @@ class _SplashScreenState extends State<SplashScreen>
     // Color transitions
     _backgroundColorAnimation = ColorTween(
       begin: colorScheme.onboardingOptionBgColor,
-      end: colorScheme.primary,
+      end: colorScheme.splashPrimaryColor,
     ).animate(
       CurvedAnimation(
         parent: _colorTransitionController,
@@ -203,7 +204,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _iconColorAnimation = ColorTween(
-      begin: colorScheme.primary,
+      begin: colorScheme.splashPrimaryColor,
       end: colorScheme.secondary,
     ).animate(
       CurvedAnimation(
@@ -213,7 +214,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _textColorAnimation = ColorTween(
-      begin: colorScheme.primary,
+      begin: colorScheme.splashPrimaryColor,
       end: colorScheme.secondary,
     ).animate(
       CurvedAnimation(
@@ -258,24 +259,6 @@ class _SplashScreenState extends State<SplashScreen>
       // 4. Diğer preload işlemleri
       await _preloadResources();
 
-      // Check authentication state
-      final user = AuthService().currentUser;
-      if (user != null) {
-        // Check if user has completed onboarding
-        final hasOnboarding = await AuthService().hasCompletedOnboarding();
-        if (!hasOnboarding) {
-          if (mounted) {
-            Navigator.pushReplacementNamed(context, '/onboarding');
-            return;
-          }
-        } else {
-          if (mounted) {
-            Navigator.pushReplacementNamed(context, '/home');
-            return;
-          }
-        }
-      }
-
       if (mounted) {
         setState(() {
           _isResourcesLoaded = true;
@@ -287,6 +270,11 @@ class _SplashScreenState extends State<SplashScreen>
       // Initialize device info
       await Provider.of<DeviceInfoProvider>(context, listen: false)
           .initialize();
+
+      // Send device info to Firebase
+      final deviceInfoProvider =
+          Provider.of<DeviceInfoProvider>(context, listen: false);
+      await _sendDeviceInfoToFirebase(deviceInfoProvider);
     } catch (e, stack) {
       print('Error during initialization: $e');
       print('Stack trace: $stack');
@@ -358,7 +346,7 @@ class _SplashScreenState extends State<SplashScreen>
   void _checkInitializationComplete() {
     if (_isResourcesLoaded) {
       final elapsedTime = DateTime.now().difference(_startTime!);
-      const minimumDisplayTime = Duration(seconds: 5);
+      const minimumDisplayTime = Duration(seconds: 4);
 
       if (elapsedTime < minimumDisplayTime) {
         // If less than minimum time has passed, wait for the remaining time
@@ -382,14 +370,48 @@ class _SplashScreenState extends State<SplashScreen>
     }
   }
 
-  void _checkShouldProceed() {
+  void _checkShouldProceed() async {
     if (_hasReachedMinimumTime && _isCacheComplete && !_isOffline) {
       if (mounted) {
         setState(() {
           _isInitialized = true;
           _isLoading = false;
         });
+
+        // Check authentication state and navigate accordingly
+        final user = AuthService().currentUser;
+        if (user != null) {
+          // Check if user has completed onboarding
+          final hasOnboarding = await AuthService().hasCompletedOnboarding();
+          if (!hasOnboarding) {
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, '/onboarding');
+              return;
+            }
+          } else {
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, '/home');
+              return;
+            }
+          }
+        }
       }
+    }
+  }
+
+  /// Cihaz bilgilerini Firebase Analytics'e gönder
+  Future<void> _sendDeviceInfoToFirebase(
+      DeviceInfoProvider deviceInfoProvider) async {
+    try {
+      final deviceInfoService = DeviceInfoService();
+      await deviceInfoService.sendDeviceInfoToFirebase(deviceInfoProvider,
+          detailed: true);
+      print('Device info sent to Firebase Analytics successfully');
+    } catch (e) {
+      print('Error sending device info to Firebase Analytics: $e');
+      // Hata durumunda crashlytics'e log at
+      await CrashlyticsService()
+          .log('Error sending device info to Firebase Analytics: $e');
     }
   }
 
@@ -397,11 +419,6 @@ class _SplashScreenState extends State<SplashScreen>
     // Sık kullanılan görselleri ve fontları cache'le
     final imagePaths = [
       'assets/images/onboarding/onboarding-1.png',
-      'assets/images/onboarding/onboarding-2-1.png',
-      'assets/images/onboarding/onboarding-2-2.png',
-      'assets/images/onboarding/onboarding-2-3.png',
-      'assets/images/onboarding/onboarding-2-4.png',
-      'assets/images/onboarding/onboarding-5.png',
       'assets/images/splash/cookrange-icon.svg',
       'assets/images/splash/cookrange-text.svg',
       // ... diğer assetler ...
@@ -851,7 +868,7 @@ class _SplashScreenState extends State<SplashScreen>
                             style: const TextStyle(color: Colors.white),
                           ),
                           Text(
-                            'Min Duration: 5 seconds',
+                            'Min Duration: 4 seconds',
                             style: const TextStyle(color: Colors.white),
                           ),
                           Text(

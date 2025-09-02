@@ -52,8 +52,6 @@ class OnboardingStep extends StatelessWidget {
             onNext: onNext,
             onBack: onBack,
             onboarding: onboarding,
-            showActivityPicker: _showActivityPicker,
-            showNumberInput: _showNumberInput,
           );
         case 4:
           return OnboardingPage5(
@@ -84,39 +82,6 @@ class OnboardingStep extends StatelessWidget {
         ),
       );
     }
-  }
-
-  void _showActivityPicker(
-      BuildContext context, OnboardingProvider onboarding) {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            title: const Text('Az (Haftada 1-2)'),
-            onTap: () {
-              onboarding.setActivityLevel('Az (Haftada 1-2)');
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            title: const Text('Orta (Haftada 3-4)'),
-            onTap: () {
-              onboarding.setActivityLevel('Orta (Haftada 3-4)');
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            title: const Text('Çok (Haftada 5+)'),
-            onTap: () {
-              onboarding.setActivityLevel('Çok (Haftada 5+)');
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
-    );
   }
 
   void _showNumberInput(

@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/providers/onboarding_provider.dart';
-import '../widgets/onboarding_common_widgets.dart';
-import '../../../../widgets/gender_picker_modal.dart';
-import '../../../../widgets/date_picker_modal.dart';
-import '../../../../widgets/number_picker_modal.dart';
-import '../../../core/services/analytics_service.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/services/analytics_service.dart';
+import '../../../widgets/onboarding_common_widgets.dart';
+import '../../../core/providers/onboarding_provider.dart';
 
 class OnboardingPage3 extends StatefulWidget {
   final int step;
@@ -29,27 +27,255 @@ class OnboardingPage3 extends StatefulWidget {
 
 class _OnboardingPage3State extends State<OnboardingPage3> {
   final _analyticsService = AnalyticsService();
-  late TextEditingController weightController;
-  late TextEditingController heightController;
-  late TextEditingController birthDateController;
-  String? selectedGender;
-  DateTime? selectedBirthDate;
+  final _searchController = TextEditingController();
   DateTime? _stepStartTime;
+
+  // Expanded ingredients list - 60 options
+  final List<OptionData> _allIngredients = [
+    // Vegetables
+    OptionData(
+        label: 'ingredients.vegetables.broccoli',
+        icon: Icons.eco,
+        value: 'broccoli'),
+    OptionData(
+        label: 'ingredients.vegetables.cauliflower',
+        icon: Icons.eco,
+        value: 'cauliflower'),
+    OptionData(
+        label: 'ingredients.vegetables.spinach',
+        icon: Icons.eco,
+        value: 'spinach'),
+    OptionData(
+        label: 'ingredients.vegetables.kale', icon: Icons.eco, value: 'kale'),
+    OptionData(
+        label: 'ingredients.vegetables.lettuce',
+        icon: Icons.eco,
+        value: 'lettuce'),
+    OptionData(
+        label: 'ingredients.vegetables.arugula',
+        icon: Icons.eco,
+        value: 'arugula'),
+    OptionData(
+        label: 'ingredients.vegetables.cabbage',
+        icon: Icons.eco,
+        value: 'cabbage'),
+    OptionData(
+        label: 'ingredients.vegetables.brussels_sprouts',
+        icon: Icons.eco,
+        value: 'brussels_sprouts'),
+    OptionData(
+        label: 'ingredients.vegetables.asparagus',
+        icon: Icons.eco,
+        value: 'asparagus'),
+    OptionData(
+        label: 'ingredients.vegetables.green_beans',
+        icon: Icons.eco,
+        value: 'green_beans'),
+
+    // Fruits
+    OptionData(
+        label: 'ingredients.fruits.apples',
+        icon: Icons.circle,
+        value: 'apples'),
+    OptionData(
+        label: 'ingredients.fruits.bananas',
+        icon: Icons.circle,
+        value: 'bananas'),
+    OptionData(
+        label: 'ingredients.fruits.oranges',
+        icon: Icons.circle,
+        value: 'oranges'),
+    OptionData(
+        label: 'ingredients.fruits.strawberries',
+        icon: Icons.circle,
+        value: 'strawberries'),
+    OptionData(
+        label: 'ingredients.fruits.blueberries',
+        icon: Icons.circle,
+        value: 'blueberries'),
+    OptionData(
+        label: 'ingredients.fruits.raspberries',
+        icon: Icons.circle,
+        value: 'raspberries'),
+    OptionData(
+        label: 'ingredients.fruits.grapes',
+        icon: Icons.circle,
+        value: 'grapes'),
+    OptionData(
+        label: 'ingredients.fruits.pineapple',
+        icon: Icons.circle,
+        value: 'pineapple'),
+    OptionData(
+        label: 'ingredients.fruits.mango', icon: Icons.circle, value: 'mango'),
+    OptionData(
+        label: 'ingredients.fruits.kiwi', icon: Icons.circle, value: 'kiwi'),
+
+    // Proteins
+    OptionData(
+        label: 'ingredients.proteins.chicken',
+        icon: Icons.fitness_center,
+        value: 'chicken'),
+    OptionData(
+        label: 'ingredients.proteins.beef',
+        icon: Icons.fitness_center,
+        value: 'beef'),
+    OptionData(
+        label: 'ingredients.proteins.pork',
+        icon: Icons.fitness_center,
+        value: 'pork'),
+    OptionData(
+        label: 'ingredients.proteins.lamb',
+        icon: Icons.fitness_center,
+        value: 'lamb'),
+    OptionData(
+        label: 'ingredients.proteins.turkey',
+        icon: Icons.fitness_center,
+        value: 'turkey'),
+    OptionData(
+        label: 'ingredients.proteins.duck',
+        icon: Icons.fitness_center,
+        value: 'duck'),
+    OptionData(
+        label: 'ingredients.proteins.fish',
+        icon: Icons.water_drop,
+        value: 'fish'),
+    OptionData(
+        label: 'ingredients.proteins.salmon',
+        icon: Icons.water_drop,
+        value: 'salmon'),
+    OptionData(
+        label: 'ingredients.proteins.tuna',
+        icon: Icons.water_drop,
+        value: 'tuna'),
+    OptionData(
+        label: 'ingredients.proteins.shrimp',
+        icon: Icons.water_drop,
+        value: 'shrimp'),
+
+    // Dairy & Eggs
+    OptionData(
+        label: 'ingredients.dairy_eggs.milk',
+        icon: Icons.water_drop,
+        value: 'milk'),
+    OptionData(
+        label: 'ingredients.dairy_eggs.cheese',
+        icon: Icons.circle,
+        value: 'cheese'),
+    OptionData(
+        label: 'ingredients.dairy_eggs.yogurt',
+        icon: Icons.circle,
+        value: 'yogurt'),
+    OptionData(
+        label: 'ingredients.dairy_eggs.butter',
+        icon: Icons.circle,
+        value: 'butter'),
+    OptionData(
+        label: 'ingredients.dairy_eggs.cream',
+        icon: Icons.circle,
+        value: 'cream'),
+    OptionData(
+        label: 'ingredients.dairy_eggs.eggs',
+        icon: Icons.circle,
+        value: 'eggs'),
+    OptionData(
+        label: 'ingredients.dairy_eggs.cottage_cheese',
+        icon: Icons.circle,
+        value: 'cottage_cheese'),
+    OptionData(
+        label: 'ingredients.dairy_eggs.sour_cream',
+        icon: Icons.circle,
+        value: 'sour_cream'),
+    OptionData(
+        label: 'ingredients.dairy_eggs.ice_cream',
+        icon: Icons.circle,
+        value: 'ice_cream'),
+    OptionData(
+        label: 'ingredients.dairy_eggs.whipped_cream',
+        icon: Icons.circle,
+        value: 'whipped_cream'),
+
+    // Grains
+    OptionData(
+        label: 'ingredients.grains.rice', icon: Icons.grain, value: 'rice'),
+    OptionData(
+        label: 'ingredients.grains.pasta', icon: Icons.grain, value: 'pasta'),
+    OptionData(
+        label: 'ingredients.grains.bread', icon: Icons.grain, value: 'bread'),
+    OptionData(
+        label: 'ingredients.grains.oats', icon: Icons.grain, value: 'oats'),
+    OptionData(
+        label: 'ingredients.grains.quinoa', icon: Icons.grain, value: 'quinoa'),
+    OptionData(
+        label: 'ingredients.grains.barley', icon: Icons.grain, value: 'barley'),
+    OptionData(
+        label: 'ingredients.grains.wheat', icon: Icons.grain, value: 'wheat'),
+    OptionData(
+        label: 'ingredients.grains.corn', icon: Icons.grain, value: 'corn'),
+    OptionData(
+        label: 'ingredients.grains.buckwheat',
+        icon: Icons.grain,
+        value: 'buckwheat'),
+    OptionData(
+        label: 'ingredients.grains.millet', icon: Icons.grain, value: 'millet'),
+
+    // Nuts & Seeds
+    OptionData(
+        label: 'ingredients.nuts_seeds.almonds',
+        icon: Icons.circle,
+        value: 'almonds'),
+    OptionData(
+        label: 'ingredients.nuts_seeds.walnuts',
+        icon: Icons.circle,
+        value: 'walnuts'),
+    OptionData(
+        label: 'ingredients.nuts_seeds.cashews',
+        icon: Icons.circle,
+        value: 'cashews'),
+    OptionData(
+        label: 'ingredients.nuts_seeds.pistachios',
+        icon: Icons.circle,
+        value: 'pistachios'),
+    OptionData(
+        label: 'ingredients.nuts_seeds.pecans',
+        icon: Icons.circle,
+        value: 'pecans'),
+    OptionData(
+        label: 'ingredients.nuts_seeds.hazelnuts',
+        icon: Icons.circle,
+        value: 'hazelnuts'),
+    OptionData(
+        label: 'ingredients.nuts_seeds.sunflower_seeds',
+        icon: Icons.circle,
+        value: 'sunflower_seeds'),
+    OptionData(
+        label: 'ingredients.nuts_seeds.pumpkin_seeds',
+        icon: Icons.circle,
+        value: 'pumpkin_seeds'),
+    OptionData(
+        label: 'ingredients.nuts_seeds.chia_seeds',
+        icon: Icons.circle,
+        value: 'chia_seeds'),
+    OptionData(
+        label: 'ingredients.nuts_seeds.flax_seeds',
+        icon: Icons.circle,
+        value: 'flax_seeds'),
+  ];
+
+  List<OptionData> _filteredIngredients = [];
+  List<String> _selectedIngredients = [];
+  List<OptionData> _customIngredients = [];
+  int _remainingCustomSlots = 3;
+  bool _showCustomAddOption = false;
+  String _currentSearchQuery = '';
+  bool _isLoadingAI = false;
 
   @override
   void initState() {
     super.initState();
     _stepStartTime = DateTime.now();
-    selectedGender = widget.onboarding.gender;
-    weightController =
-        TextEditingController(text: widget.onboarding.weight?.toString() ?? '');
-    heightController =
-        TextEditingController(text: widget.onboarding.height?.toString() ?? '');
-    birthDateController = TextEditingController(
-        text: widget.onboarding.birthDate != null
-            ? _formatDate(widget.onboarding.birthDate!)
-            : '');
-    selectedBirthDate = widget.onboarding.birthDate;
+    _filteredIngredients =
+        _allIngredients.take(10).toList(); // Show only first 10
+    _searchController.addListener(_filterIngredients);
     _logStepView();
   }
 
@@ -62,16 +288,14 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
         duration: duration,
       );
     }
-    weightController.dispose();
-    heightController.dispose();
-    birthDateController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   void _logStepView() {
     _analyticsService.logUserFlow(
       flowName: 'onboarding',
-      step: 'profile_info',
+      step: 'dietary_preferences',
       action: 'view',
       parameters: {
         'step_number': 3,
@@ -80,138 +304,208 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
     );
   }
 
-  void _logFieldUpdate(String field, dynamic value) {
+  void _logSelection(String type, String value) {
     _analyticsService.logUserInteraction(
-      interactionType: 'field_update',
-      target: field,
+      interactionType: 'selection',
+      target: '${type}_selection',
       parameters: {
         'step': 3,
-        'field': field,
-        'value': value.toString(),
+        'type': type,
+        'value': value,
         'timestamp': DateTime.now().toIso8601String(),
       },
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-  }
-
-  void _showGenderPicker(BuildContext context, OnboardingProvider onboarding) {
+  void _logCustomIngredientAdded(String ingredient) {
     _analyticsService.logUserInteraction(
-      interactionType: 'modal_open',
-      target: 'gender_picker',
+      interactionType: 'custom_ingredient',
+      target: 'add_custom_ingredient',
       parameters: {
         'step': 3,
+        'ingredient': ingredient,
+        'remaining_slots': _remainingCustomSlots,
         'timestamp': DateTime.now().toIso8601String(),
       },
     );
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => GenderPickerModal(
-        selectedGender: onboarding.gender,
-        onSelected: (gender) {
-          _logFieldUpdate('gender', gender);
-          setState(() {
-            selectedGender = gender;
-            onboarding.setGender(gender);
-          });
-        },
-      ),
-    );
   }
 
-  void _showDatePicker(BuildContext context, OnboardingProvider onboarding) {
-    _analyticsService.logUserInteraction(
-      interactionType: 'modal_open',
-      target: 'date_picker',
-      parameters: {
-        'step': 3,
-        'timestamp': DateTime.now().toIso8601String(),
-      },
-    );
-    final now = DateTime.now();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => DatePickerModal(
-        initialDate: onboarding.birthDate ?? DateTime(now.year - 20),
-        minDate: DateTime(1900, 1, 1),
-        maxDate: now,
-        onSelected: (date) {
-          _logFieldUpdate('birth_date', _formatDate(date));
-          setState(() {
-            selectedBirthDate = date;
-            birthDateController.text = _formatDate(date);
-            onboarding.setBirthDate(date);
-          });
-        },
-      ),
-    );
-  }
+  void _filterIngredients() {
+    final query = _searchController.text.toLowerCase();
+    _currentSearchQuery = query;
 
-  void _showNumberInput(
-      BuildContext context, OnboardingProvider onboarding, String field) {
-    _analyticsService.logUserInteraction(
-      interactionType: 'modal_open',
-      target: '${field}_picker',
-      parameters: {
-        'step': 3,
-        'field': field,
-        'timestamp': DateTime.now().toIso8601String(),
-      },
-    );
-    final localizations = AppLocalizations.of(context);
+    setState(() {
+      if (query.isEmpty) {
+        _filteredIngredients =
+            _allIngredients.take(10).toList(); // Show only first 10
+        _showCustomAddOption = false;
+      } else {
+        _filteredIngredients = _allIngredients
+            .where(
+                (ingredient) => ingredient.label.toLowerCase().contains(query))
+            .take(10) // Limit to 10 results
+            .toList();
 
-    int min, max, initialValue;
-    String unit, title;
-    if (field == 'weight') {
-      min = 40;
-      max = 150;
-      unit = 'kg';
-      title = localizations.translate('profile.weight.title');
-      initialValue = onboarding.weight?.toInt() ?? 70;
-    } else if (field == 'height') {
-      min = 140;
-      max = 220;
-      unit = 'cm';
-      title = localizations.translate('profile.height.title');
-      initialValue = onboarding.height?.toInt() ?? 170;
-    } else {
-      min = 40;
-      max = 150;
-      unit = 'kg';
-      title = localizations.translate('profile.targetWeight.title');
-      initialValue = onboarding.targetWeight?.toInt() ?? 60;
-    }
-    showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => NumberPickerModal(
-        title: title,
-        min: min,
-        max: max,
-        unit: unit,
-        initialValue: initialValue,
-      ),
-    ).then((value) {
-      if (value != null && value is int) {
-        _logFieldUpdate(field, value);
-        setState(() {
-          if (field == 'weight') {
-            weightController.text = value.toString();
-            onboarding.setWeight(value.toDouble());
-          }
-          if (field == 'height') {
-            heightController.text = value.toString();
-            onboarding.setHeight(value.toDouble());
-          }
-          if (field == 'targetWeight') {
-            onboarding.setTargetWeight(value.toDouble());
-          }
-        });
+        // Check if we should show custom add option
+        // Only show when no results found AND no exact match exists
+        final allIngredients = [..._allIngredients, ..._customIngredients];
+        final hasExactMatch = allIngredients.any(
+          (ingredient) => ingredient.label.toLowerCase() == query,
+        );
+
+        _showCustomAddOption = _filteredIngredients.isEmpty &&
+            !hasExactMatch &&
+            query.isNotEmpty &&
+            _remainingCustomSlots > 0;
       }
+    });
+  }
+
+  void _toggleIngredient(String ingredientValue) {
+    setState(() {
+      if (_selectedIngredients.contains(ingredientValue)) {
+        _selectedIngredients.remove(ingredientValue);
+        _logSelection('remove_ingredient', ingredientValue);
+      } else {
+        _selectedIngredients.add(ingredientValue);
+        _logSelection('add_ingredient', ingredientValue);
+      }
+    });
+  }
+
+  Future<void> _addCustomIngredient() async {
+    if (_remainingCustomSlots <= 0) return;
+
+    final query = _currentSearchQuery.trim();
+    if (query.isEmpty) return;
+
+    setState(() {
+      _isLoadingAI = true;
+    });
+
+    try {
+      // Call AI API to get ingredient data
+      final aiIngredient = await _callAIAPI(query);
+
+      if (aiIngredient != null) {
+        setState(() {
+          _customIngredients.add(aiIngredient);
+          _remainingCustomSlots--;
+          _showCustomAddOption = false;
+          _searchController.clear();
+          _currentSearchQuery = '';
+        });
+
+        // Automatically select the newly added custom ingredient
+        _toggleIngredient(aiIngredient.value);
+
+        _logCustomIngredientAdded(query);
+        _logCustomIngredientForValidation(
+            aiIngredient.label, aiIngredient.value);
+      }
+    } catch (e) {
+      // If AI API fails, fall back to manual addition
+      _addManualCustomIngredient(query);
+    } finally {
+      setState(() {
+        _isLoadingAI = false;
+      });
+    }
+  }
+
+  Future<OptionData?> _callAIAPI(String query) async {
+    try {
+      // TODO: Replace with actual AI API endpoint
+      // For now, simulate API call with delay
+      await Future.delayed(const Duration(seconds: 1));
+
+      // Simulate AI response
+      // In real implementation, this would be an HTTP request to your AI service
+      final aiResponse = {
+        'label': query,
+        'icon': 'ai-selected',
+        'value': query.toLowerCase().replaceAll(' ', '_'),
+      };
+
+      // Convert AI response to OptionData
+      return OptionData(
+        label: aiResponse['label'] as String,
+        icon: _getIconFromAIResponse(aiResponse['icon'] as String),
+        value: aiResponse['value'] as String,
+      );
+    } catch (e) {
+      print('AI API call failed: $e');
+      return null;
+    }
+  }
+
+  IconData _getIconFromAIResponse(String iconType) {
+    switch (iconType) {
+      case 'ai-selected':
+        return Icons.auto_awesome;
+      case 'vegetable':
+        return Icons.eco;
+      case 'fruit':
+        return Icons.circle;
+      case 'protein':
+        return Icons.fitness_center;
+      case 'dairy':
+        return Icons.water_drop;
+      case 'grain':
+        return Icons.grain;
+      case 'nut':
+        return Icons.circle;
+      default:
+        return Icons.auto_awesome;
+    }
+  }
+
+  void _addManualCustomIngredient(String query) {
+    // Fallback method if AI API fails
+    final value = query.toLowerCase().replaceAll(' ', '_');
+
+    final customIngredient = OptionData(
+      label: query,
+      icon: Icons.add_circle_outline,
+      value: value,
+    );
+
+    setState(() {
+      _customIngredients.add(customIngredient);
+      _remainingCustomSlots--;
+      _showCustomAddOption = false;
+      _searchController.clear();
+      _currentSearchQuery = '';
+    });
+
+    _toggleIngredient(value);
+    _logCustomIngredientAdded(query);
+    _logCustomIngredientForValidation(query, value);
+  }
+
+  void _logCustomIngredientForValidation(String label, String value) {
+    // This will be used later for AI validation
+    _analyticsService.logUserInteraction(
+      interactionType: 'custom_ingredient_validation',
+      target: 'pending_validation',
+      parameters: {
+        'step': 3,
+        'label': label,
+        'value': value,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  void _removeCustomIngredient(String ingredientValue) {
+    final customIngredient = _customIngredients.firstWhere(
+      (ingredient) => ingredient.value == ingredientValue,
+    );
+
+    setState(() {
+      _customIngredients.remove(customIngredient);
+      // Note: We don't restore the slot when removing custom ingredients
+      // This prevents abuse of the system
     });
   }
 
@@ -219,338 +513,437 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final onboarding = widget.onboarding;
     final localizations = AppLocalizations.of(context);
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Container(
-        color: colorScheme.background,
-        child: SafeArea(
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 0),
+
+    return Scaffold(
+      backgroundColor: colorScheme.backgroundColor2,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header Section
+            OnboardingHeader(
+              headerText: localizations.translate('onboarding.page3.header'),
+              currentStep: widget.step + 1,
+              totalSteps: 5,
+              previousStep: widget.previousStep,
+              onBackButtonPressed: () {
+                _analyticsService.logUserInteraction(
+                  interactionType: 'navigation',
+                  target: 'back_button',
+                  parameters: {
+                    'step': 3,
+                    'timestamp': DateTime.now().toIso8601String(),
+                  },
+                );
+                // Sayfa 3'ten sayfa 2'ye git
+                if (widget.onBack != null) {
+                  widget.onBack!();
+                }
+              },
+            ),
+
+            // Main Content Section
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 32),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Row(
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  _analyticsService.logUserInteraction(
-                                    interactionType: 'navigation',
-                                    target: 'back_button',
-                                    parameters: {
-                                      'step': 3,
-                                      'timestamp':
-                                          DateTime.now().toIso8601String(),
-                                    },
-                                  );
-                                  widget.onBack?.call();
-                                },
-                                child: Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: colorScheme.onboardingTitleColor
-                                          .withOpacity(0.1),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    Icons.arrow_back,
-                                    color: colorScheme.onboardingTitleColor,
-                                    size: 24,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Center(
-                                  child: Text(
-                                    '3/5',
-                                    style: TextStyle(
-                                      color: colorScheme.onboardingTitleColor,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w500,
-                                      letterSpacing: 1.2,
-                                      fontFamily: 'Poppins',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 48),
-                            ],
+                    const SizedBox(height: 16),
+
+                    // Main Title
+                    Text(
+                      localizations.translate('onboarding.page3.main_title'),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: colorScheme.onboardingTitleColor,
+                        fontFamily: 'Lexend',
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      localizations.translate('onboarding.page3.subtitle'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: colorScheme.onboardingSubtitleColor,
+                        fontFamily: 'Lexend',
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Search Input
+                    Container(
+                      decoration: BoxDecoration(
+                        color: colorScheme.onboardingOptionBgColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              colorScheme.onboardingTitleColor.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        enableInteractiveSelection: false, // Disable paste
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'[a-zA-Z\s]')), // Only letters and spaces
+                        ],
+                        decoration: InputDecoration(
+                          hintText: localizations
+                              .translate('onboarding.page3.search_hint'),
+                          hintStyle: TextStyle(
+                            color: colorScheme.onboardingSubtitleColor,
+                            fontSize: 14,
+                            fontFamily: 'Lexend',
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: colorScheme.onboardingSubtitleColor,
+                            size: 20,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              RichText(
-                                textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontFamily: 'Lexend',
+                          color: colorScheme.onboardingTitleColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Custom Add Option
+                    if (_showCustomAddOption) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: RichText(
                                 text: TextSpan(
                                   children: [
                                     TextSpan(
                                       text: localizations.translate(
-                                          'onboarding.page3.title.text1'),
+                                          'onboarding.page3.custom_not_found'),
                                       style: TextStyle(
-                                        color: colorScheme
-                                            .onboardingNextButtonBorderColor,
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.w800,
-                                        fontFamily: 'Poppins',
+                                        fontSize: 14,
+                                        color: colorScheme.onboardingTitleColor,
+                                        fontFamily: 'Lexend',
                                       ),
                                     ),
                                     TextSpan(
                                       text: localizations.translate(
-                                          'onboarding.page3.title.text2'),
+                                          'onboarding.page3.custom_add_hint'),
                                       style: TextStyle(
-                                        color: colorScheme
-                                            .onboardingOptionTextColor,
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.w800,
-                                        fontFamily: 'Poppins',
+                                        fontSize: 14,
+                                        color: colorScheme.onboardingTitleColor,
+                                        fontFamily: 'Lexend',
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 32),
-                                child: Text(
-                                  localizations.translate(
-                                      'onboarding.page3.description'),
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: colorScheme.onboardingSubtitleColor,
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w500,
-                                    fontFamily: 'Poppins',
-                                  ),
+                            ),
+                            const SizedBox(width: 16),
+                            ElevatedButton(
+                              onPressed:
+                                  _isLoadingAI ? null : _addCustomIngredient,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: colorScheme.primaryColorCustom,
+                                foregroundColor:
+                                    colorScheme.onboardingOptionBgColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Column(
-                            children: [
-                              // Cinsiyet Modal
-                              GestureDetector(
-                                onTap: () =>
-                                    _showGenderPicker(context, onboarding),
-                                child: OnboardingCardInput(
-                                  icon: Icons.person,
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          selectedGender ??
-                                              localizations.translate(
-                                                  'profile.gender.title'),
-                                          style: TextStyle(
-                                            color: colorScheme
-                                                .onboardingOptionTextColor,
-                                            fontSize: 17,
-                                            fontFamily: 'Poppins',
-                                          ),
+                              child: _isLoadingAI
+                                  ? SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          colorScheme.onboardingOptionBgColor,
                                         ),
                                       ),
-                                      Icon(Icons.keyboard_arrow_down,
-                                          color: colorScheme
-                                              .onboardingOptionTextColor),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              // Doğum Tarihi
-                              GestureDetector(
-                                onTap: () =>
-                                    _showDatePicker(context, onboarding),
-                                child: OnboardingCardInput(
-                                  icon: Icons.calendar_today,
-                                  child: Text(
-                                    birthDateController.text.isNotEmpty
-                                        ? birthDateController.text
-                                        : localizations.translate(
-                                            'profile.birthday.title'),
-                                    style: TextStyle(
-                                      color:
-                                          colorScheme.onboardingOptionTextColor,
-                                      fontSize: 17,
-                                      fontFamily: 'Poppins',
+                                    )
+                                  : Text(
+                                      localizations.translate(
+                                          'onboarding.page3.custom_add'),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        fontFamily: 'Lexend',
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              // Kilo
-                              GestureDetector(
-                                onTap: () => _showNumberInput(
-                                    context, onboarding, 'weight'),
-                                child: OnboardingCardInput(
-                                  icon: Icons.monitor_weight,
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          weightController.text.isNotEmpty
-                                              ? weightController.text
-                                              : localizations.translate(
-                                                  'profile.weight.title'),
-                                          style: TextStyle(
-                                            color: colorScheme
-                                                .onboardingOptionTextColor,
-                                            fontSize: 17,
-                                            fontFamily: 'Poppins',
-                                          ),
-                                        ),
-                                      ),
-                                      Text(
-                                          localizations
-                                              .translate('profile.weight.unit'),
-                                          style: TextStyle(
-                                              color: colorScheme
-                                                  .onboardingOptionTextColor,
-                                              fontSize: 17,
-                                              fontFamily: 'Poppins')),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              // Boy
-                              GestureDetector(
-                                onTap: () => _showNumberInput(
-                                    context, onboarding, 'height'),
-                                child: OnboardingCardInput(
-                                  icon: Icons.height,
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          heightController.text.isNotEmpty
-                                              ? heightController.text
-                                              : localizations.translate(
-                                                  'profile.height.title'),
-                                          style: TextStyle(
-                                            color: colorScheme
-                                                .onboardingOptionTextColor,
-                                            fontSize: 17,
-                                            fontFamily: 'Poppins',
-                                          ),
-                                        ),
-                                      ),
-                                      Text(
-                                          localizations
-                                              .translate('profile.height.unit'),
-                                          style: TextStyle(
-                                              color: colorScheme
-                                                  .onboardingOptionTextColor,
-                                              fontSize: 17,
-                                              fontFamily: 'Poppins')),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Remaining Custom Slots Info
+                    if (_remainingCustomSlots < 3) ...[
+                      Text(
+                        '${localizations.translate('onboarding.page3.custom_slots_remaining')}$_remainingCustomSlots',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onboardingSubtitleColor,
+                          fontFamily: 'Lexend',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Selected Ingredients Section
+                    if (_selectedIngredients.isNotEmpty) ...[
+                      Text(
+                        localizations
+                            .translate('onboarding.page3.selected_title'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onboardingTitleColor,
+                          fontFamily: 'Lexend',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: _selectedIngredients.map((ingredientValue) {
+                          final allIngredients = [
+                            ..._allIngredients,
+                            ..._customIngredients
+                          ];
+                          final ingredient = allIngredients.firstWhere(
+                            (ingredient) => ingredient.value == ingredientValue,
+                          );
+                          return _buildSelectedIngredient(ingredient);
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+
+                    // Available Ingredients Section - Only show when there are results
+                    if (_filteredIngredients.isNotEmpty ||
+                        _customIngredients.any((ingredient) =>
+                            !_selectedIngredients
+                                .contains(ingredient.value))) ...[
+                      Text(
+                        localizations
+                            .translate('onboarding.page3.available_title'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onboardingTitleColor,
+                          fontFamily: 'Lexend',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          ..._filteredIngredients
+                              .where((ingredient) => !_selectedIngredients
+                                  .contains(ingredient.value))
+                              .map((ingredient) =>
+                                  _buildAvailableIngredient(ingredient)),
+                          ..._customIngredients
+                              .where((ingredient) => !_selectedIngredients
+                                  .contains(ingredient.value))
+                              .map((ingredient) =>
+                                  _buildCustomAvailableIngredient(ingredient)),
+                        ],
+                      ),
+                    ],
+
+                    const SizedBox(height: 100), // Space for fixed button
                   ],
                 ),
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 24,
-                child: IgnorePointer(
-                  ignoring: !_isFormValid(),
-                  child: Opacity(
-                    opacity: _isFormValid() ? 1.0 : 0.5,
-                    child: OnboardingNextButton(
-                      step: widget.step,
-                      previousStep: widget.previousStep,
-                      onNext: () {
-                        _analyticsService.logUserInteraction(
-                          interactionType: 'button_click',
-                          target: 'next_button',
-                          parameters: {
-                            'step': 3,
-                            'gender': onboarding.gender ?? '',
-                            'birth_date': (onboarding.birthDate != null
-                                ? onboarding.birthDate!.toIso8601String()
-                                : ''),
-                            'weight': onboarding.weight ?? 0,
-                            'height': onboarding.height ?? 0,
-                            'timestamp': DateTime.now().toIso8601String(),
-                          },
-                        );
-                        widget.onNext?.call();
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+
+            // Fixed Continue Button
+            OnboardingContinueButton(
+              onPressed: () {
+                _analyticsService.logUserInteraction(
+                  interactionType: 'button_click',
+                  target: 'continue_button',
+                  parameters: {
+                    'step': 3,
+                    'selected_ingredients': _selectedIngredients.join(','),
+                    'custom_ingredients': _customIngredients
+                        .map((ingredient) => ingredient.value)
+                        .join(','),
+                    'timestamp': DateTime.now().toIso8601String(),
+                  },
+                );
+
+                // Save both regular and custom ingredients
+                final allSelectedIngredients = [..._selectedIngredients];
+                widget.onboarding.setDietaryPreferences(allSelectedIngredients);
+
+                // Save custom ingredients for future AI validation
+                widget.onboarding.setCustomDietaryPreferences(
+                  _customIngredients
+                      .map((ingredient) => ingredient.value)
+                      .toList(),
+                );
+
+                widget.onNext?.call();
+              },
+              text: localizations.translate('onboarding.page3.continue'),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  bool _isFormValid() {
-    return widget.onboarding.gender != null &&
-        widget.onboarding.birthDate != null &&
-        widget.onboarding.weight != null &&
-        widget.onboarding.height != null;
-  }
-}
-
-class _OnboardingCardInput extends StatelessWidget {
-  final IconData icon;
-  final Widget child;
-  const _OnboardingCardInput({required this.icon, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildSelectedIngredient(OptionData ingredient) {
     final colorScheme = Theme.of(context).colorScheme;
+    final localizations = AppLocalizations.of(context);
+    final isCustom = _customIngredients.contains(ingredient);
+
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 0),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: colorScheme.onboardingOptionBgColor,
-        borderRadius: BorderRadius.circular(20),
+        color: colorScheme.primaryColorCustom,
+        borderRadius: BorderRadius.circular(99),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: colorScheme.onboardingOptionTextColor, size: 24),
-          const SizedBox(width: 16),
-          Expanded(child: child),
+          Icon(
+            ingredient.icon,
+            size: 18,
+            color: colorScheme.onboardingOptionBgColor,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            localizations.translate(ingredient.label),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: colorScheme.onboardingOptionBgColor,
+              fontFamily: 'Lexend',
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => _toggleIngredient(ingredient.value),
+            child: Icon(
+              Icons.close,
+              size: 16,
+              color: colorScheme.onboardingOptionBgColor,
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAvailableIngredient(OptionData ingredient) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final localizations = AppLocalizations.of(context);
+
+    return GestureDetector(
+      onTap: () => _toggleIngredient(ingredient.value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: colorScheme.onboardingOptionBgColor,
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(
+            color: colorScheme.onboardingTitleColor.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              ingredient.icon,
+              size: 20,
+              color: colorScheme.onboardingTitleColor,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              localizations.translate(ingredient.label),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onboardingTitleColor,
+                fontFamily: 'Lexend',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomAvailableIngredient(OptionData ingredient) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final localizations = AppLocalizations.of(context);
+
+    return GestureDetector(
+      onTap: () => _toggleIngredient(ingredient.value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: colorScheme.onboardingOptionBgColor,
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(
+            color: colorScheme.primaryColorCustom.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              ingredient.icon,
+              size: 20,
+              color: colorScheme.primaryColorCustom,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              localizations.translate(ingredient.label),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.primaryColorCustom,
+                fontFamily: 'Lexend',
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => _removeCustomIngredient(ingredient.value),
+              child: Icon(
+                Icons.remove_circle_outline,
+                size: 16,
+                color: colorScheme.primaryColorCustom.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

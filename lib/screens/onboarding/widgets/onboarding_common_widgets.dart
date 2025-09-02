@@ -84,36 +84,17 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
   Future<void> _handleTap() async {
     if (!_isButtonEnabled) return;
 
-    setState(() {
-      _isButtonEnabled = false;
-    });
+    // Call onNext immediately without disabling the button
+    if (widget.onNext != null) {
+      widget.onNext!();
+    }
 
+    // Run animations in background without blocking the button
     try {
       await _tapController.forward();
       await _tapController.reverse();
-
-      if (widget.onNext != null) {
-        widget.onNext!();
-      }
-
-      // Animasyonun tamamlanmasını bekle
-      await _progressController.forward();
-
-      // Kısa bir gecikme ekle
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      if (mounted) {
-        setState(() {
-          _isButtonEnabled = true;
-        });
-      }
     } catch (e) {
-      // Hata durumunda butonu tekrar aktif et
-      if (mounted) {
-        setState(() {
-          _isButtonEnabled = true;
-        });
-      }
+      // Ignore animation errors
     }
   }
 
@@ -324,6 +305,120 @@ class OnboardingSkipButton extends StatelessWidget {
           fontWeight: FontWeight.w500,
           fontFamily: 'Poppins',
         ),
+      ),
+    );
+  }
+}
+
+class OnboardingHeader extends StatelessWidget {
+  final String headerText;
+  final int currentStep;
+  final int totalSteps;
+  final int previousStep;
+  final VoidCallback? onBackPressed;
+  final bool showBackButton;
+  final EdgeInsetsGeometry? padding;
+  final bool showProgress;
+
+  const OnboardingHeader({
+    Key? key,
+    required this.headerText,
+    required this.currentStep,
+    required this.totalSteps,
+    required this.previousStep,
+    this.onBackPressed,
+    this.showBackButton = true,
+    this.padding,
+    this.showProgress = true,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 6, vertical: 16),
+      child: Column(
+        children: [
+          // Top row with back button and title
+          Row(
+            children: [
+              if (showBackButton && onBackPressed != null)
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(24),
+                    onTap: onBackPressed,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      child: Icon(
+                        Icons.arrow_back,
+                        color: colorScheme.onboardingTitleColor,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                )
+              else if (showBackButton)
+                const SizedBox(width: 48)
+              else
+                const SizedBox.shrink(),
+
+              Expanded(
+                child: Center(
+                  child: Text(
+                    headerText,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onboardingTitleColor,
+                      fontFamily: 'Lexend',
+                    ),
+                  ),
+                ),
+              ),
+
+              // Balance the layout
+              if (showBackButton)
+                const SizedBox(width: 48)
+              else
+                const SizedBox.shrink(),
+            ],
+          ),
+          if (showProgress) ...[
+            const SizedBox(height: 16),
+            // Progress section - simplified for now
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(totalSteps, (index) {
+                  final isActive = index < currentStep;
+                  final isCurrent = index == currentStep - 1;
+
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isActive
+                          ? colorScheme.primaryColorCustom
+                          : colorScheme.onboardingTitleColor.withOpacity(0.3),
+                      border: isCurrent
+                          ? Border.all(
+                              color: colorScheme.primaryColorCustom, width: 2)
+                          : null,
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

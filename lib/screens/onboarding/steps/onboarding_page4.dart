@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../constants.dart';
 import '../../../core/theme/app_theme.dart';
-import 'package:provider/provider.dart';
-import '../../../core/providers/onboarding_provider.dart';
-import '../widgets/onboarding_common_widgets.dart';
-import '../../../core/services/analytics_service.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/services/analytics_service.dart';
+import '../../../widgets/onboarding_common_widgets.dart';
+import '../../../core/providers/onboarding_provider.dart';
 
 class OnboardingPage4 extends StatefulWidget {
   final int step;
@@ -13,9 +11,6 @@ class OnboardingPage4 extends StatefulWidget {
   final void Function()? onNext;
   final void Function()? onBack;
   final OnboardingProvider onboarding;
-  final void Function(BuildContext, OnboardingProvider) showActivityPicker;
-  final void Function(BuildContext, OnboardingProvider, String) showNumberInput;
-
   const OnboardingPage4({
     Key? key,
     required this.step,
@@ -23,8 +18,6 @@ class OnboardingPage4 extends StatefulWidget {
     this.onNext,
     this.onBack,
     required this.onboarding,
-    required this.showActivityPicker,
-    required this.showNumberInput,
   }) : super(key: key);
 
   @override
@@ -34,30 +27,12 @@ class OnboardingPage4 extends StatefulWidget {
 class _OnboardingPage4State extends State<OnboardingPage4> {
   final _analyticsService = AnalyticsService();
   DateTime? _stepStartTime;
-  VoidCallback? _activityListener;
-  VoidCallback? _targetWeightListener;
 
   @override
   void initState() {
     super.initState();
     _stepStartTime = DateTime.now();
     _logStepView();
-    _setupListeners();
-  }
-
-  void _setupListeners() {
-    _activityListener = () {
-      if (widget.onboarding.activityLevel != null) {
-        _logFieldUpdate('activity_level', widget.onboarding.activityLevel);
-      }
-    };
-    _targetWeightListener = () {
-      if (widget.onboarding.targetWeight != null) {
-        _logFieldUpdate('target_weight', widget.onboarding.targetWeight);
-      }
-    };
-    widget.onboarding.addListener(_activityListener!);
-    widget.onboarding.addListener(_targetWeightListener!);
   }
 
   @override
@@ -69,19 +44,13 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
         duration: duration,
       );
     }
-    if (_activityListener != null) {
-      widget.onboarding.removeListener(_activityListener!);
-    }
-    if (_targetWeightListener != null) {
-      widget.onboarding.removeListener(_targetWeightListener!);
-    }
     super.dispose();
   }
 
   void _logStepView() {
     _analyticsService.logUserFlow(
       flowName: 'onboarding',
-      step: 'activity_and_target',
+      step: 'time_preferences',
       action: 'view',
       parameters: {
         'step_number': 4,
@@ -90,14 +59,27 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
     );
   }
 
-  void _logFieldUpdate(String field, dynamic value) {
+  void _logSelection(String type, String value) {
     _analyticsService.logUserInteraction(
-      interactionType: 'field_update',
-      target: field,
+      interactionType: 'selection',
+      target: '${type}_selection',
       parameters: {
         'step': 4,
-        'field': field,
-        'value': value.toString(),
+        'type': type,
+        'value': value,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  void _logEquipmentToggle(String equipment, bool isSelected) {
+    _analyticsService.logUserInteraction(
+      interactionType: 'equipment_toggle',
+      target: 'kitchen_equipment',
+      parameters: {
+        'step': 4,
+        'equipment': equipment,
+        'is_selected': isSelected,
         'timestamp': DateTime.now().toIso8601String(),
       },
     );
@@ -105,207 +87,286 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final localizations = AppLocalizations.of(context);
-    return Stack(
-      children: [
-        Container(color: colorScheme.background),
-        SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 32),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          _analyticsService.logUserInteraction(
-                            interactionType: 'navigation',
-                            target: 'back_button',
-                            parameters: {
-                              'step': 4,
-                              'timestamp': DateTime.now().toIso8601String(),
-                            },
-                          );
-                          widget.onBack?.call();
-                        },
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: colorScheme.onboardingTitleColor
-                                  .withOpacity(0.1),
-                              width: 1,
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.arrow_back,
-                            color: colorScheme.onboardingTitleColor,
-                            size: 24,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Center(
-                          child: Text(
-                            '4/5',
-                            style: TextStyle(
-                              color: colorScheme.onboardingTitleColor,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 1.2,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 48),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      RichText(
-                        textAlign: TextAlign.center,
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: localizations
-                                  .translate('onboarding.page4.title.text1'),
-                              style: TextStyle(
-                                color:
-                                    colorScheme.onboardingNextButtonBorderColor,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                            TextSpan(
-                              text: localizations
-                                  .translate('onboarding.page4.title.text2'),
-                              style: TextStyle(
-                                color: colorScheme.onboardingOptionTextColor,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Text(
-                          localizations
-                              .translate('onboarding.page4.description'),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: colorScheme.onboardingSubtitleColor,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w500,
-                            fontFamily: 'Poppins',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      ProfileInput(
-                        label:
-                            localizations.translate('profile.activity_level'),
-                        value: widget.onboarding.activityLevel ??
-                            localizations.translate('common.select'),
-                        onTap: () {
-                          _analyticsService.logUserInteraction(
-                            interactionType: 'modal_open',
-                            target: 'activity_picker',
-                            parameters: {
-                              'step': 4,
-                              'timestamp': DateTime.now().toIso8601String(),
-                            },
-                          );
-                          widget.showActivityPicker(context, widget.onboarding);
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      ProfileInput(
-                        label: localizations.translate('profile.weight.title'),
-                        value: widget.onboarding.targetWeight?.toString() ??
-                            localizations.translate('profile.weight.unit'),
-                        onTap: () {
-                          _analyticsService.logUserInteraction(
-                            interactionType: 'modal_open',
-                            target: 'target_weight_picker',
-                            parameters: {
-                              'step': 4,
-                              'timestamp': DateTime.now().toIso8601String(),
-                            },
-                          );
-                          widget.showNumberInput(
-                            context,
-                            widget.onboarding,
-                            'targetWeight',
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+
+    return Scaffold(
+      backgroundColor: colorScheme.backgroundColor2,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header Section
+            OnboardingHeader(
+              headerText: localizations.translate('onboarding.page4.header'),
+              currentStep: widget.step + 1,
+              totalSteps: 5,
+              previousStep: widget.previousStep,
+              onBackButtonPressed: () {
+                _analyticsService.logUserInteraction(
+                  interactionType: 'navigation',
+                  target: 'back_button',
+                  parameters: {
+                    'step': 4,
+                    'timestamp': DateTime.now().toIso8601String(),
+                  },
+                );
+                if (widget.onBack != null) {
+                  widget.onBack!();
+                }
+              },
             ),
+
+            // Main Content Section
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 16),
+
+                      // Cooking Level Section
+                      OnboardingSection(
+                        title: localizations
+                            .translate('onboarding.page4.cooking_level.title'),
+                        subtitle: localizations.translate(
+                            'onboarding.page4.cooking_level.subtitle'),
+                        options: [
+                          OptionData(
+                            label: localizations.translate(
+                                'onboarding.page4.cooking_level.beginner'),
+                            icon: Icons
+                                .school, // Başlangıç seviyesi için okul ikonu
+                            value: 'beginner',
+                          ),
+                          OptionData(
+                            label: localizations.translate(
+                                'onboarding.page4.cooking_level.intermediate'),
+                            icon: Icons
+                                .restaurant, // Orta seviye için restoran ikonu
+                            value: 'intermediate',
+                          ),
+                          OptionData(
+                            label: localizations.translate(
+                                'onboarding.page4.cooking_level.advanced'),
+                            icon: Icons.star, // İleri seviye için yıldız ikonu
+                            value: 'advanced',
+                          ),
+                        ],
+                        selectedValue: widget.onboarding.cookingLevel,
+                        onSelectionChanged: (value) {
+                          _logSelection('cooking_level', value);
+                          widget.onboarding.setCookingLevel(value);
+                        },
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Kitchen Equipment Section
+                      _buildKitchenEquipmentSection(localizations, colorScheme),
+
+                      const SizedBox(height: 100), // Space for fixed button
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Fixed Continue Button
+            OnboardingContinueButton(
+              onPressed: widget.onboarding.cookingLevel != null &&
+                      widget.onboarding.kitchenEquipment.isNotEmpty
+                  ? () {
+                      // Debug logging
+                      print('Continue button pressed');
+                      print('cookingLevel: ${widget.onboarding.cookingLevel}');
+                      print(
+                          'kitchenEquipment: ${widget.onboarding.kitchenEquipment}');
+                      print(
+                          'kitchenEquipment.isNotEmpty: ${widget.onboarding.kitchenEquipment.isNotEmpty}');
+
+                      _analyticsService.logUserInteraction(
+                        interactionType: 'button_click',
+                        target: 'continue_button',
+                        parameters: {
+                          'step': 4,
+                          'cooking_level': widget.onboarding.cookingLevel ?? '',
+                          'kitchen_equipment':
+                              widget.onboarding.kitchenEquipment.join(','),
+                          'kitchen_equipment_count':
+                              widget.onboarding.kitchenEquipment.length,
+                          'timestamp': DateTime.now().toIso8601String(),
+                        },
+                      );
+                      print('Calling onNext()');
+                      widget.onNext?.call();
+                    }
+                  : null,
+              text: localizations.translate('onboarding.page4.continue'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKitchenEquipmentSection(
+      AppLocalizations localizations, ColorScheme colorScheme) {
+    final equipmentList = [
+      // Basic Equipment
+      {
+        'key': 'stove',
+        'label':
+            localizations.translate('onboarding.page4.kitchen_equipment.stove')
+      },
+      {
+        'key': 'oven',
+        'label':
+            localizations.translate('onboarding.page4.kitchen_equipment.oven')
+      },
+      {
+        'key': 'microwave',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.microwave')
+      },
+      {
+        'key': 'pressure_cooker',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.pressure_cooker')
+      },
+      {
+        'key': 'electric_kettle',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.electric_kettle')
+      },
+      {
+        'key': 'coffee_maker',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.coffee_maker')
+      },
+      {
+        'key': 'grinder',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.grinder')
+      },
+      {
+        'key': 'toaster',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.toaster')
+      },
+      {
+        'key': 'blender',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.blender')
+      },
+      {
+        'key': 'hand_mixer',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.hand_mixer')
+      },
+      {
+        'key': 'stand_mixer',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.stand_mixer')
+      },
+      {
+        'key': 'air_fryer',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.air_fryer')
+      },
+      {
+        'key': 'electric_grill',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.electric_grill')
+      },
+      {
+        'key': 'samovar',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.samovar')
+      },
+      {
+        'key': 'turkish_coffee_pot',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.turkish_coffee_pot')
+      },
+      {
+        'key': 'tea_pot',
+        'label': localizations
+            .translate('onboarding.page4.kitchen_equipment.tea_pot')
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          localizations.translate('onboarding.page4.kitchen_equipment.title'),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onboardingTitleColor,
+            fontFamily: 'Lexend',
           ),
         ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 24,
-          child: IgnorePointer(
-            ignoring: widget.onboarding.activityLevel == null ||
-                widget.onboarding.targetWeight == null,
-            child: Opacity(
-              opacity: (widget.onboarding.activityLevel == null ||
-                      widget.onboarding.targetWeight == null)
-                  ? 0.5
-                  : 1.0,
-              child: OnboardingNextButton(
-                step: widget.step,
-                previousStep: widget.previousStep,
-                onNext: () {
-                  _analyticsService.logUserInteraction(
-                    interactionType: 'button_click',
-                    target: 'next_button',
-                    parameters: {
-                      'step': 4,
-                      'activity_level': widget.onboarding.activityLevel ?? '',
-                      'target_weight': widget.onboarding.targetWeight ?? 0,
-                      'timestamp': DateTime.now().toIso8601String(),
-                    },
-                  );
-                  widget.onNext?.call();
-                },
+        const SizedBox(height: 16),
+        ...equipmentList.map((equipment) => _buildEquipmentItem(
+              equipment['key']!,
+              equipment['label']!,
+              colorScheme,
+            )),
+      ],
+    );
+  }
+
+  Widget _buildEquipmentItem(
+      String key, String label, ColorScheme colorScheme) {
+    final isSelected = widget.onboarding.kitchenEquipment.contains(key);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onboardingTitleColor,
+                fontFamily: 'Lexend',
               ),
             ),
           ),
-        ),
-      ],
+          GestureDetector(
+            onTap: () {
+              _logEquipmentToggle(key, !isSelected);
+              widget.onboarding.toggleKitchenEquipment(key);
+            },
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color:
+                    isSelected ? colorScheme.primaryColorCustom : Colors.white,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: colorScheme.primaryColorCustom,
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                  ? Icon(
+                      Icons.check,
+                      size: 16,
+                      color: Colors.white,
+                    )
+                  : null,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

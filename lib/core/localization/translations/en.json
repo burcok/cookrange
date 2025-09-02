@@ -77,26 +77,99 @@
     ]
   },
   "onboarding": {
+    "step": "Step",
     "page1": {
+      "header": "Welcome",
       "title": "Know What You Eat",
-      "description": "Your personal cooking companion that helps you create delicious meals and manage your kitchen efficiently.",
-      "already_have_account": "I Already Have an Account"
+      "description": "Create or edit your entire meal plan in seconds with AI-powered {x}!",
+      "already_have_account": "Already have an account?",
+      "get_started": "Get Started"
     },
     "page2": {
-      "title": {"text1": "What Is", "text2": " Your Goal?"},
-      "description": "We'll use this information to provide you with better service."
+      "header": "What excites you?",
+      "activity_level": {
+        "title": "Activity Level",
+        "subtitle": "How active are you during the day?",
+        "sedentary": "Mostly Sitting",
+        "light": "Some Movement",
+        "moderate": "Regular Exercise",
+        "active": "Very Active!"
+      },
+      "primary_goal": {
+        "title": "Goals That Excite You",
+        "subtitle": "Select the goals that excite you most (max 3)",
+        "selected_count": "{count}/3 selected",
+        "lose_weight": "Lose Weight",
+        "gain_weight": "Gain Weight",
+        "maintain_weight": "Maintain Weight",
+        "feel_energetic": "More Energy",
+        "healthy_eating": "Eat Healthy",
+        "save_time": "Save Time",
+        "improve_sleep": "Better Sleep",
+        "increase_muscle": "Build Muscle",
+        "body_shaping": "Body Shape",
+        "stress_management": "Stress Management",
+        "digestive_health": "Digestive Health",
+        "immune_boost": "Boost Immunity",
+        "mental_clarity": "Mental Clarity",
+        "sustainable_lifestyle": "Sustainable Lifestyle"
+      },
+      "continue": "Continue"
     },
     "page3": {
-      "title": {"text1": "Let's Complete", "text2": " Your Profile"},
-      "description": "We'll use this information to provide you with better service."
+      "header": "Dietary Preferences",
+      "main_title": "Items you don't want in your meal plan",
+      "subtitle": "Dislikes, Allergens, Diets,...",
+      "search_hint": "Search ingredients...",
+      "selected_title": "Selected Items",
+      "available_title": "Available Ingredients",
+      "continue": "Continue",
+      "custom_not_found": "This ingredient is not in our database. ",
+      "custom_add_hint": "Click to add it to your preferences",
+      "custom_add": "Add",
+      "custom_slots_remaining": "Custom ingredients remaining: "
     },
     "page4": {
-      "title": {"text1": "Let's Complete", "text2": " Your Profile"},
-      "description": "We'll use this information to provide you with better service."
+      "header": "Time Preferences",
+      "cooking_level": {
+        "title": "Your Cooking Level",
+        "subtitle": "How do you feel in the kitchen?",
+        "beginner": "Just Starting Out",
+        "intermediate": "Not Too Bad",
+        "advanced": "Like a Chef"
+      },
+      "kitchen_equipment": {
+        "title": "Kitchen Equipments",
+        "stove": "Stove",
+        "oven": "Oven",
+        "microwave": "Microwave",
+        "pressure_cooker": "Pressure Cooker",
+        "electric_kettle": "Electric Kettle",
+        "coffee_maker": "Coffee Maker",
+        "grinder": "Grinder",
+        "toaster": "Toaster",
+        "blender": "Blender",
+        "hand_mixer": "Hand Mixer",
+        "stand_mixer": "Stand Mixer",
+        "air_fryer": "Air Fryer",
+        
+        "electric_grill": "Electric Grill",
+        "samovar": "Samovar",
+        "turkish_coffee_pot": "Turkish Coffee Pot",
+        "tea_pot": "Tea Pot"
+      },
+      "continue": "Continue"
     },
     "page5": {
+      "header": "Target Weight",
       "title": {"text1": "Almost", "text2": " Done!"},
-      "description": "Finally, let us know your special requests for your personalized meal program! For example, \"I'm allergic to milk so I don't want dairy products\" or \"I want a chicken-heavy program\"."
+      "description": "Finally, let us know your special requests for your personalized meal program! For example, \"I'm allergic to milk so I don't want dairy products\" or \"I want a chicken-heavy program\".",
+      "target_weight": {
+        "title": "What's your target weight?",
+        "description": "Set your target weight to help us create a personalized meal plan for you.",
+        "placeholder": "Select target weight"
+      },
+      "continue": "Continue"
     },
     "get_started": "Get Started",
     "skip": "Skip",
@@ -116,8 +189,14 @@
       "enter_height": "Please enter your height",
       "complete_profile": "Please complete all profile information",
       "select_activity": "Please select your activity level",
+      "select_goals": "Please select your goals",
+      "select_activity_and_goals": "Please select your activity level and goals",
+      "select_cooking_level": "Please select your cooking level",
+      "select_kitchen_equipment": "Please select at least one kitchen equipment",
       "enter_target_weight": "Please enter your target weight",
       "complete_activity": "Please select your activity level and target weight",
+      "complete_cooking_preferences": "Please select your cooking level and at least one kitchen equipment",
+      "complete_target_weight": "Please enter your target weight",
       "fill_required": "Please fill in all required fields"
     }
   },
@@ -204,7 +283,8 @@
     },
     "targetWeight": {
       "title": "Select Your Target Weight",
-      "unit": "kg"
+      "unit": "kg",
+      "placeholder": "Select target weight"
     },
     "activity_level": "Activity Level",
     "goals": "Goals",
@@ -272,5 +352,80 @@
     "invalid_password": "Invalid password",
     "required_field": "This field is required",
     "weak_password": "Password is too weak"
+  },
+
+  "ingredients": {
+    "vegetables": {
+      "broccoli": "Broccoli",
+      "cauliflower": "Cauliflower",
+      "spinach": "Spinach",
+      "kale": "Kale",
+      "lettuce": "Lettuce",
+      "arugula": "Arugula",
+      "cabbage": "Cabbage",
+      "brussels_sprouts": "Brussels Sprouts",
+      "asparagus": "Asparagus",
+      "green_beans": "Green Beans"
+    },
+    "fruits": {
+      "apples": "Apples",
+      "bananas": "Bananas",
+      "oranges": "Oranges",
+      "strawberries": "Strawberries",
+      "blueberries": "Blueberries",
+      "raspberries": "Raspberries",
+      "grapes": "Grapes",
+      "pineapple": "Pineapple",
+      "mango": "Mango",
+      "kiwi": "Kiwi"
+    },
+    "proteins": {
+      "chicken": "Chicken",
+      "beef": "Beef",
+      "pork": "Pork",
+      "lamb": "Lamb",
+      "turkey": "Turkey",
+      "duck": "Duck",
+      "fish": "Fish",
+      "salmon": "Salmon",
+      "tuna": "Tuna",
+      "shrimp": "Shrimp"
+    },
+    "dairy_eggs": {
+      "milk": "Milk",
+      "cheese": "Cheese",
+      "yogurt": "Yogurt",
+      "butter": "Butter",
+      "cream": "Cream",
+      "eggs": "Eggs",
+      "cottage_cheese": "Cottage Cheese",
+      "sour_cream": "Sour Cream",
+      "ice_cream": "Ice Cream",
+      "whipped_cream": "Whipped Cream"
+    },
+    "grains": {
+      "rice": "Rice",
+      "pasta": "Pasta",
+      "bread": "Bread",
+      "oats": "Oats",
+      "quinoa": "Quinoa",
+      "barley": "Barley",
+      "wheat": "Wheat",
+      "corn": "Corn",
+      "buckwheat": "Buckwheat",
+      "millet": "Millet"
+    },
+    "nuts_seeds": {
+      "almonds": "Almonds",
+      "walnuts": "Walnuts",
+      "cashews": "Cashews",
+      "pistachios": "Pistachios",
+      "pecans": "Pecans",
+      "hazelnuts": "Hazelnuts",
+      "sunflower_seeds": "Sunflower Seeds",
+      "pumpkin_seeds": "Pumpkin Seeds",
+      "chia_seeds": "Chia Seeds",
+      "flax_seeds": "Flax Seeds"
+    }
   }
 } 

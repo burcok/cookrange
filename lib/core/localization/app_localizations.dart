@@ -54,7 +54,7 @@ class AppLocalizations {
     }
   }
 
-  String translate(String key) {
+  String translate(String key, [Map<String, String>? variables]) {
     try {
       final keys = key.split('.');
       dynamic value = _localizedStrings;
@@ -70,7 +70,13 @@ class AppLocalizations {
       }
 
       if (value is String) {
-        return value;
+        String result = value;
+        if (variables != null) {
+          variables.forEach((key, replacement) {
+            result = result.replaceAll('{$key}', replacement);
+          });
+        }
+        return result;
       } else if (value is List) {
         return value.join(',');
       } else {

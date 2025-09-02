@@ -77,26 +77,99 @@
     ]
   },
   "onboarding": {
+    "step": "Adım",
     "page1": {
+      "header": "Hoş Geldiniz",
       "title": "Ne Yediğini Bil",
-      "description": "Yapay zeka destekli cookrange ile tüm yemek planını saniyeler içinde oluştur veya düzenle!",
-      "already_have_account": "Zaten Hesabım Var"
+      "description": "Yapay zeka destekli {x} ile tüm yemek planını saniyeler içinde oluştur veya düzenle!",
+      "already_have_account": "Zaten Hesabım Var",
+      "get_started": "Başla"
     },
     "page2": {
-      "title": {"text1":"Hedefin", "text2":" Nedir?"},
-      "description": "Bu bilgileri sana daha iyi bir hizmet sunmak için kullanacağız."
+      "header": "Seni ne heyecanlandırıyor?",
+      "activity_level": {
+        "title": "Günlük Aktivite Seviyen",
+        "subtitle": "Gün boyunca ne kadar aktif oluyorsun?",
+        "sedentary": "Çoğunlukla Oturuyorum",
+        "light": "Hafif Hareket",
+        "moderate": "Günlük Egzersizler",
+        "active": "Çok Aktif"
+      },
+      "primary_goal": {
+        "title": "Seni Heyecanlandıran Hedefler",
+        "subtitle": "Seni en çok heyecanlandıran hedefleri seç (maksimum 3)",
+        "selected_count": "{count}/3 seçildi",
+        "lose_weight": "Kilo Ver",
+        "gain_weight": "Kilo Al",
+        "maintain_weight": "Kilo Koru",
+        "feel_energetic": "Daha Enerjik Olmak",
+        "healthy_eating": "Sağlıklı Beslenmek",
+        "save_time": "Zaman Kazanmak",
+        "improve_sleep": "Uyku Kalitesi",
+        "increase_muscle": "Kas Kütlesi",
+        "body_shaping": "Vücut Şekli",
+        "stress_management": "Stres Yönetimi",
+        "digestive_health": "Sindirim Sağlığı",
+        "immune_boost": "Bağışıklık Güçlendirme",
+        "mental_clarity": "Zihinsel Netlik",
+        "sustainable_lifestyle": "Sürdürülebilir Yaşam"
+      },
+      "continue": "Devam Et"
     },
     "page3": {
-      "title": {"text1":"Profilini", "text2":" Tamamlayalım"},
-      "description": "Bu bilgileri sana daha iyi bir hizmet sunmak için kullanacağız."
+      "header": "Diyet Tercihleri",
+      "main_title": "Yemek planınızda istemediğiniz öğeler",
+      "subtitle": "Hoşlanmadıklarınız, Alerjiler, Diyetler,...",
+      "search_hint": "Malzemeleri ara...",
+      "selected_title": "Seçilen Öğeler",
+      "available_title": "Mevcut Malzemeler",
+      "continue": "Devam Et",
+      "custom_not_found": "Bu malzeme veritabanımızda bulunmuyor. ",
+      "custom_add_hint": "Tercihlerinize eklemek için tıklayın",
+      "custom_add": "Ekle",
+      "custom_slots_remaining": "Kalan özel malzeme hakkı: "
     },
     "page4": {
-      "title": {"text1":"Profilini", "text2":" Tamamlayalım"},
-      "description": "Bu bilgileri sana daha iyi bir hizmet sunmak için kullanacağız."
+      "header": "Zaman Tercihleri",
+      "cooking_level": {
+        "title": "Pişirme Seviyen",
+        "subtitle": "Mutfakta kendini nasıl hissediyorsun?",
+        "beginner": "Yeni Başlıyorum",
+        "intermediate": "Fena Sayılmam",
+        "advanced": "Şef Gibi"
+      },
+      "kitchen_equipment": {
+        "title": "Mutfak Ekipmanları",
+        "stove": "Ocak",
+        "oven": "Fırın",
+        "microwave": "Mikrodalga",
+        "pressure_cooker": "Düdüklü Tencere",
+        "electric_kettle": "Su Isıtıcı",
+        "coffee_maker": "Kahve Makinesi",
+        "grinder": "Öğütücü",
+        "toaster": "Tost Makinesi",
+        "blender": "Blender",
+        "hand_mixer": "El Mikseri",
+        "stand_mixer": "Mutfak Mikseri",
+        "air_fryer": "Airfryer (Yağsız Fritöz)",
+        
+        "electric_grill": "Elektrikli Izgara",
+        "samovar": "Semaver",
+        "turkish_coffee_pot": "Cezve",
+        "tea_pot": "Çaydanlık"
+      },
+      "continue": "Devam Et"
     },
     "page5": {
+      "header": "Hedef Kilo",
       "title": {"text1":"Neredeyse", "text2":" Bitti!"},
-      "description": "Son olarak sizin için özel oluşturulacak yemek programı için özel isteklerinizi belirtin! Örnek olarak \"süte alerjim var bu yüzden süt ürünlerini istemiyorum\" veya \"tavuk ağırlıklı bir program istiyorum\" gibi."
+      "description": "Son olarak sizin için özel oluşturulacak yemek programı için özel isteklerinizi belirtin! Örnek olarak \"süte alerjim var bu yüzden süt ürünlerini istemiyorum\" veya \"tavuk ağırlıklı bir program istiyorum\" gibi.",
+      "target_weight": {
+        "title": "Hedef kilonuz nedir?",
+        "description": "Size özel yemek planı oluşturmamıza yardımcı olması için hedef kilonuzu belirleyin.",
+        "placeholder": "Hedef kilo seçin"
+      },
+      "continue": "Devam Et"
     },
     "get_started": "Başla",
     "skip": "Atla",
@@ -116,8 +189,14 @@
       "enter_height": "Lütfen boyunuzu girin",
       "complete_profile": "Lütfen tüm profil bilgilerinizi doldurun",
       "select_activity": "Lütfen aktivite seviyenizi seçin",
+      "select_goals": "Lütfen hedeflerinizi seçin",
+      "select_activity_and_goals": "Lütfen aktivite seviyesi ve hedeflerinizi seçin",
+      "select_cooking_level": "Lütfen pişirme seviyenizi seçin",
+      "select_kitchen_equipment": "Lütfen en az bir mutfak ekipmanı seçin",
       "enter_target_weight": "Lütfen hedef kilonuzu girin",
       "complete_activity": "Lütfen aktivite seviyenizi ve hedef kilonuzu seçin",
+      "complete_cooking_preferences": "Lütfen pişirme seviyenizi ve en az bir mutfak ekipmanı seçin",
+      "complete_target_weight": "Lütfen hedef kilonuzu girin",
       "fill_required": "Lütfen gerekli alanları doldurun"
     }
   },
@@ -185,7 +264,8 @@
     },
     "targetWeight": {
       "title": "Hedef Kilonuzu Seçin",
-      "unit": "kg"
+      "unit": "kg",
+      "placeholder": "Hedef kilo seçin"
     },
     "activity_level": "Aktivite Seviyesi",
     "goals": "Hedefler",
@@ -272,5 +352,80 @@
     "invalid_password": "Geçersiz şifre",
     "required_field": "Bu alan zorunludur",
     "weak_password": "Şifre çok zayıf"
+  },
+
+  "ingredients": {
+    "vegetables": {
+      "broccoli": "Brokoli",
+      "cauliflower": "Karnabahar",
+      "spinach": "Ispanak",
+      "kale": "Kara Lahana",
+      "lettuce": "Marul",
+      "arugula": "Roka",
+      "cabbage": "Lahana",
+      "brussels_sprouts": "Brüksel Lahanası",
+      "asparagus": "Kuşkonmaz",
+      "green_beans": "Yeşil Fasulye"
+    },
+    "fruits": {
+      "apples": "Elma",
+      "bananas": "Muz",
+      "oranges": "Portakal",
+      "strawberries": "Çilek",
+      "blueberries": "Yaban Mersini",
+      "raspberries": "Ahududu",
+      "grapes": "Üzüm",
+      "pineapple": "Ananas",
+      "mango": "Mango",
+      "kiwi": "Kivi"
+    },
+    "proteins": {
+      "chicken": "Tavuk",
+      "beef": "Dana Eti",
+      "pork": "Domuz Eti",
+      "lamb": "Kuzu Eti",
+      "turkey": "Hindi",
+      "duck": "Ördek",
+      "fish": "Balık",
+      "salmon": "Somon",
+      "tuna": "Ton Balığı",
+      "shrimp": "Karides"
+    },
+    "dairy_eggs": {
+      "milk": "Süt",
+      "cheese": "Peynir",
+      "yogurt": "Yoğurt",
+      "butter": "Tereyağı",
+      "cream": "Krema",
+      "eggs": "Yumurta",
+      "cottage_cheese": "Lor Peyniri",
+      "sour_cream": "Ekşi Krema",
+      "ice_cream": "Dondurma",
+      "whipped_cream": "Çırpılmış Krema"
+    },
+    "grains": {
+      "rice": "Pirinç",
+      "pasta": "Makarna",
+      "bread": "Ekmek",
+      "oats": "Yulaf",
+      "quinoa": "Kinoa",
+      "barley": "Arpa",
+      "wheat": "Buğday",
+      "corn": "Mısır",
+      "buckwheat": "Karabuğday",
+      "millet": "Darı"
+    },
+    "nuts_seeds": {
+      "almonds": "Badem",
+      "walnuts": "Ceviz",
+      "cashews": "Kaju",
+      "pistachios": "Antep Fıstığı",
+      "pecans": "Pikan Cevizi",
+      "hazelnuts": "Fındık",
+      "sunflower_seeds": "Ayçiçeği Çekirdeği",
+      "pumpkin_seeds": "Kabak Çekirdeği",
+      "chia_seeds": "Chia Tohumu",
+      "flax_seeds": "Keten Tohumu"
+    }
   }
 } 
