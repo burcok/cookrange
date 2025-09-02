@@ -78,6 +78,27 @@ dev_dependencies:
   test_api: ^0.7.4
   vector_math: ^2.1.4
   vm_service: ^15.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "cookrange-icon.png"
+  image_path_ios: "cookrange-icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "cookrange-icon.png"
+    background_color: "#FFB33A"
+    theme_color: "#FFB33A"
+  windows:
+    generate: true
+    image_path: "cookrange-icon.png"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "cookrange-icon.png"
 
 flutter_native_splash:
   color: "#FFB33A"
@@ -157,17 +178,3 @@ flutter:
           weight: 900
         
 
-flutter_launcher_icons:
-  android: "launcher_icon"
-  ios: true
-  image_path: "cookrange-icon.png"
-  min_sdk_android: 21
-  remove_alpha_ios: true
-  color: "#FFB33A"
-  adaptive_icon_background: "#FFB33A"
-  adaptive_icon_foreground: "cookrange-icon.png"
-  web:
-    generate: true
-    image_path: "cookrange-icon.png"
-    background_color: "#FFB33A"
-    theme_color: "#FFB33A"
