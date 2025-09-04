@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:cookrange/constants.dart';
 import 'package:cookrange/core/services/auth_service.dart';
+import 'package:cookrange/core/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -14,8 +16,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final AuthService _authService = AuthService();
   late Timer _timer;
+  Timer? _countdownTimer;
+  int _remainingSeconds = 180;
   bool _isSending = false;
-  String _statusMessage = 'We have sent a verification email to your inbox.';
+  bool _canResend = false;
 
   @override
   void initState() {
@@ -40,7 +44,28 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   @override
   void dispose() {
     _timer.cancel();
+    _countdownTimer?.cancel();
     super.dispose();
+  }
+
+  void _startCountdown() {
+    setState(() {
+      _canResend = false;
+      _remainingSeconds = 180;
+    });
+
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingSeconds > 0) {
+        setState(() {
+          _remainingSeconds--;
+        });
+      } else {
+        setState(() {
+          _canResend = true;
+        });
+        timer.cancel();
+      }
+    });
   }
 
   Future<void> _sendVerificationEmail() async {
@@ -49,18 +74,24 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     });
 
     try {
-      // Use the current user directly.
       final user = _auth.currentUser;
       if (user != null) {
         await user.sendEmailVerification();
-        setState(() {
-          _statusMessage = 'Verification email sent to ${user.email}.';
-        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Verification email sent to ${user.email}.')),
+          );
+        }
+        _startCountdown();
       }
     } catch (e) {
-      setState(() {
-        _statusMessage = 'Failed to send verification email. Please try again.';
-      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send verification email: $e')),
+        );
+        _canResend = true;
+      }
     }
 
     setState(() {
@@ -70,70 +101,119 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   Future<void> _checkEmailVerified() async {
     final user = _auth.currentUser;
-    if (user == null) {
-      // This case should ideally not be reached if initState check is solid.
+    await user?.reload();
+    if (user != null && user.emailVerified) {
       _timer.cancel();
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-      return;
-    }
+      _countdownTimer?.cancel();
+      await _authService.verifyUserEmail();
+      final userModel = await _authService.getUserData(user.uid);
+      final bool onboardingCompleted = userModel?.onboardingCompleted ?? false;
 
-    try {
-      await user.reload();
-      // After reload, get the fresh user instance.
-      final freshUser = _auth.currentUser;
-      if (freshUser != null && freshUser.emailVerified) {
-        _timer.cancel();
-        await _authService.verifyUserEmail();
-        if (mounted) {
+      if (mounted) {
+        if (onboardingCompleted) {
           Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          Navigator.pushReplacementNamed(context, '/onboarding');
         }
       }
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'user-not-found') {
-        _timer.cancel();
-        if (mounted) {
-          // User doesn't exist, navigate to login
-          Navigator.pushReplacementNamed(context, '/login');
-        }
-      }
-      // Handle other potential exceptions if necessary
-    } catch (e) {
-      // Handle other generic errors
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    String minutes = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
+    String seconds = (_remainingSeconds % 60).toString().padLeft(2, '0');
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Verify Email')),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.email_outlined, size: 100, color: Colors.orange),
-            const SizedBox(height: 24),
-            Text(
-              _statusMessage,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 24),
-            _isSending
-                ? const CircularProgressIndicator()
-                : ElevatedButton.icon(
-                    icon: const Icon(Icons.send),
-                    label: const Text('Resend Email'),
-                    onPressed: _sendVerificationEmail,
+      body: SafeArea(
+          child: Container(
+        color: colorScheme.backgroundColor2,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    await _authService.signOut();
+                    if (mounted) {
+                      navigator.pushNamedAndRemoveUntil(
+                          '/login', (route) => false);
+                    }
+                  },
+                ),
+              ),
+              Image.asset('assets/images/onboarding/verify-email.png'),
+              const SizedBox(height: 48),
+              Text(
+                'Verify Your Email',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Poppins',
+                  color: colorScheme.onBackground,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "We've sent a verification link to your email. Please click the link to verify your account.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 16,
+                    color: colorScheme.titleColor,
+                    fontFamily: 'Poppins'),
+              ),
+              const Spacer(),
+              if (!_canResend)
+                Text(
+                  '$minutes:$seconds saniye sonra tekrar gönderebilirsiniz.',
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: colorScheme.titleColor,
+                      fontFamily: 'Poppins'),
+                ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        _canResend ? primaryColor : primaryColor.withAlpha(20),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
                   ),
-            const SizedBox(height: 24),
-            const Text(
-                'Once you verify your email, this screen will close automatically.'),
-          ],
+                  onPressed:
+                      _canResend && !_isSending ? _sendVerificationEmail : null,
+                  child: _isSending
+                      ? SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: colorScheme.onPrimary,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          'Resend Verification Email',
+                          style: TextStyle(
+                              fontSize: 16,
+                              color: _canResend
+                                  ? Colors.white
+                                  : Colors.white.withAlpha(20)),
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+      )),
     );
   }
 }

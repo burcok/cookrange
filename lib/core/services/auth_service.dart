@@ -17,6 +17,7 @@ class AuthException implements Exception {
 
 class AuthService {
   FirebaseAuth get _auth => FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirestoreService _firestoreService = FirestoreService();
   final AnalyticsService _analyticsService = AnalyticsService();
   final LogService _log = LogService();
@@ -246,7 +247,7 @@ class AuthService {
   Future<User?> signInWithGoogle() async {
     _log.info('Attempting Google Sign-In', service: _serviceName);
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         _log.warning('Google Sign-In was cancelled by user.',
             service: _serviceName);
@@ -293,8 +294,15 @@ class AuthService {
     if (user != null) {
       await _firestoreService.logUserActivity(user.uid, 'logout');
     }
+
+    try {
+      await _googleSignIn.disconnect();
+    } catch (e, s) {
+      _log.error('Error during Google Sign-In disconnect',
+          service: _serviceName, error: e, stackTrace: s);
+    }
+
     await _auth.signOut();
-    await GoogleSignIn().signOut();
     await clearOnboardingData();
     _userDataCache = null; // Clear cache on sign out
     _log.info('User ${user?.uid} signed out successfully.',

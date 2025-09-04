@@ -380,7 +380,11 @@ class _SplashScreenState extends State<SplashScreen>
 
         if (!user.emailVerified) {
           // User exists but email is not verified
-          Navigator.pushReplacementNamed(context, '/verify_email');
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            "/verify_email",
+            (route) => false,
+          );
           return;
         }
 
