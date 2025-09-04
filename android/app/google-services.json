@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "624768719440",
+    "firebase_url": "https://cookrange-app-default-rtdb.europe-west1.firebasedatabase.app",
     "project_id": "cookrange-app",
     "storage_bucket": "cookrange-app.firebasestorage.app"
   },
@@ -13,6 +14,22 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "624768719440-kingmmoav8q9rl8tup9nsq9grb2tgqva.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cookrange_android.app",
+            "certificate_hash": "21e0b5b88e18b8db47a8b9a4eb5e6f273489b1c7"
+          }
+        },
+        {
+          "client_id": "624768719440-qr0sv7rgnn57gt40t6v4lis31slutsm9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cookrange_android.app",
+            "certificate_hash": "4c89a8cdd50a8abc4c16dbf3af10bab5dc67981b"
+          }
+        },
         {
           "client_id": "624768719440-6acl7pqst25k3dgob310trvbdmitlhu1.apps.googleusercontent.com",
           "client_type": 3

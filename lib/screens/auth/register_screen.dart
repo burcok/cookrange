@@ -1,11 +1,11 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import '../../constants.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../widgets/onboarding_common_widgets.dart';
-import 'package:flutter/gestures.dart';
+import '../../core/theme/app_theme.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -29,30 +29,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _emailController.addListener(_validateEmail);
-    _passwordController.addListener(_validatePassword);
-    _passwordAgainController.addListener(_validatePasswordAgain);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Pre-load assets
     precacheImage(const AssetImage('assets/icons/google.png'), context);
   }
 
   @override
   void dispose() {
-    _emailController.removeListener(_validateEmail);
-    _passwordController.removeListener(_validatePassword);
-    _passwordAgainController.removeListener(_validatePasswordAgain);
     _emailController.dispose();
     _passwordController.dispose();
     _passwordAgainController.dispose();
     super.dispose();
   }
 
-  void _validateEmail() {
-    final email = _emailController.text.trim();
+  void _validateEmail(String email) {
     if (email.isEmpty) {
       setState(() => _emailError = null);
       return;
@@ -60,42 +54,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegex.hasMatch(email)) {
-      setState(() => _emailError = 'Geçerli bir email adresi giriniz');
+      setState(() => _emailError =
+          AppLocalizations.of(context).translate('auth.error.invalid_email'));
     } else {
       setState(() => _emailError = null);
     }
   }
 
-  void _validatePassword() {
-    final password = _passwordController.text;
+  void _validatePassword(String password) {
     if (password.isEmpty) {
       setState(() => _passwordError = null);
       return;
     }
+    final localizations = AppLocalizations.of(context);
 
     if (password.length < 8) {
-      setState(() => _passwordError = 'Şifre en az 8 karakter olmalıdır');
+      setState(() => _passwordError =
+          localizations.translate('auth.error.password_length'));
     } else if (!password.contains(RegExp(r'[0-9]'))) {
-      setState(() => _passwordError = 'Şifre en az bir rakam içermelidir');
+      setState(() => _passwordError =
+          localizations.translate('auth.error.password_digit'));
     } else {
       setState(() => _passwordError = null);
     }
-
-    // Şifre tekrarı kontrolünü de güncelle
-    _validatePasswordAgain();
+    _validatePasswordAgain(_passwordAgainController.text);
   }
 
-  void _validatePasswordAgain() {
-    final password = _passwordController.text;
-    final passwordAgain = _passwordAgainController.text;
-
+  void _validatePasswordAgain(String passwordAgain) {
     if (passwordAgain.isEmpty) {
       setState(() => _passwordAgainError = null);
       return;
     }
 
-    if (password != passwordAgain) {
-      setState(() => _passwordAgainError = 'Şifreler eşleşmiyor');
+    if (_passwordController.text != passwordAgain) {
+      setState(() => _passwordAgainError = AppLocalizations.of(context)
+          .translate('auth.error.passwords_do_not_match'));
     } else {
       setState(() => _passwordAgainError = null);
     }
@@ -105,6 +98,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return _emailError == null &&
         _passwordError == null &&
         _passwordAgainError == null &&
+        _emailController.text.isNotEmpty &&
+        _passwordController.text.isNotEmpty &&
+        _passwordAgainController.text.isNotEmpty &&
         _agreementsAccepted;
   }
 
@@ -177,13 +173,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               color: Colors.white,
             ),
           ),
-          duration: const Duration(seconds: 10),
+          duration: const Duration(seconds: 5),
           backgroundColor: Colors.red,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          closeIconColor: Colors.white,
-          showCloseIcon: true,
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(10),
           padding: const EdgeInsets.all(10),
@@ -204,13 +198,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               color: Colors.white,
             ),
           ),
-          duration: const Duration(seconds: 10),
+          duration: const Duration(seconds: 5),
           backgroundColor: Colors.red,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          closeIconColor: Colors.white,
-          showCloseIcon: true,
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(10),
           padding: const EdgeInsets.all(10),
@@ -226,8 +218,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _registerWithGoogle(BuildContext context) async {
-    if (!_isFormValid()) return;
-
+    if (!_agreementsAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)
+                .translate('auth.error.accept_agreements'),
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 14,
+              color: Colors.white,
+            ),
+          ),
+          duration: const Duration(seconds: 5),
+          backgroundColor: Colors.red,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
+        ),
+      );
+      return;
+    }
     setState(() {
       _isLoading = true;
     });
@@ -244,9 +258,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
             '/verify_email',
             (route) => false,
           );
+          return;
+        }
+
+        final userModel = await AuthService().getUserData(user.uid);
+        final bool onboardingCompleted =
+            userModel?.onboardingCompleted ?? false;
+
+        if (mounted) {
+          if (onboardingCompleted) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/home', (route) => false);
+          } else {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/onboarding', (route) => false);
+          }
         }
       }
-    } on Exception {
+    } on Exception catch (e) {
+      if (!mounted) return;
+
+      print("Error during registration with Google: $e");
       final msg =
           AppLocalizations.of(context).translate('auth.google_register_error');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -259,18 +291,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
               color: Colors.white,
             ),
           ),
-          duration: const Duration(seconds: 10),
+          duration: const Duration(seconds: 5),
           backgroundColor: Colors.red,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          closeIconColor: Colors.white,
-          showCloseIcon: true,
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(10),
           padding: const EdgeInsets.all(10),
         ),
       );
+    } catch (e) {
+      print("Unexpected error during registration with Google: $e");
     } finally {
       if (mounted) {
         setState(() {
@@ -291,7 +323,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Kapat'),
+            child: Text(AppLocalizations.of(context).translate('common.close')),
           ),
         ],
       ),
@@ -304,105 +336,109 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Scaffold(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: colorScheme.backgroundColor2,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 48),
-                Text(
+                const SizedBox(height: 32),
+                const Text(
                   'cookrange',
-                  style: TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w800,
-                    color: colorScheme.secondary,
-                    fontFamily: 'Poppins',
-                  ),
                   textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   localizations.translate('auth.create_account'),
-                  style: TextStyle(
-                    fontSize: 20,
-                    color: colorScheme.onboardingSubtitleColor,
-                    fontFamily: 'Poppins',
-                  ),
                   textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onboardingSubtitleColor,
+                  ),
                 ),
-                const SizedBox(height: 32),
-                Text(localizations.translate('auth.email'),
-                    style: theme.textTheme.bodyLarge),
+                const SizedBox(height: 40),
+                Text(
+                  localizations.translate('auth.email'),
+                  style: TextStyle(
+                      color: colorScheme.onboardingTitleColor,
+                      fontSize: 16,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w400),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _emailController,
                   autofillHints: const [AutofillHints.email],
                   textInputAction: TextInputAction.next,
                   keyboardType: TextInputType.emailAddress,
-                  cursorColor: colorScheme.secondary,
+                  cursorColor: primaryColor,
+                  onChanged: _validateEmail,
                   decoration: InputDecoration(
-                    hintText: 'your@email.com',
-                    alignLabelWithHint: true,
-                    hintFadeDuration: const Duration(milliseconds: 100),
+                    errorText: _emailError,
+                    hintText: localizations.translate('auth.email_hint'),
+                    hintStyle: const TextStyle(color: authSecondaryTextColor),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: colorScheme.secondary.withOpacity(0.2),
-                        style: BorderStyle.solid,
-                        width: 1,
-                      ),
+                          color: Colors.grey.withOpacity(0.5), width: 2.0),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(32),
-                      borderSide: BorderSide(
-                        color: colorScheme.secondary,
-                        style: BorderStyle.solid,
-                        width: 1,
-                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: primaryColor, width: 2.0),
                     ),
-                    errorText: _emailError,
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 16),
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text(localizations.translate('auth.password'),
-                    style: theme.textTheme.bodyLarge),
+                Text(
+                  localizations.translate('auth.password'),
+                  style: TextStyle(
+                      color: colorScheme.onboardingTitleColor,
+                      fontSize: 16,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w400),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
-                  cursorColor: colorScheme.secondary,
+                  cursorColor: primaryColor,
+                  onChanged: _validatePassword,
                   decoration: InputDecoration(
+                    errorText: _passwordError,
                     hintText: '********',
-                    alignLabelWithHint: true,
-                    hintFadeDuration: const Duration(milliseconds: 100),
+                    hintStyle:
+                        TextStyle(color: colorScheme.onboardingSubtitleColor),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: colorScheme.secondary.withOpacity(0.2),
-                        style: BorderStyle.solid,
-                        width: 1,
-                      ),
+                          color: Colors.grey.withOpacity(0.5), width: 2.0),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(32),
-                      borderSide: BorderSide(
-                        color: colorScheme.secondary,
-                        style: BorderStyle.solid,
-                        width: 1,
-                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: primaryColor, width: 2.0),
                     ),
-                    errorText: _passwordError,
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 16),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility),
+                      icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: authSecondaryTextColor),
                       onPressed: () {
                         setState(() {
                           _obscurePassword = !_obscurePassword;
@@ -412,40 +448,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text(localizations.translate('auth.password_again'),
-                    style: theme.textTheme.bodyLarge),
+                Text(
+                  localizations.translate('auth.password_again'),
+                  style: TextStyle(
+                      color: colorScheme.onboardingTitleColor,
+                      fontSize: 16,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w400),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _passwordAgainController,
                   obscureText: _obscurePasswordAgain,
-                  cursorColor: colorScheme.secondary,
+                  cursorColor: primaryColor,
+                  onChanged: _validatePasswordAgain,
                   decoration: InputDecoration(
+                    errorText: _passwordAgainError,
                     hintText: '********',
-                    alignLabelWithHint: true,
-                    hintFadeDuration: const Duration(milliseconds: 100),
+                    hintStyle:
+                        TextStyle(color: colorScheme.onboardingSubtitleColor),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: colorScheme.secondary.withOpacity(0.2),
-                        style: BorderStyle.solid,
-                        width: 1,
-                      ),
+                          color: Colors.grey.withOpacity(0.5), width: 2.0),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(32),
-                      borderSide: BorderSide(
-                        color: colorScheme.secondary,
-                        style: BorderStyle.solid,
-                        width: 1,
-                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: primaryColor, width: 2.0),
                     ),
-                    errorText: _passwordAgainError,
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 16),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscurePasswordAgain
-                          ? Icons.visibility_off
-                          : Icons.visibility),
+                      icon: Icon(
+                          _obscurePasswordAgain
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: authSecondaryTextColor),
                       onPressed: () {
                         setState(() {
                           _obscurePasswordAgain = !_obscurePasswordAgain;
@@ -454,9 +493,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Checkbox(
                       value: _agreementsAccepted,
@@ -465,6 +504,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           _agreementsAccepted = value ?? false;
                         });
                       },
+                      activeColor: primaryColor,
                     ),
                     Expanded(
                       child: RichText(
@@ -474,13 +514,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 .colorScheme
                                 .onboardingTitleColor,
                             fontFamily: 'Poppins',
-                            fontSize: 15,
+                            fontSize: 14,
                           ),
                           children: [
-                            const TextSpan(
-                                text: 'Hesap oluşturarak, Cookrange '),
                             TextSpan(
-                              text: 'Gizlilik Sözleşmesi',
+                                text: localizations
+                                    .translate('auth.agreements.prefix')),
+                            TextSpan(
+                              text: localizations
+                                  .translate('auth.agreements.privacy_policy'),
                               style: const TextStyle(
                                 decoration: TextDecoration.underline,
                                 fontWeight: FontWeight.bold,
@@ -488,13 +530,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () => _showAgreement(
                                       context,
-                                      'Gizlilik Sözleşmesi',
+                                      localizations.translate(
+                                          'auth.agreements.privacy_policy'),
                                       'Buraya gizlilik sözleşmesi metni gelecek...',
                                     ),
                             ),
-                            const TextSpan(text: ' ve '),
                             TextSpan(
-                              text: 'Kullanım Şartları',
+                                text: localizations
+                                    .translate('auth.agreements.and')),
+                            TextSpan(
+                              text: localizations
+                                  .translate('auth.agreements.terms_of_use'),
                               style: const TextStyle(
                                 decoration: TextDecoration.underline,
                                 fontWeight: FontWeight.bold,
@@ -502,11 +548,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () => _showAgreement(
                                       context,
-                                      'Kullanım Şartları',
+                                      localizations.translate(
+                                          'auth.agreements.terms_of_use'),
                                       'Buraya kullanım şartları metni gelecek...',
                                     ),
                             ),
-                            const TextSpan(text: "'nı kabul etmiş sayılırsın."),
+                            TextSpan(
+                                text: localizations
+                                    .translate('auth.agreements.suffix')),
                           ],
                         ),
                       ),
@@ -519,49 +568,74 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ? null
                       : () => _register(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: colorScheme.secondary,
-                    foregroundColor: colorScheme.surface,
+                    backgroundColor: primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 18),
                   ),
                   child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.black)
-                      : Text(localizations.translate('auth.signup'),
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(localizations.translate('auth.register'),
                           style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.w700)),
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                        child: Divider(
+                            color: authSecondaryTextColor.withOpacity(0.5))),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text(
+                        localizations.translate('auth.or_divider'),
+                        style: TextStyle(color: authSecondaryTextColor),
+                      ),
+                    ),
+                    Expanded(
+                        child: Divider(
+                            color: authSecondaryTextColor.withOpacity(0.5))),
+                  ],
+                ),
+                const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: _isLoading || !_isFormValid()
-                      ? null
-                      : () => _registerWithGoogle(context),
+                  onPressed:
+                      _isLoading ? null : () => _registerWithGoogle(context),
                   icon: Image.asset('assets/icons/google.png', height: 24),
                   label: Text(
                       localizations.translate('auth.register_with_google'),
-                      style: const TextStyle(fontSize: 16)),
+                      style:
+                          const TextStyle(fontSize: 16, color: Colors.black87)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(32),
-                    ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 40),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(localizations.translate('auth.already_have_account')),
+                    Text(localizations.translate('auth.already_have_account'),
+                        style: TextStyle(
+                            color: colorScheme.onboardingSubtitleColor,
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w400)),
                     TextButton(
                       onPressed: () {
                         Navigator.pushNamed(context, "/login");
                       },
                       child: Text(localizations.translate('auth.login_now'),
                           style: TextStyle(
-                            color: colorScheme.schemaPreferredColor,
+                            color: colorScheme.onboardingTitleColor,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Poppins',
                             decoration: TextDecoration.underline,
                           )),
                     ),

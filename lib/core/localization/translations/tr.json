@@ -340,14 +340,35 @@
       "login_error": "Giriş başarısız. Lütfen tekrar deneyin.",
       "invalid_credentials": "Kullanıcı bulunamadı. Lütfen e-posta ve şifrenizi kontrol edin.",
       "network_error": "Ağ hatası. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.",
-      "empty_fields": "Lütfen tüm alanları doldurun."
+      "empty_fields": "Lütfen tüm alanları doldurun.",
+      "type_error": "Bir tür hatası oluştu. Lütfen tekrar deneyin.",
+      "user_disabled": "Kullanıcı devre dışı bırakıldı. Lütfen destek ile iletişime geçin.",
+      "too_many_requests": "Çok fazla deneme yapıldı. Lütfen daha sonra tekrar deneyin.",
+      "unexpected_error": "Beklenmedik bir hata oluştu. Lütfen tekrar deneyin."
     },
+    "error": {
+        "password_length": "Şifre en az 8 karakter olmalıdır",
+        "password_digit": "Şifre en az bir rakam içermelidir",
+        "passwords_do_not_match": "Şifreler eşleşmiyor.",
+        "invalid_email": "Lütfen geçerli bir e-posta adresi girin.",
+        "accept_agreements": "Devam etmek için lütfen sözleşmeleri kabul edin."
+    },
+    "agreements": {
+      "prefix": "Hesap oluşturarak Cookrange'in ",
+      "privacy_policy": "Gizlilik Sözleşmesi",
+      "and": " ve ",
+      "terms_of_use": "Kullanım Şartları",
+      "suffix": "'nı kabul etmiş olursunuz."
+    },
+    "email_hint": "isim@gmail.com",
+    "or_divider": "VEYA",
     "invalid_password_format": "Şifre en az 8 karakter uzunluğunda olmalı ve bir büyük harf, bir rakam ve bir özel karakter içermelidir.",
     "passwords_do_not_match": "Şifreler eşleşmiyor.",
     "welcome_title": "Cookrange'e Hoş Geldiniz",
     "welcome_subtitle": "Sağlıklı ve lezzetli tarifler için kişisel rehberiniz.",
     "login_button": "Giriş Yap",
     "register_button": "Kayıt Ol",
+    "register": "Kayıt Ol",
     "logout_button": "Çıkış Yap",
     "delete_account_button": "Hesabı Sil",
     "settings_title": "Ayarlar"

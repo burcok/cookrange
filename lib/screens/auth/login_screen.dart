@@ -1,10 +1,10 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import '../../constants.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../core/models/user_model.dart';
+import '../../core/theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  String? _passwordError;
 
   @override
   void initState() {
@@ -36,6 +37,24 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _validatePassword(String password) {
+    if (password.isEmpty) {
+      setState(() => _passwordError = null);
+      return;
+    }
+    final localizations = AppLocalizations.of(context);
+
+    if (password.length < 8) {
+      setState(() => _passwordError =
+          localizations.translate('auth.error.password_length'));
+    } else if (!password.contains(RegExp(r'[0-9]'))) {
+      setState(() => _passwordError =
+          localizations.translate('auth.error.password_digit'));
+    } else {
+      setState(() => _passwordError = null);
+    }
   }
 
   Future<void> _login(BuildContext context) async {
@@ -216,6 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } on AuthException catch (e) {
       if (!mounted) return;
 
+      print("Error during login with Google: $e");
       String msg;
       switch (e.code) {
         case 'user-not-found':
@@ -235,10 +255,6 @@ class _LoginScreenState extends State<LoginScreen> {
         case 'type-error':
           msg = AppLocalizations.of(context)
               .translate('auth.login_errors.type_error');
-          break;
-        case 'user-disabled':
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.user_disabled');
           break;
         case 'too-many-requests':
           msg = AppLocalizations.of(context)
@@ -308,104 +324,109 @@ class _LoginScreenState extends State<LoginScreen> {
     final localizations = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: colorScheme.backgroundColor2,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 48),
-                Text(
+                const SizedBox(height: 32),
+                const Text(
                   'cookrange',
-                  style: TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w800,
-                    color: colorScheme.secondary,
-                    fontFamily: 'Poppins',
-                  ),
                   textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   localizations.translate('auth.welcome_back'),
-                  style: TextStyle(
-                    fontSize: 20,
-                    color: colorScheme.onboardingSubtitleColor,
-                    fontFamily: 'Poppins',
-                  ),
                   textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onboardingSubtitleColor,
+                  ),
                 ),
-                const SizedBox(height: 32),
-                Text(localizations.translate('auth.email'),
-                    style: theme.textTheme.bodyLarge),
+                const SizedBox(height: 40),
+                Text(
+                  localizations.translate('auth.email'),
+                  style: TextStyle(
+                      color: colorScheme.onboardingTitleColor,
+                      fontSize: 16,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w400),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _emailController,
                   autofillHints: const [AutofillHints.email],
                   textInputAction: TextInputAction.next,
                   keyboardType: TextInputType.emailAddress,
-                  cursorColor: colorScheme.secondary,
+                  cursorColor: primaryColor,
                   decoration: InputDecoration(
-                    hintText: 'your@email.com',
-                    alignLabelWithHint: true,
-                    hintFadeDuration: const Duration(milliseconds: 100),
+                    hintText: localizations.translate('auth.email_hint'),
+                    hintStyle: const TextStyle(color: authSecondaryTextColor),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: colorScheme.secondary.withOpacity(0.2),
-                        style: BorderStyle.solid,
-                        width: 1,
-                      ),
+                          color: Colors.grey.withOpacity(0.5), width: 2.0),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(32),
-                      borderSide: BorderSide(
-                        color: colorScheme.secondary,
-                        style: BorderStyle.solid,
-                        width: 1,
-                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: primaryColor, width: 2.0),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 16),
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text(localizations.translate('auth.password'),
-                    style: theme.textTheme.bodyLarge),
+                Text(
+                  localizations.translate('auth.password'),
+                  style: TextStyle(
+                      color: colorScheme.onboardingTitleColor,
+                      fontSize: 16,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w400),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
-                  cursorColor: colorScheme.secondary,
+                  cursorColor: primaryColor,
+                  onChanged: _validatePassword,
                   decoration: InputDecoration(
+                    errorText: _passwordError,
                     hintText: '********',
-                    alignLabelWithHint: true,
-                    hintFadeDuration: const Duration(milliseconds: 100),
+                    hintStyle:
+                        TextStyle(color: colorScheme.onboardingSubtitleColor),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: colorScheme.secondary.withOpacity(0.2),
-                        style: BorderStyle.solid,
-                        width: 1,
-                      ),
+                          color: Colors.grey.withOpacity(0.5), width: 2.0),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(32),
-                      borderSide: BorderSide(
-                        color: colorScheme.secondary,
-                        style: BorderStyle.solid,
-                        width: 1,
-                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide:
+                          const BorderSide(color: primaryColor, width: 2.0),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 16),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility),
+                      icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: authSecondaryTextColor),
                       onPressed: () {
                         setState(() {
                           _obscurePassword = !_obscurePassword;
@@ -422,55 +443,84 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                     child: Text(localizations.translate('auth.forgot_password'),
                         style: TextStyle(
-                            color: colorScheme.schemaPreferredColor,
-                            decoration: TextDecoration.underline)),
+                          color: colorScheme.onboardingTitleColor,
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        )),
                   ),
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: _isLoading ? null : () => _login(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: colorScheme.secondary,
-                    foregroundColor: colorScheme.surface,
+                    backgroundColor: primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(32),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 18),
                   ),
                   child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.black)
+                      ? const CircularProgressIndicator(color: Colors.white)
                       : Text(localizations.translate('auth.login'),
                           style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.w700)),
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                        child: Divider(
+                            color: authSecondaryTextColor.withOpacity(0.5))),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text(
+                        localizations.translate('auth.or_divider'),
+                        style: TextStyle(color: authSecondaryTextColor),
+                      ),
+                    ),
+                    Expanded(
+                        child: Divider(
+                            color: authSecondaryTextColor.withOpacity(0.5))),
+                  ],
+                ),
+                const SizedBox(height: 24),
                 ElevatedButton.icon(
                   onPressed:
                       _isLoading ? null : () => _loginWithGoogle(context),
                   icon: Image.asset('assets/icons/google.png', height: 24),
                   label: Text(localizations.translate('auth.login_with_google'),
-                      style: const TextStyle(fontSize: 16)),
+                      style:
+                          const TextStyle(fontSize: 16, color: Colors.black87)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(32),
-                    ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 40),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(localizations.translate('auth.no_account')),
+                    Text(localizations.translate('auth.no_account'),
+                        style: TextStyle(
+                            color: colorScheme.onboardingSubtitleColor,
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w400)),
                     TextButton(
                       onPressed: () {
                         Navigator.pushNamed(context, "/register");
                       },
                       child: Text(localizations.translate('auth.register_now'),
                           style: TextStyle(
-                            color: colorScheme.schemaPreferredColor,
+                            color: colorScheme.onboardingTitleColor,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Poppins',
                             decoration: TextDecoration.underline,
                           )),
                     ),

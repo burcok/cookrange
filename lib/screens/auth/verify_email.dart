@@ -15,7 +15,7 @@ class VerifyEmailScreen extends StatefulWidget {
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final AuthService _authService = AuthService();
-  late Timer _timer;
+  Timer? _timer;
   Timer? _countdownTimer;
   int _remainingSeconds = 180;
   bool _isSending = false;
@@ -43,7 +43,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
     _countdownTimer?.cancel();
     super.dispose();
   }
@@ -103,7 +103,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     final user = _auth.currentUser;
     await user?.reload();
     if (user != null && user.emailVerified) {
-      _timer.cancel();
+      _timer?.cancel();
       _countdownTimer?.cancel();
       await _authService.verifyUserEmail();
       final userModel = await _authService.getUserData(user.uid);

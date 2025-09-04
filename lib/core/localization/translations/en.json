@@ -329,14 +329,35 @@
       "login_error": "Login failed. Please try again.",
       "invalid_credentials": "User not found. Please check your email and password.",
       "network_error": "Network error. Please check your internet connection and try again.",
-      "empty_fields": "Please fill in all fields."
+      "empty_fields": "Please fill in all fields.",
+      "type_error": "A type error occurred. Please try again.",
+      "user_disabled": "User disabled. Please contact support.",
+      "too_many_requests": "Too many requests. Please try again later.",
+      "unexpected_error": "An unexpected error occurred. Please try again."
     },
+    "error": {
+        "password_length": "Password must be at least 8 characters",
+        "password_digit": "Password must contain at least one digit",
+        "passwords_do_not_match": "Passwords do not match.",
+        "invalid_email": "Please enter a valid email address.",
+        "accept_agreements": "Please accept the agreements to continue."
+    },
+    "agreements": {
+        "prefix": "By creating an account, you agree to Cookrange's ",
+        "privacy_policy": "Privacy Policy",
+        "and": " and ",
+        "terms_of_use": "Terms of Use",
+        "suffix": "."
+    },
+    "email_hint": "your@email.com",
+    "or_divider": "OR",
     "invalid_password_format": "Password must be at least 8 characters long and include an uppercase letter, a number, and a special character.",
     "passwords_do_not_match": "Passwords do not match.",
     "welcome_title": "Welcome to Cookrange",
     "welcome_subtitle": "Your personal guide to healthy and delicious recipes.",
     "login_button": "Log In",
     "register_button": "Sign Up",
+    "register": "Register",
     "logout_button": "Logout",
     "delete_account_button": "Delete Account",
     "settings_title": "Settings"
