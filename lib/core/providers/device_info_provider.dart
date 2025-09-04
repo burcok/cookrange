@@ -11,7 +11,7 @@ class DeviceInfoProvider extends ChangeNotifier {
   String _deviceOs = 'unknown';
   String _appVersion = 'unknown';
   String _buildNumber = 'unknown';
-  Map<String, String> _permissionStatus = {};
+  final Map<String, String> _permissionStatus = {};
 
   String get deviceType => _deviceType;
   String get deviceModel => _deviceModel;

@@ -86,7 +86,7 @@
       "get_started": "Başla"
     },
     "page2": {
-      "header": "Seni ne heyecanlandırıyor?",
+      "header": "Seni biraz daha tanıyalım",
       "activity_level": {
         "title": "Günlük Aktivite Seviyen",
         "subtitle": "Gün boyunca ne kadar aktif oluyorsun?",
@@ -97,7 +97,7 @@
       },
       "primary_goal": {
         "title": "Seni Heyecanlandıran Hedefler",
-        "subtitle": "Seni en çok heyecanlandıran hedefleri seç (maksimum 3)",
+        "subtitle": "Seni en çok heyecanlandıran hedefleri seç",
         "selected_count": "{count}/3 seçildi",
         "lose_weight": "Kilo Ver",
         "gain_weight": "Kilo Al",
@@ -117,12 +117,23 @@
       "continue": "Devam Et"
     },
     "page3": {
-      "header": "Diyet Tercihleri",
-      "main_title": "Yemek planınızda istemediğiniz öğeler",
-      "subtitle": "Hoşlanmadıklarınız, Alerjiler, Diyetler,...",
-      "search_hint": "Malzemeleri ara...",
-      "selected_title": "Seçilen Öğeler",
-      "available_title": "Mevcut Malzemeler",
+      "header": "Beslenme Tercihleri",
+      "allergies": {
+        "title": "Alerjiniz var mı?",
+        "subtitle": "Varsa alerjilerinizi seçin.",
+        "gluten": "Gluten",
+        "dairy": "Süt Ürünleri",
+        "peanuts": "Yer Fıstığı",
+        "tree_nuts": "Ağaç Fıstığı",
+        "soy": "Soya",
+        "fish": "Balık",
+        "shellfish": "Kabuklu Deniz Ürünleri"
+      },
+      "dislikes": {
+        "title": "Sevmediğiniz Yiyecekler Var mı?",
+        "subtitle": "Sevmediğiniz yiyecekleri virgülle ayırarak listeleyin.",
+        "hint": "örneğin, Mantar, Soğan"
+      },
       "continue": "Devam Et",
       "custom_not_found": "Bu malzeme veritabanımızda bulunmuyor. ",
       "custom_add_hint": "Tercihlerinize eklemek için tıklayın",
@@ -130,13 +141,10 @@
       "custom_slots_remaining": "Kalan özel malzeme hakkı: "
     },
     "page4": {
-      "header": "Zaman Tercihleri",
+      "header": "Aşçılık Becerileri",
       "cooking_level": {
-        "title": "Pişirme Seviyen",
-        "subtitle": "Mutfakta kendini nasıl hissediyorsun?",
-        "beginner": "Yeni Başlıyorum",
-        "intermediate": "Fena Sayılmam",
-        "advanced": "Şef Gibi"
+        "title": "Aşçılık seviyeniz nedir?",
+        "subtitle": "Bu, becerilerinize uygun tarifler önermemize yardımcı olur."
       },
       "kitchen_equipment": {
         "title": "Mutfak Ekipmanları",
@@ -161,17 +169,110 @@
       "continue": "Devam Et"
     },
     "page5": {
-      "header": "Hedef Kilo",
-      "title": {"text1":"Neredeyse", "text2":" Bitti!"},
-      "description": "Son olarak sizin için özel oluşturulacak yemek programı için özel isteklerinizi belirtin! Örnek olarak \"süte alerjim var bu yüzden süt ürünlerini istemiyorum\" veya \"tavuk ağırlıklı bir program istiyorum\" gibi.",
-      "target_weight": {
-        "title": "Hedef kilonuz nedir?",
-        "description": "Size özel yemek planı oluşturmamıza yardımcı olması için hedef kilonuzu belirleyin.",
-        "placeholder": "Hedef kilo seçin"
+      "header": "Yaşam Tarzını Seç",
+      "title": "Yaşam Tarzı Profilleri",
+      "description": "Günlük rutininize en uygun yaşam tarzını seçin. Bu, enerji seviyelerinize ve yemek tercihlerinize uygun bir plan hazırlamamıza yardımcı olur.",
+      "profiles": {
+        "early_bird": {
+          "name": "Erken Kalkan",
+          "description": "Sabah 6'da Uyanır",
+          "times": "Tipik yemek saatleri: 07:00,12:00,18:00"
+        },
+        "worker": {
+          "name": "9-5 Çalışanı",
+          "description": "Standart İş Günü",
+          "times": "Tipik yemek saatleri: 08:00,13:00,19:00"
+        },
+        "night_owl": {
+          "name": "Gece Kuşu",
+          "description": "Geç Kalkan",
+          "times": "Tipik yemek saatleri: 23:00,04:00,08:00"
+        },
+        "shift_worker": {
+          "name": "Vardiyalı Çalışan",
+          "description": "Gündüz ve gece vardiyaları arasında geçiş yapın.",
+          "times": "Değişken yemek saatleri"
+        },
+        "freelancer": {
+          "name": "Serbest Çalışan",
+          "description": "Programınıza ve tercihlerinize göre esnek.",
+          "times": "Esnek yemek saatleri"
+        },
+        "rotating_shifts": {
+          "name": "Dönen Vardiya",
+          "description": "Vardiya programınız haftalık olarak değişiyor.",
+          "times": "Haftalık değişen yemek saatleri"
+        },
+        "irregular_schedule": {
+          "name": "Düzensiz Program",
+          "description": "Her gün farklı, tamamen esnek.",
+          "times": "Tamamen esnek yemek saatleri"
+        }
+      },
+      "preview": {
+        "title": "Önizleme",
+        "breakfast": "Kahvaltı",
+        "lunch": "Öğle Yemeği",
+        "dinner": "Akşam Yemeği"
+      },
+      "schedule_editor": {
+        "schedule_type": "Program Türü",
+        "types": {
+          "fixed": "Sabit",
+          "rotating": "Dönen",
+          "irregular": "Düzensiz"
+        },
+        "rotating": {
+          "rotation_weeks": "Rotasyon Haftası",
+          "week": "Hafta",
+          "week_short": "Hafta"
+        },
+        "irregular": {
+          "title": "Yemek Saatlerinizi Ayarlayın"
+        }
       },
       "continue": "Devam Et"
     },
+    "profile": {
+      "title": "Profil",
+      "genderTitle": "Cinsiyetinizi Seçin",
+      "genderSubtitle": "Dilerseniz bu bilgiyi gizleyebilirsiniz.",
+      "birthdayTitle": "Doğum Tarihinizi Seçin",
+      "birthdaySubtitle": "Dilerseniz bu bilgiyi gizleyebilirsiniz.",
+      "hwTitle": "Boy ve Kilo",
+      "hwSubtitle": "Dilerseniz bu bilgiyi gizleyebilirsiniz.",
+      "edit_profile": "Profili Düzenle",
+      "personal_info": "Kişisel Bilgiler",
+      "selectDate": "Tarih Seçin",
+      "name": "Ad",
+      "age": "Yaş",
+      "gender": {
+        "title": "Cinsiyetinizi Seçin",
+        "female": "Kadın",
+        "male": "Erkek"
+      },
+      "birthday": {
+        "title": "Doğum Tarihinizi Seçin",
+        "select_month": "Ay Seçin",
+        "select_year": "Yıl Seçin",
+        "months": {
+          "january": "Ocak",
+          "february": "Şubat",
+          "march": "Mart",
+          "april": "Nisan",
+          "may": "Mayıs",
+          "june": "Haziran",
+          "july": "Temmuz",
+          "august": "Ağustos",
+          "september": "Eylül",
+          "october": "Ekim",
+          "november": "Kasım",
+          "december": "Aralık"
+        }
+      }
+    },
     "get_started": "Başla",
+    "continue": "Devam Et",
     "skip": "Atla",
     "next": "İleri",
     "back": "Geri",
@@ -240,7 +341,16 @@
       "invalid_credentials": "Kullanıcı bulunamadı. Lütfen e-posta ve şifrenizi kontrol edin.",
       "network_error": "Ağ hatası. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.",
       "empty_fields": "Lütfen tüm alanları doldurun."
-    }
+    },
+    "invalid_password_format": "Şifre en az 8 karakter uzunluğunda olmalı ve bir büyük harf, bir rakam ve bir özel karakter içermelidir.",
+    "passwords_do_not_match": "Şifreler eşleşmiyor.",
+    "welcome_title": "Cookrange'e Hoş Geldiniz",
+    "welcome_subtitle": "Sağlıklı ve lezzetli tarifler için kişisel rehberiniz.",
+    "login_button": "Giriş Yap",
+    "register_button": "Kayıt Ol",
+    "logout_button": "Çıkış Yap",
+    "delete_account_button": "Hesabı Sil",
+    "settings_title": "Ayarlar"
   },
 
   "profile": {
@@ -330,6 +440,9 @@
     "select": "Seç",
     "cancel": "İptal",
     "confirm": "Onayla",
+    "add": "Ekle",
+    "remove": "Sil",
+    "continue": "Devam Et",
     "back": "Geri",
     "done": "Tamam",
     "loading": "Yükleniyor...",

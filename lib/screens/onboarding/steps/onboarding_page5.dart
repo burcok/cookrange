@@ -1,41 +1,69 @@
-import 'package:cookrange/constants.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../core/services/analytics_service.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../widgets/onboarding_common_widgets.dart' as main_widgets;
-import '../widgets/onboarding_common_widgets.dart';
-import '../../../core/localization/app_localizations.dart';
-import '../../../core/providers/onboarding_provider.dart';
-import '../../../widgets/number_picker_modal.dart';
 import 'package:provider/provider.dart';
+import 'package:cookrange/core/localization/app_localizations.dart';
+import 'package:cookrange/core/providers/onboarding_provider.dart';
+import 'package:cookrange/core/theme/app_theme.dart';
+import 'package:cookrange/widgets/onboarding_common_widgets.dart';
+import 'package:cookrange/core/services/analytics_service.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
 
 class OnboardingPage5 extends StatefulWidget {
   final int step;
   final int previousStep;
   final void Function()? onNext;
   final void Function()? onBack;
+  final ValueNotifier<bool> isLoadingNotifier;
+
   const OnboardingPage5({
-    Key? key,
+    super.key,
     required this.step,
     required this.previousStep,
     this.onNext,
     this.onBack,
-  }) : super(key: key);
+    required this.isLoadingNotifier,
+  });
 
   @override
   State<OnboardingPage5> createState() => _OnboardingPage5State();
+}
+
+class _LifestyleProfile {
+  final String key;
+  final String image;
+  final String name;
+  final String description;
+  final String times;
+  final List<String> mealTimes; // For 'fixed' schedule type as a default
+
+  _LifestyleProfile({
+    required this.key,
+    required this.image,
+    required this.name,
+    required this.description,
+    required this.times,
+    required this.mealTimes,
+  });
 }
 
 class _OnboardingPage5State extends State<OnboardingPage5> {
   final _analyticsService = AnalyticsService();
   DateTime? _stepStartTime;
 
+  _LifestyleProfile? _selectedProfile;
+  List<_LifestyleProfile> _profiles = [];
+
   @override
   void initState() {
     super.initState();
     _stepStartTime = DateTime.now();
     _logStepView();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _initializeProfiles();
+        _loadInitialData();
+      }
+    });
   }
 
   @override
@@ -53,7 +81,7 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
   void _logStepView() {
     _analyticsService.logUserFlow(
       flowName: 'onboarding',
-      step: 'target_weight',
+      step: 'lifestyle_profile',
       action: 'view',
       parameters: {
         'step_number': 5,
@@ -62,40 +90,162 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
     );
   }
 
-  void _logFieldUpdate(String field, dynamic value) {
+  void _logSelection(String profileKey) {
     _analyticsService.logUserInteraction(
-      interactionType: 'field_update',
-      target: field,
+      interactionType: 'selection',
+      target: 'lifestyle_profile_selection',
       parameters: {
         'step': 5,
-        'field': field,
-        'value': value.toString(),
+        'profile': profileKey,
         'timestamp': DateTime.now().toIso8601String(),
       },
     );
   }
 
+  void _initializeProfiles() {
+    final localizations = AppLocalizations.of(context);
+    _profiles = [
+      _LifestyleProfile(
+          key: 'early_bird',
+          image: 'assets/images/onboarding/onboarding-5-1.png',
+          name: localizations
+              .translate('onboarding.page5.profiles.early_bird.name'),
+          description: localizations
+              .translate('onboarding.page5.profiles.early_bird.description'),
+          times: localizations
+              .translate('onboarding.page5.profiles.early_bird.times'),
+          mealTimes: ['07:00', '12:00', '18:00']),
+      _LifestyleProfile(
+          key: 'worker',
+          image: 'assets/images/onboarding/onboarding-5-2.png',
+          name:
+              localizations.translate('onboarding.page5.profiles.worker.name'),
+          description: localizations
+              .translate('onboarding.page5.profiles.worker.description'),
+          times:
+              localizations.translate('onboarding.page5.profiles.worker.times'),
+          mealTimes: ['08:00', '13:00', '19:00']),
+      _LifestyleProfile(
+        key: 'night_owl',
+        image: 'assets/images/onboarding/onboarding-5-3.png',
+        name:
+            localizations.translate('onboarding.page5.profiles.night_owl.name'),
+        description: localizations
+            .translate('onboarding.page5.profiles.night_owl.description'),
+        times: localizations
+            .translate('onboarding.page5.profiles.night_owl.times'),
+        mealTimes: ['11:00', '16:00', '21:00'],
+      ),
+      _LifestyleProfile(
+        key: 'rotating_shifts',
+        image: 'assets/images/onboarding/onboarding-5-4.png',
+        name: localizations
+            .translate('onboarding.page5.profiles.rotating_shifts.name'),
+        description: localizations
+            .translate('onboarding.page5.profiles.rotating_shifts.description'),
+        times: localizations
+            .translate('onboarding.page5.profiles.rotating_shifts.times'),
+        mealTimes: [], // Handled by schedule editor
+      ),
+      _LifestyleProfile(
+        key: 'irregular_schedule',
+        image: 'assets/images/onboarding/onboarding-5-5.png',
+        name: localizations
+            .translate('onboarding.page5.profiles.irregular_schedule.name'),
+        description: localizations.translate(
+            'onboarding.page5.profiles.irregular_schedule.description'),
+        times: localizations
+            .translate('onboarding.page5.profiles.irregular_schedule.times'),
+        mealTimes: [], // Handled by schedule editor
+      ),
+    ];
+    setState(() {});
+  }
+
+  void _loadInitialData() {
+    final onboarding = context.read<OnboardingProvider>();
+    if (onboarding.lifestyleProfile != null && _profiles.isNotEmpty) {
+      final initialProfileKey = onboarding.lifestyleProfile!['value'];
+      final profile = _profiles.firstWhere(
+        (p) => p.key == initialProfileKey,
+        orElse: () => _profiles.first,
+      );
+      _selectedProfile = profile;
+    } else if (_profiles.isNotEmpty) {
+      _selectedProfile = _profiles.first;
+    }
+
+    if (onboarding.mealSchedule?['schedule_type'] == null) {
+      String defaultScheduleType;
+      if (_selectedProfile?.key == 'rotating_shifts') {
+        defaultScheduleType = 'rotating';
+      } else if (_selectedProfile?.key == 'irregular_schedule') {
+        defaultScheduleType = 'irregular';
+      } else {
+        defaultScheduleType = 'fixed';
+      }
+      onboarding.setScheduleType(defaultScheduleType);
+    }
+    setState(() {});
+  }
+
+  void _onProfileSelected(_LifestyleProfile profile) {
+    setState(() {
+      _selectedProfile = profile;
+    });
+
+    final onboarding = context.read<OnboardingProvider>();
+    String newScheduleType;
+    List<String>? mealTimes;
+
+    if (profile.key == 'rotating_shifts') {
+      newScheduleType = 'rotating';
+    } else if (profile.key == 'irregular_schedule') {
+      newScheduleType = 'irregular';
+    } else {
+      newScheduleType = 'fixed';
+      mealTimes = profile.mealTimes;
+    }
+
+    onboarding.setScheduleType(newScheduleType, mealTimes: mealTimes);
+    _logSelection(profile.key);
+  }
+
+  void _onContinue() {
+    if (_selectedProfile != null) {
+      final profileData = {
+        'label': 'onboarding.page5.profiles.${_selectedProfile!.key}.name',
+        'value': _selectedProfile!.key,
+      };
+      context.read<OnboardingProvider>().setLifestyleProfile(profileData);
+      widget.onNext?.call();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    final localizations = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final localizations = AppLocalizations.of(context);
-    final analyticsService = AnalyticsService();
-    final onboarding = Provider.of<OnboardingProvider>(context);
+
+    if (_profiles.isEmpty) {
+      return Scaffold(
+        backgroundColor: colorScheme.backgroundColor2,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
-      backgroundColor: colorScheme.backgroundColor2,
+      backgroundColor: const Color(0xFFF7F8FA),
       body: SafeArea(
         child: Column(
           children: [
-            // Header Section
             OnboardingHeader(
-              headerText: localizations.translate('onboarding.page5.header'),
-              currentStep: widget.step + 1,
-              totalSteps: 5,
+              title: localizations.translate('onboarding.page5.header'),
+              currentStep: 5,
+              totalSteps: 6,
               previousStep: widget.previousStep,
-              onBackPressed: () {
+              onBackButtonPressed: () {
                 _analyticsService.logUserInteraction(
                   interactionType: 'navigation',
                   target: 'back_button',
@@ -109,215 +259,110 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                 }
               },
             ),
-
-            // Main Content Section
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 32),
-
-                    // Main Title
-                    RichText(
-                      textAlign: TextAlign.center,
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: localizations
-                                .translate('onboarding.page5.title.text1'),
-                            style: TextStyle(
-                              color:
-                                  colorScheme.onboardingNextButtonBorderColor,
-                              fontSize: 32,
-                              fontWeight: FontWeight.w800,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                          TextSpan(
-                            text: localizations
-                                .translate('onboarding.page5.title.text2'),
-                            style: TextStyle(
-                              color: colorScheme.onboardingOptionTextColor,
-                              fontSize: 32,
-                              fontWeight: FontWeight.w800,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      localizations.translate('onboarding.page5.description'),
-                      textAlign: TextAlign.left,
-                      style: TextStyle(
-                        color: colorScheme.onboardingSubtitleColor,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Target Weight Section
-                    Text(
-                      localizations
-                          .translate('onboarding.page5.target_weight.title'),
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: colorScheme.onboardingTitleColor,
-                        fontFamily: 'Lexend',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      localizations.translate(
-                          'onboarding.page5.target_weight.description'),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                        color: colorScheme.onboardingSubtitleColor,
-                        fontFamily: 'Lexend',
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Target Weight Input
-                    GestureDetector(
-                      onTap: () {
-                        _showNumberInput(context, onboarding, 'targetWeight');
+                    const SizedBox(height: 16),
+                    ..._profiles.map((profile) => _buildProfileCard(profile)),
+                    const SizedBox(height: 24),
+                    Selector<OnboardingProvider, String?>(
+                      selector: (_, provider) =>
+                          provider.mealSchedule?['schedule_type'],
+                      builder: (context, scheduleType, _) {
+                        if (scheduleType == 'rotating') {
+                          return _buildRotatingScheduleEditor();
+                        }
+                        if (scheduleType == 'irregular') {
+                          return _buildIrregularScheduleEditor();
+                        }
+                        return const SizedBox.shrink();
                       },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: colorScheme.onboardingTitleColor
-                                .withOpacity(0.1),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.monitor_weight,
-                              color: colorScheme.primaryColorCustom,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    localizations.translate(
-                                        'onboarding.page5.target_weight.title'),
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: colorScheme.onboardingTitleColor,
-                                      fontFamily: 'Lexend',
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    onboarding.targetWeight != null
-                                        ? '${onboarding.targetWeight!.toInt()} kg'
-                                        : localizations.translate(
-                                            'onboarding.page5.target_weight.placeholder'),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                      color: onboarding.targetWeight != null
-                                          ? colorScheme.onboardingTitleColor
-                                          : colorScheme.onboardingSubtitleColor,
-                                      fontFamily: 'Lexend',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              color: colorScheme.onboardingSubtitleColor,
-                              size: 16,
-                            ),
-                          ],
-                        ),
-                      ),
                     ),
-
-                    const SizedBox(height: 32),
-
-                    // Image
-                    Center(
-                      child: Image.asset(
-                        'assets/images/onboarding/onboarding-5.png',
-                        width: size.width * 0.9,
-                        height: size.width * 0.8,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          _analyticsService.logError(
-                            errorName: 'image_load_error',
-                            errorDescription: 'Failed to load onboarding-5.png',
-                            parameters: {
-                              'step': 5,
-                              'error': error.toString(),
-                              'stack_trace': stackTrace.toString(),
-                            },
-                          );
-                          return const Icon(
-                            Icons.emoji_food_beverage,
-                            size: 80,
-                            color: primaryColor,
-                          );
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 100), // Space for fixed button
+                    const SizedBox(height: 24),
+                    _buildPreview(),
+                    const SizedBox(height: 100), // For bottom button spacing
                   ],
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: OnboardingContinueButton(
+        onPressed: _selectedProfile != null ? _onContinue : null,
+        text: localizations.translate('onboarding.continue'),
+        isLoadingNotifier: widget.isLoadingNotifier,
+      ),
+    );
+  }
 
-            // Fixed Continue Button
-            main_widgets.OnboardingContinueButton(
-              onPressed: onboarding.targetWeight != null
-                  ? () async {
-                      _analyticsService.logUserInteraction(
-                        interactionType: 'button_click',
-                        target: 'continue_button',
-                        parameters: {
-                          'step': 5,
-                          'target_weight': onboarding.targetWeight ?? 0,
-                          'timestamp': DateTime.now().toIso8601String(),
-                        },
-                      );
+  Widget _buildProfileCard(_LifestyleProfile profile) {
+    final isSelected = _selectedProfile?.key == profile.key;
+    final colorScheme = Theme.of(context).colorScheme;
 
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setBool('onboarding_completed', true);
-
-                      // Onboarding tamamlanma analytics'ini gönder
-                      await onboarding.logOnboardingCompletion();
-                      await onboarding.logOnboardingData();
-
-                      await analyticsService.logEvent(
-                        name: 'onboarding_completed',
-                        parameters: {
-                          'timestamp': DateTime.now().toIso8601String(),
-                        },
-                      );
-
-                      if (widget.onNext != null) widget.onNext!();
-                    }
-                  : null,
-              text: localizations.translate('onboarding.page5.continue'),
+    return GestureDetector(
+      onTap: () => _onProfileSelected(profile),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? colorScheme.primaryColorCustom.withOpacity(0.1)
+              : colorScheme.onboardingOptionBgColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? colorScheme.primaryColorCustom
+                : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    profile.name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onboardingTitleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    profile.description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: colorScheme.onboardingSubtitleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    profile.times,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onboardingSubtitleColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                profile.image,
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
+              ),
             ),
           ],
         ),
@@ -325,43 +370,522 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
     );
   }
 
-  void _showNumberInput(
-      BuildContext context, OnboardingProvider onboarding, String field) {
-    int min, max, initialValue;
-    String unit, title;
+  Widget _buildIrregularScheduleEditor() {
     final localizations = AppLocalizations.of(context);
+    final mealSchedule = context.watch<OnboardingProvider>().mealSchedule ?? {};
+    final colorScheme = Theme.of(context).colorScheme;
 
-    if (field == 'targetWeight') {
-      min = 40;
-      max = 150;
-      unit = 'kg';
-      title = localizations.translate('onboarding.page5.target_weight.title');
-      initialValue = onboarding.targetWeight?.toInt() ?? 60;
-    } else {
-      min = 40;
-      max = 150;
-      unit = 'kg';
-      title = localizations.translate('onboarding.page5.target_weight.title');
-      initialValue = onboarding.targetWeight?.toInt() ?? 60;
+    final Map<String, IconData> mealIcons = {
+      'breakfast': Icons.restaurant_outlined,
+      'lunch': Icons.local_cafe_outlined,
+      'dinner': Icons.nightlight_round,
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: colorScheme.onboardingOptionBgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.onboardingSubtitleColor.withOpacity(0.1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            localizations
+                .translate('onboarding.page5.schedule_editor.irregular.title'),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onboardingTitleColor,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildTimePickerRow(
+            'breakfast',
+            localizations.translate('onboarding.page5.preview.breakfast'),
+            mealSchedule['breakfast'] ?? '08:00',
+            mealIcons['breakfast']!,
+            (time) => context
+                .read<OnboardingProvider>()
+                .updateMealTime('breakfast', time),
+          ),
+          _buildTimePickerRow(
+            'lunch',
+            localizations.translate('onboarding.page5.preview.lunch'),
+            mealSchedule['lunch'] ?? '13:00',
+            mealIcons['lunch']!,
+            (time) => context
+                .read<OnboardingProvider>()
+                .updateMealTime('lunch', time),
+          ),
+          _buildTimePickerRow(
+            'dinner',
+            localizations.translate('onboarding.page5.preview.dinner'),
+            mealSchedule['dinner'] ?? '19:00',
+            mealIcons['dinner']!,
+            (time) => context
+                .read<OnboardingProvider>()
+                .updateMealTime('dinner', time),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRotatingScheduleEditor() {
+    return Selector<OnboardingProvider, int>(
+        selector: (_, provider) =>
+            provider.mealSchedule?['rotation_weeks'] ?? 2,
+        builder: (context, rotationWeeks, _) {
+          final localizations = AppLocalizations.of(context);
+          final colorScheme = Theme.of(context).colorScheme;
+
+          return Container(
+            padding:
+                const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+            decoration: BoxDecoration(
+              color: Colors.white, // White card background
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  localizations.translate(
+                      'onboarding.page5.profiles.rotating_shifts.name'),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onboardingTitleColor,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  localizations.translate(
+                      'onboarding.page5.schedule_editor.rotating.rotation_weeks'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onboardingSubtitleColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildWeekSelector(rotationWeeks),
+                const SizedBox(height: 24),
+                for (int i = 0; i < rotationWeeks; i++)
+                  _buildWeekScheduleEditor(i + 1,
+                      isLast: i == rotationWeeks - 1),
+              ],
+            ),
+          );
+        });
+  }
+
+  Widget _buildWeekSelector(int selectedWeeks) {
+    final localizations = AppLocalizations.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFE9ECF0),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        children: List.generate(3, (index) {
+          final week = index + 1;
+          final isSelected = week == selectedWeeks;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () =>
+                  context.read<OnboardingProvider>().updateRotationWeeks(week),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? colorScheme.primaryColorCustom
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$week ${localizations.translate('onboarding.page5.schedule_editor.rotating.week_short')}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: isSelected
+                        ? Colors.white
+                        : colorScheme.onboardingSubtitleColor,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildWeekScheduleEditor(int week, {bool isLast = false}) {
+    final localizations = AppLocalizations.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final Map<String, IconData> mealIcons = {
+      'breakfast': Icons.restaurant_outlined,
+      'lunch': Icons.local_cafe_outlined,
+      'dinner': Icons.nightlight_round,
+    };
+
+    return Selector<OnboardingProvider, Map<String, dynamic>>(
+      selector: (_, provider) {
+        final shifts = provider.mealSchedule?['shifts'] as List? ?? [];
+        return shifts.firstWhere(
+          (s) => s['week'] == week,
+          orElse: () => {
+            'breakfast': '07:00',
+            'lunch': '12:00',
+            'dinner': '18:00',
+          },
+        );
+      },
+      shouldRebuild: (previous, next) => !mapEquals(previous, next),
+      builder: (context, weekSchedule, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(
+                  top: 24.0, bottom: 12.0), // Adjusted padding
+              child: Text(
+                '${localizations.translate('onboarding.page5.schedule_editor.rotating.week')} $week',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onboardingTitleColor,
+                ),
+              ),
+            ),
+            _buildTimePickerRow(
+              'breakfast',
+              localizations.translate('onboarding.page5.preview.breakfast'),
+              weekSchedule['breakfast']!,
+              mealIcons['breakfast']!,
+              (time) => context
+                  .read<OnboardingProvider>()
+                  .updateMealTime('breakfast', time, week: week),
+            ),
+            const SizedBox(height: 12),
+            _buildTimePickerRow(
+              'lunch',
+              localizations.translate('onboarding.page5.preview.lunch'),
+              weekSchedule['lunch']!,
+              mealIcons['lunch']!,
+              (time) => context
+                  .read<OnboardingProvider>()
+                  .updateMealTime('lunch', time, week: week),
+            ),
+            const SizedBox(height: 12),
+            _buildTimePickerRow(
+              'dinner',
+              localizations.translate('onboarding.page5.preview.dinner'),
+              weekSchedule['dinner']!,
+              mealIcons['dinner']!,
+              (time) => context
+                  .read<OnboardingProvider>()
+                  .updateMealTime('dinner', time, week: week),
+            ),
+            if (!isLast)
+              const SizedBox(
+                height: 24,
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTimePickerRow(String mealKey, String label, String currentTime,
+      IconData icon, Function(String) onTimeChanged) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+          color: const Color(0xFFF7F8FA),
+          borderRadius: BorderRadius.circular(16)),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: colorScheme.onboardingSubtitleColor,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onboardingTitleColor),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () async {
+              final initialTime = TimeOfDay(
+                hour: int.parse(currentTime.split(':')[0]),
+                minute: int.parse(currentTime.split(':')[1]),
+              );
+
+              final time = await showTimePicker(
+                context: context,
+                initialTime: initialTime,
+              );
+
+              if (time != null) {
+                onTimeChanged(
+                    '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}');
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE9ECF0)),
+              ),
+              child: Text(
+                currentTime,
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'Poppins'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeekPreview(Map<String, dynamic> shift,
+      {bool isLastWeek = false}) {
+    final localizations = AppLocalizations.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final week = shift['week'];
+    final breakfastTime = shift['breakfast'] ?? '--:--';
+    final lunchTime = shift['lunch'] ?? '--:--';
+    final dinnerTime = shift['dinner'] ?? '--:--';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 24.0, bottom: 0.0),
+          child: Text(
+            '${localizations.translate('onboarding.page5.schedule_editor.rotating.week')} $week',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: colorScheme.onboardingTitleColor,
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+          child: Column(
+            children: [
+              _buildMealTimeline(
+                iconPath: 'assets/icons/breakfast.png',
+                mealName: localizations
+                    .translate('onboarding.page5.preview.breakfast'),
+                time: breakfastTime,
+                isFirst: true,
+              ),
+              _buildMealTimeline(
+                iconPath: 'assets/icons/lunch.png',
+                mealName:
+                    localizations.translate('onboarding.page5.preview.lunch'),
+                time: lunchTime,
+              ),
+              _buildMealTimeline(
+                iconPath: 'assets/icons/dinner.png',
+                mealName:
+                    localizations.translate('onboarding.page5.preview.dinner'),
+                time: dinnerTime,
+                isLast: true,
+              ),
+            ],
+          ),
+        ),
+        if (!isLastWeek)
+          Divider(
+            height: 32,
+            thickness: 1,
+            color: colorScheme.onboardingSubtitleColor.withOpacity(0.1),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPreview() {
+    final localizations = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final onboarding = context.watch<OnboardingProvider>();
+    final mealSchedule = onboarding.mealSchedule;
+    final scheduleType = onboarding.mealSchedule?['schedule_type'];
+
+    if (scheduleType == 'rotating') {
+      final shifts = mealSchedule?['shifts'] as List?;
+      if (shifts == null || shifts.isEmpty) {
+        return const SizedBox.shrink();
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            localizations.translate('onboarding.page5.preview.title'),
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'Poppins',
+              color: colorScheme.onboardingTitleColor,
+            ),
+          ),
+          for (var i = 0; i < shifts.length; i++)
+            _buildWeekPreview(shifts[i] as Map<String, dynamic>,
+                isLastWeek: i == shifts.length - 1)
+        ],
+      );
     }
 
-    showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => NumberPickerModal(
-        title: title,
-        min: min,
-        max: max,
-        unit: unit,
-        initialValue: initialValue,
-      ),
-    ).then((value) {
-      if (value != null && value is int) {
-        if (field == 'targetWeight') {
-          onboarding.setTargetWeight(value.toDouble());
-          _logFieldUpdate('target_weight', value);
-        }
+    String breakfastTime = '--:--';
+    String lunchTime = '--:--';
+    String dinnerTime = '--:--';
+
+    if (scheduleType == 'fixed') {
+      if (mealSchedule != null) {
+        breakfastTime = mealSchedule['breakfast'] ?? '--:--';
+        lunchTime = mealSchedule['lunch'] ?? '--:--';
+        dinnerTime = mealSchedule['dinner'] ?? '--:--';
       }
-    });
+    } else if (scheduleType == 'irregular' && mealSchedule != null) {
+      breakfastTime = mealSchedule['breakfast'] ?? '--:--';
+      lunchTime = mealSchedule['lunch'] ?? '--:--';
+      dinnerTime = mealSchedule['dinner'] ?? '--:--';
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          localizations.translate('onboarding.page5.preview.title'),
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'Poppins',
+            color: colorScheme.onboardingTitleColor,
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+          child: Column(
+            children: [
+              _buildMealTimeline(
+                iconPath: 'assets/icons/breakfast.png',
+                mealName: localizations
+                    .translate('onboarding.page5.preview.breakfast'),
+                time: breakfastTime,
+                isFirst: true,
+              ),
+              _buildMealTimeline(
+                iconPath: 'assets/icons/lunch.png',
+                mealName:
+                    localizations.translate('onboarding.page5.preview.lunch'),
+                time: lunchTime,
+              ),
+              _buildMealTimeline(
+                iconPath: 'assets/icons/dinner.png',
+                mealName:
+                    localizations.translate('onboarding.page5.preview.dinner'),
+                time: dinnerTime,
+                isLast: true,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMealTimeline({
+    required String iconPath,
+    required String mealName,
+    required String time,
+    bool isFirst = false,
+    bool isLast = false,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 80,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 30,
+            child: Column(
+              spacing: 10,
+              children: [
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: isFirst
+                        ? Colors.transparent
+                        : colorScheme.onboardingSubtitleColor.withOpacity(0.3),
+                  ),
+                ),
+                Image.asset(
+                  iconPath,
+                  width: 32,
+                  height: 32,
+                  color: colorScheme.onboardingTitleColor,
+                ),
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: isLast
+                        ? Colors.transparent
+                        : colorScheme.onboardingSubtitleColor.withOpacity(0.3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                mealName,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.onboardingTitleColor,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                time,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: colorScheme.onboardingSubtitleColor,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

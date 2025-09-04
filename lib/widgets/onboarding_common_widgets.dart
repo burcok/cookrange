@@ -7,9 +7,9 @@ class OnboardingBackButton extends StatelessWidget {
   final VoidCallback onTap;
 
   const OnboardingBackButton({
-    Key? key,
+    super.key,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +19,7 @@ class OnboardingBackButton extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: SizedBox(
         width: 48,
         height: 48,
         child: Icon(
@@ -39,12 +39,12 @@ class AnimatedStepIndicator extends StatefulWidget {
   final Duration animationDuration;
 
   const AnimatedStepIndicator({
-    Key? key,
+    super.key,
     required this.currentStep,
     required this.totalSteps,
     required this.previousStep,
     this.animationDuration = const Duration(milliseconds: 500),
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedStepIndicator> createState() => _AnimatedStepIndicatorState();
@@ -115,7 +115,7 @@ class _AnimatedStepIndicatorState extends State<AnimatedStepIndicator>
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: colorScheme.onboardingTitleColor,
-            fontFamily: 'Lexend',
+            fontFamily: 'Poppins',
           ),
         ),
         const SizedBox(height: 8),
@@ -167,13 +167,13 @@ class OnboardingSection extends StatelessWidget {
   final Function(String) onSelectionChanged;
 
   const OnboardingSection({
-    Key? key,
+    super.key,
     required this.title,
     required this.subtitle,
     required this.options,
     required this.selectedValue,
     required this.onSelectionChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -188,7 +188,7 @@ class OnboardingSection extends StatelessWidget {
             fontSize: 20,
             fontWeight: FontWeight.w700,
             color: colorScheme.onboardingTitleColor,
-            fontFamily: 'Lexend',
+            fontFamily: 'Poppins',
           ),
         ),
         const SizedBox(height: 6),
@@ -198,7 +198,7 @@ class OnboardingSection extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w400,
             color: colorScheme.onboardingTitleColor,
-            fontFamily: 'Lexend',
+            fontFamily: 'Poppins',
           ),
         ),
         const SizedBox(height: 16),
@@ -226,18 +226,18 @@ class OnboardingMultiSelectSection extends StatelessWidget {
   final Function(String) onSelectionChanged;
 
   const OnboardingMultiSelectSection({
-    Key? key,
+    super.key,
     required this.title,
     required this.subtitle,
     required this.options,
     required this.selectedValues,
     required this.onSelectionChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
+    final localizations = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -247,7 +247,7 @@ class OnboardingMultiSelectSection extends StatelessWidget {
             fontSize: 20,
             fontWeight: FontWeight.w700,
             color: colorScheme.onboardingTitleColor,
-            fontFamily: 'Lexend',
+            fontFamily: 'Poppins',
           ),
         ),
         const SizedBox(height: 6),
@@ -257,17 +257,19 @@ class OnboardingMultiSelectSection extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w400,
             color: colorScheme.onboardingSubtitleColor,
-            fontFamily: 'Lexend',
+            fontFamily: 'Poppins',
           ),
         ),
         const SizedBox(height: 16),
         Text(
-          '${selectedValues.length}/3 seçildi',
+          localizations.translate(
+              'onboarding.page2.primary_goal.selected_count',
+              {'count': selectedValues.length.toString()}),
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w400,
             color: colorScheme.onboardingSubtitleColor,
-            fontFamily: 'Lexend',
+            fontFamily: 'Poppins',
           ),
         ),
         const SizedBox(height: 8),
@@ -293,11 +295,11 @@ class OnboardingOption extends StatelessWidget {
   final VoidCallback onTap;
 
   const OnboardingOption({
-    Key? key,
+    super.key,
     required this.option,
     required this.isSelected,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -340,7 +342,7 @@ class OnboardingOption extends StatelessWidget {
                 color: isSelected
                     ? Colors.white
                     : colorScheme.onboardingTitleColor,
-                fontFamily: 'Lexend',
+                fontFamily: 'Poppins',
               ),
             ),
           ],
@@ -353,70 +355,77 @@ class OnboardingOption extends StatelessWidget {
 class OnboardingContinueButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final String text;
+  final ValueNotifier<bool> isLoadingNotifier;
 
   const OnboardingContinueButton({
-    Key? key,
+    super.key,
     required this.onPressed,
     required this.text,
-  }) : super(key: key);
+    required this.isLoadingNotifier,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: primaryColor,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+      child: ValueListenableBuilder<bool>(
+        valueListenable: isLoadingNotifier,
+        builder: (context, isLoading, child) {
+          return ElevatedButton(
+            onPressed: onPressed != null && !isLoading ? onPressed : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colorScheme.primaryColorCustom,
+              foregroundColor: colorScheme.onPrimary,
+              minimumSize: const Size(double.infinity, 56),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(99),
+              ),
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              disabledBackgroundColor:
+                  colorScheme.primaryColorCustom.withOpacity(0.5),
             ),
-            elevation: 0,
-          ),
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'Lexend',
-            ),
-          ),
-        ),
+            child: isLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
+                    ),
+                  )
+                : Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+          );
+        },
       ),
     );
   }
 }
 
 class OnboardingHeader extends StatelessWidget {
-  final String headerText;
+  final String title;
   final int currentStep;
   final int totalSteps;
   final int previousStep;
-  final VoidCallback? onBackPressed;
-  final bool showBackButton;
-  final EdgeInsetsGeometry? padding;
-  final EdgeInsetsGeometry? progressPadding;
   final VoidCallback? onBackButtonPressed;
 
   const OnboardingHeader({
-    Key? key,
-    required this.headerText,
+    super.key,
+    required this.title,
     required this.currentStep,
     required this.totalSteps,
     required this.previousStep,
-    this.onBackPressed,
-    this.showBackButton = true,
-    this.padding,
-    this.progressPadding,
     this.onBackButtonPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -424,72 +433,141 @@ class OnboardingHeader extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final localizations = AppLocalizations.of(context);
 
-    return Container(
-      padding:
-          padding ?? const EdgeInsets.symmetric(horizontal: 6, vertical: 16),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row with back button and title
           Row(
             children: [
-              if (showBackButton &&
-                  (onBackPressed != null || onBackButtonPressed != null))
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(24),
-                    onTap: onBackButtonPressed ?? onBackPressed,
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      child: Icon(
-                        Icons.arrow_back,
-                        color: colorScheme.onboardingTitleColor,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                )
-              else if (showBackButton)
-                const SizedBox(width: 48)
-              else
-                const SizedBox.shrink(),
-
+              if (onBackButtonPressed != null)
+                GestureDetector(
+                  onTap: onBackButtonPressed,
+                  child: const Icon(Icons.arrow_back, size: 24),
+                ),
               Expanded(
-                child: Center(
-                  child: Text(
-                    headerText,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: colorScheme.onboardingTitleColor,
-                      fontFamily: 'Lexend',
-                    ),
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Lexend',
+                    color: colorScheme.titleColor,
                   ),
                 ),
               ),
-
-              // Balance the layout
-              if (showBackButton)
-                const SizedBox(width: 48)
-              else
-                const SizedBox.shrink(),
+              if (onBackButtonPressed != null) const SizedBox(width: 24),
             ],
           ),
           const SizedBox(height: 16),
-
-          // Progress section
-          Container(
-            padding:
-                progressPadding ?? const EdgeInsets.symmetric(horizontal: 12),
-            child: AnimatedStepIndicator(
-              currentStep: currentStep,
-              totalSteps: totalSteps,
-              previousStep: previousStep,
+          Text(
+            '${localizations.translate('onboarding.step')} $currentStep/$totalSteps',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'Poppins',
+              color: colorScheme.titleColor,
             ),
           ),
+          const SizedBox(height: 8),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final double progress =
+                  (currentStep / totalSteps).clamp(0.0, 1.0);
+              return Stack(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: constraints.maxWidth * progress,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: primaryColor,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ],
+              );
+            },
+          )
         ],
       ),
+    );
+  }
+}
+
+class OnboardingTextInputSection extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final TextEditingController controller;
+  final String hintText;
+  final ValueChanged<String> onChanged;
+
+  const OnboardingTextInputSection({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.controller,
+    required this.hintText,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onboardingTitleColor,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: colorScheme.onboardingSubtitleColor,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: controller,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            hintText: hintText,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: colorScheme.onboardingTitleColor.withOpacity(0.1),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: colorScheme.onboardingTitleColor.withOpacity(0.1),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

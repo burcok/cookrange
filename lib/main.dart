@@ -18,6 +18,9 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/home/home.dart';
 import 'screens/auth/verify_email.dart';
+import 'core/providers/device_info_provider.dart';
+import 'core/utils/route_guard.dart';
+import 'core/services/app_lifecycle_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,7 +77,7 @@ Future<void> main() async {
       ),
     );
 
-    runApp(const MyApp());
+    runApp(MyApp());
   } catch (e, stack) {
     print('Fatal error in main: $e');
     print('Stack trace: $stack');
@@ -82,8 +85,27 @@ Future<void> main() async {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final AppLifecycleService _appLifecycleService = AppLifecycleService();
+
+  @override
+  void initState() {
+    super.initState();
+    _appLifecycleService.initialize();
+  }
+
+  @override
+  void dispose() {
+    _appLifecycleService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +113,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => OnboardingProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(create: (_) => DeviceInfoProvider()),
         Provider<FirebaseAnalytics>.value(value: FirebaseAnalytics.instance),
       ],
       child: Consumer<LanguageProvider>(
@@ -108,12 +131,13 @@ class MyApp extends StatelessWidget {
                 themeMode: ThemeMode.system,
                 home: const SplashScreen(),
                 routes: {
-                  '/login': (context) => const LoginScreen(),
-                  '/register': (context) => const RegisterScreen(),
+                  '/login': (context) => const RouteGuard(child: LoginScreen()),
+                  '/register': (context) =>
+                      const RouteGuard(child: RegisterScreen()),
                   '/home': (context) => const HomeScreen(),
                   '/verify_email': (context) => const VerifyEmailScreen(),
-                  '/onboarding': (context) => const OnboardingScreen(),
-                  // Diğer authentication ekranları buraya eklenecek
+                  '/onboarding': (context) =>
+                      const RouteGuard(child: OnboardingScreen()),
                 },
                 navigatorObservers: [
                   FirebaseAnalyticsObserver(

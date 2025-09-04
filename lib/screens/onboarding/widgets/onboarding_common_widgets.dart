@@ -8,11 +8,11 @@ class OnboardingNextButton extends StatefulWidget {
   final int previousStep;
   final void Function()? onNext;
   const OnboardingNextButton({
-    Key? key,
+    super.key,
     required this.step,
     required this.previousStep,
     this.onNext,
-  }) : super(key: key);
+  });
 
   @override
   State<OnboardingNextButton> createState() => _OnboardingNextButtonState();
@@ -22,7 +22,7 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
     with TickerProviderStateMixin {
   late AnimationController _tapController;
   late Animation<double> _scaleAnim;
-  bool _isButtonEnabled = true;
+  final bool _isButtonEnabled = true;
   late double _currentProgress;
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
@@ -211,6 +211,7 @@ class ProfileInput extends StatelessWidget {
   final bool isDate;
   final VoidCallback? onTap;
   const ProfileInput({
+    super.key,
     required this.label,
     required this.value,
     this.isDate = false,
@@ -258,10 +259,10 @@ class OnboardingCardInput extends StatelessWidget {
   final IconData icon;
   final Widget child;
   const OnboardingCardInput({
-    Key? key,
+    super.key,
     required this.icon,
     required this.child,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -288,9 +289,9 @@ class OnboardingSkipButton extends StatelessWidget {
   final VoidCallback? onSkip;
 
   const OnboardingSkipButton({
-    Key? key,
+    super.key,
     this.onSkip,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -321,7 +322,7 @@ class OnboardingHeader extends StatelessWidget {
   final bool showProgress;
 
   const OnboardingHeader({
-    Key? key,
+    super.key,
     required this.headerText,
     required this.currentStep,
     required this.totalSteps,
@@ -330,7 +331,7 @@ class OnboardingHeader extends StatelessWidget {
     this.showBackButton = true,
     this.padding,
     this.showProgress = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -351,7 +352,7 @@ class OnboardingHeader extends StatelessWidget {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(24),
                     onTap: onBackPressed,
-                    child: Container(
+                    child: SizedBox(
                       width: 48,
                       height: 48,
                       child: Icon(
@@ -375,7 +376,7 @@ class OnboardingHeader extends StatelessWidget {
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: colorScheme.onboardingTitleColor,
-                      fontFamily: 'Lexend',
+                      fontFamily: 'Poppins',
                     ),
                   ),
                 ),

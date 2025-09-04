@@ -1,13 +1,13 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../core/models/user_model.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -73,21 +73,19 @@ class _LoginScreenState extends State<LoginScreen> {
           print("Error sending email verification: $e");
         }
 
-        // Check if user has completed onboarding
-        final hasOnboarding = await AuthService().hasCompletedOnboarding();
-        print("Has onboarding: $hasOnboarding");
-        if (!hasOnboarding) {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            "/onboarding",
-            (route) => false,
-          );
-        } else {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            "/home",
-            (route) => false,
-          );
+        // Check user's onboarding status from Firestore
+        final userModel = await AuthService().getUserData(user.uid);
+        final bool onboardingCompleted =
+            userModel?.onboardingCompleted ?? false;
+
+        if (mounted) {
+          if (onboardingCompleted) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/home', (route) => false);
+          } else {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/onboarding', (route) => false);
+          }
         }
       }
     } on AuthException catch (e) {
@@ -189,25 +187,68 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (user != null) {
-        // Check if user has completed onboarding
-        final hasOnboarding = await AuthService().hasCompletedOnboarding();
-        if (!hasOnboarding) {
+        final currentUser = AuthService().currentUser;
+        if (currentUser != null && !currentUser.emailVerified) {
+          // If email is not verified, navigate to verification screen
           Navigator.pushNamedAndRemoveUntil(
             context,
-            "/onboarding",
+            "/verify_email",
             (route) => false,
           );
-        } else {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            "/home",
-            (route) => false,
-          );
+          return;
+        }
+
+        // Check user's onboarding status from Firestore
+        final userModel = await AuthService().getUserData(user.uid);
+        final bool onboardingCompleted =
+            userModel?.onboardingCompleted ?? false;
+
+        if (mounted) {
+          if (onboardingCompleted) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/home', (route) => false);
+          } else {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/onboarding', (route) => false);
+          }
         }
       }
-    } on Exception catch (e) {
-      final msg =
-          AppLocalizations.of(context).translate('auth.google_login_error');
+    } on AuthException catch (e) {
+      if (!mounted) return;
+
+      String msg;
+      switch (e.code) {
+        case 'user-not-found':
+        case 'wrong-password':
+        case 'invalid-email':
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.invalid_credentials');
+          break;
+        case 'network-error':
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.network_error');
+          break;
+        case 'empty-fields':
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.empty_fields');
+          break;
+        case 'type-error':
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.type_error');
+          break;
+        case 'user-disabled':
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.user_disabled');
+          break;
+        case 'too-many-requests':
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.too_many_requests');
+          break;
+        default:
+          msg = AppLocalizations.of(context)
+              .translate('auth.login_errors.login_error');
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -218,13 +259,36 @@ class _LoginScreenState extends State<LoginScreen> {
               color: Colors.white,
             ),
           ),
-          duration: const Duration(seconds: 10),
+          duration: const Duration(seconds: 5),
           backgroundColor: Colors.red,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          closeIconColor: Colors.white,
-          showCloseIcon: true,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      print("Unexpected error during login: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)
+                .translate('auth.login_errors.unexpected_error'),
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 14,
+              color: Colors.white,
+            ),
+          ),
+          duration: const Duration(seconds: 5),
+          backgroundColor: Colors.red,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.all(10),
           padding: const EdgeInsets.all(10),
@@ -245,7 +309,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -253,33 +317,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 32),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).maybePop();
-                    },
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color:
-                              colorScheme.onboardingTitleColor.withOpacity(0.1),
-                          width: 1,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.arrow_back,
-                        color: colorScheme.onboardingTitleColor,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 48),
                 Text(
                   'cookrange',
                   style: TextStyle(
@@ -393,7 +431,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: _isLoading ? null : () => _login(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorScheme.secondary,
-                    foregroundColor: colorScheme.background,
+                    foregroundColor: colorScheme.surface,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(32),
                     ),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/providers/onboarding_provider.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/services/auth_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -13,20 +14,62 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final PageController _pageController = PageController();
+  final PageController _pageController = PageController(initialPage: 0);
   int _currentStep = 0;
   int _previousStep = -1;
   final _analyticsService = AnalyticsService();
   DateTime? _screenStartTime;
   bool _isNavigatingProgrammatically =
       false; // Flag to prevent onPageChanged interference
+  bool _isDataLoaded = false;
+  final ValueNotifier<bool> _isLoadingNotifier = ValueNotifier<bool>(false);
+
+  late final List<Widget> _onboardingPages;
 
   @override
   void initState() {
     super.initState();
+    // initState should be used for one-time initializations that do not depend on context.
     _logScreenView();
     _logOnboardingStart();
     _startScreenTimeTracking();
+
+    _onboardingPages = List.generate(
+      6,
+      (index) => OnboardingStep(
+        step: index,
+        previousStep: _previousStep,
+        onNext: _nextStep,
+        onBack: _prevStep,
+        isLoadingNotifier: _isLoadingNotifier,
+      ),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isDataLoaded) {
+      _loadOnboardingData();
+      _isDataLoaded = true;
+    }
+  }
+
+  Future<void> _loadOnboardingData() async {
+    final authService = AuthService();
+    final onboardingProvider = context.read<OnboardingProvider>();
+
+    if (authService.currentUser != null) {
+      final userModel =
+          await authService.getUserData(authService.currentUser!.uid);
+      if (userModel?.onboardingData != null) {
+        onboardingProvider.initializeFromFirestore(userModel!.onboardingData!);
+      } else {
+        onboardingProvider.reset();
+      }
+    } else {
+      onboardingProvider.reset();
+    }
   }
 
   void _startScreenTimeTracking() {
@@ -43,6 +86,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
     }
     _pageController.dispose();
+    _isLoadingNotifier.dispose();
     super.dispose();
   }
 
@@ -156,7 +200,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         }
         return localizations
             .translate('onboarding.validation.complete_cooking_preferences');
-      case 4: // Hedef kilo
+      case 4: // Profile Info
+        if (onboarding.gender == null ||
+            onboarding.birthDate == null ||
+            onboarding.height == null ||
+            onboarding.weight == null) {
+          return localizations
+              .translate('onboarding.validation.complete_profile_info');
+        }
+        return '';
+      case 5: // Hedef kilo
         if (onboarding.targetWeight == null) {
           return localizations
               .translate('onboarding.validation.enter_target_weight');
@@ -169,6 +222,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _nextStep() {
+    if (_isLoadingNotifier.value) return;
+
+    _isLoadingNotifier.value = true;
+
+    // Validate before proceeding
+    final onboardingProvider =
+        Provider.of<OnboardingProvider>(context, listen: false);
+    if (_shouldPreventForwardScroll(onboardingProvider)) {
+      _showNotification(_getRequiredFieldsMessage(onboardingProvider));
+      _isLoadingNotifier.value = false;
+      return;
+    }
+
     if (_currentStep < 5) {
       // Set flag to prevent onPageChanged interference
       _isNavigatingProgrammatically = true;
@@ -189,17 +255,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           .then((_) {
         // Reset flag after animation completes
         if (mounted) {
-          setState(() {
-            _isNavigatingProgrammatically = false;
-          });
+          _isNavigatingProgrammatically = false;
+          _isLoadingNotifier.value = false;
         }
       }).catchError((error) {
-        print('Error during next step animation: $error');
         // Reset flag on error
         if (mounted) {
-          setState(() {
-            _isNavigatingProgrammatically = false;
-          });
+          _isNavigatingProgrammatically = false;
+          _isLoadingNotifier.value = false;
         }
       });
 
@@ -215,9 +278,92 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         );
         _logOnboardingStep(_currentStep);
       });
+
+      final onboardingProvider =
+          Provider.of<OnboardingProvider>(context, listen: false);
+      if (onboardingProvider.isDirty) {
+        onboardingProvider.updateOnboardingDataInFirestore();
+      }
     } else {
-      // Onboarding tamamlandı, analytics gönder
-      _logOnboardingCompletion();
+      _completeOnboarding();
+    }
+  }
+
+  Future<void> _completeOnboarding() async {
+    final onboardingProvider =
+        Provider.of<OnboardingProvider>(context, listen: false);
+    final authService = AuthService();
+
+    // Log completion analytics
+    _logOnboardingCompletion();
+
+    final onboardingData = {
+      'gender': onboardingProvider.gender,
+      'birth_date': onboardingProvider.birthDate?.toIso8601String(),
+      'height': onboardingProvider.height,
+      'weight': onboardingProvider.weight,
+      'target_weight': onboardingProvider.targetWeight,
+      'lifestyle_profile': onboardingProvider.lifestyleProfile,
+      'primary_goals': onboardingProvider.primaryGoals
+          .map((goal) => goal['value'] as String)
+          .toList(),
+      'activity_level': onboardingProvider.activityLevel != null
+          ? onboardingProvider.activityLevel!['value']
+          : null,
+      'disliked_foods': onboardingProvider.dislikedFoods
+          .map((food) => food['value'] as String)
+          .toList(),
+      'cooking_level': onboardingProvider.cookingLevel != null
+          ? onboardingProvider.cookingLevel!['value']
+          : null,
+      'kitchen_equipments': onboardingProvider.kitchenEquipment
+          .map((equipment) => equipment['value'] as String)
+          .toList(),
+    };
+
+    final preferences = {
+      'onboarding_data': onboardingData,
+      'onboarding_completed': true,
+    };
+
+    try {
+      if (authService.currentUser != null) {
+        if (!authService.currentUser!.emailVerified) {
+          // If email is not verified, navigate to verification screen
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            "/verify_email",
+            (route) => false,
+          );
+          return;
+        }
+
+        // If user is logged in, update their preferences
+        await authService.updateUserData(preferences);
+
+        // Onboarding verilerini temizle
+        onboardingProvider.reset();
+        await authService.clearOnboardingData();
+        await authService.completeOnboarding();
+
+        if (mounted) {
+          // If all info is complete, go home
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+        }
+      } else {
+        // If user is not logged in, navigate to register screen
+        if (mounted) {
+          Navigator.pushNamed(context, '/register');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showNotification('An error occurred while saving your preferences.');
+      }
+    } finally {
+      if (mounted) {
+        _isLoadingNotifier.value = false;
+      }
     }
   }
 
@@ -228,7 +374,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       step: 'completion',
       action: 'complete',
       parameters: {
-        'total_steps': 5,
+        'total_steps': 6,
         'completion_time': DateTime.now().toIso8601String(),
       },
     );
@@ -237,13 +383,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       interactionType: 'onboarding_completion',
       target: 'onboarding_finished',
       parameters: {
-        'total_steps_completed': 5,
+        'total_steps_completed': 6,
         'completion_time': DateTime.now().toIso8601String(),
       },
     );
   }
 
   void _prevStep() {
+    if (_isLoadingNotifier.value) return;
+
+    _isLoadingNotifier.value = true;
+
     if (_currentStep > 0) {
       _analyticsService.logUserInteraction(
         interactionType: 'navigation',
@@ -274,19 +424,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           .then((_) {
         // Reset flag after animation completes
         if (mounted) {
-          setState(() {
-            _isNavigatingProgrammatically = false;
-          });
+          _isNavigatingProgrammatically = false;
+          _isLoadingNotifier.value = false;
         }
       }).catchError((error) {
-        print('Error during animation: $error');
         // Reset flag on error
         if (mounted) {
-          setState(() {
-            _isNavigatingProgrammatically = false;
-          });
+          _isNavigatingProgrammatically = false;
+          _isLoadingNotifier.value = false;
         }
       });
+    }
+    final onboardingProvider =
+        Provider.of<OnboardingProvider>(context, listen: false);
+    if (onboardingProvider.isDirty) {
+      onboardingProvider.updateOnboardingDataInFirestore();
     }
   }
 
@@ -296,83 +448,71 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            Consumer<OnboardingProvider>(
-              builder: (context, onboarding, child) {
-                return PageView(
-                  controller: _pageController,
-                  onPageChanged: (index) {
-                    if (!mounted) return;
+            PageView(
+              controller: _pageController,
+              onPageChanged: (index) {
+                if (!mounted) return;
 
-                    // Skip if we're navigating programmatically
-                    if (_isNavigatingProgrammatically) {
-                      return;
-                    }
+                // Skip if we're navigating programmatically
+                if (_isNavigatingProgrammatically) {
+                  return;
+                }
 
-                    // Skip if the index is the same as current step
-                    if (index == _currentStep) return;
+                // Skip if the index is the same as current step
+                if (index == _currentStep) return;
 
-                    if (index > _currentStep) {
-                      if (_shouldPreventForwardScroll(onboarding)) {
-                        Future.microtask(() {
-                          _analyticsService.logUserInteraction(
-                            interactionType: 'validation_error',
-                            target: 'forward_scroll',
-                            parameters: {
-                              'current_step': _currentStep,
-                              'attempted_step': index,
-                              'error_message':
-                                  _getRequiredFieldsMessage(onboarding),
-                            },
-                          );
-                        });
-                        _pageController.animateToPage(
-                          _currentStep,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOut,
-                        );
-                        _showNotification(
-                            _getRequiredFieldsMessage(onboarding));
-                        return;
-                      }
-                    }
+                final onboarding = context.read<OnboardingProvider>();
+                if (index > _currentStep) {
+                  if (_shouldPreventForwardScroll(onboarding)) {
+                    Future.microtask(() {
+                      _analyticsService.logUserInteraction(
+                        interactionType: 'validation_error',
+                        target: 'forward_scroll',
+                        parameters: {
+                          'current_step': _currentStep,
+                          'attempted_step': index,
+                          'error_message':
+                              _getRequiredFieldsMessage(onboarding),
+                        },
+                      );
+                    });
+                    _pageController.animateToPage(
+                      _currentStep,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                    );
+                    _showNotification(_getRequiredFieldsMessage(onboarding));
+                    return;
+                  }
+                }
 
-                    // Only update state if it's different
-                    if (index != _currentStep) {
-                      setState(() {
-                        _previousStep = _currentStep;
-                        _currentStep = index;
-                      });
+                // Only update state if it's different
+                if (index != _currentStep) {
+                  setState(() {
+                    _previousStep = _currentStep;
+                    _currentStep = index;
+                  });
 
-                      // Run analytics in background
-                      Future.microtask(() {
-                        _analyticsService.logUserInteraction(
-                          interactionType: 'page_change',
-                          target: 'step_$index',
-                          parameters: {
-                            'from_step': _previousStep,
-                            'to_step': index,
-                          },
-                        );
-                        _logOnboardingStep(index);
-                      });
-                    }
-                  },
-                  physics: _CustomScrollPhysics(
-                    parent: const PageScrollPhysics(),
-                    shouldPreventScroll:
-                        _shouldPreventForwardScroll(onboarding),
-                  ),
-                  children: List.generate(
-                    5,
-                    (index) => OnboardingStep(
-                      step: index,
-                      previousStep: _previousStep,
-                      onNext: _nextStep,
-                      onBack: _prevStep,
-                    ),
-                  ),
-                );
+                  // Run analytics in background
+                  Future.microtask(() {
+                    _analyticsService.logUserInteraction(
+                      interactionType: 'page_change',
+                      target: 'step_$index',
+                      parameters: {
+                        'from_step': _previousStep,
+                        'to_step': index,
+                      },
+                    );
+                    _logOnboardingStep(index);
+                  });
+                }
               },
+              physics: _CustomScrollPhysics(
+                parent: const PageScrollPhysics(),
+                shouldPreventScroll: _shouldPreventForwardScroll(
+                    context.watch<OnboardingProvider>()),
+              ),
+              children: _onboardingPages,
             ),
           ],
         ),
@@ -382,10 +522,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   bool _shouldPreventForwardScroll(OnboardingProvider onboarding) {
     // Debug logging
-    print('_shouldPreventForwardScroll called for step $_currentStep');
-    print('cookingLevel: ${onboarding.cookingLevel}');
-    print('kitchenEquipment: ${onboarding.kitchenEquipment}');
-    print('kitchenEquipment.isEmpty: ${onboarding.kitchenEquipment.isEmpty}');
 
     switch (_currentStep) {
       case 0: // Welcome page - no validation needed
@@ -396,12 +532,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       case 2: // Dietary Preferences - optional, no validation needed
         return false;
       case 3: // Pişirme seviyesi ve mutfak ekipmanı
-        final shouldPrevent = onboarding.cookingLevel == null ||
+        return onboarding.cookingLevel == null ||
             onboarding.kitchenEquipment.isEmpty;
-        print('Step 3 validation: shouldPrevent = $shouldPrevent');
-        return shouldPrevent;
-      case 4: // Hedef kilo
-        return onboarding.targetWeight == null;
+      case 4: // Lifestyle Profile
+        return onboarding.lifestyleProfile == null;
+      case 5:
+        return onboarding.gender == null ||
+            onboarding.birthDate == null ||
+            onboarding.height == null ||
+            onboarding.weight == null;
       default:
         return false;
     }
@@ -412,9 +551,9 @@ class _CustomScrollPhysics extends ScrollPhysics {
   final bool shouldPreventScroll;
 
   const _CustomScrollPhysics({
-    ScrollPhysics? parent,
+    super.parent,
     required this.shouldPreventScroll,
-  }) : super(parent: parent);
+  });
 
   @override
   _CustomScrollPhysics applyTo(ScrollPhysics? ancestor) {

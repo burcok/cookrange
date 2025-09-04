@@ -8,12 +8,11 @@ class DatePickerModal extends StatelessWidget {
   final DateTime maxDate;
   final void Function(DateTime date) onSelected;
   const DatePickerModal(
-      {Key? key,
+      {super.key,
       required this.initialDate,
       required this.minDate,
       required this.maxDate,
-      required this.onSelected})
-      : super(key: key);
+      required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +221,7 @@ class DatePickerModal extends StatelessWidget {
           }
         }
 
-        String _monthName(int month) {
+        String monthName(int month) {
           final months = [
             '',
             localizations.translate('profile.birthday.months.january'),
@@ -275,7 +274,7 @@ class DatePickerModal extends StatelessWidget {
                     GestureDetector(
                       onTap: selectMonth,
                       child: Text(
-                        _monthName(displayMonth.month),
+                        monthName(displayMonth.month),
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w500,

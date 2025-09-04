@@ -1,5 +1,7 @@
+import 'package:cookrange/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/analytics_service.dart';
@@ -11,15 +13,15 @@ class OnboardingPage3 extends StatefulWidget {
   final int previousStep;
   final void Function()? onNext;
   final void Function()? onBack;
-  final OnboardingProvider onboarding;
+  final ValueNotifier<bool> isLoadingNotifier;
   const OnboardingPage3({
-    Key? key,
+    super.key,
     required this.step,
     required this.previousStep,
     this.onNext,
     this.onBack,
-    required this.onboarding,
-  }) : super(key: key);
+    required this.isLoadingNotifier,
+  });
 
   @override
   State<OnboardingPage3> createState() => _OnboardingPage3State();
@@ -261,10 +263,14 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
         value: 'flax_seeds'),
   ];
 
+  late final Set<String> _predefinedIngredientValues;
+  final Set<String> _predefinedIngredientLabels = {};
+  List<OptionData> _translatedIngredients = [];
+
   List<OptionData> _filteredIngredients = [];
-  List<String> _selectedIngredients = [];
+  List<String> _selectedIngredientValues = [];
   List<OptionData> _customIngredients = [];
-  int _remainingCustomSlots = 3;
+  late int _remainingCustomSlots;
   bool _showCustomAddOption = false;
   String _currentSearchQuery = '';
   bool _isLoadingAI = false;
@@ -273,10 +279,52 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
   void initState() {
     super.initState();
     _stepStartTime = DateTime.now();
-    _filteredIngredients =
-        _allIngredients.take(10).toList(); // Show only first 10
+    _predefinedIngredientValues = _allIngredients.map((i) => i.value).toSet();
+    _predefinedIngredientLabels.addAll(_allIngredients.map((i) => i.label));
+
+    final onboarding = context.read<OnboardingProvider>();
+
+    // Reconstruct custom ingredients from provider and populate selected values
+    for (final food in onboarding.dislikedFoods) {
+      final label = food['label'] as String;
+      final value = food['value'] as String;
+
+      // Check if it's a custom ingredient by checking against the original labels
+      if (!_predefinedIngredientLabels.contains(label)) {
+        _customIngredients.add(OptionData(
+          label: label,
+          value: value,
+          icon: Icons.auto_awesome, // Default icon for restored custom items
+        ));
+      }
+    }
+
+    _selectedIngredientValues = onboarding.dislikedFoods
+        .map((food) => food['value'] as String)
+        .toList();
+
+    _remainingCustomSlots = 3 - _customIngredients.length;
+
     _searchController.addListener(_filterIngredients);
     _logStepView();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _translateAndCacheIngredients();
+    _filterIngredients(); // Initial filter
+  }
+
+  void _translateAndCacheIngredients() {
+    final localizations = AppLocalizations.of(context);
+    _translatedIngredients = _allIngredients
+        .map((ingredient) => OptionData(
+              label: localizations.translate(ingredient.label),
+              value: ingredient.value,
+              icon: ingredient.icon,
+            ))
+        .toList();
   }
 
   @override
@@ -337,10 +385,10 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
     setState(() {
       if (query.isEmpty) {
         _filteredIngredients =
-            _allIngredients.take(10).toList(); // Show only first 10
+            _translatedIngredients.take(10).toList(); // Show only first 10
         _showCustomAddOption = false;
       } else {
-        _filteredIngredients = _allIngredients
+        _filteredIngredients = _translatedIngredients
             .where(
                 (ingredient) => ingredient.label.toLowerCase().contains(query))
             .take(10) // Limit to 10 results
@@ -348,8 +396,11 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
 
         // Check if we should show custom add option
         // Only show when no results found AND no exact match exists
-        final allIngredients = [..._allIngredients, ..._customIngredients];
-        final hasExactMatch = allIngredients.any(
+        final allDisplayIngredients = [
+          ..._translatedIngredients,
+          ..._customIngredients
+        ];
+        final hasExactMatch = allDisplayIngredients.any(
           (ingredient) => ingredient.label.toLowerCase() == query,
         );
 
@@ -361,14 +412,36 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
     });
   }
 
-  void _toggleIngredient(String ingredientValue) {
+  void _toggleIngredient(OptionData ingredient) {
     setState(() {
-      if (_selectedIngredients.contains(ingredientValue)) {
-        _selectedIngredients.remove(ingredientValue);
-        _logSelection('remove_ingredient', ingredientValue);
+      if (_selectedIngredientValues.contains(ingredient.value)) {
+        _selectedIngredientValues.remove(ingredient.value);
+
+        // Find original ingredient data to save the key
+        final originalIngredient = _allIngredients.firstWhere(
+          (i) => i.value == ingredient.value,
+          orElse: () => ingredient, // For custom ingredients
+        );
+
+        context.read<OnboardingProvider>().toggleDislikedFood({
+          'label': originalIngredient.label,
+          'icon': ingredient.icon.toString(),
+          'value': ingredient.value,
+        });
+        _logSelection('remove_ingredient', ingredient.value);
       } else {
-        _selectedIngredients.add(ingredientValue);
-        _logSelection('add_ingredient', ingredientValue);
+        _selectedIngredientValues.add(ingredient.value);
+        // Find original ingredient data to save the key
+        final originalIngredient = _allIngredients.firstWhere(
+          (i) => i.value == ingredient.value,
+          orElse: () => ingredient, // For custom ingredients
+        );
+        context.read<OnboardingProvider>().toggleDislikedFood({
+          'label': originalIngredient.label,
+          'icon': ingredient.icon.toString(),
+          'value': ingredient.value,
+        });
+        _logSelection('add_ingredient', ingredient.value);
       }
     });
   }
@@ -397,7 +470,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
         });
 
         // Automatically select the newly added custom ingredient
-        _toggleIngredient(aiIngredient.value);
+        _toggleIngredient(aiIngredient);
 
         _logCustomIngredientAdded(query);
         _logCustomIngredientForValidation(
@@ -478,7 +551,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
       _currentSearchQuery = '';
     });
 
-    _toggleIngredient(value);
+    _toggleIngredient(customIngredient);
     _logCustomIngredientAdded(query);
     _logCustomIngredientForValidation(query, value);
   }
@@ -501,12 +574,40 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
     final customIngredient = _customIngredients.firstWhere(
       (ingredient) => ingredient.value == ingredientValue,
     );
+    final ingredientMap = {
+      'label': customIngredient.label,
+      'icon': customIngredient.icon.toString(),
+      'value': customIngredient.value,
+    };
 
     setState(() {
       _customIngredients.remove(customIngredient);
+      _selectedIngredientValues.remove(ingredientValue);
+      context.read<OnboardingProvider>().toggleDislikedFood(
+          ingredientMap); // Remove from provider if it exists
       // Note: We don't restore the slot when removing custom ingredients
       // This prevents abuse of the system
     });
+  }
+
+  String _getIngredientLabel(OptionData ingredient) {
+    final localizations = AppLocalizations.of(context);
+    final isPredefined = _predefinedIngredientValues.contains(ingredient.value);
+
+    if (isPredefined && _translatedIngredients.isNotEmpty) {
+      try {
+        return _translatedIngredients
+            .firstWhere((i) => i.value == ingredient.value)
+            .label;
+      } catch (e) {
+        // Fallback for safety
+        return localizations.translate(_allIngredients
+            .firstWhere((i) => i.value == ingredient.value)
+            .label);
+      }
+    }
+
+    return ingredient.label;
   }
 
   @override
@@ -522,9 +623,9 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
           children: [
             // Header Section
             OnboardingHeader(
-              headerText: localizations.translate('onboarding.page3.header'),
+              title: localizations.translate('onboarding.page3.header'),
               currentStep: widget.step + 1,
-              totalSteps: 5,
+              totalSteps: 6,
               previousStep: widget.previousStep,
               onBackButtonPressed: () {
                 _analyticsService.logUserInteraction(
@@ -558,7 +659,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                         color: colorScheme.onboardingTitleColor,
-                        fontFamily: 'Lexend',
+                        fontFamily: 'Poppins',
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -568,7 +669,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
                         color: colorScheme.onboardingSubtitleColor,
-                        fontFamily: 'Lexend',
+                        fontFamily: 'Poppins',
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -597,7 +698,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                           hintStyle: TextStyle(
                             color: colorScheme.onboardingSubtitleColor,
                             fontSize: 14,
-                            fontFamily: 'Lexend',
+                            fontFamily: 'Poppins',
                           ),
                           prefixIcon: Icon(
                             Icons.search,
@@ -612,7 +713,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                         ),
                         style: TextStyle(
                           fontSize: 14,
-                          fontFamily: 'Lexend',
+                          fontFamily: 'Poppins',
                           color: colorScheme.onboardingTitleColor,
                         ),
                       ),
@@ -621,77 +722,71 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
 
                     // Custom Add Option
                     if (_showCustomAddOption) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: RichText(
-                                text: TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: localizations.translate(
-                                          'onboarding.page3.custom_not_found'),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: colorScheme.onboardingTitleColor,
-                                        fontFamily: 'Lexend',
-                                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: localizations.translate(
+                                        'onboarding.page3.custom_not_found'),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: colorScheme.onboardingTitleColor,
+                                      fontFamily: 'Poppins',
                                     ),
-                                    TextSpan(
-                                      text: localizations.translate(
-                                          'onboarding.page3.custom_add_hint'),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: colorScheme.onboardingTitleColor,
-                                        fontFamily: 'Lexend',
-                                      ),
+                                  ),
+                                  TextSpan(
+                                    text: localizations.translate(
+                                        'onboarding.page3.custom_add_hint'),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: colorScheme.onboardingTitleColor,
+                                      fontFamily: 'Poppins',
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            ElevatedButton(
-                              onPressed:
-                                  _isLoadingAI ? null : _addCustomIngredient,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: colorScheme.primaryColorCustom,
-                                foregroundColor:
-                                    colorScheme.onboardingOptionBgColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
+                          ),
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            onPressed:
+                                _isLoadingAI ? null : _addCustomIngredient,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              child: _isLoadingAI
-                                  ? SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                          colorScheme.onboardingOptionBgColor,
-                                        ),
-                                      ),
-                                    )
-                                  : Text(
-                                      localizations.translate(
-                                          'onboarding.page3.custom_add'),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        fontFamily: 'Lexend',
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                            ),
+                            child: _isLoadingAI
+                                ? SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        colorScheme.onboardingOptionBgColor,
                                       ),
                                     ),
-                            ),
-                          ],
-                        ),
+                                  )
+                                : Text(
+                                    localizations.translate(
+                                        'onboarding.page3.custom_add'),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: 'Poppins',
+                                    ),
+                                  ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -703,14 +798,14 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                         style: TextStyle(
                           fontSize: 12,
                           color: colorScheme.onboardingSubtitleColor,
-                          fontFamily: 'Lexend',
+                          fontFamily: 'Poppins',
                         ),
                       ),
                       const SizedBox(height: 16),
                     ],
 
                     // Selected Ingredients Section
-                    if (_selectedIngredients.isNotEmpty) ...[
+                    if (_selectedIngredientValues.isNotEmpty) ...[
                       Text(
                         localizations
                             .translate('onboarding.page3.selected_title'),
@@ -718,20 +813,36 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onboardingTitleColor,
-                          fontFamily: 'Lexend',
+                          fontFamily: 'Poppins',
                         ),
                       ),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 12,
                         runSpacing: 12,
-                        children: _selectedIngredients.map((ingredientValue) {
+                        children:
+                            _selectedIngredientValues.map((ingredientValue) {
                           final allIngredients = [
-                            ..._allIngredients,
+                            ..._translatedIngredients,
                             ..._customIngredients
                           ];
                           final ingredient = allIngredients.firstWhere(
                             (ingredient) => ingredient.value == ingredientValue,
+                            orElse: () {
+                              final originalIngredient =
+                                  _allIngredients.firstWhere(
+                                (i) => i.value == ingredientValue,
+                                orElse: () => OptionData(
+                                    label: 'Unknown',
+                                    value: ingredientValue,
+                                    icon: Icons.help),
+                              );
+                              return OptionData(
+                                label: _getIngredientLabel(originalIngredient),
+                                value: ingredientValue,
+                                icon: originalIngredient.icon,
+                              );
+                            },
                           );
                           return _buildSelectedIngredient(ingredient);
                         }).toList(),
@@ -742,7 +853,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                     // Available Ingredients Section - Only show when there are results
                     if (_filteredIngredients.isNotEmpty ||
                         _customIngredients.any((ingredient) =>
-                            !_selectedIngredients
+                            !_selectedIngredientValues
                                 .contains(ingredient.value))) ...[
                       Text(
                         localizations
@@ -751,7 +862,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onboardingTitleColor,
-                          fontFamily: 'Lexend',
+                          fontFamily: 'Poppins',
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -760,12 +871,12 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                         runSpacing: 12,
                         children: [
                           ..._filteredIngredients
-                              .where((ingredient) => !_selectedIngredients
+                              .where((ingredient) => !_selectedIngredientValues
                                   .contains(ingredient.value))
                               .map((ingredient) =>
                                   _buildAvailableIngredient(ingredient)),
                           ..._customIngredients
-                              .where((ingredient) => !_selectedIngredients
+                              .where((ingredient) => !_selectedIngredientValues
                                   .contains(ingredient.value))
                               .map((ingredient) =>
                                   _buildCustomAvailableIngredient(ingredient)),
@@ -787,7 +898,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                   target: 'continue_button',
                   parameters: {
                     'step': 3,
-                    'selected_ingredients': _selectedIngredients.join(','),
+                    'selected_ingredients': _selectedIngredientValues.join(','),
                     'custom_ingredients': _customIngredients
                         .map((ingredient) => ingredient.value)
                         .join(','),
@@ -795,20 +906,10 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                   },
                 );
 
-                // Save both regular and custom ingredients
-                final allSelectedIngredients = [..._selectedIngredients];
-                widget.onboarding.setDietaryPreferences(allSelectedIngredients);
-
-                // Save custom ingredients for future AI validation
-                widget.onboarding.setCustomDietaryPreferences(
-                  _customIngredients
-                      .map((ingredient) => ingredient.value)
-                      .toList(),
-                );
-
                 widget.onNext?.call();
               },
               text: localizations.translate('onboarding.page3.continue'),
+              isLoadingNotifier: widget.isLoadingNotifier,
             ),
           ],
         ),
@@ -817,54 +918,49 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
   }
 
   Widget _buildSelectedIngredient(OptionData ingredient) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final localizations = AppLocalizations.of(context);
-    final isCustom = _customIngredients.contains(ingredient);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: colorScheme.primaryColorCustom,
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            ingredient.icon,
-            size: 18,
-            color: colorScheme.onboardingOptionBgColor,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            localizations.translate(ingredient.label),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: colorScheme.onboardingOptionBgColor,
-              fontFamily: 'Lexend',
+    return GestureDetector(
+      onTap: () => _toggleIngredient(ingredient),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: primaryColor,
+          borderRadius: BorderRadius.circular(99),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              ingredient.icon,
+              size: 18,
+              color: Colors.white,
             ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () => _toggleIngredient(ingredient.value),
-            child: Icon(
+            const SizedBox(width: 8),
+            Text(
+              _getIngredientLabel(ingredient),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+                fontFamily: 'Poppins',
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
               Icons.close,
               size: 16,
-              color: colorScheme.onboardingOptionBgColor,
+              color: Colors.white,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildAvailableIngredient(OptionData ingredient) {
     final colorScheme = Theme.of(context).colorScheme;
-    final localizations = AppLocalizations.of(context);
 
     return GestureDetector(
-      onTap: () => _toggleIngredient(ingredient.value),
+      onTap: () => _toggleIngredient(ingredient),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
@@ -885,12 +981,12 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
             ),
             const SizedBox(width: 8),
             Text(
-              localizations.translate(ingredient.label),
+              _getIngredientLabel(ingredient),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: colorScheme.onboardingTitleColor,
-                fontFamily: 'Lexend',
+                fontFamily: 'Poppins',
               ),
             ),
           ],
@@ -901,10 +997,9 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
 
   Widget _buildCustomAvailableIngredient(OptionData ingredient) {
     final colorScheme = Theme.of(context).colorScheme;
-    final localizations = AppLocalizations.of(context);
 
     return GestureDetector(
-      onTap: () => _toggleIngredient(ingredient.value),
+      onTap: () => _toggleIngredient(ingredient),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
@@ -925,12 +1020,12 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
             ),
             const SizedBox(width: 8),
             Text(
-              localizations.translate(ingredient.label),
+              _getIngredientLabel(ingredient),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: colorScheme.primaryColorCustom,
-                fontFamily: 'Lexend',
+                fontFamily: 'Poppins',
               ),
             ),
             const SizedBox(width: 8),

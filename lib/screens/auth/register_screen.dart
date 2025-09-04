@@ -1,7 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -9,7 +8,7 @@ import '../../widgets/onboarding_common_widgets.dart';
 import 'package:flutter/gestures.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -123,22 +122,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (user != null) {
-        if (!mounted) return;
-
-        // Get onboarding data
-        final onboardingData = await AuthService().getOnboardingData();
-
-        // Save user data including onboarding data
-        await AuthService().updateUserData({
-          'onboarding_completed': true,
-          'onboarding_data': onboardingData,
-        });
-
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          "/home",
-          (route) => false,
-        );
+        // After registration, user needs to verify their email
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/verify_email',
+            (route) => false,
+          );
+        }
       }
     } on AuthException catch (e) {
       if (!mounted) return;
@@ -245,22 +236,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       if (user != null) {
-        // Get onboarding data
-        final onboardingData = await AuthService().getOnboardingData();
-
-        // Save user data including onboarding data
-        await AuthService().updateUserData({
-          'onboarding_completed': true,
-          'onboarding_data': onboardingData,
-        });
-
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          "/home",
-          (route) => false,
-        );
+        final currentUser = AuthService().currentUser;
+        if (currentUser != null && !currentUser.emailVerified) {
+          // After registration, user needs to verify their email
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/verify_email',
+            (route) => false,
+          );
+        }
       }
-    } on Exception catch (e) {
+    } on Exception {
       final msg =
           AppLocalizations.of(context).translate('auth.google_register_error');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -318,7 +304,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -326,16 +312,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 32),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OnboardingBackButton(
-                    onTap: () {
-                      Navigator.of(context).maybePop();
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 48),
                 Text(
                   'cookrange',
                   style: TextStyle(
@@ -543,7 +520,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       : () => _register(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorScheme.secondary,
-                    foregroundColor: colorScheme.background,
+                    foregroundColor: colorScheme.surface,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(32),
                     ),

@@ -477,7 +477,7 @@ class AnalyticsService {
       // Null value'ları filtrele
       final filteredParams = <String, Object>{};
       eventParams.forEach((key, value) {
-        if (value != null) filteredParams[key] = value;
+        filteredParams[key] = value;
       });
       await logEvent(
         name: _errorEvent,

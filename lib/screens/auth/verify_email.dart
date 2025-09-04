@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cookrange/core/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -11,7 +12,7 @@ class VerifyEmailScreen extends StatefulWidget {
 
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  late User _user;
+  final AuthService _authService = AuthService();
   late Timer _timer;
   bool _isSending = false;
   String _statusMessage = 'We have sent a verification email to your inbox.';
@@ -19,7 +20,17 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   @override
   void initState() {
     super.initState();
-    _user = _auth.currentUser!;
+    if (_auth.currentUser == null) {
+      // If no user is signed in, we shouldn't be on this screen.
+      // Navigate to login screen. Using a post-frame callback to ensure
+      // context is available.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      });
+      return;
+    }
     _sendVerificationEmail();
 
     _timer = Timer.periodic(
@@ -38,10 +49,14 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     });
 
     try {
-      await _user.sendEmailVerification();
-      setState(() {
-        _statusMessage = 'Verification email sent to ${_user.email}.';
-      });
+      // Use the current user directly.
+      final user = _auth.currentUser;
+      if (user != null) {
+        await user.sendEmailVerification();
+        setState(() {
+          _statusMessage = 'Verification email sent to ${user.email}.';
+        });
+      }
     } catch (e) {
       setState(() {
         _statusMessage = 'Failed to send verification email. Please try again.';
@@ -54,13 +69,38 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   }
 
   Future<void> _checkEmailVerified() async {
-    await _user.reload();
-    _user = _auth.currentUser!;
-    if (_user.emailVerified) {
+    final user = _auth.currentUser;
+    if (user == null) {
+      // This case should ideally not be reached if initState check is solid.
       _timer.cancel();
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(context, '/login');
       }
+      return;
+    }
+
+    try {
+      await user.reload();
+      // After reload, get the fresh user instance.
+      final freshUser = _auth.currentUser;
+      if (freshUser != null && freshUser.emailVerified) {
+        _timer.cancel();
+        await _authService.verifyUserEmail();
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        _timer.cancel();
+        if (mounted) {
+          // User doesn't exist, navigate to login
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      }
+      // Handle other potential exceptions if necessary
+    } catch (e) {
+      // Handle other generic errors
     }
   }
 

@@ -6,8 +6,7 @@ class GenderPickerModal extends StatelessWidget {
   final String? selectedGender;
   final void Function(String gender) onSelected;
   const GenderPickerModal(
-      {Key? key, required this.selectedGender, required this.onSelected})
-      : super(key: key);
+      {super.key, required this.selectedGender, required this.onSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +70,6 @@ class GenderPickerModal extends StatelessWidget {
                     onPressed: tempGender != null
                         ? () {
                             onSelected(tempGender!);
-                            Navigator.of(context).pop();
                           }
                         : null,
                     child: Text(

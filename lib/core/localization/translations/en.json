@@ -86,7 +86,7 @@
       "get_started": "Get Started"
     },
     "page2": {
-      "header": "What excites you?",
+      "header": "Get to know you better",
       "activity_level": {
         "title": "Activity Level",
         "subtitle": "How active are you during the day?",
@@ -97,7 +97,7 @@
       },
       "primary_goal": {
         "title": "Goals That Excite You",
-        "subtitle": "Select the goals that excite you most (max 3)",
+        "subtitle": "Select the goals that excite you most",
         "selected_count": "{count}/3 selected",
         "lose_weight": "Lose Weight",
         "gain_weight": "Gain Weight",
@@ -130,7 +130,7 @@
       "custom_slots_remaining": "Custom ingredients remaining: "
     },
     "page4": {
-      "header": "Time Preferences",
+      "header": "Cooking Skills",
       "cooking_level": {
         "title": "Your Cooking Level",
         "subtitle": "How do you feel in the kitchen?",
@@ -161,17 +161,107 @@
       "continue": "Continue"
     },
     "page5": {
-      "header": "Target Weight",
-      "title": {"text1": "Almost", "text2": " Done!"},
-      "description": "Finally, let us know your special requests for your personalized meal program! For example, \"I'm allergic to milk so I don't want dairy products\" or \"I want a chicken-heavy program\".",
-      "target_weight": {
-        "title": "What's your target weight?",
-        "description": "Set your target weight to help us create a personalized meal plan for you.",
-        "placeholder": "Select target weight"
+      "header": "Select Your Lifestyle",
+      "step_text": "Step 5/6",
+      "title": "Lifestyle Profiles",
+      "description": "Choose the lifestyle that best fits your daily routine. This helps us tailor a plan that aligns with your energy levels and meal preferences.",
+      "profiles": {
+        "early_bird": {
+          "name": "Early Bird",
+          "description": "6 AM Wake-Up",
+          "times": "Typical meal times: 07:00,12:00,18:00"
+        },
+        "worker": {
+          "name": "9-to-5 Worker",
+          "description": "Standard Workday",
+          "times": "Typical meal times: 08:00,13:00,19:00"
+        },
+        "night_owl": {
+          "name": "Night Owl",
+          "description": "Late Riser",
+          "times": "Typical meal times: 23:00,04:00,08:00"
+        },
+        "shift_worker": {
+          "name": "Shift Worker",
+          "description": "Switching between day and night shifts.",
+          "times": "Variable meal times"
+        },
+        "freelancer": {
+          "name": "Freelancer",
+          "description": "Flexible based on your schedule and preferences.",
+          "times": "Flexible meal times"
+        },
+        "rotating_shifts": {
+          "name": "Rotating Shifts",
+          "description": "Your shift schedule changes weekly.",
+          "times": "Weekly changing meal times"
+        },
+        "irregular_schedule": {
+          "name": "Irregular Schedule",
+          "description": "Different every day, completely flexible.",
+          "times": "Completely flexible meal times"
+        }
+      },
+      "preview": {
+        "title": "Preview",
+        "breakfast": "Breakfast",
+        "lunch": "Lunch",
+        "dinner": "Dinner"
+      },
+      "schedule_editor": {
+        "schedule_type": "Schedule Type",
+        "types": {
+          "fixed": "Fixed",
+          "rotating": "Rotating",
+          "irregular": "Irregular"
+        },
+        "rotating": {
+          "rotation_weeks": "Rotation Weeks",
+          "week": "Week",
+          "week_short": "Week"
+        },
+        "irregular": {
+          "title": "Set Your Meal Times"
+        }
       },
       "continue": "Continue"
     },
+    "profile": {
+      "title": "Personal Information",
+      "genderTitle": "Select Your Gender",
+      "genderSubtitle": "You can hide this information if you want.",
+      "birthdayTitle": "Select Your Birthday",
+      "birthdaySubtitle": "You can hide this information if you want.",
+      "hwTitle": "Height and Weight",
+      "hwSubtitle": "You can hide this information if you want.",
+      "name": "Name",
+      "age": "Age",
+      "male": "Male",
+      "female": "Female",
+      "preferNotToSay": "Prefer not to say",
+      "selectDate": "Select Date",
+      "birthday": {
+        "title": "Select Your Birthday",
+        "select_month": "Select Month",
+        "select_year": "Select Year",
+        "months": {
+          "january": "January",
+          "february": "February",
+          "march": "March",
+          "april": "April",
+          "may": "May",
+          "june": "June",
+          "july": "July",
+          "august": "August",
+          "september": "September",
+          "october": "October",
+          "november": "November",
+          "december": "December"
+        }
+      }
+    },
     "get_started": "Get Started",
+    "continue": "Continue",
     "skip": "Skip",
     "next": "Next",
     "back": "Back",
@@ -240,7 +330,16 @@
       "invalid_credentials": "User not found. Please check your email and password.",
       "network_error": "Network error. Please check your internet connection and try again.",
       "empty_fields": "Please fill in all fields."
-    }
+    },
+    "invalid_password_format": "Password must be at least 8 characters long and include an uppercase letter, a number, and a special character.",
+    "passwords_do_not_match": "Passwords do not match.",
+    "welcome_title": "Welcome to Cookrange",
+    "welcome_subtitle": "Your personal guide to healthy and delicious recipes.",
+    "login_button": "Log In",
+    "register_button": "Sign Up",
+    "logout_button": "Logout",
+    "delete_account_button": "Delete Account",
+    "settings_title": "Settings"
   },
 
   "profile": {
@@ -330,6 +429,9 @@
     "select": "Select",
     "cancel": "Cancel",
     "confirm": "Confirm",
+    "add": "Add",
+    "remove": "Remove",
+    "continue": "Continue",
     "back": "Back",
     "done": "Done",
     "loading": "Loading...",
@@ -355,7 +457,9 @@
   },
 
   "ingredients": {
+    "title": "Ingredients",
     "vegetables": {
+      "title": "Vegetables",
       "broccoli": "Broccoli",
       "cauliflower": "Cauliflower",
       "spinach": "Spinach",

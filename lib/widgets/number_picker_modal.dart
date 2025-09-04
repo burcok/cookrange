@@ -9,13 +9,13 @@ class NumberPickerModal extends StatelessWidget {
   final String unit;
   final int initialValue;
   const NumberPickerModal({
-    Key? key,
+    super.key,
     required this.title,
     required this.min,
     required this.max,
     required this.unit,
     required this.initialValue,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

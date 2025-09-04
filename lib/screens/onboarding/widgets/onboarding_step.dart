@@ -1,49 +1,54 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../core/providers/onboarding_provider.dart';
-import '../../../../widgets/number_picker_modal.dart';
 import '../steps/onboarding_page1.dart';
 import '../steps/onboarding_page2.dart';
 import '../steps/onboarding_page3.dart';
 import '../steps/onboarding_page4.dart';
 import '../steps/onboarding_page5.dart';
-import '../../../../core/localization/app_localizations.dart';
+import '../steps/onboarding_page_profile.dart';
 
 class OnboardingStep extends StatelessWidget {
   final int step;
   final int previousStep;
   final void Function()? onNext;
   final void Function()? onBack;
+  final ValueNotifier<bool> isLoadingNotifier;
+
   const OnboardingStep({
     super.key,
     required this.step,
     required this.previousStep,
     this.onNext,
     this.onBack,
+    required this.isLoadingNotifier,
   });
 
   @override
   Widget build(BuildContext context) {
     try {
-      final onboarding = Provider.of<OnboardingProvider>(context);
       switch (step) {
         case 0:
           return OnboardingPage1(
-              step: step, previousStep: previousStep, onNext: onNext);
+            step: step,
+            previousStep: previousStep,
+            onNext: onNext,
+            onBack: onBack,
+            isLoadingNotifier: isLoadingNotifier,
+          );
         case 1:
           return OnboardingPage2(
-              step: step,
-              previousStep: previousStep,
-              onNext: onNext,
-              onBack: onBack,
-              onboarding: onboarding);
+            step: step,
+            previousStep: previousStep,
+            onNext: onNext,
+            onBack: onBack,
+            isLoadingNotifier: isLoadingNotifier,
+          );
         case 2:
           return OnboardingPage3(
             step: step,
             previousStep: previousStep,
             onNext: onNext,
             onBack: onBack,
-            onboarding: onboarding,
+            isLoadingNotifier: isLoadingNotifier,
           );
         case 3:
           return OnboardingPage4(
@@ -51,7 +56,7 @@ class OnboardingStep extends StatelessWidget {
             previousStep: previousStep,
             onNext: onNext,
             onBack: onBack,
-            onboarding: onboarding,
+            isLoadingNotifier: isLoadingNotifier,
           );
         case 4:
           return OnboardingPage5(
@@ -59,11 +64,21 @@ class OnboardingStep extends StatelessWidget {
             previousStep: previousStep,
             onNext: onNext,
             onBack: onBack,
+            isLoadingNotifier: isLoadingNotifier,
+          );
+        case 5:
+          return OnboardingPageProfile(
+            step: step,
+            previousStep: previousStep,
+            onNext: onNext,
+            onBack: onBack,
+            isLoadingNotifier: isLoadingNotifier,
           );
         default:
-          return const Center(child: Text('Bilinmeyen adım'));
+          // This should not be reached if the step count is correct.
+          return const Center(child: Text('Invalid step'));
       }
-    } catch (e, stack) {
+    } catch (e) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32.0),
@@ -82,49 +97,5 @@ class OnboardingStep extends StatelessWidget {
         ),
       );
     }
-  }
-
-  void _showNumberInput(
-      BuildContext context, OnboardingProvider onboarding, String field) {
-    int min, max, initialValue;
-    String unit, title;
-    final localizations = AppLocalizations.of(context);
-    if (field == 'weight') {
-      min = 40;
-      max = 150;
-      unit = 'kg';
-      title = localizations.translate('profile.weight.title');
-      initialValue = onboarding.weight?.toInt() ?? 70;
-    } else if (field == 'height') {
-      min = 140;
-      max = 220;
-      unit = 'cm';
-      title = localizations.translate('profile.height.title');
-      initialValue = onboarding.height?.toInt() ?? 170;
-    } else {
-      min = 40;
-      max = 150;
-      unit = 'kg';
-      title = localizations.translate('profile.targetWeight.title');
-      initialValue = onboarding.targetWeight?.toInt() ?? 60;
-    }
-    showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => NumberPickerModal(
-        title: title,
-        min: min,
-        max: max,
-        unit: unit,
-        initialValue: initialValue,
-      ),
-    ).then((value) {
-      if (value != null && value is int) {
-        if (field == 'weight') onboarding.setWeight(value.toDouble());
-        if (field == 'height') onboarding.setHeight(value.toDouble());
-        if (field == 'targetWeight')
-          onboarding.setTargetWeight(value.toDouble());
-      }
-    });
   }
 }

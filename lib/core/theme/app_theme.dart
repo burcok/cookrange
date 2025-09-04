@@ -43,17 +43,21 @@ extension CustomColorScheme on ColorScheme {
   Color get backgroundColor3 => brightness == Brightness.dark
       ? c.backgroundColor3Dark
       : c.backgroundColor3;
+  Color get inputBackgroundColor => brightness == Brightness.dark
+      ? c.inputBackgroundColorDark
+      : c.inputBackgroundColor;
+  Color get inputBorderColor => brightness == Brightness.dark
+      ? c.inputBorderColorDark
+      : c.inputBorderColor;
 }
 
 // 2. Light ve dark colorScheme oluştur
 const ColorScheme lightColorScheme = ColorScheme.light(
   primary: c.primaryColor,
   secondary: c.secondaryColor,
-  background: c.backgroundColorLight,
   surface: c.backgroundColor2,
   onPrimary: Colors.white,
   onSecondary: Colors.white,
-  onBackground: c.title,
   onSurface: c.subtitle,
   error: Colors.red,
   onError: Colors.white,
@@ -62,11 +66,9 @@ const ColorScheme lightColorScheme = ColorScheme.light(
 const ColorScheme darkColorScheme = ColorScheme.dark(
   primary: c.primaryColorDark,
   secondary: c.secondaryColorDark,
-  background: c.backgroundColorDark,
   surface: c.backgroundColor2Dark,
   onPrimary: Colors.black,
   onSecondary: Colors.black,
-  onBackground: c.titleDark,
   onSurface: c.subtitleDark,
   error: Colors.red,
   onError: Colors.black,
@@ -122,6 +124,10 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color splashPrimaryColorDark;
   final Color backgroundColor3;
   final Color backgroundColor3Dark;
+  final Color inputBackgroundColor;
+  final Color inputBackgroundColorDark;
+  final Color inputBorderColor;
+  final Color inputBorderColorDark;
   const AppColors({
     required this.schemaPreferredColor,
     required this.schemaPreferredColorDark,
@@ -153,6 +159,10 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.splashPrimaryColorDark,
     required this.backgroundColor3,
     required this.backgroundColor3Dark,
+    required this.inputBackgroundColor,
+    required this.inputBackgroundColorDark,
+    required this.inputBorderColor,
+    required this.inputBorderColorDark,
   });
 
   @override
@@ -187,6 +197,10 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? splashPrimaryColorDark,
     Color? backgroundColor3,
     Color? backgroundColor3Dark,
+    Color? inputBackgroundColor,
+    Color? inputBackgroundColorDark,
+    Color? inputBorderColor,
+    Color? inputBorderColorDark,
   }) {
     return AppColors(
       schemaPreferredColor: schemaPreferredColor ?? this.schemaPreferredColor,
@@ -233,6 +247,11 @@ class AppColors extends ThemeExtension<AppColors> {
           splashPrimaryColorDark ?? this.splashPrimaryColorDark,
       backgroundColor3: backgroundColor3 ?? this.backgroundColor3,
       backgroundColor3Dark: backgroundColor3Dark ?? this.backgroundColor3Dark,
+      inputBackgroundColor: inputBackgroundColor ?? this.inputBackgroundColor,
+      inputBackgroundColorDark:
+          inputBackgroundColorDark ?? this.inputBackgroundColorDark,
+      inputBorderColor: inputBorderColor ?? this.inputBorderColor,
+      inputBorderColorDark: inputBorderColorDark ?? this.inputBorderColorDark,
     );
   }
 
@@ -274,6 +293,10 @@ const AppColors lightAppColors = AppColors(
   splashPrimaryColorDark: c.splashPrimaryColorDark,
   backgroundColor3: c.backgroundColor3,
   backgroundColor3Dark: c.backgroundColor3Dark,
+  inputBackgroundColor: c.inputBackgroundColor,
+  inputBackgroundColorDark: c.inputBackgroundColorDark,
+  inputBorderColor: c.inputBorderColor,
+  inputBorderColorDark: c.inputBorderColorDark,
 );
 
 const AppColors darkAppColors = AppColors(
@@ -307,6 +330,10 @@ const AppColors darkAppColors = AppColors(
   splashPrimaryColorDark: c.splashPrimaryColorDark,
   backgroundColor3: c.backgroundColor3,
   backgroundColor3Dark: c.backgroundColor3Dark,
+  inputBackgroundColor: c.inputBackgroundColor,
+  inputBackgroundColorDark: c.inputBackgroundColorDark,
+  inputBorderColor: c.inputBorderColor,
+  inputBorderColorDark: c.inputBorderColorDark,
 );
 
 class AppColorScheme extends ColorScheme {

@@ -1,0 +1,48 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// Represents the main user document in Firestore.
+class UserModel {
+  final String uid;
+  final String? email;
+  final String? displayName;
+  final String? photoURL;
+  final bool isOnline;
+  final bool onboardingCompleted;
+  final Timestamp? createdAt;
+  final Timestamp? lastLoginAt;
+  final Timestamp? lastActiveAt;
+  final Timestamp? onboardingCompletedAt;
+  final Map<String, dynamic>? onboardingData;
+
+  UserModel({
+    required this.uid,
+    this.email,
+    this.displayName,
+    this.photoURL,
+    required this.isOnline,
+    required this.onboardingCompleted,
+    this.createdAt,
+    this.lastLoginAt,
+    this.lastActiveAt,
+    this.onboardingCompletedAt,
+    this.onboardingData,
+  });
+
+  /// Creates a UserModel from a Firestore document snapshot.
+  factory UserModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    return UserModel(
+      uid: doc.id,
+      email: data['email'] as String?,
+      displayName: data['displayName'] as String?,
+      photoURL: data['photoURL'] as String?,
+      isOnline: data['is_online'] as bool? ?? false,
+      onboardingCompleted: data['onboarding_completed'] as bool? ?? false,
+      createdAt: data['created_at'] as Timestamp?,
+      lastLoginAt: data['last_login_at'] as Timestamp?,
+      lastActiveAt: data['last_active_at'] as Timestamp?,
+      onboardingCompletedAt: data['onboarding_completed_at'] as Timestamp?,
+      onboardingData: data['onboarding_data'] as Map<String, dynamic>?,
+    );
+  }
+}

@@ -9,12 +9,17 @@ class OnboardingPage1 extends StatefulWidget {
   final int step;
   final int previousStep;
   final void Function()? onNext;
+  final void Function()? onBack;
+  final ValueNotifier<bool> isLoadingNotifier;
+
   const OnboardingPage1({
-    Key? key,
+    super.key,
     required this.step,
     required this.previousStep,
     this.onNext,
-  }) : super(key: key);
+    this.onBack,
+    required this.isLoadingNotifier,
+  });
 
   @override
   State<OnboardingPage1> createState() => _OnboardingPage1State();
@@ -91,12 +96,10 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
           children: [
             // Header Section
             OnboardingHeader(
-              headerText: localizations.translate('onboarding.page1.header'),
+              title: localizations.translate('onboarding.page1.header'),
               currentStep: widget.step + 1,
-              totalSteps: 5,
+              totalSteps: 6,
               previousStep: widget.previousStep,
-              showBackButton: false, // Page 1 doesn't have back button
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             ),
 
             // Main Content Section
@@ -152,7 +155,7 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                       fontSize: 32,
                       fontWeight: FontWeight.w800,
                       color: colorScheme.onboardingTitleColor,
-                      fontFamily: 'Lexend',
+                      fontFamily: 'Poppins',
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -163,7 +166,7 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                         fontSize: 16,
                         fontWeight: FontWeight.w400,
                         color: colorScheme.onboardingSubtitleColor,
-                        fontFamily: 'Lexend',
+                        fontFamily: 'Poppins',
                         height: 1.5,
                       ),
                       children:
@@ -185,7 +188,7 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                           fontWeight: FontWeight.w400,
                           color: colorScheme.onboardingTitleColor,
                           decoration: TextDecoration.underline,
-                          fontFamily: 'Lexend',
+                          fontFamily: 'Poppins',
                         ),
                       ),
                     ),
@@ -216,7 +219,7 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                         backgroundColor: primaryColor,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
+                          borderRadius: BorderRadius.circular(99),
                         ),
                         elevation: 0,
                       ),
@@ -226,7 +229,7 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
-                          fontFamily: 'Lexend',
+                          fontFamily: 'Poppins',
                         ),
                       ),
                     ),

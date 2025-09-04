@@ -9,7 +9,6 @@ import '../core/services/analytics_service.dart';
 import '../core/services/crashlytics_service.dart';
 import '../core/services/device_info_service.dart';
 import '../core/localization/app_localizations.dart';
-import 'onboarding/onboarding_screen.dart';
 import '../widgets/gender_picker_modal.dart';
 import '../widgets/custom_back_button.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -18,6 +17,8 @@ import '../widgets/number_picker_modal.dart';
 import '../core/services/auth_service.dart';
 import '../core/providers/device_info_provider.dart';
 import 'package:provider/provider.dart';
+import '../core/providers/onboarding_provider.dart';
+import '../core/models/user_model.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -33,7 +34,6 @@ class _SplashScreenState extends State<SplashScreen>
   Timer? _splashTimer;
   Timer? _connectivityTimer;
   int _countdownSeconds = 10;
-  bool _isLoading = true;
   bool _isIconLoaded = false;
   bool _isTextLoaded = false;
   bool _isResourcesLoaded = false;
@@ -45,8 +45,6 @@ class _SplashScreenState extends State<SplashScreen>
   bool _hasReachedMinimumTime = false;
   bool _isOffline = false;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
-  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
-      _snackBarController;
   OverlayEntry? _overlayEntry;
 
   // Animation Controllers
@@ -182,7 +180,7 @@ class _SplashScreenState extends State<SplashScreen>
       _isOnboardingCompleted().then((completed) {
         if (!completed) {
           _shouldPreloadOnboardingImages = true;
-          _preloadImages();
+          // _preloadImages(); // ANR hatasına neden olabilecek resim ön yükleme işlemi test için kapatıldı.
         }
       });
     }
@@ -243,21 +241,26 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _initialize() async {
     try {
       _startTime = DateTime.now();
-      // 1. Firebase, Crashlytics, Analytics
-      await CrashlyticsService().initialize();
-      await AnalyticsService().initialize();
-      await AuthService().initialize();
+      // 1. Run independent initializations in parallel
+      await Future.wait([
+        CrashlyticsService().initialize(),
+        AnalyticsService().initialize(),
+        AuthService().initialize(),
+        _initializeEnvironment(),
+        _initializePreferences(),
+        _preloadResources(),
+      ]);
 
-      // 2. Dotenv, SharedPreferences
-      await _initializeEnvironment();
-      await _initializePreferences();
+      // This part depends on context, so it runs after initializations
+      if (!mounted) return;
 
-      // 3. Asset ve font cache
-      _cacheStartTime = DateTime.now();
-      await _precacheAssets();
+      // Initialize device info provider
+      final deviceInfoProvider =
+          Provider.of<DeviceInfoProvider>(context, listen: false);
+      await deviceInfoProvider.initialize();
 
-      // 4. Diğer preload işlemleri
-      await _preloadResources();
+      // Send device info to Firebase without waiting for it to complete
+      _sendDeviceInfoToFirebase(deviceInfoProvider);
 
       if (mounted) {
         setState(() {
@@ -266,15 +269,6 @@ class _SplashScreenState extends State<SplashScreen>
         });
         _checkInitializationComplete();
       }
-
-      // Initialize device info
-      await Provider.of<DeviceInfoProvider>(context, listen: false)
-          .initialize();
-
-      // Send device info to Firebase
-      final deviceInfoProvider =
-          Provider.of<DeviceInfoProvider>(context, listen: false);
-      await _sendDeviceInfoToFirebase(deviceInfoProvider);
     } catch (e, stack) {
       print('Error during initialization: $e');
       print('Stack trace: $stack');
@@ -283,7 +277,6 @@ class _SplashScreenState extends State<SplashScreen>
       if (mounted) {
         setState(() {
           _isInitialized = true;
-          _isLoading = false;
           _isCacheComplete = true;
         });
       }
@@ -346,7 +339,7 @@ class _SplashScreenState extends State<SplashScreen>
   void _checkInitializationComplete() {
     if (_isResourcesLoaded) {
       final elapsedTime = DateTime.now().difference(_startTime!);
-      const minimumDisplayTime = Duration(seconds: 4);
+      const minimumDisplayTime = Duration(seconds: 2);
 
       if (elapsedTime < minimumDisplayTime) {
         // If less than minimum time has passed, wait for the remaining time
@@ -375,28 +368,68 @@ class _SplashScreenState extends State<SplashScreen>
       if (mounted) {
         setState(() {
           _isInitialized = true;
-          _isLoading = false;
         });
 
-        // Check authentication state and navigate accordingly
         final user = AuthService().currentUser;
-        if (user != null) {
-          // Check if user has completed onboarding
-          final hasOnboarding = await AuthService().hasCompletedOnboarding();
-          if (!hasOnboarding) {
-            if (mounted) {
-              Navigator.pushReplacementNamed(context, '/onboarding');
-              return;
-            }
-          } else {
-            if (mounted) {
-              Navigator.pushReplacementNamed(context, '/home');
-              return;
-            }
+        print('User: $user');
+        if (user == null) {
+          // No user, go to login screen
+          Navigator.pushReplacementNamed(context, '/login');
+          return;
+        }
+
+        if (!user.emailVerified) {
+          // User exists but email is not verified
+          Navigator.pushReplacementNamed(context, '/verify_email');
+          return;
+        }
+
+        // User exists, check their data
+        final userModel = await AuthService().getUserData(user.uid);
+        print('User data: ${userModel?.email}');
+
+        if (_isOnboardingDataComplete(userModel)) {
+          // User has completed all onboarding, go to home
+          Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          // User has not completed onboarding, go to onboarding
+          if (userModel?.onboardingData != null) {
+            Provider.of<OnboardingProvider>(context, listen: false)
+                .initializeFromFirestore(userModel!.onboardingData!);
           }
+          Navigator.pushReplacementNamed(context, '/onboarding');
         }
       }
     }
+  }
+
+  bool _isOnboardingDataComplete(UserModel? userModel) {
+    if (userModel == null || !userModel.onboardingCompleted) {
+      return false;
+    }
+
+    final onboardingData = userModel.onboardingData;
+
+    if (onboardingData == null) {
+      return false;
+    }
+
+    final primaryGoals = onboardingData['primary_goals'];
+    final kitchenEquipments = onboardingData['kitchen_equipments'];
+
+    // Check for essential fields
+    return onboardingData['gender'] != null &&
+        onboardingData['birth_date'] != null &&
+        onboardingData['height'] != null &&
+        onboardingData['weight'] != null &&
+        onboardingData['target_weight'] != null &&
+        (primaryGoals is List
+            ? primaryGoals.isNotEmpty
+            : primaryGoals != null) &&
+        onboardingData['cooking_level'] != null &&
+        (kitchenEquipments is List
+            ? kitchenEquipments.isNotEmpty
+            : kitchenEquipments != null);
   }
 
   /// Cihaz bilgilerini Firebase Analytics'e gönder
@@ -436,7 +469,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Widget'ları build et ve hemen kaldır
     final overlay = Overlay.of(context);
-    if (overlay == null) return;
 
     // Tüm widget'ları tek bir overlay entry'de build et
     final entry = OverlayEntry(
@@ -643,7 +675,7 @@ class _SplashScreenState extends State<SplashScreen>
             _mainController.forward();
             // Cache widgets after starting the transition
             if (mounted) {
-              _precacheWidgets();
+              // _precacheWidgets();
             }
           });
         });
@@ -691,7 +723,11 @@ class _SplashScreenState extends State<SplashScreen>
     }
 
     if (!_showSplash) {
-      return const OnboardingScreen();
+      // This part will now be handled by the _checkShouldProceed logic
+      // Return a placeholder while navigating
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return AnimatedBuilder(
@@ -812,7 +848,9 @@ class _SplashScreenState extends State<SplashScreen>
                       duration: const Duration(milliseconds: 300),
                       opacity: _greetingTextOpacityAnimation.value,
                       child: Text(
-                        _loadingMessages[_currentMessageIndex],
+                        _loadingMessages.isNotEmpty
+                            ? _loadingMessages[_currentMessageIndex]
+                            : '',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontFamily: 'Poppins',
