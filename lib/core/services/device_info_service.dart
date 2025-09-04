@@ -2,7 +2,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import '../providers/device_info_provider.dart';
 
 class DeviceInfoService {
-  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+  FirebaseAnalytics get _analytics => FirebaseAnalytics.instance;
 
   // Singleton pattern
   static final DeviceInfoService _instance = DeviceInfoService._internal();

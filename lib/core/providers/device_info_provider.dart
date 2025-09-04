@@ -48,8 +48,11 @@ class DeviceInfoProvider extends ChangeNotifier {
       _appVersion = packageInfo.version;
       _buildNumber = packageInfo.buildNumber;
 
-      await _getPermissionInfo();
+      // Don't await this. Let it run in the background.
+      _getPermissionInfo();
 
+      // Notify listeners immediately with the basic info.
+      // A second notification will come from _getPermissionInfo when it's done.
       notifyListeners();
     } catch (e) {
       print('Error initializing device info: $e');
@@ -58,6 +61,9 @@ class DeviceInfoProvider extends ChangeNotifier {
 
   Future<void> _getPermissionInfo() async {
     try {
+      // Using a smaller, more common list of permissions to avoid issues
+      // with undeclared permissions. This list should be synchronized with
+      // the permissions requested in AndroidManifest.xml and Info.plist.
       final permissions = [
         Permission.camera,
         Permission.microphone,
@@ -65,14 +71,6 @@ class DeviceInfoProvider extends ChangeNotifier {
         Permission.location,
         Permission.notification,
         Permission.phone,
-        Permission.contacts,
-        Permission.calendar,
-        Permission.sensors,
-        Permission.activityRecognition,
-        Permission.manageExternalStorage,
-        Permission.systemAlertWindow,
-        Permission.accessMediaLocation,
-        Permission.accessNotificationPolicy,
       ];
 
       for (final permission in permissions) {
@@ -83,6 +81,7 @@ class DeviceInfoProvider extends ChangeNotifier {
           _permissionStatus[permission.toString()] = 'unknown';
         }
       }
+      notifyListeners();
     } catch (e) {
       print('Error getting permission info: $e');
     }

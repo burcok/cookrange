@@ -1,57 +1,45 @@
+import 'package:logging/logging.dart';
 import 'package:flutter/foundation.dart';
-import 'crashlytics_service.dart';
 
-/// A centralized service for logging throughout the application.
-///
-/// This service abstracts the logging implementation, making it easy to switch
-/// between different logging backends (e.g., console, file, remote server)
-/// without changing the application code.
 class LogService {
-  final CrashlyticsService _crashlyticsService = CrashlyticsService();
+  static final Logger _logger = Logger('CookrangeApp');
 
-  // Singleton pattern
+  // Singleton pattern for consistent access
   static final LogService _instance = LogService._internal();
   factory LogService() => _instance;
   LogService._internal();
 
-  /// Logs an informational message.
-  /// Used for general application flow events.
+  void setup() {
+    Logger.root.level = kDebugMode ? Level.ALL : Level.INFO;
+    Logger.root.onRecord.listen((record) {
+      // Standard console output for all logs
+      debugPrint(
+          '${record.level.name}: ${record.time}: ${record.loggerName}: ${record.message}');
+
+      // Include error and stack trace if present
+      if (record.error != null) {
+        debugPrint('Error: ${record.error}');
+      }
+      if (record.stackTrace != null) {
+        debugPrint('Stack Trace: ${record.stackTrace}');
+      }
+    });
+  }
+
   void info(String message, {String? service}) {
-    _log('INFO', message, service: service);
+    _logger.info('${_formatService(service)}$message');
   }
 
-  /// Logs a warning message.
-  /// Used for potential issues that don't crash the app.
-  void warning(String message, {String? service}) {
-    _log('WARN', message, service: service);
+  void warning(String message, {String? service, Object? error}) {
+    _logger.warning('${_formatService(service)}$message', error);
   }
 
-  /// Logs an error message.
-  /// Used for exceptions and critical failures.
-  /// This will also send the error to Firebase Crashlytics.
   void error(String message,
       {String? service, Object? error, StackTrace? stackTrace}) {
-    final errorMessage = '''
-      $message
-      Error: ${error?.toString()}
-    ''';
-    _log('ERROR', errorMessage, service: service);
-
-    // Send non-fatal errors to Crashlytics
-    _crashlyticsService.recordError(
-      error ?? message,
-      stackTrace,
-      reason: 'Handled Exception: [$service] $message',
-      fatal: false,
-    );
+    _logger.severe('${_formatService(service)}$message', error, stackTrace);
   }
 
-  void _log(String level, String message, {String? service}) {
-    // Only print logs in debug mode to avoid cluttering release builds.
-    if (kDebugMode) {
-      final timestamp = DateTime.now().toIso8601String();
-      final serviceTag = service != null ? '[$service]' : '';
-      print('$timestamp [$level]$serviceTag $message');
-    }
+  String _formatService(String? service) {
+    return service != null ? '[$service] ' : '';
   }
 }

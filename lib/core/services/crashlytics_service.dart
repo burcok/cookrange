@@ -1,14 +1,11 @@
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'dart:io';
+import 'package:logging/logging.dart';
+import 'log_service.dart';
 
 class CrashlyticsService {
-  final FirebaseCrashlytics _crashlytics = FirebaseCrashlytics.instance;
-  final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
-  late final PackageInfo _packageInfo;
-  bool _isInitialized = false;
+  FirebaseCrashlytics get _crashlytics => FirebaseCrashlytics.instance;
+  final String _serviceName = 'CrashlyticsService';
 
   // Singleton pattern
   static final CrashlyticsService _instance = CrashlyticsService._internal();
@@ -16,105 +13,49 @@ class CrashlyticsService {
   CrashlyticsService._internal();
 
   Future<void> initialize() async {
-    if (_isInitialized) return;
-
+    LogService().info('Initializing CrashlyticsService', service: _serviceName);
     try {
-      _packageInfo = await PackageInfo.fromPlatform();
+      if (kReleaseMode) {
+        await _crashlytics.setCrashlyticsCollectionEnabled(true);
+        LogService().info(
+            'Firebase Crashlytics collection enabled for release mode.',
+            service: _serviceName);
+      } else {
+        await _crashlytics.setCrashlyticsCollectionEnabled(false);
+        LogService().info(
+            'Firebase Crashlytics collection disabled for debug mode.',
+            service: _serviceName);
+      }
 
-      // Enable Crashlytics collection
-      await _crashlytics.setCrashlyticsCollectionEnabled(true);
+      // Pass all uncaught errors from the framework to Crashlytics.
+      FlutterError.onError = _crashlytics.recordFlutterError;
+      LogService()
+          .info('Crashlytics FlutterError handler set.', service: _serviceName);
 
-      await _setCustomKeys();
-      _setupErrorHandling();
-
-      _isInitialized = true;
-      print('CrashlyticsService: Initialization completed successfully');
-    } catch (e, stack) {
-      print('CrashlyticsService: Error during initialization: $e');
-      print('CrashlyticsService: Stack trace: $stack');
-      _isInitialized = false;
-      rethrow;
+      // Listen to the log stream for severe errors.
+      Logger.root.onRecord.listen((record) {
+        if (record.level == Level.SEVERE) {
+          _crashlytics.recordError(
+            record.error,
+            record.stackTrace,
+            reason: record.message,
+            fatal: true, // Mark as fatal to ensure it's reported
+          );
+        }
+      });
+    } catch (e, stackTrace) {
+      LogService().error('Error initializing CrashlyticsService',
+          service: _serviceName, error: e, stackTrace: stackTrace);
     }
   }
 
-  Future<void> _setCustomKeys() async {
-    try {
-      final deviceData = await _getDeviceInfo();
-
-      await _crashlytics.setCustomKey('device_info', deviceData);
-      await _crashlytics.setCustomKey('app_version', _packageInfo.version);
-      await _crashlytics.setCustomKey('build_number', _packageInfo.buildNumber);
-      await _crashlytics.setCustomKey('platform', Platform.operatingSystem);
-      await _crashlytics.setCustomKey(
-          'platform_version', Platform.operatingSystemVersion);
-      await _crashlytics.setCustomKey(
-          'app_package_name', _packageInfo.packageName);
-      await _crashlytics.setCustomKey(
-          'app_installer_store', _packageInfo.installerStore ?? 'unknown');
-      await _crashlytics.setCustomKey('debug_mode', kDebugMode.toString());
-    } catch (e) {
-      print('CrashlyticsService: Error setting custom keys: $e');
-      rethrow;
-    }
-  }
-
-  Future<String> _getDeviceInfo() async {
-    if (Platform.isAndroid) {
-      final androidInfo = await _deviceInfo.androidInfo;
-      return '''
-        Android ${androidInfo.version.release}
-        SDK ${androidInfo.version.sdkInt}
-        ${androidInfo.brand} ${androidInfo.model}
-        ${androidInfo.device}
-        ${androidInfo.product}
-        ${androidInfo.hardware}
-        ${androidInfo.isPhysicalDevice ? 'Physical Device' : 'Emulator'}
-      ''';
-    } else if (Platform.isIOS) {
-      final iosInfo = await _deviceInfo.iosInfo;
-      return '''
-        iOS ${iosInfo.systemVersion}
-        ${iosInfo.model}
-        ${iosInfo.name}
-        ${iosInfo.localizedModel}
-        ${iosInfo.identifierForVendor}
-        ${iosInfo.isPhysicalDevice ? 'Physical Device' : 'Simulator'}
-      ''';
-    }
-    return 'Unknown Platform';
-  }
-
-  void _setupErrorHandling() {
-    // Flutter hatalarını yakala
-    FlutterError.onError = (FlutterErrorDetails details) {
-      if (!_isInitialized) return;
-
-      _crashlytics.recordFlutterError(details);
-      _crashlytics.log('Error occurred in ${details.library}');
-    };
-
-    // Zone hatalarını yakala
-    PlatformDispatcher.instance.onError = (error, stack) {
-      if (!_isInitialized) return true;
-
-      _crashlytics.recordError(
-        error,
-        stack,
-        reason: 'Uncaught error in main zone',
-        fatal: true,
-      );
-      return true;
-    };
-  }
-
-  // Custom error logging methods
   Future<void> log(String message) async {
-    if (!_isInitialized) return;
-
+    if (!_crashlytics.isCrashlyticsCollectionEnabled) return;
     try {
       await _crashlytics.log(message);
     } catch (e) {
-      print('CrashlyticsService: Error logging message: $e');
+      LogService().error('CrashlyticsService: Error logging message',
+          service: _serviceName, error: e);
     }
   }
 
@@ -124,8 +65,7 @@ class CrashlyticsService {
     String? reason,
     bool fatal = false,
   }) async {
-    if (!_isInitialized) return;
-
+    if (!_crashlytics.isCrashlyticsCollectionEnabled) return;
     try {
       await _crashlytics.recordError(
         exception,
@@ -134,17 +74,18 @@ class CrashlyticsService {
         fatal: fatal,
       );
     } catch (e) {
-      print('CrashlyticsService: Error recording error: $e');
+      LogService().error('CrashlyticsService: Error recording error',
+          service: _serviceName, error: e);
     }
   }
 
   Future<void> setUserIdentifier(String identifier) async {
-    if (!_isInitialized) return;
-
+    if (!_crashlytics.isCrashlyticsCollectionEnabled) return;
     try {
       await _crashlytics.setUserIdentifier(identifier);
     } catch (e) {
-      print('CrashlyticsService: Error setting user identifier: $e');
+      LogService().error('CrashlyticsService: Error setting user identifier',
+          service: _serviceName, error: e);
     }
   }
 }

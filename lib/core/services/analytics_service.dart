@@ -7,9 +7,12 @@ import 'dart:async';
 import 'package:hive/hive.dart';
 import 'dart:collection';
 import 'dart:math';
+import 'log_service.dart';
 
 class AnalyticsService {
-  final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+  FirebaseAnalytics get _analytics => FirebaseAnalytics.instance;
+  final LogService _log = LogService();
+  final String _serviceName = 'AnalyticsService';
   late final PackageInfo _packageInfo;
   bool _isInitialized = false;
   bool _isInitializing = false;
@@ -50,24 +53,32 @@ class AnalyticsService {
     _initCompleter = Completer<void>();
 
     try {
-      print('AnalyticsService: Starting initialization...');
+      _log.info('Initializing AnalyticsService', service: _serviceName);
 
       // Check if box is already open and use it, otherwise open it
       if (Hive.isBoxOpen('analytics_cache')) {
         _analyticsBox = Hive.box<Map<dynamic, Object>>('analytics_cache');
-        print('AnalyticsService: Using existing analytics_cache box');
+        _log.info('Using existing analytics_cache box', service: _serviceName);
       } else {
         _analyticsBox =
             await Hive.openBox<Map<dynamic, Object>>('analytics_cache');
-        print('AnalyticsService: Opened new analytics_cache box');
+        _log.info('Opened new analytics_cache box', service: _serviceName);
       }
 
       // PackageInfo'yu ana thread'de al
       _packageInfo = await PackageInfo.fromPlatform();
-      print('AnalyticsService: Package info loaded');
+      _log.info('Package info loaded', service: _serviceName);
 
       // Enable analytics collection in background
-      unawaited(_analytics.setAnalyticsCollectionEnabled(true));
+      if (kReleaseMode) {
+        unawaited(_analytics.setAnalyticsCollectionEnabled(true));
+        _log.info('Firebase Analytics collection enabled for release mode.',
+            service: _serviceName);
+      } else {
+        unawaited(_analytics.setAnalyticsCollectionEnabled(false));
+        _log.info('Firebase Analytics collection disabled for debug mode.',
+            service: _serviceName);
+      }
       unawaited(
           _analytics.setSessionTimeoutDuration(const Duration(minutes: 30)));
       unawaited(_analytics.resetAnalyticsData());
@@ -77,7 +88,8 @@ class AnalyticsService {
         _setUserProperties(),
         _setDefaultEventParameters(),
       ]);
-      print('AnalyticsService: User properties and default parameters set');
+      _log.info('User properties and default parameters set',
+          service: _serviceName);
 
       // Log app open event in background
       unawaited(_logAppOpenWithRetry());
@@ -91,10 +103,10 @@ class AnalyticsService {
 
       _isInitialized = true;
       _initCompleter?.complete();
-      print('AnalyticsService: Initialization completed successfully');
+      _log.info('Initialization completed successfully', service: _serviceName);
     } catch (e, stack) {
-      print('AnalyticsService: Error during initialization: $e');
-      print('AnalyticsService: Stack trace: $stack');
+      _log.error('Error during initialization',
+          service: _serviceName, error: e, stackTrace: stack);
       _isInitialized = false;
       _initCompleter?.completeError(e);
       rethrow;
@@ -130,7 +142,8 @@ class AnalyticsService {
       // Kuyruktaki eventleri işle
       await _processQueue();
     } catch (e) {
-      print('AnalyticsService: Error processing pending events: $e');
+      _log.error('Error processing pending events',
+          service: _serviceName, error: e);
     }
   }
 
@@ -143,7 +156,7 @@ class AnalyticsService {
         // Önbellekten sil
         await _removeFromCache(event);
       } catch (e) {
-        print('AnalyticsService: Error processing event: $e');
+        _log.error('Error processing event', service: _serviceName, error: e);
         break;
       }
     }
@@ -164,7 +177,7 @@ class AnalyticsService {
 
       _batch.clear();
     } catch (e) {
-      print('AnalyticsService: Error processing batch: $e');
+      _log.error('Error processing batch', service: _serviceName, error: e);
     }
   }
 
@@ -224,7 +237,7 @@ class AnalyticsService {
       final eventMap = Map<dynamic, Object>.from(event.toMap());
       await _analyticsBox.add(eventMap);
     } catch (e) {
-      print('AnalyticsService: Error caching event: $e');
+      _log.error('Error caching event', service: _serviceName, error: e);
     }
   }
 
@@ -235,7 +248,7 @@ class AnalyticsService {
         await _analyticsBox.add(eventMap);
       }
     } catch (e) {
-      print('AnalyticsService: Error caching batch: $e');
+      _log.error('Error caching batch', service: _serviceName, error: e);
     }
   }
 
@@ -252,7 +265,7 @@ class AnalyticsService {
         await _analyticsBox.delete(keys.first);
       }
     } catch (e) {
-      print('AnalyticsService: Error removing from cache: $e');
+      _log.error('Error removing from cache', service: _serviceName, error: e);
     }
   }
 
@@ -262,7 +275,7 @@ class AnalyticsService {
         await _removeFromCache(event);
       }
     } catch (e) {
-      print('AnalyticsService: Error clearing batch cache: $e');
+      _log.error('Error clearing batch cache', service: _serviceName, error: e);
     }
   }
 
@@ -270,7 +283,7 @@ class AnalyticsService {
     try {
       await _analytics.logAppOpen();
     } catch (e) {
-      print('AnalyticsService: Error logging app open: $e');
+      _log.error('Error logging app open', service: _serviceName, error: e);
       // App open event'ini kuyruğa ekle
       _eventQueue.add(AnalyticsEvent(
         name: 'app_open',
@@ -304,7 +317,8 @@ class AnalyticsService {
             )),
       );
     } catch (e) {
-      print('AnalyticsService: Error setting user properties: $e');
+      _log.error('Error setting user properties',
+          service: _serviceName, error: e);
       rethrow;
     }
   }
@@ -321,7 +335,7 @@ class AnalyticsService {
       }
       return 'Unknown Platform';
     } catch (e) {
-      print('AnalyticsService: Error getting device info: $e');
+      _log.error('Error getting device info', service: _serviceName, error: e);
       return 'Error getting device info';
     }
   }
@@ -339,7 +353,8 @@ class AnalyticsService {
         'debug_mode': kDebugMode.toString(),
       });
     } catch (e) {
-      print('AnalyticsService: Error setting default parameters: $e');
+      _log.error('Error setting default parameters',
+          service: _serviceName, error: e);
       rethrow;
     }
   }
@@ -355,9 +370,9 @@ class AnalyticsService {
 
     try {
       if (kDebugMode) {
-        print('AnalyticsService: Logging event: $name');
+        _log.info('Logging event: $name', service: _serviceName);
         if (parameters != null) {
-          print('AnalyticsService: Event parameters: $parameters');
+          _log.info('Event parameters: $parameters', service: _serviceName);
         }
       }
 
@@ -381,10 +396,10 @@ class AnalyticsService {
       }
 
       if (kDebugMode) {
-        print('AnalyticsService: Event added to batch');
+        _log.info('Event added to batch', service: _serviceName);
       }
     } catch (e) {
-      print('AnalyticsService: Error logging event: $e');
+      _log.error('Error logging event', service: _serviceName, error: e);
       // Hata durumunda direkt kuyruğa ekle
       _eventQueue.add(AnalyticsEvent(
         name: name,
@@ -405,7 +420,7 @@ class AnalyticsService {
 
     try {
       if (kDebugMode) {
-        print('AnalyticsService: Logging screen view: $screenName');
+        _log.info('Logging screen view: $screenName', service: _serviceName);
       }
 
       final parameters = {
@@ -428,10 +443,10 @@ class AnalyticsService {
       ));
 
       if (kDebugMode) {
-        print('AnalyticsService: Screen view logged successfully');
+        _log.info('Screen view logged successfully', service: _serviceName);
       }
     } catch (e) {
-      print('AnalyticsService: Error logging screen view: $e');
+      _log.error('Error logging screen view', service: _serviceName, error: e);
     }
   }
 
@@ -454,7 +469,7 @@ class AnalyticsService {
         parameters: eventParams,
       );
     } catch (e) {
-      print('AnalyticsService: Error logging user action: $e');
+      _log.error('Error logging user action', service: _serviceName, error: e);
       rethrow;
     }
   }
@@ -484,7 +499,7 @@ class AnalyticsService {
         parameters: filteredParams,
       );
     } catch (e) {
-      print('AnalyticsService: Error logging error event: $e');
+      _log.error('Error logging error event', service: _serviceName, error: e);
       rethrow;
     }
   }
@@ -510,7 +525,8 @@ class AnalyticsService {
         parameters: Map<String, Object>.from(eventParams),
       );
     } catch (e) {
-      print('AnalyticsService: Error logging performance event: $e');
+      _log.error('Error logging performance event',
+          service: _serviceName, error: e);
       rethrow;
     }
   }
@@ -534,7 +550,8 @@ class AnalyticsService {
         parameters: eventParams,
       );
     } catch (e) {
-      print('AnalyticsService: Error logging feature usage: $e');
+      _log.error('Error logging feature usage',
+          service: _serviceName, error: e);
       rethrow;
     }
   }
@@ -549,7 +566,7 @@ class AnalyticsService {
         parameters: {'method': method ?? ''},
       );
     } catch (e) {
-      print('AnalyticsService: Error logging login: $e');
+      _log.error('Error logging login', service: _serviceName, error: e);
       rethrow;
     }
   }
@@ -563,7 +580,7 @@ class AnalyticsService {
         parameters: {'method': method ?? ''},
       );
     } catch (e) {
-      print('AnalyticsService: Error logging sign up: $e');
+      _log.error('Error logging sign up', service: _serviceName, error: e);
       rethrow;
     }
   }
@@ -577,7 +594,7 @@ class AnalyticsService {
         parameters: {'search_term': searchTerm},
       );
     } catch (e) {
-      print('AnalyticsService: Error logging search: $e');
+      _log.error('Error logging search', service: _serviceName, error: e);
       rethrow;
     }
   }
@@ -600,7 +617,8 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging select content: $e');
+      _log.error('Error logging select content',
+          service: _serviceName, error: e);
       rethrow;
     }
   }
@@ -626,7 +644,7 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging share: $e');
+      _log.error('Error logging share', service: _serviceName, error: e);
       rethrow;
     }
   }
@@ -642,7 +660,8 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging lifecycle state: $e');
+      _log.error('Error logging lifecycle state',
+          service: _serviceName, error: e);
     }
   }
 
@@ -661,7 +680,7 @@ class AnalyticsService {
   // User Session Management
   Future<void> setUserId(String? userId) async {
     try {
-      print("Setting user ID: $userId");
+      _log.info("Setting user ID: $userId", service: _serviceName);
       await _analytics.setUserId(id: userId);
       await logEvent(
         name: 'user_identification',
@@ -670,15 +689,16 @@ class AnalyticsService {
           'timestamp': DateTime.now().toIso8601String(),
         },
       );
-      print("User ID set successfully");
+      _log.info("User ID set successfully", service: _serviceName);
     } catch (e, stackTrace) {
-      print("Error setting user ID: $e");
-      print("Stack trace: $stackTrace");
+      _log.error("Error setting user ID",
+          service: _serviceName, error: e, stackTrace: stackTrace);
       // Hata durumunda işlemi tekrar deneme
       try {
         await _analytics.setUserId(id: userId);
       } catch (retryError) {
-        print("Error during retry of setting user ID: $retryError");
+        _log.error("Error during retry of setting user ID",
+            service: _serviceName, error: retryError);
       }
     }
   }
@@ -701,7 +721,8 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error updating user properties: $e');
+      _log.error('Error updating user properties',
+          service: _serviceName, error: e);
     }
   }
 
@@ -720,7 +741,8 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging session start: $e');
+      _log.error('Error logging session start',
+          service: _serviceName, error: e);
     }
   }
 
@@ -739,7 +761,7 @@ class AnalyticsService {
         _currentSessionId = null;
       }
     } catch (e) {
-      print('AnalyticsService: Error logging session end: $e');
+      _log.error('Error logging session end', service: _serviceName, error: e);
     }
   }
 
@@ -760,7 +782,8 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging network status: $e');
+      _log.error('Error logging network status',
+          service: _serviceName, error: e);
     }
   }
 
@@ -778,7 +801,8 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging connection quality: $e');
+      _log.error('Error logging connection quality',
+          service: _serviceName, error: e);
     }
   }
 
@@ -801,7 +825,7 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging crash: $e');
+      _log.error('Error logging crash', service: _serviceName, error: e);
     }
   }
 
@@ -823,7 +847,7 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging memory usage: $e');
+      _log.error('Error logging memory usage', service: _serviceName, error: e);
     }
   }
 
@@ -846,7 +870,7 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging user flow: $e');
+      _log.error('Error logging user flow', service: _serviceName, error: e);
     }
   }
 
@@ -864,7 +888,7 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging screen time: $e');
+      _log.error('Error logging screen time', service: _serviceName, error: e);
     }
   }
 
@@ -886,7 +910,8 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging user interaction: $e');
+      _log.error('Error logging user interaction',
+          service: _serviceName, error: e);
     }
   }
 
@@ -909,7 +934,7 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging social share: $e');
+      _log.error('Error logging social share', service: _serviceName, error: e);
     }
   }
 
@@ -931,7 +956,7 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging social like: $e');
+      _log.error('Error logging social like', service: _serviceName, error: e);
     }
   }
 
@@ -954,7 +979,7 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging content view: $e');
+      _log.error('Error logging content view', service: _serviceName, error: e);
     }
   }
 
@@ -976,7 +1001,8 @@ class AnalyticsService {
         },
       );
     } catch (e) {
-      print('AnalyticsService: Error logging content progress: $e');
+      _log.error('Error logging content progress',
+          service: _serviceName, error: e);
     }
   }
 
@@ -985,7 +1011,7 @@ class AnalyticsService {
       final box = await Hive.openBox<Map<String, dynamic>>('analytics_cache');
       await box.delete(key);
     } catch (e) {
-      print('AnalyticsService: Error removing from cache: $e');
+      _log.error('Error removing from cache', service: _serviceName, error: e);
     }
   }
 
@@ -994,7 +1020,7 @@ class AnalyticsService {
       final box = await Hive.openBox<Map<String, dynamic>>('analytics_cache');
       await box.put(key, data);
     } catch (e) {
-      print('AnalyticsService: Error adding to cache: $e');
+      _log.error('Error adding to cache', service: _serviceName, error: e);
     }
   }
 }

@@ -13,7 +13,7 @@ import '../models/user_activity_model.dart';
 /// This centralization allows for easier management, logging, and implementation
 /// of data integrity checks (middleware).
 class FirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   final LogService _log = LogService();
   final String _serviceName = 'FirestoreService';
 
@@ -202,8 +202,7 @@ class FirestoreService {
       if (doc.exists) {
         _log.info('Successfully retrieved user data for uid: $uid',
             service: _serviceName);
-        return UserModel.fromFirestore(
-            doc as DocumentSnapshot<Map<String, dynamic>>);
+        return UserModel.fromFirestore(doc);
       }
       _log.warning('User document not found for uid: $uid',
           service: _serviceName);
@@ -321,8 +320,7 @@ class FirestoreService {
       final userActivitySnapshot =
           results[1] as QuerySnapshot<Map<String, dynamic>>;
 
-      final userModel = UserModel.fromFirestore(
-          userDoc as DocumentSnapshot<Map<String, dynamic>>);
+      final userModel = UserModel.fromFirestore(userDoc);
 
       final loginHistory = loginHistorySnapshot.docs
           .map((doc) => LoginHistoryItem.fromFirestore(doc))
@@ -378,7 +376,8 @@ class FirestoreService {
       final userDoc = await userDocRef.get();
 
       if (!userDoc.exists) {
-        print("User document does not exist for uid: $uid. Cannot repair.");
+        _log.warning(
+            "User document does not exist for uid: $uid. Cannot repair.");
         return;
       }
 

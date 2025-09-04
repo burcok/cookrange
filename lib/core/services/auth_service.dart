@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/services/analytics_service.dart';
 import 'firestore_service.dart';
 import 'log_service.dart';
@@ -17,7 +16,7 @@ class AuthException implements Exception {
 }
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  FirebaseAuth get _auth => FirebaseAuth.instance;
   final FirestoreService _firestoreService = FirestoreService();
   final AnalyticsService _analyticsService = AnalyticsService();
   final LogService _log = LogService();
