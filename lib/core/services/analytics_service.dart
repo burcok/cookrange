@@ -29,7 +29,8 @@ class AnalyticsService {
   static const Duration _processInterval = Duration(seconds: 30);
 
   // Hive box için
-  late Box<Map> _analyticsBox;
+  Box<Map>? _analyticsBox;
+  bool _boxAvailable = false;
 
   // Singleton pattern
   static final AnalyticsService _instance = AnalyticsService._internal();
@@ -58,19 +59,28 @@ class AnalyticsService {
       // Check if box is already open and use it, otherwise open it
       if (Hive.isBoxOpen('analytics_cache')) {
         _analyticsBox = Hive.box<Map>('analytics_cache');
+        _boxAvailable = true;
         _log.info('Using existing analytics_cache box', service: _serviceName);
       } else {
         try {
           _analyticsBox = await Hive.openBox<Map>('analytics_cache');
+          _boxAvailable = true;
           _log.info('Opened new analytics_cache box', service: _serviceName);
         } catch (e) {
           // If box is already open by another instance, get the existing one
           if (Hive.isBoxOpen('analytics_cache')) {
             _analyticsBox = Hive.box<Map>('analytics_cache');
+            _boxAvailable = true;
             _log.info('Using existing analytics_cache box after error',
                 service: _serviceName);
           } else {
-            rethrow;
+            _log.error('Failed to open analytics_cache box',
+                service: _serviceName, error: e);
+            // If we can't open the box, we'll work without caching
+            _log.warning(
+                'Analytics service will work without persistent caching',
+                service: _serviceName);
+            _boxAvailable = false;
           }
         }
       }
@@ -143,10 +153,12 @@ class AnalyticsService {
 
   Future<void> _processPendingEvents() async {
     try {
-      // Önbellekteki eventleri yükle
-      final cachedEvents = _analyticsBox.values.toList();
-      for (final event in cachedEvents) {
-        _eventQueue.add(AnalyticsEvent.fromMap(event));
+      // Önbellekteki eventleri yükle (sadece box mevcutsa)
+      if (_boxAvailable && _analyticsBox != null) {
+        final cachedEvents = _analyticsBox!.values.toList();
+        for (final event in cachedEvents) {
+          _eventQueue.add(AnalyticsEvent.fromMap(event));
+        }
       }
 
       // Kuyruktaki eventleri işle
@@ -244,9 +256,13 @@ class AnalyticsService {
 
   Future<void> _cacheEvent(AnalyticsEvent event) async {
     try {
-      await _analyticsBox.put(event.timestamp, event.toMap());
-      _log.info('Event cached with key: ${event.timestamp}',
-          service: _serviceName);
+      if (_boxAvailable && _analyticsBox != null) {
+        await _analyticsBox!.put(event.timestamp, event.toMap());
+        _log.info('Event cached with key: ${event.timestamp}',
+            service: _serviceName);
+      } else {
+        _log.info('Skipping cache - box not available', service: _serviceName);
+      }
     } catch (e) {
       _log.error('Error caching event', service: _serviceName, error: e);
     }
@@ -265,9 +281,14 @@ class AnalyticsService {
 
   Future<void> _removeFromCache(AnalyticsEvent event) async {
     try {
-      await _analyticsBox.delete(event.timestamp);
-      _log.info('Event with key: ${event.timestamp} removed from cache',
-          service: _serviceName);
+      if (_boxAvailable && _analyticsBox != null) {
+        await _analyticsBox!.delete(event.timestamp);
+        _log.info('Event with key: ${event.timestamp} removed from cache',
+            service: _serviceName);
+      } else {
+        _log.info('Skipping cache removal - box not available',
+            service: _serviceName);
+      }
     } catch (e) {
       _log.error('Error removing from cache', service: _serviceName, error: e);
     }

@@ -41,15 +41,26 @@ class FirestoreService {
 
   /// Gathers device information into a map.
   Future<Map<String, dynamic>> _getDeviceInfo() async {
-    final deviceInfo = DeviceInfoProvider();
-    await deviceInfo.initialize();
-    return {
-      'device_model': deviceInfo.deviceModel,
-      'device_type': deviceInfo.deviceType,
-      'device_os': deviceInfo.deviceOs,
-      'app_version': deviceInfo.appVersion,
-      'build_number': deviceInfo.buildNumber,
-    };
+    try {
+      final deviceInfo = DeviceInfoProvider();
+      await deviceInfo.initialize();
+      return {
+        'device_model': deviceInfo.deviceModel,
+        'device_type': deviceInfo.deviceType,
+        'device_os': deviceInfo.deviceOs,
+        'app_version': deviceInfo.appVersion,
+        'build_number': deviceInfo.buildNumber,
+      };
+    } catch (e) {
+      _log.error('Error getting device info', service: _serviceName, error: e);
+      return {
+        'device_model': 'unknown',
+        'device_type': 'unknown',
+        'device_os': 'unknown',
+        'app_version': 'unknown',
+        'build_number': 'unknown',
+      };
+    }
   }
 
   // --- PUBLIC API ---
@@ -147,13 +158,19 @@ class FirestoreService {
       verifyAndRepairUserData(user.uid);
 
       // Add to login history for both new and existing users
-      await userDocRef.collection('login_history').add({
-        'timestamp': FieldValue.serverTimestamp(),
-        'ip_address': ipAddress,
-        ...deviceInfoMap
-      });
-      _log.info('Login history added for user: ${user.uid}',
-          service: _serviceName);
+      try {
+        await userDocRef.collection('login_history').add({
+          'timestamp': FieldValue.serverTimestamp(),
+          'ip_address': ipAddress,
+          ...deviceInfoMap
+        });
+        _log.info('Login history added for user: ${user.uid}',
+            service: _serviceName);
+      } catch (loginHistoryError) {
+        _log.error('Error adding login history for user ${user.uid}',
+            service: _serviceName, error: loginHistoryError);
+        // Don't rethrow - login should still succeed even if history logging fails
+      }
     } catch (e, s) {
       _log.error('Error handling user login for ${user.uid}',
           service: _serviceName, error: e, stackTrace: s);
