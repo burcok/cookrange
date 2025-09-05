@@ -8,8 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
 import '../../firebase_options.dart';
 import 'crashlytics_service.dart';
 import 'analytics_service.dart';
@@ -20,7 +18,8 @@ import 'log_service.dart';
 /// Comprehensive app initialization service that handles all startup tasks
 /// with proper error handling, fallbacks, and user feedback.
 class AppInitializationService {
-  static final AppInitializationService _instance = AppInitializationService._internal();
+  static final AppInitializationService _instance =
+      AppInitializationService._internal();
   factory AppInitializationService() => _instance;
   AppInitializationService._internal();
 
@@ -83,17 +82,18 @@ class AppInitializationService {
       await _checkConnectivity();
 
       _isInitialized = true;
-      _log.info('App initialization completed successfully', service: _serviceName);
+      _log.info('App initialization completed successfully',
+          service: _serviceName);
 
       return InitializationResult.success(_initializationResults);
     } catch (e, stackTrace) {
       _initializationError = e.toString();
-      _log.error('App initialization failed', 
+      _log.error('App initialization failed',
           service: _serviceName, error: e, stackTrace: stackTrace);
-      
+
       // Log to Crashlytics if available
       try {
-        await CrashlyticsService().recordError(e, stackTrace, 
+        await CrashlyticsService().recordError(e, stackTrace,
             reason: 'App initialization failed', fatal: true);
       } catch (_) {
         // Ignore if Crashlytics is not available
@@ -109,14 +109,15 @@ class AppInitializationService {
   Future<void> _initializeCore() async {
     try {
       WidgetsFlutterBinding.ensureInitialized();
-      
+
       // Configure debug vs release mode
       _configureDebugMode();
-      
+
       _log.info('Core Flutter services initialized', service: _serviceName);
       _initializationResults['core'] = true;
     } catch (e) {
-      _log.error('Failed to initialize core services', service: _serviceName, error: e);
+      _log.error('Failed to initialize core services',
+          service: _serviceName, error: e);
       throw Exception('Core initialization failed: $e');
     }
   }
@@ -127,16 +128,16 @@ class AppInitializationService {
       // Disable debug print in release mode but keep critical logs
       debugPrint = (String? message, {int? wrapWidth}) {
         // Only log critical messages in release mode
-        if (message != null && 
-            (message.contains('ERROR') || 
-             message.contains('FATAL') || 
-             message.contains('CRITICAL'))) {
+        if (message != null &&
+            (message.contains('ERROR') ||
+                message.contains('FATAL') ||
+                message.contains('CRITICAL'))) {
           print(message);
         }
       };
     }
-    
-    _log.info('Debug mode configuration: ${kDebugMode ? "DEBUG" : "RELEASE"}', 
+
+    _log.info('Debug mode configuration: ${kDebugMode ? "DEBUG" : "RELEASE"}',
         service: _serviceName);
   }
 
@@ -147,7 +148,7 @@ class AppInitializationService {
       _log.info('Global error handling initialized', service: _serviceName);
       _initializationResults['global_error_handler'] = true;
     } catch (e) {
-      _log.error('Failed to initialize global error handling', 
+      _log.error('Failed to initialize global error handling',
           service: _serviceName, error: e);
       _initializationResults['global_error_handler'] = false;
       // Don't throw - error handling is not critical for startup
@@ -163,12 +164,14 @@ class AppInitializationService {
       _log.info('Firebase initialized successfully', service: _serviceName);
       _initializationResults['firebase'] = true;
     } catch (e) {
-      _log.error('Firebase initialization failed', service: _serviceName, error: e);
+      _log.error('Firebase initialization failed',
+          service: _serviceName, error: e);
       _initializationResults['firebase'] = false;
       _initializationResults['firebase_error'] = e.toString();
-      
+
       // Don't throw - allow app to continue in offline mode
-      _log.warning('App will continue in offline mode due to Firebase initialization failure', 
+      _log.warning(
+          'App will continue in offline mode due to Firebase initialization failure',
           service: _serviceName);
     }
   }
@@ -179,25 +182,28 @@ class AppInitializationService {
       // Initialize Hive
       final appDocumentDir = await getApplicationDocumentsDirectory();
       await Hive.initFlutter(appDocumentDir.path);
-      
+
       // Register adapters (when available)
       await _registerHiveAdapters();
-      
+
       // Open boxes with error handling
       await _openHiveBoxes();
-      
+
       // Initialize SharedPreferences
       await SharedPreferences.getInstance();
-      
-      _log.info('Local storage initialized successfully', service: _serviceName);
+
+      _log.info('Local storage initialized successfully',
+          service: _serviceName);
       _initializationResults['local_storage'] = true;
     } catch (e) {
-      _log.error('Local storage initialization failed', service: _serviceName, error: e);
+      _log.error('Local storage initialization failed',
+          service: _serviceName, error: e);
       _initializationResults['local_storage'] = false;
       _initializationResults['local_storage_error'] = e.toString();
-      
+
       // Don't throw - app can work with in-memory storage
-      _log.warning('App will use in-memory storage due to local storage failure', 
+      _log.warning(
+          'App will use in-memory storage due to local storage failure',
           service: _serviceName);
     }
   }
@@ -209,16 +215,18 @@ class AppInitializationService {
       // Example:
       // Hive.registerAdapter(UserAdapter());
       // Hive.registerAdapter(SettingsAdapter());
-      
+
       _log.info('Hive adapters registered', service: _serviceName);
     } catch (e) {
-      _log.warning('Failed to register some Hive adapters', service: _serviceName, error: e);
+      _log.warning('Failed to register some Hive adapters',
+          service: _serviceName, error: e);
     }
   }
 
   /// Open Hive boxes with safe error handling
   Future<void> _openHiveBoxes() async {
-    final boxNames = ['appBox', 'userBox', 'settingsBox', 'analytics_cache'];
+    // Only open generic boxes here - specific typed boxes should be opened by their respective services
+    final boxNames = ['appBox', 'userBox', 'settingsBox'];
     final results = await Future.wait(
       boxNames.map((name) => _openBoxSafe(name)),
       eagerError: false,
@@ -228,9 +236,11 @@ class AppInitializationService {
     for (int i = 0; i < boxNames.length; i++) {
       if (results[i] != null) {
         successCount++;
-        _log.info('Successfully opened Hive box: ${boxNames[i]}', service: _serviceName);
+        _log.info('Successfully opened Hive box: ${boxNames[i]}',
+            service: _serviceName);
       } else {
-        _log.warning('Failed to open Hive box: ${boxNames[i]}', service: _serviceName);
+        _log.warning('Failed to open Hive box: ${boxNames[i]}',
+            service: _serviceName);
       }
     }
 
@@ -246,7 +256,8 @@ class AppInitializationService {
       }
       return await Hive.openBox(name);
     } catch (e) {
-      _log.warning('Failed to open Hive box: $name', service: _serviceName, error: e);
+      _log.warning('Failed to open Hive box: $name',
+          service: _serviceName, error: e);
       return null;
     }
   }
@@ -272,7 +283,8 @@ class AppInitializationService {
       _log.info('System UI configured successfully', service: _serviceName);
       _initializationResults['system_ui'] = true;
     } catch (e) {
-      _log.error('System UI configuration failed', service: _serviceName, error: e);
+      _log.error('System UI configuration failed',
+          service: _serviceName, error: e);
       _initializationResults['system_ui'] = false;
       // Don't throw - this is not critical
     }
@@ -287,7 +299,8 @@ class AppInitializationService {
         _initializationResults['crashlytics'] = true;
       } catch (e) {
         _initializationResults['crashlytics'] = false;
-        _log.warning('Crashlytics service initialization failed', service: _serviceName, error: e);
+        _log.warning('Crashlytics service initialization failed',
+            service: _serviceName, error: e);
       }
 
       try {
@@ -295,7 +308,8 @@ class AppInitializationService {
         _initializationResults['analytics'] = true;
       } catch (e) {
         _initializationResults['analytics'] = false;
-        _log.warning('Analytics service initialization failed', service: _serviceName, error: e);
+        _log.warning('Analytics service initialization failed',
+            service: _serviceName, error: e);
       }
 
       try {
@@ -303,12 +317,14 @@ class AppInitializationService {
         _initializationResults['auth'] = true;
       } catch (e) {
         _initializationResults['auth'] = false;
-        _log.warning('Auth service initialization failed', service: _serviceName, error: e);
+        _log.warning('Auth service initialization failed',
+            service: _serviceName, error: e);
       }
 
       _log.info('App services initialized', service: _serviceName);
     } catch (e) {
-      _log.error('Service initialization failed', service: _serviceName, error: e);
+      _log.error('Service initialization failed',
+          service: _serviceName, error: e);
       _initializationResults['services'] = false;
       // Don't throw - app can work with limited services
     }
@@ -318,14 +334,18 @@ class AppInitializationService {
   Future<void> _checkConnectivity() async {
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
-      final hasConnection = connectivityResult.any((r) => r != ConnectivityResult.none);
-      
+      final hasConnection =
+          connectivityResult.any((r) => r != ConnectivityResult.none);
+
       _initializationResults['connectivity'] = hasConnection;
-      _initializationResults['connectivity_type'] = connectivityResult.toString();
-      
-      _log.info('Connectivity check completed: $hasConnection', service: _serviceName);
+      _initializationResults['connectivity_type'] =
+          connectivityResult.toString();
+
+      _log.info('Connectivity check completed: $hasConnection',
+          service: _serviceName);
     } catch (e) {
-      _log.warning('Connectivity check failed', service: _serviceName, error: e);
+      _log.warning('Connectivity check failed',
+          service: _serviceName, error: e);
       _initializationResults['connectivity'] = false;
       // Don't throw - connectivity is not critical for startup
     }
@@ -336,7 +356,7 @@ class AppInitializationService {
     try {
       final deviceInfo = DeviceInfoPlugin();
       final packageInfo = await PackageInfo.fromPlatform();
-      
+
       return {
         'package_name': packageInfo.packageName,
         'version': packageInfo.version,

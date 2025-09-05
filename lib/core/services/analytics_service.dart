@@ -58,30 +58,41 @@ class AnalyticsService {
 
       // Check if box is already open and use it, otherwise open it
       if (Hive.isBoxOpen('analytics_cache')) {
-        _analyticsBox = Hive.box<Map>('analytics_cache');
-        _boxAvailable = true;
-        _log.info('Using existing analytics_cache box', service: _serviceName);
+        try {
+          _analyticsBox = Hive.box<Map>('analytics_cache');
+          _boxAvailable = true;
+          _log.info('Using existing analytics_cache box',
+              service: _serviceName);
+        } catch (e) {
+          // Box exists but with different type - close it and reopen with correct type
+          _log.warning(
+              'Box exists with different type, reopening with correct type',
+              service: _serviceName,
+              error: e);
+          try {
+            await Hive.box('analytics_cache').close();
+            _analyticsBox = await Hive.openBox<Map>('analytics_cache');
+            _boxAvailable = true;
+            _log.info('Reopened analytics_cache box with correct type',
+                service: _serviceName);
+          } catch (reopenError) {
+            _log.error('Failed to reopen analytics_cache box',
+                service: _serviceName, error: reopenError);
+            _boxAvailable = false;
+          }
+        }
       } else {
         try {
           _analyticsBox = await Hive.openBox<Map>('analytics_cache');
           _boxAvailable = true;
           _log.info('Opened new analytics_cache box', service: _serviceName);
         } catch (e) {
-          // If box is already open by another instance, get the existing one
-          if (Hive.isBoxOpen('analytics_cache')) {
-            _analyticsBox = Hive.box<Map>('analytics_cache');
-            _boxAvailable = true;
-            _log.info('Using existing analytics_cache box after error',
-                service: _serviceName);
-          } else {
-            _log.error('Failed to open analytics_cache box',
-                service: _serviceName, error: e);
-            // If we can't open the box, we'll work without caching
-            _log.warning(
-                'Analytics service will work without persistent caching',
-                service: _serviceName);
-            _boxAvailable = false;
-          }
+          _log.error('Failed to open analytics_cache box',
+              service: _serviceName, error: e);
+          // If we can't open the box, we'll work without caching
+          _log.warning('Analytics service will work without persistent caching',
+              service: _serviceName);
+          _boxAvailable = false;
         }
       }
 

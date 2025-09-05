@@ -12,7 +12,7 @@ class LogService {
   void setup() {
     // Configure logging levels based on build mode
     Logger.root.level = kDebugMode ? Level.ALL : Level.WARNING;
-    
+
     Logger.root.onRecord.listen((record) {
       // Only log in debug mode or for important messages
       if (kDebugMode || record.level >= Level.WARNING) {

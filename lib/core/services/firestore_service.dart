@@ -86,6 +86,11 @@ class FirestoreService {
         logData.addAll(extraData);
       }
 
+      _log.info(
+          'About to add user activity for user: $userId, event: $eventType',
+          service: _serviceName);
+      _log.info('User activity data: $logData', service: _serviceName);
+
       await _firestore
           .collection('users')
           .doc(userId)
@@ -130,9 +135,18 @@ class FirestoreService {
         'last_login_device_type': deviceInfoMap['device_type'],
         'last_login_device_model': deviceInfoMap['device_model'],
         'last_login_device_os': deviceInfoMap['device_os'],
-        'app_version': deviceInfoMap['app_version'],
-        'build_number': deviceInfoMap['build_number'],
       };
+
+      // Only update app version info if it has changed
+      final currentAppVersion = userDoc.data()?['app_version'] as String?;
+      final currentBuildNumber = userDoc.data()?['build_number'] as String?;
+
+      if (currentAppVersion != deviceInfoMap['app_version'] ||
+          currentBuildNumber != deviceInfoMap['build_number']) {
+        loginData['app_version'] = deviceInfoMap['app_version'];
+        loginData['build_number'] = deviceInfoMap['build_number'];
+        loginData['version_updated_at'] = FieldValue.serverTimestamp();
+      }
 
       if (!userDoc.exists) {
         // Create user document for a new user
@@ -159,16 +173,27 @@ class FirestoreService {
 
       // Add to login history for both new and existing users
       try {
-        await userDocRef.collection('login_history').add({
+        _log.info('About to add login history for user: ${user.uid}',
+            service: _serviceName);
+
+        final loginHistoryData = {
           'timestamp': FieldValue.serverTimestamp(),
           'ip_address': ipAddress,
           ...deviceInfoMap
-        });
-        _log.info('Login history added for user: ${user.uid}',
+        };
+
+        _log.info('Login history data: $loginHistoryData',
+            service: _serviceName);
+
+        await userDocRef.collection('login_history').add(loginHistoryData);
+        _log.info('Login history successfully added for user: ${user.uid}',
             service: _serviceName);
       } catch (loginHistoryError) {
         _log.error('Error adding login history for user ${user.uid}',
             service: _serviceName, error: loginHistoryError);
+        _log.error(
+            'Login history error details: ${loginHistoryError.toString()}',
+            service: _serviceName);
         // Don't rethrow - login should still succeed even if history logging fails
       }
     } catch (e, s) {
@@ -390,6 +415,50 @@ class FirestoreService {
       _log.error('Error finding user by email $email',
           service: _serviceName, error: e, stackTrace: s);
       return null;
+    }
+  }
+
+  /// Test method to manually create subcollections for debugging
+  Future<void> testCreateSubcollections(String uid) async {
+    _log.info('Testing subcollection creation for user: $uid',
+        service: _serviceName);
+    try {
+      final userDocRef = _firestore.collection('users').doc(uid);
+
+      // Test login_history creation
+      await userDocRef.collection('login_history').add({
+        'timestamp': FieldValue.serverTimestamp(),
+        'test': true,
+        'message': 'Manual test creation',
+        'ip_address': '127.0.0.1',
+        'device_model': 'test_device',
+        'device_type': 'test',
+        'device_os': 'test_os',
+        'app_version': '1.0.0',
+        'build_number': '1',
+      });
+      _log.info('Test login_history created successfully',
+          service: _serviceName);
+
+      // Test user_activity creation
+      await userDocRef.collection('user_activity').add({
+        'event_type': 'test_event',
+        'timestamp': FieldValue.serverTimestamp(),
+        'test': true,
+        'message': 'Manual test creation',
+        'ip_address': '127.0.0.1',
+        'device_model': 'test_device',
+        'device_type': 'test',
+        'device_os': 'test_os',
+        'app_version': '1.0.0',
+        'build_number': '1',
+      });
+      _log.info('Test user_activity created successfully',
+          service: _serviceName);
+    } catch (e, s) {
+      _log.error('Error creating test subcollections for user $uid',
+          service: _serviceName, error: e, stackTrace: s);
+      rethrow;
     }
   }
 

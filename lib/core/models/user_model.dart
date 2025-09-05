@@ -13,6 +13,8 @@ class UserModel {
   final Timestamp? lastActiveAt;
   final Timestamp? onboardingCompletedAt;
   final Map<String, dynamic>? onboardingData;
+  final String? appVersion;
+  final String? buildNumber;
 
   UserModel({
     required this.uid,
@@ -26,6 +28,8 @@ class UserModel {
     this.lastActiveAt,
     this.onboardingCompletedAt,
     this.onboardingData,
+    this.appVersion,
+    this.buildNumber,
   });
 
   /// Creates a UserModel from a Firestore document snapshot.
@@ -43,6 +47,8 @@ class UserModel {
       lastActiveAt: data['last_active_at'] as Timestamp?,
       onboardingCompletedAt: data['onboarding_completed_at'] as Timestamp?,
       onboardingData: data['onboarding_data'] as Map<String, dynamic>?,
+      appVersion: data['app_version'] as String?,
+      buildNumber: data['build_number'] as String?,
     );
   }
 }

@@ -119,6 +119,8 @@ class AuthService {
       }
 
       // Delegate login handling to FirestoreService
+      _log.info('About to call handleUserLogin for user: ${result.user!.uid}',
+          service: _serviceName);
       await _firestoreService.handleUserLogin(result.user!);
       _log.info('Successfully signed in user: ${result.user!.uid}',
           service: _serviceName);
@@ -261,6 +263,8 @@ class AuthService {
 
       if (user != null) {
         // Delegate login handling to FirestoreService
+        _log.info('About to call handleUserLogin for Google user: ${user.uid}',
+            service: _serviceName);
         await _firestoreService.handleUserLogin(user);
         _log.info('Google Sign-In successful for user: ${user.uid}',
             service: _serviceName);
@@ -289,6 +293,8 @@ class AuthService {
     _log.info('Attempting to sign out user: ${user?.uid}',
         service: _serviceName);
     if (user != null) {
+      // Update user's online status to false before logging out
+      await _firestoreService.updateUserOnlineStatus(user.uid, false);
       await _firestoreService.logUserActivity(user.uid, 'logout');
     }
 

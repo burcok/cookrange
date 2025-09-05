@@ -13,7 +13,8 @@ import '../widgets/error_fallback_widget.dart';
 
 /// Service to manage route configuration and navigation
 class RouteConfigurationService {
-  static final RouteConfigurationService _instance = RouteConfigurationService._internal();
+  static final RouteConfigurationService _instance =
+      RouteConfigurationService._internal();
   factory RouteConfigurationService() => _instance;
   RouteConfigurationService._internal();
 
@@ -22,11 +23,15 @@ class RouteConfigurationService {
     return {
       AppRoutes.splash: (context) => const SplashScreen(),
       AppRoutes.login: (context) => const RouteGuard(child: LoginScreen()),
-      AppRoutes.register: (context) => const RouteGuard(child: RegisterScreen()),
+      AppRoutes.register: (context) =>
+          const RouteGuard(child: RegisterScreen()),
       AppRoutes.home: (context) => const RouteGuard(child: HomeScreen()),
-      AppRoutes.verifyEmail: (context) => const RouteGuard(child: VerifyEmailScreen()),
-      AppRoutes.onboarding: (context) => const RouteGuard(child: OnboardingScreen()),
-      AppRoutes.priorityOnboarding: (context) => const RouteGuard(child: PriorityOnboardingScreen()),
+      AppRoutes.verifyEmail: (context) =>
+          const RouteGuard(child: VerifyEmailScreen()),
+      AppRoutes.onboarding: (context) =>
+          const RouteGuard(child: OnboardingScreen()),
+      AppRoutes.priorityOnboarding: (context) =>
+          const RouteGuard(child: PriorityOnboardingScreen()),
       '/offline': (context) => const OfflineModeScreen(),
     };
   }
@@ -50,7 +55,9 @@ class RouteConfigurationService {
   String get initialRoute => AppRoutes.splash;
 
   /// Navigate to a route with proper error handling
-  static Future<void> navigateTo(BuildContext context, String routeName, {
+  static Future<void> navigateTo(
+    BuildContext context,
+    String routeName, {
     Object? arguments,
     bool clearStack = false,
   }) async {
@@ -82,7 +89,9 @@ class RouteConfigurationService {
   }
 
   /// Replace current route
-  static Future<void> replaceRoute(BuildContext context, String routeName, {
+  static Future<void> replaceRoute(
+    BuildContext context,
+    String routeName, {
     Object? arguments,
   }) async {
     try {
