@@ -50,7 +50,7 @@ dependencies:
   http: ^1.2.0
 
   # Device & App Info
-  device_info_plus: ^11.4.0
+  device_info_plus: 11.4.0
   package_info_plus: ^8.3.0
 
   # Utilities

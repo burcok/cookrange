@@ -60,8 +60,19 @@ class AnalyticsService {
         _analyticsBox = Hive.box<Map>('analytics_cache');
         _log.info('Using existing analytics_cache box', service: _serviceName);
       } else {
-        _analyticsBox = await Hive.openBox<Map>('analytics_cache');
-        _log.info('Opened new analytics_cache box', service: _serviceName);
+        try {
+          _analyticsBox = await Hive.openBox<Map>('analytics_cache');
+          _log.info('Opened new analytics_cache box', service: _serviceName);
+        } catch (e) {
+          // If box is already open by another instance, get the existing one
+          if (Hive.isBoxOpen('analytics_cache')) {
+            _analyticsBox = Hive.box<Map>('analytics_cache');
+            _log.info('Using existing analytics_cache box after error',
+                service: _serviceName);
+          } else {
+            rethrow;
+          }
+        }
       }
 
       // PackageInfo'yu ana thread'de al

@@ -85,6 +85,18 @@ class FirestoreService {
     } catch (e, s) {
       _log.error('Error logging user activity ($eventType) for user $userId',
           service: _serviceName, error: e, stackTrace: s);
+
+      // If it's a permission error, try to log to a different collection or skip
+      if (e.toString().contains('permission-denied')) {
+        _log.warning(
+            'Permission denied for user_activity logging. Skipping activity log for user: $userId',
+            service: _serviceName);
+        // Optionally, you could log to a different collection or use a different approach
+        return;
+      }
+
+      // For other errors, rethrow to maintain existing behavior
+      rethrow;
     }
   }
 
@@ -315,10 +327,8 @@ class FirestoreService {
             .get(),
       ]);
 
-      final loginHistorySnapshot =
-          results[0] as QuerySnapshot<Map<String, dynamic>>;
-      final userActivitySnapshot =
-          results[1] as QuerySnapshot<Map<String, dynamic>>;
+      final loginHistorySnapshot = results[0];
+      final userActivitySnapshot = results[1];
 
       final userModel = UserModel.fromFirestore(userDoc);
 

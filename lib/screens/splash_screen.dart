@@ -3,23 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_svg/svg.dart' show SvgPicture;
+import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
+import 'dart:math';
 import '../core/services/analytics_service.dart';
 import '../core/services/crashlytics_service.dart';
 import '../core/services/device_info_service.dart';
+import '../core/services/app_initialization_service.dart';
+import '../core/services/system_ui_service.dart';
+import '../core/services/performance_service.dart';
 import '../core/localization/app_localizations.dart';
-import '../widgets/gender_picker_modal.dart';
-import '../widgets/custom_back_button.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import '../widgets/date_picker_modal.dart';
-import '../widgets/number_picker_modal.dart';
 import '../core/services/auth_service.dart';
 import '../core/providers/device_info_provider.dart';
 import 'package:provider/provider.dart';
 import '../core/providers/onboarding_provider.dart';
 import '../core/models/user_model.dart';
 import '../core/utils/app_routes.dart';
+import '../core/widgets/error_fallback_widget.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -31,22 +32,21 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
   bool _isInitialized = false;
-  bool _showSplash = true;
-  Timer? _splashTimer;
   Timer? _connectivityTimer;
   int _countdownSeconds = 10;
-  bool _isIconLoaded = false;
-  bool _isTextLoaded = false;
+  final Completer<void> _iconLoadCompleter = Completer<void>();
+  final Completer<void> _textLoadCompleter = Completer<void>();
   bool _isResourcesLoaded = false;
   DateTime? _startTime;
-  DateTime? _cacheStartTime;
   bool _hasPrecachedImages = false;
   bool _shouldPreloadOnboardingImages = false;
   bool _isCacheComplete = false;
+  final minimumDisplayTime = const Duration(seconds: 5);
   bool _hasReachedMinimumTime = false;
   bool _isOffline = false;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   OverlayEntry? _overlayEntry;
+  bool _animationsStarted = false;
 
   // Animation Controllers
   late AnimationController _mainController;
@@ -77,34 +77,46 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    _startTime = DateTime.now();
-    _checkConnectivity();
-    _initialize();
     _initializeAnimations();
     _setupConnectivityListener();
+    _checkConnectivity(); // Check connectivity on start
     _startConnectivityTimer();
+
+    Future.wait([_iconLoadCompleter.future, _textLoadCompleter.future])
+        .then((_) {
+      if (mounted) {
+        _startAnimations();
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initialize();
+    });
   }
 
   void _setupConnectivityListener() {
     _connectivitySubscription = Connectivity()
         .onConnectivityChanged
         .listen((List<ConnectivityResult> results) {
-      final result =
-          results.isNotEmpty ? results.first : ConnectivityResult.none;
-      if (result != ConnectivityResult.none && _isOffline) {
-        setState(() {
-          _isOffline = false;
-        });
-        _removeNoInternetOverlay();
-        _connectivityTimer?.cancel();
-        // Bağlantı geldiğinde kaldığımız yerden devam et
-        if (!_isInitialized) {
-          _initialize();
+      final hasConnection = results.any((r) => r != ConnectivityResult.none);
+
+      if (hasConnection && _isOffline) {
+        if (mounted) {
+          setState(() {
+            _isOffline = false;
+          });
+          _removeNoInternetOverlay();
+          _connectivityTimer?.cancel();
+          if (!_isInitialized) {
+            _initialize();
+          }
         }
-      } else if (result == ConnectivityResult.none && !_isOffline) {
-        setState(() {
-          _isOffline = true;
-        });
+      } else if (!hasConnection && !_isOffline) {
+        if (mounted) {
+          setState(() {
+            _isOffline = true;
+          });
+        }
       }
     });
   }
@@ -128,7 +140,9 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _showNoInternetOverlay() {
-    _overlayEntry?.remove();
+    if (_overlayEntry != null) {
+      return; // Overlay already shown
+    }
     _overlayEntry = OverlayEntry(
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
@@ -161,7 +175,9 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    Overlay.of(context).insert(_overlayEntry!);
+    if (mounted) {
+      Overlay.of(context).insert(_overlayEntry!);
+    }
   }
 
   void _removeNoInternetOverlay() {
@@ -176,12 +192,15 @@ class _SplashScreenState extends State<SplashScreen>
     _loadingMessages = localizations.translateArray('splash.loading_messages');
     _remainingMessageIndices = List.generate(_loadingMessages.length, (i) => i);
     _updateColorAnimations(context);
+
+    // Update system UI based on theme
+    SystemUIService().updateSystemUIOverlayStyle(context);
+
     if (!_hasPrecachedImages) {
       _hasPrecachedImages = true;
       _isOnboardingCompleted().then((completed) {
         if (!completed) {
           _shouldPreloadOnboardingImages = true;
-          // _preloadImages(); // ANR hatasına neden olabilecek resim ön yükleme işlemi test için kapatıldı.
         }
       });
     }
@@ -225,7 +244,6 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _splashTimer?.cancel();
     _connectivityTimer?.cancel();
     _connectivitySubscription?.cancel();
     _removeNoInternetOverlay();
@@ -242,23 +260,46 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _initialize() async {
     try {
       _startTime = DateTime.now();
-      // 1. Run independent initializations in parallel
-      await Future.wait([
-        CrashlyticsService().initialize(),
-        AnalyticsService().initialize(),
-        AuthService().initialize(),
-        _initializeEnvironment(),
-        _initializePreferences(),
-        _preloadResources(),
-      ]);
+
+      // Check if app initialization was successful
+      final initService = AppInitializationService();
+      if (!initService.isInitialized) {
+        // If initialization failed, show error screen
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ErrorFallbackWidget(
+                error: initService.initializationError,
+                onRetry: () {
+                  Navigator.pushReplacementNamed(context, AppRoutes.splash);
+                },
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Use performance service to execute operations in parallel
+      await PerformanceService.executeInParallel([
+        _initializeEnvironment,
+        _initializePreferences,
+        _preloadResources,
+      ], eagerError: false);
 
       // This part depends on context, so it runs after initializations
       if (!mounted) return;
 
-      // Initialize device info provider
+      // Initialize device info provider with retry mechanism
       final deviceInfoProvider =
           Provider.of<DeviceInfoProvider>(context, listen: false);
-      await deviceInfoProvider.initialize();
+
+      await PerformanceService.executeWithRetry(
+        () => deviceInfoProvider.initialize(),
+        maxRetries: 2,
+        delay: const Duration(milliseconds: 500),
+      );
 
       // Send device info to Firebase without waiting for it to complete
       _sendDeviceInfoToFirebase(deviceInfoProvider);
@@ -271,15 +312,24 @@ class _SplashScreenState extends State<SplashScreen>
         _checkInitializationComplete();
       }
     } catch (e, stack) {
-      print('Error during initialization: $e');
-      print('Stack trace: $stack');
-      await CrashlyticsService().log(e.toString());
-      await CrashlyticsService().log(stack.toString());
+      debugPrint('Error during splash initialization: $e');
+      debugPrint('Stack trace: $stack');
+      await CrashlyticsService()
+          .recordError(e, stack, reason: 'Splash screen initialization failed');
+
       if (mounted) {
-        setState(() {
-          _isInitialized = true;
-          _isCacheComplete = true;
-        });
+        // Show error screen instead of continuing
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ErrorFallbackWidget(
+              error: e.toString(),
+              onRetry: () {
+                Navigator.pushReplacementNamed(context, AppRoutes.splash);
+              },
+            ),
+          ),
+        );
       }
     }
   }
@@ -293,42 +343,41 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _preloadResources() async {
-    // Preload all necessary resources here
-    await Future.wait<void>([
-      _preloadFonts(),
-      _preloadData(),
-    ]);
+    await _precacheAppImages();
   }
 
-  Future<void> _preloadImages() async {
-    // Preload onboarding images only if needed
-    if (!_shouldPreloadOnboardingImages) return;
+  Future<void> _precacheAppImages() async {
+    if (!mounted) return;
+
     final imagePaths = [
-      'assets/images/onboarding/onboarding-1.png',
-      'assets/images/onboarding/onboarding-2-1.png',
-      'assets/images/onboarding/onboarding-2-2.png',
-      'assets/images/onboarding/onboarding-2-3.png',
-      'assets/images/onboarding/onboarding-2-4.png',
-      'assets/images/onboarding/onboarding-5.png',
-      // Add other image paths that need to be preloaded
+      'assets/images/splash/cookrange-icon.svg',
+      'assets/images/splash/cookrange-text.svg',
     ];
-    for (final path in imagePaths) {
-      await precacheImage(AssetImage(path), context);
+
+    if (_shouldPreloadOnboardingImages) {
+      imagePaths.addAll([
+        'assets/images/onboarding/onboarding-1.png',
+        'assets/images/onboarding/onboarding-5-1.png',
+        'assets/images/onboarding/onboarding-5-2.png',
+        'assets/images/onboarding/onboarding-5-3.png',
+        'assets/images/onboarding/onboarding-5-4.png',
+        'assets/images/onboarding/onboarding-5-5.png',
+        'assets/images/onboarding/verify-email.png',
+      ]);
     }
-  }
 
-  Future<void> _preloadFonts() async {
-    // Preload fonts
-    await Future.wait<void>([
-      // Add font preloading if needed
-    ]);
-  }
-
-  Future<void> _preloadData() async {
-    // Preload any necessary data
-    await Future.wait<void>([
-      // Add data preloading tasks here
-    ]);
+    await Future.wait(imagePaths.map((path) {
+      if (path.endsWith('.svg')) {
+        // TODO: The following line causes linter errors. Investigate flutter_svg dependency and precaching.
+        // return precachePicture(
+        //   AssetPicture(SvgPicture.svgByteDecoder, path),
+        //   context,
+        // );
+        return Future.value(); // Return a completed future.
+      } else {
+        return precacheImage(AssetImage(path), context);
+      }
+    }));
   }
 
   Future<bool> _isOnboardingCompleted() async {
@@ -340,7 +389,6 @@ class _SplashScreenState extends State<SplashScreen>
   void _checkInitializationComplete() {
     if (_isResourcesLoaded) {
       final elapsedTime = DateTime.now().difference(_startTime!);
-      const minimumDisplayTime = Duration(seconds: 2);
 
       if (elapsedTime < minimumDisplayTime) {
         // If less than minimum time has passed, wait for the remaining time
@@ -364,46 +412,46 @@ class _SplashScreenState extends State<SplashScreen>
     }
   }
 
-  void _checkShouldProceed() async {
+  Future<void> _navigateAfterSplash() async {
+    if (!mounted) return;
+
+    final user = AuthService().currentUser;
+    debugPrint('User: $user');
+    if (user == null) {
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
+      return;
+    }
+
+    if (!user.emailVerified) {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.verifyEmail,
+        (route) => false,
+      );
+      return;
+    }
+
+    final userModel = await AuthService().getUserData(user.uid);
+    debugPrint('User data: ${userModel?.email}');
+
+    if (_isOnboardingDataComplete(userModel)) {
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
+    } else {
+      if (userModel?.onboardingData != null) {
+        Provider.of<OnboardingProvider>(context, listen: false)
+            .initializeFromFirestore(userModel!.onboardingData!);
+      }
+      Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
+    }
+  }
+
+  void _checkShouldProceed() {
     if (_hasReachedMinimumTime && _isCacheComplete && !_isOffline) {
       if (mounted) {
         setState(() {
           _isInitialized = true;
         });
-
-        final user = AuthService().currentUser;
-        print('User: $user');
-        if (user == null) {
-          // No user, go to login screen
-          Navigator.pushReplacementNamed(context, AppRoutes.login);
-          return;
-        }
-
-        if (!user.emailVerified) {
-          // User exists but email is not verified
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            AppRoutes.verifyEmail,
-            (route) => false,
-          );
-          return;
-        }
-
-        // User exists, check their data
-        final userModel = await AuthService().getUserData(user.uid);
-        print('User data: ${userModel?.email}');
-
-        if (_isOnboardingDataComplete(userModel)) {
-          // User has completed all onboarding, go to home
-          Navigator.pushReplacementNamed(context, AppRoutes.home);
-        } else {
-          // User has not completed onboarding, go to onboarding
-          if (userModel?.onboardingData != null) {
-            Provider.of<OnboardingProvider>(context, listen: false)
-                .initializeFromFirestore(userModel!.onboardingData!);
-          }
-          Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
-        }
+        _navigateAfterSplash();
       }
     }
   }
@@ -423,15 +471,16 @@ class _SplashScreenState extends State<SplashScreen>
     final kitchenEquipments = onboardingData['kitchen_equipments'];
 
     // Check for essential fields
-    return onboardingData['gender'] != null &&
-        onboardingData['birth_date'] != null &&
-        onboardingData['height'] != null &&
-        onboardingData['weight'] != null &&
-        onboardingData['target_weight'] != null &&
+    return onboardingData['personal_info']['gender'] != null &&
+        onboardingData['personal_info']['birth_date'] != null &&
+        onboardingData['personal_info']['height'] != null &&
+        onboardingData['personal_info']['weight'] != null &&
         (primaryGoals is List
             ? primaryGoals.isNotEmpty
             : primaryGoals != null) &&
         onboardingData['cooking_level'] != null &&
+        onboardingData['activity_level'] != null &&
+        onboardingData['meal_schedule'] != null &&
         (kitchenEquipments is List
             ? kitchenEquipments.isNotEmpty
             : kitchenEquipments != null);
@@ -444,84 +493,26 @@ class _SplashScreenState extends State<SplashScreen>
       final deviceInfoService = DeviceInfoService();
       await deviceInfoService.sendDeviceInfoToFirebase(deviceInfoProvider,
           detailed: true);
-      print('Device info sent to Firebase Analytics successfully');
+      debugPrint('Device info sent to Firebase Analytics successfully');
     } catch (e) {
-      print('Error sending device info to Firebase Analytics: $e');
+      debugPrint('Error sending device info to Firebase Analytics: $e');
       // Hata durumunda crashlytics'e log at
       await CrashlyticsService()
           .log('Error sending device info to Firebase Analytics: $e');
     }
   }
 
-  Future<void> _precacheAssets() async {
-    // Sık kullanılan görselleri ve fontları cache'le
-    final imagePaths = [
-      'assets/images/onboarding/onboarding-1.png',
-      'assets/images/splash/cookrange-icon.svg',
-      'assets/images/splash/cookrange-text.svg',
-      // ... diğer assetler ...
-    ];
-    for (final path in imagePaths) {
-      if (!path.endsWith('.svg')) {
-        await precacheImage(AssetImage(path), context);
-      }
-    }
-    // Fontlar pubspec.yaml ile otomatik cache'lenir, ekstra gerek yok.
-  }
-
-  Future<void> _precacheWidgets() async {
-    if (!mounted) return;
-
-    // Widget'ları build et ve hemen kaldır
-    final overlay = Overlay.of(context);
-
-    // Tüm widget'ları tek bir overlay entry'de build et
-    final entry = OverlayEntry(
-      builder: (_) => Opacity(
-        opacity: 0.0,
-        child: Material(
-          color: Colors.transparent,
-          child: Stack(
-            children: [
-              GenderPickerModal(
-                selectedGender: null,
-                onSelected: (_) {},
-              ),
-              DatePickerModal(
-                initialDate: DateTime.now(),
-                minDate: DateTime(1900),
-                maxDate: DateTime.now(),
-                onSelected: (_) {},
-              ),
-              const NumberPickerModal(
-                title: 'Select Number',
-                min: 0,
-                max: 100,
-                initialValue: 0,
-                unit: '',
-              ),
-              CustomBackButton(onTap: () {}),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    // Widget'ları build et ve hemen kaldır
-    overlay.insert(entry);
-    entry.remove();
-  }
-
   Future<void> _checkConnectivity() async {
     final connectivityResult = await Connectivity().checkConnectivity();
     if (!mounted) return;
 
-    if (connectivityResult == ConnectivityResult.none) {
+    final hasConnection =
+        connectivityResult.any((r) => r != ConnectivityResult.none);
+    if (!hasConnection) {
       setState(() {
         _isOffline = true;
         _countdownSeconds = 10;
       });
-      // Bağlantı yoksa kullanıcıya bildirim göster
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showNoInternetOverlay();
       });
@@ -531,7 +522,6 @@ class _SplashScreenState extends State<SplashScreen>
       });
       _removeNoInternetOverlay();
       _connectivityTimer?.cancel();
-      // Bağlantı geldiğinde proceed kontrolü yap
       _checkShouldProceed();
     }
   }
@@ -667,75 +657,57 @@ class _SplashScreenState extends State<SplashScreen>
     });
   }
 
-  void _startAnimations() {
-    _iconInitialController.forward().then((_) {
-      _iconSecondSlideController.forward().then((_) {
-        // Start text fade and icon shrink animations simultaneously
-        Future.wait([
-          _textFadeController.forward(),
-          _iconShrinkController.forward(),
-        ]).then((_) {
-          _colorTransitionController.forward().then((_) {
-            // Start the main controller for transition
-            _mainController.forward();
-            // Cache widgets after starting the transition
-            if (mounted) {
-              // _precacheWidgets();
-            }
-          });
-        });
-      });
-    });
+  Future<void> _startAnimations() async {
+    if (_animationsStarted || !mounted) return;
+    _animationsStarted = true;
+    _startTime = DateTime.now();
+
+    await _iconInitialController.forward();
+    if (!mounted) return;
+    await _iconSecondSlideController.forward();
+    if (!mounted) return;
+
+    await Future.wait([
+      _textFadeController.forward(),
+      _iconShrinkController.forward(),
+    ]);
+    if (!mounted) return;
+
+    await _colorTransitionController.forward();
+    if (!mounted) return;
+
+    _mainController.forward();
   }
 
-  void _startGreetingTextAnimation() {
-    _greetingTextController.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted) {
-          _greetingTextController.reverse().then((_) {
-            if (mounted) {
-              Future.delayed(const Duration(milliseconds: 100), () {
-                if (mounted) {
-                  setState(() {
-                    if (_remainingMessageIndices.isEmpty) {
-                      _remainingMessageIndices =
-                          List.generate(_loadingMessages.length, (i) => i);
-                    }
-                    _remainingMessageIndices.remove(_currentMessageIndex);
-                    if (_remainingMessageIndices.isNotEmpty) {
-                      _currentMessageIndex =
-                          (_remainingMessageIndices..shuffle()).first;
-                    }
-                  });
-                  _startGreetingTextAnimation();
-                }
-              });
-            }
-          });
-        }
-      });
+  Future<void> _startGreetingTextAnimation() async {
+    if (!mounted) return;
+    await _greetingTextController.forward();
+    if (!mounted) return;
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (!mounted) return;
+    await _greetingTextController.reverse();
+    if (!mounted) return;
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
+
+    setState(() {
+      if (_remainingMessageIndices.isEmpty) {
+        _remainingMessageIndices =
+            List.generate(_loadingMessages.length, (i) => i);
+      }
+      _remainingMessageIndices.remove(_currentMessageIndex);
+      if (_remainingMessageIndices.isNotEmpty) {
+        _currentMessageIndex = (_remainingMessageIndices..shuffle()).first;
+      }
     });
+    _startGreetingTextAnimation();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isInitialized) {
-      _mainController.forward().then((_) {
-        if (mounted) {
-          setState(() {
-            _showSplash = false;
-          });
-        }
-      });
-    }
-
-    if (!_showSplash) {
-      // This part will now be handled by the _checkShouldProceed logic
-      // Return a placeholder while navigating
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    final screenSize = MediaQuery.of(context).size;
+    final iconSize = min(screenSize.width, screenSize.height) * 0.8;
+    final textWidth = min(screenSize.width, screenSize.height) * 0.45;
 
     return AnimatedBuilder(
       animation: Listenable.merge([
@@ -776,25 +748,15 @@ class _SplashScreenState extends State<SplashScreen>
                                   ),
                                   child: SvgPicture.asset(
                                     'assets/images/splash/cookrange-icon.svg',
-                                    width:
-                                        MediaQuery.of(context).size.width * 0.8,
-                                    height:
-                                        MediaQuery.of(context).size.width * 0.8,
+                                    width: iconSize,
+                                    height: iconSize,
                                     placeholderBuilder: (context) {
-                                      if (!_isIconLoaded) {
-                                        _isIconLoaded = true;
-                                        if (_isTextLoaded) {
-                                          _startAnimations();
-                                        }
+                                      if (!_iconLoadCompleter.isCompleted) {
+                                        _iconLoadCompleter.complete();
                                       }
-                                      return Container(
-                                        width:
-                                            MediaQuery.of(context).size.width *
-                                                0.8,
-                                        height:
-                                            MediaQuery.of(context).size.width *
-                                                0.8,
-                                        color: Colors.grey.withOpacity(0.2),
+                                      return SizedBox(
+                                        width: iconSize,
+                                        height: iconSize,
                                         child: const Center(
                                           child: CircularProgressIndicator(),
                                         ),
@@ -819,19 +781,14 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                             child: SvgPicture.asset(
                               'assets/images/splash/cookrange-text.svg',
-                              width: MediaQuery.of(context).size.width * 0.45,
+                              width: textWidth,
                               placeholderBuilder: (context) {
-                                if (!_isTextLoaded) {
-                                  _isTextLoaded = true;
-                                  if (_isIconLoaded) {
-                                    _startAnimations();
-                                  }
+                                if (!_textLoadCompleter.isCompleted) {
+                                  _textLoadCompleter.complete();
                                 }
-                                return Container(
-                                  width:
-                                      MediaQuery.of(context).size.width * 0.45,
+                                return SizedBox(
+                                  width: textWidth,
                                   height: 50,
-                                  color: Colors.grey.withOpacity(0.2),
                                   child: const Center(
                                     child: CircularProgressIndicator(),
                                   ),
@@ -863,80 +820,75 @@ class _SplashScreenState extends State<SplashScreen>
                           fontFamily: 'Poppins',
                           fontSize: 16,
                           color: Theme.of(context).colorScheme.secondary,
-                          fontWeight: FontWeight.w400,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                   ),
                 ),
                 // Debug information
-                if (kDebugMode)
-                  Positioned(
-                    top: 16,
-                    left: 16,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Assets Loaded: ${_isIconLoaded && _isTextLoaded ? "Yes" : "No"}',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          Text(
-                            'Icon Initial: ${(_iconInitialController.value * 100).toStringAsFixed(1)}%',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          Text(
-                            'Icon Shrink: ${(_iconShrinkController.value * 100).toStringAsFixed(1)}%',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          Text(
-                            'Text Fade: ${(_textFadeController.value * 100).toStringAsFixed(1)}%',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          Text(
-                            'Color Transition: ${(_colorTransitionController.value * 100).toStringAsFixed(1)}%',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Total Time: ${_startTime != null ? DateTime.now().difference(_startTime!).inMilliseconds / 1000 : 0} seconds',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          Text(
-                            'Cache Time: ${_cacheStartTime != null ? DateTime.now().difference(_cacheStartTime!).inMilliseconds / 1000 : 0} seconds',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          Text(
-                            'Min Duration: 4 seconds',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          Text(
-                            'Cache Complete: ${_isCacheComplete ? "Yes" : "No"}',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          Text(
-                            'Min Time Reached: ${_hasReachedMinimumTime ? "Yes" : "No"}',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          Text(
-                            'Offline Mode: ${_isOffline ? "Yes" : "No"}',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                if (kDebugMode) _buildDebugOverlay(),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildDebugOverlay() {
+    return Positioned(
+      top: 16,
+      left: 16,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: DefaultTextStyle(
+          style: const TextStyle(color: Colors.white, fontSize: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Icon Loaded: ${_iconLoadCompleter.isCompleted ? "Yes" : "No"}',
+              ),
+              Text(
+                'Text Loaded: ${_textLoadCompleter.isCompleted ? "Yes" : "No"}',
+              ),
+              Text(
+                'Icon Initial: ${(_iconInitialController.value * 100).toStringAsFixed(1)}%',
+              ),
+              Text(
+                'Icon Shrink: ${(_iconShrinkController.value * 100).toStringAsFixed(1)}%',
+              ),
+              Text(
+                'Text Fade: ${(_textFadeController.value * 100).toStringAsFixed(1)}%',
+              ),
+              Text(
+                'Color Transition: ${(_colorTransitionController.value * 100).toStringAsFixed(1)}%',
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Total Time: ${_startTime != null ? DateTime.now().difference(_startTime!).inMilliseconds / 1000 : 0} seconds',
+              ),
+              Text(
+                'Min Duration: ${minimumDisplayTime.inSeconds} seconds',
+              ),
+              Text(
+                'Cache Complete: ${_isCacheComplete ? "Yes" : "No"}',
+              ),
+              Text(
+                'Min Time Reached: ${_hasReachedMinimumTime ? "Yes" : "No"}',
+              ),
+              Text(
+                'Offline Mode: ${_isOffline ? "Yes" : "No"}',
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

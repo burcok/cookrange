@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'widgets/onboarding_step.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/onboarding_provider.dart';
@@ -81,10 +82,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void dispose() {
     if (_screenStartTime != null) {
       final duration = DateTime.now().difference(_screenStartTime!);
-      _analyticsService.logScreenTime(
+      // Use unawaited to prevent blocking dispose
+      _analyticsService
+          .logScreenTime(
         screenName: 'onboarding_screen',
         duration: duration,
-      );
+      )
+          .catchError((error) {
+        // Silently handle errors during dispose
+        if (kDebugMode) {
+          print('Error logging screen time during dispose: $error');
+        }
+      });
     }
     _pageController.dispose();
     _isLoadingNotifier.dispose();
@@ -521,7 +530,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         return onboarding.cookingLevel == null ||
             onboarding.kitchenEquipment.isEmpty;
       case 4: // Lifestyle Profile
-        return onboarding.lifestyleProfile == null;
+        return onboarding.lifestyleProfile == null ||
+            onboarding.mealSchedule == null;
       case 5:
         return onboarding.gender == null ||
             onboarding.birthDate == null ||

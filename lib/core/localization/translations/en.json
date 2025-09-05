@@ -285,10 +285,7 @@
       "select_activity_and_goals": "Please select your activity level and goals",
       "select_cooking_level": "Please select your cooking level",
       "select_kitchen_equipment": "Please select at least one kitchen equipment",
-      "enter_target_weight": "Please enter your target weight",
-      "complete_activity": "Please select your activity level and target weight",
       "complete_cooking_preferences": "Please select your cooking level and at least one kitchen equipment",
-      "complete_target_weight": "Please enter your target weight",
       "fill_required": "Please fill in all required fields"
     }
   },
@@ -402,11 +399,6 @@
     "weight": {
       "title": "Select Your Weight",
       "unit": "kg"
-    },
-    "targetWeight": {
-      "title": "Select Your Target Weight",
-      "unit": "kg",
-      "placeholder": "Select target weight"
     },
     "activity_level": "Activity Level",
     "goals": "Goals",

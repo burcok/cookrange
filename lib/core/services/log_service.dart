@@ -10,18 +10,22 @@ class LogService {
   LogService._internal();
 
   void setup() {
-    Logger.root.level = kDebugMode ? Level.ALL : Level.INFO;
+    // Configure logging levels based on build mode
+    Logger.root.level = kDebugMode ? Level.ALL : Level.WARNING;
+    
     Logger.root.onRecord.listen((record) {
-      // Standard console output for all logs
-      debugPrint(
-          '${record.level.name}: ${record.time}: ${record.loggerName}: ${record.message}');
+      // Only log in debug mode or for important messages
+      if (kDebugMode || record.level >= Level.WARNING) {
+        debugPrint(
+            '${record.level.name}: ${record.time}: ${record.loggerName}: ${record.message}');
 
-      // Include error and stack trace if present
-      if (record.error != null) {
-        debugPrint('Error: ${record.error}');
-      }
-      if (record.stackTrace != null) {
-        debugPrint('Stack Trace: ${record.stackTrace}');
+        // Include error and stack trace if present
+        if (record.error != null) {
+          debugPrint('Error: ${record.error}');
+        }
+        if (record.stackTrace != null) {
+          debugPrint('Stack Trace: ${record.stackTrace}');
+        }
       }
     });
   }

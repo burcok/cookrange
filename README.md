@@ -7,7 +7,7 @@ Cookrange is an innovative mobile application powered by artificial intelligence
 - **Personalized Meal Plans:** Daily/weekly meal suggestions based on your goals (muscle gain, fat loss, general fitness, etc.) and preferences.
 - **AI-Powered Assistant:** Guidance on meal selection and achieving nutrition goals.
 - **Calorie and Nutrient Tracking:** Detailed calorie and macro/micro nutrient analysis for each meal.
-- **User Profile:** Plans fully compatible with personal information such as gender, age, height, weight, activity level, and target weight.
+- **User Profile:** Plans fully compatible with personal information such as gender, age, height, weight, activity level.
 - **Dietary Restrictions and Preferences:** Vegetarian, vegan, allergen filters, and more.
 - **Modern and User-Friendly Interface:** Sleek and intuitive design fully compatible with mobile devices.
 - **Multi-Language Support:** English and Turkish interface.
@@ -61,7 +61,7 @@ Cookrange is an innovative mobile application powered by artificial intelligence
 1. **Profile Creation and Onboarding:**
    - Follow the onboarding steps when first launching the app to create your personal profile.
    - Specify your goals (e.g., muscle gain, fat loss, healthy living), dietary preferences, and any allergies.
-   - Enter your gender, age, height, weight, activity level, and target weight for a personalized nutrition plan.
+   - Enter your gender, age, height, weight, activity level for a personalized nutrition plan.
 
 2. **Account Registration and Premium Membership:**
    - Complete the registration process to create your account.

@@ -72,11 +72,14 @@ class _HomeScreenState extends State<HomeScreen> {
         : DateTime.now().subtract(
             const Duration(days: 365 * 30)); // Default to 30 years old
     final gender = onboardingData['gender'] as String? ?? 'Male';
-    final activityLevel =
-        onboardingData['activity_level'] as String? ?? 'Sedentary';
+    final activityLevel = (onboardingData['activity_level']
+            as Map<String, dynamic>?)?['value'] as String? ??
+        'Sedentary';
     final primaryGoal =
         (onboardingData['primary_goals'] as List<dynamic>?)?.isNotEmpty ?? false
-            ? (onboardingData['primary_goals'] as List<dynamic>).first as String
+            ? ((onboardingData['primary_goals'] as List<dynamic>).first
+                    as Map<String, dynamic>)['value'] as String? ??
+                'Maintain Weight'
             : 'Maintain Weight';
 
     // Calculate age

@@ -67,7 +67,6 @@ class OnboardingProvider with ChangeNotifier {
     }
     // Compare field by field
     return !mapEquals(_initialData!['personal_info'], _personalInfo) ||
-        _initialData!['target_weight'] != _targetWeight ||
         !mapEquals(
             _initialData!['lifestyle_profile'] as Map?, _lifestyleProfile) ||
         !mapEquals(_initialData!['meal_schedule'] as Map?, _mealSchedule) ||
@@ -105,7 +104,6 @@ class OnboardingProvider with ChangeNotifier {
         'height': _personalInfo['height'],
         'weight': _personalInfo['weight'],
       },
-      'target_weight': _targetWeight,
       'lifestyle_profile': _lifestyleProfile,
       'meal_schedule': _mealSchedule,
       'primary_goals': List<Map<String, dynamic>>.from(_primaryGoals),
@@ -182,7 +180,6 @@ class OnboardingProvider with ChangeNotifier {
       _personalInfo['weight'] = _getInt(onboardingData, 'weight');
     }
 
-    _targetWeight = _getInt(onboardingData, 'target_weight');
     _lifestyleProfile = _convertToMap(onboardingData['lifestyle_profile']);
     _mealSchedule = _convertToMap(onboardingData['meal_schedule']);
 
@@ -194,6 +191,7 @@ class OnboardingProvider with ChangeNotifier {
     _kitchenEquipment = _convertToListMap(onboardingData['kitchen_equipments']);
 
     _setInitialData(); // Set initial data after loading
+    notifyListeners();
   }
 
   List<Map<String, dynamic>> _convertToListMap(dynamic data) {
@@ -243,7 +241,6 @@ class OnboardingProvider with ChangeNotifier {
         'height': _personalInfo['height'],
         'weight': _personalInfo['weight'],
       },
-      'target_weight': _targetWeight,
       'lifestyle_profile': _lifestyleProfile,
       'meal_schedule': cleanMealSchedule,
       'primary_goals': _primaryGoals,
@@ -294,7 +291,6 @@ class OnboardingProvider with ChangeNotifier {
         'height': _personalInfo['height'],
         'weight': _personalInfo['weight'],
       },
-      'target_weight': _targetWeight,
       'lifestyle_profile': _lifestyleProfile,
       'meal_schedule': cleanMealSchedule,
       'primary_goals': _primaryGoals,
@@ -313,12 +309,22 @@ class OnboardingProvider with ChangeNotifier {
     });
 
     if (onboardingData.isNotEmpty) {
-      await authService.updateUserData({
-        'onboarding_data': onboardingData,
-        'onboarding_completed': true,
-      });
-      _setInitialData(); // Reset dirty tracking after saving
-      return true;
+      try {
+        await authService.updateUserData({
+          'onboarding_data': onboardingData,
+          'onboarding_completed': true,
+        });
+        _setInitialData(); // Reset dirty tracking after saving
+        return true;
+      } catch (e) {
+        // Log the error but don't fail the onboarding completion
+        if (kDebugMode) {
+          print('Error updating user data during onboarding completion: $e');
+        }
+        // Still return true to allow onboarding to complete
+        // The user data can be updated later
+        return true;
+      }
     }
     return false;
   }
@@ -557,8 +563,8 @@ class OnboardingProvider with ChangeNotifier {
         _personalInfo['birth_date'] != null &&
         _personalInfo['height'] != null &&
         _personalInfo['weight'] != null &&
-        _targetWeight != null &&
         _lifestyleProfile != null &&
+        _mealSchedule != null &&
         _primaryGoals.isNotEmpty &&
         _cookingLevel != null &&
         _kitchenEquipment.isNotEmpty;
@@ -586,7 +592,6 @@ class OnboardingProvider with ChangeNotifier {
             _personalInfo['birth_date']?.toIso8601String() ?? 'unknown',
         'height': _personalInfo['height'] ?? 0,
         'weight': _personalInfo['weight'] ?? 0,
-        'target_weight': _targetWeight ?? 0,
         'lifestyle_profile': _lifestyleProfile?['value'] ?? 'unknown',
         'primary_goals':
             _primaryGoals.map((e) => e['value'] as String).join(','),

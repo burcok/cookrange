@@ -286,10 +286,8 @@
       "select_activity_and_goals": "Lütfen aktivite seviyesi ve hedeflerinizi seçin",
       "select_cooking_level": "Lütfen pişirme seviyenizi seçin",
       "select_kitchen_equipment": "Lütfen en az bir mutfak ekipmanı seçin",
-      "enter_target_weight": "Lütfen hedef kilonuzu girin",
       "complete_activity": "Lütfen aktivite seviyenizi ve hedef kilonuzu seçin",
       "complete_cooking_preferences": "Lütfen pişirme seviyenizi ve en az bir mutfak ekipmanı seçin",
-      "complete_target_weight": "Lütfen hedef kilonuzu girin",
       "fill_required": "Lütfen gerekli alanları doldurun"
     }
   },
