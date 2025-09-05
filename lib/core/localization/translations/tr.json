@@ -118,22 +118,11 @@
     },
     "page3": {
       "header": "Beslenme Tercihleri",
-      "allergies": {
-        "title": "Alerjiniz var mı?",
-        "subtitle": "Varsa alerjilerinizi seçin.",
-        "gluten": "Gluten",
-        "dairy": "Süt Ürünleri",
-        "peanuts": "Yer Fıstığı",
-        "tree_nuts": "Ağaç Fıstığı",
-        "soy": "Soya",
-        "fish": "Balık",
-        "shellfish": "Kabuklu Deniz Ürünleri"
-      },
-      "dislikes": {
-        "title": "Sevmediğiniz Yiyecekler Var mı?",
-        "subtitle": "Sevmediğiniz yiyecekleri virgülle ayırarak listeleyin.",
-        "hint": "örneğin, Mantar, Soğan"
-      },
+      "main_title": "Yemek planınızda olmamasını istediğiniz",
+      "subtitle": "Beğenmediğiniz, Alerjiniz olan vb. malzemeleri seçin.",
+      "selected_title": "Seçilen Malzemeler",
+      "available_title": "Mevcut Malzemeler",
+      "search_hint": "Malzeme ara...",
       "continue": "Devam Et",
       "custom_not_found": "Bu malzeme veritabanımızda bulunmuyor. ",
       "custom_add_hint": "Tercihlerinize eklemek için tıklayın",
@@ -141,10 +130,13 @@
       "custom_slots_remaining": "Kalan özel malzeme hakkı: "
     },
     "page4": {
-      "header": "Aşçılık Becerileri",
+      "header": "Mutfak Tercihleri",
       "cooking_level": {
-        "title": "Aşçılık seviyeniz nedir?",
-        "subtitle": "Bu, becerilerinize uygun tarifler önermemize yardımcı olur."
+        "title": "Pişirme Seviyen",
+        "subtitle": "Mutfakta kendini nasıl hissediyorsun?",
+        "beginner": "Yeni Başlıyorum",
+        "intermediate": "Fena Sayılmam",
+        "advanced": "Şef Gibi"
       },
       "kitchen_equipment": {
         "title": "Mutfak Ekipmanları",
@@ -234,7 +226,7 @@
       "continue": "Devam Et"
     },
     "profile": {
-      "title": "Profil",
+      "title": "Kişisel Bilgiler",
       "genderTitle": "Cinsiyetinizi Seçin",
       "genderSubtitle": "Dilerseniz bu bilgiyi gizleyebilirsiniz.",
       "birthdayTitle": "Doğum Tarihinizi Seçin",
@@ -246,11 +238,11 @@
       "selectDate": "Tarih Seçin",
       "name": "Ad",
       "age": "Yaş",
-      "gender": {
-        "title": "Cinsiyetinizi Seçin",
-        "female": "Kadın",
-        "male": "Erkek"
-      },
+      "male": "Erkek",
+      "female": "Kadın",
+      "preferNotToSay": "Belirtmek İstemiyorum",
+      "weightTitle": "Kilonuzu Seçin",
+      "heightTitle": "Boyunuzu Seçin",
       "birthday": {
         "title": "Doğum Tarihinizi Seçin",
         "select_month": "Ay Seçin",

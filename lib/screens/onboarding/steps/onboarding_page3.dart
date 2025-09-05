@@ -677,11 +677,10 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                     // Search Input
                     Container(
                       decoration: BoxDecoration(
-                        color: colorScheme.onboardingOptionBgColor,
+                        color: Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color:
-                              colorScheme.onboardingTitleColor.withOpacity(0.1),
+                          color: Colors.grey.withOpacity(0.5),
                           width: 1,
                         ),
                       ),
@@ -964,10 +963,9 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: colorScheme.onboardingOptionBgColor,
           borderRadius: BorderRadius.circular(99),
           border: Border.all(
-            color: colorScheme.onboardingTitleColor.withOpacity(0.2),
+            color: Colors.grey.withOpacity(0.5),
             width: 1,
           ),
         ),

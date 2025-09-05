@@ -29,7 +29,7 @@ class AnalyticsService {
   static const Duration _processInterval = Duration(seconds: 30);
 
   // Hive box için
-  late Box<Map<dynamic, Object>> _analyticsBox;
+  late Box<Map> _analyticsBox;
 
   // Singleton pattern
   static final AnalyticsService _instance = AnalyticsService._internal();
@@ -57,11 +57,10 @@ class AnalyticsService {
 
       // Check if box is already open and use it, otherwise open it
       if (Hive.isBoxOpen('analytics_cache')) {
-        _analyticsBox = Hive.box<Map<dynamic, Object>>('analytics_cache');
+        _analyticsBox = Hive.box<Map>('analytics_cache');
         _log.info('Using existing analytics_cache box', service: _serviceName);
       } else {
-        _analyticsBox =
-            await Hive.openBox<Map<dynamic, Object>>('analytics_cache');
+        _analyticsBox = await Hive.openBox<Map>('analytics_cache');
         _log.info('Opened new analytics_cache box', service: _serviceName);
       }
 
@@ -212,7 +211,7 @@ class AnalyticsService {
 
     while (retryCount < maxRetries) {
       try {
-        for (final event in batch) {
+        for (final event in List.from(batch)) {
           await _analytics.logEvent(
             name: event.name,
             parameters: event.parameters,
@@ -234,8 +233,9 @@ class AnalyticsService {
 
   Future<void> _cacheEvent(AnalyticsEvent event) async {
     try {
-      final eventMap = Map<dynamic, Object>.from(event.toMap());
-      await _analyticsBox.add(eventMap);
+      await _analyticsBox.put(event.timestamp, event.toMap());
+      _log.info('Event cached with key: ${event.timestamp}',
+          service: _serviceName);
     } catch (e) {
       _log.error('Error caching event', service: _serviceName, error: e);
     }
@@ -243,10 +243,10 @@ class AnalyticsService {
 
   Future<void> _cacheBatch(List<AnalyticsEvent> batch) async {
     try {
-      for (final event in batch) {
-        final eventMap = Map<dynamic, Object>.from(event.toMap());
-        await _analyticsBox.add(eventMap);
+      for (final event in List.from(batch)) {
+        await _cacheEvent(event);
       }
+      _log.info('${batch.length} events cached.', service: _serviceName);
     } catch (e) {
       _log.error('Error caching batch', service: _serviceName, error: e);
     }
@@ -254,16 +254,9 @@ class AnalyticsService {
 
   Future<void> _removeFromCache(AnalyticsEvent event) async {
     try {
-      final keys = _analyticsBox.keys.where((key) {
-        final value = _analyticsBox.get(key);
-        return value != null &&
-            value['name'] == event.name &&
-            value['timestamp'] == event.timestamp;
-      });
-
-      if (keys.isNotEmpty) {
-        await _analyticsBox.delete(keys.first);
-      }
+      await _analyticsBox.delete(event.timestamp);
+      _log.info('Event with key: ${event.timestamp} removed from cache',
+          service: _serviceName);
     } catch (e) {
       _log.error('Error removing from cache', service: _serviceName, error: e);
     }
@@ -271,7 +264,7 @@ class AnalyticsService {
 
   Future<void> _clearBatchCache(List<AnalyticsEvent> batch) async {
     try {
-      for (final event in batch) {
+      for (final event in List.from(batch)) {
         await _removeFromCache(event);
       }
     } catch (e) {
@@ -1003,24 +996,6 @@ class AnalyticsService {
     } catch (e) {
       _log.error('Error logging content progress',
           service: _serviceName, error: e);
-    }
-  }
-
-  Future<void> removeFromCache(String key) async {
-    try {
-      final box = await Hive.openBox<Map<String, dynamic>>('analytics_cache');
-      await box.delete(key);
-    } catch (e) {
-      _log.error('Error removing from cache', service: _serviceName, error: e);
-    }
-  }
-
-  Future<void> addToCache(String key, Map<String, dynamic> data) async {
-    try {
-      final box = await Hive.openBox<Map<String, dynamic>>('analytics_cache');
-      await box.put(key, data);
-    } catch (e) {
-      _log.error('Error adding to cache', service: _serviceName, error: e);
     }
   }
 }

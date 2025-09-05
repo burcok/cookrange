@@ -5,10 +5,12 @@ import '../services/auth_service.dart';
 
 class OnboardingProvider with ChangeNotifier {
   // Personal Info
-  String? _gender;
-  DateTime? _birthDate;
-  int? _height;
-  int? _weight;
+  Map<String, dynamic> _personalInfo = {
+    'gender': null,
+    'birth_date': null,
+    'height': null,
+    'weight': null,
+  };
   int? _targetWeight;
   Map<String, dynamic>? _lifestyleProfile;
   Map<String, dynamic>?
@@ -25,10 +27,20 @@ class OnboardingProvider with ChangeNotifier {
   Map<String, dynamic>? _initialData;
 
   // Getters for Personal Info
-  String? get gender => _gender;
-  DateTime? get birthDate => _birthDate;
-  int? get height => _height;
-  int? get weight => _weight;
+  String? get gender => _personalInfo['gender'];
+  DateTime? get birthDate {
+    final date = _personalInfo['birth_date'];
+    if (date is DateTime) {
+      return date;
+    } else if (date is String) {
+      return DateTime.tryParse(date);
+    }
+    return null;
+  }
+
+  int? get height => _personalInfo['height'];
+  int? get weight => _personalInfo['weight'];
+
   int? get targetWeight => _targetWeight;
   Map<String, dynamic>? get lifestyleProfile => _lifestyleProfile;
   Map<String, dynamic>? get mealSchedule => _mealSchedule;
@@ -46,14 +58,15 @@ class OnboardingProvider with ChangeNotifier {
       // If there's no initial data, any new data is a change.
       return currentData.values.any((value) {
         if (value is List) return value.isNotEmpty;
+        if (value is Map) {
+          return value.values
+              .any((v) => v != null && (v is! List || v.isNotEmpty));
+        }
         return value != null;
       });
     }
     // Compare field by field
-    return _initialData!['gender'] != _gender ||
-        _initialData!['birth_date'] != _birthDate?.toIso8601String() ||
-        _initialData!['height'] != _height ||
-        _initialData!['weight'] != _weight ||
+    return !mapEquals(_initialData!['personal_info'], _personalInfo) ||
         _initialData!['target_weight'] != _targetWeight ||
         !mapEquals(
             _initialData!['lifestyle_profile'] as Map?, _lifestyleProfile) ||
@@ -84,10 +97,14 @@ class OnboardingProvider with ChangeNotifier {
 
   Map<String, dynamic> _toMap() {
     return {
-      'gender': _gender,
-      'birth_date': _birthDate?.toIso8601String(),
-      'height': _height,
-      'weight': _weight,
+      'personal_info': {
+        'gender': _personalInfo['gender'],
+        'birth_date': _personalInfo['birth_date'] is DateTime
+            ? (_personalInfo['birth_date'] as DateTime).toIso8601String()
+            : _personalInfo['birth_date'],
+        'height': _personalInfo['height'],
+        'weight': _personalInfo['weight'],
+      },
       'target_weight': _targetWeight,
       'lifestyle_profile': _lifestyleProfile,
       'meal_schedule': _mealSchedule,
@@ -103,6 +120,43 @@ class OnboardingProvider with ChangeNotifier {
     _initialData = _toMap();
   }
 
+  DateTime? _parseBirthDate(dynamic birthDate) {
+    if (birthDate is String) {
+      return DateTime.tryParse(birthDate);
+    } else if (birthDate != null) {
+      // A non-string birthDate is unexpected.
+      // Log in debug mode to help identify the issue source.
+      if (kDebugMode) {
+        print(
+            'Warning: birth_date was expected to be a String but received type ${birthDate.runtimeType} with value $birthDate. Treating as null.');
+      }
+    }
+    return null;
+  }
+
+  String? _getString(Map<String, dynamic> data, String key) {
+    final value = data[key];
+    if (value is String) {
+      return value;
+    } else if (value is Map) {
+      // Handle cases where data might be in a { 'label': 'x', 'value': 'y' } format
+      return value['value'] as String?;
+    }
+    return null;
+  }
+
+  int? _getInt(Map<String, dynamic> data, String key) {
+    final value = data[key];
+    if (value is int) {
+      return value;
+    } else if (value is double) {
+      return value.toInt();
+    } else if (value is String) {
+      return int.tryParse(value);
+    }
+    return null;
+  }
+
   void initializeFromFirestore(Map<String, dynamic> data) {
     // Check if the data is in the new nested format or the old flat format
     final onboardingData =
@@ -110,21 +164,25 @@ class OnboardingProvider with ChangeNotifier {
             ? data['onboarding_data'] as Map<String, dynamic>
             : data;
 
-    final genderData = onboardingData['gender'];
-    if (genderData is String) {
-      _gender = genderData;
-    } else if (genderData is Map) {
-      _gender = genderData['value'] as String?;
+    if (onboardingData.containsKey('personal_info') &&
+        onboardingData['personal_info'] is Map) {
+      final personalInfoData =
+          onboardingData['personal_info'] as Map<String, dynamic>;
+      _personalInfo['gender'] = _getString(personalInfoData, 'gender');
+      _personalInfo['birth_date'] =
+          _parseBirthDate(personalInfoData['birth_date']);
+      _personalInfo['height'] = _getInt(personalInfoData, 'height');
+      _personalInfo['weight'] = _getInt(personalInfoData, 'weight');
     } else {
-      _gender = null;
+      // Fallback for old flat structure
+      _personalInfo['gender'] = _getString(onboardingData, 'gender');
+      _personalInfo['birth_date'] =
+          _parseBirthDate(onboardingData['birth_date']);
+      _personalInfo['height'] = _getInt(onboardingData, 'height');
+      _personalInfo['weight'] = _getInt(onboardingData, 'weight');
     }
 
-    _birthDate = onboardingData['birth_date'] != null
-        ? DateTime.parse(onboardingData['birth_date'])
-        : null;
-    _height = onboardingData['height'];
-    _weight = onboardingData['weight'];
-    _targetWeight = onboardingData['target_weight'];
+    _targetWeight = _getInt(onboardingData, 'target_weight');
     _lifestyleProfile = _convertToMap(onboardingData['lifestyle_profile']);
     _mealSchedule = _convertToMap(onboardingData['meal_schedule']);
 
@@ -179,10 +237,12 @@ class OnboardingProvider with ChangeNotifier {
     }
 
     final onboardingData = {
-      'gender': _gender,
-      'birth_date': _birthDate?.toIso8601String(),
-      'height': _height,
-      'weight': _weight,
+      'personal_info': {
+        'gender': _personalInfo['gender'],
+        'birth_date': _personalInfo['birth_date']?.toIso8601String(),
+        'height': _personalInfo['height'],
+        'weight': _personalInfo['weight'],
+      },
       'target_weight': _targetWeight,
       'lifestyle_profile': _lifestyleProfile,
       'meal_schedule': cleanMealSchedule,
@@ -193,7 +253,13 @@ class OnboardingProvider with ChangeNotifier {
       'kitchen_equipments': _kitchenEquipment,
     };
 
-    onboardingData.removeWhere((key, value) => value == null);
+    onboardingData.removeWhere((key, value) {
+      if (value == null) return true;
+      if (key == 'personal_info' && value is Map) {
+        value.removeWhere((k, v) => v == null);
+      }
+      return false;
+    });
 
     if (onboardingData.isNotEmpty) {
       await authService.updateUserData({'onboarding_data': onboardingData});
@@ -201,11 +267,69 @@ class OnboardingProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> saveFinalOnboardingData() async {
+    final authService = AuthService();
+    if (authService.currentUser == null) return false;
+
+    if (!isOnboardingComplete) {
+      // Maybe log an error or throw an exception
+      return false;
+    }
+
+    // Create a clean version of meal_schedule before saving to remove old data.
+    Map<String, dynamic>? cleanMealSchedule;
+    if (_mealSchedule != null) {
+      cleanMealSchedule = Map<String, dynamic>.from(_mealSchedule!);
+      final scheduleType = cleanMealSchedule['schedule_type'];
+      if (scheduleType == 'fixed' || scheduleType == 'irregular') {
+        cleanMealSchedule.remove('rotation_weeks');
+        cleanMealSchedule.remove('shifts');
+      }
+    }
+
+    final onboardingData = {
+      'personal_info': {
+        'gender': _personalInfo['gender'],
+        'birth_date': _personalInfo['birth_date']?.toIso8601String(),
+        'height': _personalInfo['height'],
+        'weight': _personalInfo['weight'],
+      },
+      'target_weight': _targetWeight,
+      'lifestyle_profile': _lifestyleProfile,
+      'meal_schedule': cleanMealSchedule,
+      'primary_goals': _primaryGoals,
+      'activity_level': _activityLevel,
+      'disliked_foods': _dislikedFoods,
+      'cooking_level': _cookingLevel,
+      'kitchen_equipments': _kitchenEquipment,
+    };
+
+    onboardingData.removeWhere((key, value) {
+      if (value == null) return true;
+      if (key == 'personal_info' && value is Map) {
+        value.removeWhere((k, v) => v == null);
+      }
+      return false;
+    });
+
+    if (onboardingData.isNotEmpty) {
+      await authService.updateUserData({
+        'onboarding_data': onboardingData,
+        'onboarding_completed': true,
+      });
+      _setInitialData(); // Reset dirty tracking after saving
+      return true;
+    }
+    return false;
+  }
+
   void reset() {
-    _gender = null;
-    _birthDate = null;
-    _height = null;
-    _weight = null;
+    _personalInfo = {
+      'gender': null,
+      'birth_date': null,
+      'height': null,
+      'weight': null,
+    };
     _targetWeight = null;
     _lifestyleProfile = null;
     _mealSchedule = null;
@@ -227,29 +351,29 @@ class OnboardingProvider with ChangeNotifier {
   }
 
   void setGender(String? gender) {
-    if (_gender != gender) {
-      _gender = gender;
+    if (_personalInfo['gender'] != gender) {
+      _personalInfo['gender'] = gender;
       notifyListeners();
     }
   }
 
   void setBirthDate(DateTime? date) {
-    if (_birthDate != date) {
-      _birthDate = date;
+    if (_personalInfo['birth_date'] != date) {
+      _personalInfo['birth_date'] = date;
       notifyListeners();
     }
   }
 
   void setHeight(int? height) {
-    if (_height != height) {
-      _height = height;
+    if (_personalInfo['height'] != height) {
+      _personalInfo['height'] = height;
       notifyListeners();
     }
   }
 
   void setWeight(int? weight) {
-    if (_weight != weight) {
-      _weight = weight;
+    if (_personalInfo['weight'] != weight) {
+      _personalInfo['weight'] = weight;
       notifyListeners();
     }
   }
@@ -381,7 +505,9 @@ class OnboardingProvider with ChangeNotifier {
     if (exists) {
       _primaryGoals.removeWhere((element) => element['value'] == goal['value']);
     } else {
-      _primaryGoals.add(goal);
+      if (_primaryGoals.length < 3) {
+        _primaryGoals.add(goal);
+      }
     }
     notifyListeners();
   }
@@ -427,10 +553,10 @@ class OnboardingProvider with ChangeNotifier {
 
   /// Onboarding tamamlanma durumunu kontrol et
   bool get isOnboardingComplete {
-    return _gender != null &&
-        _birthDate != null &&
-        _height != null &&
-        _weight != null &&
+    return _personalInfo['gender'] != null &&
+        _personalInfo['birth_date'] != null &&
+        _personalInfo['height'] != null &&
+        _personalInfo['weight'] != null &&
         _targetWeight != null &&
         _lifestyleProfile != null &&
         _primaryGoals.isNotEmpty &&
@@ -455,10 +581,11 @@ class OnboardingProvider with ChangeNotifier {
     await analyticsService.logEvent(
       name: 'onboarding_data',
       parameters: {
-        'gender': _gender ?? 'unknown',
-        'birth_date': _birthDate?.toIso8601String() ?? 'unknown',
-        'height': _height ?? 0,
-        'weight': _weight ?? 0,
+        'gender': _personalInfo['gender'] ?? 'unknown',
+        'birth_date':
+            _personalInfo['birth_date']?.toIso8601String() ?? 'unknown',
+        'height': _personalInfo['height'] ?? 0,
+        'weight': _personalInfo['weight'] ?? 0,
         'target_weight': _targetWeight ?? 0,
         'lifestyle_profile': _lifestyleProfile?['value'] ?? 'unknown',
         'primary_goals':

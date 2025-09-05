@@ -93,7 +93,7 @@
         "sedentary": "Mostly Sitting",
         "light": "Some Movement",
         "moderate": "Regular Exercise",
-        "active": "Very Active!"
+        "active": "Very Active"
       },
       "primary_goal": {
         "title": "Goals That Excite You",
@@ -130,7 +130,7 @@
       "custom_slots_remaining": "Custom ingredients remaining: "
     },
     "page4": {
-      "header": "Cooking Skills",
+      "header": "Kitchen Preferences",
       "cooking_level": {
         "title": "Your Cooking Level",
         "subtitle": "How do you feel in the kitchen?",
@@ -240,6 +240,8 @@
       "female": "Female",
       "preferNotToSay": "Prefer not to say",
       "selectDate": "Select Date",
+      "weightTitle": "Select Your Weight",
+      "heightTitle": "Select Your Height",
       "birthday": {
         "title": "Select Your Birthday",
         "select_month": "Select Month",

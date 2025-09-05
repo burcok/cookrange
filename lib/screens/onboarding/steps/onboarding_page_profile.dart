@@ -31,7 +31,7 @@ class OnboardingPageProfile extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.backgroundColor2,
       body: Column(
         children: [
           OnboardingHeader(
@@ -150,8 +150,7 @@ class OnboardingPageProfile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: theme.colorScheme.inputBackgroundColor,
-          border: Border.all(color: theme.colorScheme.inputBorderColor),
+          border: Border.all(color: Colors.grey.withOpacity(0.5)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -161,10 +160,11 @@ class OnboardingPageProfile extends StatelessWidget {
               onboarding.birthDate != null
                   ? DateFormat('dd.MM.yyyy').format(onboarding.birthDate!)
                   : localizations.translate('onboarding.profile.selectDate'),
-              style: theme.textTheme.bodyLarge?.copyWith(color: Colors.black87),
+              style: theme.textTheme.bodyLarge
+                  ?.copyWith(color: theme.colorScheme.onboardingTitleColor),
             ),
             Icon(Icons.calendar_today_outlined,
-                color: theme.colorScheme.primary),
+                color: theme.colorScheme.onboardingTitleColor),
           ],
         ),
       ),
@@ -225,8 +225,8 @@ class OnboardingPageProfile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: theme.colorScheme.inputBackgroundColor,
-          border: Border.all(color: theme.colorScheme.inputBorderColor),
+          color: Colors.transparent,
+          border: Border.all(color: Colors.grey.withOpacity(0.5)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -234,9 +234,11 @@ class OnboardingPageProfile extends StatelessWidget {
           children: [
             Text(
               value != null ? '$value$unit' : 'Select',
-              style: theme.textTheme.bodyLarge?.copyWith(color: Colors.black87),
+              style: theme.textTheme.bodyLarge
+                  ?.copyWith(color: theme.colorScheme.onboardingTitleColor),
             ),
-            Icon(Icons.unfold_more, color: theme.colorScheme.primary),
+            Icon(Icons.unfold_more,
+                color: theme.colorScheme.onboardingTitleColor),
           ],
         ),
       ),
@@ -246,6 +248,7 @@ class OnboardingPageProfile extends StatelessWidget {
   void _showDatePicker(BuildContext context, OnboardingProvider onboarding) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (context) => DatePickerModal(
         initialDate: onboarding.birthDate ?? DateTime(2005, 9, 3),
         minDate: DateTime(1920),
@@ -275,7 +278,7 @@ class OnboardingPageProfile extends StatelessWidget {
       if (value != null) {
         if (field == 'height') {
           onboarding.setHeight(value);
-        } else {
+        } else if (field == 'weight') {
           onboarding.setWeight(value);
         }
       }

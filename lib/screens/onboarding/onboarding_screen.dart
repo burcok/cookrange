@@ -5,6 +5,7 @@ import '../../core/providers/onboarding_provider.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/utils/app_routes.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -200,7 +201,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         }
         return localizations
             .translate('onboarding.validation.complete_cooking_preferences');
-      case 4: // Profile Info
+      case 4: // Lifestyle Profile
+        if (onboarding.lifestyleProfile == null ||
+            onboarding.mealSchedule == null) {
+          return localizations
+              .translate('onboarding.validation.select_lifestyle_profile');
+        }
+        return '';
+
+      case 5: // Profile Info
         if (onboarding.gender == null ||
             onboarding.birthDate == null ||
             onboarding.height == null ||
@@ -209,13 +218,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               .translate('onboarding.validation.complete_profile_info');
         }
         return '';
-      case 5: // Hedef kilo
-        if (onboarding.targetWeight == null) {
-          return localizations
-              .translate('onboarding.validation.enter_target_weight');
-        }
-        return localizations
-            .translate('onboarding.validation.complete_target_weight');
       default:
         return localizations.translate('onboarding.validation.fill_required');
     }
@@ -285,7 +287,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         onboardingProvider.updateOnboardingDataInFirestore();
       }
     } else {
-      _completeOnboarding();
+      if (mounted) {
+        _completeOnboarding();
+      }
     }
   }
 
@@ -294,37 +298,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         Provider.of<OnboardingProvider>(context, listen: false);
     final authService = AuthService();
 
+    _isLoadingNotifier.value = true;
+
     // Log completion analytics
     _logOnboardingCompletion();
-
-    final onboardingData = {
-      'gender': onboardingProvider.gender,
-      'birth_date': onboardingProvider.birthDate?.toIso8601String(),
-      'height': onboardingProvider.height,
-      'weight': onboardingProvider.weight,
-      'target_weight': onboardingProvider.targetWeight,
-      'lifestyle_profile': onboardingProvider.lifestyleProfile,
-      'primary_goals': onboardingProvider.primaryGoals
-          .map((goal) => goal['value'] as String)
-          .toList(),
-      'activity_level': onboardingProvider.activityLevel != null
-          ? onboardingProvider.activityLevel!['value']
-          : null,
-      'disliked_foods': onboardingProvider.dislikedFoods
-          .map((food) => food['value'] as String)
-          .toList(),
-      'cooking_level': onboardingProvider.cookingLevel != null
-          ? onboardingProvider.cookingLevel!['value']
-          : null,
-      'kitchen_equipments': onboardingProvider.kitchenEquipment
-          .map((equipment) => equipment['value'] as String)
-          .toList(),
-    };
-
-    final preferences = {
-      'onboarding_data': onboardingData,
-      'onboarding_completed': true,
-    };
 
     try {
       if (authService.currentUser != null) {
@@ -339,21 +316,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         }
 
         // If user is logged in, update their preferences
-        await authService.updateUserData(preferences);
+        final success = await onboardingProvider.saveFinalOnboardingData();
 
-        // Onboarding verilerini temizle
-        onboardingProvider.reset();
-        await authService.clearOnboardingData();
-        await authService.completeOnboarding();
+        if (success) {
+          // Onboarding verilerini temizle
+          onboardingProvider.reset();
+          await authService.clearOnboardingData();
 
-        if (mounted) {
-          // If all info is complete, go home
-          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+          if (mounted) {
+            // If all info is complete, go home
+            Navigator.pushNamedAndRemoveUntil(
+                context, AppRoutes.home, (route) => false);
+          }
+        } else {
+          if (mounted) {
+            _showNotification(
+                'Please fill all required fields before completing.');
+          }
         }
       } else {
         // If user is not logged in, navigate to register screen
         if (mounted) {
-          Navigator.pushNamed(context, '/register');
+          Navigator.pushNamed(context, AppRoutes.register);
         }
       }
     } catch (e) {
@@ -434,6 +418,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _isLoadingNotifier.value = false;
         }
       });
+    } else {
+      _isLoadingNotifier.value = false;
     }
     final onboardingProvider =
         Provider.of<OnboardingProvider>(context, listen: false);

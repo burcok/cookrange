@@ -6,6 +6,7 @@ import 'package:cookrange/core/providers/onboarding_provider.dart';
 import 'package:cookrange/core/theme/app_theme.dart';
 import 'package:cookrange/widgets/onboarding_common_widgets.dart';
 import 'package:cookrange/core/services/analytics_service.dart';
+import 'package:cookrange/constants.dart';
 import 'package:flutter/foundation.dart' show mapEquals;
 
 class OnboardingPage5 extends StatefulWidget {
@@ -236,7 +237,7 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: colorScheme.backgroundColor2,
       body: SafeArea(
         child: Column(
           children: [
@@ -266,6 +267,28 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 16),
+
+                    // Main Title
+                    Text(
+                      localizations.translate('onboarding.page5.title'),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: colorScheme.onboardingTitleColor,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      localizations.translate('onboarding.page5.description'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: colorScheme.onboardingSubtitleColor,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                     ..._profiles.map((profile) => _buildProfileCard(profile)),
                     const SizedBox(height: 24),
                     Selector<OnboardingProvider, String?>(
@@ -310,14 +333,11 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primaryColorCustom.withOpacity(0.1)
-              : colorScheme.onboardingOptionBgColor,
+          color:
+              isSelected ? primaryColor.withOpacity(0.2) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? colorScheme.primaryColorCustom
-                : Colors.transparent,
+            color: isSelected ? primaryColor : Colors.grey.withOpacity(0.5),
             width: 2,
           ),
         ),
@@ -381,57 +401,46 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
       'dinner': Icons.nightlight_round,
     };
 
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: colorScheme.onboardingOptionBgColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.onboardingSubtitleColor.withOpacity(0.1),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 4,
+      children: [
+        Text(
+          localizations
+              .translate('onboarding.page5.schedule_editor.irregular.title'),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onboardingTitleColor,
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            localizations
-                .translate('onboarding.page5.schedule_editor.irregular.title'),
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onboardingTitleColor,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildTimePickerRow(
-            'breakfast',
-            localizations.translate('onboarding.page5.preview.breakfast'),
-            mealSchedule['breakfast'] ?? '08:00',
-            mealIcons['breakfast']!,
-            (time) => context
-                .read<OnboardingProvider>()
-                .updateMealTime('breakfast', time),
-          ),
-          _buildTimePickerRow(
-            'lunch',
-            localizations.translate('onboarding.page5.preview.lunch'),
-            mealSchedule['lunch'] ?? '13:00',
-            mealIcons['lunch']!,
-            (time) => context
-                .read<OnboardingProvider>()
-                .updateMealTime('lunch', time),
-          ),
-          _buildTimePickerRow(
-            'dinner',
-            localizations.translate('onboarding.page5.preview.dinner'),
-            mealSchedule['dinner'] ?? '19:00',
-            mealIcons['dinner']!,
-            (time) => context
-                .read<OnboardingProvider>()
-                .updateMealTime('dinner', time),
-          ),
-        ],
-      ),
+        const SizedBox(height: 16),
+        _buildTimePickerRow(
+          'breakfast',
+          localizations.translate('onboarding.page5.preview.breakfast'),
+          mealSchedule['breakfast'] ?? '08:00',
+          mealIcons['breakfast']!,
+          (time) => context
+              .read<OnboardingProvider>()
+              .updateMealTime('breakfast', time),
+        ),
+        _buildTimePickerRow(
+          'lunch',
+          localizations.translate('onboarding.page5.preview.lunch'),
+          mealSchedule['lunch'] ?? '13:00',
+          mealIcons['lunch']!,
+          (time) =>
+              context.read<OnboardingProvider>().updateMealTime('lunch', time),
+        ),
+        _buildTimePickerRow(
+          'dinner',
+          localizations.translate('onboarding.page5.preview.dinner'),
+          mealSchedule['dinner'] ?? '19:00',
+          mealIcons['dinner']!,
+          (time) =>
+              context.read<OnboardingProvider>().updateMealTime('dinner', time),
+        ),
+      ],
     );
   }
 
@@ -447,8 +456,9 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
             padding:
                 const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
             decoration: BoxDecoration(
-              color: Colors.white, // White card background
+              color: Colors.transparent, // White card background
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.withOpacity(0.5)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,19 +472,10 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                     color: colorScheme.onboardingTitleColor,
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  localizations.translate(
-                      'onboarding.page5.schedule_editor.rotating.rotation_weeks'),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: colorScheme.onboardingSubtitleColor,
-                  ),
-                ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 24),
                 _buildWeekSelector(rotationWeeks),
                 const SizedBox(height: 24),
+                Divider(color: Colors.grey.withOpacity(0.5)),
                 for (int i = 0; i < rotationWeeks; i++)
                   _buildWeekScheduleEditor(i + 1,
                       isLast: i == rotationWeeks - 1),
@@ -490,12 +491,12 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFE9ECF0),
         borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: Colors.grey.withOpacity(0.5)),
       ),
       child: Row(
         children: List.generate(3, (index) {
-          final week = index + 1;
+          final week = index + 2;
           final isSelected = week == selectedWeeks;
           return Expanded(
             child: GestureDetector(
@@ -505,9 +506,7 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? colorScheme.primaryColorCustom
-                      : Colors.transparent,
+                  color: isSelected ? primaryColor : Colors.transparent,
                   borderRadius: BorderRadius.circular(99),
                 ),
                 alignment: Alignment.center,
@@ -613,8 +612,8 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-          color: const Color(0xFFF7F8FA),
-          borderRadius: BorderRadius.circular(16)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.withOpacity(0.5))),
       child: Row(
         children: [
           Icon(
@@ -650,9 +649,9 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE9ECF0)),
+                border: Border.all(color: Colors.grey.withOpacity(0.5)),
               ),
               child: Text(
                 currentTime,
@@ -668,66 +667,6 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
     );
   }
 
-  Widget _buildWeekPreview(Map<String, dynamic> shift,
-      {bool isLastWeek = false}) {
-    final localizations = AppLocalizations.of(context);
-    final colorScheme = Theme.of(context).colorScheme;
-    final week = shift['week'];
-    final breakfastTime = shift['breakfast'] ?? '--:--';
-    final lunchTime = shift['lunch'] ?? '--:--';
-    final dinnerTime = shift['dinner'] ?? '--:--';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 24.0, bottom: 0.0),
-          child: Text(
-            '${localizations.translate('onboarding.page5.schedule_editor.rotating.week')} $week',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: colorScheme.onboardingTitleColor,
-            ),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-          child: Column(
-            children: [
-              _buildMealTimeline(
-                iconPath: 'assets/icons/breakfast.png',
-                mealName: localizations
-                    .translate('onboarding.page5.preview.breakfast'),
-                time: breakfastTime,
-                isFirst: true,
-              ),
-              _buildMealTimeline(
-                iconPath: 'assets/icons/lunch.png',
-                mealName:
-                    localizations.translate('onboarding.page5.preview.lunch'),
-                time: lunchTime,
-              ),
-              _buildMealTimeline(
-                iconPath: 'assets/icons/dinner.png',
-                mealName:
-                    localizations.translate('onboarding.page5.preview.dinner'),
-                time: dinnerTime,
-                isLast: true,
-              ),
-            ],
-          ),
-        ),
-        if (!isLastWeek)
-          Divider(
-            height: 32,
-            thickness: 1,
-            color: colorScheme.onboardingSubtitleColor.withOpacity(0.1),
-          ),
-      ],
-    );
-  }
-
   Widget _buildPreview() {
     final localizations = AppLocalizations.of(context);
     final theme = Theme.of(context);
@@ -736,41 +675,15 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
     final mealSchedule = onboarding.mealSchedule;
     final scheduleType = onboarding.mealSchedule?['schedule_type'];
 
-    if (scheduleType == 'rotating') {
-      final shifts = mealSchedule?['shifts'] as List?;
-      if (shifts == null || shifts.isEmpty) {
-        return const SizedBox.shrink();
-      }
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            localizations.translate('onboarding.page5.preview.title'),
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'Poppins',
-              color: colorScheme.onboardingTitleColor,
-            ),
-          ),
-          for (var i = 0; i < shifts.length; i++)
-            _buildWeekPreview(shifts[i] as Map<String, dynamic>,
-                isLastWeek: i == shifts.length - 1)
-        ],
-      );
+    if (scheduleType != 'fixed') {
+      return const SizedBox.shrink();
     }
 
     String breakfastTime = '--:--';
     String lunchTime = '--:--';
     String dinnerTime = '--:--';
 
-    if (scheduleType == 'fixed') {
-      if (mealSchedule != null) {
-        breakfastTime = mealSchedule['breakfast'] ?? '--:--';
-        lunchTime = mealSchedule['lunch'] ?? '--:--';
-        dinnerTime = mealSchedule['dinner'] ?? '--:--';
-      }
-    } else if (scheduleType == 'irregular' && mealSchedule != null) {
+    if (mealSchedule != null) {
       breakfastTime = mealSchedule['breakfast'] ?? '--:--';
       lunchTime = mealSchedule['lunch'] ?? '--:--';
       dinnerTime = mealSchedule['dinner'] ?? '--:--';

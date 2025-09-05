@@ -38,9 +38,6 @@ class AuthService {
 
   // Initialize service
   Future<void> initialize() async {
-    _log.info('Initializing AuthService', service: _serviceName);
-    _prefs = await SharedPreferences.getInstance();
-
     try {
       _prefs = await SharedPreferences.getInstance();
       final String? savedLanguageCode = _prefs.getString(_languageKey);
@@ -89,7 +86,7 @@ class AuthService {
 
   // Get onboarding data
   Future<Map<String, dynamic>?> getOnboardingData() async {
-    final data = _prefs.getString(_onboardingDataKey);
+    final String? data = _prefs.getString(_onboardingDataKey);
     if (data == null) return null;
 
     final mapEntries =
@@ -442,15 +439,6 @@ class AuthService {
           service: _serviceName, error: e, stackTrace: s);
       throw AuthException('error-unknown');
     }
-  }
-
-  Future<void> completeOnboarding() async {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) return;
-    await _firestoreService.updateUserData(
-      currentUser.uid,
-      {'onboarding_complete': true},
-    );
   }
 
   Future<void> updateUserOnboardingData(Map<String, dynamic> data) async {

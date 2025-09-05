@@ -311,13 +311,12 @@ class OnboardingOption extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color:
-              isSelected ? primaryColor : colorScheme.onboardingOptionBgColor,
+          color: isSelected ? primaryColor : Colors.transparent,
           borderRadius: BorderRadius.circular(99),
           border: Border.all(
             color: isSelected
-                ? colorScheme.onboardingOptionBgColor.withOpacity(0.2)
-                : colorScheme.onboardingTitleColor.withOpacity(0.2),
+                ? primaryColor.withOpacity(0.2)
+                : Colors.grey.withOpacity(0.5),
             width: 1,
           ),
         ),
@@ -377,7 +376,7 @@ class OnboardingContinueButton extends StatelessWidget {
           return ElevatedButton(
             onPressed: onPressed != null && !isLoading ? onPressed : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.primaryColorCustom,
+              backgroundColor: primaryColor,
               foregroundColor: colorScheme.onPrimary,
               minimumSize: const Size(double.infinity, 56),
               shape: RoundedRectangleBorder(
@@ -402,6 +401,8 @@ class OnboardingContinueButton extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      fontFamily: 'Poppins',
+                      color: Colors.white,
                     ),
                   ),
           );

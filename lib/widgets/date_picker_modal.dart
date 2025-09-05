@@ -1,418 +1,281 @@
+import 'package:cookrange/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/localization/app_localizations.dart';
+import '../../constants.dart';
+import 'package:intl/intl.dart';
+import 'package:cookrange/core/localization/app_localizations.dart';
 
-class DatePickerModal extends StatelessWidget {
+class DatePickerModal extends StatefulWidget {
   final DateTime initialDate;
   final DateTime minDate;
   final DateTime maxDate;
   final void Function(DateTime date) onSelected;
-  const DatePickerModal(
-      {super.key,
-      required this.initialDate,
-      required this.minDate,
-      required this.maxDate,
-      required this.onSelected});
+
+  const DatePickerModal({
+    super.key,
+    required this.initialDate,
+    required this.minDate,
+    required this.maxDate,
+    required this.onSelected,
+  });
+
+  @override
+  State<DatePickerModal> createState() => _DatePickerModalState();
+}
+
+class _DatePickerModalState extends State<DatePickerModal> {
+  late DateTime _selectedDate;
+  late DateTime _displayMonth;
+  late final ScrollController _yearScrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.initialDate;
+    _displayMonth = DateTime(widget.initialDate.year, widget.initialDate.month);
+    _yearScrollController = ScrollController(
+      initialScrollOffset:
+          (widget.initialDate.year - widget.minDate.year) * 52.0,
+    );
+  }
+
+  @override
+  void dispose() {
+    _yearScrollController.dispose();
+    super.dispose();
+  }
+
+  void _changeYear(int year) {
+    setState(() {
+      _displayMonth = DateTime(year, _displayMonth.month);
+    });
+  }
+
+  void _previousMonth() {
+    if (_displayMonth.year == widget.minDate.year &&
+        _displayMonth.month == widget.minDate.month) {
+      return;
+    }
+    setState(() {
+      _displayMonth = DateTime(_displayMonth.year, _displayMonth.month - 1);
+    });
+  }
+
+  void _nextMonth() {
+    if (_displayMonth.year == widget.maxDate.year &&
+        _displayMonth.month == widget.maxDate.month) {
+      return;
+    }
+    setState(() {
+      _displayMonth = DateTime(_displayMonth.year, _displayMonth.month + 1);
+    });
+  }
+
+  void _selectDate(DateTime date) {
+    if (date.isBefore(widget.minDate) || date.isAfter(widget.maxDate)) {
+      return;
+    }
+    setState(() {
+      _selectedDate = date;
+    });
+  }
+
+  int _calculateInitialEmptyDays(int weekdayOfFirstDay, int firstDayOfWeek) {
+    if (firstDayOfWeek == DateTime.monday) {
+      return weekdayOfFirstDay - 1;
+    } else {
+      return weekdayOfFirstDay % 7;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    DateTime now = DateTime.now();
-    DateTime displayMonth = DateTime(now.year, now.month);
-    DateTime? tempDate;
     final localizations = AppLocalizations.of(context);
-    return StatefulBuilder(
-      builder: (context, setModalState) {
-        void goToPrevMonth() {
-          setModalState(() {
-            displayMonth = DateTime(displayMonth.year, displayMonth.month - 1);
-          });
-        }
+    final theme = Theme.of(context);
+    final weekdayFormatter = DateFormat.E(localizations.locale.toLanguageTag());
 
-        void goToNextMonth() {
-          setModalState(() {
-            displayMonth = DateTime(displayMonth.year, displayMonth.month + 1);
-          });
-        }
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.backgroundColor2,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildHeader(context, localizations, theme),
+              const SizedBox(height: 16),
+              _buildWeekdays(context, weekdayFormatter),
+              const SizedBox(height: 8),
+              _buildCalendar(context, weekdayFormatter),
+              const SizedBox(height: 24),
+              _buildSaveButton(context, localizations),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-        int daysInMonth(DateTime date) {
-          return DateTime(date.year, date.month + 1, 0).day;
-        }
+  Widget _buildHeader(
+      BuildContext context, AppLocalizations localizations, ThemeData theme) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.chevron_left),
+          onPressed: _previousMonth,
+        ),
+        GestureDetector(
+          onTap: () => _showYearPicker(context),
+          child: Text(
+            DateFormat.yMMMM(localizations.locale.toLanguageTag())
+                .format(_displayMonth),
+            style: theme.textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.chevron_right),
+          onPressed: _nextMonth,
+        ),
+      ],
+    );
+  }
 
-        int firstWeekdayOfMonth(DateTime date) {
-          return DateTime(date.year, date.month, 1).weekday;
-        }
-
-        Future<void> selectMonth() async {
-          final months = [
-            localizations.translate('profile.birthday.months.january'),
-            localizations.translate('profile.birthday.months.february'),
-            localizations.translate('profile.birthday.months.march'),
-            localizations.translate('profile.birthday.months.april'),
-            localizations.translate('profile.birthday.months.may'),
-            localizations.translate('profile.birthday.months.june'),
-            localizations.translate('profile.birthday.months.july'),
-            localizations.translate('profile.birthday.months.august'),
-            localizations.translate('profile.birthday.months.september'),
-            localizations.translate('profile.birthday.months.october'),
-            localizations.translate('profile.birthday.months.november'),
-            localizations.translate('profile.birthday.months.december'),
-          ];
-          int initialIndex = displayMonth.month - 1;
-          int? selected = await showModalBottomSheet<int>(
-            context: context,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-            ),
-            builder: (context) {
-              int tempIndex = initialIndex >= 0 ? initialIndex : 0;
-              return SizedBox(
-                height: 300,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 12),
-                    Text(
-                      localizations.translate('profile.birthday.select_month'),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
-                    Expanded(
-                      child: ListWheelScrollView.useDelegate(
-                        itemExtent: 44,
-                        diameterRatio: 1.2,
-                        perspective: 0.003,
-                        physics: const FixedExtentScrollPhysics(),
-                        controller:
-                            FixedExtentScrollController(initialItem: tempIndex),
-                        onSelectedItemChanged: (i) {
-                          tempIndex = i;
-                        },
-                        childDelegate: ListWheelChildBuilderDelegate(
-                          builder: (context, i) {
-                            if (i < 0 || i >= months.length) return null;
-                            return Center(
-                              child: Text(months[i],
-                                  style: const TextStyle(fontSize: 20)),
-                            );
-                          },
-                          childCount: months.length,
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context)
-                                .colorScheme
-                                .onboardingNextButtonColor,
-                            foregroundColor: Theme.of(context)
-                                .colorScheme
-                                .onboardingNextButtonBorderColor,
-                          ),
-                          onPressed: () {
-                            Navigator.of(context).pop(tempIndex + 1);
-                          },
-                          child: Text(
-                            localizations.translate('common.select'),
-                            style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
+  void _showYearPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        final years = List.generate(
+            widget.maxDate.year - widget.minDate.year + 1,
+            (index) => widget.minDate.year + index);
+        return SizedBox(
+          height: 300,
+          child: ListWheelScrollView.useDelegate(
+            controller: FixedExtentScrollController(
+                initialItem: years.indexOf(_displayMonth.year)),
+            itemExtent: 50,
+            onSelectedItemChanged: (index) {
+              _changeYear(years[index]);
             },
-          );
-          if (selected != null) {
-            setModalState(() {
-              displayMonth = DateTime(displayMonth.year, selected);
-            });
-          }
-        }
-
-        Future<void> selectYear() async {
-          int minYear = minDate.year;
-          int maxYear = maxDate.year;
-          List<int> years = [for (int y = maxYear; y >= minYear; y--) y];
-          int initialIndex = years.indexOf(displayMonth.year);
-          int? selected = await showModalBottomSheet<int>(
-            context: context,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-            ),
-            builder: (context) {
-              int tempIndex = initialIndex >= 0 ? initialIndex : 0;
-              return SizedBox(
-                height: 300,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 12),
-                    Text(
-                      localizations.translate('profile.birthday.select_year'),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
-                    Expanded(
-                      child: ListWheelScrollView.useDelegate(
-                        itemExtent: 44,
-                        diameterRatio: 1.2,
-                        perspective: 0.003,
-                        physics: const FixedExtentScrollPhysics(),
-                        controller:
-                            FixedExtentScrollController(initialItem: tempIndex),
-                        onSelectedItemChanged: (i) {
-                          tempIndex = i;
-                        },
-                        childDelegate: ListWheelChildBuilderDelegate(
-                          builder: (context, i) {
-                            if (i < 0 || i >= years.length) return null;
-                            return Center(
-                              child: Text(years[i].toString(),
-                                  style: const TextStyle(fontSize: 20)),
-                            );
-                          },
-                          childCount: years.length,
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context)
-                                .colorScheme
-                                .onboardingNextButtonColor,
-                            foregroundColor: Theme.of(context)
-                                .colorScheme
-                                .onboardingNextButtonBorderColor,
-                          ),
-                          onPressed: () {
-                            Navigator.of(context).pop(years[tempIndex]);
-                          },
-                          child: Text(
-                            localizations.translate('common.select'),
-                            style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-          if (selected != null) {
-            setModalState(() {
-              displayMonth = DateTime(selected, displayMonth.month);
-            });
-          }
-        }
-
-        String monthName(int month) {
-          final months = [
-            '',
-            localizations.translate('profile.birthday.months.january'),
-            localizations.translate('profile.birthday.months.february'),
-            localizations.translate('profile.birthday.months.march'),
-            localizations.translate('profile.birthday.months.april'),
-            localizations.translate('profile.birthday.months.may'),
-            localizations.translate('profile.birthday.months.june'),
-            localizations.translate('profile.birthday.months.july'),
-            localizations.translate('profile.birthday.months.august'),
-            localizations.translate('profile.birthday.months.september'),
-            localizations.translate('profile.birthday.months.october'),
-            localizations.translate('profile.birthday.months.november'),
-            localizations.translate('profile.birthday.months.december'),
-          ];
-          return months[month];
-        }
-
-        return Padding(
-          padding: MediaQuery.of(context).viewInsets,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
+            childDelegate: ListWheelChildBuilderDelegate(
+              builder: (context, index) {
+                return Center(
+                  child: Text(
+                    years[index].toString(),
+                    style: const TextStyle(fontSize: 22),
                   ),
-                ),
-                Text(
-                  localizations.translate('profile.birthday.title'),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      onPressed: goToPrevMonth,
-                      icon: const Icon(Icons.chevron_left),
-                    ),
-                    GestureDetector(
-                      onTap: selectMonth,
-                      child: Text(
-                        monthName(displayMonth.month),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: selectYear,
-                      child: Text(
-                        displayMonth.year.toString(),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: goToNextMonth,
-                      icon: const Icon(Icons.chevron_right),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 7,
-                    childAspectRatio: 1,
-                  ),
-                  itemCount: 7,
-                  itemBuilder: (context, index) {
-                    final weekdays = ['P', 'P', 'S', 'Ç', 'P', 'C', 'C'];
-                    return Center(
-                      child: Text(
-                        weekdays[index],
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 7,
-                    childAspectRatio: 1,
-                  ),
-                  itemCount: 42,
-                  itemBuilder: (context, index) {
-                    final firstWeekday = firstWeekdayOfMonth(displayMonth);
-                    final daysInCurrentMonth = daysInMonth(displayMonth);
-                    final day = index - firstWeekday + 1;
-                    final isCurrentMonth = day > 0 && day <= daysInCurrentMonth;
-                    final isSelected = isCurrentMonth &&
-                        day == tempDate?.day &&
-                        displayMonth.month == tempDate?.month &&
-                        displayMonth.year == tempDate?.year;
-                    final isToday = isCurrentMonth &&
-                        day == now.day &&
-                        displayMonth.month == now.month &&
-                        displayMonth.year == now.year;
-
-                    return GestureDetector(
-                      onTap: isCurrentMonth
-                          ? () {
-                              setModalState(() {
-                                tempDate = DateTime(
-                                    displayMonth.year, displayMonth.month, day);
-                              });
-                            }
-                          : null,
-                      child: Container(
-                        margin: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Theme.of(context)
-                                  .colorScheme
-                                  .onboardingNextButtonColor
-                              : null,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            isCurrentMonth ? day.toString() : '',
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : isToday
-                                      ? Colors.red
-                                      : Theme.of(context)
-                                          .colorScheme
-                                          .onboardingOptionTextColor
-                                          .withOpacity(0.7),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context)
-                          .colorScheme
-                          .onboardingNextButtonColor,
-                      foregroundColor: Theme.of(context)
-                          .colorScheme
-                          .onboardingNextButtonBorderColor,
-                    ),
-                    onPressed: tempDate != null
-                        ? () {
-                            onSelected(tempDate!);
-                            Navigator.of(context).pop();
-                          }
-                        : null,
-                    child: Text(
-                      localizations.translate('common.save'),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                );
+              },
+              childCount: years.length,
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildWeekdays(BuildContext context, DateFormat formatter) {
+    final List<String> weekdays =
+        formatter.dateSymbols.SHORTWEEKDAYS.map((e) => e[0]).toList();
+
+    // Adjust for locale's first day of week
+    final int firstDayOfWeek = formatter.dateSymbols.FIRSTDAYOFWEEK;
+    final List<String> orderedWeekdays =
+        List.from(weekdays.sublist(firstDayOfWeek))
+          ..addAll(weekdays.sublist(0, firstDayOfWeek));
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: orderedWeekdays
+          .map((day) => Text(day,
+              style:
+                  TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)))
+          .toList(),
+    );
+  }
+
+  Widget _buildCalendar(BuildContext context, DateFormat formatter) {
+    final theme = Theme.of(context);
+    final daysInMonth =
+        DateTime(_displayMonth.year, _displayMonth.month + 1, 0).day;
+    final firstDayOfMonth =
+        DateTime(_displayMonth.year, _displayMonth.month, 1);
+    final weekdayOfFirstDay = firstDayOfMonth.weekday;
+
+    final int firstDayOfWeek = formatter.dateSymbols.FIRSTDAYOFWEEK;
+
+    final initialEmptyDays =
+        _calculateInitialEmptyDays(weekdayOfFirstDay, firstDayOfWeek);
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 7,
+      ),
+      itemCount: daysInMonth + initialEmptyDays,
+      itemBuilder: (context, index) {
+        if (index < initialEmptyDays) {
+          return const SizedBox.shrink();
+        }
+        final day = index - initialEmptyDays + 1;
+        final date = DateTime(_displayMonth.year, _displayMonth.month, day);
+        final bool isSelected = date.year == _selectedDate.year &&
+            date.month == _selectedDate.month &&
+            date.day == _selectedDate.day;
+
+        final isEnabled =
+            !date.isBefore(widget.minDate) && !date.isAfter(widget.maxDate);
+
+        return GestureDetector(
+          onTap: isEnabled ? () => _selectDate(date) : null,
+          child: Container(
+            margin: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: isSelected ? primaryColor : null,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                day.toString(),
+                style: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : isEnabled
+                          ? theme.colorScheme.onboardingSubtitleColor
+                          : Colors.grey,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSaveButton(
+      BuildContext context, AppLocalizations localizations) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () {
+          widget.onSelected(_selectedDate);
+          Navigator.of(context).pop();
+        },
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          backgroundColor: primaryColor,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(localizations.translate('common.save')),
+      ),
     );
   }
 }

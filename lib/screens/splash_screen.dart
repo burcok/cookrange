@@ -19,6 +19,7 @@ import '../core/providers/device_info_provider.dart';
 import 'package:provider/provider.dart';
 import '../core/providers/onboarding_provider.dart';
 import '../core/models/user_model.dart';
+import '../core/utils/app_routes.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -374,7 +375,7 @@ class _SplashScreenState extends State<SplashScreen>
         print('User: $user');
         if (user == null) {
           // No user, go to login screen
-          Navigator.pushReplacementNamed(context, '/login');
+          Navigator.pushReplacementNamed(context, AppRoutes.login);
           return;
         }
 
@@ -382,7 +383,7 @@ class _SplashScreenState extends State<SplashScreen>
           // User exists but email is not verified
           Navigator.pushNamedAndRemoveUntil(
             context,
-            "/verify_email",
+            AppRoutes.verifyEmail,
             (route) => false,
           );
           return;
@@ -394,14 +395,14 @@ class _SplashScreenState extends State<SplashScreen>
 
         if (_isOnboardingDataComplete(userModel)) {
           // User has completed all onboarding, go to home
-          Navigator.pushReplacementNamed(context, '/home');
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
         } else {
           // User has not completed onboarding, go to onboarding
           if (userModel?.onboardingData != null) {
             Provider.of<OnboardingProvider>(context, listen: false)
                 .initializeFromFirestore(userModel!.onboardingData!);
           }
-          Navigator.pushReplacementNamed(context, '/onboarding');
+          Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
         }
       }
     }
@@ -694,18 +695,20 @@ class _SplashScreenState extends State<SplashScreen>
           _greetingTextController.reverse().then((_) {
             if (mounted) {
               Future.delayed(const Duration(milliseconds: 100), () {
-                setState(() {
-                  if (_remainingMessageIndices.isEmpty) {
-                    _remainingMessageIndices =
-                        List.generate(_loadingMessages.length, (i) => i);
-                  }
-                  _remainingMessageIndices.remove(_currentMessageIndex);
-                  if (_remainingMessageIndices.isNotEmpty) {
-                    _currentMessageIndex =
-                        (_remainingMessageIndices..shuffle()).first;
-                  }
-                });
-                _startGreetingTextAnimation();
+                if (mounted) {
+                  setState(() {
+                    if (_remainingMessageIndices.isEmpty) {
+                      _remainingMessageIndices =
+                          List.generate(_loadingMessages.length, (i) => i);
+                    }
+                    _remainingMessageIndices.remove(_currentMessageIndex);
+                    if (_remainingMessageIndices.isNotEmpty) {
+                      _currentMessageIndex =
+                          (_remainingMessageIndices..shuffle()).first;
+                    }
+                  });
+                  _startGreetingTextAnimation();
+                }
               });
             }
           });

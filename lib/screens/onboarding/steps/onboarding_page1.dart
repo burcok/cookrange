@@ -173,27 +173,7 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                           _buildStyledDescription(localizations, colorScheme),
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  // Already have account link
-                  Center(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, "/login");
-                      },
-                      child: Text(
-                        localizations
-                            .translate('onboarding.page1.already_have_account'),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: colorScheme.onboardingTitleColor,
-                          decoration: TextDecoration.underline,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 42),
                   // Get Started Button
                   SizedBox(
                     width: double.infinity,

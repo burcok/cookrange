@@ -18,9 +18,11 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/home/home.dart';
 import 'screens/auth/verify_email.dart';
+import 'screens/onboarding/priority_onboarding_screen.dart';
 import 'core/providers/device_info_provider.dart';
 import 'core/utils/route_guard.dart';
 import 'core/services/app_lifecycle_service.dart';
+import 'core/utils/app_routes.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,8 +53,8 @@ Future<void> main() async {
             ? Future.value(Hive.box('settingsBox'))
             : Hive.openBox('settingsBox'),
         Hive.isBoxOpen('analytics_cache')
-            ? Future.value(Hive.box<Map<dynamic, Object>>('analytics_cache'))
-            : Hive.openBox<Map<dynamic, Object>>('analytics_cache'),
+            ? Future.value(Hive.box<Map>('analytics_cache'))
+            : Hive.openBox<Map>('analytics_cache'),
       ]);
     } catch (e) {
       print('Error initializing Hive: $e');
@@ -131,13 +133,21 @@ class _MyAppState extends State<MyApp> {
                 themeMode: ThemeMode.system,
                 home: const SplashScreen(),
                 routes: {
-                  '/login': (context) => const RouteGuard(child: LoginScreen()),
-                  '/register': (context) =>
+                  AppRoutes.login: (context) =>
+                      const RouteGuard(child: LoginScreen()),
+                  AppRoutes.register: (context) =>
                       const RouteGuard(child: RegisterScreen()),
-                  '/home': (context) => const HomeScreen(),
-                  '/verify_email': (context) => const VerifyEmailScreen(),
-                  '/onboarding': (context) =>
+                  AppRoutes.home: (context) => const HomeScreen(),
+                  AppRoutes.verifyEmail: (context) => const VerifyEmailScreen(),
+                  AppRoutes.onboarding: (context) =>
                       const RouteGuard(child: OnboardingScreen()),
+                  AppRoutes.priorityOnboarding: (context) =>
+                      const RouteGuard(child: PriorityOnboardingScreen()),
+                },
+                onUnknownRoute: (settings) {
+                  return MaterialPageRoute(
+                    builder: (context) => const UnknownScreen(),
+                  );
                 },
                 navigatorObservers: [
                   FirebaseAnalyticsObserver(
@@ -157,6 +167,22 @@ class _MyAppState extends State<MyApp> {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class UnknownScreen extends StatelessWidget {
+  const UnknownScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Error'),
+      ),
+      body: const Center(
+        child: Text('404: Page not found!'),
       ),
     );
   }
