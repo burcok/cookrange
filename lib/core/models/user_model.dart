@@ -15,6 +15,7 @@ class UserModel {
   final Map<String, dynamic>? onboardingData;
   final String? appVersion;
   final String? buildNumber;
+  final Timestamp? userVerified;
 
   UserModel({
     required this.uid,
@@ -30,6 +31,7 @@ class UserModel {
     this.onboardingData,
     this.appVersion,
     this.buildNumber,
+    this.userVerified,
   });
 
   /// Creates a UserModel from a Firestore document snapshot.
@@ -49,6 +51,7 @@ class UserModel {
       onboardingData: data['onboarding_data'] as Map<String, dynamic>?,
       appVersion: data['app_version'] as String?,
       buildNumber: data['build_number'] as String?,
+      userVerified: data['user_verified'] as Timestamp?,
     );
   }
 }

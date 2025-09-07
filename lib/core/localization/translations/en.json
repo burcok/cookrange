@@ -98,7 +98,7 @@
       "primary_goal": {
         "title": "Goals That Excite You",
         "subtitle": "Select the goals that excite you most",
-        "selected_count": "{count}/3 selected",
+        "selected_count": "{count}/5 selected",
         "lose_weight": "Lose Weight",
         "gain_weight": "Gain Weight",
         "maintain_weight": "Maintain Weight",

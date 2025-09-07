@@ -98,7 +98,7 @@
       "primary_goal": {
         "title": "Seni Heyecanlandıran Hedefler",
         "subtitle": "Seni en çok heyecanlandıran hedefleri seç",
-        "selected_count": "{count}/3 seçildi",
+        "selected_count": "{count}/5 seçildi",
         "lose_weight": "Kilo Ver",
         "gain_weight": "Kilo Al",
         "maintain_weight": "Kilo Koru",
@@ -107,7 +107,7 @@
         "save_time": "Zaman Kazanmak",
         "improve_sleep": "Uyku Kalitesi",
         "increase_muscle": "Kas Kütlesi",
-        "body_shaping": "Vücut Şekli",
+        "body_shaping": "Vücut şekillendirmek",
         "stress_management": "Stres Yönetimi",
         "digestive_health": "Sindirim Sağlığı",
         "immune_boost": "Bağışıklık Güçlendirme",

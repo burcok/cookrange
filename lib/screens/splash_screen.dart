@@ -434,6 +434,16 @@ class _SplashScreenState extends State<SplashScreen>
     final userModel = await AuthService().getUserData(user.uid);
     debugPrint('User data: ${userModel?.email}');
 
+    // Check if user is verified in Firestore (user_verified field)
+    if (userModel?.userVerified == null) {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.verifyEmail,
+        (route) => false,
+      );
+      return;
+    }
+
     if (_isOnboardingDataComplete(userModel)) {
       Navigator.pushReplacementNamed(context, AppRoutes.home);
     } else {

@@ -6,10 +6,7 @@ import '../constants.dart';
 class OnboardingBackButton extends StatelessWidget {
   final VoidCallback onTap;
 
-  const OnboardingBackButton({
-    super.key,
-    required this.onTap,
-  });
+  const OnboardingBackButton({super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -83,13 +80,13 @@ class _AnimatedStepIndicatorState extends State<AnimatedStepIndicator>
     final beginProgress = previousProgress.clamp(0.0, 1.0);
     final endProgress = currentProgress.clamp(0.0, 1.0);
 
-    _progressAnimation = Tween<double>(
-      begin: beginProgress,
-      end: endProgress,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _progressAnimation = Tween<double>(begin: beginProgress, end: endProgress)
+        .animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeInOut,
+          ),
+        );
 
     _animationController.forward(from: 0);
   }
@@ -152,11 +149,7 @@ class OptionData {
   final IconData? icon;
   final String value;
 
-  OptionData({
-    required this.label,
-    this.icon,
-    required this.value,
-  });
+  OptionData({required this.label, this.icon, required this.value});
 }
 
 class OnboardingSection extends StatelessWidget {
@@ -206,11 +199,13 @@ class OnboardingSection extends StatelessWidget {
           spacing: 12,
           runSpacing: 12,
           children: options
-              .map((option) => OnboardingOption(
-                    option: option,
-                    isSelected: selectedValue == option.value,
-                    onTap: () => onSelectionChanged(option.value),
-                  ))
+              .map(
+                (option) => OnboardingOption(
+                  option: option,
+                  isSelected: selectedValue == option.value,
+                  onTap: () => onSelectionChanged(option.value),
+                ),
+              )
               .toList(),
         ),
       ],
@@ -263,8 +258,9 @@ class OnboardingMultiSelectSection extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           localizations.translate(
-              'onboarding.page2.primary_goal.selected_count',
-              {'count': selectedValues.length.toString()}),
+            'onboarding.page2.primary_goal.selected_count',
+            {'count': selectedValues.length.toString()},
+          ),
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w400,
@@ -277,11 +273,13 @@ class OnboardingMultiSelectSection extends StatelessWidget {
           spacing: 12,
           runSpacing: 12,
           children: options
-              .map((option) => OnboardingOption(
-                    option: option,
-                    isSelected: selectedValues.contains(option.value),
-                    onTap: () => onSelectionChanged(option.value),
-                  ))
+              .map(
+                (option) => OnboardingOption(
+                  option: option,
+                  isSelected: selectedValues.contains(option.value),
+                  onTap: () => onSelectionChanged(option.value),
+                ),
+              )
               .toList(),
         ),
       ],
@@ -384,8 +382,8 @@ class OnboardingContinueButton extends StatelessWidget {
               ),
               elevation: 0,
               shadowColor: Colors.transparent,
-              disabledBackgroundColor:
-                  colorScheme.primaryColorCustom.withOpacity(0.5),
+              disabledBackgroundColor: colorScheme.primaryColorCustom
+                  .withOpacity(0.5),
             ),
             child: isLoading
                 ? const SizedBox(
@@ -474,8 +472,10 @@ class OnboardingHeader extends StatelessWidget {
           const SizedBox(height: 8),
           LayoutBuilder(
             builder: (context, constraints) {
-              final double progress =
-                  (currentStep / totalSteps).clamp(0.0, 1.0);
+              final double progress = (currentStep / totalSteps).clamp(
+                0.0,
+                1.0,
+              );
               return Stack(
                 children: [
                   Container(
@@ -498,7 +498,7 @@ class OnboardingHeader extends StatelessWidget {
                 ],
               );
             },
-          )
+          ),
         ],
       ),
     );

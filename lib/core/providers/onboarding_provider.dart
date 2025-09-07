@@ -511,7 +511,7 @@ class OnboardingProvider with ChangeNotifier {
     if (exists) {
       _primaryGoals.removeWhere((element) => element['value'] == goal['value']);
     } else {
-      if (_primaryGoals.length < 3) {
+      if (_primaryGoals.length < 5) {
         _primaryGoals.add(goal);
       }
     }

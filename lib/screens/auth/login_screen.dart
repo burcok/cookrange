@@ -92,8 +92,20 @@ class _LoginScreenState extends State<LoginScreen> {
           print("Error sending email verification: $e");
         }
 
-        // Check user's onboarding status from Firestore
+        // Check user's verification status from Firestore
         final userModel = await AuthService().getUserData(user.uid);
+
+        // Check if user is verified in Firestore (user_verified field)
+        if (userModel?.userVerified == null) {
+          // User is not verified in Firestore, redirect to verification
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            "/verify_email",
+            (route) => false,
+          );
+          return;
+        }
+
         final bool onboardingCompleted =
             userModel?.onboardingCompleted ?? false;
 
@@ -217,8 +229,20 @@ class _LoginScreenState extends State<LoginScreen> {
           return;
         }
 
-        // Check user's onboarding status from Firestore
+        // Check user's verification status from Firestore
         final userModel = await AuthService().getUserData(user.uid);
+
+        // Check if user is verified in Firestore (user_verified field)
+        if (userModel?.userVerified == null) {
+          // User is not verified in Firestore, redirect to verification
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            "/verify_email",
+            (route) => false,
+          );
+          return;
+        }
+
         final bool onboardingCompleted =
             userModel?.onboardingCompleted ?? false;
 
