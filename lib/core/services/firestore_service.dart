@@ -6,8 +6,7 @@ import '../providers/device_info_provider.dart';
 import 'log_service.dart';
 import '../models/user_profile_model.dart';
 import '../models/user_model.dart';
-import '../models/login_history_model.dart';
-import '../models/user_activity_model.dart';
+import '../models/user_logs_model.dart';
 
 /// A service dedicated to all Firestore interactions related to user data.
 /// This centralization allows for easier management, logging, and implementation
@@ -77,7 +76,7 @@ class FirestoreService {
 
       final Map<String, dynamic> logData = {
         'event_type': eventType,
-        'timestamp': FieldValue.serverTimestamp(),
+        'timestamp': Timestamp.now(),
         'ip_address': ipAddress,
         ...deviceInfo,
       };
@@ -91,11 +90,7 @@ class FirestoreService {
           service: _serviceName);
       _log.info('User activity data: $logData', service: _serviceName);
 
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('user_activity')
-          .add(logData);
+      await addUserActivityToLogs(userId, logData);
       _log.info('Successfully logged activity: $eventType for user: $userId',
           service: _serviceName);
     } catch (e, s) {
@@ -171,21 +166,17 @@ class FirestoreService {
       // This can be run without awaiting to avoid blocking the login flow.
       verifyAndRepairUserData(user.uid);
 
-      // Add to login history for both new and existing users
+      // Add to login history for both new and existing users using new logs system
       try {
         _log.info('About to add login history for user: ${user.uid}',
             service: _serviceName);
 
-        final loginHistoryData = {
-          'timestamp': FieldValue.serverTimestamp(),
-          'ip_address': ipAddress,
-          ...deviceInfoMap
-        };
+        final loginHistoryData = {'ip_address': ipAddress, ...deviceInfoMap};
 
         _log.info('Login history data: $loginHistoryData',
             service: _serviceName);
 
-        await userDocRef.collection('login_history').add(loginHistoryData);
+        await addLoginHistoryToLogs(user.uid, loginHistoryData);
         _log.info('Login history successfully added for user: ${user.uid}',
             service: _serviceName);
       } catch (loginHistoryError) {
@@ -355,32 +346,13 @@ class FirestoreService {
         return null;
       }
 
-      // Fetch sub-collections in parallel
-      final results = await Future.wait([
-        userDocRef
-            .collection('login_history')
-            .orderBy('timestamp', descending: true)
-            .limit(50)
-            .get(),
-        userDocRef
-            .collection('user_activity')
-            .orderBy('timestamp', descending: true)
-            .limit(100)
-            .get(),
-      ]);
-
-      final loginHistorySnapshot = results[0];
-      final userActivitySnapshot = results[1];
+      // Get user logs from new logs collection
+      final userLogs = await getUserLogs(uid);
 
       final userModel = UserModel.fromFirestore(userDoc);
 
-      final loginHistory = loginHistorySnapshot.docs
-          .map((doc) => LoginHistoryItem.fromFirestore(doc))
-          .toList();
-
-      final userActivity = userActivitySnapshot.docs
-          .map((doc) => UserActivityItem.fromFirestore(doc))
-          .toList();
+      final loginHistory = userLogs?.loginHistory ?? [];
+      final userActivity = userLogs?.userActivity ?? [];
 
       _log.info('Successfully retrieved full profile for uid: $uid',
           service: _serviceName);
@@ -420,14 +392,10 @@ class FirestoreService {
 
   /// Test method to manually create subcollections for debugging
   Future<void> testCreateSubcollections(String uid) async {
-    _log.info('Testing subcollection creation for user: $uid',
-        service: _serviceName);
+    _log.info('Testing logs creation for user: $uid', service: _serviceName);
     try {
-      final userDocRef = _firestore.collection('users').doc(uid);
-
-      // Test login_history creation
-      await userDocRef.collection('login_history').add({
-        'timestamp': FieldValue.serverTimestamp(),
+      // Test login_history creation using new logs system
+      await addLoginHistoryToLogs(uid, {
         'test': true,
         'message': 'Manual test creation',
         'ip_address': '127.0.0.1',
@@ -440,10 +408,9 @@ class FirestoreService {
       _log.info('Test login_history created successfully',
           service: _serviceName);
 
-      // Test user_activity creation
-      await userDocRef.collection('user_activity').add({
+      // Test user_activity creation using new logs system
+      await addUserActivityToLogs(uid, {
         'event_type': 'test_event',
-        'timestamp': FieldValue.serverTimestamp(),
         'test': true,
         'message': 'Manual test creation',
         'ip_address': '127.0.0.1',
@@ -510,6 +477,171 @@ class FirestoreService {
     } catch (e, s) {
       _log.error('Error repairing data for user $uid',
           service: _serviceName, error: e, stackTrace: s);
+    }
+  }
+
+  // ==================== NEW LOG SYSTEM ====================
+
+  /// Adds a login history entry to the separate logs collection.
+  Future<void> addLoginHistoryToLogs(
+      String userId, Map<String, dynamic> loginData) async {
+    try {
+      _log.info('Adding login history to logs collection for user: $userId',
+          service: _serviceName);
+
+      final logsDocRef = _firestore.collection('logs').doc(userId);
+      final logsDoc = await logsDocRef.get();
+
+      // Create new login history item with unique ID
+      final loginHistoryItem = {
+        'id': _firestore.collection('logs').doc().id,
+        'timestamp': Timestamp.now(),
+        ...loginData,
+      };
+
+      if (!logsDoc.exists) {
+        // Create new logs document
+        await logsDocRef.set({
+          'login_history': [loginHistoryItem],
+          'user_activity': [],
+          'last_updated': FieldValue.serverTimestamp(),
+        });
+        _log.info('Created new logs document for user: $userId',
+            service: _serviceName);
+      } else {
+        // Update existing logs document
+        await logsDocRef.update({
+          'login_history': FieldValue.arrayUnion([loginHistoryItem]),
+          'last_updated': FieldValue.serverTimestamp(),
+        });
+        _log.info('Updated logs document for user: $userId',
+            service: _serviceName);
+      }
+    } catch (e, s) {
+      _log.error('Error adding login history to logs for user $userId',
+          service: _serviceName, error: e, stackTrace: s);
+      rethrow;
+    }
+  }
+
+  /// Adds a user activity entry to the separate logs collection.
+  Future<void> addUserActivityToLogs(
+      String userId, Map<String, dynamic> activityData) async {
+    try {
+      _log.info('Adding user activity to logs collection for user: $userId',
+          service: _serviceName);
+
+      final logsDocRef = _firestore.collection('logs').doc(userId);
+      final logsDoc = await logsDocRef.get();
+
+      // Create new user activity item with unique ID
+      final userActivityItem = {
+        'id': _firestore.collection('logs').doc().id,
+        'timestamp': Timestamp.now(),
+        ...activityData,
+      };
+
+      if (!logsDoc.exists) {
+        // Create new logs document
+        await logsDocRef.set({
+          'login_history': [],
+          'user_activity': [userActivityItem],
+          'last_updated': FieldValue.serverTimestamp(),
+        });
+        _log.info('Created new logs document for user: $userId',
+            service: _serviceName);
+      } else {
+        // Update existing logs document
+        await logsDocRef.update({
+          'user_activity': FieldValue.arrayUnion([userActivityItem]),
+          'last_updated': FieldValue.serverTimestamp(),
+        });
+        _log.info('Updated logs document for user: $userId',
+            service: _serviceName);
+      }
+    } catch (e, s) {
+      _log.error('Error adding user activity to logs for user $userId',
+          service: _serviceName, error: e, stackTrace: s);
+      rethrow;
+    }
+  }
+
+  /// Retrieves user logs from the separate logs collection.
+  Future<UserLogs?> getUserLogs(String userId) async {
+    try {
+      _log.info('Getting user logs for uid: $userId', service: _serviceName);
+
+      final logsDocRef = _firestore.collection('logs').doc(userId);
+      final logsDoc = await logsDocRef.get();
+
+      if (!logsDoc.exists) {
+        _log.warning('Logs document not found for uid: $userId',
+            service: _serviceName);
+        return null;
+      }
+
+      final userLogs = UserLogs.fromFirestore(logsDoc);
+      _log.info('Successfully retrieved logs for uid: $userId',
+          service: _serviceName);
+      return userLogs;
+    } catch (e, s) {
+      _log.error('Error getting user logs for $userId',
+          service: _serviceName, error: e, stackTrace: s);
+      return null;
+    }
+  }
+
+  /// Migrates existing sub-collection logs to the new logs collection.
+  /// This is a one-time migration function.
+  Future<void> migrateUserLogsToNewSystem(String userId) async {
+    try {
+      _log.info('Starting migration of logs for user: $userId',
+          service: _serviceName);
+
+      final userDocRef = _firestore.collection('users').doc(userId);
+
+      // Get existing login history
+      final loginHistorySnapshot = await userDocRef
+          .collection('login_history')
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      // Get existing user activity
+      final userActivitySnapshot = await userDocRef
+          .collection('user_activity')
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      // Convert to new format
+      final loginHistory = loginHistorySnapshot.docs
+          .map((doc) => {
+                'id': doc.id,
+                ...doc.data(),
+              })
+          .toList();
+
+      final userActivity = userActivitySnapshot.docs
+          .map((doc) => {
+                'id': doc.id,
+                ...doc.data(),
+              })
+          .toList();
+
+      // Create new logs document
+      final logsDocRef = _firestore.collection('logs').doc(userId);
+      await logsDocRef.set({
+        'login_history': loginHistory,
+        'user_activity': userActivity,
+        'last_updated': FieldValue.serverTimestamp(),
+        'migrated_at': FieldValue.serverTimestamp(),
+      });
+
+      _log.info('Successfully migrated logs for user: $userId',
+          service: _serviceName);
+    } catch (e, s) {
+      _log.error('Error migrating logs for user $userId',
+          service: _serviceName, error: e, stackTrace: s);
+      rethrow;
     }
   }
 }

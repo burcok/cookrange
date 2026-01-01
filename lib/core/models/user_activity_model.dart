@@ -28,4 +28,20 @@ class UserActivityItem {
       fullData: data,
     );
   }
+
+  /// Creates a UserActivityItem from a Map (for array storage).
+  factory UserActivityItem.fromMap(Map<String, dynamic> data) {
+    return UserActivityItem(
+      id: data['id'] as String? ?? '',
+      eventType: data['event_type'] as String? ?? 'unknown',
+      timestamp: data['timestamp'] as Timestamp? ?? Timestamp.now(),
+      ipAddress: data['ip_address'] as String?,
+      fullData: data,
+    );
+  }
+
+  /// Converts UserActivityItem to a Map for storage.
+  Map<String, dynamic> toMap() {
+    return fullData;
+  }
 }
