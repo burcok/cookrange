@@ -131,7 +131,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       String msg;
-      print("Auth error code: ${e.code}");
+      debugPrint("Auth error code: ${e.code}");
 
       switch (e.code) {
         case 'email-already-in-use':
@@ -184,7 +184,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       );
     } catch (e) {
-      print("Unexpected error during registration: $e");
+      debugPrint("Unexpected error during registration: $e");
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -268,7 +268,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (mounted) {
           if (onboardingCompleted) {
             Navigator.pushNamedAndRemoveUntil(
-                context, '/home', (route) => false);
+                context, '/main', (route) => false);
           } else {
             Navigator.pushNamedAndRemoveUntil(
                 context, '/onboarding', (route) => false);
@@ -278,7 +278,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on Exception catch (e) {
       if (!mounted) return;
 
-      print("Error during registration with Google: $e");
+      debugPrint("Error during registration with Google: $e");
       final msg =
           AppLocalizations.of(context).translate('auth.google_register_error');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -302,7 +302,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       );
     } catch (e) {
-      print("Unexpected error during registration with Google: $e");
+      debugPrint("Unexpected error during registration with Google: $e");
     } finally {
       if (mounted) {
         setState(() {
@@ -390,7 +390,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                          color: Colors.grey.withOpacity(0.5), width: 2.0),
+                          color: Colors.grey.withValues(alpha: 0.5),
+                          width: 2.0),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -424,7 +425,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                          color: Colors.grey.withOpacity(0.5), width: 2.0),
+                          color: Colors.grey.withValues(alpha: 0.5),
+                          width: 2.0),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -470,7 +472,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                          color: Colors.grey.withOpacity(0.5), width: 2.0),
+                          color: Colors.grey.withValues(alpha: 0.5),
+                          width: 2.0),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -587,7 +590,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     Expanded(
                         child: Divider(
-                            color: authSecondaryTextColor.withOpacity(0.5))),
+                            color:
+                                authSecondaryTextColor.withValues(alpha: 0.5))),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
                       child: Text(
@@ -597,7 +601,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     Expanded(
                         child: Divider(
-                            color: authSecondaryTextColor.withOpacity(0.5))),
+                            color:
+                                authSecondaryTextColor.withValues(alpha: 0.5))),
                   ],
                 ),
                 const SizedBox(height: 24),

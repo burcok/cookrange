@@ -9,6 +9,7 @@ import '../../screens/home/home.dart';
 import '../../screens/auth/verify_email.dart';
 import '../../screens/onboarding/onboarding_screen.dart';
 import '../../screens/onboarding/priority_onboarding_screen.dart';
+import '../../screens/main_scaffold.dart';
 import '../widgets/error_fallback_widget.dart';
 
 /// Service to manage route configuration and navigation
@@ -26,6 +27,7 @@ class RouteConfigurationService {
       AppRoutes.register: (context) =>
           const RouteGuard(child: RegisterScreen()),
       AppRoutes.home: (context) => const RouteGuard(child: HomeScreen()),
+      AppRoutes.main: (context) => const MainScaffold(),
       AppRoutes.verifyEmail: (context) =>
           const RouteGuard(child: VerifyEmailScreen()),
       AppRoutes.onboarding: (context) =>

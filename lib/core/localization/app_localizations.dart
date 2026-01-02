@@ -9,8 +9,15 @@ class AppLocalizations {
 
   AppLocalizations(this.locale);
 
+  static AppLocalizations? maybeOf(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations);
+  }
+
   static AppLocalizations of(BuildContext context) {
-    return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
+    final instance = maybeOf(context);
+    assert(instance != null,
+        'No AppLocalizations found in context. Ensure AppLocalizations.delegate is added to localizationsDelegates.');
+    return instance!;
   }
 
   static const LocalizationsDelegate<AppLocalizations> delegate =
@@ -31,24 +38,24 @@ class AppLocalizations {
   Future<bool> load() async {
     try {
       // Debug için mevcut locale bilgisini yazdır
-      print('Current locale: ${locale.languageCode}');
+      debugPrint('Current locale: ${locale.languageCode}');
 
       // Dil dosyası yolunu oluştur
       final String languageCode = locale.languageCode == 'tr' ? 'tr' : 'en';
       final String jsonPath =
           'lib/core/localization/translations/$languageCode.json';
-      print('Loading translations from: $jsonPath');
+      debugPrint('Loading translations from: $jsonPath');
 
       // Dosyayı yükle
       String jsonString = await rootBundle.loadString(jsonPath);
-      print('Successfully loaded $languageCode translations');
+      debugPrint('Successfully loaded $languageCode translations');
 
       _localizedStrings = json.decode(jsonString);
       return true;
     } catch (e, stack) {
-      print('Error loading translations: $e');
-      print('Stack trace: $stack');
-      print('Falling back to empty translations');
+      debugPrint('Error loading translations: $e');
+      debugPrint('Stack trace: $stack');
+      debugPrint('Falling back to empty translations');
       _localizedStrings = {};
       return false;
     }
@@ -63,7 +70,7 @@ class AppLocalizations {
         if (value is Map && value.containsKey(k)) {
           value = value[k];
         } else {
-          print(
+          debugPrint(
               'Translation not found for key: $key in ${locale.languageCode}');
           return key;
         }
@@ -80,12 +87,12 @@ class AppLocalizations {
       } else if (value is List) {
         return value.join(',');
       } else {
-        print(
+        debugPrint(
             'Translation value is not a string or array for key: $key in ${locale.languageCode}');
         return key;
       }
     } catch (e) {
-      print('Error translating key $key in ${locale.languageCode}: $e');
+      debugPrint('Error translating key $key in ${locale.languageCode}: $e');
       return key;
     }
   }
@@ -99,7 +106,7 @@ class AppLocalizations {
         if (value is Map && value.containsKey(k)) {
           value = value[k];
         } else {
-          print('Translation not found for key: $key');
+          debugPrint('Translation not found for key: $key');
           return [];
         }
       }
@@ -107,11 +114,11 @@ class AppLocalizations {
       if (value is List) {
         return value.map((e) => e.toString()).toList();
       } else {
-        print('Translation value is not an array for key: $key');
+        debugPrint('Translation value is not an array for key: $key');
         return [];
       }
     } catch (e) {
-      print('Error translating array key $key: $e');
+      debugPrint('Error translating array key $key: $e');
       return [];
     }
   }
@@ -123,17 +130,17 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) {
-    print('Checking if locale is supported: ${locale.languageCode}');
+    debugPrint('Checking if locale is supported: ${locale.languageCode}');
     return ['en', 'tr'].contains(locale.languageCode);
   }
 
   @override
   Future<AppLocalizations> load(Locale locale) async {
-    print('Loading delegate for locale: ${locale.languageCode}');
+    debugPrint('Loading delegate for locale: ${locale.languageCode}');
     AppLocalizations localizations = AppLocalizations(locale);
     final success = await localizations.load();
     if (!success) {
-      print(
+      debugPrint(
           'Failed to load translations for ${locale.languageCode}, falling back to English');
       // Fallback to English if loading fails
       localizations = AppLocalizations(const Locale('en'));

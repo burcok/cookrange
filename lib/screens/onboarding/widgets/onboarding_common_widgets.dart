@@ -408,7 +408,8 @@ class OnboardingHeader extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: isActive
                           ? colorScheme.primaryColorCustom
-                          : colorScheme.onboardingTitleColor.withOpacity(0.3),
+                          : colorScheme.onboardingTitleColor
+                              .withValues(alpha: 0.3),
                       border: isCurrent
                           ? Border.all(
                               color: colorScheme.primaryColorCustom, width: 2)

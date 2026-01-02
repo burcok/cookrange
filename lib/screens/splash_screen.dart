@@ -1,12 +1,11 @@
 import 'package:cookrange/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
 import 'dart:math';
-import '../core/services/analytics_service.dart';
+
 import '../core/services/crashlytics_service.dart';
 import '../core/services/device_info_service.dart';
 import '../core/services/app_initialization_service.dart';
@@ -283,10 +282,12 @@ class _SplashScreenState extends State<SplashScreen>
 
       // Use performance service to execute operations in parallel
       await PerformanceService.executeInParallel([
-        _initializeEnvironment,
-        _initializePreferences,
         _preloadResources,
-      ], eagerError: false);
+      ], eagerError: false)
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        debugPrint('Splash initialization timed out, proceeding anyway');
+        return [];
+      });
 
       // This part depends on context, so it runs after initializations
       if (!mounted) return;
@@ -332,14 +333,6 @@ class _SplashScreenState extends State<SplashScreen>
         );
       }
     }
-  }
-
-  Future<void> _initializeEnvironment() async {
-    await dotenv.load(fileName: ".env");
-  }
-
-  Future<void> _initializePreferences() async {
-    await SharedPreferences.getInstance();
   }
 
   Future<void> _preloadResources() async {
@@ -436,6 +429,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Check if user is verified in Firestore (user_verified field)
     if (userModel?.userVerified == null) {
+      if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.verifyEmail,
@@ -444,8 +438,10 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
+    if (!mounted) return;
+
     if (_isOnboardingDataComplete(userModel)) {
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+      Navigator.pushReplacementNamed(context, AppRoutes.main);
     } else {
       if (userModel?.onboardingData != null) {
         Provider.of<OnboardingProvider>(context, listen: false)
@@ -853,7 +849,7 @@ class _SplashScreenState extends State<SplashScreen>
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.7),
+          color: Colors.black.withValues(alpha: 0.7),
           borderRadius: BorderRadius.circular(8),
         ),
         child: DefaultTextStyle(

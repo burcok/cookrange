@@ -108,11 +108,15 @@ class ErrorApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
+      locale: const Locale('en'), // Default to English for error screen
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: ErrorFallbackWidget(
         error: error,
-        onRetry: () {
-          // Restart the app
-          runApp(MyApp());
+        onRetry: () async {
+          // Properly re-initialize before restarting
+          await AppInitializationService().initialize();
+          runApp(const MyApp());
         },
       ),
     );

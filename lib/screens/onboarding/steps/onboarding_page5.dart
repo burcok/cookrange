@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
@@ -333,11 +332,13 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color:
-              isSelected ? primaryColor.withOpacity(0.2) : Colors.transparent,
+          color: isSelected
+              ? primaryColor.withValues(alpha: 0.2)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? primaryColor : Colors.grey.withOpacity(0.5),
+            color:
+                isSelected ? primaryColor : Colors.grey.withValues(alpha: 0.5),
             width: 2,
           ),
         ),
@@ -393,7 +394,6 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
   Widget _buildIrregularScheduleEditor() {
     final localizations = AppLocalizations.of(context);
     final mealSchedule = context.watch<OnboardingProvider>().mealSchedule ?? {};
-    final colorScheme = Theme.of(context).colorScheme;
 
     final Map<String, IconData> mealIcons = {
       'breakfast': Icons.restaurant_outlined,
@@ -458,7 +458,7 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
             decoration: BoxDecoration(
               color: Colors.transparent, // White card background
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.withOpacity(0.5)),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -475,7 +475,7 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                 const SizedBox(height: 24),
                 _buildWeekSelector(rotationWeeks),
                 const SizedBox(height: 24),
-                Divider(color: Colors.grey.withOpacity(0.5)),
+                Divider(color: Colors.grey.withValues(alpha: 0.5)),
                 for (int i = 0; i < rotationWeeks; i++)
                   _buildWeekScheduleEditor(i + 1,
                       isLast: i == rotationWeeks - 1),
@@ -492,7 +492,7 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: Colors.grey.withOpacity(0.5)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
       ),
       child: Row(
         children: List.generate(3, (index) {
@@ -613,7 +613,7 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.withOpacity(0.5))),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.5))),
       child: Row(
         children: [
           Icon(
@@ -651,7 +651,7 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
               decoration: BoxDecoration(
                 color: Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.withOpacity(0.5)),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
               ),
               child: Text(
                 currentTime,
@@ -754,7 +754,8 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                     width: 2,
                     color: isFirst
                         ? Colors.transparent
-                        : colorScheme.onboardingSubtitleColor.withOpacity(0.3),
+                        : colorScheme.onboardingSubtitleColor
+                            .withValues(alpha: 0.3),
                   ),
                 ),
                 Image.asset(
@@ -768,7 +769,8 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                     width: 2,
                     color: isLast
                         ? Colors.transparent
-                        : colorScheme.onboardingSubtitleColor.withOpacity(0.3),
+                        : colorScheme.onboardingSubtitleColor
+                            .withValues(alpha: 0.3),
                   ),
                 ),
               ],

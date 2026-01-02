@@ -1,10 +1,10 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'storage_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -14,6 +14,8 @@ import 'analytics_service.dart';
 import 'auth_service.dart';
 import 'global_error_handler.dart';
 import 'log_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'ai/ai_service.dart';
 
 /// Comprehensive app initialization service that handles all startup tasks
 /// with proper error handling, fallbacks, and user feedback.
@@ -30,6 +32,7 @@ class AppInitializationService {
   bool _isInitializing = false;
   String? _initializationError;
   Map<String, dynamic> _initializationResults = {};
+  Completer<InitializationResult>? _initCompleter;
 
   // Getters
   bool get isInitialized => _isInitialized;
@@ -44,16 +47,11 @@ class AppInitializationService {
     }
 
     if (_isInitializing) {
-      // Wait for ongoing initialization
-      while (_isInitializing) {
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
-      return _initializationError != null
-          ? InitializationResult.failure(_initializationError!)
-          : InitializationResult.success(_initializationResults);
+      return _initCompleter!.future;
     }
 
     _isInitializing = true;
+    _initCompleter = Completer<InitializationResult>();
     _initializationError = null;
     _initializationResults.clear();
 
@@ -102,6 +100,10 @@ class AppInitializationService {
       return InitializationResult.failure(e.toString());
     } finally {
       _isInitializing = false;
+      final result = _initializationError != null
+          ? InitializationResult.failure(_initializationError!)
+          : InitializationResult.success(_initializationResults);
+      _initCompleter?.complete(result);
     }
   }
 
@@ -112,6 +114,13 @@ class AppInitializationService {
 
       // Configure debug vs release mode
       _configureDebugMode();
+
+      // Load environment variables (Fixed path from assets/.env to .env)
+      await dotenv.load(fileName: ".env");
+
+      // Initialize AI Service
+      final apiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
+      AIService().initialize(apiKey: apiKey);
 
       _log.info('Core Flutter services initialized', service: _serviceName);
       _initializationResults['core'] = true;
@@ -179,15 +188,8 @@ class AppInitializationService {
   /// Initialize local storage with fallback mechanisms
   Future<void> _initializeLocalStorage() async {
     try {
-      // Initialize Hive
-      final appDocumentDir = await getApplicationDocumentsDirectory();
-      await Hive.initFlutter(appDocumentDir.path);
-
-      // Register adapters (when available)
-      await _registerHiveAdapters();
-
-      // Open boxes with error handling
-      await _openHiveBoxes();
+      // Initialize StorageService (Hive)
+      await StorageService().init();
 
       // Initialize SharedPreferences
       await SharedPreferences.getInstance();
@@ -201,64 +203,9 @@ class AppInitializationService {
       _initializationResults['local_storage'] = false;
       _initializationResults['local_storage_error'] = e.toString();
 
-      // Don't throw - app can work with in-memory storage
-      _log.warning(
-          'App will use in-memory storage due to local storage failure',
+      // Don't throw - app can work with in-memory storage (if handled by StorageService fallback)
+      _log.warning('App will use limited storage due to local storage failure',
           service: _serviceName);
-    }
-  }
-
-  /// Register Hive adapters (placeholder for future models)
-  Future<void> _registerHiveAdapters() async {
-    try {
-      // TODO: Register adapters when models are created
-      // Example:
-      // Hive.registerAdapter(UserAdapter());
-      // Hive.registerAdapter(SettingsAdapter());
-
-      _log.info('Hive adapters registered', service: _serviceName);
-    } catch (e) {
-      _log.warning('Failed to register some Hive adapters',
-          service: _serviceName, error: e);
-    }
-  }
-
-  /// Open Hive boxes with safe error handling
-  Future<void> _openHiveBoxes() async {
-    // Only open generic boxes here - specific typed boxes should be opened by their respective services
-    final boxNames = ['appBox', 'userBox', 'settingsBox'];
-    final results = await Future.wait(
-      boxNames.map((name) => _openBoxSafe(name)),
-      eagerError: false,
-    );
-
-    int successCount = 0;
-    for (int i = 0; i < boxNames.length; i++) {
-      if (results[i] != null) {
-        successCount++;
-        _log.info('Successfully opened Hive box: ${boxNames[i]}',
-            service: _serviceName);
-      } else {
-        _log.warning('Failed to open Hive box: ${boxNames[i]}',
-            service: _serviceName);
-      }
-    }
-
-    _initializationResults['hive_boxes_opened'] = successCount;
-    _initializationResults['hive_boxes_total'] = boxNames.length;
-  }
-
-  /// Safely open a Hive box with fallback
-  Future<Box?> _openBoxSafe(String name) async {
-    try {
-      if (Hive.isBoxOpen(name)) {
-        return Hive.box(name);
-      }
-      return await Hive.openBox(name);
-    } catch (e) {
-      _log.warning('Failed to open Hive box: $name',
-          service: _serviceName, error: e);
-      return null;
     }
   }
 

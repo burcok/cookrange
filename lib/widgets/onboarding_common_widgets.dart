@@ -10,7 +10,6 @@ class OnboardingBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final appColors = Theme.of(context).extension<AppColors>();
     if (appColors == null) return const SizedBox.shrink();
 
@@ -80,13 +79,13 @@ class _AnimatedStepIndicatorState extends State<AnimatedStepIndicator>
     final beginProgress = previousProgress.clamp(0.0, 1.0);
     final endProgress = currentProgress.clamp(0.0, 1.0);
 
-    _progressAnimation = Tween<double>(begin: beginProgress, end: endProgress)
-        .animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeInOut,
-          ),
-        );
+    _progressAnimation =
+        Tween<double>(begin: beginProgress, end: endProgress).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
 
     _animationController.forward(from: 0);
   }
@@ -313,8 +312,8 @@ class OnboardingOption extends StatelessWidget {
           borderRadius: BorderRadius.circular(99),
           border: Border.all(
             color: isSelected
-                ? primaryColor.withOpacity(0.2)
-                : Colors.grey.withOpacity(0.5),
+                ? primaryColor.withValues(alpha: 0.2)
+                : Colors.grey.withValues(alpha: 0.5),
             width: 1,
           ),
         ),
@@ -382,8 +381,8 @@ class OnboardingContinueButton extends StatelessWidget {
               ),
               elevation: 0,
               shadowColor: Colors.transparent,
-              disabledBackgroundColor: colorScheme.primaryColorCustom
-                  .withOpacity(0.5),
+              disabledBackgroundColor:
+                  colorScheme.primaryColorCustom.withValues(alpha: 0.5),
             ),
             child: isLoading
                 ? const SizedBox(
@@ -482,7 +481,7 @@ class OnboardingHeader extends StatelessWidget {
                     width: double.infinity,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.2),
+                      color: primaryColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
@@ -557,13 +556,13 @@ class OnboardingTextInputSection extends StatelessWidget {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: colorScheme.onboardingTitleColor.withOpacity(0.1),
+                color: colorScheme.onboardingTitleColor.withValues(alpha: 0.1),
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: colorScheme.onboardingTitleColor.withOpacity(0.1),
+                color: colorScheme.onboardingTitleColor.withValues(alpha: 0.1),
               ),
             ),
           ),

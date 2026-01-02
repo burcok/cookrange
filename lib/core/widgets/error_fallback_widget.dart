@@ -35,7 +35,7 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.maybeOf(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -50,18 +50,21 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.error.withOpacity(0.1),
+                  color: theme.colorScheme.error.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: widget.customIcon ?? Icon(
-                  widget.isOfflineMode ? Icons.wifi_off : Icons.error_outline,
-                  size: 60,
-                  color: theme.colorScheme.error,
-                ),
+                child: widget.customIcon ??
+                    Icon(
+                      widget.isOfflineMode
+                          ? Icons.wifi_off
+                          : Icons.error_outline,
+                      size: 60,
+                      color: theme.colorScheme.error,
+                    ),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Error Title
               Text(
                 widget.customTitle ?? _getErrorTitle(localizations),
@@ -71,27 +74,27 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Error Message
               Text(
                 widget.customMessage ?? _getErrorMessage(localizations),
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
-              
+
               if (widget.error != null && kDebugMode) ...[
                 const SizedBox(height: 24),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.error.withOpacity(0.1),
+                    color: theme.colorScheme.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: theme.colorScheme.error.withOpacity(0.3),
+                      color: theme.colorScheme.error.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Column(
@@ -116,9 +119,9 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
                   ),
                 ),
               ],
-              
+
               const SizedBox(height: 32),
-              
+
               // Action Buttons
               if (widget.showRetryButton) ...[
                 SizedBox(
@@ -139,8 +142,10 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
                         : const Icon(Icons.refresh),
                     label: Text(
                       _isRetrying
-                          ? localizations.translate('common.retrying')
-                          : localizations.translate('common.retry'),
+                          ? (localizations?.translate('common.retrying') ??
+                              'Retrying...')
+                          : (localizations?.translate('common.retry') ??
+                              'Retry'),
                     ),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -150,10 +155,9 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
                     ),
                   ),
                 ),
-                
                 const SizedBox(height: 16),
               ],
-              
+
               // Offline Mode Button
               if (widget.isOfflineMode)
                 SizedBox(
@@ -161,7 +165,9 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
                   child: OutlinedButton.icon(
                     onPressed: _handleOfflineMode,
                     icon: const Icon(Icons.offline_bolt),
-                    label: Text(localizations.translate('common.continue_offline')),
+                    label: Text(
+                        localizations?.translate('common.continue_offline') ??
+                            'Continue Offline'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -177,18 +183,21 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
     );
   }
 
-  String _getErrorTitle(AppLocalizations localizations) {
+  String _getErrorTitle(AppLocalizations? localizations) {
     if (widget.isOfflineMode) {
-      return localizations.translate('error.offline_title');
+      return localizations?.translate('error.offline_title') ?? 'Offline';
     }
-    return localizations.translate('error.initialization_failed_title');
+    return localizations?.translate('error.initialization_failed_title') ??
+        'Initialization Failed';
   }
 
-  String _getErrorMessage(AppLocalizations localizations) {
+  String _getErrorMessage(AppLocalizations? localizations) {
     if (widget.isOfflineMode) {
-      return localizations.translate('error.offline_message');
+      return localizations?.translate('error.offline_message') ??
+          'Please check your internet connection.';
     }
-    return localizations.translate('error.initialization_failed_message');
+    return localizations?.translate('error.initialization_failed_message') ??
+        'An error occurred during app startup.';
   }
 
   Future<void> _handleRetry() async {
@@ -201,10 +210,11 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
     try {
       // Log retry attempt
       await CrashlyticsService().log('User initiated retry from error screen');
-      
+
       // Call the retry callback
       if (widget.onRetry != null) {
-        await Future.delayed(const Duration(milliseconds: 500)); // Small delay for UX
+        await Future.delayed(
+            const Duration(milliseconds: 500)); // Small delay for UX
         widget.onRetry!();
       }
     } catch (e) {
@@ -237,7 +247,7 @@ class UnknownRouteScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.maybeOf(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -252,7 +262,7 @@ class UnknownRouteScreen extends StatelessWidget {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -261,9 +271,9 @@ class UnknownRouteScreen extends StatelessWidget {
                   color: theme.colorScheme.primary,
                 ),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // 404 Title
               Text(
                 '404',
@@ -272,31 +282,33 @@ class UnknownRouteScreen extends StatelessWidget {
                   color: theme.colorScheme.primary,
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Page Not Found Message
               Text(
-                localizations.translate('error.page_not_found'),
+                localizations?.translate('error.page_not_found') ??
+                    'Page Not Found',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.onSurface,
                 ),
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               Text(
-                localizations.translate('error.page_not_found_message'),
+                localizations?.translate('error.page_not_found_message') ??
+                    "The page you're looking for doesn't exist.",
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Go Home Button
               SizedBox(
                 width: double.infinity,
@@ -308,7 +320,8 @@ class UnknownRouteScreen extends StatelessWidget {
                     );
                   },
                   icon: const Icon(Icons.home),
-                  label: Text(localizations.translate('common.go_home')),
+                  label: Text(
+                      localizations?.translate('common.go_home') ?? 'Go Home'),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(

@@ -2,16 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:isolate';
-import 'log_service.dart';
 
 /// Service to manage performance optimizations and async operations
 class PerformanceService {
   static final PerformanceService _instance = PerformanceService._internal();
   factory PerformanceService() => _instance;
   PerformanceService._internal();
-
-  final LogService _log = LogService();
-  final String _serviceName = 'PerformanceService';
 
   final Map<String, Timer> _timers = {};
   final Map<String, Completer> _completers = {};
@@ -24,7 +20,7 @@ class PerformanceService {
   }) async {
     try {
       final futures = operations.map((op) => op()).toList();
-      
+
       if (timeout != null) {
         return await Future.wait(
           futures,
@@ -52,36 +48,38 @@ class PerformanceService {
     bool Function(Object)? shouldRetry,
   }) async {
     int attempts = 0;
-    
+
     while (attempts < maxRetries) {
       try {
         return await operation();
       } catch (e) {
         attempts++;
-        
+
         if (shouldRetry != null && !shouldRetry(e)) {
           rethrow;
         }
-        
+
         if (attempts >= maxRetries) {
           rethrow;
         }
-        
+
         await Future.delayed(delay * attempts);
       }
     }
-    
+
     throw Exception('Max retries exceeded');
   }
 
   /// Debounce function calls
-  void debounce(String key, VoidCallback callback, {Duration delay = const Duration(milliseconds: 300)}) {
+  void debounce(String key, VoidCallback callback,
+      {Duration delay = const Duration(milliseconds: 300)}) {
     _timers[key]?.cancel();
     _timers[key] = Timer(delay, callback);
   }
 
   /// Throttle function calls
-  void throttle(String key, VoidCallback callback, {Duration delay = const Duration(milliseconds: 100)}) {
+  void throttle(String key, VoidCallback callback,
+      {Duration delay = const Duration(milliseconds: 100)}) {
     if (!_timers.containsKey(key)) {
       _timers[key] = Timer(delay, () {
         callback();
@@ -91,7 +89,8 @@ class PerformanceService {
   }
 
   /// Create a singleton operation that prevents multiple simultaneous executions
-  Future<T> singletonOperation<T>(String key, Future<T> Function() operation) async {
+  Future<T> singletonOperation<T>(
+      String key, Future<T> Function() operation) async {
     if (_completers.containsKey(key)) {
       return await _completers[key]!.future as T;
     }
@@ -128,20 +127,21 @@ class PerformanceService {
   }
 
   /// Optimize list operations
-  static List<T> optimizeList<T>(List<T> list, {
+  static List<T> optimizeList<T>(
+    List<T> list, {
     int? maxLength,
     bool removeDuplicates = false,
   }) {
     var optimizedList = List<T>.from(list);
-    
+
     if (maxLength != null && optimizedList.length > maxLength) {
       optimizedList = optimizedList.take(maxLength).toList();
     }
-    
+
     if (removeDuplicates) {
       optimizedList = optimizedList.toSet().toList();
     }
-    
+
     return optimizedList;
   }
 
@@ -165,15 +165,15 @@ class PerformanceService {
     void Function(Duration)? onComplete,
   }) async {
     final stopwatch = Stopwatch()..start();
-    
+
     try {
       final result = await operation();
       stopwatch.stop();
-      
+
       if (kDebugMode && operationName != null) {
         debugPrint('$operationName took ${stopwatch.elapsedMilliseconds}ms');
       }
-      
+
       onComplete?.call(stopwatch.elapsed);
       return result;
     } catch (e) {
@@ -197,16 +197,16 @@ class PerformanceService {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return loading ?? const Center(child: CircularProgressIndicator());
         }
-        
+
         if (snapshot.hasError) {
-          return error?.call(context, snapshot.error!) ?? 
-                 Center(child: Text('Error: ${snapshot.error}'));
+          return error?.call(context, snapshot.error!) ??
+              Center(child: Text('Error: ${snapshot.error}'));
         }
-        
+
         if (snapshot.hasData) {
           return builder(context, snapshot.data!);
         }
-        
+
         return const SizedBox.shrink();
       },
     );
@@ -224,19 +224,20 @@ class PerformanceService {
       stream: stream,
       initialData: initialData,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return loading ?? const Center(child: CircularProgressIndicator());
         }
-        
+
         if (snapshot.hasError) {
-          return error?.call(context, snapshot.error!) ?? 
-                 Center(child: Text('Error: ${snapshot.error}'));
+          return error?.call(context, snapshot.error!) ??
+              Center(child: Text('Error: ${snapshot.error}'));
         }
-        
+
         if (snapshot.hasData) {
           return builder(context, snapshot.data!);
         }
-        
+
         return const SizedBox.shrink();
       },
     );
@@ -248,7 +249,7 @@ class PerformanceService {
       timer.cancel();
     }
     _timers.clear();
-    
+
     for (final completer in _completers.values) {
       if (!completer.isCompleted) {
         completer.completeError('Service disposed');

@@ -135,8 +135,8 @@ class AuthService {
       _log.error('Unexpected error during sign in for $email',
           service: _serviceName, error: e, stackTrace: s);
       if (e is TypeError) {
-        print("Type error details: ${e.toString()}");
-        print("Type error stack trace: ${e.stackTrace}");
+        _log.error("Type error details: ${e.toString()}",
+            service: _serviceName, error: e, stackTrace: s);
         throw AuthException('type-error');
       }
       throw AuthException('error-unknown');
@@ -168,14 +168,17 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       _log.error('FirebaseAuthException during registration for $email',
           service: _serviceName, error: e);
-      print("Firebase Auth Error during register: ${e.code} - ${e.message}");
+      _log.error(
+          "Firebase Auth Error during register: ${e.code} - ${e.message}",
+          service: _serviceName);
       throw AuthException(e.code);
     } catch (e, s) {
       _log.error('Unexpected error during registration for $email',
           service: _serviceName, error: e, stackTrace: s);
-      print("Unexpected error during register: $e");
+      _log.error("Unexpected error during register: $e", service: _serviceName);
       if (e is TypeError) {
-        print("Type error details: ${e.toString()}");
+        _log.error("Type error details: ${e.toString()}",
+            service: _serviceName, error: e, stackTrace: s);
       }
       throw AuthException('error-unknown');
     }
@@ -277,12 +280,13 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       _log.error('FirebaseAuthException during Google Sign-In',
           service: _serviceName, error: e);
-      print("Sign in with google error: ${e.code}");
+      _log.error("Sign in with google error: ${e.code}", service: _serviceName);
       throw AuthException(e.code);
     } catch (e, s) {
       _log.error('Unexpected error during Google Sign-In',
           service: _serviceName, error: e, stackTrace: s);
-      print("Unexpected error during Google sign in: $e");
+      _log.error("Unexpected error during Google sign in: $e",
+          service: _serviceName);
       throw AuthException('error-unknown');
     }
   }

@@ -34,7 +34,10 @@ if (envFile.exists()) {
 keystoreProperties.each { key, value ->
     if (value.startsWith('${') && value.endsWith('}')) {
         def envKey = value.substring(2, value.length() - 1)
-        keystoreProperties[key] = envProperties.getProperty(envKey)
+        def envVal = envProperties.getProperty(envKey)
+        if (envVal != null) {
+            keystoreProperties[key] = envVal
+        }
     }
 }
 
@@ -55,7 +58,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.cookrange_android.app"
-    compileSdkVersion flutter.compileSdkVersion
+    compileSdkVersion 34
     ndkVersion "27.0.12077973"  // Updated NDK version
 
     compileOptions {

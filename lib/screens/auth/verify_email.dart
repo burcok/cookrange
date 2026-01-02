@@ -156,7 +156,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Poppins',
-                  color: colorScheme.onBackground,
+                  color: colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 16),

@@ -89,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
             return;
           }
         } catch (e) {
-          print("Error sending email verification: $e");
+          debugPrint("Error sending email verification: $e");
         }
 
         // Check user's verification status from Firestore
@@ -112,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           if (onboardingCompleted) {
             Navigator.pushNamedAndRemoveUntil(
-                context, '/home', (route) => false);
+                context, '/main', (route) => false);
           } else {
             Navigator.pushNamedAndRemoveUntil(
                 context, '/onboarding', (route) => false);
@@ -178,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      print("Unexpected error during login: $e");
+      debugPrint("Unexpected error during login: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -249,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           if (onboardingCompleted) {
             Navigator.pushNamedAndRemoveUntil(
-                context, '/home', (route) => false);
+                context, '/main', (route) => false);
           } else {
             Navigator.pushNamedAndRemoveUntil(
                 context, '/onboarding', (route) => false);
@@ -259,7 +259,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } on AuthException catch (e) {
       if (!mounted) return;
 
-      print("Error during login with Google: $e");
+      debugPrint("Error during login with Google: $e");
       String msg;
       switch (e.code) {
         case 'user-not-found':
@@ -312,7 +312,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      print("Unexpected error during login: $e");
+      debugPrint("Unexpected error during login: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -402,7 +402,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                          color: Colors.grey.withOpacity(0.5), width: 2.0),
+                          color: Colors.grey.withValues(alpha: 0.5),
+                          width: 2.0),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -436,7 +437,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                          color: Colors.grey.withOpacity(0.5), width: 2.0),
+                          color: Colors.grey.withValues(alpha: 0.5),
+                          width: 2.0),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -497,7 +499,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Expanded(
                         child: Divider(
-                            color: authSecondaryTextColor.withOpacity(0.5))),
+                            color:
+                                authSecondaryTextColor.withValues(alpha: 0.5))),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
                       child: Text(
@@ -507,7 +510,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     Expanded(
                         child: Divider(
-                            color: authSecondaryTextColor.withOpacity(0.5))),
+                            color:
+                                authSecondaryTextColor.withValues(alpha: 0.5))),
                   ],
                 ),
                 const SizedBox(height: 24),

@@ -7,6 +7,8 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../widgets/onboarding_common_widgets.dart';
 import '../../../core/providers/onboarding_provider.dart';
+import '../../../core/services/ai/ai_service.dart';
+import '../../../core/services/ai/prompt_service.dart';
 
 class OnboardingPage3 extends StatefulWidget {
   final int step;
@@ -269,7 +271,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
 
   List<OptionData> _filteredIngredients = [];
   List<String> _selectedIngredientValues = [];
-  List<OptionData> _customIngredients = [];
+  final List<OptionData> _customIngredients = [];
   late int _remainingCustomSlots;
   bool _showCustomAddOption = false;
   String _currentSearchQuery = '';
@@ -488,26 +490,27 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
 
   Future<OptionData?> _callAIAPI(String query) async {
     try {
-      // TODO: Replace with actual AI API endpoint
-      // For now, simulate API call with delay
-      await Future.delayed(const Duration(seconds: 1));
+      final prompt = PromptService().validateIngredientPrompt(query);
 
-      // Simulate AI response
-      // In real implementation, this would be an HTTP request to your AI service
-      final aiResponse = {
-        'label': query,
-        'icon': 'ai-selected',
-        'value': query.toLowerCase().replaceAll(' ', '_'),
-      };
+      final jsonResponse = await AIService().generateJson(
+        prompt: prompt,
+        jsonStructure: '''
+{
+  "label": "Display Name (Capitalized)",
+  "value": "normalized_snake_case_value",
+  "icon": "one of: vegetable, fruit, protein, dairy, grain, nut, other",
+  "calories": number
+}
+''',
+      );
 
-      // Convert AI response to OptionData
       return OptionData(
-        label: aiResponse['label'] as String,
-        icon: _getIconFromAIResponse(aiResponse['icon'] as String),
-        value: aiResponse['value'] as String,
+        label: jsonResponse['label'] as String,
+        icon: _getIconFromAIResponse(jsonResponse['icon'] as String),
+        value: jsonResponse['value'] as String,
       );
     } catch (e) {
-      print('AI API call failed: $e');
+      // print('AI API call failed: $e');
       return null;
     }
   }
@@ -680,7 +683,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                         color: Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Colors.grey.withOpacity(0.5),
+                          color: Colors.grey.withValues(alpha: 0.5),
                           width: 1,
                         ),
                       ),
@@ -965,7 +968,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(99),
           border: Border.all(
-            color: Colors.grey.withOpacity(0.5),
+            color: Colors.grey.withValues(alpha: 0.5),
             width: 1,
           ),
         ),
@@ -1004,7 +1007,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
           color: colorScheme.onboardingOptionBgColor,
           borderRadius: BorderRadius.circular(99),
           border: Border.all(
-            color: colorScheme.primaryColorCustom.withOpacity(0.5),
+            color: colorScheme.primaryColorCustom.withValues(alpha: 0.5),
             width: 1,
           ),
         ),
@@ -1032,7 +1035,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
               child: Icon(
                 Icons.remove_circle_outline,
                 size: 16,
-                color: colorScheme.primaryColorCustom.withOpacity(0.7),
+                color: colorScheme.primaryColorCustom.withValues(alpha: 0.7),
               ),
             ),
           ],

@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'crashlytics_service.dart';
 import 'log_service.dart';
 
 /// Global error handler for the application
@@ -34,16 +33,16 @@ class GlobalErrorHandler {
       _isInitialized = true;
       _log.info('Global error handler initialized', service: _serviceName);
     } catch (e) {
-      _log.error('Failed to initialize global error handler', 
+      _log.error('Failed to initialize global error handler',
           service: _serviceName, error: e);
     }
   }
 
   /// Handle Flutter framework errors
   void _handleFlutterError(FlutterErrorDetails details) {
-    _log.error('Flutter Error: ${details.exception}', 
-        service: _serviceName, 
-        error: details.exception, 
+    _log.error('Flutter Error: ${details.exception}',
+        service: _serviceName,
+        error: details.exception,
         stackTrace: details.stack);
 
     // Record to Crashlytics
@@ -57,10 +56,8 @@ class GlobalErrorHandler {
 
   /// Handle platform errors
   void _handlePlatformError(Object error, StackTrace stack) {
-    _log.error('Platform Error: $error', 
-        service: _serviceName, 
-        error: error, 
-        stackTrace: stack);
+    _log.error('Platform Error: $error',
+        service: _serviceName, error: error, stackTrace: stack);
 
     // Record to Crashlytics
     FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
@@ -69,33 +66,31 @@ class GlobalErrorHandler {
   /// Handle async errors
   static void handleAsyncError(Object error, StackTrace stack) {
     final handler = GlobalErrorHandler();
-    handler._log.error('Async Error: $error', 
-        service: handler._serviceName, 
-        error: error, 
-        stackTrace: stack);
+    handler._log.error('Async Error: $error',
+        service: handler._serviceName, error: error, stackTrace: stack);
 
     // Record to Crashlytics
     FirebaseCrashlytics.instance.recordError(error, stack, fatal: false);
   }
 
   /// Handle network errors
-  static void handleNetworkError(Object error, StackTrace stack, {
+  static void handleNetworkError(
+    Object error,
+    StackTrace stack, {
     String? endpoint,
     String? method,
     int? statusCode,
   }) {
     final handler = GlobalErrorHandler();
     final errorMessage = 'Network Error: $error';
-    
-    handler._log.error(errorMessage, 
-        service: handler._serviceName, 
-        error: error, 
-        stackTrace: stack);
+
+    handler._log.error(errorMessage,
+        service: handler._serviceName, error: error, stackTrace: stack);
 
     // Record to Crashlytics with additional context
     FirebaseCrashlytics.instance.recordError(
-      error, 
-      stack, 
+      error,
+      stack,
       fatal: false,
       information: [
         'Endpoint: ${endpoint ?? 'unknown'}',
@@ -106,22 +101,22 @@ class GlobalErrorHandler {
   }
 
   /// Handle authentication errors
-  static void handleAuthError(Object error, StackTrace stack, {
+  static void handleAuthError(
+    Object error,
+    StackTrace stack, {
     String? userId,
     String? action,
   }) {
     final handler = GlobalErrorHandler();
     final errorMessage = 'Auth Error: $error';
-    
-    handler._log.error(errorMessage, 
-        service: handler._serviceName, 
-        error: error, 
-        stackTrace: stack);
+
+    handler._log.error(errorMessage,
+        service: handler._serviceName, error: error, stackTrace: stack);
 
     // Record to Crashlytics with additional context
     FirebaseCrashlytics.instance.recordError(
-      error, 
-      stack, 
+      error,
+      stack,
       fatal: false,
       information: [
         'User ID: ${userId ?? 'unknown'}',
@@ -131,22 +126,22 @@ class GlobalErrorHandler {
   }
 
   /// Handle database errors
-  static void handleDatabaseError(Object error, StackTrace stack, {
+  static void handleDatabaseError(
+    Object error,
+    StackTrace stack, {
     String? operation,
     String? table,
   }) {
     final handler = GlobalErrorHandler();
     final errorMessage = 'Database Error: $error';
-    
-    handler._log.error(errorMessage, 
-        service: handler._serviceName, 
-        error: error, 
-        stackTrace: stack);
+
+    handler._log.error(errorMessage,
+        service: handler._serviceName, error: error, stackTrace: stack);
 
     // Record to Crashlytics with additional context
     FirebaseCrashlytics.instance.recordError(
-      error, 
-      stack, 
+      error,
+      stack,
       fatal: false,
       information: [
         'Operation: ${operation ?? 'unknown'}',
@@ -156,22 +151,22 @@ class GlobalErrorHandler {
   }
 
   /// Handle UI errors
-  static void handleUIError(Object error, StackTrace stack, {
+  static void handleUIError(
+    Object error,
+    StackTrace stack, {
     String? screen,
     String? widget,
   }) {
     final handler = GlobalErrorHandler();
     final errorMessage = 'UI Error: $error';
-    
-    handler._log.error(errorMessage, 
-        service: handler._serviceName, 
-        error: error, 
-        stackTrace: stack);
+
+    handler._log.error(errorMessage,
+        service: handler._serviceName, error: error, stackTrace: stack);
 
     // Record to Crashlytics with additional context
     FirebaseCrashlytics.instance.recordError(
-      error, 
-      stack, 
+      error,
+      stack,
       fatal: false,
       information: [
         'Screen: ${screen ?? 'unknown'}',
@@ -214,7 +209,6 @@ class ErrorBoundary extends StatefulWidget {
 class _ErrorBoundaryState extends State<ErrorBoundary> {
   bool _hasError = false;
   Object? _error;
-  StackTrace? _stackTrace;
 
   @override
   Widget build(BuildContext context) {
@@ -263,7 +257,6 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
         setState(() {
           _hasError = true;
           _error = details.exception;
-          _stackTrace = details.stack;
         });
       }
 
