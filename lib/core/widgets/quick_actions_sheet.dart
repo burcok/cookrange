@@ -224,14 +224,14 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
         children: [
           Icon(
             isSelected ? activeIcon : icon,
-            color: isSelected ? primaryColor : Colors.grey[400],
+            color: isSelected ? primaryColor : Colors.black87,
             size: 32,
           ),
           const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
-              color: isSelected ? primaryColor : Colors.grey[400],
+              color: isSelected ? primaryColor : Colors.black87,
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               fontFamily: 'Poppins',

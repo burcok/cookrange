@@ -517,9 +517,16 @@ class _HomeScreenState extends State<HomeScreen>
           width: double.infinity,
           padding: EdgeInsets.all(_scale(context, 24)),
           decoration: BoxDecoration(
-            color: Colors.white.withAlpha(120),
-            borderRadius: BorderRadius.circular(_scale(context, 16)),
+            color: Colors.white.withAlpha(170),
+            borderRadius: BorderRadius.circular(_scale(context, 24)),
             border: Border.all(color: Colors.white.withAlpha(120)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: _scale(context, 20),
+                offset: Offset(0, _scale(context, 10)),
+              ),
+            ],
           ),
           child: Column(
             children: [
