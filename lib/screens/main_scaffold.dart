@@ -39,8 +39,12 @@ class _MainScaffoldState extends State<MainScaffold> {
 
     return Stack(
       children: [
+        // Background Blobs
+        _buildBackgroundGlows(context),
+
         Scaffold(
           extendBody: true,
+          backgroundColor: Colors.transparent, // Allow blooms to show through
           body: IndexedStack(
             index: currentIndex,
             children: _screens,
@@ -143,6 +147,48 @@ class _MainScaffoldState extends State<MainScaffold> {
         ),
       ),
       onTap: onTap,
+    );
+  }
+
+  Widget _buildBackgroundGlows(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    return Container(
+      color: const Color(0xFFFCFBF9), // Base background color
+      child: Stack(
+        children: [
+          // Top right blob
+          Positioned(
+            top: -100,
+            right: -50,
+            child: _glowBlob(300, const Color(0xFFF97300).withAlpha(60)),
+          ),
+          // Middle left blob
+          Positioned(
+            top: size.height * 0.4,
+            left: -100,
+            child: _glowBlob(350, const Color(0xFFF98E30).withAlpha(55)),
+          ),
+          // Bottom right blob
+          Positioned(
+            bottom: 50,
+            right: -80,
+            child: _glowBlob(320, const Color(0xFFF97300).withAlpha(50)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _glowBlob(double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color, color.withAlpha(0)],
+        ),
+      ),
     );
   }
 

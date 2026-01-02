@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/navigation_provider.dart';
@@ -18,130 +19,154 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
   Widget build(BuildContext context) {
     final nav = context.watch<NavigationProvider>();
 
-    return DraggableScrollableSheet(
-      controller: _controller,
-      initialChildSize: 0.12,
-      minChildSize: 0.12,
-      maxChildSize: 0.65,
-      snap: true,
-      snapSizes: const [0.12, 0.35, 0.65],
-      builder: (context, scrollController) {
-        return Material(
-          color: Colors.transparent,
-          child: Container(
-            clipBehavior: Clip.none,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(36)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(20),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                  offset: const Offset(0, -4),
-                ),
-              ],
-            ),
-            child: CustomScrollView(
-              controller: scrollController,
+    return Listener(
+      onPointerUp: (event) {
+        if (!_controller.isAttached) return;
+        final extent = _controller.size;
+        final snapPoints = [0.12, 0.35, 0.65];
+        double nearest = snapPoints[0];
+        double minDistance = (extent - snapPoints[0]).abs();
+
+        for (var point in snapPoints) {
+          final distance = (extent - point).abs();
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearest = point;
+          }
+        }
+        _animateToSnap(nearest);
+      },
+      child: DraggableScrollableSheet(
+        controller: _controller,
+        initialChildSize: 0.12,
+        minChildSize: 0.12,
+        maxChildSize: 0.65,
+        snap: false,
+        builder: (context, scrollController) {
+          // REMOVED: ClipRRect here was clipping the overflowing FAB
+          return Material(
+            color: Colors.transparent,
+            child: Stack(
               clipBehavior: Clip.none,
-              slivers: [
-                // Pinned Bottom Bar + FAB
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _BottomBarDelegate(
-                    height: 135,
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(36)),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildIntegratedBottomBar(context, nav),
-                          const SizedBox(height: 10),
-                          Center(child: _buildHandle()),
-                          const SizedBox(height: 10),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // Scrollable Actions Content
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 32),
-                    child: Column(
-                      children: [
-                        Center(
-                          child: Text(
-                            "Quick Actions",
-                            style: TextStyle(
-                              fontSize: _scale(context, 24),
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF2E3A59),
-                              letterSpacing: -0.5,
-                            ),
+              children: [
+                // Glass Base Layer
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(36)),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color:
+                              Colors.white.withAlpha(160), // Translucent white
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(36)),
+                          border: Border.all(
+                            color: Colors.white.withAlpha(100),
+                            width: 1.5,
                           ),
                         ),
-                        const SizedBox(height: 32),
-                        _buildActionItem(
-                          context,
-                          Icons.shopping_basket_outlined,
-                          "Shopping List",
-                          () {
-                            nav.setIndex(2);
-                            _collapse();
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _buildActionItem(
-                          context,
-                          Icons.settings_outlined,
-                          "Settings",
-                          () {
-                            nav.setIndex(3);
-                            _collapse();
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _buildActionItem(
-                          context,
-                          Icons.history_outlined,
-                          "History",
-                          () {
-                            _collapse();
-                          },
-                        ),
-                        const SizedBox(
-                            height: 100), // Padding for scroll bottom
-                      ],
+                      ),
                     ),
                   ),
                 ),
+
+                // Content Layer
+                CustomScrollView(
+                  controller: scrollController,
+                  clipBehavior: Clip.none, // Vital for the FAB to overflow
+                  slivers: [
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _BottomBarDelegate(
+                        height: 115,
+                        child: Container(
+                          // No background here, using the base glass layer
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _buildIntegratedBottomBar(context, nav),
+                              Center(child: _buildHandle()),
+                              const SizedBox(height: 5),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 32),
+                        child: Column(
+                          children: [
+                            Center(
+                              child: Text(
+                                "Quick Actions",
+                                style: TextStyle(
+                                  fontSize: _scale(context, 24),
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF2E3A59),
+                                  letterSpacing: -0.5,
+                                  fontFamily: 'Poppins',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            _buildActionItem(
+                              context,
+                              Icons.shopping_basket_outlined,
+                              "Shopping List",
+                              () {
+                                nav.setIndex(2);
+                                _collapse();
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            _buildActionItem(
+                              context,
+                              Icons.settings_outlined,
+                              "Settings",
+                              () {
+                                nav.setIndex(3);
+                                _collapse();
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            _buildActionItem(
+                              context,
+                              Icons.history_outlined,
+                              "History",
+                              () {
+                                _collapse();
+                              },
+                            ),
+                            const SizedBox(height: 100),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   Widget _buildIntegratedBottomBar(
       BuildContext context, NavigationProvider nav) {
     return Container(
-      height: 100,
+      height: 90,
       padding: const EdgeInsets.symmetric(horizontal: 0),
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          // Navigation Items Row
           Positioned(
-            bottom: 20,
+            bottom: 12,
             left: 0,
             right: 0,
             child: Row(
@@ -158,7 +183,7 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                     _collapse();
                   },
                 ),
-                const SizedBox(width: 140), // More breathing room
+                const SizedBox(width: 140),
                 _buildNavBarItem(
                   icon: Icons.people_outline,
                   activeIcon: Icons.people,
@@ -173,10 +198,8 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
               ],
             ),
           ),
-
-          // FAB positioned in the middle
           Positioned(
-            top: -20, // Floating look relative to the sheet top
+            top: -30, // Move FAB exactly where it needs to be
             child: _buildAssistantFAB(nav),
           ),
         ],
@@ -204,7 +227,7 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
             color: isSelected ? primaryColor : Colors.grey[400],
             size: 32,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
@@ -256,7 +279,7 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
       width: 44,
       height: 5,
       decoration: BoxDecoration(
-        color: Colors.grey[300],
+        color: Colors.grey[400]!.withAlpha(100),
         borderRadius: BorderRadius.circular(2.5),
       ),
     );
@@ -266,22 +289,28 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
     return value * (MediaQuery.of(context).size.width / 390.0);
   }
 
-  void _collapse() {
-    _controller.animateTo(0.12,
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeInOutCubic);
+  void _animateToSnap(double extent) {
+    if (!_controller.isAttached) return;
+    _controller.animateTo(
+      extent,
+      duration: const Duration(milliseconds: 500),
+      curve: const Cubic(0.175, 0.885, 0.32, 1.275),
+    );
   }
+
+  void _collapse() => _animateToSnap(0.12);
 
   Widget _buildActionItem(
       BuildContext context, IconData icon, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.white.withAlpha(120),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF1F1F1)),
+          border: Border.all(color: Colors.white.withAlpha(100)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withAlpha(5),
@@ -292,14 +321,15 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
         ),
         child: Row(
           children: [
-            Icon(icon, color: const Color(0xFF2E3A59), size: 28),
+            Icon(icon, color: const Color(0xFF2E3A59), size: 24),
             const SizedBox(width: 20),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF2E3A59),
+                fontFamily: 'Poppins',
               ),
             ),
             const Spacer(),
