@@ -1,4 +1,3 @@
-
 class CalorieCalculator {
   // Calculates Basal Metabolic Rate (BMR) using Mifflin-St Jeor equation
   static double calculateBMR({
@@ -21,18 +20,22 @@ class CalorieCalculator {
     required String activityLevel, // Matches keys from onboarding
   }) {
     switch (activityLevel) {
+      case 'sedentary':
       case 'Sedentary':
         return bmr * 1.2;
+      case 'light':
       case 'Lightly active':
         return bmr * 1.375;
+      case 'moderate':
       case 'Moderately active':
         return bmr * 1.55;
+      case 'active':
       case 'Very active':
         return bmr * 1.725;
       case 'Extra active':
         return bmr * 1.9;
       default:
-        return bmr * 1.2; // Default to sedentary
+        return bmr * 1.2;
     }
   }
 
@@ -42,13 +45,18 @@ class CalorieCalculator {
     required String primaryGoal, // Matches keys from onboarding
   }) {
     switch (primaryGoal) {
+      case 'lose_weight':
       case 'Lose Weight':
-        return tdee - 500; // Caloric deficit of 500 kcal for weight loss
+        return tdee - 500;
+      case 'gain_weight':
+      case 'Gain Weight':
+      case 'increase_muscle':
       case 'Gain Muscle':
-        return tdee + 500; // Caloric surplus of 500 kcal for muscle gain
+        return tdee + 500;
+      case 'maintain_weight':
       case 'Maintain Weight':
       default:
-        return tdee; // No adjustment
+        return tdee;
     }
   }
 

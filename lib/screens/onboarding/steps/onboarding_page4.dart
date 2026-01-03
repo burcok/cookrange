@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../../core/constants/onboarding_options.dart';
 import '../../../widgets/onboarding_common_widgets.dart';
 import '../../../core/providers/onboarding_provider.dart';
 
@@ -62,26 +63,26 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
     );
   }
 
-  void _logSelection(String type, String value) {
+  void _logSelection(String type, String valueId) {
     _analyticsService.logUserInteraction(
       interactionType: 'selection',
       target: '${type}_selection',
       parameters: {
         'step': 4,
         'type': type,
-        'value': value,
+        'value_id': valueId,
         'timestamp': DateTime.now().toIso8601String(),
       },
     );
   }
 
-  void _logEquipmentToggle(String equipment, bool isSelected) {
+  void _logEquipmentToggle(String equipmentId, bool isSelected) {
     _analyticsService.logUserInteraction(
       interactionType: 'equipment_toggle',
       target: 'kitchen_equipment',
       parameters: {
         'step': 4,
-        'equipment': equipment,
+        'equipment_id': equipmentId,
         'is_selected': isSelected,
         'timestamp': DateTime.now().toIso8601String(),
       },
@@ -137,36 +138,21 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
                             .translate('onboarding.page4.cooking_level.title'),
                         subtitle: localizations.translate(
                             'onboarding.page4.cooking_level.subtitle'),
-                        options: [
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page4.cooking_level.beginner'),
-                            icon: Icons
-                                .school, // Başlangıç seviyesi için okul ikonu
-                            value: 'onboarding.page4.cooking_level.beginner',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page4.cooking_level.intermediate'),
-                            icon: Icons
-                                .restaurant, // Orta seviye için restoran ikonu
-                            value:
-                                'onboarding.page4.cooking_level.intermediate',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page4.cooking_level.advanced'),
-                            icon: Icons.star, // İleri seviye için yıldız ikonu
-                            value: 'onboarding.page4.cooking_level.advanced',
-                          ),
-                        ],
-                        selectedValue: onboarding.cookingLevel?['label'],
-                        onSelectionChanged: (value) {
-                          _logSelection('cooking_level', value);
-                          context.read<OnboardingProvider>().setCookingLevel({
-                            'label': value,
-                            'value': localizations.translate(value),
-                          });
+                        options:
+                            OnboardingOptions.cookingLevels.entries.map((e) {
+                          return OptionData(
+                            label: localizations
+                                .translate(e.value['label'] as String),
+                            icon: e.value['icon'] as IconData,
+                            value: e.key,
+                          );
+                        }).toList(),
+                        selectedValue: onboarding.cookingLevel?['value'],
+                        onSelectionChanged: (valueId) {
+                          _logSelection('cooking_level', valueId);
+                          context
+                              .read<OnboardingProvider>()
+                              .setCookingLevel(valueId);
                         },
                       ),
 
@@ -192,10 +178,10 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
                         target: 'continue_button',
                         parameters: {
                           'step': 4,
-                          'cooking_level':
+                          'cooking_level_id':
                               onboarding.cookingLevel?['value'] ?? '',
-                          'kitchen_equipment': onboarding.kitchenEquipment
-                              .map((e) => e['value'] as String)
+                          'kitchen_equipment_ids': onboarding.kitchenEquipment
+                              .map((e) => e['value'])
                               .join(','),
                           'kitchen_equipment_count':
                               onboarding.kitchenEquipment.length,
@@ -216,89 +202,9 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
 
   Widget _buildKitchenEquipmentSection(
       AppLocalizations localizations, ColorScheme colorScheme) {
-    final equipmentList = [
-      // Basic Equipment
-      {
-        'key': 'onboarding.page4.kitchen_equipment.stove',
-        'label':
-            localizations.translate('onboarding.page4.kitchen_equipment.stove')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.oven',
-        'label':
-            localizations.translate('onboarding.page4.kitchen_equipment.oven')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.microwave',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.microwave')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.pressure_cooker',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.pressure_cooker')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.electric_kettle',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.electric_kettle')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.coffee_maker',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.coffee_maker')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.grinder',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.grinder')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.toaster',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.toaster')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.blender',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.blender')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.hand_mixer',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.hand_mixer')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.stand_mixer',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.stand_mixer')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.air_fryer',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.air_fryer')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.electric_grill',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.electric_grill')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.samovar',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.samovar')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.turkish_coffee_pot',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.turkish_coffee_pot')
-      },
-      {
-        'key': 'onboarding.page4.kitchen_equipment.tea_pot',
-        'label': localizations
-            .translate('onboarding.page4.kitchen_equipment.tea_pot')
-      },
-    ];
+    final onboarding = context.watch<OnboardingProvider>();
+    final selectedEquipmentIds =
+        onboarding.kitchenEquipment.map((e) => e['value']).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,21 +219,20 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
           ),
         ),
         const SizedBox(height: 16),
-        ...equipmentList.map((equipment) => _buildEquipmentItem(
-              equipment['key']!,
-              equipment['label']!,
-              colorScheme,
-            )),
+        ...OnboardingOptions.kitchenEquipment.entries.map(
+          (entry) => _buildEquipmentItem(
+            entry.key,
+            localizations.translate(entry.value),
+            colorScheme,
+            selectedEquipmentIds.contains(entry.key),
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildEquipmentItem(
-      String key, String label, ColorScheme colorScheme) {
-    final onboarding = context.watch<OnboardingProvider>();
-    final isSelected =
-        onboarding.kitchenEquipment.any((equip) => equip['label'] == key);
-
+      String key, String label, ColorScheme colorScheme, bool isSelected) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -346,10 +251,7 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
           GestureDetector(
             onTap: () {
               _logEquipmentToggle(key, !isSelected);
-              context.read<OnboardingProvider>().toggleKitchenEquipment({
-                'label': key,
-                'value': label,
-              });
+              context.read<OnboardingProvider>().toggleKitchenEquipment(key);
             },
             child: Container(
               width: 24,
@@ -363,7 +265,7 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
                 ),
               ),
               child: isSelected
-                  ? Icon(
+                  ? const Icon(
                       Icons.check,
                       size: 16,
                       color: Colors.white,

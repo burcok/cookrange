@@ -213,11 +213,9 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
 
   void _onContinue() {
     if (_selectedProfile != null) {
-      final profileData = {
-        'label': 'onboarding.page5.profiles.${_selectedProfile!.key}.name',
-        'value': _selectedProfile!.key,
-      };
-      context.read<OnboardingProvider>().setLifestyleProfile(profileData);
+      context
+          .read<OnboardingProvider>()
+          .setLifestyleProfile(_selectedProfile!.key);
       widget.onNext?.call();
     }
   }

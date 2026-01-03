@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/models/user_model.dart';
-import '../../constants.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/providers/user_provider.dart';
-import 'package:provider/provider.dart';
+import '../../core/constants/onboarding_options.dart';
+import '../../core/localization/app_localizations.dart';
+import '../../constants.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -18,27 +20,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _weightController;
   late TextEditingController _heightController;
-  String? _selectedGoal;
-  String? _selectedActivity;
+  String? _selectedGoalId;
+  String? _selectedActivityId;
   bool _isLoading = false;
-
-  final List<Map<String, String>> _goals = [
-    {'value': 'Lose Weight', 'label': 'Lose Weight'},
-    {'value': 'Maintain Weight', 'label': 'Maintain Weight'},
-    {'value': 'Gain Weight', 'label': 'Gain Weight'},
-    {'value': 'Build Muscle', 'label': 'Build Muscle'},
-  ];
-
-  final List<Map<String, String>> _activityLevels = [
-    {'value': 'Sedentary', 'label': 'Sedentary (Little/No exercise)'},
-    {'value': 'Lightly Active', 'label': 'Lightly Active (1-3 days/week)'},
-    {
-      'value': 'Moderately Active',
-      'label': 'Moderately Active (3-5 days/week)'
-    },
-    {'value': 'Very Active', 'label': 'Very Active (6-7 days/week)'},
-    {'value': 'Extra Active', 'label': 'Extra Active (Hard exercise/job)'},
-  ];
 
   @override
   void initState() {
@@ -49,12 +33,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _heightController =
         TextEditingController(text: (data['height'] ?? '').toString());
 
-    _selectedGoal = (data['primary_goals'] as List?)?.isNotEmpty ?? false
-        ? (data['primary_goals'] as List).first['value'] as String?
-        : 'Maintain Weight';
+    // Resolve goal ID (handle both new ID format and old Map format)
+    final goals = data['primary_goals'] as List?;
+    if (goals != null && goals.isNotEmpty) {
+      final firstGoal = goals.first;
+      if (firstGoal is String) {
+        _selectedGoalId = firstGoal;
+      } else if (firstGoal is Map) {
+        // Try to find matching ID by value or label from old data
+        final value = firstGoal['value'] as String?;
+        _selectedGoalId = OnboardingOptions.primaryGoals.keys.firstWhere(
+          (key) => key == value?.toLowerCase().replaceAll(' ', '_'),
+          orElse: () => OnboardingOptions.primaryGoals.keys.first,
+        );
+      }
+    }
+    _selectedGoalId ??= OnboardingOptions.primaryGoals.keys.first;
 
-    _selectedActivity =
-        (data['activity_level'] as Map?)?['value'] as String? ?? 'Sedentary';
+    // Resolve activity ID
+    final activity = data['activity_level'];
+    if (activity is String) {
+      _selectedActivityId = activity;
+    } else if (activity is Map) {
+      final value = activity['value'] as String?;
+      _selectedActivityId = OnboardingOptions.activityLevels.keys.firstWhere(
+        (key) => key == value?.toLowerCase().replaceAll(' ', '_'),
+        orElse: () => OnboardingOptions.activityLevels.keys.first,
+      );
+    }
+    _selectedActivityId ??= OnboardingOptions.activityLevels.keys.first;
   }
 
   @override
@@ -73,14 +80,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Map<String, dynamic>.from(widget.user.onboardingData ?? {});
       updatedData['weight'] = double.parse(_weightController.text);
       updatedData['height'] = double.parse(_heightController.text);
-      updatedData['primary_goals'] = [
-        {'value': _selectedGoal, 'label': _selectedGoal}
-      ];
-      updatedData['activity_level'] = {
-        'value': _selectedActivity,
-        'label': _activityLevels
-            .firstWhere((e) => e['value'] == _selectedActivity)['label']
-      };
+      updatedData['primary_goals'] = [_selectedGoalId];
+      updatedData['activity_level'] = _selectedActivityId;
 
       await AuthService().updateUserData({
         'onboarding_data': updatedData,
@@ -112,6 +113,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Profile'),
@@ -127,14 +130,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 20),
               _buildTextField("Height (cm)", _heightController),
               const SizedBox(height: 20),
-              _buildDropdown("Primary Goal", _selectedGoal, _goals, (val) {
-                setState(() => _selectedGoal = val);
-              }),
+              _buildDropdown(
+                "Primary Goal",
+                _selectedGoalId,
+                OnboardingOptions.primaryGoals.entries
+                    .map((e) => {
+                          'value': e.key,
+                          'label': localizations
+                              .translate(e.value['label'] as String),
+                        })
+                    .toList(),
+                (val) => setState(() => _selectedGoalId = val),
+              ),
               const SizedBox(height: 20),
               _buildDropdown(
-                  "Activity Level", _selectedActivity, _activityLevels, (val) {
-                setState(() => _selectedActivity = val);
-              }),
+                "Activity Level",
+                _selectedActivityId,
+                OnboardingOptions.activityLevels.entries
+                    .map((e) => {
+                          'value': e.key,
+                          'label': localizations
+                              .translate(e.value['label'] as String),
+                        })
+                    .toList(),
+                (val) => setState(() => _selectedActivityId = val),
+              ),
               const SizedBox(height: 40),
               ElevatedButton(
                 onPressed: _isLoading ? null : _saveProfile,

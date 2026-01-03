@@ -56,7 +56,7 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                     borderRadius:
                         const BorderRadius.vertical(top: Radius.circular(36)),
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                       child: Container(
                         decoration: BoxDecoration(
                           color:

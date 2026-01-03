@@ -14,6 +14,7 @@ import '../../core/providers/user_provider.dart';
 import '../../core/services/navigation_provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../recipe/recipe_detail_screen.dart';
+import '../profile/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -78,24 +79,48 @@ class _HomeScreenState extends State<HomeScreen>
         );
         await _storageService.saveMealPlan(plan);
         await _storageService.saveRecipe(recipe);
-        _loadTodayMealPlan();
+        if (mounted) await _loadTodayMealPlan();
       }
     } finally {
-      if (mounted) context.read<UserProvider>().refreshUser();
+      if (mounted) await context.read<UserProvider>().refreshUser();
     }
   }
 
   Future<void> _onRefresh() async {
     final now = DateTime.now();
+
+    // Safety check: if we are already refreshing, don't start another one
+    // But if we hit the rate limit, we still need to reset the UI state
     if (_lastRefreshTime != null &&
         now.difference(_lastRefreshTime!).inSeconds < 2) {
+      _resetRefreshState();
       return;
     }
+
     _lastRefreshTime = now;
-    await Future.wait([
-      _loadTodayMealPlan(),
-      context.read<UserProvider>().refreshUser(),
-    ]);
+
+    // Add a safety timeout to ensure the refreshing state always clears
+    bool timedOut = false;
+    Future.delayed(const Duration(seconds: 10), () {
+      if (_isRefreshing) {
+        timedOut = true;
+        _resetRefreshState();
+      }
+    });
+
+    try {
+      await Future.wait([
+        _loadTodayMealPlan(),
+        context.read<UserProvider>().refreshUser(),
+      ]);
+    } finally {
+      if (!timedOut) {
+        _resetRefreshState();
+      }
+    }
+  }
+
+  void _resetRefreshState() {
     if (mounted) {
       setState(() {
         _isRefreshing = false;
@@ -110,8 +135,23 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (notification is ScrollUpdateNotification) {
       if (notification.metrics.pixels < 0) {
+        // Implement dampened resistance for pulling
+        // The further we pull, the harder it gets
+        final rawPull = notification.metrics.pixels.abs();
+
+        // Use a nonlinear transformation for pull distance
+        // This provides more resistance as the user pulls further
+        double dampenedPull;
+        if (rawPull <= _refreshThreshold) {
+          dampenedPull = rawPull;
+        } else {
+          // Beyond threshold, pull grows logarithmically
+          dampenedPull = _refreshThreshold +
+              (math.log(1 + (rawPull - _refreshThreshold) / 100) * 50);
+        }
+
         setState(() {
-          _pullDistance = notification.metrics.pixels.abs();
+          _pullDistance = dampenedPull;
         });
       } else if (_pullDistance != 0) {
         setState(() {
@@ -247,25 +287,37 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildHomeContent(
       BuildContext context, UserModel userModel, AppLocalizations l10n) {
     final onboardingData = userModel.onboardingData ?? {};
-    final height = (onboardingData['height'] as num?)?.toDouble() ?? 170.0;
-    final weight = (onboardingData['weight'] as num?)?.toDouble() ?? 70.0;
+    final personalInfo = onboardingData.containsKey('personal_info') &&
+            onboardingData['personal_info'] is Map
+        ? onboardingData['personal_info'] as Map<String, dynamic>
+        : onboardingData;
 
-    final birthDateStr = onboardingData['birth_date'] as String?;
+    final height = (personalInfo['height'] as num?)?.toDouble() ?? 170.0;
+    final weight = (personalInfo['weight'] as num?)?.toDouble() ?? 70.0;
+
+    final birthDateStr = personalInfo['birth_date'] as String?;
     final birthDate = birthDateStr != null
         ? DateTime.tryParse(birthDateStr) ??
             DateTime.now().subtract(const Duration(days: 365 * 30))
         : DateTime.now().subtract(const Duration(days: 365 * 30));
 
-    final gender = onboardingData['gender'] as String? ?? 'Male';
-    final activityLevel = (onboardingData['activity_level']
-            as Map<String, dynamic>?)?['value'] as String? ??
-        'Sedentary';
-    final primaryGoal =
-        (onboardingData['primary_goals'] as List<dynamic>?)?.isNotEmpty ?? false
-            ? ((onboardingData['primary_goals'] as List<dynamic>).first
-                    as Map<String, dynamic>)['value'] as String? ??
-                'Maintain Weight'
-            : 'Maintain Weight';
+    final gender = personalInfo['gender'] as String? ?? 'Male';
+
+    // Handle both old (Map) and new (String/ID) formats for activity_level
+    final activityLevelRaw = onboardingData['activity_level'];
+    final activityLevel = activityLevelRaw is Map
+        ? (activityLevelRaw['value'] as String? ?? 'sedentary')
+        : (activityLevelRaw as String? ?? 'sedentary');
+
+    // Handle both old (List<Map>) and new (List<String/ID>) formats for primary_goals
+    final primaryGoalsRaw = onboardingData['primary_goals'] as List<dynamic>?;
+    String primaryGoal = 'maintain_weight';
+    if (primaryGoalsRaw != null && primaryGoalsRaw.isNotEmpty) {
+      final firstGoal = primaryGoalsRaw.first;
+      primaryGoal = firstGoal is Map
+          ? (firstGoal['value'] as String? ?? 'maintain_weight')
+          : (firstGoal as String? ?? 'maintain_weight');
+    }
 
     final age = DateTime.now().difference(birthDate).inDays ~/ 365;
     final bmr = CalorieCalculator.calculateBMR(
@@ -308,7 +360,9 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         IconButton(
           icon: const Icon(Icons.person_outline, size: 28, color: Colors.black),
-          onPressed: () => context.read<NavigationProvider>().setIndex(3),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          ),
         ),
       ],
     );

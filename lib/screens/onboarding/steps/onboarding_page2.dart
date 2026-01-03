@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../../core/constants/onboarding_options.dart';
 import '../../../widgets/onboarding_common_widgets.dart';
 import '../../../core/providers/onboarding_provider.dart';
 
@@ -101,7 +102,6 @@ class _OnboardingPage2State extends State<OnboardingPage2> {
                     'timestamp': DateTime.now().toIso8601String(),
                   },
                 );
-                // Sayfa 2'den sayfa 1'e git
                 if (widget.onBack != null) {
                   widget.onBack!();
                 }
@@ -123,39 +123,20 @@ class _OnboardingPage2State extends State<OnboardingPage2> {
                             .translate('onboarding.page2.activity_level.title'),
                         subtitle: localizations.translate(
                             'onboarding.page2.activity_level.subtitle'),
-                        options: [
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.activity_level.sedentary'),
-                            icon: Icons.weekend,
-                            value: 'onboarding.page2.activity_level.sedentary',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.activity_level.light'),
-                            icon: Icons.directions_walk,
-                            value: 'onboarding.page2.activity_level.light',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.activity_level.moderate'),
-                            icon: Icons.directions_run,
-                            value: 'onboarding.page2.activity_level.moderate',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.activity_level.active'),
-                            icon: Icons.emoji_events,
-                            value: 'onboarding.page2.activity_level.active',
-                          ),
-                        ],
-                        selectedValue: onboarding.activityLevel?['label'],
+                        options:
+                            OnboardingOptions.activityLevels.entries.map((e) {
+                          return OptionData(
+                            label: localizations.translate(e.value['label']),
+                            icon: e.value['icon'] as IconData,
+                            value: e.key,
+                          );
+                        }).toList(),
+                        selectedValue: onboarding.activityLevel?['value'],
                         onSelectionChanged: (value) {
                           _logSelection('activity_level', value);
-                          context.read<OnboardingProvider>().setActivityLevel({
-                            'label': value,
-                            'value': localizations.translate(value),
-                          });
+                          context
+                              .read<OnboardingProvider>()
+                              .setActivityLevel(value);
                         },
                       ),
 
@@ -167,110 +148,22 @@ class _OnboardingPage2State extends State<OnboardingPage2> {
                             .translate('onboarding.page2.primary_goal.title'),
                         subtitle: localizations.translate(
                             'onboarding.page2.primary_goal.subtitle'),
-                        options: [
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.lose_weight'),
-                            icon: Icons.trending_down,
-                            value: 'onboarding.page2.primary_goal.lose_weight',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.gain_weight'),
-                            icon: Icons.trending_up,
-                            value: 'onboarding.page2.primary_goal.gain_weight',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.maintain_weight'),
-                            icon: Icons.balance,
-                            value:
-                                'onboarding.page2.primary_goal.maintain_weight',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.feel_energetic'),
-                            icon: Icons.flash_on,
-                            value:
-                                'onboarding.page2.primary_goal.feel_energetic',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.mental_clarity'),
-                            icon: Icons.psychology,
-                            value:
-                                'onboarding.page2.primary_goal.mental_clarity',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.healthy_eating'),
-                            icon: Icons.favorite,
-                            value:
-                                'onboarding.page2.primary_goal.healthy_eating',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.save_time'),
-                            icon: Icons.schedule,
-                            value: 'onboarding.page2.primary_goal.save_time',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.improve_sleep'),
-                            icon: Icons.bedtime,
-                            value:
-                                'onboarding.page2.primary_goal.improve_sleep',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.increase_muscle'),
-                            icon: Icons.fitness_center,
-                            value:
-                                'onboarding.page2.primary_goal.increase_muscle',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.body_shaping'),
-                            icon: Icons.accessibility_new,
-                            value: 'onboarding.page2.primary_goal.body_shaping',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.stress_management'),
-                            icon: Icons.self_improvement,
-                            value:
-                                'onboarding.page2.primary_goal.stress_management',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.digestive_health'),
-                            icon: Icons.healing,
-                            value:
-                                'onboarding.page2.primary_goal.digestive_health',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.immune_boost'),
-                            icon: Icons.health_and_safety,
-                            value: 'onboarding.page2.primary_goal.immune_boost',
-                          ),
-                          OptionData(
-                            label: localizations.translate(
-                                'onboarding.page2.primary_goal.sustainable_lifestyle'),
-                            icon: Icons.eco,
-                            value:
-                                'onboarding.page2.primary_goal.sustainable_lifestyle',
-                          ),
-                        ],
+                        options:
+                            OnboardingOptions.primaryGoals.entries.map((e) {
+                          return OptionData(
+                            label: localizations.translate(e.value['label']),
+                            icon: e.value['icon'] as IconData,
+                            value: e.key,
+                          );
+                        }).toList(),
                         selectedValues: onboarding.primaryGoals
-                            .map((goal) => goal['label'] as String)
+                            .map((goal) => goal['value'] as String)
                             .toList(),
                         onSelectionChanged: (value) {
                           _logSelection('primary_goal', value);
-                          context.read<OnboardingProvider>().togglePrimaryGoal({
-                            'label': value,
-                            'value': localizations.translate(value),
-                          });
+                          context
+                              .read<OnboardingProvider>()
+                              .togglePrimaryGoal(value);
                         },
                       ),
 

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
+import '../constants/onboarding_options.dart';
 
 class OnboardingProvider with ChangeNotifier {
   // Personal Info
@@ -12,16 +13,16 @@ class OnboardingProvider with ChangeNotifier {
     'weight': null,
   };
   int? _targetWeight;
-  Map<String, dynamic>? _lifestyleProfile;
+  String? _lifestyleProfileId;
   Map<String, dynamic>?
       _mealSchedule; // Stores meal times for different schedules
 
   // Preferences
-  List<Map<String, dynamic>> _primaryGoals = [];
-  Map<String, dynamic>? _activityLevel;
+  List<String> _primaryGoalIds = [];
+  String? _activityLevelId;
   List<Map<String, dynamic>> _dislikedFoods = [];
-  Map<String, dynamic>? _cookingLevel;
-  List<Map<String, dynamic>> _kitchenEquipment = [];
+  String? _cookingLevelId;
+  List<String> _kitchenEquipmentIds = [];
 
   // To track changes
   Map<String, dynamic>? _initialData;
@@ -42,56 +43,116 @@ class OnboardingProvider with ChangeNotifier {
   int? get weight => _personalInfo['weight'];
 
   int? get targetWeight => _targetWeight;
-  Map<String, dynamic>? get lifestyleProfile => _lifestyleProfile;
+  Map<String, dynamic>? get lifestyleProfile {
+    if (_lifestyleProfileId == null) return null;
+    final option = OnboardingOptions.lifestyleProfiles[_lifestyleProfileId];
+    if (option != null) {
+      return {
+        'label': option['label'],
+        'value': _lifestyleProfileId,
+        'image': option['image'],
+      };
+    }
+    return {'label': _lifestyleProfileId, 'value': _lifestyleProfileId};
+  }
+
   Map<String, dynamic>? get mealSchedule => _mealSchedule;
 
   // Getters for Preferences
-  List<Map<String, dynamic>> get primaryGoals => _primaryGoals;
-  Map<String, dynamic>? get activityLevel => _activityLevel;
+  List<Map<String, dynamic>> get primaryGoals {
+    return _primaryGoalIds.map((id) {
+      final option = OnboardingOptions.primaryGoals[id];
+      if (option != null) {
+        return {
+          'label': option['label'],
+          'value': id,
+          'icon': option['icon'] is IconData
+              ? (option['icon'] as IconData).codePoint
+              : option['icon'],
+        };
+      }
+      return {'label': id, 'value': id};
+    }).toList();
+  }
+
+  Map<String, dynamic>? get activityLevel {
+    if (_activityLevelId == null) return null;
+    final option = OnboardingOptions.activityLevels[_activityLevelId];
+    if (option != null) {
+      return {
+        'label': option['label'],
+        'value': _activityLevelId,
+        'icon': option['icon'] is IconData
+            ? (option['icon'] as IconData).codePoint
+            : option['icon'],
+      };
+    }
+    return {'label': _activityLevelId, 'value': _activityLevelId};
+  }
+
   List<Map<String, dynamic>> get dislikedFoods => _dislikedFoods;
-  Map<String, dynamic>? get cookingLevel => _cookingLevel;
-  List<Map<String, dynamic>> get kitchenEquipment => _kitchenEquipment;
+
+  Map<String, dynamic>? get cookingLevel {
+    if (_cookingLevelId == null) return null;
+    final option = OnboardingOptions.cookingLevels[_cookingLevelId];
+    if (option != null) {
+      return {
+        'label': option['label'],
+        'value': _cookingLevelId,
+        'icon': option['icon'] is IconData
+            ? (option['icon'] as IconData).codePoint
+            : option['icon'],
+      };
+    }
+    return {'label': _cookingLevelId, 'value': _cookingLevelId};
+  }
+
+  List<Map<String, dynamic>> get kitchenEquipment {
+    return _kitchenEquipmentIds.map((id) {
+      final label = OnboardingOptions.kitchenEquipment[id];
+      return {
+        'label': label ?? id,
+        'value': id,
+      };
+    }).toList();
+  }
 
   bool get isDirty {
     final currentData = _toMap();
-    if (_initialData == null) {
-      // If there's no initial data, any new data is a change.
-      return currentData.values.any((value) {
-        if (value is List) return value.isNotEmpty;
-        if (value is Map) {
-          return value.values
-              .any((v) => v != null && (v is! List || v.isNotEmpty));
-        }
-        return value != null;
-      });
-    }
+    if (_initialData == null) return false;
+
     // Compare field by field
-    return !mapEquals(_initialData!['personal_info'], _personalInfo) ||
-        !mapEquals(
-            _initialData!['lifestyle_profile'] as Map?, _lifestyleProfile) ||
+    return !mapEquals(
+            _initialData!['personal_info'], currentData['personal_info']) ||
+        _initialData!['lifestyle_profile'] != _lifestyleProfileId ||
         !mapEquals(_initialData!['meal_schedule'] as Map?, _mealSchedule) ||
-        !_mapListEquals(
-            _initialData!['primary_goals'] as List<Map<String, dynamic>>?,
-            _primaryGoals) ||
-        _initialData!['activity_level']?['value'] != _activityLevel?['value'] ||
-        !_mapListEquals(
-            _initialData!['disliked_foods'] as List<Map<String, dynamic>>?,
-            _dislikedFoods) ||
-        _initialData!['cooking_level']?['value'] != _cookingLevel?['value'] ||
-        !_mapListEquals(
-            _initialData!['kitchen_equipments'] as List<Map<String, dynamic>>?,
-            _kitchenEquipment);
+        !listEquals(_initialData!['primary_goals'] as List?, _primaryGoalIds) ||
+        _initialData!['activity_level'] != _activityLevelId ||
+        !_dislikedFoodsEquals(
+            _initialData!['disliked_foods'] as List?, _dislikedFoods) ||
+        _initialData!['cooking_level'] != _cookingLevelId ||
+        !listEquals(
+            _initialData!['kitchen_equipments'] as List?, _kitchenEquipmentIds);
   }
 
-  bool _mapListEquals(
-      List<Map<String, dynamic>>? a, List<Map<String, dynamic>>? b) {
+  bool _dislikedFoodsEquals(List? a, List? b) {
     if (a == null && b == null) return true;
     if (a == null || b == null || a.length != b.length) return false;
 
-    final aValues = a.map((e) => e['value']).toSet();
-    final bValues = b.map((e) => e['value']).toSet();
-
-    return setEquals(aValues, bValues);
+    for (int i = 0; i < a.length; i++) {
+      final itemA = a[i];
+      final itemB = b[i];
+      if (itemA is String && itemB is String) {
+        if (itemA != itemB) return false;
+      } else if (itemA is Map && itemB is Map) {
+        if (!mapEquals(
+            itemA as Map<String, dynamic>, itemB as Map<String, dynamic>))
+          return false;
+      } else {
+        return false;
+      }
+    }
+    return true;
   }
 
   Map<String, dynamic> _toMap() {
@@ -104,13 +165,18 @@ class OnboardingProvider with ChangeNotifier {
         'height': _personalInfo['height'],
         'weight': _personalInfo['weight'],
       },
-      'lifestyle_profile': _lifestyleProfile,
+      'lifestyle_profile': _lifestyleProfileId,
       'meal_schedule': _mealSchedule,
-      'primary_goals': List<Map<String, dynamic>>.from(_primaryGoals),
-      'activity_level': _activityLevel,
-      'disliked_foods': List<Map<String, dynamic>>.from(_dislikedFoods),
-      'cooking_level': _cookingLevel,
-      'kitchen_equipments': List<Map<String, dynamic>>.from(_kitchenEquipment),
+      'primary_goals': _primaryGoalIds,
+      'activity_level': _activityLevelId,
+      'disliked_foods': _dislikedFoods.map((f) {
+        if (OnboardingOptions.predefinedIngredients.containsKey(f['value'])) {
+          return f['value'];
+        }
+        return f;
+      }).toList(),
+      'cooking_level': _cookingLevelId,
+      'kitchen_equipments': _kitchenEquipmentIds,
     };
   }
 
@@ -122,11 +188,9 @@ class OnboardingProvider with ChangeNotifier {
     if (birthDate is String) {
       return DateTime.tryParse(birthDate);
     } else if (birthDate != null) {
-      // A non-string birthDate is unexpected.
-      // Log in debug mode to help identify the issue source.
       if (kDebugMode) {
         print(
-            'Warning: birth_date was expected to be a String but received type ${birthDate.runtimeType} with value $birthDate. Treating as null.');
+            'Warning: birth_date was expected to be a String but received type ${birthDate.runtimeType}.');
       }
     }
     return null;
@@ -134,29 +198,20 @@ class OnboardingProvider with ChangeNotifier {
 
   String? _getString(Map<String, dynamic> data, String key) {
     final value = data[key];
-    if (value is String) {
-      return value;
-    } else if (value is Map) {
-      // Handle cases where data might be in a { 'label': 'x', 'value': 'y' } format
-      return value['value'] as String?;
-    }
+    if (value is String) return value;
+    if (value is Map) return value['value'] as String?;
     return null;
   }
 
   int? _getInt(Map<String, dynamic> data, String key) {
     final value = data[key];
-    if (value is int) {
-      return value;
-    } else if (value is double) {
-      return value.toInt();
-    } else if (value is String) {
-      return int.tryParse(value);
-    }
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value);
     return null;
   }
 
   void initializeFromFirestore(Map<String, dynamic> data) {
-    // Check if the data is in the new nested format or the old flat format
     final onboardingData =
         data.containsKey('onboarding_data') && data['onboarding_data'] is Map
             ? data['onboarding_data'] as Map<String, dynamic>
@@ -172,7 +227,6 @@ class OnboardingProvider with ChangeNotifier {
       _personalInfo['height'] = _getInt(personalInfoData, 'height');
       _personalInfo['weight'] = _getInt(personalInfoData, 'weight');
     } else {
-      // Fallback for old flat structure
       _personalInfo['gender'] = _getString(onboardingData, 'gender');
       _personalInfo['birth_date'] =
           _parseBirthDate(onboardingData['birth_date']);
@@ -180,149 +234,93 @@ class OnboardingProvider with ChangeNotifier {
       _personalInfo['weight'] = _getInt(onboardingData, 'weight');
     }
 
-    _lifestyleProfile = _convertToMap(onboardingData['lifestyle_profile']);
+    _lifestyleProfileId = _extractId(onboardingData['lifestyle_profile']);
     _mealSchedule = _convertToMap(onboardingData['meal_schedule']);
+    _primaryGoalIds = _extractIds(onboardingData['primary_goals']);
+    _activityLevelId = _extractId(onboardingData['activity_level']);
+    _dislikedFoods = _convertDislikedFoods(onboardingData['disliked_foods']);
+    _cookingLevelId = _extractId(onboardingData['cooking_level']);
+    _kitchenEquipmentIds = _extractIds(onboardingData['kitchen_equipments']);
 
-    // Handle old and new data formats
-    _primaryGoals = _convertToListMap(onboardingData['primary_goals']);
-    _activityLevel = _convertToMap(onboardingData['activity_level']);
-    _dislikedFoods = _convertToListMap(onboardingData['disliked_foods']);
-    _cookingLevel = _convertToMap(onboardingData['cooking_level']);
-    _kitchenEquipment = _convertToListMap(onboardingData['kitchen_equipments']);
-
-    _setInitialData(); // Set initial data after loading
+    _setInitialData();
     notifyListeners();
   }
 
-  List<Map<String, dynamic>> _convertToListMap(dynamic data) {
+  String? _extractId(dynamic data) {
+    if (data == null) return null;
+    if (data is String) return data;
+    if (data is Map) return data['value'] as String?;
+    return null;
+  }
+
+  List<String> _extractIds(dynamic data) {
     if (data == null) return [];
     if (data is List) {
-      return data.map((item) {
-        if (item is Map<String, dynamic>) {
-          return item;
-        } else if (item is String) {
-          return {'label': item, 'value': item};
-        }
-        return <String, dynamic>{};
-      }).toList();
+      return data
+          .map((item) {
+            if (item is String) return item;
+            if (item is Map) return item['value'] as String;
+            return '';
+          })
+          .where((id) => id.isNotEmpty)
+          .toList();
+    }
+    return [];
+  }
+
+  List<Map<String, dynamic>> _convertDislikedFoods(dynamic data) {
+    if (data == null) return [];
+    if (data is List) {
+      return data
+          .map((item) {
+            if (item is String) {
+              final label = OnboardingOptions.predefinedIngredients[item];
+              return {
+                'label': label ?? item,
+                'value': item,
+              };
+            }
+            if (item is Map<String, dynamic>) return item;
+            return <String, dynamic>{};
+          })
+          .where((m) => m.isNotEmpty)
+          .toList();
     }
     return [];
   }
 
   Map<String, dynamic>? _convertToMap(dynamic data) {
     if (data == null) return null;
-    if (data is Map<String, dynamic>) {
-      return data;
-    } else if (data is String) {
-      return {'label': data, 'value': data};
-    }
+    if (data is Map<String, dynamic>) return data;
+    if (data is String) return {'label': data, 'value': data};
     return null;
   }
 
   Future<void> updateOnboardingDataInFirestore() async {
     final authService = AuthService();
     if (authService.currentUser == null) return;
-
-    // Create a clean version of meal_schedule before saving to remove old data.
-    Map<String, dynamic>? cleanMealSchedule;
-    if (_mealSchedule != null) {
-      cleanMealSchedule = Map<String, dynamic>.from(_mealSchedule!);
-      final scheduleType = cleanMealSchedule['schedule_type'];
-      if (scheduleType == 'fixed' || scheduleType == 'irregular') {
-        cleanMealSchedule.remove('rotation_weeks');
-        cleanMealSchedule.remove('shifts');
-      }
-    }
-
-    final onboardingData = {
-      'personal_info': {
-        'gender': _personalInfo['gender'],
-        'birth_date': _personalInfo['birth_date']?.toIso8601String(),
-        'height': _personalInfo['height'],
-        'weight': _personalInfo['weight'],
-      },
-      'lifestyle_profile': _lifestyleProfile,
-      'meal_schedule': cleanMealSchedule,
-      'primary_goals': _primaryGoals,
-      'activity_level': _activityLevel,
-      'disliked_foods': _dislikedFoods,
-      'cooking_level': _cookingLevel,
-      'kitchen_equipments': _kitchenEquipment,
-    };
-
-    onboardingData.removeWhere((key, value) {
-      if (value == null) return true;
-      if (key == 'personal_info' && value is Map) {
-        value.removeWhere((k, v) => v == null);
-      }
-      return false;
-    });
-
+    final onboardingData = _toMap();
     if (onboardingData.isNotEmpty) {
       await authService.updateUserData({'onboarding_data': onboardingData});
-      _setInitialData(); // Reset dirty tracking after saving
+      _setInitialData();
     }
   }
 
   Future<bool> saveFinalOnboardingData() async {
     final authService = AuthService();
     if (authService.currentUser == null) return false;
-
-    if (!isOnboardingComplete) {
-      // Maybe log an error or throw an exception
-      return false;
-    }
-
-    // Create a clean version of meal_schedule before saving to remove old data.
-    Map<String, dynamic>? cleanMealSchedule;
-    if (_mealSchedule != null) {
-      cleanMealSchedule = Map<String, dynamic>.from(_mealSchedule!);
-      final scheduleType = cleanMealSchedule['schedule_type'];
-      if (scheduleType == 'fixed' || scheduleType == 'irregular') {
-        cleanMealSchedule.remove('rotation_weeks');
-        cleanMealSchedule.remove('shifts');
-      }
-    }
-
-    final onboardingData = {
-      'personal_info': {
-        'gender': _personalInfo['gender'],
-        'birth_date': _personalInfo['birth_date']?.toIso8601String(),
-        'height': _personalInfo['height'],
-        'weight': _personalInfo['weight'],
-      },
-      'lifestyle_profile': _lifestyleProfile,
-      'meal_schedule': cleanMealSchedule,
-      'primary_goals': _primaryGoals,
-      'activity_level': _activityLevel,
-      'disliked_foods': _dislikedFoods,
-      'cooking_level': _cookingLevel,
-      'kitchen_equipments': _kitchenEquipment,
-    };
-
-    onboardingData.removeWhere((key, value) {
-      if (value == null) return true;
-      if (key == 'personal_info' && value is Map) {
-        value.removeWhere((k, v) => v == null);
-      }
-      return false;
-    });
-
+    if (!isOnboardingComplete) return false;
+    final onboardingData = _toMap();
     if (onboardingData.isNotEmpty) {
       try {
         await authService.updateUserData({
           'onboarding_data': onboardingData,
           'onboarding_completed': true,
         });
-        _setInitialData(); // Reset dirty tracking after saving
+        _setInitialData();
         return true;
       } catch (e) {
-        // Log the error but don't fail the onboarding completion
-        if (kDebugMode) {
-          print('Error updating user data during onboarding completion: $e');
-        }
-        // Still return true to allow onboarding to complete
-        // The user data can be updated later
+        if (kDebugMode) print('Error saving onboarding data: $e');
         return true;
       }
     }
@@ -334,21 +332,20 @@ class OnboardingProvider with ChangeNotifier {
       'gender': null,
       'birth_date': null,
       'height': null,
-      'weight': null,
+      'weight': null
     };
     _targetWeight = null;
-    _lifestyleProfile = null;
+    _lifestyleProfileId = null;
     _mealSchedule = null;
-    _primaryGoals = [];
-    _activityLevel = null;
+    _primaryGoalIds = [];
+    _activityLevelId = null;
     _dislikedFoods = [];
-    _cookingLevel = null;
-    _kitchenEquipment = [];
-    _initialData = null; // Reset initial data
+    _cookingLevelId = null;
+    _kitchenEquipmentIds = [];
+    _initialData = null;
     notifyListeners();
   }
 
-  // Setters for Personal Info
   void setTargetWeight(int? weight) {
     if (_targetWeight != weight) {
       _targetWeight = weight;
@@ -384,16 +381,15 @@ class OnboardingProvider with ChangeNotifier {
     }
   }
 
-  void setLifestyleProfile(Map<String, dynamic> profile) {
-    _lifestyleProfile = profile;
-    notifyListeners();
+  void setLifestyleProfile(String profileId) {
+    if (_lifestyleProfileId != profileId) {
+      _lifestyleProfileId = profileId;
+      notifyListeners();
+    }
   }
 
   void setScheduleType(String type, {List<String>? mealTimes}) {
-    // Per user request, always reset the schedule when a new type is set
-    // to ensure a clean state and that new data is saved correctly.
     Map<String, dynamic> newSchedule;
-
     if (type == 'fixed') {
       newSchedule = {
         'schedule_type': 'fixed',
@@ -431,11 +427,8 @@ class OnboardingProvider with ChangeNotifier {
         ]
       };
     } else {
-      // Should not happen, but as a fallback, clear the schedule.
       newSchedule = {};
     }
-
-    // Check if the new schedule is different from the old one before notifying.
     if (!mapEquals(_mealSchedule, newSchedule)) {
       _mealSchedule = newSchedule;
       notifyListeners();
@@ -446,29 +439,21 @@ class OnboardingProvider with ChangeNotifier {
     if (_mealSchedule?['schedule_type'] == 'irregular' ||
         _mealSchedule?['schedule_type'] == 'fixed') {
       if (_mealSchedule != null) {
-        // Create a new map for the meal schedule to ensure immutability
         _mealSchedule = Map<String, dynamic>.from(_mealSchedule!);
         _mealSchedule![meal] = time;
         notifyListeners();
       }
     } else if (_mealSchedule?['schedule_type'] == 'rotating' && week != null) {
       if (_mealSchedule != null && _mealSchedule!['shifts'] is List) {
-        // Create a new list of shifts for immutability
         final newShifts = (_mealSchedule!['shifts'] as List).map((shift) {
           if (shift['week'] == week) {
-            // Create a new map for the specific shift that's changing
             final newShift = Map<String, dynamic>.from(shift);
             newShift[meal] = time;
             return newShift;
           }
           return shift;
         }).toList();
-
-        // Create a new map for the meal schedule
-        _mealSchedule = {
-          ..._mealSchedule!,
-          'shifts': newShifts,
-        };
+        _mealSchedule = {..._mealSchedule!, 'shifts': newShifts};
         notifyListeners();
       }
     }
@@ -481,46 +466,38 @@ class OnboardingProvider with ChangeNotifier {
       final newShifts = List.generate(weeks, (index) {
         final week = index + 1;
         final shiftIndex = oldShifts.indexWhere((s) => s['week'] == week);
-
-        if (shiftIndex != -1) {
-          return oldShifts[shiftIndex];
-        } else {
-          return {
-            'week': week,
-            'breakfast': '07:00',
-            'lunch': '12:00',
-            'dinner': '18:00'
-          };
-        }
+        return shiftIndex != -1
+            ? oldShifts[shiftIndex]
+            : {
+                'week': week,
+                'breakfast': '07:00',
+                'lunch': '12:00',
+                'dinner': '18:00'
+              };
       });
-
-      // Create a new meal schedule map to ensure immutability
       _mealSchedule = {
         ..._mealSchedule!,
         'rotation_weeks': weeks,
-        'shifts': newShifts,
+        'shifts': newShifts
       };
       notifyListeners();
     }
   }
 
-  // Setters for Preferences
-  void togglePrimaryGoal(Map<String, dynamic> goal) {
-    final exists =
-        _primaryGoals.any((element) => element['value'] == goal['value']);
-    if (exists) {
-      _primaryGoals.removeWhere((element) => element['value'] == goal['value']);
-    } else {
-      if (_primaryGoals.length < 5) {
-        _primaryGoals.add(goal);
-      }
+  void togglePrimaryGoal(String goalId) {
+    if (_primaryGoalIds.contains(goalId)) {
+      _primaryGoalIds.remove(goalId);
+    } else if (_primaryGoalIds.length < 5) {
+      _primaryGoalIds.add(goalId);
     }
     notifyListeners();
   }
 
-  void setActivityLevel(Map<String, dynamic> level) {
-    _activityLevel = level;
-    notifyListeners();
+  void setActivityLevel(String levelId) {
+    if (_activityLevelId != levelId) {
+      _activityLevelId = levelId;
+      notifyListeners();
+    }
   }
 
   void setDislikedFoods(List<Map<String, dynamic>> foods) {
@@ -540,48 +517,41 @@ class OnboardingProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void setCookingLevel(Map<String, dynamic> level) {
-    _cookingLevel = level;
-    notifyListeners();
+  void setCookingLevel(String levelId) {
+    if (_cookingLevelId != levelId) {
+      _cookingLevelId = levelId;
+      notifyListeners();
+    }
   }
 
-  void toggleKitchenEquipment(Map<String, dynamic> equipment) {
-    final exists = _kitchenEquipment
-        .any((element) => element['value'] == equipment['value']);
-    if (exists) {
-      _kitchenEquipment
-          .removeWhere((element) => element['value'] == equipment['value']);
+  void toggleKitchenEquipment(String equipmentId) {
+    if (_kitchenEquipmentIds.contains(equipmentId)) {
+      _kitchenEquipmentIds.remove(equipmentId);
     } else {
-      _kitchenEquipment.add(equipment);
+      _kitchenEquipmentIds.add(equipmentId);
     }
     notifyListeners();
   }
 
-  /// Onboarding tamamlanma durumunu kontrol et
   bool get isOnboardingComplete {
     return _personalInfo['gender'] != null &&
         _personalInfo['birth_date'] != null &&
         _personalInfo['height'] != null &&
         _personalInfo['weight'] != null &&
-        _lifestyleProfile != null &&
+        _lifestyleProfileId != null &&
         _mealSchedule != null &&
-        _primaryGoals.isNotEmpty &&
-        _cookingLevel != null &&
-        _kitchenEquipment.isNotEmpty;
+        _primaryGoalIds.isNotEmpty &&
+        _cookingLevelId != null &&
+        _kitchenEquipmentIds.isNotEmpty;
   }
 
-  /// Onboarding tamamlanma analytics'ini gönder
   Future<void> logOnboardingCompletion() async {
     final analyticsService = AnalyticsService();
     await analyticsService.logEvent(
-      name: 'onboarding_completed',
-      parameters: {
-        'timestamp': DateTime.now().toIso8601String(),
-      },
-    );
+        name: 'onboarding_completed',
+        parameters: {'timestamp': DateTime.now().toIso8601String()});
   }
 
-  /// Onboarding verilerini analytics'e gönder
   Future<void> logOnboardingData() async {
     final analyticsService = AnalyticsService();
     await analyticsService.logEvent(
@@ -592,15 +562,13 @@ class OnboardingProvider with ChangeNotifier {
             _personalInfo['birth_date']?.toIso8601String() ?? 'unknown',
         'height': _personalInfo['height'] ?? 0,
         'weight': _personalInfo['weight'] ?? 0,
-        'lifestyle_profile': _lifestyleProfile?['value'] ?? 'unknown',
-        'primary_goals':
-            _primaryGoals.map((e) => e['value'] as String).join(','),
-        'activity_level': _activityLevel?['value'] ?? 'unknown',
+        'lifestyle_profile': _lifestyleProfileId ?? 'unknown',
+        'primary_goals': _primaryGoalIds.join(','),
+        'activity_level': _activityLevelId ?? 'unknown',
         'disliked_foods':
             _dislikedFoods.map((e) => e['value'] as String).join(','),
-        'cooking_level': _cookingLevel?['value'] ?? 'unknown',
-        'kitchen_equipment':
-            _kitchenEquipment.map((e) => e['value'] as String).join(','),
+        'cooking_level': _cookingLevelId ?? 'unknown',
+        'kitchen_equipment': _kitchenEquipmentIds.join(','),
       },
     );
   }

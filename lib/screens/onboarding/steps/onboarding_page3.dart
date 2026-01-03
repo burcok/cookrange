@@ -9,6 +9,7 @@ import '../../../widgets/onboarding_common_widgets.dart';
 import '../../../core/providers/onboarding_provider.dart';
 import '../../../core/services/ai/ai_service.dart';
 import '../../../core/services/ai/prompt_service.dart';
+import '../../../core/constants/onboarding_options.dart';
 
 class OnboardingPage3 extends StatefulWidget {
   final int step;
@@ -34,236 +35,15 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
   final _searchController = TextEditingController();
   DateTime? _stepStartTime;
 
-  // Expanded ingredients list - 60 options
-  final List<OptionData> _allIngredients = [
-    // Vegetables
-    OptionData(
-        label: 'ingredients.vegetables.broccoli',
-        icon: Icons.eco,
-        value: 'broccoli'),
-    OptionData(
-        label: 'ingredients.vegetables.cauliflower',
-        icon: Icons.eco,
-        value: 'cauliflower'),
-    OptionData(
-        label: 'ingredients.vegetables.spinach',
-        icon: Icons.eco,
-        value: 'spinach'),
-    OptionData(
-        label: 'ingredients.vegetables.kale', icon: Icons.eco, value: 'kale'),
-    OptionData(
-        label: 'ingredients.vegetables.lettuce',
-        icon: Icons.eco,
-        value: 'lettuce'),
-    OptionData(
-        label: 'ingredients.vegetables.arugula',
-        icon: Icons.eco,
-        value: 'arugula'),
-    OptionData(
-        label: 'ingredients.vegetables.cabbage',
-        icon: Icons.eco,
-        value: 'cabbage'),
-    OptionData(
-        label: 'ingredients.vegetables.brussels_sprouts',
-        icon: Icons.eco,
-        value: 'brussels_sprouts'),
-    OptionData(
-        label: 'ingredients.vegetables.asparagus',
-        icon: Icons.eco,
-        value: 'asparagus'),
-    OptionData(
-        label: 'ingredients.vegetables.green_beans',
-        icon: Icons.eco,
-        value: 'green_beans'),
-
-    // Fruits
-    OptionData(
-        label: 'ingredients.fruits.apples',
-        icon: Icons.circle,
-        value: 'apples'),
-    OptionData(
-        label: 'ingredients.fruits.bananas',
-        icon: Icons.circle,
-        value: 'bananas'),
-    OptionData(
-        label: 'ingredients.fruits.oranges',
-        icon: Icons.circle,
-        value: 'oranges'),
-    OptionData(
-        label: 'ingredients.fruits.strawberries',
-        icon: Icons.circle,
-        value: 'strawberries'),
-    OptionData(
-        label: 'ingredients.fruits.blueberries',
-        icon: Icons.circle,
-        value: 'blueberries'),
-    OptionData(
-        label: 'ingredients.fruits.raspberries',
-        icon: Icons.circle,
-        value: 'raspberries'),
-    OptionData(
-        label: 'ingredients.fruits.grapes',
-        icon: Icons.circle,
-        value: 'grapes'),
-    OptionData(
-        label: 'ingredients.fruits.pineapple',
-        icon: Icons.circle,
-        value: 'pineapple'),
-    OptionData(
-        label: 'ingredients.fruits.mango', icon: Icons.circle, value: 'mango'),
-    OptionData(
-        label: 'ingredients.fruits.kiwi', icon: Icons.circle, value: 'kiwi'),
-
-    // Proteins
-    OptionData(
-        label: 'ingredients.proteins.chicken',
-        icon: Icons.fitness_center,
-        value: 'chicken'),
-    OptionData(
-        label: 'ingredients.proteins.beef',
-        icon: Icons.fitness_center,
-        value: 'beef'),
-    OptionData(
-        label: 'ingredients.proteins.pork',
-        icon: Icons.fitness_center,
-        value: 'pork'),
-    OptionData(
-        label: 'ingredients.proteins.lamb',
-        icon: Icons.fitness_center,
-        value: 'lamb'),
-    OptionData(
-        label: 'ingredients.proteins.turkey',
-        icon: Icons.fitness_center,
-        value: 'turkey'),
-    OptionData(
-        label: 'ingredients.proteins.duck',
-        icon: Icons.fitness_center,
-        value: 'duck'),
-    OptionData(
-        label: 'ingredients.proteins.fish',
-        icon: Icons.water_drop,
-        value: 'fish'),
-    OptionData(
-        label: 'ingredients.proteins.salmon',
-        icon: Icons.water_drop,
-        value: 'salmon'),
-    OptionData(
-        label: 'ingredients.proteins.tuna',
-        icon: Icons.water_drop,
-        value: 'tuna'),
-    OptionData(
-        label: 'ingredients.proteins.shrimp',
-        icon: Icons.water_drop,
-        value: 'shrimp'),
-
-    // Dairy & Eggs
-    OptionData(
-        label: 'ingredients.dairy_eggs.milk',
-        icon: Icons.water_drop,
-        value: 'milk'),
-    OptionData(
-        label: 'ingredients.dairy_eggs.cheese',
-        icon: Icons.circle,
-        value: 'cheese'),
-    OptionData(
-        label: 'ingredients.dairy_eggs.yogurt',
-        icon: Icons.circle,
-        value: 'yogurt'),
-    OptionData(
-        label: 'ingredients.dairy_eggs.butter',
-        icon: Icons.circle,
-        value: 'butter'),
-    OptionData(
-        label: 'ingredients.dairy_eggs.cream',
-        icon: Icons.circle,
-        value: 'cream'),
-    OptionData(
-        label: 'ingredients.dairy_eggs.eggs',
-        icon: Icons.circle,
-        value: 'eggs'),
-    OptionData(
-        label: 'ingredients.dairy_eggs.cottage_cheese',
-        icon: Icons.circle,
-        value: 'cottage_cheese'),
-    OptionData(
-        label: 'ingredients.dairy_eggs.sour_cream',
-        icon: Icons.circle,
-        value: 'sour_cream'),
-    OptionData(
-        label: 'ingredients.dairy_eggs.ice_cream',
-        icon: Icons.circle,
-        value: 'ice_cream'),
-    OptionData(
-        label: 'ingredients.dairy_eggs.whipped_cream',
-        icon: Icons.circle,
-        value: 'whipped_cream'),
-
-    // Grains
-    OptionData(
-        label: 'ingredients.grains.rice', icon: Icons.grain, value: 'rice'),
-    OptionData(
-        label: 'ingredients.grains.pasta', icon: Icons.grain, value: 'pasta'),
-    OptionData(
-        label: 'ingredients.grains.bread', icon: Icons.grain, value: 'bread'),
-    OptionData(
-        label: 'ingredients.grains.oats', icon: Icons.grain, value: 'oats'),
-    OptionData(
-        label: 'ingredients.grains.quinoa', icon: Icons.grain, value: 'quinoa'),
-    OptionData(
-        label: 'ingredients.grains.barley', icon: Icons.grain, value: 'barley'),
-    OptionData(
-        label: 'ingredients.grains.wheat', icon: Icons.grain, value: 'wheat'),
-    OptionData(
-        label: 'ingredients.grains.corn', icon: Icons.grain, value: 'corn'),
-    OptionData(
-        label: 'ingredients.grains.buckwheat',
-        icon: Icons.grain,
-        value: 'buckwheat'),
-    OptionData(
-        label: 'ingredients.grains.millet', icon: Icons.grain, value: 'millet'),
-
-    // Nuts & Seeds
-    OptionData(
-        label: 'ingredients.nuts_seeds.almonds',
-        icon: Icons.circle,
-        value: 'almonds'),
-    OptionData(
-        label: 'ingredients.nuts_seeds.walnuts',
-        icon: Icons.circle,
-        value: 'walnuts'),
-    OptionData(
-        label: 'ingredients.nuts_seeds.cashews',
-        icon: Icons.circle,
-        value: 'cashews'),
-    OptionData(
-        label: 'ingredients.nuts_seeds.pistachios',
-        icon: Icons.circle,
-        value: 'pistachios'),
-    OptionData(
-        label: 'ingredients.nuts_seeds.pecans',
-        icon: Icons.circle,
-        value: 'pecans'),
-    OptionData(
-        label: 'ingredients.nuts_seeds.hazelnuts',
-        icon: Icons.circle,
-        value: 'hazelnuts'),
-    OptionData(
-        label: 'ingredients.nuts_seeds.sunflower_seeds',
-        icon: Icons.circle,
-        value: 'sunflower_seeds'),
-    OptionData(
-        label: 'ingredients.nuts_seeds.pumpkin_seeds',
-        icon: Icons.circle,
-        value: 'pumpkin_seeds'),
-    OptionData(
-        label: 'ingredients.nuts_seeds.chia_seeds',
-        icon: Icons.circle,
-        value: 'chia_seeds'),
-    OptionData(
-        label: 'ingredients.nuts_seeds.flax_seeds',
-        icon: Icons.circle,
-        value: 'flax_seeds'),
-  ];
+  // Predefined ingredients from central options
+  late final List<OptionData> _allIngredients =
+      OnboardingOptions.predefinedIngredients.entries.map((e) {
+    return OptionData(
+      label: e.value['label'] as String,
+      icon: e.value['icon'] as IconData,
+      value: e.key,
+    );
+  }).toList();
 
   late final Set<String> _predefinedIngredientValues;
   final Set<String> _predefinedIngredientLabels = {};
@@ -286,24 +66,21 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
 
     final onboarding = context.read<OnboardingProvider>();
 
-    // Reconstruct custom ingredients from provider and populate selected values
+    // Reconstruct custom ingredients and populate selected values
+    _selectedIngredientValues = [];
     for (final food in onboarding.dislikedFoods) {
-      final label = food['label'] as String;
       final value = food['value'] as String;
+      _selectedIngredientValues.add(value);
 
-      // Check if it's a custom ingredient by checking against the original labels
-      if (!_predefinedIngredientLabels.contains(label)) {
+      // Check if it's a custom ingredient
+      if (!_predefinedIngredientValues.contains(value)) {
         _customIngredients.add(OptionData(
-          label: label,
+          label: food['label'] as String,
           value: value,
-          icon: Icons.auto_awesome, // Default icon for restored custom items
+          icon: Icons.auto_awesome,
         ));
       }
     }
-
-    _selectedIngredientValues = onboarding.dislikedFoods
-        .map((food) => food['value'] as String)
-        .toList();
 
     _remainingCustomSlots = 3 - _customIngredients.length;
 

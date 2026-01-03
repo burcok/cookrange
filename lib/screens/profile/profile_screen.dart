@@ -4,6 +4,8 @@ import '../../core/services/auth_service.dart';
 import '../../core/models/user_model.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/constants/onboarding_options.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../constants.dart';
 import 'edit_profile_screen.dart';
 
@@ -262,19 +264,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildGoalsSection(Map<String, dynamic> data) {
-    final primaryGoal = (data['primary_goals'] as List?)?.isNotEmpty ?? false
-        ? (data['primary_goals'] as List).first['label'] as String? ?? 'N/A'
-        : 'N/A';
+    final localizations = AppLocalizations.of(context);
 
-    final activityLevel =
-        (data['activity_level'] as Map?)?['label'] as String? ?? 'N/A';
+    // Resolve primary goal
+    String primaryGoalLabel = 'N/A';
+    final primaryGoals = data['primary_goals'] as List?;
+    if (primaryGoals != null && primaryGoals.isNotEmpty) {
+      final firstGoal = primaryGoals.first;
+      if (firstGoal is String) {
+        // New format (ID)
+        final option = OnboardingOptions.primaryGoals[firstGoal];
+        primaryGoalLabel = option != null
+            ? localizations.translate(option['label'] as String)
+            : firstGoal;
+      } else if (firstGoal is Map && firstGoal.containsKey('label')) {
+        // Old format (Map)
+        primaryGoalLabel = firstGoal['label'] as String;
+      }
+    }
+
+    // Resolve activity level
+    String activityLevelLabel = 'N/A';
+    final activityLevel = data['activity_level'];
+    if (activityLevel is String) {
+      // New format (ID)
+      final option = OnboardingOptions.activityLevels[activityLevel];
+      activityLevelLabel = option != null
+          ? localizations.translate(option['label'] as String)
+          : activityLevel;
+    } else if (activityLevel is Map && activityLevel.containsKey('label')) {
+      // Old format (Map)
+      activityLevelLabel = activityLevel['label'] as String;
+    }
 
     return Column(
       children: [
-        _goalTile("Active Goal", primaryGoal, Icons.flag_outlined),
+        _goalTile("Active Goal", primaryGoalLabel, Icons.flag_outlined),
         const SizedBox(height: 8),
-        _goalTile(
-            "Activity Level", activityLevel, Icons.directions_run_outlined),
+        _goalTile("Activity Level", activityLevelLabel,
+            Icons.directions_run_outlined),
       ],
     );
   }
