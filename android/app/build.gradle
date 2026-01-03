@@ -58,7 +58,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.cookrange_android.app"
-    compileSdkVersion 34
+    compileSdk 35
     ndkVersion "27.0.12077973"  // Updated NDK version
 
     compileOptions {
@@ -76,12 +76,11 @@ android {
 
     defaultConfig {
         applicationId "com.cookrange_android.app"
-        minSdkVersion flutter.minSdkVersion
-        targetSdkVersion flutter.targetSdkVersion
+        minSdkVersion 23
+        targetSdk 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
-        minSdkVersion 23
     }
 
     signingConfigs {
@@ -95,7 +94,11 @@ android {
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (keystoreProperties['storeFile'] != null && file(keystoreProperties['storeFile']).exists()) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
+            }
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             // Disable Firebase Analytics debug mode in release
