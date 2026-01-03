@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../services/navigation_provider.dart';
+import '../localization/app_localizations.dart';
 
 class VoiceAssistantOverlay extends StatefulWidget {
   const VoiceAssistantOverlay({super.key});
@@ -104,7 +105,7 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
             setState(() => _soundLevel = level);
           }
         },
-        localeId: 'tr_TR',
+        localeId: Localizations.localeOf(context).toString(),
         listenOptions: stt.SpeechListenOptions(
           cancelOnError: false,
           partialResults: true,
@@ -204,7 +205,8 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
                   padding:
                       EdgeInsets.symmetric(horizontal: _scale(context, 30)),
                   child: Text(
-                    "Size nasıl yardımcı olabilirim?",
+                    AppLocalizations.of(context)
+                        .translate('assistant.how_can_i_help'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
@@ -279,8 +281,10 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
           Text(
             _text.isEmpty
                 ? (_isInitialized
-                    ? "Dinleme durdu."
-                    : "Mikrofon hazırlanıyor...")
+                    ? AppLocalizations.of(context)
+                        .translate('assistant.listening_stopped')
+                    : AppLocalizations.of(context)
+                        .translate('assistant.preparing_mic'))
                 : _text,
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -309,7 +313,11 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
                   const Icon(Icons.mic, color: Colors.white, size: 20),
                   SizedBox(width: _scale(context, 8)),
                   Text(
-                    _isInitialized ? "Tekrar Dinle" : "Başlat",
+                    _isInitialized
+                        ? AppLocalizations.of(context)
+                            .translate('assistant.listen_again')
+                        : AppLocalizations.of(context)
+                            .translate('assistant.start'),
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
@@ -347,15 +355,13 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
   }
 
   Widget _buildSuggestions(BuildContext context) {
+    final suggestions =
+        AppLocalizations.of(context).translateArray('assistant.suggestions');
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: EdgeInsets.symmetric(horizontal: _scale(context, 20)),
       child: Row(
-        children: [
-          _suggestionChip(context, "Akşam ne pişirmeliyim?"),
-          _suggestionChip(context, "Diyetime uygun atıştırmalık."),
-          _suggestionChip(context, "Pratik kahvaltı tarifleri."),
-        ],
+        children: suggestions.map((s) => _suggestionChip(context, s)).toList(),
       ),
     );
   }
@@ -377,7 +383,8 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
               controller: _textController,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: "Bir şeyler yazın veya konuşun...",
+                hintText: AppLocalizations.of(context)
+                    .translate('assistant.input_hint'),
                 hintStyle: TextStyle(color: Colors.white.withAlpha(120)),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(

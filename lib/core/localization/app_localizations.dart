@@ -61,7 +61,7 @@ class AppLocalizations {
     }
   }
 
-  String translate(String key, [Map<String, String>? variables]) {
+  String translate(String key, {Map<String, String>? variables}) {
     try {
       final keys = key.split('.');
       dynamic value = _localizedStrings;

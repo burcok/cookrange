@@ -152,7 +152,6 @@
         "hand_mixer": "El Mikseri",
         "stand_mixer": "Mutfak Mikseri",
         "air_fryer": "Airfryer (Yağsız Fritöz)",
-        
         "electric_grill": "Elektrikli Izgara",
         "samovar": "Semaver",
         "turkish_coffee_pot": "Cezve",
@@ -291,41 +290,32 @@
       "fill_required": "Lütfen gerekli alanları doldurun"
     }
   },
-
   "auth": {
     "login": "Giriş Yap",
     "signup": "Kayıt Ol",
-
     "create_account": "Hesabını Oluştur ve Aramıza Katıl!",
     "welcome_back": "Hey, Tekrar Hoş Geldin!",
-
     "login_with_google": "Google ile Giriş Yap",
     "register_with_google": "Google ile Kayıt Ol",
-
     "email": "E-posta",
     "password": "Şifre",
     "password_again": "Şifreyi Tekrar Girin",
     "forgot_password": "Şifreni mi unuttun?",
-
     "or": "veya",
     "continue_with_google": "Google ile Devam Et",
     "continue_with_apple": "Apple ile Devam Et",
-
     "no_account": "Hesabın yok mu?",
     "register_now": "Hemen Kayıt Ol",
     "already_have_account": "Zaten bir hesabın var mı?",
     "login_now": "Şimdi Giriş Yap",
-
     "google_login_error": "Google ile giriş başarısız. Lütfen tekrar deneyin.",
     "google_register_error": "Google ile kayıt başarısız. Lütfen tekrar deneyin.",
-
     "register_errors": {
       "register_error": "Kayıt başarısız. Lütfen tekrar deneyin.",
       "email_already_in_use": "Bu e-posta zaten kullanılıyor. Lütfen başka bir e-posta deneyin.",
       "invalid_email": "Geçersiz e-posta. Lütfen tekrar deneyin.",
       "weak_password": "Zayıf şifre. Lütfen daha güçlü bir şifre deneyin."
     },
-
     "login_errors": {
       "login_error": "Giriş başarısız. Lütfen tekrar deneyin.",
       "invalid_credentials": "Kullanıcı bulunamadı. Lütfen e-posta ve şifrenizi kontrol edin.",
@@ -337,11 +327,11 @@
       "unexpected_error": "Beklenmedik bir hata oluştu. Lütfen tekrar deneyin."
     },
     "error": {
-        "password_length": "Şifre en az 8 karakter olmalıdır",
-        "password_digit": "Şifre en az bir rakam içermelidir",
-        "passwords_do_not_match": "Şifreler eşleşmiyor.",
-        "invalid_email": "Lütfen geçerli bir e-posta adresi girin.",
-        "accept_agreements": "Devam etmek için lütfen sözleşmeleri kabul edin."
+      "password_length": "Şifre en az 8 karakter olmalıdır",
+      "password_digit": "Şifre en az bir rakam içermelidir",
+      "passwords_do_not_match": "Şifreler eşleşmiyor.",
+      "invalid_email": "Lütfen geçerli bir e-posta adresi girin.",
+      "accept_agreements": "Devam etmek için lütfen sözleşmeleri kabul edin."
     },
     "agreements": {
       "prefix": "Hesap oluşturarak Cookrange'in ",
@@ -363,7 +353,6 @@
     "delete_account_button": "Hesabı Sil",
     "settings_title": "Ayarlar"
   },
-
   "profile": {
     "title": "Profil",
     "edit_profile": "Profili Düzenle",
@@ -411,7 +400,6 @@
       }
     }
   },
-
   "settings": {
     "title": "Ayarlar",
     "language": "Dil",
@@ -425,7 +413,6 @@
     "metric": "Metrik",
     "imperial": "İmparatorluk"
   },
-
   "notifications": {
     "meal_reminder": "Yemek Hatırlatıcısı",
     "water_reminder": "Su Hatırlatıcısı",
@@ -442,7 +429,6 @@
     "warning": "Uyarı",
     "info": "Bilgi"
   },
-
   "common": {
     "save": "Kaydet",
     "edit": "Düzenle",
@@ -468,7 +454,6 @@
     "retry_in_hours": "Tekrar {hours} saat içinde denenecek",
     "retry_in_days": "Tekrar {days} gün içinde denenecek"
   },
-
   "errors": {
     "general": "Bir şeyler yanlış gitti",
     "network": "Ağ hatası oluştu",
@@ -477,7 +462,6 @@
     "required_field": "Bu alan zorunludur",
     "weak_password": "Şifre çok zayıf"
   },
-
   "ingredients": {
     "vegetables": {
       "broccoli": "Brokoli",
@@ -551,5 +535,44 @@
       "chia_seeds": "Chia Tohumu",
       "flax_seeds": "Keten Tohumu"
     }
+  },
+  "home": {
+    "nutrition_title": "Beslenme",
+    "calories": "Kalori",
+    "kcal": "/{target} kCal",
+    "macros": {
+      "protein": "Protein",
+      "carbs": "Karbonhidrat",
+      "fat": "Yağ"
+    },
+    "meal_plan_title": "Öğün Planı",
+    "edit": "Düzenle",
+    "no_meal_plan": "Bugün için henüz bir öğün planı yok",
+    "generate_plan": "Günlük Plan Oluştur",
+    "loading_recipe": "Tarif yükleniyor...",
+    "calories_suffix": "{count} kalori",
+    "welcome_prefix": "Günaydın ",
+    "hello": "Merhaba "
+  },
+  "assistant": {
+    "how_can_i_help": "Size nasıl yardımcı olabilirim?",
+    "listening_stopped": "Dinleme durdu.",
+    "preparing_mic": "Mikrofon hazırlanıyor...",
+    "listen_again": "Tekrar Dinle",
+    "start": "Başlat",
+    "input_hint": "Bir şeyler yazın veya konuşun...",
+    "suggestions": [
+      "Akşam ne pişirmeliyim?",
+      "Diyetime uygun atıştırmalık.",
+      "Pratik kahvaltı tarifleri."
+    ]
+  },
+  "quick_actions": {
+    "title": "Hızlı İşlemler",
+    "shopping_list": "Alışveriş Listesi",
+    "settings": "Ayarlar",
+    "history": "Geçmiş",
+    "home": "Anasayfa",
+    "community": "Topluluk"
   }
-} 
+}

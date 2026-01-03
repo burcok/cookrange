@@ -546,5 +546,44 @@
       "chia_seeds": "Chia Seeds",
       "flax_seeds": "Flax Seeds"
     }
+  },
+  "home": {
+    "nutrition_title": "Nutrition",
+    "calories": "Calories",
+    "kcal": "/{target} kCal",
+    "macros": {
+      "protein": "Protein",
+      "carbs": "Carbs",
+      "fat": "Fat"
+    },
+    "meal_plan_title": "Meal Plan",
+    "edit": "Edit",
+    "no_meal_plan": "No meal plan for today yet",
+    "generate_plan": "Generate Daily Plan",
+    "loading_recipe": "Loading recipe...",
+    "calories_suffix": "{count} calories",
+    "welcome_prefix": "Good Morning ",
+    "hello": "Hello "
+  },
+  "assistant": {
+    "how_can_i_help": "How can I help you?",
+    "listening_stopped": "Listening stopped.",
+    "preparing_mic": "Preparing microphone...",
+    "listen_again": "Listen Again",
+    "start": "Start",
+    "input_hint": "Type or speak something...",
+    "suggestions": [
+      "What should I cook for dinner?",
+      "Snacks suitable for my diet.",
+      "Practical breakfast recipes."
+    ]
+  },
+  "quick_actions": {
+    "title": "Quick Actions",
+    "shopping_list": "Shopping List",
+    "settings": "Settings",
+    "history": "History",
+    "home": "Home",
+    "community": "Community"
   }
-} 
+}

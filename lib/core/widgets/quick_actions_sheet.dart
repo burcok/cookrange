@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/navigation_provider.dart';
 import '../../constants.dart';
+import '../localization/app_localizations.dart';
 
 class QuickActionsSheet extends StatefulWidget {
   const QuickActionsSheet({super.key});
@@ -102,9 +103,11 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                           children: [
                             Center(
                               child: Text(
-                                "Quick Actions",
+                                AppLocalizations.of(context)
+                                    .translate('quick_actions.title'),
                                 style: TextStyle(
-                                  fontSize: _scale(context, 24),
+                                  fontSize:
+                                      24, // Optimized scale: using 24 directly or ScreenUtil if available
                                   fontWeight: FontWeight.bold,
                                   color: const Color(0xFF2E3A59),
                                   letterSpacing: -0.5,
@@ -116,7 +119,8 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                             _buildActionItem(
                               context,
                               Icons.shopping_basket_outlined,
-                              "Shopping List",
+                              AppLocalizations.of(context)
+                                  .translate('quick_actions.shopping_list'),
                               () {
                                 nav.setIndex(2);
                                 _collapse();
@@ -126,7 +130,8 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                             _buildActionItem(
                               context,
                               Icons.settings_outlined,
-                              "Settings",
+                              AppLocalizations.of(context)
+                                  .translate('quick_actions.settings'),
                               () {
                                 nav.setIndex(3);
                                 _collapse();
@@ -136,7 +141,8 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                             _buildActionItem(
                               context,
                               Icons.history_outlined,
-                              "History",
+                              AppLocalizations.of(context)
+                                  .translate('quick_actions.history'),
                               () {
                                 _collapse();
                               },
@@ -175,7 +181,8 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                 _buildNavBarItem(
                   icon: Icons.home_outlined,
                   activeIcon: Icons.home,
-                  label: 'Home',
+                  label: AppLocalizations.of(context)
+                      .translate('quick_actions.home'),
                   index: 0,
                   currentIndex: nav.currentIndex,
                   onTap: () {
@@ -187,7 +194,8 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                 _buildNavBarItem(
                   icon: Icons.people_outline,
                   activeIcon: Icons.people,
-                  label: 'Community',
+                  label: AppLocalizations.of(context)
+                      .translate('quick_actions.community'),
                   index: 1,
                   currentIndex: nav.currentIndex,
                   onTap: () {
@@ -283,10 +291,6 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
         borderRadius: BorderRadius.circular(2.5),
       ),
     );
-  }
-
-  double _scale(BuildContext context, double value) {
-    return value * (MediaQuery.of(context).size.width / 390.0);
   }
 
   void _animateToSnap(double extent) {

@@ -258,7 +258,7 @@ class OnboardingMultiSelectSection extends StatelessWidget {
         Text(
           localizations.translate(
             'onboarding.page2.primary_goal.selected_count',
-            {'count': selectedValues.length.toString()},
+            variables: {'count': selectedValues.length.toString()},
           ),
           style: TextStyle(
             fontSize: 12,
