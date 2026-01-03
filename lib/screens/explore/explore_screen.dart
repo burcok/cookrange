@@ -10,7 +10,8 @@ class ExploreScreen extends StatefulWidget {
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
-class _ExploreScreenState extends State<ExploreScreen> {
+class _ExploreScreenState extends State<ExploreScreen>
+    with AutomaticKeepAliveClientMixin {
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = false;
   String? _error;
@@ -53,6 +54,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -143,4 +145,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }

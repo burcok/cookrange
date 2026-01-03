@@ -24,7 +24,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   final StorageService _storageService = StorageService();
   final RecipeGenerationService _recipeService = RecipeGenerationService();
   MealPlan? _todayMealPlan;
@@ -179,7 +179,11 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -661,6 +665,8 @@ class _HomeScreenState extends State<HomeScreen>
                           ? CachedNetworkImage(
                               imageUrl: recipe!.imageUrl!,
                               fit: BoxFit.cover,
+                              memCacheWidth: 200, // Optimize memory usage
+                              memCacheHeight: 200,
                               placeholder: (context, url) => const Center(
                                   child: CircularProgressIndicator()),
                               errorWidget: (context, url, error) =>

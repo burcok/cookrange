@@ -19,11 +19,7 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   late PageController _pageController;
-
-  final List<Widget> _swipeableScreens = [
-    const HomeScreen(),
-    const ExploreScreen(),
-  ];
+  bool _isLoggingOut = false;
 
   @override
   void initState() {
@@ -60,11 +56,14 @@ class _MainScaffoldState extends State<MainScaffold> {
     // Sync PageController only for swipeable pages
     if (nav.currentIndex <= 1 && _pageController.hasClients) {
       if (_pageController.page?.round() != nav.currentIndex) {
-        _pageController.animateToPage(
-          nav.currentIndex,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
+        // Only animate if the difference is significant to avoid fighting with user swipe
+        if ((_pageController.page! - nav.currentIndex).abs() > 0.1) {
+          _pageController.animateToPage(
+            nav.currentIndex,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
       }
     }
   }
@@ -94,39 +93,37 @@ class _MainScaffoldState extends State<MainScaffold> {
             body: Stack(
               children: [
                 // Conditionally render body based on index
-                // Conditionally render body based on index
                 if (currentIndex <= 1)
-                  GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onHorizontalDragEnd: (details) {
-                      final velocity = details.primaryVelocity ?? 0;
-                      if (currentIndex == 0) {
-                        if (velocity > 300) {
-                          // Swipe Right on Home -> Open Menu
-                          navigationProvider.toggleMenu(true);
-                        } else if (velocity < -300) {
-                          // Swipe Left on Home -> Explore (1)
-                          navigationProvider.setIndex(1);
-                        }
-                      } else if (currentIndex == 1) {
-                        if (velocity > 300) {
-                          // Swipe Right on Explore -> Home (0)
-                          navigationProvider.setIndex(0);
-                        }
-                        // Block swipe left (to Shopping)
+                  PageView(
+                    controller: _pageController,
+                    allowImplicitScrolling: true, // Pre-cache pages
+                    physics: const ClampingScrollPhysics(), // Native feel
+                    onPageChanged: (index) {
+                      // Sync provider when user swipes
+                      if (navigationProvider.currentIndex != index) {
+                        navigationProvider.setIndex(index);
                       }
                     },
-                    child: PageView(
-                      controller: _pageController,
-                      onPageChanged: (index) {
-                        // Sync provider when user swipes
-                        if (navigationProvider.currentIndex != index) {
-                          navigationProvider.setIndex(index);
+                    children: [
+                      const HomeScreen(),
+                      const ExploreScreen(),
+                    ],
+                  ),
+                // Edge Swipe Detector (Only on Home Screen)
+                if (currentIndex == 0)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 20, // Hit detection zone size
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onHorizontalDragEnd: (details) {
+                        if ((details.primaryVelocity ?? 0) > 300) {
+                          navigationProvider.toggleMenu(true);
                         }
                       },
-                      // Setting physics to NeverScrollable allows our GestureDetector to win
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: _swipeableScreens,
+                      child: Container(color: Colors.transparent),
                     ),
                   )
                 else if (currentIndex == 2)
@@ -145,6 +142,17 @@ class _MainScaffoldState extends State<MainScaffold> {
 
           if (navigationProvider.isMenuOpen)
             _buildSideMenu(context, navigationProvider),
+
+          // 4. Logout Loading Overlay
+          if (_isLoggingOut)
+            Container(
+              color: Colors.black.withValues(alpha: 0.7),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFFF97300),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -157,6 +165,12 @@ class _MainScaffoldState extends State<MainScaffold> {
         children: [
           GestureDetector(
             onTap: () => nav.toggleMenu(false),
+            onHorizontalDragEnd: (details) {
+              // Swipe Right-to-Left (negative velocity) to close
+              if ((details.primaryVelocity ?? 0) < -300) {
+                nav.toggleMenu(false);
+              }
+            },
             child: Container(
               color: Colors.black.withValues(alpha: 0.5),
               width: double.infinity,
@@ -174,54 +188,78 @@ class _MainScaffoldState extends State<MainScaffold> {
                 child: child,
               );
             },
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.75,
-              height: double.infinity,
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Menu",
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E3A59),
+            child: GestureDetector(
+              onHorizontalDragUpdate: (details) {
+                // Check for left swipe
+                if (details.delta.dx < -10) {
+                  nav.toggleMenu(false);
+                }
+              },
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.75,
+                height: double.infinity,
+                color: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Menu",
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2E3A59),
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close,
-                            size: 32, color: Colors.black),
-                        onPressed: () => nav.toggleMenu(false),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 48),
-                  _buildMenuItem(Icons.person_outline, "Account", () {
-                    nav.toggleMenu(false);
-                    // Push Directly
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                    );
-                  }),
-                  _buildMenuItem(Icons.history, "History", () {}),
-                  _buildMenuItem(Icons.favorite_border, "Favorites", () {}),
-                  _buildMenuItem(Icons.help_outline, "Help", () {}),
-                  const Spacer(),
-                  _buildMenuItem(Icons.logout, "Logout", () async {
-                    nav.toggleMenu(false);
-                    final navigator = Navigator.of(context);
-                    await AuthService().signOut();
-                    if (mounted) {
-                      await navigator.pushNamedAndRemoveUntil(
-                          '/login', (route) => false);
-                    }
-                  }, isDestructive: true),
-                ],
+                        IconButton(
+                          icon: const Icon(Icons.close,
+                              size: 32, color: Colors.black),
+                          onPressed: () => nav.toggleMenu(false),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 48),
+                    _buildMenuItem(Icons.person_outline, "Account", () {
+                      nav.toggleMenu(false);
+                      // Push Directly
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const ProfileScreen()),
+                      );
+                    }),
+                    _buildMenuItem(Icons.history, "History", () {}),
+                    _buildMenuItem(Icons.favorite_border, "Favorites", () {}),
+                    _buildMenuItem(Icons.help_outline, "Help", () {}),
+                    const Spacer(),
+                    _buildMenuItem(Icons.logout, "Logout", () async {
+                      // Close menu first
+                      nav.toggleMenu(false);
+
+                      // Show loading state
+                      setState(() {
+                        _isLoggingOut = true;
+                      });
+
+                      // Simulate a small delay for better UX (optional, but requested)
+                      await Future.delayed(const Duration(seconds: 2));
+
+                      final navigator = Navigator.of(context);
+                      await AuthService().signOut();
+
+                      if (mounted) {
+                        setState(() {
+                          _isLoggingOut = false;
+                        });
+                        await navigator.pushNamedAndRemoveUntil(
+                            '/login', (route) => false);
+                      }
+                    }, isDestructive: true),
+                  ],
+                ),
               ),
             ),
           ),

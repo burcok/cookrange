@@ -335,7 +335,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           if (mounted) {
             // If all info is complete, go home
             Navigator.pushNamedAndRemoveUntil(
-                context, AppRoutes.home, (route) => false);
+                context, AppRoutes.main, (route) => false);
           }
         } else {
           if (mounted) {
