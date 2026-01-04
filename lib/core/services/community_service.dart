@@ -424,10 +424,41 @@ class CommunityService {
           'emojis': userEmojis,
           'userId': _currentUserId,
           'timestamp': FieldValue.serverTimestamp(),
-        }); // Use set with default merge? No, overwrite is fine as we have full list
+        });
       }
 
-      transaction.update(docRef, {'reactions': currentCounts});
+      final Map<String, dynamic> updates = {'reactions': currentCounts};
+
+      // Sync "Heart" reaction with "likedUserIds" for feed visibility checking
+      // Only do this for Posts, not Comments (commentId == null)
+      if (commentId == null) {
+        if (emoji == '❤️') {
+          final isRemoving =
+              !userEmojis.contains(emoji); // We just modified userEmojis above
+          if (!isRemoving) {
+            // Added
+            updates['likesCount'] = FieldValue.increment(1);
+            updates['likedUserIds'] = FieldValue.arrayUnion([userId]);
+          } else {
+            // Removed
+            updates['likesCount'] = FieldValue.increment(-1);
+            updates['likedUserIds'] = FieldValue.arrayRemove([userId]);
+          }
+        } else {
+          // Sync other emojis for feed visibility
+          // Field: reactionUserIds.{emoji}
+          // Note: Firestore map keys cannot contain '.', but emojis are fine.
+          final fieldPath = 'reactionUserIds.$emoji';
+          final isRemoving = !userEmojis.contains(emoji);
+          if (!isRemoving) {
+            updates[fieldPath] = FieldValue.arrayUnion([userId]);
+          } else {
+            updates[fieldPath] = FieldValue.arrayRemove([userId]);
+          }
+        }
+      }
+
+      transaction.update(docRef, updates);
     });
 
     await _logger.logActivity('reaction_toggle', {

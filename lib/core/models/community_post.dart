@@ -213,7 +213,25 @@ class CommunityPost {
       isLiked: isLikedByCurrentUser, // Real check
       isBookmarked: false,
       reactions: Map<String, int>.from(map['reactions'] ?? {}),
-      userReactions: List<String>.from(map['userReactions'] ?? []),
+      userReactions: () {
+        // 1. Start with existing userReactions (from subcollection fetch if any, though ideally we move away from that)
+        final List<String> reactions =
+            List<String>.from(map['userReactions'] ?? []);
+
+        // 2. Parse 'reactionUserIds' map from main doc
+        // Structure: { '🔥': ['uid1', 'uid2'], '😂': ['uid1'] }
+        if (currentUserId != null && map['reactionUserIds'] != null) {
+          final reactionMap = map['reactionUserIds'] as Map<String, dynamic>;
+          reactionMap.forEach((emoji, userIds) {
+            if (userIds is List && userIds.contains(currentUserId)) {
+              if (!reactions.contains(emoji)) {
+                reactions.add(emoji);
+              }
+            }
+          });
+        }
+        return reactions;
+      }(),
       isEdited: map['isEdited'] ?? false,
     );
   }

@@ -355,15 +355,6 @@ class _GlassPostCardState extends State<GlassPostCard> {
                       ],
                     ),
                   ),
-                  const Spacer(),
-                  // Bookmark
-                  Icon(
-                    _post.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                    color: isDark
-                        ? const Color(0xFF94A3B8)
-                        : const Color(0xFF64748B),
-                    size: 22,
-                  ),
                 ],
               )
             ],
@@ -445,7 +436,6 @@ class _GlassPostCardState extends State<GlassPostCard> {
       itemBuilder: (context) {
         return [
           PopupMenuItem(
-            enabled: false,
             child: SizedBox(
               height: 40,
               child: SingleChildScrollView(
