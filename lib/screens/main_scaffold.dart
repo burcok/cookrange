@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import '../core/localization/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'home/home.dart';
-import 'explore/explore_screen.dart';
-import 'shopping/shopping_list_screen.dart';
 import 'profile/profile_screen.dart';
+import 'community/community_screen.dart';
 import '../core/services/navigation_provider.dart';
 import '../core/providers/user_provider.dart';
 import '../core/widgets/quick_actions_sheet.dart';
@@ -17,14 +17,20 @@ class MainScaffold extends StatefulWidget {
   State<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState extends State<MainScaffold> {
+class _MainScaffoldState extends State<MainScaffold>
+    with SingleTickerProviderStateMixin {
   late PageController _pageController;
+  late AnimationController _menuController;
   bool _isLoggingOut = false;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    _menuController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
 
     // Optimize startup: Defer user loading to avoid blocking the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -42,6 +48,17 @@ class _MainScaffoldState extends State<MainScaffold> {
   void _handleNavChange() {
     if (!mounted) return;
     final nav = context.read<NavigationProvider>();
+
+    // Sync Menu Animation
+    if (nav.isMenuOpen &&
+        _menuController.status != AnimationStatus.forward &&
+        _menuController.status != AnimationStatus.completed) {
+      _menuController.forward();
+    } else if (!nav.isMenuOpen &&
+        _menuController.status != AnimationStatus.reverse &&
+        _menuController.status != AnimationStatus.dismissed) {
+      _menuController.reverse();
+    }
 
     // Handle Profile Navigation (Index 3)
     if (nav.currentIndex == 3) {
@@ -71,6 +88,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   void dispose() {
     _pageController.dispose();
+    _menuController.dispose();
     super.dispose();
   }
 
@@ -106,30 +124,10 @@ class _MainScaffoldState extends State<MainScaffold> {
                     },
                     children: [
                       const HomeScreen(),
-                      const ExploreScreen(),
+                      const CommunityScreen(),
                     ],
                   ),
-                // Edge Swipe Detector (Only on Home Screen)
-                if (currentIndex == 0)
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 20, // Hit detection zone size
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onHorizontalDragEnd: (details) {
-                        if ((details.primaryVelocity ?? 0) > 300) {
-                          navigationProvider.toggleMenu(true);
-                        }
-                      },
-                      child: Container(color: Colors.transparent),
-                    ),
-                  )
-                else if (currentIndex == 2)
-                  const ShoppingListScreen()
-                else
-                  const SizedBox.shrink(),
+
                 // Pass our custom tap handler to the sheet if possible or ensure it uses provider
                 const QuickActionsSheet(),
               ],
@@ -140,8 +138,14 @@ class _MainScaffoldState extends State<MainScaffold> {
           if (navigationProvider.isVoiceAssistantOpen)
             const VoiceAssistantOverlay(),
 
-          if (navigationProvider.isMenuOpen)
-            _buildSideMenu(context, navigationProvider),
+          // Menu with AnimationController
+          AnimatedBuilder(
+            animation: _menuController,
+            builder: (context, child) {
+              if (_menuController.isDismissed) return const SizedBox.shrink();
+              return _buildSideMenu(context, navigationProvider);
+            },
+          ),
 
           // 4. Logout Loading Overlay
           if (_isLoggingOut)
@@ -163,31 +167,33 @@ class _MainScaffoldState extends State<MainScaffold> {
       color: Colors.transparent,
       child: Stack(
         children: [
-          GestureDetector(
-            onTap: () => nav.toggleMenu(false),
-            onHorizontalDragEnd: (details) {
-              // Swipe Right-to-Left (negative velocity) to close
-              if ((details.primaryVelocity ?? 0) < -300) {
-                nav.toggleMenu(false);
-              }
-            },
-            child: Container(
-              color: Colors.black.withValues(alpha: 0.5),
-              width: double.infinity,
-              height: double.infinity,
+          // Dimmed Background - Fade Transition
+          FadeTransition(
+            opacity: _menuController,
+            child: GestureDetector(
+              onTap: () => nav.toggleMenu(false),
+              onHorizontalDragEnd: (details) {
+                if ((details.primaryVelocity ?? 0) < -300) {
+                  nav.toggleMenu(false);
+                }
+              },
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.5),
+                width: double.infinity,
+                height: double.infinity,
+              ),
             ),
           ),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: -1.0, end: 0.0),
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-            builder: (context, value, child) {
-              return Transform.translate(
-                offset:
-                    Offset(value * MediaQuery.of(context).size.width * 0.75, 0),
-                child: child,
-              );
-            },
+          // Menu Content - Slide Transition
+          SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(-1.0, 0.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: _menuController,
+              curve: Curves.easeOut,
+              reverseCurve: Curves.easeIn,
+            )),
             child: GestureDetector(
               onHorizontalDragUpdate: (details) {
                 // Check for left swipe
@@ -207,12 +213,12 @@ class _MainScaffoldState extends State<MainScaffold> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          "Menu",
+                        Text(
+                          AppLocalizations.of(context).translate('menu.title'),
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF2E3A59),
+                            color: const Color(0xFF2E3A59),
                           ),
                         ),
                         IconButton(
@@ -223,7 +229,9 @@ class _MainScaffoldState extends State<MainScaffold> {
                       ],
                     ),
                     const SizedBox(height: 48),
-                    _buildMenuItem(Icons.person_outline, "Account", () {
+                    _buildMenuItem(Icons.person_outline,
+                        AppLocalizations.of(context).translate('menu.account'),
+                        () {
                       nav.toggleMenu(false);
                       // Push Directly
                       Navigator.of(context).push(
@@ -231,11 +239,23 @@ class _MainScaffoldState extends State<MainScaffold> {
                             builder: (_) => const ProfileScreen()),
                       );
                     }),
-                    _buildMenuItem(Icons.history, "History", () {}),
-                    _buildMenuItem(Icons.favorite_border, "Favorites", () {}),
-                    _buildMenuItem(Icons.help_outline, "Help", () {}),
+                    _buildMenuItem(
+                        Icons.history,
+                        AppLocalizations.of(context).translate('menu.history'),
+                        () {}),
+                    _buildMenuItem(
+                        Icons.favorite_border,
+                        AppLocalizations.of(context)
+                            .translate('menu.favorites'),
+                        () {}),
+                    _buildMenuItem(
+                        Icons.help_outline,
+                        AppLocalizations.of(context).translate('menu.help'),
+                        () {}),
                     const Spacer(),
-                    _buildMenuItem(Icons.logout, "Logout", () async {
+                    _buildMenuItem(Icons.logout,
+                        AppLocalizations.of(context).translate('menu.logout'),
+                        () async {
                       // Close menu first
                       nav.toggleMenu(false);
 

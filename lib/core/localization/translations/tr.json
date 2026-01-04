@@ -537,7 +537,7 @@
     }
   },
   "home": {
-    "nutrition_title": "Beslenme",
+    "nutrition_title": "Değerler",
     "calories": "Kalori",
     "kcal": "/{target} kCal",
     "macros": {
@@ -573,6 +573,52 @@
     "settings": "Ayarlar",
     "history": "Geçmiş",
     "home": "Anasayfa",
+    "community": "Topluluk"
+  },
+  "community": {
+    "title": "Topluluk",
+    "friends_groups": "Arkadaşlar & Gruplar",
+    "chats": "Sohbetler",
+    "feed": "Akış",
+    "notifications": "Bildirimler",
+    "clear_all": "Tümünü Temizle",
+    "no_notifications": "Henüz ilkin yok",
+    "whats_cooking": "Ne pişiriyorsun, {{name}}?",
+    "filters": {
+      "latest": "Son Güncellemeler",
+      "regional": "Bölgesel",
+      "global": "Küresel",
+      "friends": "Sadece Arkadaşlar",
+      "gym": "Spor Salonu"
+    },
+    "time": {
+      "min": "dk önce",
+      "mins": "dk önce",
+      "hour": "saat önce",
+      "hours": "saat önce",
+      "day": "gün önce",
+      "days": "gün önce"
+    },
+    "menu": {
+      "delete": "Gönderiyi Sil",
+      "edit": "Düzenle",
+      "report": "Bildir",
+      "share": "Paylaş"
+    },
+    "delete_confirm": {
+      "title": "Gönderiyi Sil?",
+      "content": "Bu gönderiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+      "action": "Sil",
+      "cancel": "İptal"
+    }
+  },
+  "menu": {
+    "title": "Menü",
+    "account": "Hesap",
+    "history": "Geçmiş",
+    "favorites": "Favoriler",
+    "help": "Yardım",
+    "logout": "Çıkış Yap",
     "community": "Topluluk"
   }
 }

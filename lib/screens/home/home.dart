@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen>
   DateTime? _lastRefreshTime;
 
   // Custom Refresh State
-  double _pullDistance = 0.0;
+  final ValueNotifier<double> _pullDistanceNotifier = ValueNotifier(0.0);
   bool _isRefreshing = false;
   late AnimationController _refreshController;
   final double _refreshThreshold = 100.0;
@@ -50,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     _refreshController.dispose();
+    _pullDistanceNotifier.dispose();
     super.dispose();
   }
 
@@ -124,8 +125,8 @@ class _HomeScreenState extends State<HomeScreen>
     if (mounted) {
       setState(() {
         _isRefreshing = false;
-        _pullDistance = 0.0;
       });
+      _pullDistanceNotifier.value = 0.0;
       _refreshController.stop();
     }
   }
@@ -150,21 +151,15 @@ class _HomeScreenState extends State<HomeScreen>
               (math.log(1 + (rawPull - _refreshThreshold) / 100) * 50);
         }
 
-        setState(() {
-          _pullDistance = dampenedPull;
-        });
-      } else if (_pullDistance != 0) {
-        setState(() {
-          _pullDistance = 0;
-        });
+        _pullDistanceNotifier.value = dampenedPull;
+      } else if (_pullDistanceNotifier.value != 0) {
+        _pullDistanceNotifier.value = 0;
       }
     } else if (notification is ScrollEndNotification) {
-      if (_pullDistance >= _refreshThreshold) {
+      if (_pullDistanceNotifier.value >= _refreshThreshold) {
         _startRefresh();
       } else {
-        setState(() {
-          _pullDistance = 0;
-        });
+        _pullDistanceNotifier.value = 0;
       }
     }
   }
@@ -172,8 +167,8 @@ class _HomeScreenState extends State<HomeScreen>
   void _startRefresh() {
     setState(() {
       _isRefreshing = true;
-      _pullDistance = _refreshThreshold;
     });
+    _pullDistanceNotifier.value = _refreshThreshold;
     _refreshController.repeat();
     _onRefresh();
   }
@@ -232,57 +227,64 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildMinimalGlassRefresh(BuildContext context) {
-    final double progress = (_pullDistance / _refreshThreshold).clamp(0.0, 1.0);
-    final double opacity = progress.clamp(0.0, 1.0);
-    final double scale = 0.5 + (progress * 0.5);
-
     return Positioned(
       top: 50.h,
       left: 0,
       right: 0,
       child: Center(
-        child: Opacity(
-          opacity: opacity,
-          child: AnimatedBuilder(
-            animation: _refreshController,
-            builder: (context, child) {
-              final pulse = _isRefreshing
-                  ? (math.sin(_refreshController.value * math.pi * 2) * 0.05)
-                  : 0.0;
-              final currentScale = scale + pulse;
-              final rotation = _isRefreshing
-                  ? _refreshController.value * 2 * math.pi
-                  : progress * math.pi;
+        child: ValueListenableBuilder<double>(
+          valueListenable: _pullDistanceNotifier,
+          builder: (context, pullDistance, child) {
+            final double progress =
+                (pullDistance / _refreshThreshold).clamp(0.0, 1.0);
+            final double opacity = progress.clamp(0.0, 1.0);
+            final double scale = 0.5 + (progress * 0.5);
 
-              return Container(
-                width: 48.w,
-                height: 48.w,
-                transform: Matrix4.identity()..scale(currentScale),
-                transformAlignment: Alignment.center,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CustomPaint(
-                      size: Size(48.w, 48.w),
-                      painter: _RefreshRingPainter(
-                        progress: _isRefreshing ? 0.3 : progress,
-                        rotation: rotation,
-                        color: const Color(0xFFF97300),
-                      ),
+            return Opacity(
+              opacity: opacity,
+              child: AnimatedBuilder(
+                animation: _refreshController,
+                builder: (context, child) {
+                  final pulse = _isRefreshing
+                      ? (math.sin(_refreshController.value * math.pi * 2) *
+                          0.05)
+                      : 0.0;
+                  final currentScale = scale + pulse;
+                  final rotation = _isRefreshing
+                      ? _refreshController.value * 2 * math.pi
+                      : progress * math.pi;
+
+                  return Container(
+                    width: 48.w,
+                    height: 48.w,
+                    transform: Matrix4.identity()..scale(currentScale),
+                    transformAlignment: Alignment.center,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CustomPaint(
+                          size: Size(48.w, 48.w),
+                          painter: _RefreshRingPainter(
+                            progress: _isRefreshing ? 0.3 : progress,
+                            rotation: rotation,
+                            color: const Color(0xFFF97300),
+                          ),
+                        ),
+                        Transform.rotate(
+                          angle: rotation,
+                          child: Icon(
+                            Icons.refresh_rounded,
+                            color: const Color(0xFFF97300),
+                            size: 22.w,
+                          ),
+                        ),
+                      ],
                     ),
-                    Transform.rotate(
-                      angle: rotation,
-                      child: Icon(
-                        Icons.refresh_rounded,
-                        color: const Color(0xFFF97300),
-                        size: 22.w,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  );
+                },
+              ),
+            );
+          },
         ),
       ),
     );
@@ -634,89 +636,83 @@ class _HomeScreenState extends State<HomeScreen>
             );
           }
         },
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20.r),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              margin: EdgeInsets.only(bottom: 16.h),
-              padding: EdgeInsets.all(16.r),
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(140),
-                borderRadius: BorderRadius.circular(20.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 15.r,
-                    offset: Offset(0, 8.h),
-                  ),
-                ],
-                border: Border.all(color: Colors.white.withAlpha(80)),
+        child: Container(
+          margin: EdgeInsets.only(bottom: 16.h),
+          padding: EdgeInsets.all(16.r),
+          decoration: BoxDecoration(
+            color: Colors.white
+                .withAlpha(240), // Increased opacity since we lost blur
+            borderRadius: BorderRadius.circular(20.r),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10.r,
+                offset: Offset(0, 4.h),
               ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16.r),
-                    child: Container(
-                      width: 90.w,
-                      height: 90.w,
-                      color: Colors.grey[100]!.withAlpha(100),
-                      child: recipe?.imageUrl != null
-                          ? CachedNetworkImage(
-                              imageUrl: recipe!.imageUrl!,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 200, // Optimize memory usage
-                              memCacheHeight: 200,
-                              placeholder: (context, url) => const Center(
-                                  child: CircularProgressIndicator()),
-                              errorWidget: (context, url, error) =>
-                                  const Icon(Icons.error),
-                            )
-                          : Icon(Icons.restaurant,
-                              color: Colors.grey[300], size: 30.w),
-                    ),
-                  ),
-                  SizedBox(width: 20.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          toBeginningOfSentenceCase(entry.key) ?? entry.key,
-                          style: TextStyle(
-                            fontSize: 15.sp,
-                            color: Colors.grey[400],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: 6.h),
-                        Text(
-                          recipe?.title ??
-                              l10n.translate('home.loading_recipe'),
-                          style: TextStyle(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF2E3A59),
-                          ),
-                        ),
-                        SizedBox(height: 6.h),
-                        Text(
-                          l10n.translate('home.calories_suffix', variables: {
-                            'count': (recipe?.macros['calories']?.toInt() ?? 0)
-                                .toString()
-                          }),
-                          style: TextStyle(
-                            fontSize: 15.sp,
-                            color: Colors.grey[500],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+            ],
+            border: Border.all(color: Colors.white),
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16.r),
+                child: Container(
+                  width: 90.w,
+                  height: 90.w,
+                  color: Colors.grey[100]!.withAlpha(100),
+                  child: recipe?.imageUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: recipe!.imageUrl!,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 200, // Optimize memory usage
+                          memCacheHeight: 200,
+                          placeholder: (context, url) =>
+                              const Center(child: CircularProgressIndicator()),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.error),
+                        )
+                      : Icon(Icons.restaurant,
+                          color: Colors.grey[300], size: 30.w),
+                ),
               ),
-            ),
+              SizedBox(width: 20.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      toBeginningOfSentenceCase(entry.key) ?? entry.key,
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        color: Colors.grey[400],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    Text(
+                      recipe?.title ?? l10n.translate('home.loading_recipe'),
+                      style: TextStyle(
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF2E3A59),
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    Text(
+                      l10n.translate('home.calories_suffix', variables: {
+                        'count': (recipe?.macros['calories']?.toInt() ?? 0)
+                            .toString()
+                      }),
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        color: Colors.grey[500],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       );

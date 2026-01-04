@@ -584,6 +584,52 @@
     "settings": "Settings",
     "history": "History",
     "home": "Home",
+    "meals": "Meals",
     "community": "Community"
+  },
+  "community": {
+    "title": "Community",
+    "friends_groups": "Friends & Groups",
+    "chats": "Chats",
+    "feed": "Feed",
+    "notifications": "Notifications",
+    "clear_all": "Clear All",
+    "no_notifications": "No notifications yet",
+    "whats_cooking": "What's cooking, {{name}}?",
+    "filters": {
+      "latest": "Latest Updates",
+      "regional": "Regional",
+      "global": "Global",
+      "friends": "Friends Only",
+      "gym": "Gym"
+    },
+    "time": {
+      "min": "min ago",
+      "mins": "mins ago",
+      "hour": "hour ago",
+      "hours": "hours ago",
+      "day": "day ago",
+      "days": "days ago"
+    },
+    "menu": {
+      "delete": "Delete Post",
+      "edit": "Edit Post",
+      "report": "Report",
+      "share": "Share"
+    },
+    "delete_confirm": {
+      "title": "Delete Post?",
+      "content": "Are you sure you want to delete this post? This action cannot be undone.",
+      "action": "Delete",
+      "cancel": "Cancel"
+    }
+  },
+  "menu": {
+    "title": "Menu",
+    "account": "Account",
+    "history": "History",
+    "favorites": "Favorites",
+    "help": "Help",
+    "logout": "Logout"
   }
 }

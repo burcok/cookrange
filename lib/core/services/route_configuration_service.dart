@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'logging_navigator_observer.dart';
 import '../utils/route_guard.dart';
 import '../utils/app_routes.dart';
 import '../../screens/splash_screen.dart';
@@ -50,6 +51,7 @@ class RouteConfigurationService {
   List<NavigatorObserver> getNavigatorObservers() {
     return [
       FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
+      LoggingNavigatorObserver(),
     ];
   }
 

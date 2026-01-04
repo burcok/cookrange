@@ -64,14 +64,12 @@ class AppInitializationService {
       // Step 2: Global error handling
       _initializeGlobalErrorHandling();
 
-      // Step 3: Firebase initialization with fallback
-      await _initializeFirebase();
-
-      // Step 4: Local storage initialization with fallback
-      await _initializeLocalStorage();
-
-      // Step 5: System configuration
-      await _configureSystemUI();
+      // Step 3, 4, 5: Parallel initialization of independent core systems
+      await Future.wait([
+        _initializeFirebase(),
+        _initializeLocalStorage(),
+        _configureSystemUI(),
+      ]);
 
       // Step 6: Services initialization
       await _initializeServices();
