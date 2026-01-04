@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/community_service.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/models/community_post.dart';
+import '../../core/models/notification_model.dart'; // Added import
 import 'widgets/glass_post_card.dart';
 import 'widgets/create_post_card.dart';
 import 'widgets/glass_refresher.dart';
@@ -10,6 +12,8 @@ import 'post_detail_screen.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/navigation_provider.dart';
 import '../notifications/notification_screen.dart';
+import '../profile/profile_screen.dart';
+import '../../core/providers/user_provider.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -35,10 +39,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
   ];
   String _selectedFilter = "Latest Updates";
 
+  late Stream<List<CommunityPost>> _postsStream;
+  late Stream<List<NotificationModel>> _notificationsStream;
+
   @override
   void initState() {
     super.initState();
     _loadGroups();
+    _postsStream = _service.getPostsStream();
+    _notificationsStream = NotificationService().getNotificationsStream();
   }
 
   Future<void> _loadGroups() async {
@@ -53,7 +62,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   Future<void> _refreshData() async {
     _loadGroups();
-    await Future.delayed(const Duration(seconds: 2));
+    // Refresh streams
+    setState(() {
+      _postsStream = _service.getPostsStream();
+      _notificationsStream = NotificationService().getNotificationsStream();
+    });
+    await Future.delayed(const Duration(seconds: 1)); // Reduced delay
   }
 
   void _onFilterChanged(String filter) {
@@ -98,41 +112,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 padding: EdgeInsets.fromLTRB(
                     24, MediaQuery.of(context).padding.top + 24, 24, 24),
                 sliver: SliverToBoxAdapter(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      GestureDetector(
-                        onTap: () => nav.toggleMenu(true),
-                        child: const CircleAvatar(
-                          backgroundColor: Colors.transparent, // Transparent bg
-                          child: Icon(Icons.menu_rounded,
-                              color: Color(0xFF64748B), size: 28),
-                        ),
-                      ),
-                      Stack(children: [
-                        GestureDetector(
-                          onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const NotificationScreen())),
-                          child: const CircleAvatar(
-                            backgroundColor: Colors.transparent,
-                            child: Icon(Icons.notifications_outlined,
-                                color: Color(0xFF64748B), size: 28),
-                          ),
-                        ),
-                        Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                    color: Color(0xFFF97316),
-                                    shape: BoxShape.circle))),
-                      ]),
-                    ],
-                  ),
+                  child: _buildTopBar(context),
                 ),
               ),
 
@@ -253,7 +233,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
               // Posts Feed (StreamBuilder)
               StreamBuilder<List<CommunityPost>>(
-                stream: _service.getPostsStream(),
+                stream: _postsStream,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const SliverToBoxAdapter(
@@ -339,6 +319,74 @@ class _CommunityScreenState extends State<CommunityScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTopBar(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.menu, size: 28, color: Colors.black),
+          onPressed: () => context.read<NavigationProvider>().toggleMenu(true),
+        ),
+        Row(
+          children: [
+            StreamBuilder(
+                stream: _notificationsStream,
+                builder: (context, snapshot) {
+                  final notifications = snapshot.data ?? [];
+                  final unreadCount =
+                      notifications.where((n) => !n.isRead).length;
+
+                  return Stack(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined,
+                            size: 28, color: Colors.black),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const NotificationScreen()),
+                        ),
+                      ),
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              '$unreadCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                }),
+            IconButton(
+              icon: const Icon(Icons.person_outline,
+                  size: 28, color: Colors.black),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              ),
+            ),
+          ],
+        )
+      ],
     );
   }
 

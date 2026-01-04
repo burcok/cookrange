@@ -3,6 +3,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'logging_navigator_observer.dart';
 import '../utils/route_guard.dart';
 import '../utils/app_routes.dart';
+import '../utils/ban_check_observer.dart';
 import '../../screens/splash_screen.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../screens/auth/register_screen.dart';
@@ -28,7 +29,7 @@ class RouteConfigurationService {
       AppRoutes.register: (context) =>
           const RouteGuard(child: RegisterScreen()),
       AppRoutes.home: (context) => const RouteGuard(child: HomeScreen()),
-      AppRoutes.main: (context) => const MainScaffold(),
+      AppRoutes.main: (context) => const RouteGuard(child: MainScaffold()),
       AppRoutes.verifyEmail: (context) =>
           const RouteGuard(child: VerifyEmailScreen()),
       AppRoutes.onboarding: (context) =>
@@ -50,6 +51,7 @@ class RouteConfigurationService {
   /// Get navigation observers
   List<NavigatorObserver> getNavigatorObservers() {
     return [
+      BanCheckNavigatorObserver(),
       FirebaseAnalyticsObserver(analytics: FirebaseAnalytics.instance),
       LoggingNavigatorObserver(),
     ];

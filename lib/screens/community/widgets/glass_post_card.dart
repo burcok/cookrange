@@ -3,6 +3,7 @@ import '../../../core/models/community_post.dart';
 import '../../community/widgets/community_widgets.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/community_service.dart';
+import 'draggable_reaction_button.dart';
 
 class GlassPostCard extends StatefulWidget {
   final CommunityPost post;
@@ -32,24 +33,28 @@ class _GlassPostCardState extends State<GlassPostCard> {
   @override
   void initState() {
     super.initState();
-    _post = _ensureLikeState(widget.post);
+    _post = widget.post;
   }
 
   @override
   void didUpdateWidget(GlassPostCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.post != oldWidget.post) {
-      _post = _ensureLikeState(widget.post);
+      _post = widget.post;
     }
   }
 
-  CommunityPost _ensureLikeState(CommunityPost p) {
-    if (p.isLiked && !p.userReactions.contains('❤️')) {
-      return p.copyWith(
-        userReactions: List.from(p.userReactions)..add('❤️'),
+  void _handleLike() {
+    setState(() {
+      final isLiked = !_post.isLiked;
+      final likesCount = _post.likesCount + (isLiked ? 1 : -1);
+
+      _post = _post.copyWith(
+        isLiked: isLiked,
+        likesCount: likesCount,
       );
-    }
-    return p;
+    });
+    widget.onLike();
   }
 
   void _handleReaction(String emoji) {
@@ -59,14 +64,11 @@ class _GlassPostCardState extends State<GlassPostCard> {
       Map<String, int> reactions = Map.from(_post.reactions);
 
       if (!hasReaction) {
-        // Adding
-        // Safety check: ensure it's not already in the list to prevent duplicates
         if (!userReactions.contains(emoji)) {
           userReactions.add(emoji);
           reactions[emoji] = (reactions[emoji] ?? 0) + 1;
         }
       } else {
-        // Removing
         userReactions.remove(emoji);
         final count = (reactions[emoji] ?? 0) - 1;
         if (count > 0) {
@@ -82,7 +84,6 @@ class _GlassPostCardState extends State<GlassPostCard> {
       );
     });
 
-    // Fire and forget, don't await to keep UI responsive
     widget.onReaction(emoji);
   }
 
@@ -161,6 +162,13 @@ class _GlassPostCardState extends State<GlassPostCard> {
                       if (value == 'delete') {
                         _showDeleteDialog(context, _post.id);
                       }
+                      if (value == 'report') {
+                        CommunityService()
+                            .reportPost(_post.id, "Inappropriate content");
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Post reported")),
+                        );
+                      }
                     },
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16)),
@@ -216,6 +224,40 @@ class _GlassPostCardState extends State<GlassPostCard> {
                   children: _parseContentFull(_post.content, _post.tags),
                 ),
               ),
+
+              if (_post.tags.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _post.tags
+                        .map((tag) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white.withOpacity(0.1)
+                                    : Colors.black.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color:
+                                      isDark ? Colors.white10 : Colors.black12,
+                                ),
+                              ),
+                              child: Text(
+                                tag,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color:
+                                      isDark ? Colors.white70 : Colors.black87,
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ),
 
               const SizedBox(height: 16),
 
@@ -307,12 +349,10 @@ class _GlassPostCardState extends State<GlassPostCard> {
                 children: [
                   // Like (Heart) Action
                   GestureDetector(
-                    onTap: () => _handleReaction('❤️'),
+                    onTap: _handleLike,
                     child: Icon(
-                      _post.userReactions.contains('❤️')
-                          ? Icons.favorite
-                          : Icons.favorite_border,
-                      color: _post.userReactions.contains('❤️')
+                      _post.isLiked ? Icons.favorite : Icons.favorite_border,
+                      color: _post.isLiked
                           ? Colors.red
                           : (isDark
                               ? const Color(0xFF94A3B8)
@@ -320,15 +360,68 @@ class _GlassPostCardState extends State<GlassPostCard> {
                       size: 24,
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    "${_post.reactions['❤️'] ?? 0}",
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  // Face Pile & Text
+                  if (_post.likesCount > 0) ...[
+                    const SizedBox(width: 8),
+                    if (_post.likedByUsers.isNotEmpty)
+                      SizedBox(
+                        width: 24.0 +
+                            (14.0 * (_post.likedByUsers.take(3).length - 1)),
+                        height: 24,
+                        child: Stack(
+                          children: _post.likedByUsers
+                              .take(3)
+                              .toList()
+                              .asMap()
+                              .entries
+                              .map((entry) {
+                            return Positioned(
+                              left: entry.key * 14.0,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isDark
+                                        ? const Color(0xFF1E293B)
+                                        : Colors.white,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: CircleAvatar(
+                                  radius: 10,
+                                  backgroundImage:
+                                      NetworkImage(entry.value.avatarUrl),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        _getLikeText(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color:
+                              isDark ? Colors.white70 : const Color(0xFF64748B),
+                        ),
+                      ),
                     ),
-                  ),
+                  ] else ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      "${_post.likesCount}",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(width: 24),
                   // Comments
@@ -424,53 +517,101 @@ class _GlassPostCardState extends State<GlassPostCard> {
 
   Widget _buildAddReactionButton(BuildContext context, bool isDark,
       {bool isSmall = false}) {
-    final emojis = ['👎', '😂', '😮', '😢', '🔥'];
-
-    return PopupMenuButton<String>(
-      tooltip: "Add Reaction",
-      offset: const Offset(-150, 40),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-      color: isDark ? const Color(0xFF334155) : Colors.white,
-      elevation: 8,
-      enableFeedback: true,
-      itemBuilder: (context) {
-        return [
-          PopupMenuItem(
-            child: SizedBox(
-              height: 40,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: emojis.map((e) {
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context, e);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Text(e, style: const TextStyle(fontSize: 24)),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-          )
-        ];
-      },
-      onSelected: (emoji) => _handleReaction(emoji),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: isSmall
-            ? BoxDecoration(
-                color: isDark ? Colors.white10 : Colors.grey.shade200,
-                shape: BoxShape.circle)
-            : null,
-        child: Icon(Icons.add_reaction_outlined,
-            size: isSmall ? 16 : 20,
-            color: isDark ? Colors.white70 : Colors.grey.shade600),
-      ),
+    return DraggableReactionButton(
+      isDark: isDark,
+      isSmall: isSmall,
+      onReactionSelected: (emoji) => _handleReaction(emoji),
     );
+  }
+
+  String _getLikeText() {
+    final likes = _post.likesCount;
+    if (likes == 0) return "";
+
+    final appLoc = AppLocalizations.of(context);
+    final likers = _post.likedByUsers;
+
+    // Check isLiked
+    // Note: In GlassPostCard, _post is a CommunityPost which has isLiked
+    final isLikedByMe = _post.isLiked;
+    // We can't easily get currentUserId here without a provider look up or service call,
+    // but we can check if likers contains 'Me'? No, assume isLiked is source.
+    // However, to filter 'Me' out of names, we need my ID.
+    // GlassPostCard is usually stateless-ish but has state.
+    // Let's assume we can get ID from simple check or pass it.
+    // Actually we can check 'isLiked'. If true, we *should* see if one of the avatars matches us?
+    // But simplest is to match logic:
+
+    if (isLikedByMe) {
+      if (likes == 1) return appLoc.translate('community.likes.you');
+
+      // We need to remove 'Self' from names list if present.
+      // Since we don't have 'currentUserId' easily handy as a variable (it's in service),
+      // let's grab it or try to find a user with "You"? No.
+      // Let's look at `CommunityService`.
+      // We can use `CommunityService().currentUserId`.
+      final currentUserId = CommunityService().currentUserId;
+
+      final otherLikers = likers.where((u) => u.id != currentUserId).toList();
+      final otherCount = likes - 1;
+
+      if (otherLikers.isEmpty) {
+        return appLoc.translate('community.likes.you_many',
+            variables: {'name': 'User', 'count': otherCount.toString()});
+      }
+
+      final name1 = otherLikers[0].name.split(' ').first;
+
+      if (otherCount == 1) {
+        return appLoc
+            .translate('community.likes.you_1', variables: {'name': name1});
+      }
+
+      if (otherLikers.length >= 2 && otherCount > 2) {
+        final name2 = otherLikers[1].name.split(' ').first;
+        return appLoc.translate('community.likes.you_many_2', variables: {
+          'name1': name1,
+          'name2': name2,
+          'count': (otherCount - 2).toString()
+        });
+      }
+
+      return appLoc.translate('community.likes.you_many', variables: {
+        'name1': name1,
+        'name': name1,
+        'count': (otherCount - 1).toString()
+      });
+    }
+
+    if (likers.isEmpty) {
+      return appLoc.translate('community.likes.simple',
+          variables: {'count': likes.toString()});
+    }
+
+    final name1 = likers[0].name.split(' ').first;
+
+    if (likers.length == 1 && likes == 1) {
+      return appLoc
+          .translate('community.likes.one', variables: {'name': name1});
+    }
+
+    if (likers.length >= 2) {
+      final name2 = likers[1].name.split(' ').first;
+      if (likes == 2) {
+        return appLoc.translate('community.likes.two',
+            variables: {'name1': name1, 'name2': name2});
+      }
+      return appLoc.translate('community.likes.many', variables: {
+        'name1': name1,
+        'name2': name2,
+        'count': (likes - 2).toString()
+      });
+    }
+
+    return appLoc.translate('community.likes.many', variables: {
+      'name1': name1,
+      'name2': 'User',
+      'count': (likes - 1).toString()
+    });
   }
 }

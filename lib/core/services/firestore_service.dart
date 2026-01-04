@@ -130,6 +130,7 @@ class FirestoreService {
         'last_login_device_type': deviceInfoMap['device_type'],
         'last_login_device_model': deviceInfoMap['device_model'],
         'last_login_device_os': deviceInfoMap['device_os'],
+        'is_online': true,
       };
 
       // Only update app version info if it has changed
@@ -145,17 +146,72 @@ class FirestoreService {
 
       if (!userDoc.exists) {
         // Create user document for a new user
+        // Initialize streak for new user
+        final onboardingData = <String, dynamic>{'streak': 1};
+
         await userDocRef.set({
           'email': user.email,
           'displayName': user.displayName,
           'photoURL': user.photoURL,
           'created_at': FieldValue.serverTimestamp(),
           'onboarding_completed': false,
+          'onboarding_data': onboardingData,
           ...loginData,
-        });
+          'login_ips': FieldValue.arrayUnion([ipAddress]),
+          'login_devices':
+              FieldValue.arrayUnion([deviceInfoMap['device_model']]),
+          'login_device_types':
+              FieldValue.arrayUnion([deviceInfoMap['device_type']]),
+          'login_device_models':
+              FieldValue.arrayUnion([deviceInfoMap['device_model']]),
+          'login_device_os':
+              FieldValue.arrayUnion([deviceInfoMap['device_os']]),
+          'login_app_versions':
+              FieldValue.arrayUnion([deviceInfoMap['app_version']]),
+          'login_build_numbers':
+              FieldValue.arrayUnion([deviceInfoMap['build_number']]),
+        }, SetOptions(merge: true));
         _log.info('New user document created for: ${user.uid}',
             service: _serviceName);
       } else {
+        // Calculate Streak
+        try {
+          final data = userDoc.data()!;
+          final lastLoginTs = data['last_login_at'] as Timestamp?;
+          final currentOnboardingData =
+              data['onboarding_data'] as Map<String, dynamic>? ?? {};
+          int currentStreak = currentOnboardingData['streak'] as int? ?? 1;
+
+          if (lastLoginTs != null) {
+            final lastLoginDate = lastLoginTs.toDate();
+            final now = DateTime.now();
+
+            // Normalize dates to midnight for comparsion
+            final lastLoginMidnight = DateTime(
+                lastLoginDate.year, lastLoginDate.month, lastLoginDate.day);
+            final todayMidnight = DateTime(now.year, now.month, now.day);
+
+            final difference =
+                todayMidnight.difference(lastLoginMidnight).inDays;
+
+            if (difference == 1) {
+              // Consecutive day
+              currentStreak++;
+            } else if (difference > 1) {
+              // Missed a day or more
+              currentStreak = 1;
+            }
+            // If difference == 0, same day, do nothing
+          }
+
+          // Use dot notation to update nested field without overwriting entire map
+          loginData['onboarding_data.streak'] = currentStreak;
+        } catch (e) {
+          _log.error('Error calculating streak for ${user.uid}',
+              service: _serviceName, error: e);
+          // Fallback if something fails, don't crash login
+        }
+
         // Update last login info for an existing user
         await userDocRef.update(loginData);
         _log.info('User document updated for: ${user.uid}',
@@ -243,7 +299,23 @@ class FirestoreService {
   Future<UserModel?> getUserData(String uid) async {
     _log.info('Getting user data for uid: $uid', service: _serviceName);
     try {
-      final doc = await _firestore.collection('users').doc(uid).get();
+      // Try default source (Server -> Cache)
+      // Note: In newer Firestore versions, get() with default source prefers server but might fall back.
+      // Explicitly handling robustness:
+      DocumentSnapshot<Map<String, dynamic>> doc;
+      try {
+        doc = await _firestore.collection('users').doc(uid).get();
+      } catch (e) {
+        // Fallback to cache if network fails
+        _log.warning(
+            'Network fetch failed for user data, trying cache for uid: $uid',
+            service: _serviceName);
+        doc = await _firestore
+            .collection('users')
+            .doc(uid)
+            .get(const GetOptions(source: Source.cache));
+      }
+
       if (doc.exists) {
         _log.info('Successfully retrieved user data for uid: $uid',
             service: _serviceName);

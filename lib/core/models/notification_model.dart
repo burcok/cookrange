@@ -3,6 +3,7 @@ enum NotificationType {
   comment,
   system,
   follow,
+  friend_request, // New
 }
 
 class NotificationModel {

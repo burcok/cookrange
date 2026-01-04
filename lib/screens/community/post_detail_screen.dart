@@ -1,9 +1,12 @@
 import 'dart:ui';
+import 'package:provider/provider.dart';
+import 'package:cookrange/core/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import '../../core/models/community_post.dart';
 import '../../core/services/community_service.dart';
 import '../../core/localization/app_localizations.dart';
 import 'widgets/glass_refresher.dart';
+import 'widgets/draggable_reaction_button.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final String postId;
@@ -26,6 +29,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   final FocusNode _commentFocusNode = FocusNode();
   String? _editingCommentId;
   bool _isSendingComment = false;
+  bool _isEditingPost = false;
+  final TextEditingController _editPostController = TextEditingController();
+  List<String> _editingTags = [];
+  final List<String> _suggestedTags = [
+    "🔥 Bugün trend",
+    "🥦 Vegan",
+    "⏱️ 15 dk",
+    "💪 Spor sonrası",
+    "🍳 Kolay Tarif",
+    "🍝 Akşam Yemeği"
+  ];
 
   @override
   void initState() {
@@ -217,7 +231,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                               _service.currentUserId)
                                         IconButton(
                                           onPressed: () =>
-                                              _showEditDialog(context, _post!),
+                                              _toggleEditMode(_post!),
                                           icon: Icon(Icons.edit_outlined,
                                               color: isDark
                                                   ? Colors.white
@@ -326,17 +340,199 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                 ),
                                 const SizedBox(height: 16),
 
-                                // Post Text
-                                Text(
-                                  _post!.content,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    height: 1.5,
-                                    color: isDark
-                                        ? Colors.white70
-                                        : const Color(0xFF334155),
+                                // Post Text or Inline Edit
+                                if (_isEditingPost)
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? Colors.white.withOpacity(0.05)
+                                          : Colors.white.withOpacity(0.6),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                          color: isDark
+                                              ? Colors.white10
+                                              : Colors.blueAccent
+                                                  .withOpacity(0.3)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        TextField(
+                                          controller: _editPostController,
+                                          maxLines: null,
+                                          autofocus: true,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            height: 1.5,
+                                            color: isDark
+                                                ? Colors.white
+                                                : const Color(0xFF334155),
+                                          ),
+                                          decoration: const InputDecoration(
+                                            border: InputBorder.none,
+                                            isDense: true,
+                                            hintText: "What's cooking?",
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        // Edit Tags
+                                        if (_editingTags.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                bottom: 12),
+                                            child: Wrap(
+                                              spacing: 8,
+                                              runSpacing: 8,
+                                              children: _editingTags
+                                                  .map((tag) => Chip(
+                                                        label: Text(tag,
+                                                            style:
+                                                                const TextStyle(
+                                                                    fontSize:
+                                                                        12)),
+                                                        backgroundColor:
+                                                            const Color(
+                                                                    0xFFF97316)
+                                                                .withOpacity(
+                                                                    0.1),
+                                                        labelStyle:
+                                                            const TextStyle(
+                                                                color: Color(
+                                                                    0xFFF97316)),
+                                                        deleteIcon: const Icon(
+                                                            Icons.close,
+                                                            size: 14,
+                                                            color: Color(
+                                                                0xFFF97316)),
+                                                        onDeleted: () {
+                                                          setState(() {
+                                                            _editingTags
+                                                                .remove(tag);
+                                                          });
+                                                        },
+                                                        shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        20)),
+                                                        side: BorderSide.none,
+                                                      ))
+                                                  .toList(),
+                                            ),
+                                          ),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.tag,
+                                                  color: Color(0xFFF97316)),
+                                              onPressed: _openTagPicker,
+                                              tooltip: "Add Tags",
+                                            ),
+                                            Row(
+                                              children: [
+                                                TextButton(
+                                                  onPressed: () => setState(
+                                                      () => _isEditingPost =
+                                                          false),
+                                                  child: Text("Cancel",
+                                                      style: TextStyle(
+                                                          color: isDark
+                                                              ? Colors.grey
+                                                              : Colors
+                                                                  .grey[700])),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                ElevatedButton(
+                                                  onPressed: _savePostEdit,
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        const Color(0xFFF97316),
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        20)),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 0),
+                                                  ),
+                                                  child: const Text("Save"),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        )
+                                      ],
+                                    ),
+                                  )
+                                else
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _post!.content,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          height: 1.5,
+                                          color: isDark
+                                              ? Colors.white70
+                                              : const Color(0xFF334155),
+                                        ),
+                                      ),
+                                      if (_post!.tags.isNotEmpty) ...[
+                                        const SizedBox(height: 12),
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          children: _post!.tags
+                                              .map((tag) => Container(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: isDark
+                                                          ? Colors.white
+                                                              .withOpacity(0.1)
+                                                          : Colors.black
+                                                              .withOpacity(
+                                                                  0.05),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              20),
+                                                      border: Border.all(
+                                                        color: isDark
+                                                            ? Colors.white10
+                                                            : Colors.black12,
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      tag,
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: isDark
+                                                            ? Colors.white70
+                                                            : Colors.black87,
+                                                      ),
+                                                    ),
+                                                  ))
+                                              .toList(),
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ),
                                 if (_post!.isEdited)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 4.0),
@@ -505,41 +701,96 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                           ),
                                         );
                                       }),
-                                      _buildAddReactionButton(isDark,
+                                      _buildAddReactionButton(context, isDark,
                                           isSmall: true),
                                     ],
                                   ),
                                 ),
 
-                                // Actions Row (Updated Logic)
+                                // Actions Row (Updated Logic with Face Pile)
                                 Row(
                                   children: [
                                     GestureDetector(
-                                      onTap: () => _onReaction('❤️'),
+                                      onTap: () => _onToggleLike(),
                                       child: Icon(
-                                        _post!.userReactions.contains('❤️')
+                                        _post!.isLiked
                                             ? Icons.favorite
                                             : Icons.favorite_border,
-                                        color:
-                                            _post!.userReactions.contains('❤️')
-                                                ? Colors.red
-                                                : (isDark
-                                                    ? const Color(0xFF94A3B8)
-                                                    : const Color(0xFF64748B)),
+                                        color: _post!.isLiked
+                                            ? Colors.red
+                                            : (isDark
+                                                ? const Color(0xFF94A3B8)
+                                                : const Color(0xFF64748B)),
                                         size: 28,
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      "${_post!.reactions['❤️'] ?? 0}",
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: isDark
-                                            ? Colors.white
-                                            : const Color(0xFF0F172A),
+                                    const SizedBox(width: 12),
+                                    // Face Pile & Text
+                                    if (_post!.likesCount > 0)
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            if (_post!.likedByUsers.isNotEmpty)
+                                              SizedBox(
+                                                width: 24.0 +
+                                                    (14.0 *
+                                                        (_post!.likedByUsers
+                                                                .take(3)
+                                                                .length -
+                                                            1)),
+                                                height: 24,
+                                                child: Stack(
+                                                  children: _post!.likedByUsers
+                                                      .take(3)
+                                                      .toList()
+                                                      .asMap()
+                                                      .entries
+                                                      .map((entry) {
+                                                    return Positioned(
+                                                      left: entry.key * 14.0,
+                                                      child: Container(
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          shape:
+                                                              BoxShape.circle,
+                                                          border: Border.all(
+                                                            color: isDark
+                                                                ? const Color(
+                                                                    0xFF0F172A)
+                                                                : Colors.white,
+                                                            width: 2,
+                                                          ),
+                                                        ),
+                                                        child: CircleAvatar(
+                                                          radius: 10,
+                                                          backgroundImage:
+                                                              NetworkImage(entry
+                                                                  .value
+                                                                  .avatarUrl),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }).toList(),
+                                                ),
+                                              ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                _getLikeText(),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: isDark
+                                                      ? Colors.white70
+                                                      : const Color(0xFF64748B),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
                                   ],
                                 ),
 
@@ -565,7 +816,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         ),
                       ),
                     ),
-                    _buildGlassCommentInput(isDark),
+                    _buildGlassCommentInput(isDark, context),
                   ],
                 ),
         ],
@@ -644,31 +895,65 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         ],
                       ),
                     ),
-                    if (comment.author.id == _service.currentUserId)
-                      PopupMenuButton<String>(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: Icon(Icons.more_vert,
-                            size: 16,
-                            color: isDark ? Colors.white54 : Colors.grey),
-                        onSelected: (val) {
-                          if (val == 'edit') {
-                            setState(() {
-                              _editingCommentId = comment.id;
-                              _editCommentController.text = comment.content;
-                            });
+                    PopupMenuButton<String>(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(Icons.more_vert,
+                          size: 16,
+                          color: isDark ? Colors.white54 : Colors.grey),
+                      onSelected: (val) async {
+                        if (val == 'edit') {
+                          setState(() {
+                            _editingCommentId = comment.id;
+                            _editCommentController.text = comment.content;
+                          });
+                        }
+                        if (val == 'delete') _onDeleteComment(comment.id);
+                        if (val == 'report') {
+                          await _service.reportComment(widget.postId,
+                              comment.id, "Inappropriate content");
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(AppLocalizations.of(context)
+                                      .translate('community.report_success',
+                                          variables: {'type': 'Comment'}))),
+                            );
                           }
-                          if (val == 'delete') _onDeleteComment(comment.id);
-                        },
-                        itemBuilder: (ctx) => [
-                          const PopupMenuItem(
-                              value: 'edit', child: Text('Edit')),
-                          const PopupMenuItem(
-                              value: 'delete',
-                              child: Text('Delete',
-                                  style: TextStyle(color: Colors.red))),
-                        ],
-                      ),
+                        }
+                      },
+                      itemBuilder: (ctx) {
+                        final isAuthor =
+                            comment.author.id == _service.currentUserId;
+                        if (isAuthor) {
+                          return [
+                            const PopupMenuItem(
+                                value: 'edit', child: Text('Edit')),
+                            const PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Delete',
+                                    style: TextStyle(color: Colors.red))),
+                          ];
+                        } else {
+                          return [
+                            PopupMenuItem(
+                                value: 'report',
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.report_gmailerrorred,
+                                        size: 16, color: Colors.red),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                        AppLocalizations.of(context)
+                                            .translate('community.menu.report'),
+                                        style:
+                                            const TextStyle(color: Colors.red)),
+                                  ],
+                                )),
+                          ];
+                        }
+                      },
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -734,39 +1019,70 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   ),
                 const SizedBox(height: 8),
                 // Reactions for Comment
-                Wrap(
-                  spacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    ...comment.reactions.entries
-                        .where((e) => e.key != '❤️')
-                        .map((entry) {
-                      final isUserReact =
-                          comment.userReactions.contains(entry.key);
-                      return GestureDetector(
-                        onTap: () =>
-                            _onReaction(entry.key, commentId: comment.id),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isUserReact
-                                ? const Color(0xFFF97316).withOpacity(0.1)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: isUserReact
-                                    ? const Color(0xFFF97316)
-                                    : Colors.grey.withOpacity(0.3)),
-                          ),
-                          child: Text("${entry.key} ${entry.value}",
-                              style: const TextStyle(fontSize: 11)),
-                        ),
-                      );
-                    }),
-                    // Add Reaction Button for Comment
-                    _buildAddReactionButton(isDark,
-                        isSmall: true, commentId: comment.id),
+                    // Like Action
+                    GestureDetector(
+                      onTap: () => _onToggleLikeComment(comment.id),
+                      child: Icon(
+                        comment.isLiked
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        size: 16,
+                        color: comment.isLiked
+                            ? Colors.red
+                            : (isDark ? Colors.grey : Colors.grey.shade400),
+                      ),
+                    ),
+                    if (comment.likesCount > 0) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        "${comment.likesCount}",
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.grey : Colors.grey.shade600),
+                      ),
+                    ],
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: Wrap(
+                        spacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          ...comment.reactions.entries
+                              .where((e) => e.key != '❤️')
+                              .map((entry) {
+                            final isUserReact =
+                                comment.userReactions.contains(entry.key);
+                            return GestureDetector(
+                              onTap: () =>
+                                  _onReaction(entry.key, commentId: comment.id),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isUserReact
+                                      ? const Color(0xFFF97316).withOpacity(0.1)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: isUserReact
+                                          ? const Color(0xFFF97316)
+                                          : Colors.grey.withOpacity(0.3)),
+                                ),
+                                child: Text("${entry.key} ${entry.value}",
+                                    style: const TextStyle(fontSize: 11)),
+                              ),
+                            );
+                          }),
+                          // Add Reaction Button for Comment
+                          _buildAddReactionButton(context, isDark,
+                              isSmall: true, commentId: comment.id),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -775,6 +1091,48 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _onToggleLike() async {
+    if (_post == null) return;
+
+    // Optimistic Update
+    setState(() {
+      final isLiked = !_post!.isLiked;
+      final likesCount = _post!.likesCount + (isLiked ? 1 : -1);
+
+      _post = _post!.copyWith(
+        isLiked: isLiked,
+        likesCount: likesCount,
+      );
+    });
+
+    await _service.likePost(_post!.id);
+  }
+
+  Future<void> _onToggleLikeComment(String commentId) async {
+    final index = _comments.indexWhere((c) => c.id == commentId);
+    if (index == -1) return;
+
+    final comment = _comments[index];
+    setState(() {
+      final isLiked = !comment.isLiked;
+      final likesCount = comment.likesCount + (isLiked ? 1 : -1);
+
+      _comments[index] = CommunityComment(
+        id: comment.id,
+        author: comment.author,
+        content: comment.content,
+        timestamp: comment.timestamp,
+        likesCount: likesCount,
+        isLiked: isLiked,
+        reactions: comment.reactions,
+        userReactions: comment.userReactions,
+        isEdited: comment.isEdited,
+      );
+    });
+
+    await _service.likeComment(widget.postId, commentId);
   }
 
   Future<void> _onReaction(String emoji, {String? commentId}) async {
@@ -799,20 +1157,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               reactions.remove(emoji);
             }
           }
-          _post = CommunityPost(
-            id: _post!.id,
-            author: _post!.author,
-            content: _post!.content,
-            timestamp: _post!.timestamp,
-            imageUrls: _post!.imageUrls,
-            likesCount: _post!.likesCount,
-            commentsCount: _post!.commentsCount,
-            tags: _post!.tags,
-            isLiked: _post!.isLiked,
-            isBookmarked: _post!.isBookmarked,
+          _post = _post!.copyWith(
             reactions: reactions,
-            userReactions: userReactions, // kept once
-            isEdited: _post!.isEdited,
+            userReactions: userReactions,
           );
         }
       } else {
@@ -843,6 +1190,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             content: comment.content,
             timestamp: comment.timestamp,
             likesCount: comment.likesCount,
+            isLiked: comment.isLiked, // Preserve like state
             reactions: reactions,
             userReactions: userReactions,
             isEdited: comment.isEdited,
@@ -854,9 +1202,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     // Async Update
     await _service.toggleReaction(
         postId: widget.postId, commentId: commentId, emoji: emoji);
-    // Reload silently to sync fully if needed, but optimistic should hold
-    // _loadData();
-  }
+  } // Reload silently to sync fully if needed, but optimistic should hold
+  // _loadData();
 
   Future<void> _onAddComment() async {
     final content = _commentController.text.trim();
@@ -908,7 +1255,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
-  Widget _buildGlassCommentInput(bool isDark) {
+  Widget _buildGlassCommentInput(bool isDark, BuildContext context) {
+    final user = Provider.of<UserProvider>(context, listen: false).user;
+    final userImage = user?.photoURL;
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -928,7 +1277,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               if (_post != null)
                 CircleAvatar(
                   radius: 18,
-                  backgroundImage: NetworkImage(_post!.author.avatarUrl),
+                  backgroundImage: NetworkImage(
+                      userImage ?? 'https://i.pravatar.cc/150?u=current'),
                 ),
               const SizedBox(width: 12),
               Expanded(
@@ -990,6 +1340,86 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
+  String _getLikeText() {
+    final likes = _post!.likesCount;
+    if (likes == 0) return "";
+
+    final appLoc = AppLocalizations.of(context);
+    final likers = _post!.likedByUsers;
+    final currentUserId = _service.currentUserId;
+    // Check if current user is in the liked list or if isLiked is true
+    // Note: likedByUsers only contains top 3. isLiked is the single source of truth.
+    final isLikedByMe = _post!.isLiked;
+
+    if (isLikedByMe) {
+      if (likes == 1) return appLoc.translate('community.likes.you');
+
+      // Filter out current user from names to show other names
+      final otherLikers = likers.where((u) => u.id != currentUserId).toList();
+      final otherCount = likes - 1;
+
+      if (otherLikers.isEmpty) {
+        // We liked it, but we don't have other names in the top list (should be rare if we just liked it)
+        // But if count > 1, we must have others.
+        return appLoc.translate('community.likes.you_many',
+            variables: {'name': 'User', 'count': otherCount.toString()});
+      }
+
+      final name1 = otherLikers[0].name.split(' ').first;
+
+      if (otherCount == 1) {
+        return appLoc
+            .translate('community.likes.you_1', variables: {'name': name1});
+      }
+
+      // You + One Name + Others
+      if (otherLikers.length >= 2 && otherCount > 2) {
+        // You, Name1, Name2 and X others
+        final name2 = otherLikers[1].name.split(' ').first;
+        return appLoc.translate('community.likes.you_many_2', variables: {
+          'name1': name1,
+          'name2': name2,
+          'count': (otherCount - 2).toString()
+        });
+      }
+
+      return appLoc.translate('community.likes.you_many', variables: {
+        'name1': name1,
+        'name': name1, // fallback
+        'count': (otherCount - 1).toString()
+      });
+    }
+
+    if (likers.isEmpty)
+      return appLoc.translate('community.likes.simple',
+          variables: {'count': likes.toString()});
+
+    final name1 = likers[0].name.split(' ').first;
+
+    if (likers.length == 1 && likes == 1) {
+      return appLoc
+          .translate('community.likes.one', variables: {'name': name1});
+    }
+
+    if (likers.length >= 2) {
+      final name2 = likers[1].name.split(' ').first;
+      if (likes == 2)
+        return appLoc.translate('community.likes.two',
+            variables: {'name1': name1, 'name2': name2});
+      return appLoc.translate('community.likes.many', variables: {
+        'name1': name1,
+        'name2': name2,
+        'count': (likes - 2).toString()
+      });
+    }
+
+    return appLoc.translate('community.likes.many', variables: {
+      'name1': name1,
+      'name2': 'User',
+      'count': (likes - 1).toString()
+    });
+  }
+
   String _formatTime(DateTime time) {
     if (!mounted) return "";
     final appLoc = AppLocalizations.of(context);
@@ -1034,47 +1464,24 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
-  void _showEditDialog(BuildContext context, CommunityPost post) {
-    final TextEditingController editController =
-        TextEditingController(text: post.content);
-    final appLoc = AppLocalizations.of(context);
+  void _toggleEditMode(CommunityPost post) {
+    setState(() {
+      _isEditingPost = true;
+      _editPostController.text = post.content;
+      _editingTags = List.from(post.tags);
+    });
+  }
 
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(appLoc.translate('community.menu.edit')),
-        content: TextField(
-          controller: editController,
-          maxLines: 5,
-          minLines: 1,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(appLoc.translate('common.cancel')),
-          ),
-          TextButton(
-            onPressed: () async {
-              final newContent = editController.text.trim();
-              if (newContent.isNotEmpty && newContent != post.content) {
-                Navigator.pop(ctx); // Close dialog
-                await _service.updatePost(post.id, newContent);
-                // Refresh local state if needed, or rely on Stream/Future
-                // Since this page uses FutureBuilder currently (or did I change it to use passed post? No, it loads details)
-                // Actually PostDetailScreen loads details in _loadData
-                _loadData();
-              } else {
-                Navigator.pop(ctx);
-              }
-            },
-            child: Text(appLoc.translate('common.save')),
-          ),
-        ],
-      ),
-    );
+  Future<void> _savePostEdit() async {
+    final newContent = _editPostController.text.trim();
+    if (newContent.isNotEmpty &&
+        (newContent != _post?.content || _editingTags != _post?.tags)) {
+      await _service.updatePost(_post!.id, newContent, newTags: _editingTags);
+      _loadData();
+    }
+    setState(() {
+      _isEditingPost = false;
+    });
   }
 
   Future<void> _onDeleteComment(String commentId) async {
@@ -1083,53 +1490,90 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     _loadData();
   }
 
-  Widget _buildAddReactionButton(bool isDark,
-      {bool isSmall = false, String? commentId, double? size}) {
-    final emojis = ['👎', '😂', '😮', '😢', '🔥'];
-
-    return PopupMenuButton<String>(
-      tooltip: "Add Reaction",
-      offset: const Offset(-150, 40),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-      color: isDark ? const Color(0xFF334155) : Colors.white,
-      elevation: 8,
-      enableFeedback: true,
-      itemBuilder: (context) {
-        return [
-          PopupMenuItem(
-            enabled: false, // Container for row
-            child: SizedBox(
-              height: 40,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: emojis.map((e) {
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context, e);
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text(e, style: const TextStyle(fontSize: 24)),
-                    ),
-                  );
-                }).toList(),
-              ),
+  void _openTagPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return StatefulBuilder(builder: (context, setStateSheet) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : Colors.white,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
             ),
-          )
-        ];
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Add Tags",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _suggestedTags.map((tag) {
+                    final isSelected = _editingTags.contains(tag);
+                    return FilterChip(
+                      label: Text(tag),
+                      selected: isSelected,
+                      onSelected: (bool selected) {
+                        setStateSheet(() {
+                          if (selected) {
+                            if (!_editingTags.contains(tag)) {
+                              _editingTags.add(tag);
+                            }
+                          } else {
+                            _editingTags.remove(tag);
+                          }
+                        });
+                        // Also update parent state to reflect immediately if visible behind sheet
+                        this.setState(() {});
+                      },
+                      selectedColor: const Color(0xFFF97316).withOpacity(0.2),
+                      checkmarkColor: const Color(0xFFF97316),
+                      labelStyle: TextStyle(
+                        color: isSelected
+                            ? const Color(0xFFF97316)
+                            : (isDark ? Colors.white70 : Colors.black54),
+                      ),
+                      backgroundColor:
+                          isDark ? Colors.white10 : Colors.grey.shade100,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(
+                          color: isSelected
+                              ? const Color(0xFFF97316)
+                              : Colors.transparent,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          );
+        });
       },
-      onSelected: (emoji) => _onReaction(emoji, commentId: commentId),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: isSmall
-            ? BoxDecoration(
-                color: isDark ? Colors.white10 : Colors.grey.shade200,
-                shape: BoxShape.circle)
-            : null,
-        child: Icon(Icons.add_reaction_outlined,
-            size: size ?? (isSmall ? 16 : 20),
-            color: isDark ? Colors.white70 : Colors.grey.shade600),
-      ),
+    ).then((_) => setState(() {}));
+  }
+
+  Widget _buildAddReactionButton(BuildContext context, bool isDark,
+      {bool isSmall = false, String? commentId}) {
+    return DraggableReactionButton(
+      isDark: isDark,
+      isSmall: isSmall,
+      commentId: commentId,
+      onReactionSelected: (emoji) => _onReaction(emoji, commentId: commentId),
     );
   }
 }

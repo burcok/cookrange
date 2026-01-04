@@ -23,7 +23,7 @@ class AppLifecycleService with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
     super.didChangeAppLifecycleState(state);
     _log.info('App lifecycle state changed to: ${state.name}',
         service: _serviceName);
@@ -38,14 +38,14 @@ class AppLifecycleService with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       _log.info('App resumed, updating last_active_at for user ${user.uid}',
           service: _serviceName);
-      _firestoreService.updateUserLastActiveTimestamp(user.uid);
-      _firestoreService.updateUserOnlineStatus(user.uid, true);
+      await _firestoreService.updateUserLastActiveTimestamp(user.uid);
+      await _firestoreService.updateUserOnlineStatus(user.uid, true);
     } else {
       // When the app is paused, inactive, or detached, mark user as offline.
       _log.info(
           'App not in resumed state, marking user ${user.uid} as offline.',
           service: _serviceName);
-      _firestoreService.updateUserOnlineStatus(user.uid, false);
+      await _firestoreService.updateUserOnlineStatus(user.uid, false);
     }
   }
 

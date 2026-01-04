@@ -3,7 +3,8 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/models/notification_model.dart';
 import '../../core/services/community_service.dart';
 import '../community/widgets/community_widgets.dart';
-import '../community/widgets/glass_refresher.dart';
+import '../../core/services/friend_service.dart';
+import '../../screens/community/widgets/glass_refresher.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -14,6 +15,7 @@ class NotificationScreen extends StatefulWidget {
 
 class _NotificationScreenState extends State<NotificationScreen> {
   final CommunityService _service = CommunityService();
+  final FriendService _friendService = FriendService();
   List<NotificationModel> _notifications = [];
   bool _isLoading = true;
 
@@ -48,6 +50,36 @@ class _NotificationScreenState extends State<NotificationScreen> {
       setState(() {
         _notifications.removeWhere((n) => n.id == id);
       });
+    }
+  }
+
+  Future<void> _acceptRequest(String senderId, String notificationId) async {
+    try {
+      await _friendService.acceptFriendRequest(senderId);
+      await _delete(notificationId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Friend request accepted!")));
+      }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+  }
+
+  Future<void> _rejectRequest(String senderId, String notificationId) async {
+    try {
+      await _friendService.rejectFriendRequest(senderId);
+      await _delete(notificationId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Friend request rejected.")));
+      }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -178,6 +210,57 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                           color: Colors.grey[500],
                                         ),
                                       ),
+                                      if (notification.type ==
+                                              NotificationType.friend_request &&
+                                          notification.relatedId != null) ...[
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            ElevatedButton(
+                                              onPressed: () async {
+                                                // Accept logic
+                                                await _acceptRequest(
+                                                    notification.relatedId!,
+                                                    notification.id);
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.green,
+                                                foregroundColor: Colors.white,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 8),
+                                                minimumSize: Size.zero,
+                                                textStyle: const TextStyle(
+                                                    fontSize: 12),
+                                              ),
+                                              child: const Text("Accept"),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            OutlinedButton(
+                                              onPressed: () async {
+                                                // Reject logic
+                                                await _rejectRequest(
+                                                    notification.relatedId!,
+                                                    notification.id);
+                                              },
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: Colors.red,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 8),
+                                                minimumSize: Size.zero,
+                                                textStyle: const TextStyle(
+                                                    fontSize: 12),
+                                                side: const BorderSide(
+                                                    color: Colors.red),
+                                              ),
+                                              child: const Text("Reject"),
+                                            ),
+                                          ],
+                                        ),
+                                      ]
                                     ],
                                   ),
                                 ),
@@ -217,6 +300,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case NotificationType.follow:
         icon = Icons.person_add;
         color = Colors.green;
+        break;
+      case NotificationType.friend_request:
+        icon = Icons.person_add_alt_1;
+        color = Colors.purple;
         break;
       case NotificationType.system:
         icon = Icons.notifications;

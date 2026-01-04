@@ -38,4 +38,24 @@ class UserProvider extends ChangeNotifier {
   Future<void> refreshUser() async {
     await loadUser();
   }
+
+  Future<void> updateUserProfile(
+      Map<String, dynamic> data, Map<String, bool> visibility) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final updates = {
+        'onboarding_data': data,
+        'profile_visibility': visibility,
+      };
+      await AuthService().updateUserOnboardingData(updates);
+      await refreshUser();
+    } catch (e) {
+      debugPrint('Error updating user profile: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

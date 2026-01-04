@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/providers/language_provider.dart';
+import 'core/providers/theme_provider.dart';
 import 'core/services/app_lifecycle_service.dart';
 import 'core/services/app_initialization_service.dart';
 import 'core/services/provider_initialization_service.dart';
@@ -64,15 +65,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ..._providerService.createChangeNotifierProviders(),
         ..._providerService.createFirebaseProviders(),
       ],
-      child: Consumer<LanguageProvider>(
-        builder: (context, languageProvider, child) {
+      child: Consumer2<LanguageProvider, ThemeProvider>(
+        builder: (context, languageProvider, themeProvider, child) {
           return _screenUtilService.configureScreenUtil(
             child: MaterialApp(
               title: 'Cookrange',
               debugShowCheckedModeBanner: false,
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,
-              themeMode: ThemeMode.system,
+              themeMode: themeProvider.themeMode,
               initialRoute: _routeService.initialRoute,
               routes: _routeService.getRoutes(),
               onUnknownRoute: _routeService.onUnknownRoute,

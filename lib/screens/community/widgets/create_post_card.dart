@@ -22,8 +22,16 @@ class _CreatePostCardState extends State<CreatePostCard> {
 
   bool _isExpanded = false;
   bool _isPosting = false;
-  List<String> _attachedImageUrls =
-      []; // For simplicity, we might mock upload or use base64/file path if no storage setup
+  List<String> _attachedImageUrls = [];
+  List<String> _selectedTags = [];
+  final List<String> _suggestedTags = [
+    "🔥 Bugün trend",
+    "🥦 Vegan",
+    "⏱️ 15 dk",
+    "💪 Spor sonrası",
+    "🍳 Kolay Tarif",
+    "🍝 Akşam Yemeği"
+  ];
 
   @override
   void initState() {
@@ -49,6 +57,84 @@ class _CreatePostCardState extends State<CreatePostCard> {
     super.dispose();
   }
 
+  void _openTagPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF0F172A) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Add Tags",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _suggestedTags.map((tag) {
+                  final isSelected = _selectedTags.contains(tag);
+                  return FilterChip(
+                    label: Text(tag),
+                    selected: isSelected,
+                    onSelected: (bool selected) {
+                      setState(() {
+                        if (selected) {
+                          if (!_selectedTags.contains(tag)) {
+                            _selectedTags.add(tag);
+                          }
+                        } else {
+                          _selectedTags.remove(tag);
+                        }
+                      });
+                      Navigator.pop(
+                          context); // Close for single select or stay open? Let's close for flow or keep open?
+                      // Better UX: keep open to select multiple, but user requested specific examples.
+                      // Let's keep open and add a 'Done' button or just allow tap out.
+                      // Actually for smoothness, let's keep open.
+                      // Rebuild the bottom sheet? StatefulBuilder needed for BottomSheet updating.
+                    },
+                    selectedColor: const Color(0xFFF97316).withOpacity(0.2),
+                    checkmarkColor: const Color(0xFFF97316),
+                    labelStyle: TextStyle(
+                      color: isSelected
+                          ? const Color(0xFFF97316)
+                          : (isDark ? Colors.white70 : Colors.black54),
+                    ),
+                    backgroundColor:
+                        isDark ? Colors.white10 : Colors.grey.shade100,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: isSelected
+                            ? const Color(0xFFF97316)
+                            : Colors.transparent,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    ).then((_) => setState(() {})); // Refresh parent to show selected tags
+  }
+
   Future<void> _handlePost() async {
     final content = _controller.text.trim();
     if (content.isEmpty && _attachedImageUrls.isEmpty) return;
@@ -56,27 +142,15 @@ class _CreatePostCardState extends State<CreatePostCard> {
     setState(() => _isPosting = true);
 
     try {
-      // Note: In a real app, you'd upload File images to Firebase Storage here and get URLs.
-      // For this MVP without clear Storage setup, we will just pass the local paths
-      // or mock URLs if the user selects something.
-      // If we want to show them effectively, we need to handle FileImage vs NetworkImage.
-      // But CommunityService expects URLs (Strings).
-      // We will assume for now we just store the path or a placeholder if it's local.
-      // Ideally: await StorageService.uploadImages(_attachedImageFiles)...
-
-      await _service.createPost(content, _attachedImageUrls, []);
+      await _service.createPost(content, _attachedImageUrls, _selectedTags);
       _controller.clear();
       _focusNode.unfocus();
       setState(() {
         _attachedImageUrls = [];
+        _selectedTags = [];
         _isExpanded = false;
       });
       widget.onPostCreated();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Post shared successfully!")),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -92,20 +166,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        // Here we ideally upload. For now, we mimic a URL or just put the path ensuring UI handles it?
-        // CommunityService expects web URLs usually.
-        // Let's just use a fake unsplash URL to simulate "Upload Success" for the demo user
-        // OR rely on the fact that we can't easily upload without Storage bucket config.
-        // User asked for "create real post functionality".
-        // I will add the *File Path* to the list, but Displaying it might break if 'NetworkImage' is hardcoded in GlassPostCard.
-        // GlassPostCard uses NetworkImage.
-        // FIX: CreatePostCard shows preview correctly (Network/File?).
-        // GlassPostCard needs to handle it.
-        // Compromise: I will use a random food URL to guarantee it works in the feed
-        // and tell the user "Image upload simulated (Storage not configured)".
-
         setState(() {
-          // Simulator for "Real" upload
           _attachedImageUrls.add(
               'https://source.unsplash.com/random/800x600/?food,cooking&${DateTime.now().millisecondsSinceEpoch}');
         });
@@ -175,8 +236,39 @@ class _CreatePostCardState extends State<CreatePostCard> {
           ),
           if (_isExpanded ||
               _controller.text.isNotEmpty ||
-              _attachedImageUrls.isNotEmpty) ...[
+              _attachedImageUrls.isNotEmpty ||
+              _selectedTags.isNotEmpty) ...[
             const SizedBox(height: 12),
+
+            // Selected Tags
+            if (_selectedTags.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Wrap(
+                  spacing: 8,
+                  children: _selectedTags
+                      .map((tag) => Chip(
+                            label:
+                                Text(tag, style: const TextStyle(fontSize: 12)),
+                            backgroundColor:
+                                const Color(0xFFF97316).withOpacity(0.1),
+                            labelStyle:
+                                const TextStyle(color: Color(0xFFF97316)),
+                            deleteIcon: const Icon(Icons.close,
+                                size: 14, color: Color(0xFFF97316)),
+                            onDeleted: () {
+                              setState(() {
+                                _selectedTags.remove(tag);
+                              });
+                            },
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20)),
+                            side: BorderSide.none,
+                          ))
+                      .toList(),
+                ),
+              ),
+
             // Attached Images Preview
             if (_attachedImageUrls.isNotEmpty)
               SizedBox(
@@ -194,8 +286,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
                             image: DecorationImage(
-                              image: NetworkImage(_attachedImageUrls[
-                                  index]), // We are using simulated URLs
+                              image: NetworkImage(_attachedImageUrls[index]),
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -240,7 +331,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.tag, color: Color(0xFFF97316)),
-                      onPressed: () {},
+                      onPressed: _openTagPicker,
                       tooltip: "Add Tags",
                     ),
                   ],

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'dart:math' as math;
+import 'package:cookrange/screens/notifications/notification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -11,8 +12,10 @@ import '../../core/models/meal_plan_model.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/recipe_generation_service.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/services/admin_status_service.dart';
 import '../../core/services/navigation_provider.dart';
 import '../../core/localization/app_localizations.dart';
+import '../common/generic_error_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
 import '../profile/profile_screen.dart';
 
@@ -110,6 +113,18 @@ class _HomeScreenState extends State<HomeScreen>
     });
 
     try {
+      final userId = context.read<UserProvider>().user?.uid;
+      if (userId != null) {
+        // Check ban status on refresh
+        await AdminStatusService()
+            .checkStatus(userId, forceRefresh: true)
+            .then((status) {
+          if (status == AdminStatus.banned) {
+            AdminStatusService().notifyBanned(userId);
+          }
+        });
+      }
+
       await Future.wait([
         _loadTodayMealPlan(),
         context.read<UserProvider>().refreshUser(),
@@ -180,6 +195,16 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     super.build(context);
     final l10n = AppLocalizations.of(context);
+    final userProvider = context.watch<UserProvider>();
+
+    // Critical Error: No user data and not loading
+    if (!userProvider.isLoading && userProvider.user == null) {
+      return GenericErrorScreen(
+        errorCode: 'HM-USER-NULL',
+        onRetry: () => userProvider.refreshUser(),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Stack(
@@ -194,29 +219,20 @@ class _HomeScreenState extends State<HomeScreen>
               physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
               ),
-              padding: EdgeInsets.fromLTRB(24.w, 32.h, 24.w, 120.h),
+              padding: EdgeInsets.fromLTRB(
+                  24.w, MediaQuery.of(context).padding.top + 24, 24.w, 120.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildTopBar(context),
                   SizedBox(height: 32.h),
-                  Consumer<UserProvider>(
-                    builder: (context, userProvider, child) {
-                      if (userProvider.isLoading && userProvider.user == null) {
-                        return SizedBox(
-                          height: 0.7.sh,
-                          child:
-                              const Center(child: CircularProgressIndicator()),
-                        );
-                      }
-                      final userModel = userProvider.user;
-                      if (userModel == null) {
-                        return Center(
-                            child: Text(l10n.translate('errors.general')));
-                      }
-                      return _buildHomeContent(context, userModel, l10n);
-                    },
-                  ),
+                  if (userProvider.isLoading && userProvider.user == null)
+                    SizedBox(
+                      height: 0.7.sh,
+                      child: const Center(child: CircularProgressIndicator()),
+                    )
+                  else if (userProvider.user != null)
+                    _buildHomeContent(context, userProvider.user!, l10n),
                 ],
               ),
             ),
@@ -364,20 +380,33 @@ class _HomeScreenState extends State<HomeScreen>
           icon: const Icon(Icons.menu, size: 28, color: Colors.black),
           onPressed: () => context.read<NavigationProvider>().toggleMenu(true),
         ),
-        IconButton(
-          icon: const Icon(Icons.person_outline, size: 28, color: Colors.black),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ProfileScreen()),
-          ),
-        ),
+        Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined,
+                  size: 28, color: Colors.black),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationScreen()),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.person_outline,
+                  size: 28, color: Colors.black),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              ),
+            ),
+          ],
+        )
       ],
     );
   }
 
   Widget _buildWelcomeHeader(
       BuildContext context, UserModel userModel, AppLocalizations l10n) {
-    final displayName =
-        userModel.displayName ?? (userModel.email?.split('@').first) ?? 'User';
+    final displayName = userModel.displayName?.split(' ').first ??
+        (userModel.email?.split('@').first) ??
+        'User';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

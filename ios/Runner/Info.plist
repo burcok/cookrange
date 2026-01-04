@@ -51,7 +51,13 @@
 		<false/>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Mikrofonu sesli asistan için kullanıyoruz.</string>
-		<key>NSSpeechRecognitionUsageDescription</key>
+	<key>NSSpeechRecognitionUsageDescription</key>
 		<string>Sesinizi metne dönüştürmek için izin istiyoruz.</string>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+      <string>mailto</string>
+      <string>https</string>
+      <string>http</string>
+    </array>
 	</dict>
 </plist>

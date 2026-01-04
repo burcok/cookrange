@@ -106,20 +106,26 @@ class CommunityService {
     });
   }
 
-  Future<void> updatePost(String postId, String newContent) async {
+  Future<void> updatePost(String postId, String newContent,
+      {List<String>? newTags}) async {
     final uid = currentUserId;
     if (uid.isEmpty) throw Exception("User not authenticated");
 
     // Firestore rules should enforce ownership, but good to check/handle error
-    // Firestore rules should enforce ownership, but good to check/handle error
-    await _firestore.collection('posts').doc(postId).update({
+    final Map<String, dynamic> updates = {
       'content': newContent,
       'isEdited': true,
-    });
+    };
+    if (newTags != null) {
+      updates['tags'] = newTags;
+    }
+
+    await _firestore.collection('posts').doc(postId).update(updates);
 
     await _logger.logActivity('post_update', {
       'post_id': postId,
       'new_content_len': newContent.length,
+      if (newTags != null) 'tags_count': newTags.length,
     });
   }
 
@@ -205,18 +211,34 @@ class CommunityService {
 
       if (!postDoc.exists) return false;
 
+      List<dynamic> recentLikers = [];
+      if (postDoc.data() != null &&
+          (postDoc.data() as Map).containsKey('recentLikers')) {
+        recentLikers = List.from(postDoc['recentLikers']);
+      }
+
       if (likeDoc.exists) {
         // Unlike
         transaction.delete(likeRef);
+        recentLikers.removeWhere((item) => item['id'] == userId);
         transaction.update(postRef, {
           'likesCount': FieldValue.increment(-1),
-          'likedUserIds': FieldValue.arrayRemove([userId])
+          'likedUserIds': FieldValue.arrayRemove([userId]),
+          'recentLikers': recentLikers,
         });
         return false;
       } else {
         // Like
-        // Optimization: Store minimal user snapshot for face piles if needed
         final user = await _getCurrentCommunityUser();
+        final userMap = user.toMap();
+
+        // Avoid duplicates just in case
+        recentLikers.removeWhere((item) => item['id'] == userId);
+        recentLikers.insert(0, userMap);
+        if (recentLikers.length > 3) {
+          recentLikers = recentLikers.sublist(0, 3);
+        }
+
         transaction.set(likeRef, {
           'timestamp': FieldValue.serverTimestamp(),
           'userId': userId,
@@ -226,6 +248,7 @@ class CommunityService {
         transaction.update(postRef, {
           'likesCount': FieldValue.increment(1),
           'likedUserIds': FieldValue.arrayUnion([userId]),
+          'recentLikers': recentLikers,
         });
         return true;
       }
@@ -234,6 +257,59 @@ class CommunityService {
         _logger.logActivity('post_like', {'post_id': postId});
       } else {
         _logger.logActivity('post_unlike', {'post_id': postId});
+      }
+      return result;
+    });
+  }
+
+  Future<bool> likeComment(String postId, String commentId) async {
+    final userId = _currentUserId;
+    if (userId == 'guest') return false;
+
+    final commentRef = _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .doc(commentId);
+    final likeRef = commentRef.collection('likes').doc(userId);
+
+    return _firestore.runTransaction((transaction) async {
+      final likeDoc = await transaction.get(likeRef);
+      final commentDoc = await transaction.get(commentRef);
+
+      if (!commentDoc.exists) return false;
+
+      if (likeDoc.exists) {
+        // Unlike
+        transaction.delete(likeRef);
+        transaction.update(commentRef, {
+          'likesCount': FieldValue.increment(-1),
+          'isLiked':
+              false, // For local simple tracking if stored, but 'isLiked' logic is client side typically
+          // Actually, update likedUserIds if needed? Comments might not need face pile.
+        });
+        return false;
+      } else {
+        // Like
+        final user = await _getCurrentCommunityUser();
+        transaction.set(likeRef, {
+          'timestamp': FieldValue.serverTimestamp(),
+          'userId': userId,
+          'userName': user.name,
+          'userAvatar': user.avatarUrl,
+        });
+        transaction.update(commentRef, {
+          'likesCount': FieldValue.increment(1),
+        });
+        return true;
+      }
+    }).then((result) {
+      if (result) {
+        _logger.logActivity(
+            'comment_like', {'post_id': postId, 'comment_id': commentId});
+      } else {
+        _logger.logActivity(
+            'comment_unlike', {'post_id': postId, 'comment_id': commentId});
       }
       return result;
     });
@@ -432,29 +508,15 @@ class CommunityService {
       // Sync "Heart" reaction with "likedUserIds" for feed visibility checking
       // Only do this for Posts, not Comments (commentId == null)
       if (commentId == null) {
-        if (emoji == '❤️') {
-          final isRemoving =
-              !userEmojis.contains(emoji); // We just modified userEmojis above
-          if (!isRemoving) {
-            // Added
-            updates['likesCount'] = FieldValue.increment(1);
-            updates['likedUserIds'] = FieldValue.arrayUnion([userId]);
-          } else {
-            // Removed
-            updates['likesCount'] = FieldValue.increment(-1);
-            updates['likedUserIds'] = FieldValue.arrayRemove([userId]);
-          }
+        // Sync emojis for feed visibility
+        // Field: reactionUserIds.{emoji}
+        // Note: Firestore map keys cannot contain '.', but emojis are fine.
+        final fieldPath = 'reactionUserIds.$emoji';
+        final isRemoving = !userEmojis.contains(emoji);
+        if (!isRemoving) {
+          updates[fieldPath] = FieldValue.arrayUnion([userId]);
         } else {
-          // Sync other emojis for feed visibility
-          // Field: reactionUserIds.{emoji}
-          // Note: Firestore map keys cannot contain '.', but emojis are fine.
-          final fieldPath = 'reactionUserIds.$emoji';
-          final isRemoving = !userEmojis.contains(emoji);
-          if (!isRemoving) {
-            updates[fieldPath] = FieldValue.arrayUnion([userId]);
-          } else {
-            updates[fieldPath] = FieldValue.arrayRemove([userId]);
-          }
+          updates[fieldPath] = FieldValue.arrayRemove([userId]);
         }
       }
 
@@ -494,5 +556,29 @@ class CommunityService {
 
   Future<void> deleteNotification(String id) async {
     // Mock implementation
+  }
+  // --- Reporting ---
+
+  Future<void> reportPost(String postId, String reason) async {
+    // In a real app, this would write to a reports collection
+    await _logger.logActivity('post_report', {
+      'post_id': postId,
+      'reason': reason,
+      'reporter_id': _currentUserId,
+    });
+    // Simulating API call
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
+  Future<void> reportComment(
+      String postId, String commentId, String reason) async {
+    await _logger.logActivity('comment_report', {
+      'post_id': postId,
+      'comment_id': commentId,
+      'reason': reason,
+      'reporter_id': _currentUserId,
+    });
+    // Simulating API call
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 }

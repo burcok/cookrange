@@ -583,7 +583,7 @@
     "notifications": "Bildirimler",
     "clear_all": "Tümünü Temizle",
     "no_notifications": "Henüz ilkin yok",
-    "whats_cooking": "Ne pişiriyorsun, {{name}}?",
+    "whats_cooking": "Ne pişiriyorsun, {name}?",
     "filters": {
       "latest": "Son Güncellemeler",
       "regional": "Bölgesel",
@@ -610,7 +610,18 @@
       "content": "Bu gönderiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
       "action": "Sil",
       "cancel": "İptal"
-    }
+    },
+    "likes": {
+      "one": "{name} beğendi",
+      "two": "{name1} ve {name2} beğendi",
+      "many": "{name1}, {name2} ve diğer {count} kişi beğendi",
+      "simple": "{count} kişi beğendi",
+      "you": "Sen beğendin",
+      "you_1": "Sen ve {name} beğendi",
+      "you_many": "Sen, {name} ve diğer {count} kişi beğendi",
+      "you_many_2": "Sen, {name1}, {name2} ve diğer {count} kişi beğendi"
+    },
+    "report_success": "{type} başarıyla bildirildi"
   },
   "menu": {
     "title": "Menü",
@@ -620,5 +631,70 @@
     "help": "Yardım",
     "logout": "Çıkış Yap",
     "community": "Topluluk"
+  },
+  "account_suspended": {
+    "title_header": "HESAP DURUMU",
+    "title_main": "Hesabınız Askıya Alındı",
+    "description": "Hesabınız, {bold_start}hizmet şartlarımızı ihlal ettiğiniz{bold_end} için güvenlik önlemi olarak geçici süreliğine askıya alınmıştır.",
+    "button_contact": "Destek ile İletişime Geç",
+    "button_terms": "Hizmet Şartlarını İncele",
+    "resources_title": "Yardımcı Kaynaklar",
+    "resource_community_rules": "Topluluk Kuralları",
+    "resource_community_rules_desc": "Nelerin yasak olduğunu öğrenin",
+    "resource_appeal": "İtiraz Süreci",
+    "resource_appeal_desc": "Askı kararına nasıl itiraz edilir?",
+    "footer_id": "ID: #{id}",
+    "appeal_modal": {
+      "title": "İtiraz Süreci",
+      "subtitle": "Eğer bir hata olduğunu düşünüyorsanız, aşağıdaki adımları izleyebilirsiniz.",
+      "step1_title": "İtiraz Talebi Oluştur",
+      "step1_desc": "ID numaranız ile birlikte destek ekibimize bir e-posta gönderin.",
+      "step2_title": "Değerlendirme",
+      "step2_desc": "Ekibimiz hesap aktivitelerinizi manuel olarak inceler.",
+      "step2_wait": "24-48 Saat",
+      "step3_title": "Sonuç",
+      "step3_desc": "Karar sonucu e-posta adresinize bildirilecektir.",
+      "note": "Not: Tekrarlanan ihlaller hesabın kalıcı olarak silinmesine yol açabilir."
+    },
+    "guidelines_modal": {
+      "title": "Topluluk Kuralları",
+      "content": "1. Saygılı Olun: Taciz veya nefret söylemi yasaktır.\n2. Spam Yapmayın: Tekrarlayan içerikler paylaşmayın.\n3. Özgün İçerik: Sadece kendi ürettiğiniz içerikleri paylaşın.\n4. Güvenlik: Zararlı veya tehlikeli içerikler yasaktır."
+    },
+    "terms_modal": {
+      "title": "Hizmet Şartları",
+      "content": "Cookrange'i kullanarak şartlarımızı kabul etmiş olursunuz. Hizmete erişim bir hak değil, ayrıcalıktır. Topluluk standartlarımızı ihlal eden veya güvenlik riski oluşturan hesapları askıya alma hakkımız saklıdır. Lütfen tam metni web sitemizden inceleyin."
+    }
+  },
+  "generic_error": {
+    "title_header": "HATA BİLDİRİMİ",
+    "title_main": "Bir Şeyler Yanlış Gitti",
+    "description": "Uygulamada beklenmeyen bir hata oluştu. Lütfen daha sonra tekrar deneyin ya da destek ekibimizle iletişime geçin.",
+    "button_retry": "Tekrar Dene",
+    "button_contact": "Destek ile İletişime Geç",
+    "resources_title": "Yardımcı Kaynaklar",
+    "resource_system_status": "Sistem Durumu",
+    "resource_system_status_desc": "Sunucu bağlantılarını kontrol et",
+    "resource_troubleshoot": "Sorun Giderme",
+    "resource_troubleshoot_desc": "Sık karşılaşılan hatalar",
+    "footer_code": "Hata Kodu: #{code}",
+    "system_status_modal": {
+      "title": "Sistem Durumu",
+      "subtitle": "Cookrange servislerinin güncel durumu",
+      "api_server": "API Sunucusu",
+      "auth_server": "Kimlik Doğrulama",
+      "database": "Veritabanı",
+      "operational": "Çalışıyor",
+      "maintenance": "Bakımda",
+      "outage": "Kesinti"
+    },
+    "troubleshoot_modal": {
+      "title": "Sorun Giderme",
+      "subtitle": "Bu hata için yaygın çözümler",
+      "step1": "İnternet bağlantınızı kontrol edin.",
+      "step2": "Uygulamayı yeniden başlatın.",
+      "step3": "Mümkünse uygulama önbelleğini temizleyin.",
+      "step4": "Mağazadan uygulama güncellemelerini kontrol edin.",
+      "step5": "Sorun devam ederse Hata Kodu ile destek ekibine ulaşın."
+    }
   }
 }

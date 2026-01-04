@@ -595,7 +595,7 @@
     "notifications": "Notifications",
     "clear_all": "Clear All",
     "no_notifications": "No notifications yet",
-    "whats_cooking": "What's cooking, {{name}}?",
+    "whats_cooking": "What's cooking, {name}?",
     "filters": {
       "latest": "Latest Updates",
       "regional": "Regional",
@@ -622,7 +622,18 @@
       "content": "Are you sure you want to delete this post? This action cannot be undone.",
       "action": "Delete",
       "cancel": "Cancel"
-    }
+    },
+    "likes": {
+      "one": "{name} liked this",
+      "two": "{name1} and {name2} liked this",
+      "many": "{name1}, {name2} and {count} others liked this",
+      "simple": "{count} people liked this",
+      "you": "You liked this",
+      "you_1": "You and {name} liked this",
+      "you_many": "You, {name} and {count} others liked this",
+      "you_many_2": "You, {name1}, {name2} and {count} others liked this"
+    },
+    "report_success": "{type} reported successfully"
   },
   "menu": {
     "title": "Menu",
@@ -631,5 +642,70 @@
     "favorites": "Favorites",
     "help": "Help",
     "logout": "Logout"
+  },
+  "account_suspended": {
+    "title_header": "ACCOUNT STATUS",
+    "title_main": "Account Suspended",
+    "description": "Your account has been temporarily suspended as a security measure due to a {bold_start}violation of our terms of service{bold_end}.",
+    "button_contact": "Contact Support",
+    "button_terms": "Review Terms of Service",
+    "resources_title": "Helpful Resources",
+    "resource_community_rules": "Community Guidelines",
+    "resource_community_rules_desc": "Learn what is prohibited",
+    "resource_appeal": "Appeal Process",
+    "resource_appeal_desc": "How to appeal the suspension?",
+    "footer_id": "ID: #{id}",
+    "appeal_modal": {
+      "title": "Appeal Process",
+      "subtitle": "If you believe this is a mistake, you can follow these steps.",
+      "step1_title": "Submit Request",
+      "step1_desc": "Send an email to support with your Case ID.",
+      "step2_title": "Review",
+      "step2_desc": "Our team will review your account activity manually.",
+      "step2_wait": "24-48 Hours",
+      "step3_title": "Decision",
+      "step3_desc": "You will be notified via email about the final decision.",
+      "note": "Note: Repeated violations may lead to permanent deletion."
+    },
+    "guidelines_modal": {
+      "title": "Community Guidelines",
+      "content": "1. Be Respectful: No harassment or hate speech.\n2. No Spam: Do not post repetitive content.\n3. Authentic Content: Share only your own creations.\n4. Safety First: No harmful or dangerous content."
+    },
+    "terms_modal": {
+      "title": "Terms of Service",
+      "content": "By using Cookrange, you agree to our terms. Access to the service is a privilege, not a right. We reserve the right to suspend accounts that violate our community standards or pose a security risk. Please review the full terms on our website."
+    }
+  },
+  "generic_error": {
+    "title_header": "ERROR REPORT",
+    "title_main": "Something Went Wrong",
+    "description": "An unexpected error occurred in the application. Please try again later or contact our support team.",
+    "button_retry": "Try Again",
+    "button_contact": "Contact Support",
+    "resources_title": "Helpful Resources",
+    "resource_system_status": "System Status",
+    "resource_system_status_desc": "Check server connections",
+    "resource_troubleshoot": "Troubleshooting",
+    "resource_troubleshoot_desc": "Common errors",
+    "footer_code": "Error Code: #{code}",
+    "system_status_modal": {
+      "title": "System Status",
+      "subtitle": "Current status of Cookrange services",
+      "api_server": "API Server",
+      "auth_server": "Auth Server",
+      "database": "Database",
+      "operational": "Operational",
+      "maintenance": "Maintenance",
+      "outage": "Outage"
+    },
+    "troubleshoot_modal": {
+      "title": "Troubleshooting",
+      "subtitle": "Common solutions for this error",
+      "step1": "Check your internet connection.",
+      "step2": "Restart the application.",
+      "step3": "Clear app cache (if possible).",
+      "step4": "Check for app updates in the store.",
+      "step5": "If the issue persists, contact support with the Error Code."
+    }
   }
 }

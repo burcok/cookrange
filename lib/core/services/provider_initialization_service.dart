@@ -1,6 +1,7 @@
 import 'package:provider/provider.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import '../providers/language_provider.dart';
+import '../providers/theme_provider.dart';
 import '../providers/onboarding_provider.dart';
 import '../providers/device_info_provider.dart';
 import '../providers/user_provider.dart';
@@ -23,11 +24,14 @@ class ProviderInitializationService {
   /// Create optimized provider list
   List<ChangeNotifierProvider> createProviders() {
     return [
-      ChangeNotifierProvider(create: (_) => OnboardingProvider()),
       ChangeNotifierProvider(create: (_) => LanguageProvider()),
-      ChangeNotifierProvider(create: (_) => DeviceInfoProvider()),
-      ChangeNotifierProvider(create: (_) => NavigationProvider()),
+      ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ChangeNotifierProvider(create: (_) => OnboardingProvider()),
+      // Accessing UserProvider depends on if it needs services or just pure state,
+      // usually it might need AuthService which is a service.
+      // But assuming UserProvider is simple change notifier for now:
       ChangeNotifierProvider(create: (_) => UserProvider()),
+      ChangeNotifierProvider(create: (_) => DeviceInfoProvider()),
     ];
   }
 
@@ -38,6 +42,7 @@ class ProviderInitializationService {
           create: (_) => OnboardingProvider()),
       ChangeNotifierProvider<LanguageProvider>(
           create: (_) => LanguageProvider()),
+      ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
       ChangeNotifierProvider<DeviceInfoProvider>(
           create: (_) => DeviceInfoProvider()),
       ChangeNotifierProvider<NavigationProvider>(

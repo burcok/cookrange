@@ -16,6 +16,7 @@ class UserModel {
   final String? appVersion;
   final String? buildNumber;
   final Timestamp? userVerified;
+  final Map<String, bool>? profileVisibility; // Field: isVisible
 
   UserModel({
     required this.uid,
@@ -32,6 +33,7 @@ class UserModel {
     this.appVersion,
     this.buildNumber,
     this.userVerified,
+    this.profileVisibility,
   });
 
   /// Creates a UserModel from a Firestore document snapshot.
@@ -52,6 +54,10 @@ class UserModel {
       appVersion: data['app_version'] as String?,
       buildNumber: data['build_number'] as String?,
       userVerified: data['user_verified'] as Timestamp?,
+      profileVisibility:
+          (data['profile_visibility'] as Map<String, dynamic>?)?.map(
+        (key, value) => MapEntry(key, value as bool),
+      ),
     );
   }
 }

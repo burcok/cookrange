@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'log_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'dart:async';
+import 'log_service.dart';
 
 /// Enum for Admin Status Check Result
 enum AdminStatus {
@@ -26,11 +27,15 @@ class AdminStatusService {
   DateTime? _lastFetchTime;
   static const Duration _cacheDuration = Duration(minutes: 5);
 
+  final _banController = StreamController<bool>.broadcast();
+  Stream<bool> get onBanStatusChanged => _banController.stream;
+
   /// Main method to check all status conditions
-  Future<AdminStatus> checkStatus(String? userId) async {
+  Future<AdminStatus> checkStatus(String? userId,
+      {bool forceRefresh = false}) async {
     try {
       // 1. Fetch Remote Config (mocked or from Firestore 'settings/global')
-      final config = await _getGlobalConfig();
+      final config = await _getGlobalConfig(forceRefresh: forceRefresh);
 
       // 2. Check Maintenance Mode
       if (config['maintenance_mode'] == true) {
@@ -56,18 +61,20 @@ class AdminStatusService {
       }
 
       return AdminStatus.ok;
-    } catch (e) {
+    } catch (e, stackTrace) {
       _log.error('Error checking admin status',
-          service: _serviceName, error: e);
+          service: _serviceName, error: e, stackTrace: stackTrace);
       // Fail open (allow access) on error, or fail closed depending on security requirement
       // For now, let's treat error as OK to prevent blocking users due to network glitches
       return AdminStatus.ok;
     }
   }
 
-  Future<Map<String, dynamic>> _getGlobalConfig() async {
+  Future<Map<String, dynamic>> _getGlobalConfig(
+      {bool forceRefresh = false}) async {
     // Cache check
-    if (_remoteConfigCache != null &&
+    if (!forceRefresh &&
+        _remoteConfigCache != null &&
         _lastFetchTime != null &&
         DateTime.now().difference(_lastFetchTime!) < _cacheDuration) {
       return _remoteConfigCache!;
@@ -119,21 +126,16 @@ class AdminStatusService {
     }
   }
 
-  Future<bool> _checkIfUserBanned(String userId) async {
-    try {
-      // Check specific 'banned_users' collection OR a field on the user doc
-      // Strategy: Field on user doc is faster usually since we likely already have it,
-      // but a separate collection is cleaner for admin logic.
-      // Let's check a 'banned' field in standard user doc for simplicity/performance combo
-      // assuming we might have it cached or we fetch it.
-      // Or we can check a separate 'suspensions' collection.
+  bool? _cachedBanStatus;
 
-      final doc = await _firestore.collection('users').doc(userId).get();
-      return doc.data()?['is_banned'] == true;
-    } catch (e) {
-      _log.error('Error checking user ban status',
-          service: _serviceName, error: e);
-      return false;
-    }
+  Future<bool> _checkIfUserBanned(String userId) async {
+    if (_cachedBanStatus != null) return _cachedBanStatus!;
+    final doc = await _firestore.collection('users').doc(userId).get();
+    _cachedBanStatus = doc.data()?['is_banned'] == true;
+    return _cachedBanStatus!;
+  }
+
+  void notifyBanned(String userId) {
+    _banController.add(true);
   }
 }
