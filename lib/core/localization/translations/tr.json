@@ -608,7 +608,9 @@
     "generate_plan": "Günlük Plan Oluştur",
     "loading_recipe": "Tarif yükleniyor...",
     "calories_suffix": "{count} kalori",
-    "welcome_prefix": "Günaydın ",
+    "good_morning": "Günaydın ",
+    "good_afternoon": "Tünaydın ",
+    "good_evening": "İyi akşamlar ",
     "hello": "Merhaba "
   },
   "assistant": {
@@ -634,6 +636,20 @@
   },
   "community": {
     "title": "Topluluk",
+    "notifications_title": "BİLDİRİMLER",
+    "all": "Tümü",
+    "unread": "Okunmamış",
+    "friends": "Arkadaşlar",
+    "system": "Sistem",
+    "mark_all_read": "Tümünü Oku Olarak İşaretle",
+    "friend_request_title": "Yeni Arkadaşlık İsteği",
+    "friend_request_body": "{name} seni takip etmek istiyor. Sağlıklı yaşam yolculuğunda birbirinize destek olun!",
+    "friend_accepted_title": "Arkadaşlık İsteği Kabul Edildi",
+    "friend_accepted_body": "{name} arkadaşlık isteğini kabul etti.",
+    "meal_plan_title": "Haftalık Plan Güncellemesi",
+    "meal_plan_body": "Diyetisyeniniz bu hafta için yeni bir beslenme planı hazırladı. Hedeflerinize uygun değişiklikleri inceleyin.",
+    "system_update_title": "Uygulama Güncellemesi",
+    "system_update_body": "Daha iyi bir deneyim için performans iyileştirmeleri yapıldı ve yeni özellikler eklendi.",
     "friends_groups": "Arkadaşlar & Gruplar",
     "chats": "Sohbetler",
     "feed": "Akış",
@@ -694,7 +710,13 @@
       "comment_hint": "Bir yorum yaz...",
       "reply_hint": "{name} kullanıcısına yanıt ver",
       "edited": "(düzenlendi)"
-    }
+    },
+    "accept": "Kabul Et",
+    "reject": "Reddet",
+    "friend_request_rejected": "Arkadaşlık isteği reddedildi.",
+    "action_failed": "İşlem başarısız: {error}",
+    "meal_plan_override_title": "Yemek Planı",
+    "goal_override_title": "Hedef"
   },
   "menu": {
     "title": "Menü",

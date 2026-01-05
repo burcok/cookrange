@@ -534,29 +534,14 @@ class CommunityService {
     return [
       CommunityGroup(
         id: 'g1',
-        name: 'Runners',
-        imageUrl: 'https://i.pravatar.cc/150?u=runners',
+        name: 'Cookrange',
+        imageUrl: '',
         hasUpdate: true,
         lastMessageTime: DateTime.now().subtract(const Duration(minutes: 5)),
       ),
-      // ... keep simple mocks or remove if unused heavily
     ];
   }
 
-  // --- Notifications (Mock for now) ---
-
-  Future<List<NotificationModel>> getNotifications() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return []; // Empty for now or mock
-  }
-
-  Future<void> clearAllNotifications() async {
-    // Mock implementation
-  }
-
-  Future<void> deleteNotification(String id) async {
-    // Mock implementation
-  }
   // --- Reporting ---
 
   Future<void> reportPost(String postId, String reason) async {

@@ -27,7 +27,9 @@ class _MainScaffoldState extends State<MainScaffold>
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    // Initialize with correct index
+    final nav = context.read<NavigationProvider>();
+    _pageController = PageController(initialPage: nav.currentIndex);
     _menuController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -97,6 +99,15 @@ class _MainScaffoldState extends State<MainScaffold>
   Widget build(BuildContext context) {
     final navigationProvider = context.watch<NavigationProvider>();
     final currentIndex = navigationProvider.currentIndex;
+
+    // Ensure PageController is in sync with provider (fixes hot reload issue)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_pageController.hasClients &&
+          currentIndex <= 1 &&
+          _pageController.page?.round() != currentIndex) {
+        _pageController.jumpToPage(currentIndex);
+      }
+    });
 
     return Material(
       color: const Color(0xFFFCFBF9), // Base background color

@@ -100,11 +100,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoading = true);
     try {
       if (_friendshipStatus == FriendshipStatus.none) {
-        await service.sendFriendRequest(targetUid);
+        await service.sendFriendRequest(context, targetUid);
       } else if (_friendshipStatus == FriendshipStatus.pending_sent) {
         await service.cancelFriendRequest(targetUid);
       } else if (_friendshipStatus == FriendshipStatus.pending_received) {
-        await service.acceptFriendRequest(targetUid);
+        await service.acceptFriendRequest(context, targetUid);
       } else if (_friendshipStatus == FriendshipStatus.friends) {
         // Maybe show unfriend dialog? For now just remove
         await service.removeFriend(targetUid);
@@ -1038,12 +1038,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                     color: isDark
-                                        ? Colors.red.withOpacity(0.1)
-                                        : Colors.red.withOpacity(0.05),
+                                        ? Colors.grey[800]
+                                        : Colors.white,
                                     border: Border.all(
                                         color: isDark
-                                            ? Colors.red.withOpacity(0.3)
-                                            : Colors.red.withOpacity(0.2)),
+                                            ? Colors.grey[600]!
+                                            : Colors.grey[200]!),
                                     borderRadius: BorderRadius.circular(8)),
                                 child: Text(
                                     OnboardingOptions
@@ -1062,8 +1062,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     style: TextStyle(
                                         fontSize: 12,
                                         color: isDark
-                                            ? Colors.red[200]
-                                            : Colors.red[400])),
+                                            ? Colors.grey[300]
+                                            : Colors.grey[600])),
                               ))
                           .toList(),
                     ),
@@ -1079,7 +1079,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return SizedBox(
       width: double.infinity,
       child: TextButton(
-        onPressed: () => context.read<AuthService>().signOut(),
+        onPressed: () => AuthService().signOut(),
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           backgroundColor:
@@ -1220,7 +1220,7 @@ class _FriendSearchSheetState extends State<_FriendSearchSheet> {
 
   Future<void> _sendRequest(UserModel user) async {
     try {
-      await _friendService.sendFriendRequest(user.uid);
+      await _friendService.sendFriendRequest(context, user.uid);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Request sent to ${user.displayName}")));

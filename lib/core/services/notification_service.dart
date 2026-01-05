@@ -38,6 +38,17 @@ class NotificationService {
     });
   }
 
+  // Get unread notification count
+  Stream<int> getUnreadCountStream() {
+    final uid = currentUserId;
+    if (uid == null) return Stream.value(0);
+
+    return _userNotifications(uid)
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
   // Fetch once (for existing logic if needed)
   Future<List<NotificationModel>> getNotifications() async {
     final uid = currentUserId;
@@ -117,5 +128,25 @@ class NotificationService {
       (e) => e.name == type,
       orElse: () => NotificationType.system,
     );
+  }
+
+  // Delete notification by relatedId and type
+  Future<void> deleteNotificationByRelatedId({
+    required String targetUserId,
+    required String relatedId,
+    required NotificationType type,
+  }) async {
+    try {
+      final snapshot = await _userNotifications(targetUserId)
+          .where('relatedId', isEqualTo: relatedId)
+          .where('type', isEqualTo: type.name)
+          .get();
+
+      for (var doc in snapshot.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      print('Error deleting notification by relatedId: $e');
+    }
   }
 }

@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../models/notification_model.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
+import '../localization/app_localizations.dart';
 
 enum FriendshipStatus {
   none,
@@ -60,7 +62,8 @@ class FriendService {
   }
 
   // Send Friend Request
-  Future<void> sendFriendRequest(String targetUserId) async {
+  Future<void> sendFriendRequest(
+      BuildContext context, String targetUserId) async {
     final uid = currentUserId;
     if (uid == null) return;
 
@@ -88,17 +91,24 @@ class FriendService {
     final currentUserData = await _auth.getUserData(uid);
     final userName = currentUserData?.displayName ?? "Someone";
 
+    final title = AppLocalizations.of(context)
+        .translate('community.friend_request_title');
+    final body = AppLocalizations.of(context)
+        .translate('community.friend_request_body')
+        .replaceAll('{name}', userName);
+
     await _notificationService.sendNotification(
       targetUserId: targetUserId,
-      title: "New Friend Request",
-      body: "$userName wants to be your friend.",
+      title: title,
+      body: body,
       type: NotificationType.friend_request,
       relatedId: uid, // Sender ID
     );
   }
 
   // Accept Friend Request
-  Future<void> acceptFriendRequest(String senderUserId) async {
+  Future<void> acceptFriendRequest(
+      BuildContext context, String senderUserId) async {
     final uid = currentUserId;
     if (uid == null) return;
 
@@ -124,12 +134,26 @@ class FriendService {
     // 4. Notify sender
     final currentUserData = await _auth.getUserData(uid);
     final userName = currentUserData?.displayName ?? "Someone";
+
+    final title = AppLocalizations.of(context)
+        .translate('community.friend_accepted_title');
+    final body = AppLocalizations.of(context)
+        .translate('community.friend_accepted_body')
+        .replaceAll('{name}', userName);
+
     await _notificationService.sendNotification(
       targetUserId: senderUserId,
-      title: "Friend Request Accepted",
-      body: "$userName accepted your friend request.",
-      type: NotificationType.system, // Or friend_accepted if we add it
+      title: title,
+      body: body,
+      type: NotificationType.friend_accepted,
       relatedId: uid,
+    );
+
+    // 5. Delete the original friend request notification for the receiver (me)
+    await _notificationService.deleteNotificationByRelatedId(
+      targetUserId: uid,
+      relatedId: senderUserId,
+      type: NotificationType.friend_request,
     );
   }
 

@@ -14,6 +14,7 @@ import '../../core/services/recipe_generation_service.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/admin_status_service.dart';
 import '../../core/services/navigation_provider.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/localization/app_localizations.dart';
 import '../common/generic_error_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
@@ -383,13 +384,65 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined,
-                  size: 28, color: Colors.black),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const NotificationScreen()),
-              ),
-            ),
+            StreamBuilder<int>(
+                stream: NotificationService().getUnreadCountStream(),
+                builder: (context, snapshot) {
+                  final unreadCount = snapshot.data ?? 0;
+
+                  return Stack(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined,
+                            size: 28, color: Colors.black),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const NotificationScreen()),
+                        ),
+                      ),
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: RichText(
+                              textAlign: TextAlign.center,
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text:
+                                        unreadCount > 9 ? '9' : '$unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (unreadCount > 9)
+                                    const TextSpan(
+                                      text: '+',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 7, // Smaller plus sign
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                }),
             IconButton(
               icon: const Icon(Icons.person_outline,
                   size: 28, color: Colors.black),
@@ -408,13 +461,20 @@ class _HomeScreenState extends State<HomeScreen>
     final displayName = userModel.displayName?.split(' ').first ??
         (userModel.email?.split('@').first) ??
         'User';
+    final currentTime = DateTime.now();
+    final hour = currentTime.hour;
+    final greeting = hour < 12
+        ? l10n.translate('home.good_morning')
+        : hour < 18
+            ? l10n.translate('home.good_afternoon')
+            : l10n.translate('home.good_evening');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Text(
-              l10n.translate('home.welcome_prefix'),
+              greeting,
               style: TextStyle(
                 fontSize: 18.sp,
                 color: Colors.grey[600],

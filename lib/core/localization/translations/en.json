@@ -624,7 +624,9 @@
     "generate_plan": "Generate Daily Plan",
     "loading_recipe": "Loading recipe...",
     "calories_suffix": "{count} calories",
-    "welcome_prefix": "Good Morning ",
+    "good_morning": "Good Morning ",
+    "good_afternoon": "Good Afternoon ",
+    "good_evening": "Good Evening ",
     "hello": "Hello "
   },
   "assistant": {
@@ -651,6 +653,20 @@
   },
   "community": {
     "title": "Community",
+    "notifications_title": "NOTIFICATIONS",
+    "all": "All",
+    "unread": "Unread",
+    "friends": "Friends",
+    "system": "System",
+    "mark_all_read": "Mark All as Read",
+    "friend_request_title": "New Friend Request",
+    "friend_request_body": "{name} wants to be your friend.",
+    "friend_accepted_title": "Friend Request Accepted", 
+    "friend_accepted_body": "{name} accepted your friend request.",
+    "meal_plan_title": "Weekly Plan Update",
+    "meal_plan_body": "Your dietician has prepared a new nutrition plan for this week. Check out the changes suitable for your goals.",
+    "system_update_title": "App Update",
+    "system_update_body": "Performance improvements and new features have been added for a better experience.",
     "friends_groups": "Friends & Groups",
     "chats": "Chats",
     "feed": "Feed",
@@ -711,7 +727,13 @@
       "comment_hint": "Write a comment...",
       "reply_hint": "Reply to {name}",
       "edited": "(edited)"
-    }
+    },
+    "accept": "Accept",
+    "reject": "Reject",
+    "friend_request_rejected": "Friend request rejected.",
+    "action_failed": "Action failed: {error}",
+    "meal_plan_override_title": "Meal Plan",
+    "goal_override_title": "Goal"
   },
   "menu": {
     "title": "Menu",

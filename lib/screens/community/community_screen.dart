@@ -3,7 +3,6 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/services/community_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/models/community_post.dart';
-import '../../core/models/notification_model.dart'; // Added import
 import 'widgets/glass_post_card.dart';
 import 'widgets/create_post_card.dart';
 import 'widgets/glass_refresher.dart';
@@ -13,7 +12,6 @@ import 'package:provider/provider.dart';
 import '../../core/services/navigation_provider.dart';
 import '../notifications/notification_screen.dart';
 import '../profile/profile_screen.dart';
-import '../../core/providers/user_provider.dart';
 import '../../core/providers/theme_provider.dart';
 
 class CommunityScreen extends StatefulWidget {
@@ -41,14 +39,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
   String _selectedFilter = "Latest Updates";
 
   late Stream<List<CommunityPost>> _postsStream;
-  late Stream<List<NotificationModel>> _notificationsStream;
 
   @override
   void initState() {
     super.initState();
     _loadGroups();
     _postsStream = _service.getPostsStream();
-    _notificationsStream = NotificationService().getNotificationsStream();
   }
 
   Future<void> _loadGroups() async {
@@ -66,7 +62,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
     // Refresh streams
     setState(() {
       _postsStream = _service.getPostsStream();
-      _notificationsStream = NotificationService().getNotificationsStream();
     });
     await Future.delayed(const Duration(seconds: 1)); // Reduced delay
   }
@@ -334,12 +329,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
         ),
         Row(
           children: [
-            StreamBuilder(
-                stream: _notificationsStream,
+            StreamBuilder<int>(
+                stream: NotificationService().getUnreadCountStream(),
                 builder: (context, snapshot) {
-                  final notifications = snapshot.data ?? [];
-                  final unreadCount =
-                      notifications.where((n) => !n.isRead).length;
+                  final unreadCount = snapshot.data ?? 0;
 
                   return Stack(
                     children: [
@@ -365,14 +358,30 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               minWidth: 16,
                               minHeight: 16,
                             ),
-                            child: Text(
-                              '$unreadCount',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            child: RichText(
                               textAlign: TextAlign.center,
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text:
+                                        unreadCount > 9 ? '9' : '$unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (unreadCount > 9)
+                                    const TextSpan(
+                                      text: '+',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 7, // Smaller plus sign
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -396,27 +405,37 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return Container(
       width: 70,
       margin: const EdgeInsets.only(right: 16),
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                  color: context.watch<ThemeProvider>().primaryColor, width: 2),
-              color: Colors.transparent,
+      child: GestureDetector(
+        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('New group feature is not available yet')),
+        ),
+        // Navigator.of(context).push(
+        //   MaterialPageRoute(builder: (_) => const GroupScreen()),
+        // ),
+        child: Column(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                    color: context.watch<ThemeProvider>().primaryColor,
+                    width: 2),
+                color: Colors.transparent,
+              ),
+              child: Icon(Icons.add,
+                  color: context.watch<ThemeProvider>().primaryColor),
             ),
-            child: Icon(Icons.add,
-                color: context.watch<ThemeProvider>().primaryColor),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            appLoc.translate('community.groups.new'), // Keep short
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              appLoc.translate('community.groups.new'), // Keep short
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -425,46 +444,55 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return Container(
       width: 70,
       margin: const EdgeInsets.only(right: 16),
-      child: Column(
-        children: [
-          Stack(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  image: group.imageUrl.isNotEmpty
-                      ? DecorationImage(
-                          image: NetworkImage(group.imageUrl),
-                          fit: BoxFit.cover)
-                      : null,
-                  color: Colors.grey[300],
+      child: GestureDetector(
+        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Group feature is not available yet')),
+        ),
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: group.imageUrl.isNotEmpty
+                        ? DecorationImage(
+                            image: group.imageUrl.startsWith('http')
+                                ? NetworkImage(group.imageUrl)
+                                : AssetImage(group.imageUrl) as ImageProvider,
+                            fit: BoxFit.cover)
+                        : null,
+                    color: Colors.grey[300],
+                  ),
+                  child:
+                      group.imageUrl.isEmpty ? const Icon(Icons.group) : null,
                 ),
-                child: group.imageUrl.isEmpty ? const Icon(Icons.group) : null,
-              ),
-              if (group.hasUpdate)
-                Positioned(
-                    top: 0,
-                    right: 0,
-                    child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                            color: context.watch<ThemeProvider>().primaryColor,
-                            shape: BoxShape.circle,
-                            border:
-                                Border.all(color: Colors.white, width: 2)))),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            group.name,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ],
+                if (group.hasUpdate)
+                  Positioned(
+                      top: 0,
+                      right: 0,
+                      child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                              color:
+                                  context.watch<ThemeProvider>().primaryColor,
+                              shape: BoxShape.circle,
+                              border:
+                                  Border.all(color: Colors.white, width: 2)))),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              group.name,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
