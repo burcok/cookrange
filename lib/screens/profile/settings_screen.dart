@@ -69,28 +69,19 @@ class SettingsScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         IconButton(
                           onPressed: () => Navigator.pop(context),
                           icon: Icon(Icons.arrow_back,
                               color: isDark ? Colors.white : Colors.black),
                         ),
-                        const SizedBox(width: 16),
-                        Text(
-                          appLoc.translate('settings.title'),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Poppins',
-                            color: isDark ? Colors.white : Colors.black,
-                          ),
-                        ),
                       ],
                     ),
+                    const SizedBox(height: 12),
 
                     // Premium Section
                     _buildPremiumCard(context, primaryColor, appLoc),
@@ -389,13 +380,13 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           Positioned(
-            top: 0,
-            right: 0,
+            top: -25,
+            left: -25,
             child: Container(
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: const Color(0xFFFB7185).withOpacity(0.3), // rose-400
+                color: Colors.black12.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
             ),
