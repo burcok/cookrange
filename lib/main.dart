@@ -71,8 +71,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             child: MaterialApp(
               title: 'Cookrange',
               debugShowCheckedModeBanner: false,
-              theme: AppTheme.lightTheme,
-              darkTheme: AppTheme.darkTheme,
+              theme:
+                  AppTheme.lightTheme(primaryColor: themeProvider.primaryColor),
+              darkTheme:
+                  AppTheme.darkTheme(primaryColor: themeProvider.primaryColor),
               themeMode: themeProvider.themeMode,
               initialRoute: _routeService.initialRoute,
               routes: _routeService.getRoutes(),
@@ -106,8 +108,8 @@ class ErrorApp extends StatelessWidget {
     return MaterialApp(
       title: 'Cookrange - Error',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme(),
+      darkTheme: AppTheme.darkTheme(),
       themeMode: ThemeMode.system,
       locale: const Locale('en'), // Default to English for error screen
       localizationsDelegates: AppLocalizations.localizationsDelegates,

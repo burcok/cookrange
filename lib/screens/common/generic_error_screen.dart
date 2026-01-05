@@ -296,7 +296,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = const Color(0xFFF0507F);
+    final primaryColor = Theme.of(context).primaryColor;
     final bgLight = const Color(0xFFF8FAFC);
     final bgDark = const Color(0xFF0F172A);
 

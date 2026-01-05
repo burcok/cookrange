@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:provider/provider.dart';
+import '../../../../core/providers/theme_provider.dart';
 
 class GlassRefresher extends StatefulWidget {
   final Future<void> Function() onRefresh;
@@ -141,14 +143,14 @@ class _GlassRefresherState extends State<GlassRefresher>
                           painter: _RefreshRingPainter(
                             progress: _isRefreshing ? 0.3 : progress,
                             rotation: rotation,
-                            color: const Color(0xFFF97300),
+                            color: context.watch<ThemeProvider>().primaryColor,
                           ),
                         ),
                         Transform.rotate(
                           angle: rotation,
-                          child: const Icon(
+                          child: Icon(
                             Icons.refresh_rounded,
-                            color: Color(0xFFF97300),
+                            color: context.watch<ThemeProvider>().primaryColor,
                             size: 22,
                           ),
                         ),

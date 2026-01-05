@@ -2,8 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/navigation_provider.dart';
-import '../../constants.dart';
 import '../localization/app_localizations.dart';
+import '../providers/theme_provider.dart';
 
 class QuickActionsSheet extends StatefulWidget {
   const QuickActionsSheet({super.key});
@@ -232,14 +232,18 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
         children: [
           Icon(
             isSelected ? activeIcon : icon,
-            color: isSelected ? primaryColor : Colors.black87,
+            color: isSelected
+                ? context.watch<ThemeProvider>().primaryColor
+                : Colors.black87,
             size: 32,
           ),
           const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
-              color: isSelected ? primaryColor : Colors.black87,
+              color: isSelected
+                  ? context.watch<ThemeProvider>().primaryColor
+                  : Colors.black87,
               fontSize: 14,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               fontFamily: 'Poppins',
@@ -255,15 +259,21 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
       width: 76,
       height: 76,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF97300), Color(0xFFF98E30)],
+        gradient: LinearGradient(
+          colors: [
+            context.watch<ThemeProvider>().primaryColor,
+            context.watch<ThemeProvider>().primaryColor.withValues(alpha: 0.8)
+          ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFF97300).withValues(alpha: 0.4),
+            color: context
+                .watch<ThemeProvider>()
+                .primaryColor
+                .withValues(alpha: 0.4),
             blurRadius: 20,
             spreadRadius: 2,
             offset: const Offset(0, 8),

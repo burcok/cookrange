@@ -356,30 +356,53 @@
   "profile": {
     "title": "Profil",
     "edit_profile": "Profili Düzenle",
-    "personal_info": "Kişisel Bilgiler",
+    "personal_info": "Merhaba Cookrange!",
     "name": "Ad",
     "age": "Yaş",
     "gender": {
-      "title": "Cinsiyetinizi Seçin",
+      "title": "Cinsiyet",
       "female": "Kadın",
       "male": "Erkek"
     },
     "height": {
-      "title": "Boyunuzu Seçin",
+      "title": "Boy",
       "unit": "cm"
     },
     "weight": {
-      "title": "Kilonuzu Seçin",
+      "title": "Kilo",
       "unit": "kg"
-    },
-    "targetWeight": {
-      "title": "Hedef Kilonuzu Seçin",
-      "unit": "kg",
-      "placeholder": "Hedef kilo seçin"
     },
     "activity_level": "Aktivite Seviyesi",
     "goals": "Hedefler",
     "save": "Değişiklikleri Kaydet",
+    "friends": "Arkadaşlar",
+    "stats": {
+      "posts": "Gönderiler",
+      "scores": "Puanlar",
+      "streak": "Seri"
+    },
+    "friend_actions": {
+      "add": "Arkadaş Ekle",
+      "sent": "İstek Gönderildi",
+      "received_text": "Seni arkadaş olarak eklemek istiyor",
+      "accept": "Kabul Et",
+      "reject": "Reddet",
+      "message": "Mesaj"
+    },
+    "kitchen_lifestyle": {
+      "title": "Mutfak & Yaşam Tarzı",
+      "cooking_level": "Yemek Pişirme Seviyesi",
+      "novice": "Acemi",
+      "expert": "Uzman",
+      "equipment": "Ekipman",
+      "no_equipment": "Ekipman listelenmedi",
+      "disliked_foods": "Sevilmeyen Yiyecekler"
+    },
+    "search": {
+      "title": "Arkadaş Ara",
+      "hint": "İsme göre kullanıcı ara...",
+      "no_results": "Kullanıcı bulunamadı"
+    },
     "birthday": {
       "title": "Doğum Tarihinizi Seçin",
       "select_month": "Ay Seçin",
@@ -402,7 +425,9 @@
   },
   "settings": {
     "title": "Ayarlar",
+    "preferences": "Tercihler",
     "language": "Dil",
+    "app_language": "Uygulama Dili",
     "notifications": "Bildirimler",
     "privacy_policy": "Gizlilik Politikası",
     "terms_of_service": "Kullanım Koşulları",
@@ -411,7 +436,39 @@
     "dark_mode": "Karanlık Mod",
     "units": "Birimler",
     "metric": "Metrik",
-    "imperial": "İmparatorluk"
+    "imperial": "İmparatorluk",
+    "appearance": {
+      "title": "Görünüm",
+      "theme": "Tema",
+      "system": "Sistem Varsayılanı",
+      "light": "Açık Mod",
+      "dark": "Koyu Mod",
+      "theme_color": "Tema Rengi"
+    },
+    "premium": {
+      "badge": "Premium'a Geç",
+      "title": "Limitsiz Özellikler",
+      "description": "Reklamsız deneyim, detaylı analizler ve özel tariflere erişim kazanın.",
+      "button": "Premium Satın Al"
+    },
+    "privacy": {
+      "title": "Gizlilik Ayarları",
+      "account_privacy": "Hesap Gizliliği",
+      "account_privacy_subtitle": "Sadece arkadaşlar görebilir",
+      "friend_requests": "Arkadaşlık İsteği Alma",
+      "friend_requests_subtitle": "Otomatik Kabul Et"
+    },
+    "permissions": {
+      "title": "İzinler ve Bildirimler",
+      "device_permissions": "Cihaz İzinleri"
+    },
+    "app_info": {
+      "title": "Uygulama Bilgileri",
+      "about": "Hakkımızda",
+      "help": "Yardım & SSS",
+      "version": "Uygulama Sürümü",
+      "user_id": "Kullanıcı Kimliği"
+    }
   },
   "notifications": {
     "meal_reminder": "Yemek Hatırlatıcısı",
@@ -621,7 +678,23 @@
       "you_many": "Sen, {name} ve diğer {count} kişi beğendi",
       "you_many_2": "Sen, {name1}, {name2} ve diğer {count} kişi beğendi"
     },
-    "report_success": "{type} başarıyla bildirildi"
+    "report_success": "{type} başarıyla bildirildi",
+    "groups": {
+      "new": "Yeni"
+    },
+    "no_posts": "Gönderi bulunamadı. İlk paylaşan sen ol!",
+    "create_post": {
+      "add_tags": "Etiket Ekle",
+      "add_image": "Resim Ekle",
+      "post_button": "Paylaş",
+      "error": "Paylaşılamadı"
+    },
+    "post": {
+      "comments": "Yorumlar ({count})",
+      "comment_hint": "Bir yorum yaz...",
+      "reply_hint": "{name} kullanıcısına yanıt ver",
+      "edited": "(düzenlendi)"
+    }
   },
   "menu": {
     "title": "Menü",

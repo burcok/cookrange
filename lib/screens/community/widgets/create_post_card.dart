@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/services/community_service.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/providers/theme_provider.dart';
 
 class CreatePostCard extends StatefulWidget {
   final VoidCallback onPostCreated;
@@ -74,7 +75,8 @@ class _CreatePostCardState extends State<CreatePostCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Add Tags",
+                AppLocalizations.of(context)
+                    .translate('community.create_post.add_tags'),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -107,11 +109,14 @@ class _CreatePostCardState extends State<CreatePostCard> {
                       // Actually for smoothness, let's keep open.
                       // Rebuild the bottom sheet? StatefulBuilder needed for BottomSheet updating.
                     },
-                    selectedColor: const Color(0xFFF97316).withOpacity(0.2),
-                    checkmarkColor: const Color(0xFFF97316),
+                    selectedColor: context
+                        .watch<ThemeProvider>()
+                        .primaryColor
+                        .withOpacity(0.2),
+                    checkmarkColor: context.watch<ThemeProvider>().primaryColor,
                     labelStyle: TextStyle(
                       color: isSelected
-                          ? const Color(0xFFF97316)
+                          ? context.watch<ThemeProvider>().primaryColor
                           : (isDark ? Colors.white70 : Colors.black54),
                     ),
                     backgroundColor:
@@ -120,7 +125,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
                       borderRadius: BorderRadius.circular(20),
                       side: BorderSide(
                         color: isSelected
-                            ? const Color(0xFFF97316)
+                            ? context.watch<ThemeProvider>().primaryColor
                             : Colors.transparent,
                       ),
                     ),
@@ -154,7 +159,9 @@ class _CreatePostCardState extends State<CreatePostCard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to post: $e")),
+          SnackBar(
+              content: Text(
+                  "${AppLocalizations.of(context).translate('community.create_post.error')}: $e")),
         );
       }
     } finally {
@@ -250,12 +257,19 @@ class _CreatePostCardState extends State<CreatePostCard> {
                       .map((tag) => Chip(
                             label:
                                 Text(tag, style: const TextStyle(fontSize: 12)),
-                            backgroundColor:
-                                const Color(0xFFF97316).withOpacity(0.1),
-                            labelStyle:
-                                const TextStyle(color: Color(0xFFF97316)),
-                            deleteIcon: const Icon(Icons.close,
-                                size: 14, color: Color(0xFFF97316)),
+                            backgroundColor: context
+                                .watch<ThemeProvider>()
+                                .primaryColor
+                                .withOpacity(0.1),
+                            labelStyle: TextStyle(
+                                color: context
+                                    .watch<ThemeProvider>()
+                                    .primaryColor),
+                            deleteIcon: Icon(Icons.close,
+                                size: 14,
+                                color: context
+                                    .watch<ThemeProvider>()
+                                    .primaryColor),
                             onDeleted: () {
                               setState(() {
                                 _selectedTags.remove(tag);
@@ -324,22 +338,26 @@ class _CreatePostCardState extends State<CreatePostCard> {
                 Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.image_outlined,
-                          color: Color(0xFFF97316)),
+                      icon: Icon(Icons.image_outlined,
+                          color: context.watch<ThemeProvider>().primaryColor),
                       onPressed: _pickImage,
-                      tooltip: "Add Image",
+                      tooltip: AppLocalizations.of(context)
+                          .translate('community.create_post.add_image'),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.tag, color: Color(0xFFF97316)),
+                      icon: Icon(Icons.tag,
+                          color: context.watch<ThemeProvider>().primaryColor),
                       onPressed: _openTagPicker,
-                      tooltip: "Add Tags",
+                      tooltip: AppLocalizations.of(context)
+                          .translate('community.create_post.add_tags'),
                     ),
                   ],
                 ),
                 ElevatedButton(
                   onPressed: _isPosting ? null : _handlePost,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF97316),
+                    backgroundColor:
+                        context.watch<ThemeProvider>().primaryColor,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20)),
@@ -353,7 +371,8 @@ class _CreatePostCardState extends State<CreatePostCard> {
                           height: 20,
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2))
-                      : const Text("Post"),
+                      : Text(AppLocalizations.of(context)
+                          .translate('community.create_post.post_button')),
                 ),
               ],
             )

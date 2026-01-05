@@ -14,6 +14,7 @@ import '../../core/services/navigation_provider.dart';
 import '../notifications/notification_screen.dart';
 import '../profile/profile_screen.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/providers/theme_provider.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -254,12 +255,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   final posts = snapshot.data ?? [];
 
                   if (posts.isEmpty) {
-                    return const SliverToBoxAdapter(
+                    return SliverToBoxAdapter(
                         child: Center(
                             child: Padding(
                                 padding: EdgeInsets.all(40),
                                 child: Text(
-                                    "No posts found. Be the first to share!"))));
+                                    appLoc.translate('community.no_posts')))));
                   }
 
                   return SliverList(
@@ -296,8 +297,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             onShare: () {
                               // Implement share logic
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text("Share Logic Placeholder")),
+                                SnackBar(
+                                    content: Text(AppLocalizations.of(context)
+                                        .translate('community.menu.share'))),
                               );
                             },
                             onReaction: (emoji) async {
@@ -401,14 +403,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
             height: 60,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFF97316), width: 2),
+              border: Border.all(
+                  color: context.watch<ThemeProvider>().primaryColor, width: 2),
               color: Colors.transparent,
             ),
-            child: const Icon(Icons.add, color: Color(0xFFF97316)),
+            child: Icon(Icons.add,
+                color: context.watch<ThemeProvider>().primaryColor),
           ),
           const SizedBox(height: 4),
           Text(
-            "New", // Keep short
+            appLoc.translate('community.groups.new'), // Keep short
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             textAlign: TextAlign.center,
           ),
@@ -447,7 +451,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         width: 12,
                         height: 12,
                         decoration: BoxDecoration(
-                            color: const Color(0xFFF97316),
+                            color: context.watch<ThemeProvider>().primaryColor,
                             shape: BoxShape.circle,
                             border:
                                 Border.all(color: Colors.white, width: 2)))),

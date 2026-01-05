@@ -18,6 +18,7 @@ import '../../core/localization/app_localizations.dart';
 import '../common/generic_error_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
 import '../profile/profile_screen.dart';
+import '../../core/providers/theme_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -283,14 +284,14 @@ class _HomeScreenState extends State<HomeScreen>
                           painter: _RefreshRingPainter(
                             progress: _isRefreshing ? 0.3 : progress,
                             rotation: rotation,
-                            color: const Color(0xFFF97300),
+                            color: context.watch<ThemeProvider>().primaryColor,
                           ),
                         ),
                         Transform.rotate(
                           angle: rotation,
                           child: Icon(
                             Icons.refresh_rounded,
-                            color: const Color(0xFFF97300),
+                            color: context.watch<ThemeProvider>().primaryColor,
                             size: 22.w,
                           ),
                         ),
@@ -438,7 +439,8 @@ class _HomeScreenState extends State<HomeScreen>
               TextSpan(text: l10n.translate('home.hello')),
               TextSpan(
                 text: "$displayName!",
-                style: const TextStyle(color: Color(0xFFF97300)),
+                style: TextStyle(
+                    color: context.watch<ThemeProvider>().primaryColor),
               ),
             ],
           ),
@@ -490,8 +492,8 @@ class _HomeScreenState extends State<HomeScreen>
                       children: [
                         TextSpan(
                           text: "$currentCalories",
-                          style: const TextStyle(
-                            color: Color(0xFFF97300),
+                          style: TextStyle(
+                            color: context.watch<ThemeProvider>().primaryColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -515,8 +517,8 @@ class _HomeScreenState extends State<HomeScreen>
                   value: progress,
                   minHeight: 10.h,
                   backgroundColor: Colors.black.withAlpha(10),
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(Color(0xFFF97300)),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      context.watch<ThemeProvider>().primaryColor),
                 ),
               ),
               SizedBox(height: 24.h),
@@ -583,7 +585,7 @@ class _HomeScreenState extends State<HomeScreen>
               child: Text(
                 l10n.translate('home.edit'),
                 style: TextStyle(
-                  color: const Color(0xFFF97300),
+                  color: context.watch<ThemeProvider>().primaryColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 16.sp,
                 ),
@@ -637,7 +639,7 @@ class _HomeScreenState extends State<HomeScreen>
               ElevatedButton(
                 onPressed: () => _generateMealPlan(user),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF97300),
+                  backgroundColor: context.watch<ThemeProvider>().primaryColor,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.r)),

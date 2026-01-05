@@ -8,6 +8,7 @@ import '../providers/user_provider.dart';
 import '../services/admin_status_service.dart';
 import '../../screens/auth/account_suspended_screen.dart';
 import '../../screens/common/generic_error_screen.dart';
+import '../providers/theme_provider.dart';
 
 class RouteGuard extends StatefulWidget {
   final Widget child;
@@ -336,7 +337,9 @@ class _RouteGuardState extends State<RouteGuard> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 64, color: const Color(0xFFF97300)),
+              Icon(icon,
+                  size: 64,
+                  color: Provider.of<ThemeProvider>(context).primaryColor),
               const SizedBox(height: 24),
               Text(
                 title,

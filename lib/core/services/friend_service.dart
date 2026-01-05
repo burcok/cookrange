@@ -22,10 +22,11 @@ class FriendService {
   Future<List<UserModel>> searchUsers(String query) async {
     if (query.isEmpty) return [];
 
+    final q = query.toLowerCase();
     final snapshot = await _firestore
         .collection('users')
-        .where('displayName', isGreaterThanOrEqualTo: query)
-        .where('displayName', isLessThan: query + 'z')
+        .where('displayName', isGreaterThanOrEqualTo: q)
+        .where('displayName', isLessThan: q + '\uf8ff')
         .limit(10)
         .get();
 

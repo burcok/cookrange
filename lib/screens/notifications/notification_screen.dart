@@ -5,6 +5,8 @@ import '../../core/services/community_service.dart';
 import '../community/widgets/community_widgets.dart';
 import '../../core/services/friend_service.dart';
 import '../../screens/community/widgets/glass_refresher.dart';
+import 'package:provider/provider.dart';
+import '../../core/providers/theme_provider.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -106,8 +108,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
               onPressed: _clearAll,
               child: Text(
                 AppLocalizations.of(context).translate('community.clear_all'),
-                style: const TextStyle(
-                    color: Color(0xFFF97316), fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    color: context.watch<ThemeProvider>().primaryColor,
+                    fontWeight: FontWeight.w600),
               ),
             ),
           const SizedBox(width: 8),
@@ -120,8 +123,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
               : const Color(0xFFF8FAFC), // Fallback bg if no underlying stack
         ),
         child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Color(0xFFF97316)))
+            ? Center(
+                child: CircularProgressIndicator(
+                    color: context.watch<ThemeProvider>().primaryColor))
             : _notifications.isEmpty
                 ? Center(
                     child: Column(
@@ -268,8 +272,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                   Container(
                                     width: 8,
                                     height: 8,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFFF97316),
+                                    decoration: BoxDecoration(
+                                      color: context
+                                          .watch<ThemeProvider>()
+                                          .primaryColor,
                                       shape: BoxShape.circle,
                                     ),
                                   ),
@@ -307,7 +313,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         break;
       case NotificationType.system:
         icon = Icons.notifications;
-        color = const Color(0xFFF97316);
+        color = context.watch<ThemeProvider>().primaryColor;
         break;
     }
 

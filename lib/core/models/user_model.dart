@@ -17,6 +17,7 @@ class UserModel {
   final String? buildNumber;
   final Timestamp? userVerified;
   final Map<String, bool>? profileVisibility; // Field: isVisible
+  final int? primaryColor;
 
   UserModel({
     required this.uid,
@@ -34,6 +35,7 @@ class UserModel {
     this.buildNumber,
     this.userVerified,
     this.profileVisibility,
+    this.primaryColor,
   });
 
   /// Creates a UserModel from a Firestore document snapshot.
@@ -58,6 +60,7 @@ class UserModel {
           (data['profile_visibility'] as Map<String, dynamic>?)?.map(
         (key, value) => MapEntry(key, value as bool),
       ),
+      primaryColor: data['primary_color'] as int?,
     );
   }
 }

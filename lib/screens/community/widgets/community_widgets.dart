@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../core/providers/theme_provider.dart';
 
 class GlassContainer extends StatelessWidget {
   final Widget child;
@@ -84,8 +86,8 @@ class StoryCircle extends StatelessWidget {
               // If hasUpdate, show colored border
               border: isNew || hasUpdate
                   ? Border.all(
-                      color: const Color(0xFFF97316),
-                      width: 2) // Primary Orange
+                      color: context.watch<ThemeProvider>().primaryColor,
+                      width: 2) // Primary Color
                   : Border.all(color: Colors.transparent, width: 2),
             ),
             padding:
@@ -103,9 +105,10 @@ class StoryCircle extends StatelessWidget {
                     : null,
               ),
               child: isNew
-                  ? const Center(
+                  ? Center(
                       child: Icon(Icons.add_rounded,
-                          color: Color(0xFFF97316), size: 30),
+                          color: context.watch<ThemeProvider>().primaryColor,
+                          size: 30),
                     )
                   : null,
             ),
@@ -173,14 +176,15 @@ class MinimalCustomDropdown<T> extends StatelessWidget {
                         fontWeight:
                             isSelected ? FontWeight.w700 : FontWeight.w500,
                         color: isSelected
-                            ? const Color(0xFFF97316)
+                            ? context.watch<ThemeProvider>().primaryColor
                             : (isDark ? Colors.white : const Color(0xFF2E3A59)),
                       ),
                     ),
                   ),
                   if (isSelected)
-                    const Icon(Icons.check_rounded,
-                        size: 18, color: Color(0xFFF97316))
+                    Icon(Icons.check_rounded,
+                        size: 18,
+                        color: context.watch<ThemeProvider>().primaryColor)
                 ],
               ),
             );
@@ -200,10 +204,10 @@ class MinimalCustomDropdown<T> extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
+              Icon(
                 Icons.keyboard_arrow_down_rounded,
                 size: 20,
-                color: Color(0xFFF97316),
+                color: context.watch<ThemeProvider>().primaryColor,
               ),
             ],
           ),

@@ -176,12 +176,6 @@ class _DraggableReactionButtonState extends State<DraggableReactionButton> {
               transform: Matrix4.identity()..scale(isFocused ? 1.5 : 1.0),
               transformAlignment: Alignment.center,
               margin: EdgeInsets.symmetric(horizontal: isFocused ? 10 : 4),
-              decoration: BoxDecoration(
-                color: isFocused
-                    ? const Color(0xFFF97316).withOpacity(0.2)
-                    : Colors.transparent,
-                shape: BoxShape.circle,
-              ),
               child: Text(
                 _emojis[index],
                 style: const TextStyle(fontSize: 24),

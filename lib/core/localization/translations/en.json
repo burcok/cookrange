@@ -365,16 +365,16 @@
   "profile": {
     "title": "Profile",
     "edit_profile": "Edit Profile",
-    "personal_info": "Personal Information",
+    "personal_info": "Welcome to Cookrange",
     "name": "Name",
     "age": "Age",
     "gender": {
-      "title": "Select Your Gender",
+      "title": "Gender",
       "female": "Female",
       "male": "Male"
     },
     "birthday": {
-      "title": "Select Your Birthday",
+      "title": "Birthday",
       "select_month": "Select Month",
       "select_year": "Select Year",
       "months": {
@@ -393,21 +393,51 @@
       }
     },
     "height": {
-      "title": "Select Your Height",
+      "title": "Height",
       "unit": "cm"
     },
     "weight": {
-      "title": "Select Your Weight",
+      "title": "Weight",
       "unit": "kg"
     },
     "activity_level": "Activity Level",
     "goals": "Goals",
-    "save": "Save Changes"
+    "save": "Save Changes",
+    "friends": "Friends",
+    "stats": {
+      "posts": "Posts",
+      "scores": "Scores",
+      "streak": "Streak"
+    },
+    "friend_actions": {
+      "add": "Add Friend",
+      "sent": "Request Sent",
+      "received_text": "Wants to add you as a friend",
+      "accept": "Accept",
+      "reject": "Reject",
+      "message": "Message"
+    },
+    "kitchen_lifestyle": {
+      "title": "Kitchen & Lifestyle",
+      "cooking_level": "Cooking Skill Level",
+      "novice": "Novice",
+      "expert": "Expert",
+      "equipment": "Equipment",
+      "no_equipment": "No equipment listed",
+      "disliked_foods": "Disliked Foods"
+    },
+    "search": {
+      "title": "Search Friends",
+      "hint": "Search user by name...",
+      "no_results": "No users found"
+    }
   },
 
   "settings": {
     "title": "Settings",
+    "preferences": "Preferences",
     "language": "Language",
+    "app_language": "App Language",
     "notifications": "Notifications",
     "privacy_policy": "Privacy Policy",
     "terms_of_service": "Terms of Service",
@@ -416,7 +446,39 @@
     "dark_mode": "Dark Mode",
     "units": "Units",
     "metric": "Metric",
-    "imperial": "Imperial"
+    "imperial": "Imperial",
+    "appearance": {
+      "title": "Appearance",
+      "theme": "Theme",
+      "system": "System Default",
+      "light": "Light Mode",
+      "dark": "Dark Mode",
+      "theme_color": "Theme Color"
+    },
+    "premium": {
+      "badge": "Get Premium",
+      "title": "Unlimited Features",
+      "description": "Get ad-free experience, detailed analytics and access to special recipes.",
+      "button": "Buy Premium"
+    },
+    "privacy": {
+      "title": "Privacy Settings",
+      "account_privacy": "Account Privacy",
+      "account_privacy_subtitle": "Only friends can see",
+      "friend_requests": "Friend Requests",
+      "friend_requests_subtitle": "Auto Accept"
+    },
+    "permissions": {
+      "title": "Permissions & Notifications",
+      "device_permissions": "Device Permissions"
+    },
+    "app_info": {
+      "title": "App Info",
+      "about": "About Us",
+      "help": "Help & FAQ",
+      "version": "App Version",
+      "user_id": "User ID"
+    }
   },
 
   "notifications": {
@@ -633,7 +695,23 @@
       "you_many": "You, {name} and {count} others liked this",
       "you_many_2": "You, {name1}, {name2} and {count} others liked this"
     },
-    "report_success": "{type} reported successfully"
+    "report_success": "{type} reported successfully",
+    "groups": {
+      "new": "New"
+    },
+    "no_posts": "No posts found. Be the first to share!",
+    "create_post": {
+      "add_tags": "Add Tags",
+      "add_image": "Add Image",
+      "post_button": "Post",
+      "error": "Failed to post"
+    },
+    "post": {
+      "comments": "Comments ({count})",
+      "comment_hint": "Write a comment...",
+      "reply_hint": "Reply to {name}",
+      "edited": "(edited)"
+    }
   },
   "menu": {
     "title": "Menu",

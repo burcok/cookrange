@@ -4,6 +4,8 @@ import '../../community/widgets/community_widgets.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/community_service.dart';
 import 'draggable_reaction_button.dart';
+import '../../../../core/providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 
 class GlassPostCard extends StatefulWidget {
   final CommunityPost post;
@@ -317,14 +319,19 @@ class _GlassPostCardState extends State<GlassPostCard> {
                               horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: isUserReaction
-                                ? const Color(0xFFF97316).withOpacity(0.2)
+                                ? context
+                                    .watch<ThemeProvider>()
+                                    .primaryColor
+                                    .withOpacity(0.2)
                                 : (isDark
                                     ? Colors.white10
                                     : Colors.grey.shade100),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                                 color: isUserReaction
-                                    ? const Color(0xFFF97316)
+                                    ? context
+                                        .watch<ThemeProvider>()
+                                        .primaryColor
                                     : Colors.transparent),
                           ),
                           child: Text(
@@ -477,8 +484,9 @@ class _GlassPostCardState extends State<GlassPostCard> {
       if (word.startsWith('#')) {
         spans.add(TextSpan(
           text: "$word ",
-          style: const TextStyle(
-              fontWeight: FontWeight.w600, color: Color(0xFFF97316)),
+          style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: context.watch<ThemeProvider>().primaryColor),
         ));
       } else {
         spans.add(TextSpan(text: "$word "));

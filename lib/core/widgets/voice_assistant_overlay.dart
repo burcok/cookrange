@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../services/navigation_provider.dart';
 import '../localization/app_localizations.dart';
+import '../providers/theme_provider.dart';
 
 class VoiceAssistantOverlay extends StatefulWidget {
   const VoiceAssistantOverlay({super.key});
@@ -249,8 +250,8 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  const Color(0xFFF97300).withAlpha(150),
-                  const Color(0xFFF97300).withAlpha(0),
+                  context.watch<ThemeProvider>().primaryColor.withAlpha(150),
+                  context.watch<ThemeProvider>().primaryColor.withAlpha(0),
                 ],
               ),
             ),
@@ -392,7 +393,8 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
                   vertical: _scale(context, 16),
                 ),
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.send, color: Color(0xFFF97300)),
+                  icon: Icon(Icons.send,
+                      color: context.watch<ThemeProvider>().primaryColor),
                   onPressed: () {
                     nav.toggleVoiceAssistant(false);
                   },

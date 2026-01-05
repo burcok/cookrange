@@ -1,4 +1,8 @@
 import 'dart:ui';
+import 'package:cookrange/core/constants/onboarding_options.dart';
+import 'package:cookrange/core/localization/app_localizations.dart';
+import 'package:cookrange/core/providers/theme_provider.dart';
+import 'package:cookrange/widgets/onboarding_common_widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -29,6 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _genderController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
 
   // Friend Request State (Public Mode only)
   FriendshipStatus _friendshipStatus = FriendshipStatus.none;
@@ -53,11 +58,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _genderController.dispose();
     _heightController.dispose();
     _weightController.dispose();
+    _ageController.dispose();
     super.dispose();
   }
 
   void _initializePrivateData() {
-    final user = context.read<UserProvider>().user;
+    final user;
+    if (widget.viewUser != null) {
+      user = widget.viewUser!;
+    } else {
+      user = context.read<UserProvider>().user;
+    }
     if (user != null) {
       _editableData = Map<String, dynamic>.from(user.onboardingData ?? {});
 
@@ -66,6 +77,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _genderController.text = personalInfo['gender']?.toString() ?? "";
       _heightController.text = personalInfo['height']?.toString() ?? "";
       _weightController.text = personalInfo['weight']?.toString() ?? "";
+      _ageController.text = personalInfo['birth_date']?.toString() ?? "";
     }
   }
 
@@ -278,7 +290,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: BoxDecoration(
             color: isDark
                 ? primaryColor.withOpacity(0.1)
-                : Colors.orange.shade100.withOpacity(0.5),
+                : primaryColor.withOpacity(0.5),
             shape: BoxShape.circle,
           ),
           child: BackdropFilter(
@@ -286,10 +298,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Container(color: Colors.transparent)),
         ),
       ),
+      Positioned(
+        bottom: -350,
+        left: -150,
+        child: Container(
+          width: 500,
+          height: 500,
+          decoration: BoxDecoration(
+            color: isDark
+                ? primaryColor.withOpacity(0.1)
+                : Colors.lightBlue.shade100.withOpacity(0.5),
+            shape: BoxShape.circle,
+          ),
+          child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 120, sigmaY: 120),
+              child: Container(color: Colors.transparent)),
+        ),
+      ),
     ]);
   }
 
   Widget _buildAvatarSection(UserModel user, bool isDark, bool isPublic) {
+    final localizations = AppLocalizations.of(context);
     final primaryColor = Theme.of(context).primaryColor;
     final displayName = user.displayName ?? "User";
     final photoURL = user.photoURL;
@@ -369,7 +399,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       (user.onboardingData!['bio'] as String).length > 30
                           ? 30
                           : (user.onboardingData!['bio'] as String).length)
-                  : "Merhaba Cookrange!",
+                  : localizations.translate('profile.personal_info'),
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 14,
@@ -382,7 +412,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             spacing: 12,
             children: [
               _buildFriendActionButton(isDark, primaryColor),
-              _buildMessageActionButton(isDark, primaryColor),
+              if (_friendshipStatus == FriendshipStatus.friends)
+                _buildMessageActionButton(isDark, primaryColor),
             ],
           ),
           const SizedBox(height: 12),
@@ -392,42 +423,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildFriendActionButton(bool isDark, Color primaryColor) {
+    final localizations = AppLocalizations.of(context);
     if (_isLoading)
       return const SizedBox(
           height: 20,
           width: 20,
           child: CircularProgressIndicator(strokeWidth: 2));
 
-    String label = "Add Friend";
+    String label = localizations.translate('profile.friend_actions.add');
     IconData icon = Icons.person_add;
     Color color = primaryColor;
     VoidCallback? onTap = _handleFriendAction;
 
     if (_friendshipStatus == FriendshipStatus.friends) {
-      label = "Friends";
+      label = localizations.translate('profile.friends');
       icon = Icons.check;
       color = Colors.green;
     } else if (_friendshipStatus == FriendshipStatus.pending_sent) {
-      label = "Request Sent";
+      label = localizations.translate('profile.friend_actions.sent');
       icon = Icons.access_time;
       color = Colors.grey;
     } else if (_friendshipStatus == FriendshipStatus.pending_received) {
-      // Special case: Accept/Reject
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      return Column(
         children: [
-          ElevatedButton.icon(
-            icon: const Icon(Icons.check, size: 16),
-            label: const Text("Accept"),
-            onPressed: _handleFriendAction,
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green, foregroundColor: Colors.white),
+          Text(
+            localizations.translate('profile.friend_actions.received_text'),
+            style: TextStyle(
+                fontSize: 16, color: isDark ? Colors.white : Colors.grey[900]),
           ),
-          const SizedBox(width: 8),
-          OutlinedButton(
-            onPressed: _handleRejectRequest,
-            child: const Text("Reject"),
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                icon: const Icon(Icons.check, size: 16),
+                label: Text(
+                    localizations.translate('profile.friend_actions.accept')),
+                onPressed: _handleFriendAction,
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _handleRejectRequest,
+                child: Text(
+                    localizations.translate('profile.friend_actions.reject')),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red, foregroundColor: Colors.white),
+              )
+            ],
           )
         ],
       );
@@ -455,7 +500,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ElevatedButton.icon(
       onPressed: () {},
       icon: const Icon(Icons.chat_bubble, size: 18),
-      label: Text("Message", style: TextStyle(color: primaryColor)),
+      label: Text(
+          AppLocalizations.of(context)
+              .translate('profile.friend_actions.message'),
+          style: TextStyle(color: primaryColor)),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: primaryColor,
@@ -466,16 +514,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildStatsRow(bool isDark) {
+    final localizations = AppLocalizations.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _buildStatItem("2", "Posts 🚀", isDark),
+        _buildStatItem("2",
+            "${localizations.translate('profile.stats.posts')} 🚀", isDark),
         const SizedBox(width: 24),
-        _buildStatItem("12K", "Scores ⭐", isDark),
+        _buildStatItem("12K",
+            "${localizations.translate('profile.stats.scores')} ⭐", isDark),
         const SizedBox(width: 24),
         _buildStatItem(
             "${(widget.viewUser ?? context.read<UserProvider>().user)?.onboardingData?['streak'] ?? 1}",
-            "Streak 🔥",
+            "${localizations.translate('profile.stats.streak')} 🔥",
             isDark),
       ],
     );
@@ -501,6 +552,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildFriendsSection(
       BuildContext context, bool isDark, bool isPublic) {
     if (isPublic) return const SizedBox.shrink();
+    final localizations = AppLocalizations.of(context);
 
     return StreamBuilder<List<UserModel>>(
         stream: _friendsStream,
@@ -515,16 +567,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildSectionTitle("Friends", Icons.group, isDark),
+                    _buildSectionTitle(
+                        localizations.translate('profile.friends'),
+                        Icons.group,
+                        isDark),
                     Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                            color: isDark ? Colors.grey[800] : Colors.grey[100],
-                            borderRadius: BorderRadius.circular(12)),
                         child: Text("${friends.length}",
                             style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 14,
                                 color: isDark
                                     ? Colors.grey[400]
                                     : Colors.grey[500])))
@@ -562,8 +612,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text("Add",
-                              style: TextStyle(
+                          Text(localizations.translate('common.add'),
+                              style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w500,
                                   color: Colors.grey)),
@@ -641,6 +691,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildGoalsPanel(
       BuildContext context, UserModel user, bool isDark, bool isPublic) {
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
     // Custom Goal Styling
     return _buildGlassPanel(
         isDark: isDark,
@@ -648,14 +699,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildSectionTitle("Goals", Icons.flag, isDark),
-                if (!isPublic)
-                  const SizedBox.shrink(), // Removed Edit Button as per request
-              ],
-            ),
+            _buildSectionTitle(
+                AppLocalizations.of(context).translate('profile.goals'),
+                Icons.flag,
+                isDark),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -667,7 +714,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         goal.toString(),
                         Icons
                             .check_circle_outline, // Generic icon for dynamic goals
-                        Colors.orange,
+                        primaryColor,
                         isDark))
                     .toList(),
                 if ((user.onboardingData?['primary_goals'] as List?)?.isEmpty ??
@@ -683,6 +730,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildGoalChip(String label, IconData icon, Color color, bool isDark) {
+    final localizations = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -695,7 +743,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Icon(icon, size: 16, color: isDark ? color.withAlpha(200) : color),
           const SizedBox(width: 4),
-          Text(label,
+          Text(
+              OnboardingOptions.primaryGoals.entries
+                  .map((e) {
+                    return OptionData(
+                      label: localizations.translate(e.value['label']),
+                      icon: e.value['icon'] as IconData,
+                      value: e.key,
+                    );
+                  })
+                  .firstWhere((e) => e.value == label)
+                  .label,
               style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -719,7 +777,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           val = _heightController.text;
         else if (key == 'weight')
           val = _weightController.text;
-        else if (key == 'gender') val = _genderController.text;
+        else if (key == 'gender')
+          val = _genderController.text;
+        else if (key == 'age') val = _ageController.text;
       }
       return val?.toString() ?? "--";
     }
@@ -732,7 +792,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildSectionTitle("Personal Info", Icons.person, isDark),
+              _buildSectionTitle(
+                  AppLocalizations.of(context)
+                      .translate('profile.personal_info'),
+                  Icons.person,
+                  isDark),
             ],
           ),
           const SizedBox(height: 16),
@@ -744,11 +808,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
             children: [
-              _buildInfoCard("Weight", getVal('weight'), "kg", isDark),
-              _buildInfoCard("Height", getVal('height'), "cm", isDark),
-              _buildInfoCard("Age", "26", "", isDark), // Dummy/Static Age
               _buildInfoCard(
-                  "Activity Level",
+                  AppLocalizations.of(context)
+                      .translate('profile.weight.title')
+                      .replaceAll('Select Your ', ''),
+                  getVal('weight'),
+                  "kg",
+                  isDark),
+              _buildInfoCard(
+                  AppLocalizations.of(context)
+                      .translate('profile.height.title')
+                      .replaceAll('Select Your ', ''),
+                  getVal('height'),
+                  "cm",
+                  isDark),
+              _buildInfoCard(
+                  AppLocalizations.of(context).translate('profile.age'),
+                  _getDisplayAge(getVal('age')),
+                  "",
+                  isDark),
+              _buildInfoCard(
+                  AppLocalizations.of(context)
+                      .translate('profile.activity_level'),
                   (user.onboardingData?['activity_level'] as String?) ?? "--",
                   "",
                   isDark),
@@ -757,6 +838,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  String _getDisplayAge(String val) {
+    if (val.isEmpty) return "--";
+    try {
+      final dob = DateTime.parse(val);
+      return (DateTime.now().difference(dob).inDays ~/ 365).toString();
+    } catch (e) {
+      return val;
+    }
   }
 
   Widget _buildInfoCard(String label, String value, String unit, bool isDark) {
@@ -807,6 +898,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         user.onboardingData?['kitchen_equipments'] as List<dynamic>? ?? [];
     final dislikedFoods =
         user.onboardingData?['disliked_foods'] as List<dynamic>? ?? [];
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
+
+    final localizations = AppLocalizations.of(context);
 
     double levelValue = 0.3;
     if (cookingLevel.toLowerCase().contains('inter')) levelValue = 0.6;
@@ -822,23 +916,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.all(20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildSectionTitle(
-                      "Kitchen & Lifestyle", Icons.kitchen, isDark),
-                  Icon(Icons.expand_more, color: Colors.grey[400])
-                ],
-              ),
+              child: _buildSectionTitle(
+                  localizations.translate('profile.kitchen_lifestyle.title'),
+                  Icons.kitchen,
+                  isDark),
             ),
-            Divider(
-                height: 1, color: isDark ? Colors.grey[800] : Colors.grey[100]),
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Cooking Skill Level: $cookingLevel",
+                  Text(
+                      "${localizations.translate('profile.kitchen_lifestyle.cooking_level')}: ${OnboardingOptions.cookingLevels.entries.map((e) {
+                            return OptionData(
+                              label: localizations.translate(e.value['label']),
+                              icon: e.value['icon'] as IconData,
+                              value: e.key,
+                            );
+                          }).firstWhere((e) => e.value == cookingLevel).label}",
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -857,7 +952,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       widthFactor: levelValue,
                       child: Container(
                         decoration: BoxDecoration(
-                            color: Colors.orange,
+                            color: primaryColor,
                             borderRadius: BorderRadius.circular(5)),
                       ),
                     ),
@@ -866,17 +961,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text("Novice",
+                      Text(
+                          localizations
+                              .translate('profile.kitchen_lifestyle.novice'),
                           style:
                               TextStyle(fontSize: 10, color: Colors.grey[400])),
-                      Text("Expert",
+                      Text(
+                          localizations
+                              .translate('profile.kitchen_lifestyle.expert'),
                           style:
                               TextStyle(fontSize: 10, color: Colors.grey[400])),
                     ],
                   ),
 
                   const SizedBox(height: 16),
-                  Text("Equipment",
+                  Text(
+                      localizations
+                          .translate('profile.kitchen_lifestyle.equipment'),
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -905,7 +1006,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             ? Colors.grey[600]!
                                             : Colors.grey[200]!),
                                     borderRadius: BorderRadius.circular(8)),
-                                child: Text(e.toString(),
+                                child: Text(
+                                    localizations.translate(OnboardingOptions
+                                            .kitchenEquipment[e.toString()] ??
+                                        e.toString()),
                                     style: TextStyle(
                                         fontSize: 12,
                                         color: isDark
@@ -941,7 +1045,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             ? Colors.red.withOpacity(0.3)
                                             : Colors.red.withOpacity(0.2)),
                                     borderRadius: BorderRadius.circular(8)),
-                                child: Text(e.toString(),
+                                child: Text(
+                                    OnboardingOptions
+                                        .predefinedIngredients.entries
+                                        .map((a) {
+                                          return OptionData(
+                                            label: localizations
+                                                .translate(a.value['label']),
+                                            icon: a.value['icon'] as IconData,
+                                            value: a.key,
+                                          );
+                                        })
+                                        .firstWhere(
+                                            (i) => i.value == e.toString())
+                                        .label,
                                     style: TextStyle(
                                         fontSize: 12,
                                         color: isDark
@@ -974,8 +1091,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? Colors.red.withOpacity(0.3)
                       : Colors.red.shade200)),
         ),
-        child: const Text("Log Out",
-            style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
+        child: Text(
+            AppLocalizations.of(context).translate('auth.logout_button'),
+            style: const TextStyle(
+                color: Colors.red, fontWeight: FontWeight.w500)),
       ),
     );
   }
@@ -1131,32 +1250,40 @@ class _FriendSearchSheetState extends State<_FriendSearchSheet> {
               decoration: BoxDecoration(
                   color: Colors.grey, borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 20),
-          Text("Search Friends",
+          Text(AppLocalizations.of(context).translate('profile.search.title'),
               style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: widget.isDark ? Colors.white : Colors.black)),
           const SizedBox(height: 20),
           TextField(
-            controller: _searchCtrl,
-            style:
-                TextStyle(color: widget.isDark ? Colors.white : Colors.black),
-            decoration: InputDecoration(
-                hintText: "Enter display name...",
-                hintStyle: TextStyle(
-                    color: widget.isDark ? Colors.grey : Colors.black54),
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: widget.isDark ? Colors.white10 : Colors.grey[200],
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.arrow_forward),
-                  onPressed: _search,
-                )),
-            onSubmitted: (_) => _search(),
-          ),
+              controller: _searchCtrl,
+              style:
+                  TextStyle(color: widget.isDark ? Colors.white : Colors.black),
+              decoration: InputDecoration(
+                  hintText: AppLocalizations.of(context)
+                      .translate('profile.search.hint'),
+                  hintStyle: TextStyle(
+                      color: widget.isDark ? Colors.grey : Colors.black54),
+                  prefixIcon: const Icon(Icons.search),
+                  filled: true,
+                  fillColor: widget.isDark ? Colors.white10 : Colors.grey[200],
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.arrow_forward),
+                    onPressed: _searchCtrl.text.isNotEmpty &&
+                            _searchCtrl.text.length > 3
+                        ? _search
+                        : null,
+                    autofocus: true,
+                  )),
+              onSubmitted: (_) => {
+                    if (_searchCtrl.text.isNotEmpty &&
+                        _searchCtrl.text.length > 3)
+                      _search()
+                  }),
           const SizedBox(height: 20),
           if (_loading)
             const CircularProgressIndicator()

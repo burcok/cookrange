@@ -72,7 +72,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Colors from design
-    final primaryColor = const Color(0xFFF0507F);
+    final primaryColor = Theme.of(context).primaryColor;
     final bgLight = const Color(0xFFF8FAFC);
     final bgDark = const Color(0xFF0F172A);
     // Use app theme background if possible, but design specified these.

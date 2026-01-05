@@ -7,6 +7,7 @@ import '../../core/services/community_service.dart';
 import '../../core/localization/app_localizations.dart';
 import 'widgets/glass_refresher.dart';
 import 'widgets/draggable_reaction_button.dart';
+import '../../core/providers/theme_provider.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final String postId;
@@ -174,7 +175,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFF97316).withOpacity(0.12),
+                    color: context
+                        .watch<ThemeProvider>()
+                        .primaryColor
+                        .withOpacity(0.12),
                     blurRadius: 100,
                   ),
                 ],
@@ -201,8 +205,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
           // 2. Main Content
           _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFFF97316)))
+              ? Center(
+                  child: CircularProgressIndicator(
+                      color: context.watch<ThemeProvider>().primaryColor))
               : Column(
                   children: [
                     Expanded(
@@ -370,10 +375,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                 ? Colors.white
                                                 : const Color(0xFF334155),
                                           ),
-                                          decoration: const InputDecoration(
+                                          decoration: InputDecoration(
                                             border: InputBorder.none,
                                             isDense: true,
-                                            hintText: "What's cooking?",
+                                            hintText: appLoc.translate(
+                                                'community.whats_cooking',
+                                                variables: {'name': 'Chef'}),
                                           ),
                                         ),
                                         const SizedBox(height: 12),
@@ -392,20 +399,23 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                                 const TextStyle(
                                                                     fontSize:
                                                                         12)),
-                                                        backgroundColor:
-                                                            const Color(
-                                                                    0xFFF97316)
-                                                                .withOpacity(
-                                                                    0.1),
-                                                        labelStyle:
-                                                            const TextStyle(
-                                                                color: Color(
-                                                                    0xFFF97316)),
-                                                        deleteIcon: const Icon(
+                                                        backgroundColor: context
+                                                            .watch<
+                                                                ThemeProvider>()
+                                                            .primaryColor
+                                                            .withOpacity(0.1),
+                                                        labelStyle: TextStyle(
+                                                            color: context
+                                                                .watch<
+                                                                    ThemeProvider>()
+                                                                .primaryColor),
+                                                        deleteIcon: Icon(
                                                             Icons.close,
                                                             size: 14,
-                                                            color: Color(
-                                                                0xFFF97316)),
+                                                            color: context
+                                                                .watch<
+                                                                    ThemeProvider>()
+                                                                .primaryColor),
                                                         onDeleted: () {
                                                           setState(() {
                                                             _editingTags
@@ -427,10 +437,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                               MainAxisAlignment.spaceBetween,
                                           children: [
                                             IconButton(
-                                              icon: const Icon(Icons.tag,
-                                                  color: Color(0xFFF97316)),
+                                              icon: Icon(Icons.tag,
+                                                  color: context
+                                                      .watch<ThemeProvider>()
+                                                      .primaryColor),
                                               onPressed: _openTagPicker,
-                                              tooltip: "Add Tags",
+                                              tooltip: appLoc.translate(
+                                                  'community.create_post.add_tags'),
                                             ),
                                             Row(
                                               children: [
@@ -438,7 +451,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                   onPressed: () => setState(
                                                       () => _isEditingPost =
                                                           false),
-                                                  child: Text("Cancel",
+                                                  child: Text(
+                                                      appLoc.translate(
+                                                          'common.cancel'),
                                                       style: TextStyle(
                                                           color: isDark
                                                               ? Colors.grey
@@ -450,8 +465,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                   onPressed: _savePostEdit,
                                                   style:
                                                       ElevatedButton.styleFrom(
-                                                    backgroundColor:
-                                                        const Color(0xFFF97316),
+                                                    backgroundColor: context
+                                                        .watch<ThemeProvider>()
+                                                        .primaryColor,
                                                     foregroundColor:
                                                         Colors.white,
                                                     shape:
@@ -465,7 +481,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                         horizontal: 16,
                                                         vertical: 0),
                                                   ),
-                                                  child: const Text("Save"),
+                                                  child: Text(appLoc.translate(
+                                                      'common.save')),
                                                 ),
                                               ],
                                             ),
@@ -675,7 +692,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                 horizontal: 8, vertical: 4),
                                             decoration: BoxDecoration(
                                               color: isUserReaction
-                                                  ? const Color(0xFFF97316)
+                                                  ? context
+                                                      .watch<ThemeProvider>()
+                                                      .primaryColor
                                                       .withOpacity(0.2)
                                                   : (isDark
                                                       ? Colors.white10
@@ -684,7 +703,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                   BorderRadius.circular(20),
                                               border: Border.all(
                                                   color: isUserReaction
-                                                      ? const Color(0xFFF97316)
+                                                      ? context
+                                                          .watch<
+                                                              ThemeProvider>()
+                                                          .primaryColor
                                                       : Colors.transparent),
                                             ),
                                             child: Text(
@@ -796,7 +818,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
                                 const SizedBox(height: 32),
                                 Text(
-                                  "Comments (${_post?.commentsCount ?? 0})",
+                                  appLoc.translate('community.post.comments',
+                                      variables: {
+                                        'count': '${_post?.commentsCount ?? 0}'
+                                      }),
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -1064,12 +1089,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: isUserReact
-                                      ? const Color(0xFFF97316).withOpacity(0.1)
+                                      ? context
+                                          .watch<ThemeProvider>()
+                                          .primaryColor
+                                          .withOpacity(0.1)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                       color: isUserReact
-                                          ? const Color(0xFFF97316)
+                                          ? context
+                                              .watch<ThemeProvider>()
+                                              .primaryColor
                                           : Colors.grey.withOpacity(0.3)),
                                 ),
                                 child: Text("${entry.key} ${entry.value}",
@@ -1318,13 +1348,19 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       IconButton(
                         onPressed: _isSendingComment ? null : _onAddComment,
                         icon: _isSendingComment
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Color(0xFFF97316)))
+                                    strokeWidth: 2,
+                                    color: context
+                                        .watch<ThemeProvider>()
+                                        .primaryColor))
                             : Icon(Icons.send_rounded,
-                                color: const Color(0xFFF97316).withOpacity(0.8),
+                                color: context
+                                    .watch<ThemeProvider>()
+                                    .primaryColor
+                                    .withOpacity(0.8),
                                 size: 20),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -1538,11 +1574,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         // Also update parent state to reflect immediately if visible behind sheet
                         this.setState(() {});
                       },
-                      selectedColor: const Color(0xFFF97316).withOpacity(0.2),
-                      checkmarkColor: const Color(0xFFF97316),
+                      selectedColor: context
+                          .watch<ThemeProvider>()
+                          .primaryColor
+                          .withOpacity(0.2),
+                      checkmarkColor:
+                          context.watch<ThemeProvider>().primaryColor,
                       labelStyle: TextStyle(
                         color: isSelected
-                            ? const Color(0xFFF97316)
+                            ? context.watch<ThemeProvider>().primaryColor
                             : (isDark ? Colors.white70 : Colors.black54),
                       ),
                       backgroundColor:
@@ -1551,7 +1591,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         borderRadius: BorderRadius.circular(20),
                         side: BorderSide(
                           color: isSelected
-                              ? const Color(0xFFF97316)
+                              ? context.watch<ThemeProvider>().primaryColor
                               : Colors.transparent,
                         ),
                       ),

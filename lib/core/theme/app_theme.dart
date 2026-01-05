@@ -76,21 +76,42 @@ const ColorScheme darkColorScheme = ColorScheme.dark(
 
 // 3. ThemeData'lar
 class AppTheme {
-  static ThemeData get lightTheme => ThemeData(
-        colorScheme: lightColorScheme,
-        scaffoldBackgroundColor: c.backgroundColorLight,
-        fontFamily: 'Poppins',
-        useMaterial3: true,
-        extensions: [lightAppColors],
-      );
+  static ThemeData lightTheme({Color? primaryColor}) {
+    final colorScheme = lightColorScheme.copyWith(
+      primary: primaryColor ?? c.primaryColor,
+      // Also update extensions or other places using primary color if needed
+      // For now, main colorScheme primary is key
+    );
 
-  static ThemeData get darkTheme => ThemeData(
-        colorScheme: darkColorScheme,
-        scaffoldBackgroundColor: c.backgroundColorDark,
-        fontFamily: 'Poppins',
-        useMaterial3: true,
-        extensions: [darkAppColors],
-      );
+    return ThemeData(
+      colorScheme: colorScheme,
+      primaryColor: primaryColor ?? c.primaryColor,
+      scaffoldBackgroundColor: c.backgroundColorLight,
+      fontFamily: 'Poppins',
+      useMaterial3: true,
+      extensions: [
+        lightAppColors.copyWith(primaryColor: primaryColor ?? c.primaryColor)
+      ],
+    );
+  }
+
+  static ThemeData darkTheme({Color? primaryColor}) {
+    final colorScheme = darkColorScheme.copyWith(
+      primary: primaryColor ?? c.primaryColorDark,
+    );
+
+    return ThemeData(
+      colorScheme: colorScheme,
+      primaryColor: primaryColor ?? c.primaryColorDark,
+      scaffoldBackgroundColor: c.backgroundColorDark,
+      fontFamily: 'Poppins',
+      useMaterial3: true,
+      extensions: [
+        darkAppColors.copyWith(
+            primaryColorDark: primaryColor ?? c.primaryColorDark)
+      ],
+    );
+  }
 }
 
 class AppColors extends ThemeExtension<AppColors> {

@@ -9,6 +9,7 @@ import '../core/providers/user_provider.dart';
 import '../core/widgets/quick_actions_sheet.dart';
 import '../core/widgets/voice_assistant_overlay.dart';
 import '../core/services/auth_service.dart';
+import '../core/providers/theme_provider.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -151,9 +152,9 @@ class _MainScaffoldState extends State<MainScaffold>
           if (_isLoggingOut)
             Container(
               color: Colors.black.withValues(alpha: 0.7),
-              child: const Center(
+              child: Center(
                 child: CircularProgressIndicator(
-                  color: Color(0xFFF97300),
+                  color: context.watch<ThemeProvider>().primaryColor,
                 ),
               ),
             ),
@@ -318,19 +319,31 @@ class _MainScaffoldState extends State<MainScaffold>
               top: -100,
               right: -50,
               child: _glowBlob(
-                  300, const Color(0xFFF97300).withValues(alpha: 0.2)),
+                  300,
+                  context
+                      .watch<ThemeProvider>()
+                      .primaryColor
+                      .withValues(alpha: 0.2)),
             ),
             Positioned(
               top: size.height * 0.4,
               left: -100,
               child: _glowBlob(
-                  350, const Color(0xFFF98E30).withValues(alpha: 0.18)),
+                  350,
+                  context
+                      .watch<ThemeProvider>()
+                      .primaryColor
+                      .withValues(alpha: 0.18)),
             ),
             Positioned(
               bottom: 50,
               right: -80,
               child: _glowBlob(
-                  320, const Color(0xFFF97300).withValues(alpha: 0.15)),
+                  320,
+                  context
+                      .watch<ThemeProvider>()
+                      .primaryColor
+                      .withValues(alpha: 0.15)),
             ),
           ],
         ),
