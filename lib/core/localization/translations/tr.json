@@ -381,14 +381,6 @@
       "scores": "Puanlar",
       "streak": "Seri"
     },
-    "friend_actions": {
-      "add": "Arkadaş Ekle",
-      "sent": "İstek Gönderildi",
-      "received_text": "Seni arkadaş olarak eklemek istiyor",
-      "accept": "Kabul Et",
-      "reject": "Reddet",
-      "message": "Mesaj"
-    },
     "kitchen_lifestyle": {
       "title": "Mutfak & Yaşam Tarzı",
       "cooking_level": "Yemek Pişirme Seviyesi",
@@ -421,6 +413,25 @@
         "november": "Kasım",
         "december": "Aralık"
       }
+    },
+    "online": "Online",
+    "last_seen": "Last seen: {time}",
+    "offline": "Offline",
+    "friends_modal": {
+      "title": "Friends",
+      "search_hint": "Search friends...",
+      "manage": "Manage",
+      "unfriend": "Unfriend",
+      "no_friends": "No friends found"
+    },
+    "friend_actions": {
+      "add": "Add Friend",
+      "sent": "Request Sent",
+      "received_text": "Wants to add you as a friend",
+      "accept": "Accept",
+      "reject": "Reject",
+      "message": "Message",
+      "already_friends": "Friends"
     }
   },
   "settings": {

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:cookrange/core/constants/onboarding_options.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 import 'package:cookrange/core/providers/theme_provider.dart';
@@ -81,12 +82,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  bool _isCheckingFriendship = true;
+
   Future<void> _checkFriendshipStatus() async {
     if (widget.viewUser?.uid == null) return;
-    final status =
-        await FriendService().checkFriendshipStatus(widget.viewUser!.uid);
-    if (mounted) {
-      setState(() => _friendshipStatus = status);
+    try {
+      final status =
+          await FriendService().checkFriendshipStatus(widget.viewUser!.uid);
+      if (mounted) {
+        setState(() {
+          _friendshipStatus = status;
+          _isCheckingFriendship = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isCheckingFriendship = false);
     }
   }
 
@@ -424,7 +434,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildFriendActionButton(bool isDark, Color primaryColor) {
     final localizations = AppLocalizations.of(context);
-    if (_isLoading)
+
+    // Show loading spinner while checking status to prevent flickering
+    if (_isLoading || _isCheckingFriendship)
       return const SizedBox(
           height: 20,
           width: 20,
@@ -436,7 +448,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     VoidCallback? onTap = _handleFriendAction;
 
     if (_friendshipStatus == FriendshipStatus.friends) {
-      label = localizations.translate('profile.friends');
+      // If already friends, we might not want to show this button here if the user prefers "Message" only,
+      // but per requirements, "Message" button comes AFTER "Add Friend" logic resolves.
+      // However, the prompt says: "profile screen'de isPublic olduğu zaman zaten arkadaşım olan bir kişi için sayfa ilk açıldığında önce arkadaş ekle butonu geliyor daha sonra mesaj butonu geliyor. Bu yapıyı düzelt."
+      // By using _isCheckingFriendship, we avoid showing "Add Friend" initially.
+
+      // If they are friends, we return SizedBox.shrink() because the Message button will be shown next to it
+      // OR we show a "Friends" indicator. Let's show "Friends" indicator as before but maybe disabled or different style?
+      // Actually, standard pattern: Show "Friends" (checked) button + "Message" button.
+      label = localizations.translate('profile.friend_actions.already_friends');
       icon = Icons.check;
       color = Colors.green;
     } else if (_friendshipStatus == FriendshipStatus.pending_sent) {
@@ -554,139 +574,152 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (isPublic) return const SizedBox.shrink();
     final localizations = AppLocalizations.of(context);
 
+    // If no friends, show "Add Friend" placeholder in place (as requested)
+    // If friends exist, show list in modal on click
+
     return StreamBuilder<List<UserModel>>(
         stream: _friendsStream,
         builder: (context, snapshot) {
           final friends = snapshot.data ?? [];
-          return _buildGlassPanel(
-            isDark: isDark,
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildSectionTitle(
-                        localizations.translate('profile.friends'),
-                        Icons.group,
-                        isDark),
-                    Container(
-                        child: Text("${friends.length}",
-                            style: TextStyle(
-                                fontSize: 14,
-                                color: isDark
-                                    ? Colors.grey[400]
-                                    : Colors.grey[500])))
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+
+          return GestureDetector(
+            onTap: () => _showFriendsManagerModal(context, isDark, friends),
+            child: _buildGlassPanel(
+              isDark: isDark,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Add Button
-                      Column(
+                      _buildSectionTitle(
+                          localizations.translate('profile.friends'),
+                          Icons.group,
+                          isDark),
+                      if (friends.isNotEmpty)
+                        Container(
+                            child: Text("${friends.length}",
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    color: isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[500])))
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (friends.isEmpty)
+                    // Show "Add Friend" button logic here if no friends
+                    Center(
+                      child: Column(
                         children: [
                           GestureDetector(
-                            onTap: () =>
-                                _showFriendSearchDialog(context, isDark),
+                            onTap: () => _showFriendsManagerModal(
+                                context, isDark, friends),
                             child: Container(
-                              width: 48,
-                              height: 48,
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: isDark
-                                    ? Colors.grey[800]!.withOpacity(0.5)
-                                    : Colors.white.withOpacity(0.5),
-                                border: Border.all(
-                                    color: isDark
-                                        ? Colors.grey[600]!
-                                        : Colors.grey[300]!,
-                                    style: BorderStyle
-                                        .solid // Dashed is hard in standard Flutter without external package or custom painter, using solid for now or simulate
-                                    ),
+                                    ? Colors.grey[800]
+                                    : Colors.grey[100],
                               ),
-                              child: Icon(Icons.add, color: Colors.grey[400]),
+                              child: Icon(Icons.add,
+                                  color: Theme.of(context).primaryColor),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(localizations.translate('common.add'),
-                              style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey)),
+                          const SizedBox(height: 8),
+                          Text(
+                              localizations.translate(
+                                  'profile.friends_modal.no_friends'),
+                              style: TextStyle(
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
+                                  fontSize: 12))
                         ],
                       ),
+                    )
+                  else
+                    // Preview of friends
+                    GestureDetector(
+                      onTap: () =>
+                          _showFriendsManagerModal(context, isDark, friends),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // We do NOT show the "+" button here if friends exist, as per request: "Arkadaş ekle butonunu oraya (modale) taşı."
 
-                      const SizedBox(width: 16),
-
-                      ...friends.map((f) => Padding(
-                            padding: const EdgeInsets.only(right: 16),
-                            child: GestureDetector(
-                              onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          ProfileScreen(viewUser: f))),
-                              child: Column(children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                          color: isDark
-                                              ? Colors.grey[700]!
-                                              : Colors.white,
-                                          width: 2),
-                                      boxShadow: [
-                                        BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.05),
-                                            blurRadius: 4)
-                                      ]),
-                                  child: CircleAvatar(
-                                    radius: 24,
-                                    backgroundImage: f.photoURL != null
-                                        ? NetworkImage(f.photoURL!)
-                                        : null,
-                                    child: f.photoURL == null
-                                        ? Text((f.displayName ?? "U")[0])
-                                        : null,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                SizedBox(
-                                  width: 60,
-                                  child: Text(f.displayName ?? "User",
-                                      textAlign: TextAlign.center,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                            ...friends.take(5).map((f) => Padding(
+                                  padding: const EdgeInsets.only(right: 16),
+                                  child: Column(children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                              color: isDark
+                                                  ? Colors.grey[700]!
+                                                  : Colors.white,
+                                              width: 2),
+                                          boxShadow: [
+                                            BoxShadow(
+                                                color: Colors.black
+                                                    .withOpacity(0.05),
+                                                blurRadius: 4)
+                                          ]),
+                                      child: CircleAvatar(
+                                        radius: 24,
+                                        backgroundImage: f.photoURL != null
+                                            ? NetworkImage(f.photoURL!)
+                                            : null,
+                                        child: f.photoURL == null
+                                            ? Text((f.displayName ?? "U")[0])
+                                            : null,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    SizedBox(
+                                      width: 60,
+                                      child: Text(f.displayName ?? "User",
+                                          textAlign: TextAlign.center,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                              fontSize: 10,
+                                              color: isDark
+                                                  ? Colors.grey[300]
+                                                  : Colors.grey[600])),
+                                    ),
+                                  ]),
+                                )),
+                            if (friends.length > 5)
+                              // "... and more" indicator
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: isDark
+                                      ? Colors.grey[800]
+                                      : Colors.grey[200],
+                                  child: Text("+${friends.length - 5}",
                                       style: TextStyle(
-                                          fontSize: 10,
                                           color: isDark
-                                              ? Colors.grey[300]
-                                              : Colors.grey[600])),
+                                              ? Colors.white
+                                              : Colors.black,
+                                          fontSize: 12)),
                                 ),
-                              ]),
-                            ),
-                          )),
-                    ],
-                  ),
-                )
-              ],
+                              )
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           );
         });
-  }
-
-  void _showFriendSearchDialog(BuildContext context, bool isDark) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => _FriendSearchSheet(isDark: isDark),
-    );
   }
 
   Widget _buildGoalsPanel(
@@ -1143,7 +1176,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildOnlineStatus(UserModel user, bool isDark) {
-    if (user.isOnline) {
+    // If viewing another user, use a stream to get real-time status
+    // If viewing self (private mode), usually we are online, but let's stick to user.isOnline (which comes from Auth/UserProvider stream anyway)
+
+    // For "viewUser", we passed a snapshot user. We need to listen to their document to get updates without restart.
+
+    if (widget.viewUser == null) {
+      // Self: UserProvider already streams this.
+      return _buildStatusIndicator(user.isOnline,
+          user.lastActiveAt?.toDate() ?? user.lastLoginAt?.toDate(), isDark);
+    }
+
+    return StreamBuilder<firestore.DocumentSnapshot>(
+        stream: firestore.FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData)
+            return _buildStatusIndicator(user.isOnline, null, isDark);
+
+          final data = snapshot.data!.data() as Map<String, dynamic>?;
+          if (data == null) return _buildStatusIndicator(false, null, isDark);
+
+          final bool isOnline = data['isOnline'] ?? false;
+          final firestore.Timestamp? lastActive = data['last_active_at'];
+          final firestore.Timestamp? lastLogin = data['last_login_at'];
+
+          return _buildStatusIndicator(
+              isOnline, lastActive?.toDate() ?? lastLogin?.toDate(), isDark);
+        });
+  }
+
+  Widget _buildStatusIndicator(
+      bool isOnline, DateTime? lastSeenDate, bool isDark) {
+    if (isOnline) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
@@ -1157,7 +1224,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(width: 6),
-          Text("Online",
+          Text(AppLocalizations.of(context).translate('profile.online'),
               style: TextStyle(
                   fontSize: 12,
                   color: isDark ? Colors.green[300] : Colors.green[700],
@@ -1165,13 +1232,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       );
     } else {
-      String lastSeen = "Offline";
-      if (user.lastActiveAt != null) {
-        final date = user.lastActiveAt!.toDate();
-        lastSeen = "Last seen: ${DateFormat('dd MMM, HH:mm').format(date)}";
-      } else if (user.lastLoginAt != null) {
-        final date = user.lastLoginAt!.toDate();
-        lastSeen = "Last seen: ${DateFormat('dd MMM, HH:mm').format(date)}";
+      String lastSeen =
+          AppLocalizations.of(context).translate('profile.offline');
+      if (lastSeenDate != null) {
+        lastSeen = AppLocalizations.of(context)
+            .translate('profile.last_seen')
+            .replaceAll(
+                '{time}', DateFormat('dd MMM, HH:mm').format(lastSeenDate));
       }
 
       return Text(lastSeen,
@@ -1182,39 +1249,115 @@ class _ProfileScreenState extends State<ProfileScreen> {
               fontStyle: FontStyle.italic));
     }
   }
+
+  void _showFriendsManagerModal(
+      BuildContext context, bool isDark, List<UserModel> friends) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _FriendsManagerSheet(
+        isDark: isDark,
+        friends: friends,
+      ),
+    );
+  }
+
+  // _showFriendSearchDialog is removed as it's now internal to _FriendsManagerSheet
 }
 
-class _FriendSearchSheet extends StatefulWidget {
+// Unified Friends Manager Modal
+class _FriendsManagerSheet extends StatefulWidget {
   final bool isDark;
-  const _FriendSearchSheet({required this.isDark});
+  final List<UserModel> friends;
+
+  const _FriendsManagerSheet({
+    required this.isDark,
+    required this.friends,
+  });
 
   @override
-  State<_FriendSearchSheet> createState() => _FriendSearchSheetState();
+  State<_FriendsManagerSheet> createState() => _FriendsManagerSheetState();
 }
 
-class _FriendSearchSheetState extends State<_FriendSearchSheet> {
-  final TextEditingController _searchCtrl = TextEditingController();
-  List<UserModel> _results = [];
-  bool _loading = false;
-  final FriendService _friendService = FriendService();
+enum _FriendsSheetMode { list, search }
 
-  Future<void> _search() async {
-    final query = _searchCtrl.text.trim();
+class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
+  _FriendsSheetMode _mode = _FriendsSheetMode.list;
+
+  // List Mode State
+  late List<UserModel> _filteredFriends;
+  final TextEditingController _localSearchCtrl = TextEditingController();
+
+  // Search Mode State
+  final TextEditingController _globalSearchCtrl = TextEditingController();
+  List<UserModel> _searchResults = [];
+  bool _searching = false;
+  final FriendService _friendService = FriendService();
+  Set<String> _friendIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredFriends = widget.friends;
+    _friendIds = widget.friends.map((u) => u.uid).toSet();
+    if (widget.friends.isEmpty) {
+      _mode = _FriendsSheetMode.search;
+    }
+    _localSearchCtrl.addListener(_onLocalSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _localSearchCtrl.dispose();
+    _globalSearchCtrl.dispose();
+    super.dispose();
+  }
+
+  // --- List Mode Logic ---
+
+  void _onLocalSearchChanged() {
+    final query = _localSearchCtrl.text.toLowerCase();
+    setState(() {
+      _filteredFriends = widget.friends.where((f) {
+        final name = f.displayName?.toLowerCase() ?? "";
+        return name.contains(query);
+      }).toList();
+    });
+  }
+
+  Future<void> _unfriend(UserModel user) async {
+    try {
+      await FriendService().removeFriend(user.uid);
+      if (mounted) Navigator.pop(context); // Close for simplicity/refresh
+    } catch (e) {
+      debugPrint("Error unfriending: $e");
+    }
+  }
+
+  // --- Search Mode Logic ---
+
+  Future<void> _performGlobalSearch() async {
+    final query = _globalSearchCtrl.text.trim();
     if (query.isEmpty) return;
-    setState(() => _loading = true);
+    setState(() => _searching = true);
     try {
       final results = await _friendService.searchUsers(query);
-      // Filter out self
       final myUid = context.read<UserProvider>().user?.uid;
+
+      // Update friend IDs to be sure we have latest status
+      // (Optimally we should stream this but for now standard check is fine)
+      // Actually we have widget.friends passed in.
+
       setState(() {
-        _results = results.where((u) => u.uid != myUid).toList();
+        _searchResults = results.where((u) => u.uid != myUid).toList();
       });
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text("Search failed: $e")));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _searching = false);
     }
   }
 
@@ -1224,7 +1367,6 @@ class _FriendSearchSheetState extends State<_FriendSearchSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Request sent to ${user.displayName}")));
-        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted)
@@ -1250,19 +1392,144 @@ class _FriendSearchSheetState extends State<_FriendSearchSheet> {
               decoration: BoxDecoration(
                   color: Colors.grey, borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 20),
-          Text(AppLocalizations.of(context).translate('profile.search.title'),
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: widget.isDark ? Colors.white : Colors.black)),
+          if (_mode == _FriendsSheetMode.list)
+            _buildListView()
+          else
+            _buildSearchView(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListView() {
+    return Expanded(
+      child: Column(
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                  AppLocalizations.of(context)
+                      .translate('profile.friends_modal.title'),
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: widget.isDark ? Colors.white : Colors.black)),
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _mode = _FriendsSheetMode.search;
+                    // Reset search state
+                    _searchResults.clear();
+                    _globalSearchCtrl.clear();
+                  });
+                },
+                icon: Icon(Icons.person_add,
+                    color: Theme.of(context).primaryColor),
+              )
+            ],
+          ),
           const SizedBox(height: 20),
+
+          // Local Search Field
           TextField(
-              controller: _searchCtrl,
+              controller: _localSearchCtrl,
               style:
                   TextStyle(color: widget.isDark ? Colors.white : Colors.black),
               decoration: InputDecoration(
-                  hintText: AppLocalizations.of(context)
-                      .translate('profile.search.hint'),
+                hintText: AppLocalizations.of(context)
+                    .translate('profile.friends_modal.search_hint'),
+                hintStyle: TextStyle(
+                    color: widget.isDark ? Colors.grey : Colors.black54),
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: widget.isDark ? Colors.white10 : Colors.grey[200],
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
+              )),
+          const SizedBox(height: 20),
+
+          Expanded(
+            child: ListView.builder(
+              itemCount: _filteredFriends.length,
+              itemBuilder: (context, index) {
+                final friend = _filteredFriends[index];
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: friend.photoURL != null
+                        ? NetworkImage(friend.photoURL!)
+                        : null,
+                    child: friend.photoURL == null
+                        ? Text((friend.displayName ?? "U")[0])
+                        : null,
+                  ),
+                  title: Text(friend.displayName ?? "User",
+                      style: TextStyle(
+                          color: widget.isDark ? Colors.white : Colors.black)),
+                  trailing: PopupMenuButton(
+                    icon: const Icon(Icons.more_vert),
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem(
+                        value: 'unfriend',
+                        child: Text(AppLocalizations.of(context)
+                            .translate('profile.friends_modal.unfriend')),
+                      )
+                    ],
+                    onSelected: (val) {
+                      if (val == 'unfriend') {
+                        _unfriend(friend);
+                      }
+                    },
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => ProfileScreen(viewUser: friend)));
+                  },
+                );
+              },
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchView() {
+    final localizations = AppLocalizations.of(context);
+    return Expanded(
+      child: Column(
+        children: [
+          // Header
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => setState(() => _mode = _FriendsSheetMode.list),
+                color: widget.isDark ? Colors.white : Colors.black,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                  localizations
+                      .translate('profile.friend_actions.add'), // "Add Friend"
+                  style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: widget.isDark ? Colors.white : Colors.black)),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Global Search Field
+          TextField(
+              controller: _globalSearchCtrl,
+              style:
+                  TextStyle(color: widget.isDark ? Colors.white : Colors.black),
+              decoration: InputDecoration(
+                  hintText: localizations.translate('profile.search.hint'),
                   hintStyle: TextStyle(
                       color: widget.isDark ? Colors.grey : Colors.black54),
                   prefixIcon: const Icon(Icons.search),
@@ -1273,33 +1540,38 @@ class _FriendSearchSheetState extends State<_FriendSearchSheet> {
                       borderSide: BorderSide.none),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.arrow_forward),
-                    onPressed: _searchCtrl.text.isNotEmpty &&
-                            _searchCtrl.text.length > 3
-                        ? _search
+                    onPressed: _globalSearchCtrl.text.isNotEmpty &&
+                            _globalSearchCtrl.text.length > 3
+                        ? _performGlobalSearch
                         : null,
                     autofocus: true,
                   )),
               onSubmitted: (_) => {
-                    if (_searchCtrl.text.isNotEmpty &&
-                        _searchCtrl.text.length > 3)
-                      _search()
+                    if (_globalSearchCtrl.text.isNotEmpty &&
+                        _globalSearchCtrl.text.length > 3)
+                      _performGlobalSearch()
                   }),
           const SizedBox(height: 20),
-          if (_loading)
+
+          if (_searching)
             const CircularProgressIndicator()
           else
             Expanded(
-                child: _results.isEmpty
+                child: _searchResults.isEmpty
                     ? Center(
-                        child: Text("No users found",
+                        child: Text(
+                            localizations
+                                .translate('profile.search.no_results'),
                             style: TextStyle(
                                 color: widget.isDark
                                     ? Colors.grey
                                     : Colors.black54)))
                     : ListView.builder(
-                        itemCount: _results.length,
+                        itemCount: _searchResults.length,
                         itemBuilder: (ctx, i) {
-                          final u = _results[i];
+                          final u = _searchResults[i];
+                          final isFriend = _friendIds.contains(u.uid);
+
                           return ListTile(
                             leading: CircleAvatar(
                               backgroundImage: u.photoURL != null
@@ -1314,11 +1586,13 @@ class _FriendSearchSheetState extends State<_FriendSearchSheet> {
                                     color: widget.isDark
                                         ? Colors.white
                                         : Colors.black)),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.person_add,
-                                  color: Color(0xFFF44075)),
-                              onPressed: () => _sendRequest(u),
-                            ),
+                            trailing: isFriend
+                                ? Icon(Icons.check, color: Colors.green)
+                                : IconButton(
+                                    icon: const Icon(Icons.person_add,
+                                        color: Color(0xFFF44075)),
+                                    onPressed: () => _sendRequest(u),
+                                  ),
                             onTap: () {
                               Navigator.push(
                                   context,

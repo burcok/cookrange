@@ -409,14 +409,6 @@
       "scores": "Scores",
       "streak": "Streak"
     },
-    "friend_actions": {
-      "add": "Add Friend",
-      "sent": "Request Sent",
-      "received_text": "Wants to add you as a friend",
-      "accept": "Accept",
-      "reject": "Reject",
-      "message": "Message"
-    },
     "kitchen_lifestyle": {
       "title": "Kitchen & Lifestyle",
       "cooking_level": "Cooking Skill Level",
@@ -430,6 +422,25 @@
       "title": "Search Friends",
       "hint": "Search user by name...",
       "no_results": "No users found"
+    },
+    "online": "Online",
+    "last_seen": "Last seen: {time}",
+    "offline": "Offline",
+    "friends_modal": {
+      "title": "Friends",
+      "search_hint": "Search friends...",
+      "manage": "Manage",
+      "unfriend": "Unfriend",
+      "no_friends": "No friends found"
+    },
+    "friend_actions": {
+      "add": "Add Friend",
+      "sent": "Request Sent",
+      "received_text": "Wants to add you as a friend",
+      "accept": "Accept",
+      "reject": "Reject",
+      "message": "Message",
+      "already_friends": "Friends"
     }
   },
 
