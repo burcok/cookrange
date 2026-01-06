@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/models/ingredient_model.dart';
 import '../../constants.dart';
 import '../../core/services/storage_service.dart';
@@ -55,19 +56,24 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Item'),
+        title:
+            Text(AppLocalizations.of(context).translate('shopping.add_item')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              decoration: const InputDecoration(labelText: 'Item Name'),
+              decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)
+                      .translate('shopping.item_name')),
               onChanged: (value) => name = value,
             ),
             Row(
               children: [
                 Expanded(
                   child: TextField(
-                    decoration: const InputDecoration(labelText: 'Amount'),
+                    decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context)
+                            .translate('shopping.amount')),
                     keyboardType: TextInputType.number,
                     onChanged: (value) =>
                         amount = double.tryParse(value) ?? 1.0,
@@ -76,7 +82,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
-                    decoration: const InputDecoration(labelText: 'Unit'),
+                    decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context)
+                            .translate('shopping.unit')),
                     onChanged: (value) => unit = value,
                   ),
                 ),
@@ -87,7 +95,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child:
+                Text(AppLocalizations.of(context).translate('common.cancel')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -107,7 +116,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 }
               }
             },
-            child: const Text('Add'),
+            child: Text(AppLocalizations.of(context).translate('common.add')),
           ),
         ],
       ),
@@ -118,8 +127,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Shopping List',
+        title: Text(
+          AppLocalizations.of(context).translate('shopping.title'),
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -127,7 +136,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
             icon: const Icon(Icons.share),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Sharing coming soon!')),
+                SnackBar(
+                    content: Text(AppLocalizations.of(context)
+                        .translate('shopping.share_soon'))),
               );
             },
           ),
@@ -137,20 +148,24 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: const Text('Clear List'),
-                  content: const Text(
-                      'Are you sure you want to clear your entire shopping list?'),
+                  title: Text(AppLocalizations.of(context)
+                      .translate('shopping.clear_list')),
+                  content: Text(AppLocalizations.of(context)
+                      .translate('shopping.clear_confirm')),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                      child: Text(AppLocalizations.of(context)
+                          .translate('common.cancel')),
                     ),
                     TextButton(
                       onPressed: () {
                         _clearList();
                         Navigator.pop(context);
                       },
-                      child: const Text('Clear',
+                      child: Text(
+                          AppLocalizations.of(context)
+                              .translate('common.clear'),
                           style: TextStyle(color: Colors.red)),
                     ),
                   ],
@@ -169,7 +184,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                       size: 64, color: Colors.grey[400]),
                   const SizedBox(height: 16),
                   Text(
-                    'Your shopping list is empty',
+                    AppLocalizations.of(context).translate('shopping.empty'),
                     style: TextStyle(color: Colors.grey[600], fontSize: 16),
                   ),
                 ],
@@ -246,7 +261,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
         onPressed: _showAddItemDialog,
         backgroundColor: primaryColor,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Add Item', style: TextStyle(color: Colors.white)),
+        label: Text(AppLocalizations.of(context).translate('shopping.add_item'),
+            style: const TextStyle(color: Colors.white)),
       ),
     );
   }

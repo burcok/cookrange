@@ -295,7 +295,12 @@ class FirestoreService {
     }
   }
 
-  /// Retrieves user data from Firestore and converts it to a UserModel.
+  /// Retrieves user data from Firestore and converts it to a UserModel. // Get user data stream
+  Stream<DocumentSnapshot> getUserDocStream(String uid) {
+    return _firestore.collection('users').doc(uid).snapshots();
+  }
+
+  // Get user data (Future)
   Future<UserModel?> getUserData(String uid) async {
     _log.info('Getting user data for uid: $uid', service: _serviceName);
     try {

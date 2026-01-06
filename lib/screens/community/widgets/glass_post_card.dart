@@ -6,6 +6,7 @@ import '../../../core/services/community_service.dart';
 import 'draggable_reaction_button.dart';
 import '../../../../core/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/widgets/unified_action_sheet.dart';
 
 class GlassPostCard extends StatefulWidget {
   final CommunityPost post;
@@ -57,6 +58,43 @@ class _GlassPostCardState extends State<GlassPostCard> {
       );
     });
     widget.onLike();
+  }
+
+  void _showPostOptions(BuildContext context) {
+    final appLoc = AppLocalizations.of(context);
+    final isOwner = _post.author.id == CommunityService().currentUserId;
+
+    showUnifiedActionSheet(
+      context: context,
+      title: appLoc.translate('community.menu.options'),
+      actions: [
+        ActionSheetItem(
+          label: appLoc.translate('community.menu.share'),
+          icon: Icons.share_outlined,
+          onTap: widget.onShare,
+        ),
+        ActionSheetItem(
+          label: appLoc.translate('community.menu.report'),
+          icon: Icons.report_gmailerrorred,
+          isDestructive: true,
+          onTap: () {
+            CommunityService().reportPost(_post.id, "Inappropriate content");
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(appLoc.translate('community.report_success',
+                      variables: {'type': 'Post'}))),
+            );
+          },
+        ),
+        if (isOwner)
+          ActionSheetItem(
+            label: appLoc.translate('community.menu.delete'),
+            icon: Icons.delete_outline,
+            isDestructive: true,
+            onTap: () => _showDeleteDialog(context, _post.id),
+          ),
+      ],
+    );
   }
 
   void _handleReaction(String emoji) {
@@ -154,59 +192,12 @@ class _GlassPostCardState extends State<GlassPostCard> {
                       ),
                     ],
                   ),
-                  PopupMenuButton<String>(
+                  IconButton(
                     icon: Icon(Icons.more_vert,
                         color: isDark
                             ? const Color(0xFF94A3B8)
                             : const Color(0xFF94A3B8)),
-                    onSelected: (value) {
-                      if (value == 'share') widget.onShare();
-                      if (value == 'delete') {
-                        _showDeleteDialog(context, _post.id);
-                      }
-                      if (value == 'report') {
-                        CommunityService()
-                            .reportPost(_post.id, "Inappropriate content");
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Post reported")),
-                        );
-                      }
-                    },
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                          value: 'share',
-                          child: Row(children: [
-                            const Icon(Icons.share_outlined, size: 20),
-                            const SizedBox(width: 12),
-                            Text(AppLocalizations.of(context)
-                                .translate('community.menu.share'))
-                          ])),
-                      PopupMenuItem(
-                          value: 'report',
-                          child: Row(children: [
-                            const Icon(Icons.report_gmailerrorred,
-                                size: 20, color: Colors.red),
-                            const SizedBox(width: 12),
-                            Text(
-                                AppLocalizations.of(context)
-                                    .translate('community.menu.report'),
-                                style: const TextStyle(color: Colors.red))
-                          ])),
-                      if (_post.author.id == CommunityService().currentUserId)
-                        PopupMenuItem(
-                            value: 'delete',
-                            child: Row(children: [
-                              const Icon(Icons.delete_outline,
-                                  size: 20, color: Colors.red),
-                              const SizedBox(width: 12),
-                              Text(
-                                  AppLocalizations.of(context)
-                                      .translate('community.menu.delete'),
-                                  style: const TextStyle(color: Colors.red))
-                            ])),
-                    ],
+                    onPressed: () => _showPostOptions(context),
                   )
                 ],
               ),

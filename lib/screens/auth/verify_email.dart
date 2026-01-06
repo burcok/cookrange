@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cookrange/core/localization/app_localizations.dart';
 import 'package:cookrange/constants.dart';
 import 'package:cookrange/core/services/auth_service.dart';
 import 'package:cookrange/core/theme/app_theme.dart';
@@ -80,7 +81,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('Verification email sent to ${user.email}.')),
+                content: Text(AppLocalizations.of(context).translate(
+                    'auth.verify_email_sent',
+                    variables: {'email': user.email ?? ''}))),
           );
         }
         _startCountdown();
@@ -88,7 +91,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send verification email: $e')),
+          SnackBar(
+              content: Text(AppLocalizations.of(context).translate(
+                  'auth.verify_email_failed',
+                  variables: {'error': e.toString()}))),
         );
         _canResend = true;
       }
@@ -151,7 +157,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
               Image.asset('assets/images/onboarding/verify-email.png'),
               const SizedBox(height: 48),
               Text(
-                'Verify Your Email',
+                AppLocalizations.of(context).translate('auth.verify_title'),
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -161,7 +167,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                "We've sent a verification link to your email. Please click the link to verify your account.",
+                AppLocalizations.of(context).translate('auth.verify_desc'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 16,
@@ -171,7 +177,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
               const Spacer(),
               if (!_canResend)
                 Text(
-                  '$minutes:$seconds saniye sonra tekrar gönderebilirsiniz.',
+                  AppLocalizations.of(context).translate('auth.resend_wait',
+                      variables: {'time': '$minutes:$seconds'}),
                   style: TextStyle(
                       fontSize: 14,
                       color: colorScheme.titleColor,
@@ -201,7 +208,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                           ),
                         )
                       : Text(
-                          'Resend Verification Email',
+                          AppLocalizations.of(context)
+                              .translate('auth.resend_btn'),
                           style: TextStyle(
                               fontSize: 16,
                               color: _canResend

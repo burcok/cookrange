@@ -11,18 +11,29 @@ import 'log_service.dart';
 /// is updating the user's `last_active_at` timestamp when the app is brought
 /// to the foreground.
 class AppLifecycleService with WidgetsBindingObserver {
-  final AuthService _authService = AuthService();
-  final FirestoreService _firestoreService = FirestoreService();
-  final LogService _log = LogService();
+  AppLifecycleService({
+    AuthService? authService,
+    FirestoreService? firestoreService,
+    LogService? logService,
+  })  : _authService = authService ?? AuthService(),
+        _firestoreService = firestoreService ?? FirestoreService(),
+        _log = logService ?? LogService();
+
+  final AuthService _authService;
+  final FirestoreService _firestoreService;
+  final LogService _log;
   final String _serviceName = 'AppLifecycleService';
 
   // Throttling and Debouncing
   Timer? _offlineTimer;
+  Timer? _sessionPauseTimer; // New debounce timer for session end
   DateTime? _lastActiveUpdate;
   DateTime? _sessionStartTime;
   StreamSubscription? _authSubscription;
   static const Duration _activeUpdateThrottle = Duration(minutes: 5);
-  static const Duration _offlineDebounce = Duration(minutes: 2);
+  static const Duration _offlineDebounce = Duration(minutes: 1);
+  static const Duration _sessionPauseDebounce =
+      Duration(seconds: 5); // 4s debounce for session end
 
   /// Initializes the service and registers it as an observer of lifecycle events.
   void initialize() {
@@ -93,20 +104,24 @@ class AppLifecycleService with WidgetsBindingObserver {
     final user = _authService.currentUser;
     if (user == null) return;
 
-    // Start Session
-    _startSession();
-
-    // Cancel any pending offline timer (Debounce)
-    if (_offlineTimer?.isActive ?? false) {
-      _offlineTimer!.cancel();
+    // 1. Check if we are within the session pause debounce period
+    if (_sessionPauseTimer?.isActive ?? false) {
+      _sessionPauseTimer!.cancel();
       _log.info(
-          'App resumed within debounce period. Cancelled offline status update.',
+          'App resumed within session pause debounce. Session continues uninterrupted.',
           service: _serviceName);
-      return;
+      // Session effectively never ended, so we don't need to start a new one or update online status excessively
+    } else {
+      // Normal resume (after a long pause or fresh start)
+      _startSession();
+      // Only set online if we weren't just briefly paused (though duplicate online set is cheap)
+      await _setOnline();
     }
 
-    // Set online status immediately
-    await _setOnline();
+    // Cancel any pending offline timer (Debounce) - from the old logic, just in case
+    if (_offlineTimer?.isActive ?? false) {
+      _offlineTimer!.cancel();
+    }
 
     // Throttle last_active_at updates (still useful while using the app)
     final now = DateTime.now();
@@ -122,28 +137,40 @@ class AppLifecycleService with WidgetsBindingObserver {
     final user = _authService.currentUser;
     if (user == null) return;
 
-    // End Session and Log Metrics immediately when leaving
-    _endSession();
-
-    // Cancel existing timer to reset debounce
+    // Cancel existing timers to be safe
+    _sessionPauseTimer?.cancel();
     _offlineTimer?.cancel();
 
     if (immediate) {
-      _log.info(
-          'App detached. Setting user ${user.uid} to offline immediately.',
+      // Detached: End immediately
+      _log.info('App detached. Ending session and setting offline immediately.',
           service: _serviceName);
+      _endSession(); // Updates last_active_at
       _firestoreService.updateUserOnlineStatus(user.uid, false);
       return;
     }
 
+    // Paused: Start Debounce Timer
     _log.info(
-        'App paused. Scheduling offline status update in ${_offlineDebounce.inMinutes} minutes.',
+        'App paused. Scheduling session end in ${_sessionPauseDebounce.inSeconds} seconds.',
         service: _serviceName);
 
-    _offlineTimer = Timer(_offlineDebounce, () async {
-      _log.info('Debounce period over. Setting user ${user.uid} to offline.',
+    _sessionPauseTimer = Timer(_sessionPauseDebounce, () async {
+      _log.info('Session pause debounce over. Ending session.',
           service: _serviceName);
-      await _firestoreService.updateUserOnlineStatus(user.uid, false);
+      await _endSession(); // This will update last_active_at
+
+      // Also schedule the offline status update (longer debounce)
+      // We start this separate timer only after the session is "officially" ended
+      _log.info(
+          'Scheduling offline status update in ${_offlineDebounce.inMinutes} minutes.',
+          service: _serviceName);
+      _offlineTimer = Timer(_offlineDebounce, () async {
+        _log.info(
+            'Offline debounce period over. Setting user ${user.uid} to offline.',
+            service: _serviceName);
+        await _firestoreService.updateUserOnlineStatus(user.uid, false);
+      });
     });
   }
 
@@ -158,6 +185,7 @@ class AppLifecycleService with WidgetsBindingObserver {
   /// Disposes the service and unregisters it as an observer.
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _sessionPauseTimer?.cancel();
     _offlineTimer?.cancel();
     _authSubscription?.cancel();
     _endSession(); // Try to capture session end on dispose

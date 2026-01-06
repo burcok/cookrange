@@ -286,7 +286,12 @@
       "select_cooking_level": "Please select your cooking level",
       "select_kitchen_equipment": "Please select at least one kitchen equipment",
       "complete_cooking_preferences": "Please select your cooking level and at least one kitchen equipment",
-      "fill_required": "Please fill in all required fields"
+      "fill_required": "Please fill in all required fields",
+      "invalid_step": "Invalid step"
+    },
+    "priority": {
+      "title": "Priority Onboarding",
+      "description": "This is the priority onboarding screen."
     }
   },
 
@@ -297,7 +302,14 @@
     "create_account": "Create Your Account and Join Us!",
     "welcome_back": "Hey, Welcome Back!",
 
-    "login_with_google": "Login with Google",
+    "sign_in_google": "Sign in with Google",
+    "verify_email_sent": "Verification email sent to {email}.",
+    "verify_email_failed": "Failed to send verification email: {error}",
+    "verify_title": "Verify Your Email",
+    "verify_desc": "We've sent a verification link to your email. Please click the link to verify your account.",
+    "resend_wait": "You can resend in {time}.",
+    "resend_btn": "Resend Verification Email",
+    "email_client_error": "Could not launch email client. Please contact {email}",
     "register_with_google": "Register with Google",
     
     "email": "Email",
@@ -441,9 +453,93 @@
       "reject": "Reject",
       "message": "Message",
       "already_friends": "Friends"
-    }
+    },
+    "chat": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "last_active_at": "Last active: {time}",
+      "new_chat": "New Chat",
+      "search_friend_hint": "Search friend...",
+      "no_friends": "No friends yet.",
+      "no_results": "No results found.",
+      "unnamed_user": "Unnamed User",
+      "online": "Online",
+      "offline": "Offline",
+      "signal_send": "Send Signal",
+      "meal_share": "Share Meal",
+      "meal_share_soon": "Meal Share feature coming soon!",
+      "time": {
+        "days_ago": "{d}d ago",
+        "hours_ago": "{h}h ago",
+        "mins_ago": "{m}m ago",
+        "now": "Just now"
+      },
+      "filters": {
+          "all": "All",
+          "gym": "Gym",
+          "nutrition": "Nutrition",
+          "private": "Private"
+      },
+      "list_title": "Chats",
+      "filter_title": "Filter",
+      "no_chats_found": "No chats found.",
+      "open_error": "Error opening chat: {error}"
+    },
+    "signal": {
+      "title": "Send Signal",
+      "select_type": "Select Type:",
+      "type": {
+        "gym": "Help / Spotter",
+        "meal": "Share Meal",
+        "general": "General"
+      },
+      "message_label": "Your Message:",
+      "custom_message_hint": "Write a custom message...",
+      "cancel": "Cancel",
+      "send": "Send",
+      "success": "Sent",
+      "error": "Error: {error}",
+      "presets": {
+        "gym_1": "Need a spotter for bench press!",
+        "gym_2": "Check my squat form?",
+        "gym_3": "Partner workout?",
+        "meal_1": "Have extra protein bars, anyone?",
+        "meal_2": "Lunch together?",
+        "meal_3": "Tried a healthy recipe, want to share.",
+        "general_1": "Need motivation!",
+        "general_2": "Anyone going to the gym today?"
+      }
+    },
+    "user_reported": "User reported",
+    "user_blocked": "User blocked",
+    "search_failed": "Search failed: {error}",
+    "request_sent_to": "Request sent to {name}"
   },
-
+  "offline": {
+    "title": "Offline Mode",
+    "message": "You are in offline mode",
+    "description": "Some features may not be available"
+  },
+  "language": {
+    "english": "English",
+    "turkish": "Türkçe"
+  },
+  "post": {
+    "report_success": "Post reported",
+    "link_copied": "Link copied to clipboard!",
+    "report_title": "Report Post",
+    "report_reason_hint": "Select a reason to report this post...",
+    "submit": "Submit"
+  },
+  "recipe": {
+    "shopping_added": "Ingredients added to shopping list"
+  },
+  "shopping": {
+    "add_item": "Add Item",
+    "sharing_soon": "Sharing coming soon!",
+    "clear_list": "Clear List",
+    "clear": "Clear"
+  },
   "settings": {
     "title": "Settings",
     "preferences": "Preferences",
@@ -685,6 +781,7 @@
     "clear_all": "Clear All",
     "no_notifications": "No notifications yet",
     "whats_cooking": "What's cooking, {name}?",
+    "filter_title": "Select the Feed Source",
     "filters": {
       "latest": "Latest Updates",
       "regional": "Regional",
@@ -743,6 +840,7 @@
     "reject": "Reject",
     "friend_request_rejected": "Friend request rejected.",
     "action_failed": "Action failed: {error}",
+    "group_feature_unavailable": "Group feature is not available yet",
     "meal_plan_override_title": "Meal Plan",
     "goal_override_title": "Goal"
   },
@@ -752,6 +850,7 @@
     "history": "History",
     "favorites": "Favorites",
     "help": "Help",
+    "chats": "Chats",
     "logout": "Logout"
   },
   "account_suspended": {
@@ -817,6 +916,34 @@
       "step3": "Clear app cache (if possible).",
       "step4": "Check for app updates in the store.",
       "step5": "If the issue persists, contact support with the Error Code."
+    }
+  },
+  "chat": {
+    "list_title": "Cookrange Chat",
+    "filter_title": "Chat Filters",
+    "no_chats_found": "No chats found. Create a new one!",
+    "filters": {
+      "all": "All",
+      "gym": "My Gym",
+      "nutrition": "Nutrition",
+      "private": "Private"
+    },
+    "needs_help": {
+      "title": "{name} is waiting for help\nwith {activity}!",
+      "location": "MacFit - Platform 3",
+      "button": "ON MY WAY"
+    },
+    "status": {
+      "person_training": "{count} People Training",
+      "equipment_repair": "{equipment} Under Repair",
+      "training": "Training",
+      "resting": "Resting"
+    },
+    "actions": {
+      "new_chat": "New Chat",
+      "share_meal": "Share Meal",
+      "send_signal": "Send Signal",
+      "placeholder_message_input": "Type a message..."
     }
   }
 }

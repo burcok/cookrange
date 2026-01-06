@@ -11,8 +11,10 @@ import '../../core/models/user_model.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/friend_service.dart';
-
+import '../../core/services/chat_service.dart';
+import '../../core/models/chat_model.dart';
 import '../../screens/community/widgets/glass_refresher.dart';
+import '../../core/widgets/unified_action_sheet.dart';
 import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -122,8 +124,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _checkFriendshipStatus();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Action failed: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context).translate(
+                'community.action_failed',
+                variables: {'error': e.toString()}))));
       }
     } finally {
       setState(() => _isLoading = false);
@@ -140,6 +144,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  void _showPrivateOptions(BuildContext context) {
+    showUnifiedActionSheet(
+      context: context,
+      title: AppLocalizations.of(context).translate('profile.options_title') ??
+          "Profile Options",
+      actions: [
+        ActionSheetItem(
+          label: AppLocalizations.of(context).translate('settings.title'),
+          icon: Icons.settings,
+          onTap: () {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const SettingsScreen()));
+          },
+        ),
+        ActionSheetItem(
+          label: AppLocalizations.of(context).translate('auth.sign_out'),
+          icon: Icons.logout,
+          isDestructive: true,
+          onTap: () async {
+            await AuthService().signOut();
+            // Navigation handling usually done by auth state listener
+          },
+        ),
+      ],
+    );
+  }
+
+  void _showPublicOptions(BuildContext context) {
+    showUnifiedActionSheet(
+      context: context,
+      title: AppLocalizations.of(context).translate('profile.options_title') ??
+          "Profile Options",
+      actions: [
+        /*
+        ActionSheetItem(
+          label: "Share Profile",
+          icon: Icons.share,
+          onTap: () {
+            // Implement share
+          },
+        ),
+        */
+        ActionSheetItem(
+          label:
+              AppLocalizations.of(context).translate('community.menu.report'),
+          icon: Icons.report_gmailerrorred,
+          isDestructive: true,
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(AppLocalizations.of(context)
+                      .translate('profile.user_reported'))),
+            );
+          },
+        ),
+        ActionSheetItem(
+          label: AppLocalizations.of(context).translate('profile.block_user'),
+          icon: Icons.block,
+          isDestructive: true,
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(AppLocalizations.of(context)
+                      .translate('profile.user_blocked'))),
+            );
+          },
+        ),
+      ],
+    );
   }
 
   // --- UI Builders ---
@@ -213,21 +290,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             }
                           }),
 
-                          // Edit Icon (Only for private)
-                          if (!isPublic)
-                            _buildGlassCircleButton(context, Icons.settings,
-                                isDark, // Changed icon to edit
-                                onTap: () {
-                              if (context.mounted) {
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            const SettingsScreen()));
+                          _buildGlassCircleButton(
+                            context,
+                            Icons.more_vert,
+                            isDark,
+                            onTap: () {
+                              if (!isPublic) {
+                                _showPrivateOptions(context);
+                              } else {
+                                _showPublicOptions(context);
                               }
-                            }) // Placeholder for edit action if needed, or remove
-                          else
-                            const SizedBox(width: 40), // Placeholder to balance
+                            },
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -518,7 +592,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: CircularProgressIndicator(strokeWidth: 2));
 
     return ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: () async {
+        if (widget.viewUser == null) return;
+        final currentUser = context.read<UserProvider>().user;
+        if (currentUser == null) return;
+
+        setState(() => _isLoading = true);
+        try {
+          // Using direct instantiation for consistency
+          final chatId = await ChatService()
+              .createOrGetPrivateChat(currentUser.uid, widget.viewUser!.uid);
+
+          if (!mounted) return;
+
+          // Create a temporary ChatModel to pass to the screen
+          // Ideally we should fetch the full chat model, but createOrGetPrivateChat returns ID.
+          // We can fetch it or construct a basic one.
+          // Let's construct a basic one to avoid another fetch wait,
+          // or improved ChatService to return the model.
+          // For now, let's navigate and let ChatDetailScreen handle it?
+          // ChatDetailScreen expects a ChatModel.
+
+          // Let's fetch the chat model.
+          // Since ChatModel is needed, we might need a method to getChatById.
+          // ChatService.getUserChats returns a stream.
+          // Let's just create a dummy model with the ID, as ChatDetailScreen might largely rely on ID.
+          // Checking ChatDetailScreen... it uses widget.chat.id for streams.
+          // It also uses widget.chat.participants for title if name is null.
+
+          final chat = ChatModel(
+            id: chatId,
+            participants: [currentUser.uid, widget.viewUser!.uid],
+            unreadCounts: {},
+            type: ChatType.private,
+            updatedAt: DateTime.now(),
+            // We can pass the other user's info to handle title correctly
+            // if ChatDetailScreen logic expects it or specific user data.
+          );
+
+          Navigator.pushNamed(
+            context,
+            '/chat_detail',
+            arguments: chat,
+          );
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(AppLocalizations.of(context).translate(
+                    'community.action_failed',
+                    variables: {'error': e.toString()}))),
+          );
+        } finally {
+          if (mounted) setState(() => _isLoading = false);
+        }
+      },
       icon: const Icon(Icons.chat_bubble, size: 18),
       label: Text(
           AppLocalizations.of(context)

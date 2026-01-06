@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:cookrange/core/localization/app_localizations.dart';
 
-class PriorityOnboardingScreen extends StatefulWidget {
+class PriorityOnboardingScreen extends StatelessWidget {
   const PriorityOnboardingScreen({super.key});
 
-  @override
-  State<PriorityOnboardingScreen> createState() =>
-      _PriorityOnboardingScreenState();
-}
-
-class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Priority Onboarding'),
+        title: Text(AppLocalizations.of(context)
+            .translate('onboarding.priority.title')),
       ),
-      body: const Center(
-        child: Text('This is the priority onboarding screen.'),
+      body: Center(
+        child: Text(AppLocalizations.of(context)
+            .translate('onboarding.priority.description')),
       ),
     );
   }

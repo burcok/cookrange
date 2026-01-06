@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cookrange/core/localization/app_localizations.dart';
 import '../../core/models/recipe_model.dart';
 
 import '../../constants.dart';
@@ -90,7 +91,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
               actions: [
                 IconButton(
                   icon: const Icon(Icons.playlist_add),
-                  tooltip: 'Add to Shopping List',
+                  tooltip: AppLocalizations.of(context)
+                      .translate('recipe.add_to_list'),
                   onPressed: () async {
                     final storage = StorageService();
                     for (var ingredient in widget.recipe.ingredients) {
@@ -98,8 +100,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                     }
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Ingredients added to shopping list'),
+                        SnackBar(
+                          content: Text(AppLocalizations.of(context)
+                              .translate('recipe.added_to_list')),
                           backgroundColor: primaryColor,
                         ),
                       );
@@ -118,9 +121,13 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
               labelColor: primaryColor,
               unselectedLabelColor: Colors.grey,
               indicatorColor: primaryColor,
-              tabs: const [
-                Tab(text: 'Ingredients'),
-                Tab(text: 'Instructions'),
+              tabs: [
+                Tab(
+                    text: AppLocalizations.of(context)
+                        .translate('recipe.ingredients')),
+                Tab(
+                    text: AppLocalizations.of(context)
+                        .translate('recipe.instructions')),
               ],
             ),
             Expanded(
@@ -154,8 +161,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
-              'Start Cooking',
+            child: Text(
+              AppLocalizations.of(context).translate('recipe.start_cooking'),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -174,8 +181,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _infoItem(Icons.timer, '${widget.recipe.totalTimeMinutes} min'),
-          _infoItem(Icons.restaurant, '${widget.recipe.servings} servings'),
+          _infoItem(Icons.timer,
+              '${widget.recipe.totalTimeMinutes} ${AppLocalizations.of(context).translate('recipe.minutes')}'),
+          _infoItem(Icons.restaurant,
+              '${widget.recipe.servings} ${AppLocalizations.of(context).translate('recipe.servings')}'),
           _infoItem(Icons.local_fire_department,
               '${widget.recipe.macros['calories']?.toInt() ?? 0} kcal'),
         ],

@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import '../../core/localization/app_localizations.dart';
+import 'package:cookrange/core/localization/app_localizations.dart';
+
 import '../../core/models/notification_model.dart';
 import '../../core/services/notification_service.dart';
 import '../community/widgets/community_widgets.dart';
@@ -67,8 +68,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
       });
     } catch (e) {
       if (mounted)
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context).translate(
+                'community.action_failed',
+                variables: {'error': e.toString()}))));
     }
   }
 
@@ -83,8 +86,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
       }
     } catch (e) {
       if (mounted)
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context).translate(
+                'community.action_failed',
+                variables: {'error': e.toString()}))));
     }
   }
 
@@ -582,8 +587,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                         offset: const Offset(0, 2))
                                   ],
                                 ),
-                                child: const Text("Accept",
-                                    style: TextStyle(
+                                child: Text(
+                                    AppLocalizations.of(context)
+                                        .translate('friend_actions.accept'),
+                                    style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold)),
@@ -604,8 +611,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                   border: Border.all(
                                       color: Colors.red.withOpacity(0.5)),
                                 ),
-                                child: const Text("Reject",
-                                    style: TextStyle(
+                                child: Text(
+                                    AppLocalizations.of(context)
+                                        .translate('friend_actions.reject'),
+                                    style: const TextStyle(
                                         color: Colors.red,
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold)),

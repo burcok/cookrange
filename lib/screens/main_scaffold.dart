@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/localization/app_localizations.dart';
+
 import 'package:provider/provider.dart';
 import 'home/home.dart';
 import 'profile/profile_screen.dart';
@@ -8,8 +8,9 @@ import '../core/services/navigation_provider.dart';
 import '../core/providers/user_provider.dart';
 import '../core/widgets/quick_actions_sheet.dart';
 import '../core/widgets/voice_assistant_overlay.dart';
-import '../core/services/auth_service.dart';
+
 import '../core/providers/theme_provider.dart';
+import '../core/widgets/side_menu.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -22,7 +23,6 @@ class _MainScaffoldState extends State<MainScaffold>
     with SingleTickerProviderStateMixin {
   late PageController _pageController;
   late AnimationController _menuController;
-  bool _isLoggingOut = false;
 
   @override
   void initState() {
@@ -154,168 +154,14 @@ class _MainScaffoldState extends State<MainScaffold>
           AnimatedBuilder(
             animation: _menuController,
             builder: (context, child) {
-              if (_menuController.isDismissed) return const SizedBox.shrink();
-              return _buildSideMenu(context, navigationProvider);
+              return SideMenu(
+                navProvider: navigationProvider,
+                animationController: _menuController,
+              );
             },
           ),
-
-          // 4. Logout Loading Overlay
-          if (_isLoggingOut)
-            Container(
-              color: Colors.black.withValues(alpha: 0.7),
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: context.watch<ThemeProvider>().primaryColor,
-                ),
-              ),
-            ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSideMenu(BuildContext context, NavigationProvider nav) {
-    return Material(
-      color: Colors.transparent,
-      child: Stack(
-        children: [
-          // Dimmed Background - Fade Transition
-          FadeTransition(
-            opacity: _menuController,
-            child: GestureDetector(
-              onTap: () => nav.toggleMenu(false),
-              onHorizontalDragEnd: (details) {
-                if ((details.primaryVelocity ?? 0) < -300) {
-                  nav.toggleMenu(false);
-                }
-              },
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.5),
-                width: double.infinity,
-                height: double.infinity,
-              ),
-            ),
-          ),
-          // Menu Content - Slide Transition
-          SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(-1.0, 0.0),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: _menuController,
-              curve: Curves.easeOut,
-              reverseCurve: Curves.easeIn,
-            )),
-            child: GestureDetector(
-              onHorizontalDragUpdate: (details) {
-                // Check for left swipe
-                if (details.delta.dx < -10) {
-                  nav.toggleMenu(false);
-                }
-              },
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.75,
-                height: double.infinity,
-                color: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          AppLocalizations.of(context).translate('menu.title'),
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF2E3A59),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close,
-                              size: 32, color: Colors.black),
-                          onPressed: () => nav.toggleMenu(false),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 48),
-                    _buildMenuItem(Icons.person_outline,
-                        AppLocalizations.of(context).translate('menu.account'),
-                        () {
-                      nav.toggleMenu(false);
-                      // Push Directly
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const ProfileScreen()),
-                      );
-                    }),
-                    _buildMenuItem(
-                        Icons.history,
-                        AppLocalizations.of(context).translate('menu.history'),
-                        () {}),
-                    _buildMenuItem(
-                        Icons.favorite_border,
-                        AppLocalizations.of(context)
-                            .translate('menu.favorites'),
-                        () {}),
-                    _buildMenuItem(
-                        Icons.help_outline,
-                        AppLocalizations.of(context).translate('menu.help'),
-                        () {}),
-                    const Spacer(),
-                    _buildMenuItem(Icons.logout,
-                        AppLocalizations.of(context).translate('menu.logout'),
-                        () async {
-                      // Close menu first
-                      nav.toggleMenu(false);
-
-                      // Show loading state
-                      setState(() {
-                        _isLoggingOut = true;
-                      });
-
-                      // Simulate a small delay for better UX (optional, but requested)
-                      await Future.delayed(const Duration(seconds: 2));
-
-                      final navigator = Navigator.of(context);
-                      await AuthService().signOut();
-
-                      if (mounted) {
-                        setState(() {
-                          _isLoggingOut = false;
-                        });
-                        await navigator.pushNamedAndRemoveUntil(
-                            '/login', (route) => false);
-                      }
-                    }, isDestructive: true),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMenuItem(IconData icon, String label, VoidCallback onTap,
-      {bool isDestructive = false}) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon,
-          color: isDestructive ? Colors.red : const Color(0xFF2E3A59),
-          size: 28),
-      title: Text(
-        label,
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: isDestructive ? Colors.red : const Color(0xFF2E3A59),
-        ),
-      ),
-      onTap: onTap,
     );
   }
 

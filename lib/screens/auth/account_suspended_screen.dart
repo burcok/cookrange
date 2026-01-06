@@ -398,8 +398,9 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content:
-                  Text('Could not launch email client. Please contact $email')),
+              content: Text(AppLocalizations.of(context).translate(
+                  'auth.email_client_error',
+                  variables: {'email': email}))),
         );
       }
     }

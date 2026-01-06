@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cookrange/core/localization/app_localizations.dart';
 import '../steps/onboarding_page1.dart';
 import '../steps/onboarding_page2.dart';
 import '../steps/onboarding_page3.dart';
@@ -76,7 +77,9 @@ class OnboardingStep extends StatelessWidget {
           );
         default:
           // This should not be reached if the step count is correct.
-          return const Center(child: Text('Invalid step'));
+          return Center(
+              child: Text(AppLocalizations.of(context)
+                  .translate('onboarding.validation.invalid_step')));
       }
     } catch (e) {
       return Center(
@@ -87,8 +90,10 @@ class OnboardingStep extends StatelessWidget {
             children: [
               const Icon(Icons.error_outline, color: Colors.red, size: 48),
               const SizedBox(height: 16),
-              const Text('Bir hata oluştu. Lütfen tekrar deneyin.',
-                  style: TextStyle(color: Colors.red, fontSize: 16)),
+              Text(
+                  AppLocalizations.of(context)
+                      .translate('auth.login_errors.unexpected_error'),
+                  style: const TextStyle(color: Colors.red, fontSize: 16)),
               const SizedBox(height: 8),
               Text(e.toString(),
                   style: const TextStyle(fontSize: 12, color: Colors.grey)),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/community_service.dart';
-import '../../core/services/notification_service.dart';
+
 import '../../core/models/community_post.dart';
 import 'widgets/glass_post_card.dart';
 import 'widgets/create_post_card.dart';
@@ -9,10 +9,9 @@ import 'widgets/glass_refresher.dart';
 import 'post_detail_screen.dart';
 
 import 'package:provider/provider.dart';
-import '../../core/services/navigation_provider.dart';
-import '../notifications/notification_screen.dart';
-import '../profile/profile_screen.dart';
+import '../../core/widgets/main_header.dart';
 import '../../core/providers/theme_provider.dart';
+import '../../core/widgets/unified_action_sheet.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -70,6 +69,40 @@ class _CommunityScreenState extends State<CommunityScreen> {
     setState(() => _selectedFilter = filter);
   }
 
+  void _showFilterSheet(BuildContext context, List<String> filters,
+      Map<String, String> filterKeys) {
+    final appLoc = AppLocalizations.of(context);
+    showUnifiedActionSheet(
+      context: context,
+      title: appLoc.translate("community.filter_title"),
+      actions: filters.map((filter) {
+        return ActionSheetItem(
+          label: appLoc.translate(filterKeys[filter]!),
+          icon: _getFilterIcon(filter),
+          isSelected: _selectedFilter == filter,
+          onTap: () => _onFilterChanged(filter),
+        );
+      }).toList(),
+    );
+  }
+
+  IconData _getFilterIcon(String filter) {
+    switch (filter) {
+      case "Latest Updates":
+        return Icons.access_time;
+      case "Regional":
+        return Icons.location_on;
+      case "Global":
+        return Icons.public;
+      case "Friends Only":
+        return Icons.people;
+      case "Gym":
+        return Icons.fitness_center;
+      default:
+        return Icons.circle;
+    }
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -78,7 +111,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final nav = context.watch<NavigationProvider>();
     final appLoc = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -108,7 +140,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 padding: EdgeInsets.fromLTRB(
                     24, MediaQuery.of(context).padding.top + 24, 24, 24),
                 sliver: SliverToBoxAdapter(
-                  child: _buildTopBar(context),
+                  child: const MainHeader(),
                 ),
               ),
 
@@ -176,33 +208,38 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      // Dropdown
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        child: DropdownButton<String>(
-                          // Add dropdown styling if needed for transparency
-                          value: _selectedFilter,
-                          underline: const SizedBox(),
-                          icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color:
-                                isDark ? Colors.white : const Color(0xFF0F172A),
+                      GestureDetector(
+                        onTap: () =>
+                            _showFilterSheet(context, _filters, filterKeys),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.1)
+                                : Colors.black.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          dropdownColor:
-                              isDark ? const Color(0xFF1E293B) : Colors.white,
-                          items: _filters.map((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(appLoc.translate(filterKeys[value] ??
-                                  "community.filters.latest")),
-                            );
-                          }).toList(),
-                          onChanged: (newValue) {
-                            if (newValue != null) _onFilterChanged(newValue);
-                          },
+                          child: Row(
+                            children: [
+                              Text(
+                                appLoc.translate(filterKeys[_selectedFilter]!),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(Icons.keyboard_arrow_down,
+                                  size: 20,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A)),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -243,8 +280,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     // In development/mock or if Firestore rules fail, show error
                     return SliverToBoxAdapter(
                         child: Center(
-                            child: Text(
-                                "Error loading posts: ${snapshot.error}")));
+                            child: Text(appLoc.translate(
+                                'community.action_failed',
+                                variables: {
+                          'error': snapshot.error.toString()
+                        }))));
                   }
 
                   final posts = snapshot.data ?? [];
@@ -319,96 +359,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  Widget _buildTopBar(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.menu, size: 28, color: Colors.black),
-          onPressed: () => context.read<NavigationProvider>().toggleMenu(true),
-        ),
-        Row(
-          children: [
-            StreamBuilder<int>(
-                stream: NotificationService().getUnreadCountStream(),
-                builder: (context, snapshot) {
-                  final unreadCount = snapshot.data ?? 0;
-
-                  return Stack(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.notifications_outlined,
-                            size: 28, color: Colors.black),
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => const NotificationScreen()),
-                        ),
-                      ),
-                      if (unreadCount > 0)
-                        Positioned(
-                          right: 8,
-                          top: 8,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 16,
-                              minHeight: 16,
-                            ),
-                            child: RichText(
-                              textAlign: TextAlign.center,
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text:
-                                        unreadCount > 9 ? '9' : '$unreadCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  if (unreadCount > 9)
-                                    const TextSpan(
-                                      text: '+',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 7, // Smaller plus sign
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                }),
-            IconButton(
-              icon: const Icon(Icons.person_outline,
-                  size: 28, color: Colors.black),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
-              ),
-            ),
-          ],
-        )
-      ],
-    );
-  }
-
   Widget _buildNewGroupItem(AppLocalizations appLoc) {
     return Container(
       width: 70,
       margin: const EdgeInsets.only(right: 16),
       child: GestureDetector(
         onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('New group feature is not available yet')),
+          SnackBar(
+              content: Text(
+                  appLoc.translate('community.group_feature_unavailable'))),
         ),
         // Navigator.of(context).push(
         //   MaterialPageRoute(builder: (_) => const GroupScreen()),
@@ -441,12 +400,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Widget _buildGroupItem(CommunityGroup group) {
+    final appLoc = AppLocalizations.of(context);
     return Container(
       width: 70,
       margin: const EdgeInsets.only(right: 16),
       child: GestureDetector(
         onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Group feature is not available yet')),
+          SnackBar(
+              content: Text(
+                  appLoc.translate('community.group_feature_unavailable'))),
         ),
         child: Column(
           children: [

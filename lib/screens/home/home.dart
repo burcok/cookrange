@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'dart:math' as math;
-import 'package:cookrange/screens/notifications/notification_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -13,13 +13,12 @@ import '../../core/services/storage_service.dart';
 import '../../core/services/recipe_generation_service.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/admin_status_service.dart';
-import '../../core/services/navigation_provider.dart';
-import '../../core/services/notification_service.dart';
 import '../../core/localization/app_localizations.dart';
 import '../common/generic_error_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
-import '../profile/profile_screen.dart';
+
 import '../../core/providers/theme_provider.dart';
+import '../../core/widgets/main_header.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -222,11 +221,11 @@ class _HomeScreenState extends State<HomeScreen>
                 parent: AlwaysScrollableScrollPhysics(),
               ),
               padding: EdgeInsets.fromLTRB(
-                  24.w, MediaQuery.of(context).padding.top + 24, 24.w, 120.h),
+                  26.w, MediaQuery.of(context).padding.top + 24, 26.w, 120.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTopBar(context),
+                  const MainHeader(),
                   SizedBox(height: 32.h),
                   if (userProvider.isLoading && userProvider.user == null)
                     SizedBox(
@@ -370,88 +369,6 @@ class _HomeScreenState extends State<HomeScreen>
         SizedBox(height: 32.h),
         _buildMealPlanSection(context, userModel, l10n),
         SizedBox(height: 32.h),
-      ],
-    );
-  }
-
-  Widget _buildTopBar(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        IconButton(
-          icon: const Icon(Icons.menu, size: 28, color: Colors.black),
-          onPressed: () => context.read<NavigationProvider>().toggleMenu(true),
-        ),
-        Row(
-          children: [
-            StreamBuilder<int>(
-                stream: NotificationService().getUnreadCountStream(),
-                builder: (context, snapshot) {
-                  final unreadCount = snapshot.data ?? 0;
-
-                  return Stack(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.notifications_outlined,
-                            size: 28, color: Colors.black),
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => const NotificationScreen()),
-                        ),
-                      ),
-                      if (unreadCount > 0)
-                        Positioned(
-                          right: 8,
-                          top: 8,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 16,
-                              minHeight: 16,
-                            ),
-                            child: RichText(
-                              textAlign: TextAlign.center,
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text:
-                                        unreadCount > 9 ? '9' : '$unreadCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  if (unreadCount > 9)
-                                    const TextSpan(
-                                      text: '+',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 7, // Smaller plus sign
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                }),
-            IconButton(
-              icon: const Icon(Icons.person_outline,
-                  size: 28, color: Colors.black),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
-              ),
-            ),
-          ],
-        )
       ],
     );
   }

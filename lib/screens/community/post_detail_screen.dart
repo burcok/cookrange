@@ -952,12 +952,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             comment.author.id == _service.currentUserId;
                         if (isAuthor) {
                           return [
-                            const PopupMenuItem(
-                                value: 'edit', child: Text('Edit')),
-                            const PopupMenuItem(
+                            PopupMenuItem(
+                                value: 'edit',
+                                child: Text(AppLocalizations.of(context)
+                                    .translate('common.edit'))),
+                            PopupMenuItem(
                                 value: 'delete',
-                                child: Text('Delete',
-                                    style: TextStyle(color: Colors.red))),
+                                child: Text(
+                                    AppLocalizations.of(context)
+                                        .translate('common.delete'),
+                                    style: const TextStyle(color: Colors.red))),
                           ];
                         } else {
                           return [
@@ -1010,8 +1014,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           TextButton(
                             onPressed: () =>
                                 setState(() => _editingCommentId = null),
-                            child: const Text("Cancel",
-                                style: TextStyle(fontSize: 12)),
+                            child: Text(
+                                AppLocalizations.of(context)
+                                    .translate('common.cancel'),
+                                style: const TextStyle(fontSize: 12)),
                           ),
                           TextButton(
                             onPressed: () async {
@@ -1025,8 +1031,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                               }
                               setState(() => _editingCommentId = null);
                             },
-                            child: const Text("Save",
-                                style: TextStyle(fontSize: 12)),
+                            child: Text(
+                                AppLocalizations.of(context)
+                                    .translate('common.save'),
+                                style: const TextStyle(fontSize: 12)),
                           ),
                         ],
                       )
@@ -1263,23 +1271,28 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   void _sharePost() {
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Link copied to clipboard!")));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content:
+            Text(AppLocalizations.of(context).translate('post.link_copied'))));
   }
 
   void _showReportDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Report Post"),
-        content: const Text("Select a reason to report this post..."),
+        title:
+            Text(AppLocalizations.of(context).translate('post.report_title')),
+        content: Text(
+            AppLocalizations.of(context).translate('post.report_reason_hint')),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
+              child: Text(
+                  AppLocalizations.of(context).translate('common.cancel'))),
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Submit")),
+              child:
+                  Text(AppLocalizations.of(context).translate('post.submit'))),
         ],
       ),
     );
@@ -1332,7 +1345,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           style: TextStyle(
                               color: isDark ? Colors.white : Colors.black),
                           decoration: InputDecoration(
-                            hintText: "Add a comment...",
+                            hintText: AppLocalizations.of(context)
+                                .translate('post.add_comment_hint'),
                             hintStyle: TextStyle(
                               color: isDark
                                   ? Colors.white54
