@@ -268,7 +268,7 @@ class _SideMenuState extends State<SideMenu> {
   Widget _buildProfileSection(
       BuildContext context, dynamic user, bool isDark, Color primaryColor) {
     final photoUrl = user?.photoURL;
-    final displayName = user?.displayName ?? "Unknown";
+    final displayName = user?.displayName ?? "User";
     final isPro =
         true; // Hardcoded for design as requested, or logic: user?.isPro ?? false
 

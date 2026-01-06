@@ -36,7 +36,7 @@ class SignalModel {
     return SignalModel(
       id: id,
       senderId: json['senderId'] ?? '',
-      senderName: json['senderName'] ?? 'Unknown',
+      senderName: json['senderName'] ?? 'User',
       senderImage: json['senderImage'],
       type: SignalType.values.firstWhere(
         (e) => e.name == json['type'],

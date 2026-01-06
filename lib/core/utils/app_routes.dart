@@ -9,4 +9,6 @@ class AppRoutes {
   static const String priorityOnboarding = '/priority_onboarding';
   static const String chatList = '/chat_list';
   static const String chatDetail = '/chat_detail';
+  static const String forgotPassword = '/forgot_password';
+  static const String resetPassword = '/reset_password';
 }

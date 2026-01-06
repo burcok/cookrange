@@ -52,8 +52,8 @@ class ChatService {
             if (isOnlineFlag) {
               if (lastActiveAt != null) {
                 final difference = DateTime.now().difference(lastActiveAt);
-                // 5 minutes threshold + small buffer for network delays
-                if (difference.inMinutes < 5) {
+                // 2 minutes threshold for faster stale detection
+                if (difference.inMinutes < 2) {
                   isActuallyOnline = true;
                 }
               } else {
@@ -187,17 +187,32 @@ class ChatService {
   Future<void> markChatAsRead(String chatId, String userId) async {
     final chatRef = _firestore.collection('chats').doc(chatId);
 
-    // 1. Reset unread count for this user
+    // 1. Reset unread count for this user and update lastMessage.isRead
     await _firestore.runTransaction((transaction) async {
       final chatDoc = await transaction.get(chatRef);
       if (!chatDoc.exists) return;
 
+      final chatData = chatDoc.data()!;
       final unreadCounts =
-          Map<String, dynamic>.from(chatDoc.data()!['unreadCounts'] ?? {});
+          Map<String, dynamic>.from(chatData['unreadCounts'] ?? {});
+
+      final Map<String, dynamic> updates = {};
 
       if (unreadCounts[userId] != 0) {
         unreadCounts[userId] = 0;
-        transaction.update(chatRef, {'unreadCounts': unreadCounts});
+        updates['unreadCounts'] = unreadCounts;
+      }
+
+      // Also mark lastMessage as read if it wasn't sent by current user
+      final lastMessage = chatData['lastMessage'] as Map<String, dynamic>?;
+      if (lastMessage != null &&
+          lastMessage['senderId'] != userId &&
+          lastMessage['isRead'] != true) {
+        updates['lastMessage.isRead'] = true;
+      }
+
+      if (updates.isNotEmpty) {
+        transaction.update(chatRef, updates);
       }
     });
 
@@ -272,6 +287,14 @@ class ChatService {
 
     await _firestore.collection('chats').doc(newChatId).set(newChat.toJson());
     return newChatId;
+  }
+
+  /// Stream of total unread message count across all chats
+  Stream<int> getUnreadMessageCountStream(String userId) {
+    return getUserChats(userId).map((chats) {
+      return chats.fold<int>(
+          0, (sum, chat) => sum + (chat.unreadCounts[userId] ?? 0));
+    });
   }
 
   /// Preload chats to warm up cache

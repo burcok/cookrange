@@ -233,7 +233,9 @@ class OnboardingPageProfile extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              value != null ? '$value$unit' : 'Select',
+              value != null
+                  ? '$value$unit'
+                  : AppLocalizations.of(context).translate('common.select'),
               style: theme.textTheme.bodyLarge
                   ?.copyWith(color: theme.colorScheme.onboardingTitleColor),
             ),

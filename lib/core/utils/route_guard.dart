@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../providers/user_provider.dart';
 import '../services/admin_status_service.dart';
 import '../../screens/auth/account_suspended_screen.dart';
+import 'app_routes.dart';
 
 /// RouteGuard - SIMPLIFIED VERSION
 ///
@@ -128,7 +129,7 @@ class _RouteGuardState extends State<RouteGuard> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           Navigator.pushNamedAndRemoveUntil(
-              context, '/login', (route) => false);
+              context, AppRoutes.login, (route) => false);
         }
       });
       return const Scaffold(body: SizedBox.shrink());
@@ -138,18 +139,19 @@ class _RouteGuardState extends State<RouteGuard> {
     if (_isAuthRoute(routeName)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+          Navigator.pushNamedAndRemoveUntil(
+              context, AppRoutes.main, (route) => false);
         }
       });
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     // C. Email Verification Check
-    if (routeName != '/verify-email' && !firebaseUser.emailVerified) {
+    if (routeName != AppRoutes.verifyEmail && !firebaseUser.emailVerified) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           Navigator.pushNamedAndRemoveUntil(
-              context, '/verify-email', (route) => false);
+              context, AppRoutes.verifyEmail, (route) => false);
         }
       });
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -158,11 +160,11 @@ class _RouteGuardState extends State<RouteGuard> {
     // D. Onboarding Check (only if we have user data)
     if (userModel != null &&
         !userModel.onboardingCompleted &&
-        routeName != '/onboarding') {
+        routeName != AppRoutes.onboarding) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           Navigator.pushNamedAndRemoveUntil(
-              context, '/onboarding', (route) => false);
+              context, AppRoutes.onboarding, (route) => false);
         }
       });
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -173,8 +175,8 @@ class _RouteGuardState extends State<RouteGuard> {
   }
 
   bool _isAuthRoute(String? routeName) {
-    return routeName == '/login' ||
-        routeName == '/register' ||
-        routeName == '/priority-onboarding';
+    return routeName == AppRoutes.login ||
+        routeName == AppRoutes.register ||
+        routeName == AppRoutes.priorityOnboarding;
   }
 }

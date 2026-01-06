@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'widgets/onboarding_step.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/onboarding_provider.dart';
+import '../../core/providers/user_provider.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
@@ -318,7 +319,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           // If email is not verified, navigate to verification screen
           Navigator.pushNamedAndRemoveUntil(
             context,
-            "/verify_email",
+            AppRoutes.verifyEmail,
             (route) => false,
           );
           return;
@@ -333,9 +334,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           await authService.clearOnboardingData();
 
           if (mounted) {
-            // If all info is complete, go home
-            Navigator.pushNamedAndRemoveUntil(
-                context, AppRoutes.main, (route) => false);
+            // Optimistically update UserProvider to avoid navigation loop in RouteGuard/RouteGuard
+            final userProvider = context.read<UserProvider>();
+            if (userProvider.user != null) {
+              userProvider.setUser(
+                userProvider.user!.copyWith(onboardingCompleted: true),
+              );
+            }
+
+            // Navigate immediately. Background refresh can happen later if needed.
+            // We don't await refreshUser() here because it might fetch stale data
+            // due to race conditions or latency, causing a loop.
+            if (mounted) {
+              // If all info is complete, go home
+              Navigator.pushNamedAndRemoveUntil(
+                  context, AppRoutes.main, (route) => false);
+            }
           }
         } else {
           if (mounted) {

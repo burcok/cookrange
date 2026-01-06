@@ -1,8 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import '../providers/device_info_provider.dart';
 import 'log_service.dart';
 import '../models/user_profile_model.dart';
 import '../models/user_model.dart';
@@ -25,41 +22,13 @@ class FirestoreService {
 
   /// Fetches the public IP address of the user.
   Future<String> _getIpAddress() async {
-    try {
-      final response =
-          await http.get(Uri.parse('https://api.ipify.org?format=json'));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['ip'] ?? '0.0.0.0';
-      }
-    } catch (e) {
-      _log.error('Failed to get IP address', service: _serviceName, error: e);
-    }
-    return '0.0.0.0';
+    final context = await _log.getSystemContext();
+    return context['ip_address'] ?? '0.0.0.0';
   }
 
   /// Gathers device information into a map.
   Future<Map<String, dynamic>> _getDeviceInfo() async {
-    try {
-      final deviceInfo = DeviceInfoProvider();
-      await deviceInfo.initialize();
-      return {
-        'device_model': deviceInfo.deviceModel,
-        'device_type': deviceInfo.deviceType,
-        'device_os': deviceInfo.deviceOs,
-        'app_version': deviceInfo.appVersion,
-        'build_number': deviceInfo.buildNumber,
-      };
-    } catch (e) {
-      _log.error('Error getting device info', service: _serviceName, error: e);
-      return {
-        'device_model': 'unknown',
-        'device_type': 'unknown',
-        'device_os': 'unknown',
-        'app_version': 'unknown',
-        'build_number': 'unknown',
-      };
-    }
+    return await _log.getSystemContext();
   }
 
   // --- PUBLIC API ---
@@ -117,8 +86,7 @@ class FirestoreService {
     _log.info('Handling login for user: ${user.uid}, session: $sessionId',
         service: _serviceName);
     try {
-      final ipAddress = await _getIpAddress();
-      final deviceInfoMap = await _getDeviceInfo();
+      final systemContext = await _log.getSystemContext();
 
       final userDocRef = _firestore.collection('users').doc(user.uid);
       final userDoc = await userDocRef.get();
@@ -126,11 +94,14 @@ class FirestoreService {
       final loginData = {
         'last_login_at': FieldValue.serverTimestamp(),
         'last_active_at': FieldValue.serverTimestamp(),
-        'last_login_ip': ipAddress,
-        'last_login_device': deviceInfoMap['device_model'],
-        'last_login_device_type': deviceInfoMap['device_type'],
-        'last_login_device_model': deviceInfoMap['device_model'],
-        'last_login_device_os': deviceInfoMap['device_os'],
+        'last_login_ip': systemContext['ip_address'],
+        'last_login_device': systemContext['device_model'],
+        'last_login_device_type': systemContext['device_type'],
+        'last_login_device_model': systemContext['device_model'],
+        'last_login_device_os': systemContext['device_os'],
+        'last_login_os_version': systemContext['os_version'],
+        'last_login_app_version': systemContext['app_version'],
+        'last_login_build_number': systemContext['build_number'],
         'is_online': true,
       };
 
@@ -142,10 +113,10 @@ class FirestoreService {
       final currentAppVersion = userDoc.data()?['app_version'] as String?;
       final currentBuildNumber = userDoc.data()?['build_number'] as String?;
 
-      if (currentAppVersion != deviceInfoMap['app_version'] ||
-          currentBuildNumber != deviceInfoMap['build_number']) {
-        loginData['app_version'] = deviceInfoMap['app_version'];
-        loginData['build_number'] = deviceInfoMap['build_number'];
+      if (currentAppVersion != systemContext['app_version'] ||
+          currentBuildNumber != systemContext['build_number']) {
+        loginData['app_version'] = systemContext['app_version'];
+        loginData['build_number'] = systemContext['build_number'];
         loginData['version_updated_at'] = FieldValue.serverTimestamp();
       }
 
@@ -162,19 +133,19 @@ class FirestoreService {
           'onboarding_completed': false,
           'onboarding_data': onboardingData,
           ...loginData,
-          'login_ips': FieldValue.arrayUnion([ipAddress]),
+          'login_ips': FieldValue.arrayUnion([systemContext['ip_address']]),
           'login_devices':
-              FieldValue.arrayUnion([deviceInfoMap['device_model']]),
+              FieldValue.arrayUnion([systemContext['device_model']]),
           'login_device_types':
-              FieldValue.arrayUnion([deviceInfoMap['device_type']]),
+              FieldValue.arrayUnion([systemContext['device_type']]),
           'login_device_models':
-              FieldValue.arrayUnion([deviceInfoMap['device_model']]),
+              FieldValue.arrayUnion([systemContext['device_model']]),
           'login_device_os':
-              FieldValue.arrayUnion([deviceInfoMap['device_os']]),
+              FieldValue.arrayUnion([systemContext['device_os']]),
           'login_app_versions':
-              FieldValue.arrayUnion([deviceInfoMap['app_version']]),
+              FieldValue.arrayUnion([systemContext['app_version']]),
           'login_build_numbers':
-              FieldValue.arrayUnion([deviceInfoMap['build_number']]),
+              FieldValue.arrayUnion([systemContext['build_number']]),
         }, SetOptions(merge: true));
         _log.info('New user document created for: ${user.uid}',
             service: _serviceName);
@@ -232,7 +203,7 @@ class FirestoreService {
         _log.info('About to add login history for user: ${user.uid}',
             service: _serviceName);
 
-        final loginHistoryData = {'ip_address': ipAddress, ...deviceInfoMap};
+        final loginHistoryData = systemContext;
 
         _log.info('Login history data: $loginHistoryData',
             service: _serviceName);

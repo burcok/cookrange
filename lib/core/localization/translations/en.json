@@ -152,7 +152,6 @@
         "hand_mixer": "Hand Mixer",
         "stand_mixer": "Stand Mixer",
         "air_fryer": "Air Fryer",
-        
         "electric_grill": "Electric Grill",
         "samovar": "Samovar",
         "turkish_coffee_pot": "Turkish Coffee Pot",
@@ -234,6 +233,8 @@
       "birthdaySubtitle": "You can hide this information if you want.",
       "hwTitle": "Height and Weight",
       "hwSubtitle": "You can hide this information if you want.",
+      "edit_profile": "Edit Profile",
+      "personal_info": "Personal Information",
       "name": "Name",
       "age": "Age",
       "male": "Male",
@@ -287,6 +288,9 @@
       "select_kitchen_equipment": "Please select at least one kitchen equipment",
       "complete_cooking_preferences": "Please select your cooking level and at least one kitchen equipment",
       "fill_required": "Please fill in all required fields",
+      "complete_activity": "Please select your activity level and target weight",
+      "complete_profile_info": "Please complete all profile information",
+      "select_lifestyle_profile": "Please select a lifestyle profile",
       "invalid_step": "Invalid step"
     },
     "priority": {
@@ -294,14 +298,11 @@
       "description": "This is the priority onboarding screen."
     }
   },
-
   "auth": {
     "login": "Login",
     "signup": "Sign Up",
-
     "create_account": "Create Your Account and Join Us!",
     "welcome_back": "Hey, Welcome Back!",
-
     "sign_in_google": "Sign in with Google",
     "verify_email_sent": "Verification email sent to {email}.",
     "verify_email_failed": "Failed to send verification email: {error}",
@@ -311,31 +312,33 @@
     "resend_btn": "Resend Verification Email",
     "email_client_error": "Could not launch email client. Please contact {email}",
     "register_with_google": "Register with Google",
-    
+    "login_with_google": "Login with Google",
+    "sign_out": "Sign Out",
     "email": "Email",
     "password": "Password",
     "password_again": "Password Again",
     "forgot_password": "Forgot Password?",
-
+    "forgot_password_desc": "Enter your email address and we will send you a link to reset your password.",
+    "reset_link_sent": "Password reset link has been sent to your email.",
+    "back_to_login": "Back to Login",
     "or": "or",
     "continue_with_google": "Continue with Google",
     "continue_with_apple": "Continue with Apple",
-    
     "no_account": "Don't have an account?",
     "register_now": "Register Now",
     "already_have_account": "Already have an account?",
     "login_now": "Login Now",
-    
     "google_login_error": "Google login failed. Please try again.",
     "google_register_error": "Google register failed. Please try again.",
-
     "register_errors": {
       "register_error": "Register failed. Please try again.",
       "email_already_in_use": "Email already in use. Please try again.",
       "invalid_email": "Invalid email. Please try again.",
+      "network_error": "Network error. Please check your internet connection and try again.",
+      "type_error": "A type error occurred. Please try again.",
+      "user_not_found": "User not found.",
       "weak_password": "Weak password. Please try again."
     },
-
     "login_errors": {
       "login_error": "Login failed. Please try again.",
       "invalid_credentials": "User not found. Please check your email and password.",
@@ -347,18 +350,18 @@
       "unexpected_error": "An unexpected error occurred. Please try again."
     },
     "error": {
-        "password_length": "Password must be at least 8 characters",
-        "password_digit": "Password must contain at least one digit",
-        "passwords_do_not_match": "Passwords do not match.",
-        "invalid_email": "Please enter a valid email address.",
-        "accept_agreements": "Please accept the agreements to continue."
+      "password_length": "Password must be at least 8 characters",
+      "password_digit": "Password must contain at least one digit",
+      "passwords_do_not_match": "Passwords do not match.",
+      "invalid_email": "Please enter a valid email address.",
+      "accept_agreements": "Please accept the agreements to continue."
     },
     "agreements": {
-        "prefix": "By creating an account, you agree to Cookrange's ",
-        "privacy_policy": "Privacy Policy",
-        "and": " and ",
-        "terms_of_use": "Terms of Use",
-        "suffix": "."
+      "prefix": "By creating an account, you agree to Cookrange's ",
+      "privacy_policy": "Privacy Policy",
+      "and": " and ",
+      "terms_of_use": "Terms of Use",
+      "suffix": "."
     },
     "email_hint": "your@email.com",
     "or_divider": "OR",
@@ -373,9 +376,10 @@
     "delete_account_button": "Delete Account",
     "settings_title": "Settings"
   },
-
   "profile": {
     "title": "Profile",
+    "options_title": "Profile Options",
+    "block_user": "Block User",
     "edit_profile": "Edit Profile",
     "personal_info": "Welcome to Cookrange",
     "name": "Name",
@@ -475,10 +479,10 @@
         "now": "Just now"
       },
       "filters": {
-          "all": "All",
-          "gym": "Gym",
-          "nutrition": "Nutrition",
-          "private": "Private"
+        "all": "All",
+        "gym": "Gym",
+        "nutrition": "Nutrition",
+        "private": "Private"
       },
       "list_title": "Chats",
       "filter_title": "Filter",
@@ -529,14 +533,29 @@
     "link_copied": "Link copied to clipboard!",
     "report_title": "Report Post",
     "report_reason_hint": "Select a reason to report this post...",
+    "add_comment_hint": "Add a comment...",
     "submit": "Submit"
   },
   "recipe": {
-    "shopping_added": "Ingredients added to shopping list"
+    "shopping_added": "Ingredients added to shopping list",
+    "add_to_list": "Add to List",
+    "added_to_list": "Added to list",
+    "ingredients": "Ingredients",
+    "instructions": "Instructions",
+    "minutes": "Minutes",
+    "servings": "Servings",
+    "start_cooking": "Start Cooking"
   },
   "shopping": {
+    "title": "Shopping List",
+    "amount": "Amount",
+    "unit": "Unit",
+    "item_name": "Item Name",
+    "empty": "Your shopping list is empty.",
+    "clear_confirm": "Are you sure you want to clear the list?",
     "add_item": "Add Item",
     "sharing_soon": "Sharing coming soon!",
+    "share_soon": "Sharing feature coming soon!",
     "clear_list": "Clear List",
     "clear": "Clear"
   },
@@ -587,7 +606,18 @@
       "user_id": "User ID"
     }
   },
-
+  "error": {
+    "initialization_failed_message": "Application failed to initialize. Please check your internet connection and try again.",
+    "initialization_failed_title": "Initialization Error",
+    "offline_message": "It looks like you don't have an internet connection. Please check your connection.",
+    "offline_title": "No Connection",
+    "page_not_found": "Page Not Found",
+    "page_not_found_message": "The page you are looking for does not exist or may have been moved."
+  },
+  "friend_actions": {
+    "accept": "Accept",
+    "reject": "Reject"
+  },
   "notifications": {
     "meal_reminder": "Meal Reminder",
     "water_reminder": "Water Reminder",
@@ -604,7 +634,6 @@
     "warning": "Warning",
     "info": "Information"
   },
-
   "common": {
     "save": "Save",
     "edit": "Edit",
@@ -613,11 +642,16 @@
     "select": "Select",
     "cancel": "Cancel",
     "confirm": "Confirm",
+    "send": "Send",
     "add": "Add",
     "remove": "Remove",
     "continue": "Continue",
     "back": "Back",
     "done": "Done",
+    "clear": "Clear",
+    "continue_offline": "Continue Offline",
+    "go_home": "Go Home",
+    "retrying": "Retrying...",
     "loading": "Loading...",
     "retry": "Retry",
     "try_again": "Try Again",
@@ -630,7 +664,6 @@
     "retry_in_hours": "Retry in {hours} hours",
     "retry_in_days": "Retry in {days} days"
   },
-
   "errors": {
     "general": "Something went wrong",
     "network": "Network error occurred",
@@ -639,7 +672,6 @@
     "required_field": "This field is required",
     "weak_password": "Password is too weak"
   },
-
   "ingredients": {
     "title": "Ingredients",
     "vegetables": {
@@ -768,7 +800,7 @@
     "mark_all_read": "Mark All as Read",
     "friend_request_title": "New Friend Request",
     "friend_request_body": "{name} wants to be your friend.",
-    "friend_accepted_title": "Friend Request Accepted", 
+    "friend_accepted_title": "Friend Request Accepted",
     "friend_accepted_body": "{name} accepted your friend request.",
     "meal_plan_title": "Weekly Plan Update",
     "meal_plan_body": "Your dietician has prepared a new nutrition plan for this week. Check out the changes suitable for your goals.",
@@ -801,7 +833,8 @@
       "delete": "Delete Post",
       "edit": "Edit Post",
       "report": "Report",
-      "share": "Share"
+      "share": "Share",
+      "options": "Options"
     },
     "delete_confirm": {
       "title": "Delete Post?",
@@ -851,7 +884,8 @@
     "favorites": "Favorites",
     "help": "Help",
     "chats": "Chats",
-    "logout": "Logout"
+    "logout": "Logout",
+    "community": "Community"
   },
   "account_suspended": {
     "title_header": "ACCOUNT STATUS",
@@ -928,6 +962,22 @@
       "nutrition": "Nutrition",
       "private": "Private"
     },
+    "meal_share": "Share Meal",
+    "meal_share_soon": "Meal Share feature coming soon!",
+    "new_chat": "New Chat",
+    "no_friends": "No friends yet.",
+    "no_results": "No results found.",
+    "offline": "Offline",
+    "online": "Online",
+    "search_friend_hint": "Search friend...",
+    "signal_send": "Send Signal",
+    "unnamed_user": "Unnamed User",
+    "time": {
+      "days_ago": "{d}d ago",
+      "hours_ago": "{h}h ago",
+      "mins_ago": "{m}m ago",
+      "now": "Just now"
+    },
     "needs_help": {
       "title": "{name} is waiting for help\nwith {activity}!",
       "location": "MacFit - Platform 3",
@@ -944,6 +994,19 @@
       "share_meal": "Share Meal",
       "send_signal": "Send Signal",
       "placeholder_message_input": "Type a message..."
+    }
+  },
+  "signal": {
+    "cancel": "Cancel",
+    "custom_message_hint": "Write your custom message...",
+    "message_label": "Message",
+    "select_type": "Select Signal Type",
+    "send": "Send",
+    "title": "Send Signal",
+    "type": {
+      "general": "General",
+      "gym": "Gym",
+      "meal": "Meal"
     }
   }
 }

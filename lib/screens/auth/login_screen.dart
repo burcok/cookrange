@@ -5,6 +5,8 @@ import '../../constants.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_routes.dart';
+import '../../core/utils/auth_error_handler.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -83,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
             Navigator.pushNamedAndRemoveUntil(
               context,
-              "/verify_email",
+              AppRoutes.verifyEmail,
               (route) => false,
             );
             return;
@@ -100,7 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
           // User is not verified in Firestore, redirect to verification
           Navigator.pushNamedAndRemoveUntil(
             context,
-            "/verify_email",
+            AppRoutes.verifyEmail,
             (route) => false,
           );
           return;
@@ -112,69 +114,17 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           if (onboardingCompleted) {
             Navigator.pushNamedAndRemoveUntil(
-                context, '/main', (route) => false);
+                context, AppRoutes.main, (route) => false);
           } else {
             Navigator.pushNamedAndRemoveUntil(
-                context, '/onboarding', (route) => false);
+                context, AppRoutes.onboarding, (route) => false);
           }
         }
       }
     } on AuthException catch (e) {
-      if (!mounted) return;
-
-      String msg;
-      switch (e.code) {
-        case 'user-not-found':
-        case 'wrong-password':
-        case 'invalid-email':
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.invalid_credentials');
-          break;
-        case 'network-error':
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.network_error');
-          break;
-        case 'empty-fields':
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.empty_fields');
-          break;
-        case 'type-error':
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.type_error');
-          break;
-        case 'user-disabled':
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.user_disabled');
-          break;
-        case 'too-many-requests':
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.too_many_requests');
-          break;
-        default:
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.login_error');
+      if (mounted) {
+        AuthErrorHandler.showSnackBar(context, e);
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            msg,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 14,
-              color: Colors.white,
-            ),
-          ),
-          duration: const Duration(seconds: 5),
-          backgroundColor: Colors.red,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(10),
-          padding: const EdgeInsets.all(10),
-        ),
-      );
     } catch (e) {
       if (!mounted) return;
 
@@ -190,14 +140,11 @@ class _LoginScreenState extends State<LoginScreen> {
               color: Colors.white,
             ),
           ),
-          duration: const Duration(seconds: 5),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(10),
-          padding: const EdgeInsets.all(10),
         ),
       );
     } finally {
@@ -223,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
           // If email is not verified, navigate to verification screen
           Navigator.pushNamedAndRemoveUntil(
             context,
-            "/verify_email",
+            AppRoutes.verifyEmail,
             (route) => false,
           );
           return;
@@ -237,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
           // User is not verified in Firestore, redirect to verification
           Navigator.pushNamedAndRemoveUntil(
             context,
-            "/verify_email",
+            AppRoutes.verifyEmail,
             (route) => false,
           );
           return;
@@ -249,66 +196,17 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           if (onboardingCompleted) {
             Navigator.pushNamedAndRemoveUntil(
-                context, '/main', (route) => false);
+                context, AppRoutes.main, (route) => false);
           } else {
             Navigator.pushNamedAndRemoveUntil(
-                context, '/onboarding', (route) => false);
+                context, AppRoutes.onboarding, (route) => false);
           }
         }
       }
     } on AuthException catch (e) {
-      if (!mounted) return;
-
-      debugPrint("Error during login with Google: $e");
-      String msg;
-      switch (e.code) {
-        case 'user-not-found':
-        case 'wrong-password':
-        case 'invalid-email':
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.invalid_credentials');
-          break;
-        case 'network-error':
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.network_error');
-          break;
-        case 'empty-fields':
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.empty_fields');
-          break;
-        case 'type-error':
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.type_error');
-          break;
-        case 'too-many-requests':
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.too_many_requests');
-          break;
-        default:
-          msg = AppLocalizations.of(context)
-              .translate('auth.login_errors.login_error');
+      if (mounted) {
+        AuthErrorHandler.showSnackBar(context, e);
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            msg,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 14,
-              color: Colors.white,
-            ),
-          ),
-          duration: const Duration(seconds: 5),
-          backgroundColor: Colors.red,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(10),
-          padding: const EdgeInsets.all(10),
-        ),
-      );
     } catch (e) {
       if (!mounted) return;
 
@@ -324,14 +222,11 @@ class _LoginScreenState extends State<LoginScreen> {
               color: Colors.white,
             ),
           ),
-          duration: const Duration(seconds: 5),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(10),
-          padding: const EdgeInsets.all(10),
         ),
       );
     } finally {
@@ -465,7 +360,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, "/forgot_password");
+                      Navigator.pushNamed(context, AppRoutes.forgotPassword);
                     },
                     child: Text(localizations.translate('auth.forgot_password'),
                         style: TextStyle(
@@ -542,7 +437,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontWeight: FontWeight.w400)),
                     TextButton(
                       onPressed: () {
-                        Navigator.pushNamed(context, "/register");
+                        Navigator.pushNamed(context, AppRoutes.register);
                       },
                       child: Text(localizations.translate('auth.register_now'),
                           style: TextStyle(

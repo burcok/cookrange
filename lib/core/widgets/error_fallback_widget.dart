@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../localization/app_localizations.dart';
 import '../services/crashlytics_service.dart';
+import '../../screens/common/generic_error_screen.dart';
 
 /// A comprehensive error fallback widget that provides user-friendly error handling
 /// with retry options and offline mode support.
@@ -246,94 +247,8 @@ class UnknownRouteScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final localizations = AppLocalizations.maybeOf(context);
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // 404 Icon
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.search_off,
-                  size: 60,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-              // 404 Title
-              Text(
-                '404',
-                style: theme.textTheme.displayMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Page Not Found Message
-              Text(
-                localizations?.translate('error.page_not_found') ??
-                    'Page Not Found',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 16),
-
-              Text(
-                localizations?.translate('error.page_not_found_message') ??
-                    "The page you're looking for doesn't exist.",
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 32),
-
-              // Go Home Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/',
-                      (route) => false,
-                    );
-                  },
-                  icon: const Icon(Icons.home),
-                  label: Text(
-                      localizations?.translate('common.go_home') ?? 'Go Home'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return const GenericErrorScreen(
+      errorCode: '404',
     );
   }
 }

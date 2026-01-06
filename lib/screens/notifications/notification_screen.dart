@@ -36,6 +36,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
         _notifications = notifications;
         _isLoading = false;
       });
+
+      // Auto-mark all unread notifications as read
+      final unreadIds =
+          notifications.where((n) => !n.isRead).map((n) => n.id).toList();
+      if (unreadIds.isNotEmpty) {
+        await _service.markMultipleAsRead(unreadIds);
+      }
     }
   }
 

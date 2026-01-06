@@ -31,9 +31,9 @@ class AppLifecycleService with WidgetsBindingObserver {
   DateTime? _sessionStartTime;
   StreamSubscription? _authSubscription;
   static const Duration _activeUpdateThrottle = Duration(minutes: 5);
-  static const Duration _offlineDebounce = Duration(minutes: 1);
+  static const Duration _offlineDebounce = Duration(seconds: 10);
   static const Duration _sessionPauseDebounce =
-      Duration(seconds: 5); // 4s debounce for session end
+      Duration(seconds: 2); // Quick debounce for session end
 
   /// Initializes the service and registers it as an observer of lifecycle events.
   void initialize() {

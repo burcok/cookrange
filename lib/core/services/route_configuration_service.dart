@@ -11,6 +11,7 @@ import '../../screens/auth/login_screen.dart';
 import '../../screens/auth/register_screen.dart';
 import '../../screens/home/home.dart';
 import '../../screens/auth/verify_email.dart';
+import '../../screens/auth/forgot_password_screen.dart';
 import '../../screens/onboarding/onboarding_screen.dart';
 import '../../screens/onboarding/priority_onboarding_screen.dart';
 import '../../screens/main_scaffold.dart';
@@ -43,6 +44,8 @@ class RouteConfigurationService {
           const RouteGuard(child: PriorityOnboardingScreen()),
       AppRoutes.chatList: (context) =>
           const RouteGuard(child: ChatListScreen()),
+      AppRoutes.forgotPassword: (context) =>
+          const RouteGuard(child: ForgotPasswordScreen()),
       AppRoutes.chatDetail: (context) {
         final chat = ModalRoute.of(context)!.settings.arguments as ChatModel;
         return RouteGuard(child: ChatDetailScreen(chat: chat));

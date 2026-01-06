@@ -272,11 +272,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                                             ),
                                           );
                                         },
-                                        child: _buildChatCard(
-                                            context,
-                                            chat,
-                                            isDark,
-                                            "current_user_id_placeholder"),
+                                        child: _buildChatCard(context, chat,
+                                            isDark, currentUser.uid),
                                       ),
                                       const SizedBox(height: 16),
                                     ],
@@ -1198,7 +1195,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                         ),
                       ),
                       Text(
-                        "09:15",
+                        chat.lastMessage != null
+                            ? _formatTime(context, chat.lastMessage!.timestamp)
+                            : '',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey.shade400,
@@ -1220,9 +1219,19 @@ class _ChatListScreenState extends State<ChatListScreen>
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.done_all,
-                          size: 16, color: Color(0xFF3B82F6)), // Blue tick
+                      // Only show tick if I sent the last message
+                      if (chat.lastMessage?.senderId == currentUserId) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          chat.lastMessage?.isRead == true
+                              ? Icons.done_all
+                              : Icons.done,
+                          size: 16,
+                          color: chat.lastMessage?.isRead == true
+                              ? const Color(0xFF3B82F6) // Blue for read
+                              : Colors.grey.shade400, // Grey for sent
+                        ),
+                      ],
                     ],
                   ),
                 ],

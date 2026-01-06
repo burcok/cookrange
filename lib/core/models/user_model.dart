@@ -63,4 +63,43 @@ class UserModel {
       primaryColor: data['primary_color'] as int?,
     );
   }
+
+  UserModel copyWith({
+    String? uid,
+    String? email,
+    String? displayName,
+    String? photoURL,
+    bool? isOnline,
+    bool? onboardingCompleted,
+    Timestamp? createdAt,
+    Timestamp? lastLoginAt,
+    Timestamp? lastActiveAt,
+    Timestamp? onboardingCompletedAt,
+    Map<String, dynamic>? onboardingData,
+    String? appVersion,
+    String? buildNumber,
+    Timestamp? userVerified,
+    Map<String, bool>? profileVisibility,
+    int? primaryColor,
+  }) {
+    return UserModel(
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
+      displayName: displayName ?? this.displayName,
+      photoURL: photoURL ?? this.photoURL,
+      isOnline: isOnline ?? this.isOnline,
+      onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
+      createdAt: createdAt ?? this.createdAt,
+      lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      lastActiveAt: lastActiveAt ?? this.lastActiveAt,
+      onboardingCompletedAt:
+          onboardingCompletedAt ?? this.onboardingCompletedAt,
+      onboardingData: onboardingData ?? this.onboardingData,
+      appVersion: appVersion ?? this.appVersion,
+      buildNumber: buildNumber ?? this.buildNumber,
+      userVerified: userVerified ?? this.userVerified,
+      profileVisibility: profileVisibility ?? this.profileVisibility,
+      primaryColor: primaryColor ?? this.primaryColor,
+    );
+  }
 }

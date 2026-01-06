@@ -6,6 +6,8 @@ import '../../constants.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_routes.dart';
+import '../../core/utils/auth_error_handler.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -122,67 +124,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (mounted) {
           Navigator.pushNamedAndRemoveUntil(
             context,
-            '/verify_email',
+            AppRoutes.verifyEmail,
             (route) => false,
           );
         }
       }
     } on AuthException catch (e) {
-      if (!mounted) return;
-
-      String msg;
-      debugPrint("Auth error code: ${e.code}");
-
-      switch (e.code) {
-        case 'email-already-in-use':
-          msg = AppLocalizations.of(context)
-              .translate('auth.register_errors.email_already_in_use');
-          break;
-        case 'invalid-email':
-          msg = AppLocalizations.of(context)
-              .translate('auth.register_errors.invalid_email');
-          break;
-        case 'weak-password':
-          msg = AppLocalizations.of(context)
-              .translate('auth.register_errors.weak_password');
-          break;
-        case 'network-error':
-          msg = AppLocalizations.of(context)
-              .translate('auth.register_errors.network_error');
-          break;
-        case 'user-not-found':
-          msg = AppLocalizations.of(context)
-              .translate('auth.register_errors.user_not_found');
-          break;
-        case 'type-error':
-          msg = AppLocalizations.of(context)
-              .translate('auth.register_errors.type_error');
-          break;
-        default:
-          msg = AppLocalizations.of(context)
-              .translate('auth.register_errors.register_error');
+      if (mounted) {
+        AuthErrorHandler.showSnackBar(context, e);
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            msg,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 14,
-              color: Colors.white,
-            ),
-          ),
-          duration: const Duration(seconds: 5),
-          backgroundColor: Colors.red,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(10),
-          padding: const EdgeInsets.all(10),
-        ),
-      );
     } catch (e) {
       debugPrint("Unexpected error during registration: $e");
       if (!mounted) return;
@@ -198,14 +148,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               color: Colors.white,
             ),
           ),
-          duration: const Duration(seconds: 5),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(10),
-          padding: const EdgeInsets.all(10),
         ),
       );
     } finally {
@@ -255,7 +202,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // After registration, user needs to verify their email
           Navigator.pushNamedAndRemoveUntil(
             context,
-            '/verify_email',
+            AppRoutes.verifyEmail,
             (route) => false,
           );
           return;
@@ -268,41 +215,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (mounted) {
           if (onboardingCompleted) {
             Navigator.pushNamedAndRemoveUntil(
-                context, '/main', (route) => false);
+                context, AppRoutes.main, (route) => false);
           } else {
             Navigator.pushNamedAndRemoveUntil(
-                context, '/onboarding', (route) => false);
+                context, AppRoutes.onboarding, (route) => false);
           }
         }
       }
-    } on Exception catch (e) {
+    } on AuthException catch (e) {
+      if (mounted) {
+        AuthErrorHandler.showSnackBar(context, e);
+      }
+    } catch (e) {
       if (!mounted) return;
 
-      debugPrint("Error during registration with Google: $e");
-      final msg =
-          AppLocalizations.of(context).translate('auth.google_register_error');
+      debugPrint("Unexpected error during registration with Google: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            msg,
+            AppLocalizations.of(context)
+                .translate('auth.register_errors.register_error'),
             style: const TextStyle(
               fontFamily: 'Poppins',
               fontSize: 14,
               color: Colors.white,
             ),
           ),
-          duration: const Duration(seconds: 5),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(10),
-          padding: const EdgeInsets.all(10),
         ),
       );
-    } catch (e) {
-      debugPrint("Unexpected error during registration with Google: $e");
     } finally {
       if (mounted) {
         setState(() {
@@ -634,7 +579,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fontWeight: FontWeight.w400)),
                     TextButton(
                       onPressed: () {
-                        Navigator.pushNamed(context, "/login");
+                        Navigator.pushNamed(context, AppRoutes.login);
                       },
                       child: Text(localizations.translate('auth.login_now'),
                           style: TextStyle(

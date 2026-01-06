@@ -161,6 +161,7 @@
     },
     "page5": {
       "header": "Yaşam Tarzını Seç",
+      "step_text": "Adım 5/6",
       "title": "Yaşam Tarzı Profilleri",
       "description": "Günlük rutininize en uygun yaşam tarzını seçin. Bu, enerji seviyelerinize ve yemek tercihlerinize uygun bir plan hazırlamamıza yardımcı olur.",
       "profiles": {
@@ -288,6 +289,8 @@
       "complete_activity": "Lütfen aktivite seviyenizi ve hedef kilonuzu seçin",
       "complete_cooking_preferences": "Lütfen pişirme seviyenizi ve en az bir mutfak ekipmanı seçin",
       "fill_required": "Lütfen gerekli alanları doldurun",
+      "complete_profile_info": "Lütfen tüm profil bilgilerinizi doldurun.",
+      "select_lifestyle_profile": "Lütfen bir yaşam tarzı profili seçin.",
       "invalid_step": "Geçersiz adım"
     },
     "priority": {
@@ -309,10 +312,15 @@
     "resend_btn": "Doğrulama E-postasını Tekrar Gönder",
     "email_client_error": "E-posta istemcisi açılamadı. Lütfen {email} ile iletişime geçin.",
     "register_with_google": "Google ile Kayıt Ol",
+    "login_with_google": "Google ile Giriş Yap",
+    "sign_out": "Çıkış Yap",
     "email": "E-posta",
     "password": "Şifre",
     "password_again": "Şifreyi Tekrar Girin",
     "forgot_password": "Şifreni mi unuttun?",
+    "forgot_password_desc": "E-posta adresinizi girin, size şifrenizi sıfırlamanız için bir bağlantı gönderelim.",
+    "reset_link_sent": "Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.",
+    "back_to_login": "Girişe Dön",
     "or": "veya",
     "continue_with_google": "Google ile Devam Et",
     "continue_with_apple": "Apple ile Devam Et",
@@ -326,6 +334,9 @@
       "register_error": "Kayıt başarısız. Lütfen tekrar deneyin.",
       "email_already_in_use": "Bu e-posta zaten kullanılıyor. Lütfen başka bir e-posta deneyin.",
       "invalid_email": "Geçersiz e-posta. Lütfen tekrar deneyin.",
+      "network_error": "Ağ hatası. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.",
+      "type_error": "Bir tür hatası oluştu. Lütfen tekrar deneyin.",
+      "user_not_found": "Kullanıcı bulunamadı.",
       "weak_password": "Zayıf şifre. Lütfen daha güçlü bir şifre deneyin."
     },
     "login_errors": {
@@ -367,6 +378,8 @@
   },
   "profile": {
     "title": "Profil",
+    "options_title": "Profil Seçenekleri",
+    "block_user": "Kullanıcıyı Engelle",
     "edit_profile": "Profili Düzenle",
     "personal_info": "Merhaba Cookrange!",
     "name": "Ad",
@@ -466,10 +479,10 @@
         "now": "Şimdi"
       },
       "filters": {
-          "all": "Tümü",
-          "gym": "Spor",
-          "nutrition": "Beslenme",
-          "private": "Özel"
+        "all": "Tümü",
+        "gym": "Spor",
+        "nutrition": "Beslenme",
+        "private": "Özel"
       },
       "list_title": "Sohbetler",
       "filter_title": "Filtrele",
@@ -520,14 +533,29 @@
     "link_copied": "Bağlantı panoya kopyalandı!",
     "report_title": "Gönderiyi Bildir",
     "report_reason_hint": "Bu gönderiyi bildirmek için bir neden seçin...",
+    "add_comment_hint": "Yorum ekle...",
     "submit": "Gönder"
   },
   "recipe": {
-    "shopping_added": "Malzemeler alışveriş listesine eklendi"
+    "shopping_added": "Malzemeler alışveriş listesine eklendi",
+    "add_to_list": "Listeye Ekle",
+    "added_to_list": "Listeye eklendi",
+    "ingredients": "Malzemeler",
+    "instructions": "Hazırlanışı",
+    "minutes": "Dakika",
+    "servings": "Kişilik",
+    "start_cooking": "Pişirmeye Başla"
   },
   "shopping": {
+    "title": "Alışveriş Listesi",
+    "amount": "Miktar",
+    "unit": "Birim",
+    "item_name": "Ürün Adı",
+    "empty": "Alışveriş listeniz boş.",
+    "clear_confirm": "Listeyi temizlemek istediğinizden emin misiniz?",
     "add_item": "Ürün Ekle",
     "sharing_soon": "Paylaşım çok yakında!",
+    "share_soon": "Paylaşma özelliği çok yakında!",
     "clear_list": "Listeyi Temizle",
     "clear": "Temizle"
   },
@@ -578,6 +606,18 @@
       "user_id": "Kullanıcı Kimliği"
     }
   },
+  "error": {
+    "initialization_failed_message": "Uygulama başlatılamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.",
+    "initialization_failed_title": "Başlatma Hatası",
+    "offline_message": "İnternet bağlantınız yok gibi görünüyor. Lütfen bağlantınızı kontrol edin.",
+    "offline_title": "Bağlantı Yok",
+    "page_not_found": "Sayfa Bulunamadı",
+    "page_not_found_message": "Aradığınız sayfa mevcut değil veya taşınmış olabilir."
+  },
+  "friend_actions": {
+    "accept": "Kabul Et",
+    "reject": "Reddet"
+  },
   "notifications": {
     "meal_reminder": "Yemek Hatırlatıcısı",
     "water_reminder": "Su Hatırlatıcısı",
@@ -602,11 +642,16 @@
     "select": "Seç",
     "cancel": "İptal",
     "confirm": "Onayla",
+    "send": "Gönder",
     "add": "Ekle",
     "remove": "Sil",
     "continue": "Devam Et",
     "back": "Geri",
     "done": "Tamam",
+    "clear": "Temizle",
+    "continue_offline": "Çevrimdışı Devam Et",
+    "go_home": "Anasayfaya Git",
+    "retrying": "Yeniden deneniyor...",
     "loading": "Yükleniyor...",
     "retry": "Tekrar Dene",
     "try_again": "Tekrar Deneyin",
@@ -628,7 +673,9 @@
     "weak_password": "Şifre çok zayıf"
   },
   "ingredients": {
+    "title": "Malzemeler",
     "vegetables": {
+      "title": "Sebzeler",
       "broccoli": "Brokoli",
       "cauliflower": "Karnabahar",
       "spinach": "Ispanak",
@@ -740,6 +787,7 @@
     "settings": "Ayarlar",
     "history": "Geçmiş",
     "home": "Anasayfa",
+    "meals": "Öğünler",
     "community": "Topluluk"
   },
   "community": {
@@ -785,7 +833,8 @@
       "delete": "Gönderiyi Sil",
       "edit": "Düzenle",
       "report": "Bildir",
-      "share": "Paylaş"
+      "share": "Paylaş",
+      "options": "Seçenekler"
     },
     "delete_confirm": {
       "title": "Gönderiyi Sil?",
@@ -913,6 +962,22 @@
       "nutrition": "Beslenme",
       "private": "Özel"
     },
+    "meal_share": "Öğün Paylaş",
+    "meal_share_soon": "Öğün Paylaş özelliği yakında!",
+    "new_chat": "Yeni Sohbet",
+    "no_friends": "Henüz arkadaşınız yok.",
+    "no_results": "Sonuç bulunamadı.",
+    "offline": "Çevrimdışı",
+    "online": "Çevrimiçi",
+    "search_friend_hint": "Arkadaş ara...",
+    "signal_send": "Sinyal Gönder",
+    "unnamed_user": "İsimsiz Kullanıcı",
+    "time": {
+      "days_ago": "{d}g önce",
+      "hours_ago": "{h}s önce",
+      "mins_ago": "{m}d önce",
+      "now": "Şimdi"
+    },
     "needs_help": {
       "title": "{name}, {activity} için\ndestek bekliyor!",
       "location": "MacFit - Peron 3",
@@ -929,6 +994,19 @@
       "share_meal": "Öğün Paylaş",
       "send_signal": "Sinyal Gönder",
       "placeholder_message_input": "Mesaj yazın..."
+    }
+  },
+  "signal": {
+    "cancel": "İptal",
+    "custom_message_hint": "Özel mesajınızı yazın...",
+    "message_label": "Mesaj",
+    "select_type": "Sinyal Türü Seçin",
+    "send": "Gönder",
+    "title": "Sinyal Gönder",
+    "type": {
+      "general": "Genel",
+      "gym": "Spor Salonu",
+      "meal": "Öğün"
     }
   }
 }

@@ -5,6 +5,7 @@ import 'package:cookrange/core/services/auth_service.dart';
 import 'package:cookrange/core/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../core/utils/app_routes.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   const VerifyEmailScreen({super.key});
@@ -31,7 +32,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       // context is available.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/login');
+          Navigator.pushReplacementNamed(context, AppRoutes.login);
         }
       });
       return;
@@ -56,6 +57,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     });
 
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       if (_remainingSeconds > 0) {
         setState(() {
           _remainingSeconds--;
@@ -100,9 +105,11 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       }
     }
 
-    setState(() {
-      _isSending = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isSending = false;
+      });
+    }
   }
 
   Future<void> _checkEmailVerified() async {
@@ -117,9 +124,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
       if (mounted) {
         if (onboardingCompleted) {
-          Navigator.pushReplacementNamed(context, '/home');
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
         } else {
-          Navigator.pushReplacementNamed(context, '/onboarding');
+          Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
         }
       }
     }
@@ -149,7 +156,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                     await _authService.signOut();
                     if (mounted) {
                       navigator.pushNamedAndRemoveUntil(
-                          '/login', (route) => false);
+                          AppRoutes.login, (route) => false);
                     }
                   },
                 ),

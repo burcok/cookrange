@@ -22,7 +22,7 @@ class CommunityUser {
   factory CommunityUser.fromMap(Map<String, dynamic> map) {
     return CommunityUser(
       id: map['id'] ?? '',
-      name: map['name'] ?? 'Unknown',
+      name: map['name'] ?? 'User',
       avatarUrl: map['avatarUrl'] ?? '',
     );
   }

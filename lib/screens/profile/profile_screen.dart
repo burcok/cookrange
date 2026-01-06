@@ -5,6 +5,7 @@ import 'package:cookrange/core/localization/app_localizations.dart';
 import 'package:cookrange/core/providers/theme_provider.dart';
 import 'package:cookrange/widgets/onboarding_common_widgets.dart';
 import 'package:intl/intl.dart';
+import '../../core/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/models/user_model.dart';
@@ -19,8 +20,9 @@ import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final UserModel? viewUser; // If null, shows local user (Private Mode)
+  final String? userId; // Optional ID to fetch user if viewUser is null
 
-  const ProfileScreen({super.key, this.viewUser});
+  const ProfileScreen({super.key, this.viewUser, this.userId});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -31,6 +33,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic> _editableData = {};
 
   bool _isLoading = false;
+  UserModel? _fetchedUser;
+  bool _isFetchingUser = false;
 
   // Controllers
   final TextEditingController _genderController = TextEditingController();
@@ -43,16 +47,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   late Stream<List<UserModel>> _friendsStream; // Optimization
 
-  bool get _isPublicMode => widget.viewUser != null;
+  bool get _isPublicMode => widget.viewUser != null || widget.userId != null;
 
   @override
   void initState() {
     super.initState();
     _friendsStream = FriendService().getFriendsStream(); // Initialize once
-    if (!_isPublicMode) {
+    if (widget.viewUser == null && widget.userId != null) {
+      _isFetchingUser = true;
+      _fetchUser();
+    } else if (!_isPublicMode) {
       _initializePrivateData();
     } else {
       _checkFriendshipStatus();
+    }
+  }
+
+  Future<void> _fetchUser() async {
+    // _isFetchingUser is already true if called from initState
+    try {
+      final user = await FirestoreService().getUserData(widget.userId!);
+      if (mounted) {
+        setState(() {
+          _fetchedUser = user;
+          _isFetchingUser = false;
+        });
+        if (user != null) {
+          _checkFriendshipStatus();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isFetchingUser = false);
+      }
     }
   }
 
@@ -69,6 +96,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user;
     if (widget.viewUser != null) {
       user = widget.viewUser!;
+    } else if (_fetchedUser != null) {
+      user = _fetchedUser!;
     } else {
       user = context.read<UserProvider>().user;
     }
@@ -87,10 +116,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isCheckingFriendship = true;
 
   Future<void> _checkFriendshipStatus() async {
-    if (widget.viewUser?.uid == null) return;
+    final uid = widget.viewUser?.uid ?? widget.userId;
+    if (uid == null) return;
     try {
-      final status =
-          await FriendService().checkFriendshipStatus(widget.viewUser!.uid);
+      final status = await FriendService().checkFriendshipStatus(uid);
       if (mounted) {
         setState(() {
           _friendshipStatus = status;
@@ -105,7 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // --- Actions ---
 
   Future<void> _handleFriendAction() async {
-    final targetUid = widget.viewUser?.uid;
+    final targetUid = widget.viewUser?.uid ?? widget.userId;
     if (targetUid == null) return;
     final service = FriendService();
 
@@ -135,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _handleRejectRequest() async {
-    final targetUid = widget.viewUser?.uid;
+    final targetUid = widget.viewUser?.uid ?? widget.userId;
     if (targetUid == null) return;
     setState(() => _isLoading = true);
     try {
@@ -223,17 +252,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isFetchingUser) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     if (_isPublicMode) {
-      return _buildScaffold(context, widget.viewUser!, true);
+      final user = widget.viewUser ?? _fetchedUser;
+      if (user == null) {
+        return Scaffold(
+          appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+          body: Center(
+              child: Text(AppLocalizations.of(context)
+                  .translate('profile.user_not_found'))),
+        );
+      }
+      return _buildScaffold(context, user, true);
     }
 
     // Private Mode: Listen to provider
     return Consumer<UserProvider>(
       builder: (context, provider, _) {
         final user = provider.user;
-        if (user == null)
+        if (user == null) {
           return const Scaffold(
               body: Center(child: CircularProgressIndicator()));
+        }
         return _buildScaffold(context, user, false);
       },
     );
@@ -593,7 +636,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return ElevatedButton.icon(
       onPressed: () async {
-        if (widget.viewUser == null) return;
+        final targetUid = widget.viewUser?.uid ?? widget.userId;
+        if (targetUid == null) return;
         final currentUser = context.read<UserProvider>().user;
         if (currentUser == null) return;
 
@@ -601,7 +645,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         try {
           // Using direct instantiation for consistency
           final chatId = await ChatService()
-              .createOrGetPrivateChat(currentUser.uid, widget.viewUser!.uid);
+              .createOrGetPrivateChat(currentUser.uid, targetUid);
 
           if (!mounted) return;
 
@@ -622,7 +666,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           final chat = ChatModel(
             id: chatId,
-            participants: [currentUser.uid, widget.viewUser!.uid],
+            participants: [currentUser.uid, targetUid],
             unreadCounts: {},
             type: ChatType.private,
             updatedAt: DateTime.now(),
@@ -1682,14 +1726,14 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.arrow_forward),
                     onPressed: _globalSearchCtrl.text.isNotEmpty &&
-                            _globalSearchCtrl.text.length > 3
+                            _globalSearchCtrl.text.length >= 3
                         ? _performGlobalSearch
                         : null,
                     autofocus: true,
                   )),
               onSubmitted: (_) => {
                     if (_globalSearchCtrl.text.isNotEmpty &&
-                        _globalSearchCtrl.text.length > 3)
+                        _globalSearchCtrl.text.length >= 3)
                       _performGlobalSearch()
                   }),
           const SizedBox(height: 20),
@@ -1722,7 +1766,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
                                   ? Text((u.displayName ?? "U")[0])
                                   : null,
                             ),
-                            title: Text(u.displayName ?? "Unknown",
+                            title: Text(u.displayName ?? "User",
                                 style: TextStyle(
                                     color: widget.isDark
                                         ? Colors.white

@@ -24,15 +24,67 @@ class FriendService {
   Future<List<UserModel>> searchUsers(String query) async {
     if (query.isEmpty) return [];
 
-    final q = query.toLowerCase();
-    final snapshot = await _firestore
+    final String qLower = query.toLowerCase();
+    final String qOriginal = query;
+
+    // We do multiple queries as Firestore doesn't support "OR" between fields with prefix match easily
+    // 1. Search by exact email first (often what's wanted)
+    final emailQuery = _firestore
         .collection('users')
-        .where('displayName', isGreaterThanOrEqualTo: q)
-        .where('displayName', isLessThan: q + '\uf8ff')
+        .where('email', isEqualTo: qLower)
+        .limit(5)
+        .get();
+
+    // 2. Search by displayName prefix (Original Case)
+    final nameOriginalQuery = _firestore
+        .collection('users')
+        .where('displayName', isGreaterThanOrEqualTo: qOriginal)
+        .where('displayName', isLessThan: qOriginal + '\uf8ff')
         .limit(10)
         .get();
 
-    return snapshot.docs.map((doc) => UserModel.fromFirestore(doc)).toList();
+    // 3. Search by displayName prefix (Lowercase - works better if stored names are lowercase or for specific matches)
+    final nameLowerQuery = _firestore
+        .collection('users')
+        .where('displayName', isGreaterThanOrEqualTo: qLower)
+        .where('displayName', isLessThan: qLower + '\uf8ff')
+        .limit(10)
+        .get();
+
+    // 4. Search by email prefix
+    final emailPrefixQuery = _firestore
+        .collection('users')
+        .where('email', isGreaterThanOrEqualTo: qLower)
+        .where('email', isLessThan: qLower + '\uf8ff')
+        .limit(10)
+        .get();
+
+    try {
+      final results = await Future.wait([
+        emailQuery,
+        nameOriginalQuery,
+        nameLowerQuery,
+        emailPrefixQuery,
+      ]);
+
+      final Map<String, UserModel> usersMap = {};
+      final String? myUid = currentUserId;
+
+      for (var snapshot in results) {
+        for (var doc in snapshot.docs) {
+          if (doc.id == myUid) continue; // Skip self
+
+          if (!usersMap.containsKey(doc.id)) {
+            usersMap[doc.id] = UserModel.fromFirestore(doc);
+          }
+        }
+      }
+
+      return usersMap.values.toList();
+    } catch (e) {
+      debugPrint("Error searching users: $e");
+      return [];
+    }
   }
 
   // Get current user's friends

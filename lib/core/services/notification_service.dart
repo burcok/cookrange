@@ -119,6 +119,18 @@ class NotificationService {
     await _userNotifications(uid).doc(notificationId).update({'isRead': true});
   }
 
+  /// Mark multiple notifications as read in batch
+  Future<void> markMultipleAsRead(List<String> notificationIds) async {
+    final uid = currentUserId;
+    if (uid == null || notificationIds.isEmpty) return;
+
+    final batch = _firestore.batch();
+    for (var id in notificationIds) {
+      batch.update(_userNotifications(uid).doc(id), {'isRead': true});
+    }
+    await batch.commit();
+  }
+
   // Delete notification
   Future<void> deleteNotification(String notificationId) async {
     final uid = currentUserId;

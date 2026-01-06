@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cookrange/core/widgets/app_image.dart';
 import '../../core/localization/app_localizations.dart';
@@ -12,7 +13,6 @@ import 'post_detail_screen.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/main_header.dart';
 import '../../core/providers/theme_provider.dart';
-import '../../core/widgets/unified_action_sheet.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -73,17 +73,199 @@ class _CommunityScreenState extends State<CommunityScreen> {
   void _showFilterSheet(BuildContext context, List<String> filters,
       Map<String, String> filterKeys) {
     final appLoc = AppLocalizations.of(context);
-    showUnifiedActionSheet(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = context.read<ThemeProvider>().primaryColor;
+
+    showModalBottomSheet(
       context: context,
-      title: appLoc.translate("community.filter_title"),
-      actions: filters.map((filter) {
-        return ActionSheetItem(
-          label: appLoc.translate(filterKeys[filter]!),
-          icon: _getFilterIcon(filter),
-          isSelected: _selectedFilter == filter,
-          onTap: () => _onFilterChanged(filter),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        String tempSelectedFilter = _selectedFilter;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF1E293B).withOpacity(0.9)
+                        : Colors.white.withOpacity(0.9),
+                    border: Border(
+                      top: BorderSide(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.black.withOpacity(0.05),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 8),
+                        // Handle bar
+                        Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.2)
+                                : Colors.black.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Title
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 8),
+                          child: Text(
+                            appLoc.translate("community.filter_title"),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Divider(
+                          height: 1,
+                          color: isDark
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.black.withOpacity(0.05),
+                        ),
+
+                        Flexible(
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: Column(
+                              children: filters.map((filter) {
+                                final isSelected = tempSelectedFilter == filter;
+                                return InkWell(
+                                  onTap: () {
+                                    setModalState(() {
+                                      tempSelectedFilter = filter;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 24, vertical: 16),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? primaryColor
+                                              .withOpacity(isDark ? 0.2 : 0.1)
+                                          : Colors.transparent,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? primaryColor.withOpacity(0.2)
+                                                : (isDark
+                                                    ? Colors.white
+                                                        .withOpacity(0.05)
+                                                    : Colors.black
+                                                        .withOpacity(0.05)),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            _getFilterIcon(filter),
+                                            size: 20,
+                                            color: isSelected
+                                                ? primaryColor
+                                                : (isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF0F172A)),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Text(
+                                            appLoc
+                                                .translate(filterKeys[filter]!),
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: isSelected
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w500,
+                                              color: isSelected
+                                                  ? primaryColor
+                                                  : (isDark
+                                                      ? Colors.white
+                                                      : const Color(
+                                                          0xFF0F172A)),
+                                            ),
+                                          ),
+                                        ),
+                                        if (isSelected)
+                                          Icon(Icons.check,
+                                              color: primaryColor, size: 20),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+
+                        // Spacer
+                        const SizedBox(height: 8),
+
+                        // Save Button
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                _onFilterChanged(tempSelectedFilter);
+                                Navigator.pop(context);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                backgroundColor: primaryColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: Text(
+                                appLoc.translate("common.save"),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Safe Area padding for bottom
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         );
-      }).toList(),
+      },
     );
   }
 
@@ -215,12 +397,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.1)
-                                : Colors.black.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
                           child: Row(
                             children: [
                               Text(
