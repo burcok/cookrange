@@ -239,4 +239,21 @@ class FriendService {
         .doc(uid)
         .delete();
   }
+
+  /// Preload friends to warm up cache
+  Future<void> preloadFriends() async {
+    final uid = currentUserId;
+    if (uid == null) return;
+    try {
+      // Just fetch the IDs, detail fetch is asyncMap anyway
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('friends')
+          .limit(20)
+          .get();
+    } catch (e) {
+      // Ignore
+    }
+  }
 }

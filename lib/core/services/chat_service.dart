@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
@@ -40,7 +41,29 @@ class ChatService {
           if (otherId.isNotEmpty && userDataMap.containsKey(otherId)) {
             final userData = userDataMap[otherId]!;
             final newMetadata = Map<String, dynamic>.from(chat.metadata ?? {});
-            newMetadata['is_online'] = userData['is_online'] ?? false;
+
+            // Online Status Verification Logic
+            final bool isOnlineFlag = userData['is_online'] ?? false;
+            final Timestamp? lastActiveTs =
+                userData['last_active_at'] as Timestamp?;
+            final DateTime? lastActiveAt = lastActiveTs?.toDate();
+
+            bool isActuallyOnline = false;
+            if (isOnlineFlag) {
+              if (lastActiveAt != null) {
+                final difference = DateTime.now().difference(lastActiveAt);
+                // 5 minutes threshold + small buffer for network delays
+                if (difference.inMinutes < 5) {
+                  isActuallyOnline = true;
+                }
+              } else {
+                // If online but no timestamp (legacy?), assume online or decide strict
+                // Let's assume offline to be safe against ghost sessions
+                isActuallyOnline = false;
+              }
+            }
+
+            newMetadata['is_online'] = isActuallyOnline;
 
             return chat.copyWith(
               name: userData['displayName'],
@@ -249,5 +272,21 @@ class ChatService {
 
     await _firestore.collection('chats').doc(newChatId).set(newChat.toJson());
     return newChatId;
+  }
+
+  /// Preload chats to warm up cache
+  Future<void> preloadChats() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      await _firestore
+          .collection('chats')
+          .where('participants', arrayContains: uid)
+          .orderBy('updatedAt', descending: true)
+          .limit(10)
+          .get();
+    } catch (e) {
+      // Ignore
+    }
   }
 }

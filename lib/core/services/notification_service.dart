@@ -49,6 +49,22 @@ class NotificationService {
         .map((snapshot) => snapshot.docs.length);
   }
 
+  /// Warming up the cache for unread count
+  Future<void> preloadUnreadCount() async {
+    final uid = currentUserId;
+    if (uid == null) return;
+
+    try {
+      // Just a shallow query to populate Firestore cache
+      await _userNotifications(uid)
+          .where('isRead', isEqualTo: false)
+          .limit(1)
+          .get();
+    } catch (e) {
+      // Ignore errors during preloading
+    }
+  }
+
   // Fetch once (for existing logic if needed)
   Future<List<NotificationModel>> getNotifications() async {
     final uid = currentUserId;

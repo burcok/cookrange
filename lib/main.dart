@@ -1,27 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/providers/language_provider.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/services/app_lifecycle_service.dart';
-import 'core/services/app_initialization_service.dart';
 import 'core/services/provider_initialization_service.dart';
 import 'core/services/route_configuration_service.dart';
 import 'core/services/screen_util_service.dart';
-import 'core/widgets/error_fallback_widget.dart';
+import 'core/services/auth_service.dart';
 
+/// PERFORMANCE OPTIMIZATION: main() initializes Firebase (required for providers)
+/// but backgrounds the rest of the heavy setup (dotenv, AI, Hive, Analytics Detailed)
+/// to the SplashScreen for a smooth animated transition.
 Future<void> main() async {
-  // Initialize the app with comprehensive error handling
-  final initService = AppInitializationService();
-  final result = await initService.initialize();
+  WidgetsFlutterBinding.ensureInitialized();
 
-  if (result.isSuccess) {
-    runApp(MyApp());
-  } else {
-    // Run app with error fallback
-    runApp(ErrorApp(error: result.error));
-  }
+  // Firebase.initializeApp() is a hard requirement for many providers and services.
+  // We initialize it here to prevent "[core/no-app]" errors, but we keep it minimal.
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
@@ -42,7 +45,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _appLifecycleService.initialize();
   }
 
   @override
@@ -50,12 +52,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _appLifecycleService.dispose();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    // Handle app lifecycle changes if needed
   }
 
   @override
@@ -69,6 +65,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         builder: (context, languageProvider, themeProvider, child) {
           return _screenUtilService.configureScreenUtil(
             child: MaterialApp(
+              navigatorKey: AuthService().navigatorKey,
               title: 'Cookrange',
               debugShowCheckedModeBanner: false,
               theme:
@@ -91,35 +88,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               },
             ),
           );
-        },
-      ),
-    );
-  }
-}
-
-/// Error app that shows when initialization fails
-class ErrorApp extends StatelessWidget {
-  final String? error;
-
-  const ErrorApp({super.key, this.error});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Cookrange - Error',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme(),
-      darkTheme: AppTheme.darkTheme(),
-      themeMode: ThemeMode.system,
-      locale: const Locale('en'), // Default to English for error screen
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: ErrorFallbackWidget(
-        error: error,
-        onRetry: () async {
-          // Properly re-initialize before restarting
-          await AppInitializationService().initialize();
-          runApp(const MyApp());
         },
       ),
     );

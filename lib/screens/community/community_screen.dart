@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cookrange/core/widgets/app_image.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/community_service.dart';
 
@@ -305,43 +306,45 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(
                               bottom: 20, left: 24, right: 24),
-                          child: GlassPostCard(
-                            post: post,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      PostDetailScreen(postId: post.id),
-                                ),
-                              );
-                            },
-                            onLike: () async {
-                              await _service.likePost(post.id);
-                              // The stream will update the UI automatically
-                            },
-                            onComment: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      PostDetailScreen(postId: post.id),
-                                ),
-                              );
-                            },
-                            onShare: () {
-                              // Implement share logic
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content: Text(AppLocalizations.of(context)
-                                        .translate('community.menu.share'))),
-                              );
-                            },
-                            onReaction: (emoji) async {
-                              await _service.toggleReaction(
-                                  postId: post.id, emoji: emoji);
-                              // Stream updates automatically
-                            },
+                          child: RepaintBoundary(
+                            child: GlassPostCard(
+                              post: post,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        PostDetailScreen(postId: post.id),
+                                  ),
+                                );
+                              },
+                              onLike: () async {
+                                await _service.likePost(post.id);
+                                // The stream will update the UI automatically
+                              },
+                              onComment: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        PostDetailScreen(postId: post.id),
+                                  ),
+                                );
+                              },
+                              onShare: () {
+                                // Implement share logic
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(AppLocalizations.of(context)
+                                          .translate('community.menu.share'))),
+                                );
+                              },
+                              onReaction: (emoji) async {
+                                await _service.toggleReaction(
+                                    postId: post.id, emoji: emoji);
+                                // Stream updates automatically
+                              },
+                            ),
                           ),
                         );
                       },
@@ -419,17 +422,20 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   height: 60,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    image: group.imageUrl.isNotEmpty
-                        ? DecorationImage(
-                            image: group.imageUrl.startsWith('http')
-                                ? NetworkImage(group.imageUrl)
-                                : AssetImage(group.imageUrl) as ImageProvider,
-                            fit: BoxFit.cover)
-                        : null,
                     color: Colors.grey[300],
                   ),
-                  child:
-                      group.imageUrl.isEmpty ? const Icon(Icons.group) : null,
+                  child: ClipOval(
+                    child: group.imageUrl.isNotEmpty
+                        ? (group.imageUrl.startsWith('http')
+                            ? AppImage(
+                                imageUrl: group.imageUrl,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                              )
+                            : Image.asset(group.imageUrl, fit: BoxFit.cover))
+                        : const Icon(Icons.group),
+                  ),
                 ),
                 if (group.hasUpdate)
                   Positioned(

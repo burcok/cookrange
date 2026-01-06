@@ -1,4 +1,3 @@
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 
@@ -146,16 +145,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
               width: 320,
               height: 320,
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(isDark ? 0.1 : 0.2),
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.blue.withOpacity(0.2), blurRadius: 100)
-                ],
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.blue.withOpacity(isDark ? 0.15 : 0.25),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.7],
+                ),
               ),
-              child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                  child: Container()), // Blur attempt
             ),
           ),
           Positioned(
@@ -484,9 +482,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
         child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
       child: GlassContainer(
+        enableBlur: false, // Performance optimization
         borderRadius: BorderRadius.circular(20),
         padding: const EdgeInsets.all(16),
-        opacity: isDark ? 0.6 : 0.7,
+        opacity: isDark ? 0.6 : 0.9,
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         child: Stack(
           children: [

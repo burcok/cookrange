@@ -27,39 +27,44 @@ class SettingsScreen extends StatelessWidget {
       body: Stack(
         children: [
           // Background Glows
+          // Background Glows
           Positioned(
-            top: 0,
-            right: 0,
+            top: -100,
+            right: -100,
             child: Container(
               width: 500,
               height: 500,
               decoration: BoxDecoration(
-                color: isDark
-                    ? primaryColor.withOpacity(0.1)
-                    : const Color(0xFFFFEDD5).withOpacity(0.5), // orange-100/50
-                borderRadius: BorderRadius.circular(500),
-              ),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-                child: const SizedBox(),
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    isDark
+                        ? primaryColor.withOpacity(0.2)
+                        : const Color(0xFFFFEDD5).withOpacity(0.6),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.7],
+                ),
               ),
             ),
           ),
           Positioned(
-            bottom: 0,
-            left: 0,
+            bottom: -100,
+            left: -100,
             child: Container(
               width: 400,
               height: 400,
               decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.blue[900]!.withOpacity(0.1)
-                    : const Color(0xFFEFF6FF).withOpacity(0.5), // blue-50/50
-                borderRadius: BorderRadius.circular(400),
-              ),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-                child: const SizedBox(),
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    isDark
+                        ? Colors.blue[900]!.withOpacity(0.2)
+                        : const Color(0xFFEFF6FF).withOpacity(0.6),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.7],
+                ),
               ),
             ),
           ),
@@ -474,46 +479,50 @@ class SettingsScreen extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: isDark
-            ? const Color(0xFF1F2937).withOpacity(0.7)
-            : Colors.white.withOpacity(0.7),
+            ? const Color(0xFF1F2937)
+                .withOpacity(0.9) // Higher opacity since no blur
+            : Colors.white.withOpacity(0.95),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? Colors.grey[800]! : Colors.white.withOpacity(0.6),
+          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.grey[800]!.withOpacity(0.3)
-                      : Colors.white.withOpacity(0.3),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
-                    ),
-                  ),
-                ),
-                child: Text(
-                  title.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                    color: isDark ? Colors.grey[300] : Colors.grey[800],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.grey[800]!.withOpacity(0.5)
+                    : Colors.grey[50]!.withOpacity(0.5),
+                border: Border(
+                  bottom: BorderSide(
+                    color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
                   ),
                 ),
               ),
-              ...children,
-            ],
-          ),
+              child: Text(
+                title.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  color: isDark ? Colors.grey[300] : Colors.grey[800],
+                ),
+              ),
+            ),
+            ...children,
+          ],
         ),
       ),
     );

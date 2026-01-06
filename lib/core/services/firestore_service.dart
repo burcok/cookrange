@@ -113,8 +113,9 @@ class FirestoreService {
 
   /// Handles user document creation or update upon a successful login.
   /// Also logs every successful login to a dedicated history collection.
-  Future<void> handleUserLogin(User user) async {
-    _log.info('Handling login for user: ${user.uid}', service: _serviceName);
+  Future<void> handleUserLogin(User user, {String? sessionId}) async {
+    _log.info('Handling login for user: ${user.uid}, session: $sessionId',
+        service: _serviceName);
     try {
       final ipAddress = await _getIpAddress();
       final deviceInfoMap = await _getDeviceInfo();
@@ -132,6 +133,10 @@ class FirestoreService {
         'last_login_device_os': deviceInfoMap['device_os'],
         'is_online': true,
       };
+
+      if (sessionId != null) {
+        loginData['current_session_id'] = sessionId;
+      }
 
       // Only update app version info if it has changed
       final currentAppVersion = userDoc.data()?['app_version'] as String?;
@@ -271,6 +276,11 @@ class FirestoreService {
       _log.error('Error creating user document for ${user.uid}',
           service: _serviceName, error: e, stackTrace: s);
     }
+  }
+
+  // Get Real-time User Stream
+  Stream<DocumentSnapshot> getUserStream(String uid) {
+    return _firestore.collection('users').doc(uid).snapshots();
   }
 
   /// Logs a failed login attempt to a root collection for security monitoring.

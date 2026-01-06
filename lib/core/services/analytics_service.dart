@@ -8,6 +8,7 @@ import 'package:hive/hive.dart';
 import 'dart:collection';
 import 'dart:math';
 import 'log_service.dart';
+import '../models/analytics_event.dart';
 
 class AnalyticsService {
   FirebaseAnalytics get _analytics => FirebaseAnalytics.instance;
@@ -56,85 +57,26 @@ class AnalyticsService {
     try {
       _log.info('Initializing AnalyticsService', service: _serviceName);
 
-      // Check if box is already open and use it, otherwise open it
-      if (Hive.isBoxOpen('analytics_cache')) {
-        try {
-          _analyticsBox = Hive.box<Map>('analytics_cache');
-          _boxAvailable = true;
-          _log.info('Using existing analytics_cache box',
-              service: _serviceName);
-        } catch (e) {
-          // Box exists but with different type - close it and reopen with correct type
-          _log.warning(
-              'Box exists with different type, reopening with correct type',
-              service: _serviceName,
-              error: e);
-          try {
-            await Hive.box('analytics_cache').close();
-            _analyticsBox = await Hive.openBox<Map>('analytics_cache');
-            _boxAvailable = true;
-            _log.info('Reopened analytics_cache box with correct type',
-                service: _serviceName);
-          } catch (reopenError) {
-            _log.error('Failed to reopen analytics_cache box',
-                service: _serviceName, error: reopenError);
-            _boxAvailable = false;
-          }
-        }
-      } else {
-        try {
-          _analyticsBox = await Hive.openBox<Map>('analytics_cache');
-          _boxAvailable = true;
-          _log.info('Opened new analytics_cache box', service: _serviceName);
-        } catch (e) {
-          _log.error('Failed to open analytics_cache box',
-              service: _serviceName, error: e);
-          // If we can't open the box, we'll work without caching
-          _log.warning('Analytics service will work without persistent caching',
-              service: _serviceName);
-          _boxAvailable = false;
-        }
-      }
-
-      // PackageInfo'yu ana thread'de al
+      // PackageInfo'yu ana thread'de al - Hızlıdır
       _packageInfo = await PackageInfo.fromPlatform();
       _log.info('Package info loaded', service: _serviceName);
 
-      // Enable analytics collection in background
+      // Critical setup: Enable/Disable analytics
       if (kReleaseMode) {
         unawaited(_analytics.setAnalyticsCollectionEnabled(true));
-        _log.info('Firebase Analytics collection enabled for release mode.',
-            service: _serviceName);
       } else {
         unawaited(_analytics.setAnalyticsCollectionEnabled(false));
-        _log.info('Firebase Analytics collection disabled for debug mode.',
-            service: _serviceName);
       }
       unawaited(
           _analytics.setSessionTimeoutDuration(const Duration(minutes: 30)));
-      unawaited(_analytics.resetAnalyticsData());
 
-      // Set user properties and default parameters in parallel
-      await Future.wait<void>([
-        _setUserProperties(),
-        _setDefaultEventParameters(),
-      ]);
-      _log.info('User properties and default parameters set',
-          service: _serviceName);
-
-      // Log app open event in background
-      unawaited(_logAppOpenWithRetry());
-
-      // Bekleyen eventleri işle
-      unawaited(_processPendingEvents());
-
-      // Batch işleme zamanlayıcısını başlat
-      _startBatchTimer();
-      _startProcessTimer();
+      // Defer heavy tasks using microtask or unawaited future to unblock init
+      unawaited(_performDeferredInitialization());
 
       _isInitialized = true;
       _initCompleter?.complete();
-      _log.info('Initialization completed successfully', service: _serviceName);
+      _log.info('Initialization critical path completed',
+          service: _serviceName);
     } catch (e, stack) {
       _log.error('Error during initialization',
           service: _serviceName, error: e, stackTrace: stack);
@@ -143,6 +85,74 @@ class AnalyticsService {
       rethrow;
     } finally {
       _isInitializing = false;
+    }
+  }
+
+  Future<void> _performDeferredInitialization() async {
+    try {
+      // 1. Initialize Hive (Heavy I/O)
+      await _initializeHive();
+
+      // 2. Set user properties (Requires DeviceInfo which is somewhat heavy)
+      await Future.wait<void>([
+        _setUserProperties(),
+        _setDefaultEventParameters(),
+      ]);
+
+      // 3. Log app open
+      await _logAppOpenWithRetry();
+
+      // 4. Process pending events from previous session
+      await _processPendingEvents();
+
+      // 5. Start timers
+      _startBatchTimer();
+      _startProcessTimer();
+
+      _log.info('Deferred initialization completed', service: _serviceName);
+    } catch (e) {
+      _log.warning('Deferred initialization failed (non-critical)',
+          service: _serviceName, error: e);
+    }
+  }
+
+  Future<void> _initializeHive() async {
+    // Check if box is already open and use it, otherwise open it
+    if (Hive.isBoxOpen('analytics_cache')) {
+      try {
+        _analyticsBox = Hive.box<Map>('analytics_cache');
+        _boxAvailable = true;
+        _log.info('Using existing analytics_cache box', service: _serviceName);
+      } catch (e) {
+        // Box exists but with different type - close it and reopen with correct type
+        _log.warning(
+            'Box exists with different type, reopening with correct type',
+            service: _serviceName,
+            error: e);
+        try {
+          await Hive.box('analytics_cache').close();
+          _analyticsBox = await Hive.openBox<Map>('analytics_cache');
+          _boxAvailable = true;
+          _log.info('Reopened analytics_cache box with correct type',
+              service: _serviceName);
+        } catch (reopenError) {
+          _log.error('Failed to reopen analytics_cache box',
+              service: _serviceName, error: reopenError);
+          _boxAvailable = false;
+        }
+      }
+    } else {
+      try {
+        _analyticsBox = await Hive.openBox<Map>('analytics_cache');
+        _boxAvailable = true;
+        _log.info('Opened new analytics_cache box', service: _serviceName);
+      } catch (e) {
+        _log.error('Failed to open analytics_cache box',
+            service: _serviceName, error: e);
+        // If we can't open the box, we'll work without caching
+        _log.warning('Analytics service will work without persistent caching',
+            service: _serviceName);
+      }
     }
   }
 
@@ -1040,35 +1050,5 @@ class AnalyticsService {
       _log.error('Error logging content progress',
           service: _serviceName, error: e);
     }
-  }
-}
-
-class AnalyticsEvent {
-  final String name;
-  final Map<String, Object> parameters;
-  final String timestamp;
-
-  AnalyticsEvent({
-    required this.name,
-    required this.parameters,
-  }) : timestamp = DateTime.now().toIso8601String();
-
-  Map<String, Object> toMap() {
-    return {
-      'name': name,
-      'parameters': parameters,
-      'timestamp': timestamp,
-    };
-  }
-
-  factory AnalyticsEvent.fromMap(Map<dynamic, dynamic> map) {
-    return AnalyticsEvent(
-      name: map['name'] as String,
-      parameters: Map<String, Object>.from(
-        (map['parameters'] as Map).map(
-          (key, value) => MapEntry(key.toString(), value as Object),
-        ),
-      ),
-    );
   }
 }

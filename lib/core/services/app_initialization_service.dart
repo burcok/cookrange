@@ -165,10 +165,16 @@ class AppInitializationService {
   /// Initialize Firebase with comprehensive error handling
   Future<void> _initializeFirebase() async {
     try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      _log.info('Firebase initialized successfully', service: _serviceName);
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      } else {
+        _log.info('Firebase already initialized in main()',
+            service: _serviceName);
+      }
+      _log.info('Firebase initialization check complete',
+          service: _serviceName);
       _initializationResults['firebase'] = true;
     } catch (e) {
       _log.error('Firebase initialization failed',
@@ -238,33 +244,14 @@ class AppInitializationService {
   /// Initialize app services
   Future<void> _initializeServices() async {
     try {
-      // Initialize services in parallel where possible
-      try {
-        await CrashlyticsService().initialize();
-        _initializationResults['crashlytics'] = true;
-      } catch (e) {
-        _initializationResults['crashlytics'] = false;
-        _log.warning('Crashlytics service initialization failed',
-            service: _serviceName, error: e);
-      }
+      _log.info('Starting services initialization...', service: _serviceName);
 
-      try {
-        await AnalyticsService().initialize();
-        _initializationResults['analytics'] = true;
-      } catch (e) {
-        _initializationResults['analytics'] = false;
-        _log.warning('Analytics service initialization failed',
-            service: _serviceName, error: e);
-      }
-
-      try {
-        await AuthService().initialize();
-        _initializationResults['auth'] = true;
-      } catch (e) {
-        _initializationResults['auth'] = false;
-        _log.warning('Auth service initialization failed',
-            service: _serviceName, error: e);
-      }
+      // Initialize independent services in parallel
+      await Future.wait([
+        _initCrashlytics(),
+        _initAnalytics(),
+        _initAuth(),
+      ]);
 
       _log.info('App services initialized', service: _serviceName);
     } catch (e) {
@@ -272,6 +259,39 @@ class AppInitializationService {
           service: _serviceName, error: e);
       _initializationResults['services'] = false;
       // Don't throw - app can work with limited services
+    }
+  }
+
+  Future<void> _initCrashlytics() async {
+    try {
+      await CrashlyticsService().initialize();
+      _initializationResults['crashlytics'] = true;
+    } catch (e) {
+      _initializationResults['crashlytics'] = false;
+      _log.warning('Crashlytics service initialization failed',
+          service: _serviceName, error: e);
+    }
+  }
+
+  Future<void> _initAnalytics() async {
+    try {
+      await AnalyticsService().initialize();
+      _initializationResults['analytics'] = true;
+    } catch (e) {
+      _initializationResults['analytics'] = false;
+      _log.warning('Analytics service initialization failed',
+          service: _serviceName, error: e);
+    }
+  }
+
+  Future<void> _initAuth() async {
+    try {
+      await AuthService().initialize();
+      _initializationResults['auth'] = true;
+    } catch (e) {
+      _initializationResults['auth'] = false;
+      _log.warning('Auth service initialization failed',
+          service: _serviceName, error: e);
     }
   }
 

@@ -1326,12 +1326,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final data = snapshot.data!.data() as Map<String, dynamic>?;
           if (data == null) return _buildStatusIndicator(false, null, isDark);
 
-          final bool isOnline = data['isOnline'] ?? false;
+          final bool isOnlineFlag = data['is_online'] ?? false;
           final firestore.Timestamp? lastActive = data['last_active_at'];
           final firestore.Timestamp? lastLogin = data['last_login_at'];
 
+          final DateTime? lastActiveAt = lastActive?.toDate();
+
+          bool isActuallyOnline = false;
+          if (isOnlineFlag) {
+            if (lastActiveAt != null) {
+              final difference = DateTime.now().difference(lastActiveAt);
+              if (difference.inMinutes < 5) {
+                isActuallyOnline = true;
+              }
+            } else {
+              isActuallyOnline = false;
+            }
+          }
+
           return _buildStatusIndicator(
-              isOnline, lastActive?.toDate() ?? lastLogin?.toDate(), isDark);
+              isActuallyOnline, lastActiveAt ?? lastLogin?.toDate(), isDark);
         });
   }
 

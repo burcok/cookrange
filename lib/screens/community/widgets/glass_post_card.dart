@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cookrange/core/widgets/app_image.dart';
 import '../../../core/models/community_post.dart';
 import '../../community/widgets/community_widgets.dart';
 import '../../../core/localization/app_localizations.dart';
@@ -144,6 +145,7 @@ class _GlassPostCardState extends State<GlassPostCard> {
           padding: const EdgeInsets.all(20),
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
           opacity: isDark ? 0.6 : 0.6,
+          enableBlur: false, // OPTIMIZATION: Disable blur for list performance
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF1F2687).withOpacity(0.05),
@@ -160,9 +162,18 @@ class _GlassPostCardState extends State<GlassPostCard> {
                 children: [
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundImage: NetworkImage(_post.author.avatarUrl),
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: const BoxDecoration(shape: BoxShape.circle),
+                        child: ClipOval(
+                          child: AppImage(
+                            imageUrl: _post.author.avatarUrl,
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Column(
@@ -259,15 +270,13 @@ class _GlassPostCardState extends State<GlassPostCard> {
                 Stack(
                   alignment: Alignment.topRight,
                   children: [
-                    Container(
-                      height: 256,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        image: DecorationImage(
-                          image: NetworkImage(_post.imageUrls.first),
-                          fit: BoxFit.cover,
-                        ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: AppImage(
+                        imageUrl: _post.imageUrls.first,
+                        height: 256,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
                       ),
                     ),
                     if (_post.imageUrls.length > 1)
@@ -385,10 +394,13 @@ class _GlassPostCardState extends State<GlassPostCard> {
                                     width: 2,
                                   ),
                                 ),
-                                child: CircleAvatar(
-                                  radius: 10,
-                                  backgroundImage:
-                                      NetworkImage(entry.value.avatarUrl),
+                                child: ClipOval(
+                                  child: AppImage(
+                                    imageUrl: entry.value.avatarUrl,
+                                    width: 20,
+                                    height: 20,
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
                               ),
                             );

@@ -443,42 +443,46 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         padding: const EdgeInsets.only(left: 16, bottom: 8),
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
-                                color: isDark
-                                    ? Colors.white.withOpacity(0.1)
-                                    : Colors.black.withOpacity(0.05),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SizedBox(
-                                      width: 12,
-                                      height: 12,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: isDark
-                                            ? Colors.white70
-                                            : Colors.black54,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      "Yazıyor...", // Could be localized
-                                      style: TextStyle(
-                                        color: isDark
-                                            ? Colors.white70
-                                            : Colors.black54,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.grey.shade800.withOpacity(0.9)
+                                  : Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
                                 ),
-                              ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black54,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Yazıyor...", // Could be localized
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -586,24 +590,19 @@ class _DateSeparator extends StatelessWidget {
     return Center(
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 16),
-        child: ClipRRect(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withOpacity(0.15)
+              : Colors.black.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              color: isDark
-                  ? Colors.white.withOpacity(0.1)
-                  : Colors.black.withOpacity(0.05),
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: isDark ? Colors.white70 : Colors.black54,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isDark ? Colors.white70 : Colors.black54,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),

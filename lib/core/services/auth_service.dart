@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,6 +7,8 @@ import '../../../core/services/analytics_service.dart';
 import 'firestore_service.dart';
 import 'log_service.dart';
 import '../models/user_model.dart';
+import 'package:uuid/uuid.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthException implements Exception {
   final String code;
@@ -103,6 +106,11 @@ class AuthService {
     await _prefs.remove(_onboardingDataKey);
   }
 
+  // Session Management
+  String? _currentSessionId;
+  StreamSubscription<DocumentSnapshot>? _sessionSubscription;
+  final Uuid _uuid = const Uuid();
+
   // Email & Password Login
   Future<User?> signInWithEmail(String email, String password) async {
     _log.info('Attempting to sign in with email: $email',
@@ -113,15 +121,25 @@ class AuthService {
 
       if (result.user == null) {
         // This case is unlikely as FirebaseAuth throws for user-not-found
-        _log.error('Sign in failed: User object is null after successful auth.',
+        _log.error('Sign in failed: User object is null.',
             service: _serviceName);
         throw AuthException('user-not-found');
       }
 
-      // Delegate login handling to FirestoreService
-      _log.info('About to call handleUserLogin for user: ${result.user!.uid}',
+      // Generate Session ID
+      final sessionId = _uuid.v4();
+      _currentSessionId = sessionId;
+
+      // Delegate login handling to FirestoreService with Session ID
+      _log.info(
+          'About to call handleUserLogin for user: ${result.user!.uid}, session: $sessionId',
           service: _serviceName);
-      await _firestoreService.handleUserLogin(result.user!);
+      await _firestoreService.handleUserLogin(result.user!,
+          sessionId: sessionId);
+
+      // Start Monitoring Session
+      _startSessionMonitoring(result.user!.uid);
+
       _log.info('Successfully signed in user: ${result.user!.uid}',
           service: _serviceName);
       return result.user;
@@ -140,6 +158,54 @@ class AuthService {
         throw AuthException('type-error');
       }
       throw AuthException('error-unknown');
+    }
+  }
+
+  void _startSessionMonitoring(String uid) {
+    _sessionSubscription?.cancel();
+    _sessionSubscription =
+        _firestoreService.getUserStream(uid).listen((snapshot) {
+      if (!snapshot.exists || snapshot.data() == null) return;
+
+      final data = snapshot.data() as Map<String, dynamic>;
+      final remoteSessionId = data['current_session_id'] as String?;
+
+      // If remote session ID exists and differs from local, log out
+      if (remoteSessionId != null &&
+          _currentSessionId != null &&
+          remoteSessionId != _currentSessionId) {
+        _log.warning('Session mismatch detected. Logging out.',
+            service: _serviceName);
+        _handleSessionMismatch();
+      }
+    });
+  }
+
+  void _handleSessionMismatch() {
+    _sessionSubscription?.cancel();
+    _sessionSubscription = null;
+    signOut();
+
+    // Show Dialog
+    if (navigatorKey.currentContext != null) {
+      showDialog(
+        context: navigatorKey.currentContext!,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Logged Out'),
+          content: const Text('You have been logged in on another device.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                // Ensure we are at login screen (usually handled by auth stream, but safe to force)
+                // Navigator.of(context).pushReplacementNamed('/login');
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -265,10 +331,17 @@ class AuthService {
       final user = result.user;
 
       if (user != null) {
+        final sessionId = _uuid.v4();
+        _currentSessionId = sessionId;
+
         // Delegate login handling to FirestoreService
-        _log.info('About to call handleUserLogin for Google user: ${user.uid}',
+        _log.info(
+            'About to call handleUserLogin for Google user: ${user.uid}, session: $sessionId',
             service: _serviceName);
-        await _firestoreService.handleUserLogin(user);
+        await _firestoreService.handleUserLogin(user, sessionId: sessionId);
+
+        _startSessionMonitoring(user.uid);
+
         _log.info('Google Sign-In successful for user: ${user.uid}',
             service: _serviceName);
       } else {
@@ -301,6 +374,10 @@ class AuthService {
       await _firestoreService.updateUserOnlineStatus(user.uid, false);
       await _firestoreService.logUserActivity(user.uid, 'logout');
     }
+
+    // Cancel session monitoring
+    await _sessionSubscription?.cancel();
+    _sessionSubscription = null;
 
     try {
       await _googleSignIn.disconnect();

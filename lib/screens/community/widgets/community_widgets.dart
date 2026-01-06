@@ -12,6 +12,7 @@ class GlassContainer extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final Border? border;
   final List<BoxShadow>? boxShadow;
+  final bool enableBlur;
 
   const GlassContainer({
     super.key,
@@ -23,10 +24,28 @@ class GlassContainer extends StatelessWidget {
     this.padding = const EdgeInsets.all(20),
     this.border,
     this.boxShadow,
+    this.enableBlur = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (!enableBlur) {
+      return Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: color.withOpacity(opacity + 0.2 > 1.0 ? 1.0 : opacity + 0.2),
+          borderRadius: borderRadius ?? BorderRadius.circular(24),
+          border: border ??
+              Border.all(
+                color: Colors.white.withOpacity(0.5),
+                width: 1.0,
+              ),
+          boxShadow: boxShadow,
+        ),
+        child: child,
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color:

@@ -70,7 +70,13 @@ class DeviceInfoService {
       await _analytics.logEvent(
         name: 'detailed_device_info_collected',
         parameters: {
-          ...allDeviceInfo,
+          ...allDeviceInfo.map((key, value) {
+            // Convert complex objects to string to stricter Firebase requirements
+            if (value is Map) {
+              return MapEntry(key, value.toString());
+            }
+            return MapEntry(key, value);
+          }),
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         },
       );

@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cookrange/core/widgets/app_image.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 import 'package:cookrange/core/services/chat_service.dart';
 import 'package:cookrange/screens/common/generic_error_screen.dart';
@@ -258,27 +258,29 @@ class _ChatListScreenState extends State<ChatListScreen>
 
                                 final chat =
                                     filteredChats[index - 1]; // Offset by 1
-                                return Column(
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => ChatDetailScreen(
-                                              chat: chat,
+                                return RepaintBoundary(
+                                  child: Column(
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ChatDetailScreen(
+                                                chat: chat,
+                                              ),
                                             ),
-                                          ),
-                                        );
-                                      },
-                                      child: _buildChatCard(
-                                          context,
-                                          chat,
-                                          isDark,
-                                          "current_user_id_placeholder"),
-                                    ),
-                                    const SizedBox(height: 16),
-                                  ],
+                                          );
+                                        },
+                                        child: _buildChatCard(
+                                            context,
+                                            chat,
+                                            isDark,
+                                            "current_user_id_placeholder"),
+                                      ),
+                                      const SizedBox(height: 16),
+                                    ],
+                                  ),
                                 );
                               },
                             );
@@ -491,12 +493,13 @@ class _ChatListScreenState extends State<ChatListScreen>
             ),
             clipBehavior: Clip.antiAlias,
             child: chat.image != null
-                ? CachedNetworkImage(
+                ? AppImage(
                     imageUrl: chat.image!,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => const Icon(Icons.group),
-                    errorWidget: (context, url, error) =>
-                        const Icon(Icons.error),
+                    width: 56,
+                    height: 56,
+                    placeholder: const Icon(Icons.group),
+                    errorWidget: const Icon(Icons.error),
                   )
                 : const Icon(Icons.group),
           ),
@@ -553,33 +556,27 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   Widget _buildGlassCard(BuildContext context, bool isDark,
       {required Widget child}) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.grey.shade900.withOpacity(0.6)
-                : Colors.white.withOpacity(0.8),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withOpacity(0.05)
-                  : Colors.white.withOpacity(0.6),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: child,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.grey.shade900.withOpacity(0.8)
+            : Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withOpacity(0.05)
+              : Colors.white.withOpacity(0.6),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
+      child: child,
     );
   }
 
@@ -1031,7 +1028,12 @@ class _ChatListScreenState extends State<ChatListScreen>
                   ),
                   child: ClipOval(
                     child: chat.image != null
-                        ? Image.network(chat.image!, fit: BoxFit.cover)
+                        ? AppImage(
+                            imageUrl: chat.image!,
+                            fit: BoxFit.cover,
+                            width: 56,
+                            height: 56,
+                          )
                         : const Icon(Icons.fitness_center, color: Colors.black),
                   ),
                 ),
@@ -1139,15 +1141,17 @@ class _ChatListScreenState extends State<ChatListScreen>
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: chat.image != null
-                      ? CachedNetworkImage(
+                      ? AppImage(
                           imageUrl: chat.image!,
                           fit: BoxFit.cover,
-                          placeholder: (context, url) => const Icon(
+                          width: 56,
+                          height: 56,
+                          placeholder: const Icon(
                             Icons.person,
                             color: Colors.grey,
                             size: 30,
                           ),
-                          errorWidget: (context, url, error) => const Icon(
+                          errorWidget: const Icon(
                             Icons.error,
                             color: Colors.red,
                             size: 30,

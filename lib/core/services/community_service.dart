@@ -566,4 +566,17 @@ class CommunityService {
     // Simulating API call
     await Future.delayed(const Duration(milliseconds: 500));
   }
+
+  /// Preload feeds to warm up cache
+  Future<void> preloadFeeds() async {
+    try {
+      await _firestore
+          .collection('posts')
+          .orderBy('timestamp', descending: true)
+          .limit(10)
+          .get();
+    } catch (e) {
+      // Ignore
+    }
+  }
 }

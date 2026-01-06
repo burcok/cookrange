@@ -92,8 +92,8 @@ class _SideMenuState extends State<SideMenu> {
               child: RepaintBoundary(
                 child: ClipRect(
                   child: BackdropFilter(
-                    // OPTIMIZATION: Reduced blur sigma from 20 to 10 for better performance
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    // OPTIMIZATION: Reduced blur sigma from 20 to 5 for better performance
+                    filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                     child: Container(
                       width: MediaQuery.of(context).size.width * 0.80,
                       constraints: const BoxConstraints(maxWidth: 320),

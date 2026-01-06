@@ -435,7 +435,7 @@ class _HomeScreenState extends State<HomeScreen>
     return ClipRRect(
       borderRadius: BorderRadius.circular(24.r),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5), // Optimized sigma
+        filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3), // Optimized sigma
         child: Container(
           padding: EdgeInsets.all(24.r),
           decoration: BoxDecoration(

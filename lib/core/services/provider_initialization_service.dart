@@ -54,7 +54,7 @@ class ProviderInitializationService {
   /// Create provider with Firebase Analytics
   List<Provider> createFirebaseProviders() {
     return [
-      Provider<FirebaseAnalytics>.value(value: FirebaseAnalytics.instance),
+      Provider<FirebaseAnalytics>(create: (_) => FirebaseAnalytics.instance),
     ];
   }
 

@@ -1,7 +1,7 @@
 import 'package:cookrange/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// shared_preferences not used in this file
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
 import 'dart:math';
@@ -9,14 +9,19 @@ import 'dart:math';
 import '../core/services/crashlytics_service.dart';
 import '../core/services/device_info_service.dart';
 import '../core/services/app_initialization_service.dart';
+import '../core/services/app_lifecycle_service.dart';
 import '../core/services/system_ui_service.dart';
-import '../core/services/performance_service.dart';
+import '../core/services/notification_service.dart';
+import '../core/services/chat_service.dart';
+import '../core/services/community_service.dart';
+import '../core/services/friend_service.dart';
 import '../core/localization/app_localizations.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../core/services/auth_service.dart';
 import '../core/providers/device_info_provider.dart';
 import 'package:provider/provider.dart';
 import '../core/providers/onboarding_provider.dart';
+import '../core/providers/user_provider.dart';
 import '../core/models/user_model.dart';
 import '../core/utils/app_routes.dart';
 import '../core/widgets/error_fallback_widget.dart';
@@ -30,22 +35,17 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  bool _isInitialized = false;
+  // Tracking state
   Timer? _connectivityTimer;
   int _countdownSeconds = 10;
-  final Completer<void> _iconLoadCompleter = Completer<void>();
-  final Completer<void> _textLoadCompleter = Completer<void>();
   bool _isResourcesLoaded = false;
   DateTime? _startTime;
-  bool _hasPrecachedImages = false;
-  bool _shouldPreloadOnboardingImages = false;
   bool _isCacheComplete = false;
   final minimumDisplayTime = const Duration(seconds: 5);
   bool _hasReachedMinimumTime = false;
   bool _isOffline = false;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   OverlayEntry? _overlayEntry;
-  bool _animationsStarted = false;
 
   // Animation Controllers
   late AnimationController _mainController;
@@ -76,20 +76,136 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    _initializeAnimations();
-    _setupConnectivityListener();
-    _checkConnectivity(); // Check connectivity on start
-    _startConnectivityTimer();
+    _startTime = DateTime.now();
 
-    Future.wait([_iconLoadCompleter.future, _textLoadCompleter.future])
-        .then((_) {
-      if (mounted) {
-        _startAnimations();
-      }
+    // 1. Initialize animations FIRST (synchronous, instant)
+    _initializeAnimations();
+
+    // 2. Start animations IMMEDIATELY after the first frame is rendered
+    //    This is the key fix: Don't wait for anything else.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startAnimations();
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initialize();
+    // 3. Run ALL heavy initialization in the BACKGROUND (non-blocking)
+    //    This includes AppInitializationService which was previously in main.dart
+    _runBackgroundInitialization();
+
+    // 4. Setup connectivity listener (lightweight)
+    _setupConnectivityListener();
+    _startConnectivityTimer();
+  }
+
+  /// All heavy initialization runs here, completely decoupled from animations.
+  Future<void> _runBackgroundInitialization() async {
+    try {
+      debugPrint('SplashScreen: Starting background initialization...');
+
+      // PHASE 1: Core App Initialization (Firebase, Hive, Auth, Analytics, dotenv)
+      // This was previously blocking main.dart
+      final initService = AppInitializationService();
+      final result = await initService.initialize();
+
+      if (!result.isSuccess) {
+        debugPrint('SplashScreen: Core initialization failed: ${result.error}');
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ErrorFallbackWidget(
+                error: result.error,
+                onRetry: () {
+                  Navigator.pushReplacementNamed(context, AppRoutes.splash);
+                },
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      debugPrint('SplashScreen: Core initialization complete.');
+
+      // PHASE 2: Initialize AppLifecycleService (was in MyApp.initState)
+      AppLifecycleService().initialize();
+
+      // PHASE 3: Load User Data (Essential for routing)
+      if (AuthService().currentUser != null && mounted) {
+        try {
+          await Provider.of<UserProvider>(context, listen: false).loadUser();
+          debugPrint('SplashScreen: User data loaded.');
+        } catch (e) {
+          debugPrint('SplashScreen: Error loading user data: $e');
+        }
+      }
+
+      // PHASE 4: Fire-and-forget background preloading (non-blocking)
+      _fireAndForgetPreloading();
+
+      // PHASE 5: Device Info (non-critical, fire-and-forget)
+      _initializeDeviceInfo();
+
+      // Mark initialization as complete
+      if (mounted) {
+        setState(() {
+          _isResourcesLoaded = true;
+          _isCacheComplete = true;
+        });
+        _checkInitializationComplete();
+      }
+    } catch (e, stack) {
+      debugPrint('SplashScreen: Background initialization error: $e');
+      await CrashlyticsService().recordError(e, stack,
+          reason: 'Splash background initialization failed');
+
+      // Even on error, mark as complete so we don't hang forever
+      if (mounted) {
+        setState(() {
+          _isResourcesLoaded = true;
+          _isCacheComplete = true;
+        });
+        _checkInitializationComplete();
+      }
+    }
+  }
+
+  /// Fire-and-forget service preloading
+  void _fireAndForgetPreloading() {
+    if (AuthService().currentUser == null) return;
+
+    // These run in background, we don't wait for them
+    NotificationService()
+        .preloadUnreadCount()
+        .catchError((e) => debugPrint('Notif preload error: $e'));
+    ChatService()
+        .preloadChats()
+        .catchError((e) => debugPrint('Chat preload error: $e'));
+    CommunityService()
+        .preloadFeeds()
+        .catchError((e) => debugPrint('Community preload error: $e'));
+    FriendService()
+        .preloadFriends()
+        .catchError((e) => debugPrint('Friend preload error: $e'));
+  }
+
+  /// Fire-and-forget device info initialization
+  void _initializeDeviceInfo() {
+    if (!mounted) return;
+
+    Future(() async {
+      try {
+        final deviceInfoProvider =
+            Provider.of<DeviceInfoProvider>(context, listen: false);
+        await deviceInfoProvider.initialize();
+
+        // Send to Firebase (non-blocking)
+        final deviceInfoService = DeviceInfoService();
+        await deviceInfoService.sendDeviceInfoToFirebase(deviceInfoProvider,
+            detailed: true);
+        debugPrint('SplashScreen: Device info sent to Firebase.');
+      } catch (e) {
+        debugPrint('SplashScreen: Device info error: $e');
+      }
     });
   }
 
@@ -106,9 +222,6 @@ class _SplashScreenState extends State<SplashScreen>
           });
           _removeNoInternetOverlay();
           _connectivityTimer?.cancel();
-          if (!_isInitialized) {
-            _initialize();
-          }
         }
       } else if (!hasConnection && !_isOffline) {
         if (mounted) {
@@ -139,9 +252,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _showNoInternetOverlay() {
-    if (_overlayEntry != null) {
-      return; // Overlay already shown
-    }
+    if (_overlayEntry != null) return;
     _overlayEntry = OverlayEntry(
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
@@ -194,22 +305,12 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Update system UI based on theme
     SystemUIService().updateSystemUIOverlayStyle(context);
-
-    if (!_hasPrecachedImages) {
-      _hasPrecachedImages = true;
-      _isOnboardingCompleted().then((completed) {
-        if (!completed) {
-          _shouldPreloadOnboardingImages = true;
-        }
-      });
-    }
   }
 
   void _updateColorAnimations(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // Color transitions
     _backgroundColorAnimation = ColorTween(
       begin: colorScheme.onboardingOptionBgColor,
       end: colorScheme.splashPrimaryColor,
@@ -256,135 +357,11 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  Future<void> _initialize() async {
-    try {
-      _startTime = DateTime.now();
-
-      // Check if app initialization was successful
-      final initService = AppInitializationService();
-      if (!initService.isInitialized) {
-        // If initialization failed, show error screen
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ErrorFallbackWidget(
-                error: initService.initializationError,
-                onRetry: () {
-                  Navigator.pushReplacementNamed(context, AppRoutes.splash);
-                },
-              ),
-            ),
-          );
-        }
-        return;
-      }
-
-      // Use performance service to execute operations in parallel
-      await PerformanceService.executeInParallel([
-        _preloadResources,
-      ], eagerError: false)
-          .timeout(const Duration(seconds: 10), onTimeout: () {
-        debugPrint('Splash initialization timed out, proceeding anyway');
-        return [];
-      });
-
-      // This part depends on context, so it runs after initializations
-      if (!mounted) return;
-
-      // Initialize device info provider with retry mechanism
-      final deviceInfoProvider =
-          Provider.of<DeviceInfoProvider>(context, listen: false);
-
-      await PerformanceService.executeWithRetry(
-        () => deviceInfoProvider.initialize(),
-        maxRetries: 2,
-        delay: const Duration(milliseconds: 500),
-      );
-
-      // Send device info to Firebase without waiting for it to complete
-      _sendDeviceInfoToFirebase(deviceInfoProvider);
-
-      if (mounted) {
-        setState(() {
-          _isResourcesLoaded = true;
-          _isCacheComplete = true;
-        });
-        _checkInitializationComplete();
-      }
-    } catch (e, stack) {
-      debugPrint('Error during splash initialization: $e');
-      debugPrint('Stack trace: $stack');
-      await CrashlyticsService()
-          .recordError(e, stack, reason: 'Splash screen initialization failed');
-
-      if (mounted) {
-        // Show error screen instead of continuing
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ErrorFallbackWidget(
-              error: e.toString(),
-              onRetry: () {
-                Navigator.pushReplacementNamed(context, AppRoutes.splash);
-              },
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _preloadResources() async {
-    await _precacheAppImages();
-  }
-
-  Future<void> _precacheAppImages() async {
-    if (!mounted) return;
-
-    final imagePaths = [
-      'assets/images/splash/cookrange-icon.svg',
-      'assets/images/splash/cookrange-text.svg',
-    ];
-
-    if (_shouldPreloadOnboardingImages) {
-      imagePaths.addAll([
-        'assets/images/onboarding/onboarding-1.png',
-        'assets/images/onboarding/onboarding-5-1.png',
-        'assets/images/onboarding/onboarding-5-2.png',
-        'assets/images/onboarding/onboarding-5-3.png',
-        'assets/images/onboarding/onboarding-5-4.png',
-        'assets/images/onboarding/onboarding-5-5.png',
-        'assets/images/onboarding/verify-email.png',
-      ]);
-    }
-
-    await Future.wait(imagePaths.map((path) {
-      if (path.endsWith('.svg')) {
-        // TODO: The following line causes linter errors. Investigate flutter_svg dependency and precaching.
-        // return precachePicture(
-        //   AssetPicture(SvgPicture.svgByteDecoder, path),
-        //   context,
-        // );
-        return Future.value(); // Return a completed future.
-      } else {
-        return precacheImage(AssetImage(path), context);
-      }
-    }));
-  }
-
-  Future<bool> _isOnboardingCompleted() async {
-    final prefs = await SharedPreferences.getInstance();
-    // Adjust the key according to your onboarding completion logic
-    return prefs.getBool('onboarding_completed') ?? false;
-  }
-
   void _checkInitializationComplete() {
     if (_isResourcesLoaded) {
       final elapsedTime = DateTime.now().difference(_startTime!);
 
       if (elapsedTime < minimumDisplayTime) {
-        // If less than minimum time has passed, wait for the remaining time
         Future.delayed(minimumDisplayTime - elapsedTime, () {
           if (mounted) {
             setState(() {
@@ -394,7 +371,6 @@ class _SplashScreenState extends State<SplashScreen>
           }
         });
       } else {
-        // If minimum time has passed, check if we can proceed
         if (mounted) {
           setState(() {
             _hasReachedMinimumTime = true;
@@ -409,7 +385,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     final user = AuthService().currentUser;
-    debugPrint('User: $user');
+    debugPrint('SplashScreen: Navigating. User: $user');
     if (user == null) {
       Navigator.pushReplacementNamed(context, AppRoutes.login);
       return;
@@ -425,9 +401,8 @@ class _SplashScreenState extends State<SplashScreen>
     }
 
     final userModel = await AuthService().getUserData(user.uid);
-    debugPrint('User data: ${userModel?.email}');
+    debugPrint('SplashScreen: User data: ${userModel?.email}');
 
-    // Check if user is verified in Firestore (user_verified field)
     if (userModel?.userVerified == null) {
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(
@@ -454,9 +429,6 @@ class _SplashScreenState extends State<SplashScreen>
   void _checkShouldProceed() {
     if (_hasReachedMinimumTime && _isCacheComplete && !_isOffline) {
       if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
         _navigateAfterSplash();
       }
     }
@@ -476,7 +448,6 @@ class _SplashScreenState extends State<SplashScreen>
     final primaryGoals = onboardingData['primary_goals'];
     final kitchenEquipments = onboardingData['kitchen_equipments'];
 
-    // Check for essential fields
     return onboardingData['personal_info']['gender'] != null &&
         onboardingData['personal_info']['birth_date'] != null &&
         onboardingData['personal_info']['height'] != null &&
@@ -490,22 +461,6 @@ class _SplashScreenState extends State<SplashScreen>
         (kitchenEquipments is List
             ? kitchenEquipments.isNotEmpty
             : kitchenEquipments != null);
-  }
-
-  /// Cihaz bilgilerini Firebase Analytics'e gönder
-  Future<void> _sendDeviceInfoToFirebase(
-      DeviceInfoProvider deviceInfoProvider) async {
-    try {
-      final deviceInfoService = DeviceInfoService();
-      await deviceInfoService.sendDeviceInfoToFirebase(deviceInfoProvider,
-          detailed: true);
-      debugPrint('Device info sent to Firebase Analytics successfully');
-    } catch (e) {
-      debugPrint('Error sending device info to Firebase Analytics: $e');
-      // Hata durumunda crashlytics'e log at
-      await CrashlyticsService()
-          .log('Error sending device info to Firebase Analytics: $e');
-    }
   }
 
   Future<void> _checkConnectivity() async {
@@ -533,43 +488,36 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _initializeAnimations() {
-    // Main controller for overall timing
     _mainController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 3600),
     );
 
-    // Icon initial animation (1s)
     _iconInitialController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
 
-    // Icon second slide animation (800ms)
     _iconSecondSlideController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
 
-    // Icon shrink animation (800ms)
     _iconShrinkController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
 
-    // Text fade animation (800ms)
     _textFadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
     );
 
-    // Color transition animation (1s)
     _colorTransitionController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
 
-    // Greeting text animation
     _greetingTextController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -595,7 +543,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Icon initial animations
     _iconScaleAnimation = Tween<double>(begin: 0.85, end: 0.25).animate(
       CurvedAnimation(
         parent: _iconInitialController,
@@ -637,7 +584,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Text fade animation
     _textOpacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _textFadeController,
@@ -655,7 +601,6 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    // Start greeting text animation after color transition
     _colorTransitionController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         _startGreetingTextAnimation();
@@ -664,9 +609,8 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _startAnimations() async {
-    if (_animationsStarted || !mounted) return;
-    _animationsStarted = true;
-    _startTime = DateTime.now();
+    if (!mounted) return;
+    debugPrint('SplashScreen: Starting animations...');
 
     await _iconInitialController.forward();
     if (!mounted) return;
@@ -683,6 +627,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     _mainController.forward();
+    debugPrint('SplashScreen: Animations complete.');
   }
 
   Future<void> _startGreetingTextAnimation() async {
@@ -756,18 +701,6 @@ class _SplashScreenState extends State<SplashScreen>
                                     'assets/images/splash/cookrange-icon.svg',
                                     width: iconSize,
                                     height: iconSize,
-                                    placeholderBuilder: (context) {
-                                      if (!_iconLoadCompleter.isCompleted) {
-                                        _iconLoadCompleter.complete();
-                                      }
-                                      return SizedBox(
-                                        width: iconSize,
-                                        height: iconSize,
-                                        child: const Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                      );
-                                    },
                                   ),
                                 ),
                               ),
@@ -788,18 +721,6 @@ class _SplashScreenState extends State<SplashScreen>
                             child: SvgPicture.asset(
                               'assets/images/splash/cookrange-text.svg',
                               width: textWidth,
-                              placeholderBuilder: (context) {
-                                if (!_textLoadCompleter.isCompleted) {
-                                  _textLoadCompleter.complete();
-                                }
-                                return SizedBox(
-                                  width: textWidth,
-                                  height: 50,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                );
-                              },
                             ),
                           ),
                         ),
@@ -858,12 +779,6 @@ class _SplashScreenState extends State<SplashScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Icon Loaded: ${_iconLoadCompleter.isCompleted ? "Yes" : "No"}',
-              ),
-              Text(
-                'Text Loaded: ${_textLoadCompleter.isCompleted ? "Yes" : "No"}',
-              ),
-              Text(
                 'Icon Initial: ${(_iconInitialController.value * 100).toStringAsFixed(1)}%',
               ),
               Text(
@@ -877,19 +792,16 @@ class _SplashScreenState extends State<SplashScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Total Time: ${_startTime != null ? DateTime.now().difference(_startTime!).inMilliseconds / 1000 : 0} seconds',
+                'Total Time: ${_startTime != null ? DateTime.now().difference(_startTime!).inMilliseconds / 1000 : 0}s',
               ),
               Text(
-                'Min Duration: ${minimumDisplayTime.inSeconds} seconds',
+                'Init Complete: ${_isCacheComplete ? "Yes" : "No"}',
               ),
               Text(
-                'Cache Complete: ${_isCacheComplete ? "Yes" : "No"}',
+                'Min Time: ${_hasReachedMinimumTime ? "Yes" : "No"}',
               ),
               Text(
-                'Min Time Reached: ${_hasReachedMinimumTime ? "Yes" : "No"}',
-              ),
-              Text(
-                'Offline Mode: ${_isOffline ? "Yes" : "No"}',
+                'Offline: ${_isOffline ? "Yes" : "No"}',
               ),
             ],
           ),
