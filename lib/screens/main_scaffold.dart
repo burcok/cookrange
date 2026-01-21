@@ -43,7 +43,7 @@ class _MainScaffoldState extends State<MainScaffold>
 
       // Load user data in background with slight delay to prioritize UI rendering
       Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) context.read<UserProvider>().loadUser();
+        if (mounted) context.read<UserProvider>().refreshUser();
       });
     });
   }

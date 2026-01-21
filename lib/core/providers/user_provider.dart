@@ -9,7 +9,7 @@ class UserProvider extends ChangeNotifier {
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
 
-  Future<void> loadUser() async {
+  Future<void> loadUser({bool silent = false}) async {
     final authUser = AuthService().currentUser;
     if (authUser == null) {
       _user = null;
@@ -17,16 +17,23 @@ class UserProvider extends ChangeNotifier {
       return;
     }
 
-    _isLoading = true;
-    notifyListeners();
+    if (!silent) {
+      _isLoading = true;
+      notifyListeners();
+    }
 
     try {
       _user = await AuthService().getUserData(authUser.uid);
     } catch (e) {
       debugPrint('Error loading user in UserProvider: $e');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (!silent) {
+        _isLoading = false;
+        notifyListeners();
+      } else {
+        // Even if silent, we want to notify that the user data changed
+        notifyListeners();
+      }
     }
   }
 
@@ -36,7 +43,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> refreshUser() async {
-    await loadUser();
+    await loadUser(silent: true);
   }
 
   Future<void> updateUserProfile(

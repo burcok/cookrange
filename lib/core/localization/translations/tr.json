@@ -489,31 +489,6 @@
       "no_chats_found": "Sohbet bulunamadı.",
       "open_error": "Sohbet açılırken hata: {error}"
     },
-    "signal": {
-      "title": "Sinyal Gönder",
-      "select_type": "Tür Seçin:",
-      "type": {
-        "gym": "Yardım / Spotter",
-        "meal": "Öğün Paylaş",
-        "general": "Genel"
-      },
-      "message_label": "Mesajınız:",
-      "custom_message_hint": "Özel mesaj yazın...",
-      "cancel": "İptal",
-      "send": "Gönder",
-      "success": "Gönderildi",
-      "error": "Hata: {error}",
-      "presets": {
-        "gym_1": "Bench press için spotter lazım!",
-        "gym_2": "Squat formuma bakar mısınız?",
-        "gym_3": "Partner antrenmanı?",
-        "meal_1": "Fazla protein barım var, isteyen?",
-        "meal_2": "Öğlen yemeği beraber yiyelim mi?",
-        "meal_3": "Sağlıklı tarif denedim, ikram etmek isterim.",
-        "general_1": "Motivasyon lazım!",
-        "general_2": "Bugün salona giden var mı?"
-      }
-    },
     "user_reported": "Kullanıcı bildirildi",
     "user_blocked": "Kullanıcı engellendi",
     "search_failed": "Arama başarısız: {error}",
@@ -997,16 +972,28 @@
     }
   },
   "signal": {
-    "cancel": "İptal",
-    "custom_message_hint": "Özel mesajınızı yazın...",
-    "message_label": "Mesaj",
-    "select_type": "Sinyal Türü Seçin",
-    "send": "Gönder",
     "title": "Sinyal Gönder",
-    "type": {
-      "general": "Genel",
-      "gym": "Spor Salonu",
-      "meal": "Öğün"
-    }
+      "select_type": "Tür Seçin:",
+      "type": {
+        "gym": "Yardım / Spotter",
+        "meal": "Öğün Paylaş",
+        "general": "Genel"
+      },
+      "message_label": "Mesajınız:",
+      "custom_message_hint": "Özel mesaj yazın...",
+      "cancel": "İptal",
+      "send": "Gönder",
+      "success": "Gönderildi",
+      "error": "Hata: {error}",
+      "presets": {
+        "gym_1": "Bench press için spotter lazım!",
+        "gym_2": "Squat formuma bakar mısınız?",
+        "gym_3": "Partner antrenmanı?",
+        "meal_1": "Fazla protein barım var, isteyen?",
+        "meal_2": "Öğlen yemeği beraber yiyelim mi?",
+        "meal_3": "Sağlıklı tarif denedim, ikram etmek isterim.",
+        "general_1": "Motivasyon lazım!",
+        "general_2": "Bugün salona giden var mı?"
+      }
   }
 }

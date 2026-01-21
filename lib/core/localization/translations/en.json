@@ -489,31 +489,6 @@
       "no_chats_found": "No chats found.",
       "open_error": "Error opening chat: {error}"
     },
-    "signal": {
-      "title": "Send Signal",
-      "select_type": "Select Type:",
-      "type": {
-        "gym": "Help / Spotter",
-        "meal": "Share Meal",
-        "general": "General"
-      },
-      "message_label": "Your Message:",
-      "custom_message_hint": "Write a custom message...",
-      "cancel": "Cancel",
-      "send": "Send",
-      "success": "Sent",
-      "error": "Error: {error}",
-      "presets": {
-        "gym_1": "Need a spotter for bench press!",
-        "gym_2": "Check my squat form?",
-        "gym_3": "Partner workout?",
-        "meal_1": "Have extra protein bars, anyone?",
-        "meal_2": "Lunch together?",
-        "meal_3": "Tried a healthy recipe, want to share.",
-        "general_1": "Need motivation!",
-        "general_2": "Anyone going to the gym today?"
-      }
-    },
     "user_reported": "User reported",
     "user_blocked": "User blocked",
     "search_failed": "Search failed: {error}",
@@ -997,16 +972,28 @@
     }
   },
   "signal": {
-    "cancel": "Cancel",
-    "custom_message_hint": "Write your custom message...",
-    "message_label": "Message",
-    "select_type": "Select Signal Type",
-    "send": "Send",
     "title": "Send Signal",
+    "select_type": "Select Type:",
     "type": {
-      "general": "General",
-      "gym": "Gym",
-      "meal": "Meal"
+      "gym": "Help / Spotter",
+      "meal": "Share Meal",
+      "general": "General"
+    },
+    "message_label": "Your Message:",
+    "custom_message_hint": "Write a custom message...",
+    "cancel": "Cancel",
+    "send": "Send",
+    "success": "Sent",
+    "error": "Error: {error}",
+    "presets": {
+      "gym_1": "Need a spotter for bench press!",
+      "gym_2": "Check my squat form?",
+      "gym_3": "Partner workout?",
+      "meal_1": "Have extra protein bars, anyone?",
+      "meal_2": "Lunch together?",
+      "meal_3": "Tried a healthy recipe, want to share.",
+      "general_1": "Need motivation!",
+      "general_2": "Anyone going to the gym today?"
     }
   }
 }
