@@ -809,107 +809,125 @@ class _HomeScreenState extends State<HomeScreen>
                     RecipeDetailScreen(recipe: dish.toRecipe())),
           );
         },
-        child: Container(
-          margin: EdgeInsets.only(bottom: 16.h),
-          padding: EdgeInsets.all(16.r),
-          decoration: BoxDecoration(
-            color: Colors.white.withAlpha(240),
-            borderRadius: BorderRadius.circular(20.r),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10.r,
-                offset: Offset(0, 4.h),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20.r),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: Container(
+              margin: EdgeInsets.only(bottom: 16.h),
+              padding: EdgeInsets.all(16.r),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(180),
+                borderRadius: BorderRadius.circular(20.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10.r,
+                    offset: Offset(0, 4.h),
+                  ),
+                ],
+                border: Border.all(color: Colors.white.withAlpha(100)),
               ),
-            ],
-            border: Border.all(color: Colors.white),
-          ),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16.r),
-                child: Container(
-                  width: 90.w,
-                  height: 90.w,
-                  color: Colors.grey[100]!.withAlpha(100),
-                  child: dish.imageUrl != null
-                      ? CachedNetworkImage(
-                          imageUrl: dish.imageUrl!,
-                          fit: BoxFit.cover,
-                          memCacheWidth: 200,
-                          memCacheHeight: 200,
-                          placeholder: (context, url) =>
-                              const Center(child: CircularProgressIndicator()),
-                          errorWidget: (context, url, error) =>
-                              const Icon(Icons.restaurant),
-                        )
-                      : Icon(Icons.restaurant,
-                          color: Colors.grey[300], size: 30.w),
-                ),
-              ),
-              SizedBox(width: 20.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      toBeginningOfSentenceCase(mealType) ?? mealType,
-                      style: TextStyle(
-                        fontSize: 15.sp,
-                        color: Colors.grey[400],
-                        fontWeight: FontWeight.w500,
-                      ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16.r),
+                    child: Container(
+                      width: 90.w,
+                      height: 90.w,
+                      color: Colors.white.withAlpha(150),
+                      child: dish.imageUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: dish.imageUrl!,
+                              fit: BoxFit.cover,
+                              memCacheWidth: 200,
+                              memCacheHeight: 200,
+                              placeholder: (context, url) => const Center(
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2)),
+                              errorWidget: (context, url, error) => Icon(
+                                  Icons.restaurant,
+                                  color: context
+                                      .watch<ThemeProvider>()
+                                      .primaryColor
+                                      .withOpacity(0.5),
+                                  size: 30.w),
+                            )
+                          : Icon(Icons.restaurant,
+                              color: context
+                                  .watch<ThemeProvider>()
+                                  .primaryColor
+                                  .withOpacity(0.3),
+                              size: 30.w),
                     ),
-                    SizedBox(height: 6.h),
-                    Text(
-                      dish.name,
-                      style: TextStyle(
-                        fontSize: 18.sp,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF2E3A59),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: 6.h),
-                    Row(
+                  ),
+                  SizedBox(width: 20.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          l10n.translate('home.calories_suffix', variables: {
-                            'count': dish.calories.toInt().toString()
-                          }),
+                          toBeginningOfSentenceCase(mealType) ?? mealType,
                           style: TextStyle(
                             fontSize: 15.sp,
                             color: Colors.grey[500],
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(width: 8.w),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 8.w, vertical: 2.h),
-                          decoration: BoxDecoration(
-                            color: context
-                                .watch<ThemeProvider>()
-                                .primaryColor
-                                .withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8.r),
+                        SizedBox(height: 6.h),
+                        Text(
+                          dish.name,
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF2E3A59),
                           ),
-                          child: Text(
-                            "${dish.protein.toInt()}g P",
-                            style: TextStyle(
-                                fontSize: 12.sp,
-                                color:
-                                    context.watch<ThemeProvider>().primaryColor,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        )
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: 6.h),
+                        Row(
+                          children: [
+                            Text(
+                              l10n.translate('home.calories_suffix',
+                                  variables: {
+                                    'count': dish.calories.toInt().toString()
+                                  }),
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(width: 12.w),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w, vertical: 2.h),
+                              decoration: BoxDecoration(
+                                color: context
+                                    .watch<ThemeProvider>()
+                                    .primaryColor
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                              child: Text(
+                                "${dish.protein.toInt()}g P",
+                                style: TextStyle(
+                                    fontSize: 12.sp,
+                                    color: context
+                                        .watch<ThemeProvider>()
+                                        .primaryColor,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            )
+                          ],
+                        ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       );

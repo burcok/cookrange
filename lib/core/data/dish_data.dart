@@ -1211,6 +1211,256 @@ final List<Map<String, dynamic>> breakfastBatch1 = [
       '3. Topping: Smoothieyi bir kaseye alın, üzerine chia, fıstık ezmesi ve kabak çekirdeklerini estetik bir şekilde dizin.',
       '4. Servis: Soğukluğunu kaybetmeden tüketin.'
     ]
+  },
+  {
+    'id': 'sade_menemen',
+    'name': 'Sade Menemen',
+    'name_en': 'Plain Menemen',
+    'description':
+        'Domates ve biberin uyumuyla hazırlanan efsane Türk kahvaltısı.',
+    'description_en':
+        'Classic Turkish breakfast prepared with perfect harmony of tomatoes and peppers.',
+    'category': 'breakfast',
+    'tags': ['vegetarian', 'traditional', 'quick'],
+    'meal_type': 'breakfast',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 12,
+    'difficulty': 'easy',
+    'calories': 180,
+    'protein': 12,
+    'carbs': 10,
+    'fat': 10,
+    'fiber': 3,
+    'ingredients': [
+      {'name': 'Yumurta', 'amount': 2, 'unit': 'adet', 'calories': 140},
+      {'name': 'Domates', 'amount': 150, 'unit': 'g', 'calories': 30},
+      {'name': 'Biber', 'amount': 30, 'unit': 'g', 'calories': 10},
+    ],
+    'instructions': [
+      '1. Biberleri yemeklik doğrayın ve az yağda soteleyin.',
+      '2. Kabuksuz doğranmış domatesleri ekleyip suyunu salana kadar pişirin.',
+      '3. Yumurtaları kırıp karıştırın ve istediğiniz kıvama gelince ocaktan alın.'
+    ]
+  },
+  {
+    'id': 'peynirli_menemen',
+    'name': 'Peynirli Menemen',
+    'name_en': 'Menemen with Cheese',
+    'description': 'Eriyen peynir lezzetiyle zenginleştirilmiş menemen.',
+    'description_en': 'Traditional menemen enriched with melting cheese.',
+    'category': 'breakfast',
+    'tags': ['vegetarian', 'traditional', 'cheesy'],
+    'meal_type': 'breakfast',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 15,
+    'difficulty': 'easy',
+    'calories': 320,
+    'protein': 20,
+    'carbs': 10,
+    'fat': 22,
+    'fiber': 3,
+    'ingredients': [
+      {'name': 'Yumurta', 'amount': 2, 'unit': 'adet', 'calories': 140},
+      {'name': 'Domates', 'amount': 150, 'unit': 'g', 'calories': 30},
+      {
+        'name': 'Kaşar Peyniri (Rendelenmiş)',
+        'amount': 30,
+        'unit': 'g',
+        'calories': 110
+      },
+      {'name': 'Tereyağı', 'amount': 10, 'unit': 'g', 'calories': 40}
+    ],
+    'instructions': [
+      '1. Biber ve domatesleri klasik menemen gibi pişirin.',
+      '2. Yumurtaları eklemeden hemen önce rendelenmiş kaşar peynirini ilave edip karıştırın.',
+      '3. Peynirler eriyince yumurtaları kırın ve hafifçe pişirerek sıcak servis yapın.'
+    ]
+  },
+  {
+    'id': 'sucuklu_yumurta',
+    'name': 'Sucuklu Yumurta',
+    'name_en': 'Eggs with Turkish Sausage (Sucuk)',
+    'description':
+        'Baharatlı sucuk ve sahanda yumurtanın vazgeçilmez birleşimi.',
+    'description_en':
+        'Indispensable combination of spiced Turkish sausage and fried eggs.',
+    'category': 'breakfast',
+    'tags': ['traditional', 'high_protein', 'savory'],
+    'meal_type': 'breakfast',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 8,
+    'difficulty': 'easy',
+    'calories': 450,
+    'protein': 22,
+    'carbs': 2,
+    'fat': 40,
+    'fiber': 0,
+    'ingredients': [
+      {'name': 'Yumurta', 'amount': 2, 'unit': 'adet', 'calories': 140},
+      {
+        'name': 'Sucuk (Dilimlenmiş)',
+        'amount': 50,
+        'unit': 'g',
+        'calories': 250
+      },
+      {'name': 'Tereyağı', 'amount': 10, 'unit': 'g', 'calories': 60}
+    ],
+    'instructions': [
+      '1. Sucukları orta kalınlıkta dilimleyin.',
+      '2. Tavada tereyağını eritip sucukları arkalı önlü hafifçe kızartın.',
+      '3. Üzerine yumurtaları kırın, sarılarını bozmadan veya tercihinize göre karıştırarak pişirin.'
+    ]
+  },
+  {
+    'id': 'haslanmis_yumurta_tabagi',
+    'name': 'Haşlanmış Yumurta Tabağı',
+    'name_en': 'Boiled Egg Breakfast Plate',
+    'description':
+        'Zeytin, peynir ve taze sebzelerle zenginleştirilmiş protein dolu haşlanmış yumurta tabağı.',
+    'description_en':
+        'Protein-packed boiled egg plate enriched with olives, cheese, and fresh vegetables.',
+    'category': 'breakfast',
+    'tags': ['healthy', 'high_protein', 'quick'],
+    'meal_type': 'breakfast',
+    'prep_time_minutes': 10,
+    'cook_time_minutes': 10,
+    'difficulty': 'easy',
+    'calories': 280,
+    'protein': 18,
+    'carbs': 5,
+    'fat': 20,
+    'fiber': 2,
+    'ingredients': [
+      {
+        'name': 'Haşlanmış Yumurta',
+        'amount': 2,
+        'unit': 'adet',
+        'calories': 140
+      },
+      {'name': 'Beyaz Peynir', 'amount': 30, 'unit': 'g', 'calories': 70},
+      {'name': 'Siyah Zeytin', 'amount': 5, 'unit': 'adet', 'calories': 45},
+      {'name': 'Domates & Salatalık', 'amount': 80, 'unit': 'g', 'calories': 25}
+    ],
+    'instructions': [
+      '1. Yumurtaları 8-10 dakika haşlayıp soğuk suya alın.',
+      '2. Kabuklarını soyup ortadan ikiye bölün.',
+      '3. Yanına peynir, zeytin ve söğüş sebzeleri ekleyerek pratik şekilde hazırlayın.'
+    ]
+  },
+  {
+    'id': 'yumurta_patates',
+    'name': 'Yumurtalı Patates Kavurması',
+    'name_en': 'Sautéed Potatoes with Eggs',
+    'description':
+        'Küp küp doğranmış patateslerin yumurta ile doyurucu buluşması.',
+    'description_en': 'Satisfying meeting of cubed potatoes and eggs.',
+    'category': 'breakfast',
+    'tags': ['warming', 'filling', 'traditional'],
+    'meal_type': 'breakfast',
+    'prep_time_minutes': 10,
+    'cook_time_minutes': 15,
+    'difficulty': 'easy',
+    'calories': 380,
+    'protein': 16,
+    'carbs': 45,
+    'fat': 15,
+    'fiber': 4,
+    'ingredients': [
+      {'name': 'Patates', 'amount': 150, 'unit': 'g', 'calories': 130},
+      {'name': 'Yumurta', 'amount': 2, 'unit': 'adet', 'calories': 140},
+      {'name': 'Soğan', 'amount': 30, 'unit': 'g', 'calories': 15},
+      {'name': 'Zeytinyağı', 'amount': 15, 'unit': 'ml', 'calories': 95}
+    ],
+    'instructions': [
+      '1. Patatesleri tavla zarı büyüklüğünde doğrayıp yumuşayana kadar yağda kavurun.',
+      '2. Yemeklik doğranmış soğanları ekleyip pembeleşene kadar devam edin.',
+      '3. Yumurtaları üzerine kırıp karıştırarak pişirin.'
+    ]
+  },
+  {
+    'id': 'omlet_sade',
+    'name': 'Sade Fit Omlet',
+    'name_en': 'Plain Fit Omelet',
+    'description': 'Tereyağında pişmiş, hafif ve kabarık klasik omlet.',
+    'description_en': 'Light and fluffy classic omelet cooked in butter.',
+    'category': 'breakfast',
+    'tags': ['quick', 'keto', 'low_carb'],
+    'meal_type': 'breakfast',
+    'prep_time_minutes': 2,
+    'cook_time_minutes': 5,
+    'difficulty': 'easy',
+    'calories': 210,
+    'protein': 14,
+    'carbs': 1,
+    'fat': 17,
+    'fiber': 0,
+    'ingredients': [
+      {'name': 'Yumurta', 'amount': 2, 'unit': 'adet', 'calories': 140},
+      {'name': 'Tereyağı', 'amount': 10, 'unit': 'g', 'calories': 70}
+    ],
+    'instructions': [
+      '1. Yumurtaları bir kasede iyice çırpın.',
+      '2. Yağlanmış sıcak tavaya döküp kısık ateşte altı altı kızarana kadar pişirin.',
+      '3. İkiye katlayarak servis tabağına alın.'
+    ]
+  },
+  {
+    'id': 'omlet_peynirli',
+    'name': 'Peynirli Klasik Omlet',
+    'name_en': 'Classic Cheese Omelet',
+    'description': 'İçi erimiş kaşar peyniriyle dolu, altın sarısı omlet.',
+    'description_en': 'Golden yellow omelet filled with melted cheddar cheese.',
+    'category': 'breakfast',
+    'tags': ['cheesy', 'quick', 'protein'],
+    'meal_type': 'breakfast',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 7,
+    'difficulty': 'easy',
+    'calories': 320,
+    'protein': 20,
+    'carbs': 2,
+    'fat': 25,
+    'fiber': 0,
+    'ingredients': [
+      {'name': 'Yumurta', 'amount': 2, 'unit': 'adet', 'calories': 140},
+      {'name': 'Kaşar Peyniri', 'amount': 30, 'unit': 'g', 'calories': 110},
+      {'name': 'Tereyağı', 'amount': 10, 'unit': 'g', 'calories': 70}
+    ],
+    'instructions': [
+      '1. Çırpılmış yumurtaları tavaya dökün.',
+      '2. Omletin orta kısmı hafif sulu kalırken rendelenmiş peyniri bir yarısına yayın.',
+      '3. Peynirsiz kısmı üzerine kapatıp peynirler tamamen eriyene kadar 1 dakika daha pişirin.'
+    ]
+  },
+  {
+    'id': 'yogurt_yumurta',
+    'name': 'Çılbır (Yoğurtlu Yumurta)',
+    'name_en': 'Turkish Poached Eggs with Yogurt (Cilbir)',
+    'description':
+        'Yoğurt yatağında poşe yumurta ve üzerine kızdırılmış tereyağlı pul biber sosu.',
+    'description_en':
+        'Poached eggs on a bed of yogurt, topped with hot chili-infused butter sauce.',
+    'category': 'breakfast',
+    'tags': ['traditional', 'healthy', 'gourmet'],
+    'meal_type': 'breakfast',
+    'prep_time_minutes': 10,
+    'cook_time_minutes': 5,
+    'difficulty': 'medium',
+    'calories': 310,
+    'protein': 18,
+    'carbs': 8,
+    'fat': 22,
+    'fiber': 0,
+    'ingredients': [
+      {'name': 'Yumurta', 'amount': 2, 'unit': 'adet', 'calories': 140},
+      {'name': 'Süzme Yoğurt', 'amount': 100, 'unit': 'g', 'calories': 100},
+      {'name': 'Tereyağı', 'amount': 10, 'unit': 'g', 'calories': 70}
+    ],
+    'instructions': [
+      '1. Yoğurdu oda sıcaklığına getirip bir tabağa yayın.',
+      '2. Yumurtaları sirkeli kaynar suda poşe usulü (3 dk) haşlayın.',
+      '3. Yoğurdun üzerine yerleştirip, üzerine kızdırılmış biberli tereyağını gezdirin.'
+    ]
   }
 ];
 
@@ -2281,13 +2531,214 @@ final List<Map<String, dynamic>> turkishClassicsBatch = [
     ]
   },
   {
-    'id': 'taze_fasulye',
-    'name': 'Zeytinyağlı Domatesli Taze Fasulye',
-    'name_en': 'Green Bean Stew in Olive Oil',
-    'description':
-        'Yaz aylarının hafif ve sağlıklı klasiği; bol domatesli ve sızma zeytinyağlı taze fasulye.',
+    'id': 'etli_kuru_fasulye',
+    'name': 'Etli Kuru Fasulye',
+    'name_en': 'White Bean Stew with Meat',
+    'description': 'Dana etiyle ağır ateşte pişmiş, geleneksel Türk lezzeti.',
     'description_en':
-        'A light and healthy summer classic; green beans with plenty of tomatoes and extra virgin olive oil.',
+        'Traditional Turkish stew with white beans and beef, slow-cooked to perfection.',
+    'category': 'turkish_classic',
+    'tags': ['high_protein', 'fiber', 'classic'],
+    'meal_type': 'dinner',
+    'prep_time_minutes': 20,
+    'cook_time_minutes': 60,
+    'difficulty': 'medium',
+    'calories': 480,
+    'protein': 32,
+    'carbs': 45,
+    'fat': 22,
+    'fiber': 16,
+    'ingredients': [
+      {
+        'name': 'Kuru Fasulye (Akşamdan Islatılmış)',
+        'amount': 150,
+        'unit': 'g',
+        'calories': 180
+      },
+      {'name': 'Dana Kuşbaşı', 'amount': 100, 'unit': 'g', 'calories': 220},
+      {'name': 'Kuru Soğan', 'amount': 50, 'unit': 'g', 'calories': 20},
+      {'name': 'Domates Salçası', 'amount': 20, 'unit': 'g', 'calories': 30},
+      {'name': 'Tereyağı', 'amount': 15, 'unit': 'g', 'calories': 100}
+    ],
+    'instructions': [
+      '1. Fasulyeleri haşlayıp suyunu süzün.',
+      '2. Etleri tencerede suyunu salıp çekene kadar soteleyin.',
+      '3. Soğan ve salçayı ekleyip kavurun.',
+      '4. Fasulyeleri ve üzerini geçecek kadar sıcak suyu ekleyip kısık ateşte pişirin.'
+    ]
+  },
+  {
+    'id': 'etsiz_kuru_fasulye',
+    'name': 'Etsiz Kuru Fasulye',
+    'name_en': 'Plain White Bean Stew',
+    'description':
+        'Tereyağı ve salçanın lezzetiyle pişen hafif tencere yemeği.',
+    'description_en':
+        'Light white bean stew cooked with the flavor of butter and tomato paste.',
+    'category': 'turkish_classic',
+    'tags': ['vegetarian', 'fiber', 'healthy'],
+    'meal_type': 'lunch',
+    'prep_time_minutes': 15,
+    'cook_time_minutes': 50,
+    'difficulty': 'easy',
+    'calories': 320,
+    'protein': 14,
+    'carbs': 48,
+    'fat': 10,
+    'fiber': 18,
+    'ingredients': [
+      {'name': 'Kuru Fasulye', 'amount': 150, 'unit': 'g', 'calories': 180},
+      {'name': 'Kuru Soğan', 'amount': 50, 'unit': 'g', 'calories': 20},
+      {
+        'name': 'Domates & Biber Salçası',
+        'amount': 25,
+        'unit': 'g',
+        'calories': 35
+      },
+      {'name': 'Zeytinyağı', 'amount': 15, 'unit': 'ml', 'calories': 85}
+    ],
+    'instructions': [
+      '1. Islatılmış fasulyeleri yarı diri kalacak şekilde haşlayın.',
+      '2. Soğanları pembeleşene kadar yağda kavurup salçayı ekleyin.',
+      '3. Fasulyeleri ve sıcak suyu ekleyip özleşene kadar pişirin.'
+    ]
+  },
+  {
+    'id': 'nohut_yemegi',
+    'name': 'Etsiz Nohut Yemeği',
+    'name_en': 'Plain Chickpea Stew',
+    'description': 'Bol salçalı ve tam kıvamında pişen nohut tencere yemeği.',
+    'description_en':
+        'A well-cooked chickpea stew with rich tomato paste sauce.',
+    'category': 'turkish_classic',
+    'tags': ['vegan', 'fiber', 'high_protein'],
+    'meal_type': 'lunch',
+    'prep_time_minutes': 15,
+    'cook_time_minutes': 45,
+    'difficulty': 'easy',
+    'calories': 290,
+    'protein': 12,
+    'carbs': 42,
+    'fat': 8,
+    'fiber': 14,
+    'ingredients': [
+      {
+        'name': 'Nohut (Islatılmış)',
+        'amount': 150,
+        'unit': 'g',
+        'calories': 210
+      },
+      {'name': 'Kuru Soğan', 'amount': 50, 'unit': 'g', 'calories': 20},
+      {'name': 'Salça', 'amount': 20, 'unit': 'g', 'calories': 30},
+      {'name': 'Zeytinyağı', 'amount': 10, 'unit': 'ml', 'calories': 60}
+    ],
+    'instructions': [
+      '1. Nohutları yumuşayana kadar haşlayın.',
+      '2. Soğan ve salçayı soteleyip nohutları ilave edin.',
+      '3. Sıcak su ekleyip nohutlar helmeleşene kadar pişirmeye devam edin.'
+    ]
+  },
+  {
+    'id': 'etli_nohut',
+    'name': 'Etli Nohut Yemeği',
+    'name_en': 'Chickpea Stew with Meat',
+    'description': 'Kuzu eti ve nohudun muazzam birlikteliği.',
+    'description_en': 'The magnificent combination of lamb/beef and chickpeas.',
+    'category': 'turkish_classic',
+    'tags': ['high_protein', 'fiber', 'traditional'],
+    'meal_type': 'dinner',
+    'prep_time_minutes': 20,
+    'cook_time_minutes': 60,
+    'difficulty': 'medium',
+    'calories': 460,
+    'protein': 30,
+    'carbs': 40,
+    'fat': 20,
+    'fiber': 13,
+    'ingredients': [
+      {'name': 'Nohut', 'amount': 150, 'unit': 'g', 'calories': 210},
+      {'name': 'Dana Kuşbaşı', 'amount': 100, 'unit': 'g', 'calories': 210},
+      {'name': 'Kuru Soğan', 'amount': 50, 'unit': 'g', 'calories': 20},
+      {'name': 'Salça & Tereyağı', 'amount': 25, 'unit': 'g', 'calories': 90}
+    ],
+    'instructions': [
+      '1. Etleri düdüklü tencerede mühürleyip pişirin.',
+      '2. Üzerine soğan ve salçayı ekleyip kavurun.',
+      '3. Haşlanmış nohutları ve et suyunu ilave ederek pişirin.'
+    ]
+  },
+  {
+    'id': 'mercimek_yemegi',
+    'name': 'Yeşil Mercimek Yemeği',
+    'name_en': 'Green Lentil Stew',
+    'description': 'Erişteli ve bol vitaminli geleneksel yeşil mercimek.',
+    'description_en':
+        'Traditional green lentil stew with noodles, rich in vitamins.',
+    'category': 'turkish_classic',
+    'tags': ['vegan', 'fiber', 'iron_rich'],
+    'meal_type': 'lunch',
+    'prep_time_minutes': 10,
+    'cook_time_minutes': 35,
+    'difficulty': 'easy',
+    'calories': 310,
+    'protein': 16,
+    'carbs': 45,
+    'fat': 8,
+    'fiber': 15,
+    'ingredients': [
+      {'name': 'Yeşil Mercimek', 'amount': 100, 'unit': 'g', 'calories': 220},
+      {'name': 'Erişte', 'amount': 20, 'unit': 'g', 'calories': 60},
+      {'name': 'Soğan & Salça', 'amount': 40, 'unit': 'g', 'calories': 30}
+    ],
+    'instructions': [
+      '1. Mercimekleri siyah suyu çıkana kadar haşlayıp süzün.',
+      '2. Soğanları soteleyip mercimekleri ve sıcak suyu ekleyin.',
+      '3. Pişmeye yakın erişteleri ilave edip yumuşayana kadar bekleyin.'
+    ]
+  },
+  {
+    'id': 'etli_mercimek',
+    'name': 'Etli Yeşil Mercimek',
+    'name_en': 'Green Lentil Stew with Meat',
+    'description':
+        'Kuşbaşı et lezzetiyle zenginleşmiş demir deposu yeşil mercimek.',
+    'description_en':
+        'Iron-rich green lentil stew enriched with cubed meat flavor.',
+    'category': 'turkish_classic',
+    'tags': ['high_protein', 'iron_rich', 'filling'],
+    'meal_type': 'dinner',
+    'prep_time_minutes': 15,
+    'cook_time_minutes': 45,
+    'difficulty': 'medium',
+    'calories': 420,
+    'protein': 28,
+    'carbs': 38,
+    'fat': 18,
+    'fiber': 13,
+    'ingredients': [
+      {'name': 'Yeşil Mercimek', 'amount': 100, 'unit': 'g', 'calories': 220},
+      {'name': 'Dana Kuşbaşı', 'amount': 80, 'unit': 'g', 'calories': 160},
+      {
+        'name': 'Soğan & Domates Salçası',
+        'amount': 40,
+        'unit': 'g',
+        'calories': 35
+      }
+    ],
+    'instructions': [
+      '1. Etleri yumuşayana kadar ön pişirme yapın.',
+      '2. Haşlanıp süzülmüş mercimekleri etli soğanlı harca ekleyin.',
+      '3. Malzemeler özleşene kadar yaklaşık 20 dakika daha pişirin.'
+    ]
+  },
+  {
+    'id': 'taze_fasulye_zeytinyagli',
+    'name': 'Zeytinyağlı Taze Fasulye',
+    'name_en': 'Fresh Green Beans in Olive Oil',
+    'description':
+        'Yaz sofralarının vazgeçilmezi, bol domatesli ve sızma zeytinyağlı fasulye.',
+    'description_en':
+        'Indispensable for summer tables, green beans with plenty of tomatoes and olive oil.',
     'category': 'turkish_classic',
     'tags': ['vegan', 'low_calorie', 'clean_eating'],
     'meal_type': 'lunch',
@@ -2300,25 +2751,106 @@ final List<Map<String, dynamic>> turkishClassicsBatch = [
     'fat': 10,
     'fiber': 9,
     'ingredients': [
-      {
-        'name': 'Taze Fasulye (Ayşe Kadın)',
-        'amount': 250,
-        'unit': 'g',
-        'calories': 80
-      },
-      {'name': 'Domates (Tarla)', 'amount': 150, 'unit': 'g', 'calories': 30},
-      {
-        'name': 'Soğan & Zeytinyağı',
-        'amount': 100,
-        'unit': 'g',
-        'calories': 120
-      }
+      {'name': 'Taze Fasulye', 'amount': 250, 'unit': 'g', 'calories': 80},
+      {'name': 'Domates', 'amount': 150, 'unit': 'g', 'calories': 30},
+      {'name': 'Zeytinyağı', 'amount': 20, 'unit': 'ml', 'calories': 160}
     ],
     'instructions': [
-      '1. Hazırlık: Fasulyeleri ayıklayıp boyuna ikiye bölün. Domatesleri küp küp doğrayın.',
-      '2. Sote: Soğanları zeytinyağında şeffaflaşana kadar kavurun.',
-      '3. Pişirme: Fasulyeleri ve domatesleri ekleyin. Kendi suyunda ve kısık ateşte fasulyeler yumuşayana kadar pişirin.',
-      '4. Final: Piştikten sonra mutlaka ılık veya soğuk olarak dinlendirerek servis edin.'
+      '1. Fasulyeleri ayıklayıp dilimleyin.',
+      '2. Soğanları kavurup domates ve fasulyeleri ekleyin.',
+      '3. Kısık ateşte kendi suyunda pişmeye bırakın.'
+    ]
+  },
+  {
+    'id': 'patlican_yemegi',
+    'name': 'Kıymalı Patlıcan Musakka',
+    'name_en': 'Eggplant Mousakka',
+    'description':
+        'Kızarmış patlıcanların kıymalı sos ile tencerede buluşması.',
+    'description_en':
+        'The meeting of fried eggplants with minced meat sauce in a pot.',
+    'category': 'turkish_classic',
+    'tags': ['high_protein', 'traditional', 'savory'],
+    'meal_type': 'dinner',
+    'prep_time_minutes': 25,
+    'cook_time_minutes': 40,
+    'difficulty': 'medium',
+    'calories': 390,
+    'protein': 20,
+    'carbs': 15,
+    'fat': 28,
+    'fiber': 6,
+    'ingredients': [
+      {'name': 'Patlıcan', 'amount': 2, 'unit': 'adet', 'calories': 80},
+      {'name': 'Dana Kıyma', 'amount': 120, 'unit': 'g', 'calories': 260},
+      {'name': 'Soğan & Biber', 'amount': 60, 'unit': 'g', 'calories': 30},
+      {'name': 'Domates Salçası', 'amount': 15, 'unit': 'g', 'calories': 20}
+    ],
+    'instructions': [
+      '1. Patlıcanları küp doğrayıp kızartın veya fırınlayın.',
+      '2. Kıyma ve sebzeleri kavurarak bir sos hazırlayın.',
+      '3. Patlıcanları tencereye dizip üzerine kıymalı sosu ve az su ekleyerek pişirin.'
+    ]
+  },
+  {
+    'id': 'kabak_yemegi',
+    'name': 'Zeytinyağlı Pirinçli Kabak',
+    'name_en': 'Zucchini with Rice in Olive Oil',
+    'description':
+        'Dereotu ve pirinç ile pişirilen, ferah ve hafif bir sebze yemeği.',
+    'description_en':
+        'A fresh and light vegetable dish cooked with dill and rice.',
+    'category': 'turkish_classic',
+    'tags': ['vegan', 'low_calorie', 'fresh'],
+    'meal_type': 'lunch',
+    'prep_time_minutes': 15,
+    'cook_time_minutes': 30,
+    'difficulty': 'easy',
+    'calories': 160,
+    'protein': 4,
+    'carbs': 22,
+    'fat': 8,
+    'fiber': 4,
+    'ingredients': [
+      {'name': 'Kabak', 'amount': 2, 'unit': 'adet', 'calories': 40},
+      {'name': 'Pirinç', 'amount': 20, 'unit': 'g', 'calories': 70},
+      {'name': 'Dereotu & Soğan', 'amount': 30, 'unit': 'g', 'calories': 15},
+      {'name': 'Zeytinyağı', 'amount': 10, 'unit': 'ml', 'calories': 80}
+    ],
+    'instructions': [
+      '1. Kabakları küp küp doğrayın.',
+      '2. Soğanları soteleyip kabakları ve yıkanmış pirinci ekleyin.',
+      '3. Az su ilave edip pirinçler yumuşayana kadar pişirin. Bol dereotu ile servis edin.'
+    ]
+  },
+  {
+    'id': 'bezelye_yemegi',
+    'name': 'Etli Bezelye Yemeği',
+    'name_en': 'Pea Stew with Meat',
+    'description': 'Havuç ve patatesli, dana etli klasik bezelye yemeği.',
+    'description_en':
+        'Classic pea stew with carrots, potatoes, and beef cubes.',
+    'category': 'turkish_classic',
+    'tags': ['high_protein', 'fiber', 'home_cooked'],
+    'meal_type': 'dinner',
+    'prep_time_minutes': 15,
+    'cook_time_minutes': 40,
+    'difficulty': 'easy',
+    'calories': 380,
+    'protein': 24,
+    'carbs': 35,
+    'fat': 16,
+    'fiber': 10,
+    'ingredients': [
+      {'name': 'Taze Bezelye', 'amount': 150, 'unit': 'g', 'calories': 120},
+      {'name': 'Patates & Havuç', 'amount': 80, 'unit': 'g', 'calories': 50},
+      {'name': 'Dana Kuşbaşı', 'amount': 100, 'unit': 'g', 'calories': 180},
+      {'name': 'Salça', 'amount': 20, 'unit': 'g', 'calories': 30}
+    ],
+    'instructions': [
+      '1. Etleri soteleyip soğanla birlikte kavurun.',
+      '2. Havuç ve patatesleri ekleyip 2 dakika daha çevirin.',
+      '3. Bezelye, salça ve sıcak suyu ekleyip tüm sebzeler yumuşayana kadar pişirin.'
     ]
   },
   {
@@ -2362,7 +2894,145 @@ final List<Map<String, dynamic>> turkishClassicsBatch = [
       '3. Pişirme: Kapağını kapatıp hiç karıştırmadan kısık ateşte sebzeler yumuşayana kadar pişirin.',
       '4. Servis: Sıcak olarak, tenceredeki tüm sebzelerin aromasını koruyarak sunun.'
     ]
-  }
+  },
+  {
+    'id': 'etli_kuru_fasulye',
+    'name': 'Etli Kuru Fasulye',
+    'name_en': 'White Beans Stew with Beef',
+    'description':
+        'Yumuşacık pişmiş kuru fasulye, az yağlı dana eti ve klasik Türk mutfağına özgü salçalı sos ile hazırlanan doyurucu bir ana yemek.',
+    'description_en':
+        'Tender white beans cooked with lean beef in a traditional tomato-based Turkish stew.',
+    'category': 'meat',
+    'tags': ['turkish_classic', 'high_protein', 'fiber'],
+    'meal_type': 'dinner',
+    'prep_time_minutes': 15,
+    'cook_time_minutes': 45,
+    'difficulty': 'medium',
+    'calories': 620,
+    'protein': 42,
+    'carbs': 48,
+    'fat': 28,
+    'fiber': 14,
+    'ingredients': [
+      {'name': 'Kuru Fasulye', 'amount': 80, 'unit': 'g', 'calories': 270},
+      {
+        'name': 'Dana Kuşbaşı (Az Yağlı)',
+        'amount': 120,
+        'unit': 'g',
+        'calories': 220
+      },
+      {'name': 'Kuru Soğan', 'amount': 50, 'unit': 'g', 'calories': 20},
+      {'name': 'Domates Salçası', 'amount': 20, 'unit': 'g', 'calories': 16},
+      {'name': 'Zeytinyağı', 'amount': 10, 'unit': 'g', 'calories': 90},
+      {'name': 'Tuz & Karabiber', 'amount': 5, 'unit': 'g', 'calories': 4}
+    ],
+    'instructions': [
+      '1. Kuru fasulyeyi bir gece önceden suda bekletin ve ertesi gün süzün.',
+      '2. Tencerede zeytinyağını ısıtıp doğranmış soğanı pembeleştirin.',
+      '3. Dana etini ekleyip suyunu salıp çekene kadar kavurun.',
+      '4. Salçayı ekleyip kısa süre kavurduktan sonra fasulyeyi ilave edin.',
+      '5. Üzerini geçecek kadar sıcak su ekleyip kısık ateşte yumuşayana kadar pişirin.',
+      '6. Dinlendirdikten sonra sıcak servis edin.'
+    ]
+  },
+  {
+    'id': 'etsiz_kuru_fasulye',
+    'name': 'Etsiz Kuru Fasulye',
+    'name_en': 'White Beans Stew (Meatless)',
+    'description':
+        'Zeytinyağı ve domates salçası ile hazırlanan, hafif ama tok tutan geleneksel etsiz kuru fasulye yemeği.',
+    'description_en':
+        'Traditional meatless white bean stew cooked with olive oil and tomato paste.',
+    'category': 'vegetarian',
+    'tags': ['vegan', 'fiber', 'turkish_classic'],
+    'meal_type': 'dinner',
+    'prep_time_minutes': 15,
+    'cook_time_minutes': 40,
+    'difficulty': 'easy',
+    'calories': 480,
+    'protein': 22,
+    'carbs': 62,
+    'fat': 16,
+    'fiber': 16,
+    'ingredients': [
+      {'name': 'Kuru Fasulye', 'amount': 90, 'unit': 'g', 'calories': 300},
+      {'name': 'Kuru Soğan', 'amount': 60, 'unit': 'g', 'calories': 24},
+      {'name': 'Domates Salçası', 'amount': 20, 'unit': 'g', 'calories': 16},
+      {'name': 'Zeytinyağı', 'amount': 10, 'unit': 'g', 'calories': 90},
+      {'name': 'Tuz', 'amount': 5, 'unit': 'g', 'calories': 2}
+    ],
+    'instructions': [
+      '1. Fasulyeyi bir gece önceden suda bekletin.',
+      '2. Soğanı zeytinyağında kavurun.',
+      '3. Salçayı ekleyip kokusu çıkana kadar karıştırın.',
+      '4. Fasulyeyi ve sıcak suyu ekleyip yumuşayana kadar pişirin.',
+      '5. Dinlendirip servis edin.'
+    ]
+  },
+  {
+    'id': 'nohut_yemegi',
+    'name': 'Nohut Yemeği',
+    'name_en': 'Chickpea Stew',
+    'description':
+        'Geleneksel usulle pişirilmiş nohut, soğan ve salça ile hazırlanan sade ve besleyici bir tencere yemeği.',
+    'description_en':
+        'Simple and nutritious chickpea stew cooked with onion and tomato paste.',
+    'category': 'vegetarian',
+    'tags': ['fiber', 'turkish_classic'],
+    'meal_type': 'dinner',
+    'prep_time_minutes': 15,
+    'cook_time_minutes': 40,
+    'difficulty': 'easy',
+    'calories': 500,
+    'protein': 24,
+    'carbs': 64,
+    'fat': 14,
+    'fiber': 15,
+    'ingredients': [
+      {'name': 'Nohut', 'amount': 90, 'unit': 'g', 'calories': 330},
+      {'name': 'Kuru Soğan', 'amount': 50, 'unit': 'g', 'calories': 20},
+      {'name': 'Domates Salçası', 'amount': 20, 'unit': 'g', 'calories': 16},
+      {'name': 'Zeytinyağı', 'amount': 10, 'unit': 'g', 'calories': 90}
+    ],
+    'instructions': [
+      '1. Nohutu bir gece önceden suda bekletin.',
+      '2. Soğanı yağda kavurun, salçayı ekleyin.',
+      '3. Nohut ve sıcak suyu ekleyip pişirin.',
+      '4. Yumuşayınca servis edin.'
+    ]
+  },
+  {
+    'id': 'taze_fasulye_zeytinyagli',
+    'name': 'Zeytinyağlı Taze Fasulye',
+    'name_en': 'Green Beans with Olive Oil',
+    'description':
+        'Domates ve zeytinyağı ile kısık ateşte pişirilmiş hafif ve ferahlatıcı klasik bir zeytinyağlı.',
+    'description_en': 'Light green beans simmered with tomatoes and olive oil.',
+    'category': 'vegetarian',
+    'tags': ['vegan', 'light', 'turkish_classic'],
+    'meal_type': 'lunch',
+    'prep_time_minutes': 15,
+    'cook_time_minutes': 35,
+    'difficulty': 'easy',
+    'calories': 360,
+    'protein': 9,
+    'carbs': 28,
+    'fat': 24,
+    'fiber': 10,
+    'ingredients': [
+      {'name': 'Taze Fasulye', 'amount': 200, 'unit': 'g', 'calories': 70},
+      {'name': 'Domates', 'amount': 120, 'unit': 'g', 'calories': 22},
+      {'name': 'Kuru Soğan', 'amount': 50, 'unit': 'g', 'calories': 20},
+      {'name': 'Zeytinyağı', 'amount': 15, 'unit': 'g', 'calories': 135}
+    ],
+    'instructions': [
+      '1. Soğanı zeytinyağında kavurun.',
+      '2. Domates ve fasulyeyi ekleyin.',
+      '3. Kısık ateşte yumuşayana kadar pişirin.',
+      '4. Ilık veya soğuk servis edin.'
+    ]
+  },
 ];
 
 final List<Map<String, dynamic>> allDishes = [

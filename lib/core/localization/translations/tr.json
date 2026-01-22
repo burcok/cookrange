@@ -519,7 +519,9 @@
     "instructions": "Hazırlanışı",
     "minutes": "Dakika",
     "servings": "Kişilik",
-    "start_cooking": "Pişirmeye Başla"
+    "start_cooking": "Pişirmeye Başla",
+    "description": "Açıklama",
+    "items": "Ürün"
   },
   "shopping": {
     "title": "Alışveriş Listesi",

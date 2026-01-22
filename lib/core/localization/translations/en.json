@@ -519,7 +519,9 @@
     "instructions": "Instructions",
     "minutes": "Minutes",
     "servings": "Servings",
-    "start_cooking": "Start Cooking"
+    "start_cooking": "Start Cooking",
+    "description": "Description",
+    "items": "Items"
   },
   "shopping": {
     "title": "Shopping List",

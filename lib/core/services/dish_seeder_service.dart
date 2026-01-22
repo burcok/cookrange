@@ -30,9 +30,34 @@ class DishSeederService {
 
         // If no image url in data, or forced update, try to fetch
         if (imageUrl == null || imageUrl.isEmpty || forceUpdateImages) {
-          // Construct a search query (e.g. "Chicken Rice food")
-          final query = '$nameEn food';
-          imageUrl = await _imageService.fetchDishImage(query);
+          // Sanitize name: remove special characters, take part before punctuation
+          final cleanName = nameEn
+              .split(RegExp(r'[&,()]'))
+              .first
+              .replaceAll(RegExp(r'[^a-zA-Z\s]'), '')
+              .trim();
+
+          final queries = <String>[
+            cleanName, // Full cleaned name
+            cleanName.split(' ').take(3).join(' '), // First 3 words
+            cleanName
+                .split(' ')
+                .last, // Last word (often the core ingredient/dish)
+          ];
+
+          // Add first tag as a query if available
+          final tags = List<String>.from(dishData['tags'] ?? []);
+          if (tags.isNotEmpty) {
+            queries.add(tags.first.replaceAll('_', ' '));
+          }
+
+          // Try queries in order
+          for (final q in queries.toSet()) {
+            // toSet() removes duplicates
+            if (q.isEmpty) continue;
+            imageUrl = await _imageService.fetchDishImage(q);
+            if (imageUrl != null) break;
+          }
 
           if (imageUrl != null) {
             print('Fetched image for $id: $imageUrl');
