@@ -8,9 +8,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/utils/calorie_calculator.dart';
 import '../../core/models/user_model.dart';
-import '../../core/models/meal_plan_model.dart';
-import '../../core/services/storage_service.dart';
-import '../../core/services/recipe_generation_service.dart';
+import '../../core/models/weekly_meal_plan_model.dart';
+import '../../core/services/weekly_meal_plan_service.dart';
+import '../../core/services/dish_service.dart';
+import '../../core/models/dish_model.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/admin_status_service.dart';
 import '../../core/localization/app_localizations.dart';
@@ -29,9 +30,15 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
-  final StorageService _storageService = StorageService();
-  final RecipeGenerationService _recipeService = RecipeGenerationService();
-  MealPlan? _todayMealPlan;
+  final WeeklyMealPlanService _mealPlanService = WeeklyMealPlanService();
+  final DishService _dishService = DishService();
+
+  WeeklyMealPlanModel? _weeklyPlan;
+  int _selectedDayIndex = 0;
+  bool _isLoadingPlan = false;
+
+  // Cache for dishes to avoid repeated fetches
+  final Map<String, DishModel> _dishCache = {};
   DateTime? _lastRefreshTime;
 
   // Custom Refresh State
@@ -43,7 +50,10 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    _loadTodayMealPlan();
+    // Defer loading slightly to ensure context is ready or just call it
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadWeeklyPlan();
+    });
     _loadHydration();
     _refreshController = AnimationController(
       vsync: this,
@@ -60,33 +70,69 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _loadHydration() {}
 
-  Future<void> _loadTodayMealPlan() async {
-    final now = DateTime.now();
-    final plan = _storageService.getMealPlan(now);
-    setState(() {
-      _todayMealPlan = plan;
-    });
-  }
+  Future<void> _loadWeeklyPlan() async {
+    final user = context.read<UserProvider>().user;
+    if (user == null) return;
 
-  Future<void> _generateMealPlan(UserModel user) async {
+    setState(() => _isLoadingPlan = true);
+
     try {
-      final recipe = await _recipeService.generateRecipe(
-        ingredients: ["seasonal", "healthy"],
-        targetCalories: 2000 / 3,
-      );
+      final plan = await _mealPlanService.getWeeklyMealPlan(user);
+      if (plan != null) {
+        // Pre-fetch dishes for the current day or all days?
+        // Let's pre-fetch all distinct dish IDs in the plan to ensure smooth UI
+        final allDishIds = plan.days.expand((d) => d.meals.values).toSet();
+        await _fetchDishes(allDishIds.toList());
 
-      if (recipe != null) {
-        final plan = MealPlan(
-          date: DateTime.now(),
-          meals: {'breakfast': recipe.id},
-          totalCalories: recipe.macros['calories'] ?? 0,
-          totalMacros: recipe.macros,
-        );
-        await _storageService.saveMealPlan(plan);
-        await _storageService.saveRecipe(recipe);
-        if (mounted) await _loadTodayMealPlan();
+        // precise day selection
+        final now = DateTime.now();
+        // Find the index that matches today, or default to 0
+        int initialIndex = plan.days.indexWhere((d) =>
+            d.date.year == now.year &&
+            d.date.month == now.month &&
+            d.date.day == now.day);
+
+        if (initialIndex == -1) initialIndex = 0;
+
+        setState(() {
+          _weeklyPlan = plan;
+          _selectedDayIndex = initialIndex;
+        });
       }
     } finally {
+      if (mounted) setState(() => _isLoadingPlan = false);
+    }
+  }
+
+  Future<void> _fetchDishes(List<String> ids) async {
+    // Only fetch what we don't have
+    final missingIds = ids.where((id) => !_dishCache.containsKey(id)).toList();
+    if (missingIds.isEmpty) return;
+
+    // This could be optimized if DishService supported batch fetch
+    for (final id in missingIds) {
+      final dish = await _dishService.getDishById(id);
+      if (dish != null) {
+        _dishCache[id] = dish;
+      }
+    }
+  }
+
+  Future<void> _generateWeeklyPlan(UserModel user) async {
+    setState(() => _isLoadingPlan = true);
+    try {
+      final plan =
+          await _mealPlanService.getWeeklyMealPlan(user, forceRefresh: true);
+      if (plan != null) {
+        final allDishIds = plan.days.expand((d) => d.meals.values).toSet();
+        await _fetchDishes(allDishIds.toList());
+        setState(() {
+          _weeklyPlan = plan;
+          _selectedDayIndex = 0;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingPlan = false);
       if (mounted) await context.read<UserProvider>().refreshUser();
     }
   }
@@ -127,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
 
       await Future.wait([
-        _loadTodayMealPlan(),
+        _loadWeeklyPlan(),
         context.read<UserProvider>().refreshUser(),
       ]);
     } finally {
@@ -543,38 +589,141 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildMealPlanSection(
       BuildContext context, UserModel user, AppLocalizations l10n) {
+    if (_isLoadingPlan) {
+      return Center(
+          child: Padding(
+        padding: EdgeInsets.all(32.0),
+        child: CircularProgressIndicator(),
+      ));
+    }
+
+    if (_weeklyPlan == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(context, l10n),
+          SizedBox(height: 16.h),
+          _buildEmptyPlanState(context, user, l10n),
+        ],
+      );
+    }
+
+    final currentDay = _weeklyPlan!.days[_selectedDayIndex];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              l10n.translate('home.meal_plan_title'),
-              style: TextStyle(
-                fontSize: 22.sp,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF2E3A59),
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              child: Text(
-                l10n.translate('home.edit'),
-                style: TextStyle(
-                  color: context.watch<ThemeProvider>().primaryColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16.sp,
-                ),
-              ),
-            ),
-          ],
-        ),
+        _buildSectionHeader(context, l10n, showRegenerate: true, user: user),
         SizedBox(height: 16.h),
-        if (_todayMealPlan == null)
-          _buildEmptyPlanState(context, user, l10n)
-        else
-          ..._buildMealsList(l10n),
+        // Day Selector
+        SizedBox(
+          height: 80.h,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _weeklyPlan!.days.length,
+            separatorBuilder: (_, __) => SizedBox(width: 12.w),
+            itemBuilder: (context, index) {
+              final day = _weeklyPlan!.days[index];
+              final isSelected = index == _selectedDayIndex;
+              // Format date: "Mon", "12"
+              final dayNameShort = DateFormat('E').format(day.date);
+              final dayNum = DateFormat('d').format(day.date);
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _selectedDayIndex = index);
+                  // Optionally scroll to selected day if list is long
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 60.w,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? context.watch<ThemeProvider>().primaryColor
+                        : Colors.white.withAlpha(200),
+                    borderRadius: BorderRadius.circular(16.r),
+                    border: isSelected
+                        ? null
+                        : Border.all(color: Colors.white, width: 1),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: context
+                                  .watch<ThemeProvider>()
+                                  .primaryColor
+                                  .withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            )
+                          ]
+                        : null,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        dayNameShort,
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF2E3A59).withOpacity(0.6),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        dayNum,
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF2E3A59),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        SizedBox(height: 24.h),
+        // Meals List
+        ..._buildMealsList(l10n, currentDay),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, AppLocalizations l10n,
+      {bool showRegenerate = false, UserModel? user}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          l10n.translate('home.meal_plan_title'),
+          style: TextStyle(
+            fontSize: 22.sp,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF2E3A59),
+          ),
+        ),
+        if (showRegenerate && user != null)
+          TextButton.icon(
+            onPressed: () => _generateWeeklyPlan(user),
+            icon: Icon(Icons.refresh,
+                size: 16.sp,
+                color: context.watch<ThemeProvider>().primaryColor),
+            label: Text(
+              "Regenerate", // Localize this later
+              style: TextStyle(
+                color: context.watch<ThemeProvider>().primaryColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 14.sp,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -607,6 +756,7 @@ class _HomeScreenState extends State<HomeScreen>
               SizedBox(height: 16.h),
               Text(
                 l10n.translate('home.no_meal_plan'),
+                textAlign: TextAlign.center,
                 style: TextStyle(
                     color: const Color(0xFF2E3A59),
                     fontWeight: FontWeight.bold,
@@ -614,7 +764,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               SizedBox(height: 12.h),
               ElevatedButton(
-                onPressed: () => _generateMealPlan(user),
+                onPressed: () => _generateWeeklyPlan(user),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: context.watch<ThemeProvider>().primaryColor,
                   foregroundColor: Colors.white,
@@ -631,25 +781,39 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  List<Widget> _buildMealsList(AppLocalizations l10n) {
-    return _todayMealPlan!.meals.entries.map((entry) {
-      final recipe = _storageService.getRecipe(entry.value);
+  List<Widget> _buildMealsList(AppLocalizations l10n, DayMealPlan day) {
+    final mealOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
+
+    return mealOrder.map((mealType) {
+      if (!day.meals.containsKey(mealType)) return SizedBox.shrink();
+
+      final dishId = day.meals[mealType]!;
+      final dish = _dishCache[dishId];
+
+      // If dish is not in cache yet (should be prefetched), show loader or placeholder
+      if (dish == null) {
+        return Container(
+          height: 80.h,
+          margin: EdgeInsets.only(bottom: 16.h),
+          child: Center(child: CircularProgressIndicator()),
+        );
+      }
+
       return GestureDetector(
         onTap: () {
-          if (recipe != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => RecipeDetailScreen(recipe: recipe)),
-            );
-          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                // Convert DishModel to Recipe for the detail screen
+                builder: (context) =>
+                    RecipeDetailScreen(recipe: dish.toRecipe())),
+          );
         },
         child: Container(
           margin: EdgeInsets.only(bottom: 16.h),
           padding: EdgeInsets.all(16.r),
           decoration: BoxDecoration(
-            color: Colors.white
-                .withAlpha(240), // Increased opacity since we lost blur
+            color: Colors.white.withAlpha(240),
             borderRadius: BorderRadius.circular(20.r),
             boxShadow: [
               BoxShadow(
@@ -668,16 +832,16 @@ class _HomeScreenState extends State<HomeScreen>
                   width: 90.w,
                   height: 90.w,
                   color: Colors.grey[100]!.withAlpha(100),
-                  child: recipe?.imageUrl != null
+                  child: dish.imageUrl != null
                       ? CachedNetworkImage(
-                          imageUrl: recipe!.imageUrl!,
+                          imageUrl: dish.imageUrl!,
                           fit: BoxFit.cover,
-                          memCacheWidth: 200, // Optimize memory usage
+                          memCacheWidth: 200,
                           memCacheHeight: 200,
                           placeholder: (context, url) =>
                               const Center(child: CircularProgressIndicator()),
                           errorWidget: (context, url, error) =>
-                              const Icon(Icons.error),
+                              const Icon(Icons.restaurant),
                         )
                       : Icon(Icons.restaurant,
                           color: Colors.grey[300], size: 30.w),
@@ -689,7 +853,7 @@ class _HomeScreenState extends State<HomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      toBeginningOfSentenceCase(entry.key) ?? entry.key,
+                      toBeginningOfSentenceCase(mealType) ?? mealType,
                       style: TextStyle(
                         fontSize: 15.sp,
                         color: Colors.grey[400],
@@ -698,24 +862,49 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     SizedBox(height: 6.h),
                     Text(
-                      recipe?.title ?? l10n.translate('home.loading_recipe'),
+                      dish.name,
                       style: TextStyle(
                         fontSize: 18.sp,
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF2E3A59),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 6.h),
-                    Text(
-                      l10n.translate('home.calories_suffix', variables: {
-                        'count': (recipe?.macros['calories']?.toInt() ?? 0)
-                            .toString()
-                      }),
-                      style: TextStyle(
-                        fontSize: 15.sp,
-                        color: Colors.grey[500],
-                        fontWeight: FontWeight.w500,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          l10n.translate('home.calories_suffix', variables: {
+                            'count': dish.calories.toInt().toString()
+                          }),
+                          style: TextStyle(
+                            fontSize: 15.sp,
+                            color: Colors.grey[500],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(width: 8.w),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 8.w, vertical: 2.h),
+                          decoration: BoxDecoration(
+                            color: context
+                                .watch<ThemeProvider>()
+                                .primaryColor
+                                .withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Text(
+                            "${dish.protein.toInt()}g P",
+                            style: TextStyle(
+                                fontSize: 12.sp,
+                                color:
+                                    context.watch<ThemeProvider>().primaryColor,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        )
+                      ],
                     ),
                   ],
                 ),

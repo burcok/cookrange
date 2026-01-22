@@ -7,7 +7,7 @@ class AIService {
   factory AIService() => _instance;
   AIService._internal();
 
-  final String _baseUrl = 'https://api.openai.com/v1/chat/completions';
+  final String _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
   String? _apiKey;
 
   void initialize({required String apiKey}) {
@@ -19,11 +19,17 @@ class AIService {
     String? systemPrompt,
     double temperature = 0.7,
   }) async {
-    if (_apiKey == null) {
+    if (_apiKey == null || _apiKey!.isEmpty) {
       // Return mock response if no API key is set
       debugPrint(
           'Warning: No API key set for AIService. Returning mock response.');
       await Future.delayed(const Duration(seconds: 1));
+
+      // If it looks like a JSON request, return a generic mock JSON
+      if (systemPrompt != null && systemPrompt.contains('JSON')) {
+        return '{}';
+      }
+
       return 'This is a mock response from AIService. Please configure your API key.';
     }
 
@@ -33,9 +39,12 @@ class AIService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_apiKey',
+          'Referer': 'https://cookrange.app', // Standard header name
+          'X-Title': 'Cookrange', // Optional, for OpenRouter tracking
         },
         body: jsonEncode({
-          'model': 'gpt-4o-mini', // Cost-effective default
+          'model':
+              'tngtech/deepseek-r1t-chimera:free', // Fast and free model on OpenRouter
           'messages': [
             if (systemPrompt != null)
               {'role': 'system', 'content': systemPrompt},
@@ -76,9 +85,22 @@ Do not include markdown formatting (like ```json).
         temperature: 0.3, // Lower temperature for more deterministic structure
       );
 
-      // Clean up potential markdown formatting
-      final cleanContent =
+      // Clean up potential markdown and extract JSON block
+      String cleanContent =
           content.replaceAll('```json', '').replaceAll('```', '').trim();
+
+      // Remove <think> tags if present
+      if (cleanContent.contains('<think>')) {
+        cleanContent = cleanContent.split('</think>').last.trim();
+      }
+
+      // If there's still extra text, find the first '{' and last '}'
+      final firstBrace = cleanContent.indexOf('{');
+      final lastBrace = cleanContent.lastIndexOf('}');
+
+      if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+        cleanContent = cleanContent.substring(firstBrace, lastBrace + 1);
+      }
 
       return jsonDecode(cleanContent) as Map<String, dynamic>;
     } catch (e) {

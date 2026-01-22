@@ -117,7 +117,7 @@ class AppInitializationService {
       await dotenv.load(fileName: ".env");
 
       // Initialize AI Service
-      final apiKey = dotenv.env['OPENAI_API_KEY'] ?? '';
+      final apiKey = dotenv.env['OPENROUTER_API_KEY'] ?? '';
       AIService().initialize(apiKey: apiKey);
 
       _log.info('Core Flutter services initialized', service: _serviceName);
