@@ -30,31 +30,82 @@ class DishSeederService {
 
         // If no image url in data, or forced update, try to fetch
         if (imageUrl == null || imageUrl.isEmpty || forceUpdateImages) {
-          // Sanitize name: remove special characters, take part before punctuation
-          final cleanName = nameEn
-              .split(RegExp(r'[&,()]'))
-              .first
-              .replaceAll(RegExp(r'[^a-zA-Z\s]'), '')
-              .trim();
-
-          final queries = <String>[
-            cleanName, // Full cleaned name
-            cleanName.split(' ').take(3).join(' '), // First 3 words
-            cleanName
-                .split(' ')
-                .last, // Last word (often the core ingredient/dish)
+          // List of common descriptive words to filter out for better image searching
+          final adjectives = [
+            'traditional',
+            'grilled',
+            'roasted',
+            'baked',
+            'tender',
+            'hearty',
+            'fresh',
+            'fit',
+            'healthy',
+            'home',
+            'made',
+            'gourmet',
+            'premium',
+            'slow-cooked',
+            'fried',
+            'steamed',
+            'seared',
+            'rich',
+            'classic',
+            'delicious',
+            'authentic',
+            'spicy',
+            'sweet',
+            'savory',
+            'crispy',
+            'crunchy',
+            'juicy',
+            'creamy',
+            'homemade',
+            'style',
+            'special',
+            'turkish',
+            'ottoman',
+            'village',
+            'pure',
+            'natural',
+            'organic'
           ];
 
-          // Add first tag as a query if available
+          String sanitizeForSearch(String text) {
+            String sanitized = text
+                .split(RegExp(r'[&,()]'))
+                .first
+                .replaceAll(RegExp(r'[^a-zA-Z\s]'), ' ')
+                .toLowerCase();
+
+            // Remove common adjectives (whole words only)
+            for (var adj in adjectives) {
+              sanitized = sanitized.replaceAll(RegExp('\\b$adj\\b'), '');
+            }
+            return sanitized.replaceAll(RegExp(r'\s+'), ' ').trim();
+          }
+
+          final cleanName = sanitizeForSearch(nameEn);
+
+          final queries = <String>[
+            cleanName, // Cleaned name without adjectives
+            // Try only the first two words if there are many (usually the main dish)
+            cleanName.split(' ').take(2).join(' '),
+            // Try only the last word (often the core ingredient)
+            cleanName.split(' ').last,
+          ];
+
+          // Add meaningful tags as fallback queries
           final tags = List<String>.from(dishData['tags'] ?? []);
-          if (tags.isNotEmpty) {
-            queries.add(tags.first.replaceAll('_', ' '));
+          for (var tag in tags) {
+            if (!tag.contains('_') && tag.length > 3) {
+              queries.add(tag);
+            }
           }
 
           // Try queries in order
           for (final q in queries.toSet()) {
-            // toSet() removes duplicates
-            if (q.isEmpty) continue;
+            if (q.isEmpty || q.length < 3) continue;
             imageUrl = await _imageService.fetchDishImage(q);
             if (imageUrl != null) break;
           }
@@ -114,5 +165,57 @@ class DishSeederService {
     }
 
     print('Seeding complete. Success: $successCount, Failed: $failCount');
+  }
+
+  Future<void> seedSingleDish(
+      Map<String, dynamic> dishData, String imageUrl) async {
+    try {
+      final String id = dishData['id'];
+
+      // 1. Convert Ingredients Map -> Object
+      final rawIngredients = dishData['ingredients'] as List<dynamic>? ?? [];
+      final List<Ingredient> ingredients = rawIngredients.map((item) {
+        final map = item as Map<String, dynamic>;
+        return Ingredient(
+          name: map['name'] ?? '',
+          amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+          unit: map['unit'] ?? '',
+          calories: (map['calories'] as num?)?.toDouble() ?? 0.0,
+        );
+      }).toList();
+
+      // 2. Create DishModel
+      final dish = DishModel(
+        id: id,
+        name: dishData['name'],
+        nameEn: dishData['name_en'],
+        description: dishData['description'],
+        descriptionEn: dishData['description_en'] ?? '',
+        imageUrl: imageUrl,
+        calories: (dishData['calories'] as num).toDouble(),
+        protein: (dishData['protein'] as num).toDouble(),
+        carbs: (dishData['carbs'] as num).toDouble(),
+        fat: (dishData['fat'] as num).toDouble(),
+        fiber: (dishData['fiber'] as num?)?.toDouble() ?? 0.0,
+        category: dishData['category'],
+        tags: List<String>.from(dishData['tags'] ?? []),
+        mealType: dishData['meal_type'] ?? 'main',
+        prepTimeMinutes: dishData['prep_time_minutes'] ?? 0,
+        cookTimeMinutes: dishData['cook_time_minutes'] ?? 0,
+        difficulty: dishData['difficulty'] ?? 'medium',
+        servings: dishData['servings'] ?? 1,
+        ingredients: ingredients,
+        instructions: List<String>.from(dishData['instructions'] ?? []),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      // 3. Save to Firestore
+      await _firestore.collection('dishes').doc(id).set(dish.toJson());
+      print('Successfully seeded single dish: $id');
+    } catch (e) {
+      print('Error seeding single dish ${dishData['id']}: $e');
+      rethrow;
+    }
   }
 }
