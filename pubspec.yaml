@@ -183,5 +183,11 @@ flutter:
           weight: 800
         - asset: assets/fonts/Lexend/Lexend-Black.ttf
           weight: 900
+
+dependency_overrides:
+  leak_tracker: ^11.0.1
+  leak_tracker_flutter_testing: ^3.0.10
+  material_color_utilities: ^0.13.0
+  analyzer: 6.4.1
         
 

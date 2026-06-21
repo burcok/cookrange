@@ -1,7 +1,8 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=/Users/burcok/development/flutter"
-export "FLUTTER_APPLICATION_PATH=/Users/burcok/Desktop/cookrange"
+export "FLUTTER_ROOT=/Users/burak/Documents/development/flutter"
+export "FLUTTER_APPLICATION_PATH=/Users/burak/Desktop/cookrange"
+export "FLUTTER_FRAMEWORK_SWIFT_PACKAGE_PATH=/Users/burak/Desktop/cookrange/macos/Flutter/ephemeral/Packages/.packages/FlutterFramework"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_BUILD_DIR=build"
 export "FLUTTER_BUILD_NAME=1.0.0"
