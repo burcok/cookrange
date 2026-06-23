@@ -113,22 +113,30 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   }
 
   Future<void> _checkEmailVerified() async {
-    final user = _auth.currentUser;
-    await user?.reload();
-    if (user != null && user.emailVerified) {
-      _timer?.cancel();
-      _countdownTimer?.cancel();
-      await _authService.verifyUserEmail();
-      final userModel = await _authService.getUserData(user.uid);
-      final bool onboardingCompleted = userModel?.onboardingCompleted ?? false;
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        await user.reload();
+        final reloadedUser = _auth.currentUser;
+        if (reloadedUser != null && reloadedUser.emailVerified) {
+          _timer?.cancel();
+          _countdownTimer?.cancel();
+          await _authService.verifyUserEmail();
+          final userModel = await _authService.getUserData(reloadedUser.uid);
+          final bool onboardingCompleted =
+              userModel?.onboardingCompleted ?? false;
 
-      if (mounted) {
-        if (onboardingCompleted) {
-          Navigator.pushReplacementNamed(context, AppRoutes.home);
-        } else {
-          Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
+          if (mounted) {
+            if (onboardingCompleted) {
+              Navigator.pushReplacementNamed(context, AppRoutes.home);
+            } else {
+              Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
+            }
+          }
         }
       }
+    } catch (e) {
+      debugPrint('Error checking email verification: $e');
     }
   }
 
