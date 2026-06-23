@@ -443,7 +443,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Checkbox(
                       value: _agreementsAccepted,
@@ -541,7 +540,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
                       child: Text(
                         localizations.translate('auth.or_divider'),
-                        style: TextStyle(color: authSecondaryTextColor),
+                        style: const TextStyle(color: authSecondaryTextColor),
                       ),
                     ),
                     Expanded(

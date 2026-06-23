@@ -42,7 +42,6 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
         initialChildSize: 0.12,
         minChildSize: 0.12,
         maxChildSize: 0.65,
-        snap: false,
         builder: (context, scrollController) {
           // REMOVED: ClipRRect here was clipping the overflowing FAB
           return Material(
@@ -105,11 +104,11 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                               child: Text(
                                 AppLocalizations.of(context)
                                     .translate('quick_actions.title'),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize:
                                       24, // Optimized scale: using 24 directly or ScreenUtil if available
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF2E3A59),
+                                  color: Color(0xFF2E3A59),
                                   letterSpacing: -0.5,
                                   fontFamily: 'Poppins',
                                 ),
@@ -166,7 +165,7 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
       BuildContext context, NavigationProvider nav) {
     return Container(
       height: 90,
-      padding: const EdgeInsets.symmetric(horizontal: 0),
+      padding: const EdgeInsets.symmetric(),
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.center,

@@ -135,8 +135,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: AppBar(
               backgroundColor: isDark
-                  ? const Color(0xFF111827).withOpacity(0.8)
-                  : Colors.white.withOpacity(0.8),
+                  ? const Color(0xFF111827).withValues(alpha: 0.8)
+                  : Colors.white.withValues(alpha: 0.8),
               elevation: 0,
               leading: IconButton(
                 icon: Icon(Icons.arrow_back,
@@ -215,7 +215,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                           'time': _formatLastActive(
                                               context, lastActiveAt)
                                         }),
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       color: Colors.grey,
                                       fontSize: 10,
                                     ),
@@ -259,7 +259,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       return const Center(child: CircularProgressIndicator());
                     }
                     if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return Center(
+                      return const Center(
                         child: Text(
                           'No messages yet',
                           style: TextStyle(color: Colors.grey),
@@ -367,7 +367,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
+                                      color:
+                                          Colors.black.withValues(alpha: 0.05),
                                       blurRadius: 4,
                                       offset: const Offset(0, 2),
                                     ),
@@ -397,7 +398,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                           style: TextStyle(
                                             fontSize: 10,
                                             color: isMe
-                                                ? Colors.white.withOpacity(0.7)
+                                                ? Colors.white
+                                                    .withValues(alpha: 0.7)
                                                 : Colors.grey,
                                           ),
                                         ),
@@ -410,7 +412,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                             size: 14,
                                             color: message.isRead
                                                 ? Colors.blue.shade100
-                                                : Colors.white.withOpacity(0.7),
+                                                : Colors.white
+                                                    .withValues(alpha: 0.7),
                                           ),
                                         ],
                                       ],
@@ -448,12 +451,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                 horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
                               color: isDark
-                                  ? Colors.grey.shade800.withOpacity(0.9)
-                                  : Colors.white.withOpacity(0.9),
+                                  ? Colors.grey.shade800.withValues(alpha: 0.9)
+                                  : Colors.white.withValues(alpha: 0.9),
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 4,
                                   offset: const Offset(0, 2),
                                 ),
@@ -497,7 +500,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   color: isDark ? const Color(0xFF1F2937) : Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, -4),
                     ),
@@ -593,8 +596,8 @@ class _DateSeparator extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isDark
-              ? Colors.white.withOpacity(0.15)
-              : Colors.black.withOpacity(0.1),
+              ? Colors.white.withValues(alpha: 0.15)
+              : Colors.black.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(

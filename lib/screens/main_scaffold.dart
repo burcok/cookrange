@@ -134,9 +134,9 @@ class _MainScaffoldState extends State<MainScaffold>
                         navigationProvider.setIndex(index);
                       }
                     },
-                    children: [
-                      const HomeScreen(),
-                      const CommunityScreen(),
+                    children: const [
+                      HomeScreen(),
+                      CommunityScreen(),
                     ],
                   ),
 

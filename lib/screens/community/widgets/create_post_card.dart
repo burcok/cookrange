@@ -112,7 +112,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
                     selectedColor: context
                         .watch<ThemeProvider>()
                         .primaryColor
-                        .withOpacity(0.2),
+                        .withValues(alpha: 0.2),
                     checkmarkColor: context.watch<ThemeProvider>().primaryColor,
                     labelStyle: TextStyle(
                       color: isSelected
@@ -194,14 +194,15 @@ class _CreatePostCardState extends State<CreatePostCard> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.white.withOpacity(0.6),
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.white.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-            color: isDark ? Colors.white10 : Colors.white.withOpacity(0.5)),
+            color:
+                isDark ? Colors.white10 : Colors.white.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -260,7 +261,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
                             backgroundColor: context
                                 .watch<ThemeProvider>()
                                 .primaryColor
-                                .withOpacity(0.1),
+                                .withValues(alpha: 0.1),
                             labelStyle: TextStyle(
                                 color: context
                                     .watch<ThemeProvider>()

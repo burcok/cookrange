@@ -194,7 +194,7 @@ class _DraggableReactionButtonState extends State<DraggableReactionButton> {
       child: GestureDetector(
         onLongPressStart: (details) {
           HapticFeedback.mediumImpact();
-          _showOverlay(isTapMode: false);
+          _showOverlay();
           _updateFocus(details.localPosition); // Init focus
         },
         onLongPressMoveUpdate: (details) {

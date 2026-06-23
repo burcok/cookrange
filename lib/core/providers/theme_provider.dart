@@ -26,7 +26,7 @@ class ThemeProvider extends ChangeNotifier {
 
           // Also sync with local storage so it's available next time immediately
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setInt('primary_color', _primaryColor.value);
+          await prefs.setInt('primary_color', _primaryColor.toARGB32());
         }
       }
     });
@@ -36,9 +36,9 @@ class ThemeProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final themeString = prefs.getString('theme_mode');
     if (themeString != null) {
-      if (themeString == 'light')
+      if (themeString == 'light') {
         _themeMode = ThemeMode.light;
-      else if (themeString == 'dark')
+      } else if (themeString == 'dark')
         _themeMode = ThemeMode.dark;
       else
         _themeMode = ThemeMode.system;
@@ -67,12 +67,12 @@ class ThemeProvider extends ChangeNotifier {
     _primaryColor = color;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('primary_color', color.value);
+    await prefs.setInt('primary_color', color.toARGB32());
 
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       await FirestoreService()
-          .updateUserData(user.uid, {'primary_color': color.value});
+          .updateUserData(user.uid, {'primary_color': color.toARGB32()});
     }
   }
 }

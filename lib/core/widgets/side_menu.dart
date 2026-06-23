@@ -64,7 +64,8 @@ class _SideMenuState extends State<SideMenu> {
             child: GestureDetector(
               onTap: () => widget.navProvider.toggleMenu(false),
               child: Container(
-                color: Colors.black.withOpacity(0.4), // Slightly lighter dim
+                color:
+                    Colors.black.withValues(alpha: 0.4), // Slightly lighter dim
                 width: double.infinity,
                 height: double.infinity,
               ),
@@ -100,19 +101,18 @@ class _SideMenuState extends State<SideMenu> {
                       height: double.infinity,
                       decoration: BoxDecoration(
                         color: isDark
-                            ? const Color(0xFF0F172A).withOpacity(0.85)
-                            : Colors.white.withOpacity(0.9),
+                            ? const Color(0xFF0F172A).withValues(alpha: 0.85)
+                            : Colors.white.withValues(alpha: 0.9),
                         border: Border(
                           right: BorderSide(
                             color: isDark
-                                ? Colors.white.withOpacity(0.05)
-                                : Colors.white.withOpacity(0.6),
-                            width: 1,
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : Colors.white.withValues(alpha: 0.6),
                           ),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             // OPTIMIZATION: Reduced blur radius from 32 to 24
                             blurRadius: 24,
                             offset: const Offset(8, 0),
@@ -255,7 +255,7 @@ class _SideMenuState extends State<SideMenu> {
           // Global Logout Spinner
           if (_isLoggingOut)
             Container(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
               child: const Center(
                 child: CircularProgressIndicator(color: Colors.white),
               ),
@@ -269,7 +269,7 @@ class _SideMenuState extends State<SideMenu> {
       BuildContext context, dynamic user, bool isDark, Color primaryColor) {
     final photoUrl = user?.photoURL;
     final displayName = user?.displayName ?? "User";
-    final isPro =
+    const isPro =
         true; // Hardcoded for design as requested, or logic: user?.isPro ?? false
 
     return Container(
@@ -278,8 +278,8 @@ class _SideMenuState extends State<SideMenu> {
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.grey.withOpacity(0.1),
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.grey.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -298,10 +298,10 @@ class _SideMenuState extends State<SideMenu> {
                   height: 100,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: primaryColor.withOpacity(0.2),
+                    color: primaryColor.withValues(alpha: 0.2),
                     boxShadow: [
                       BoxShadow(
-                        color: primaryColor.withOpacity(0.3),
+                        color: primaryColor.withValues(alpha: 0.3),
                         blurRadius: 40,
                         spreadRadius: 10,
                       ),
@@ -316,13 +316,13 @@ class _SideMenuState extends State<SideMenu> {
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: isDark
-                          ? Colors.white.withOpacity(0.1)
-                          : Colors.white.withOpacity(0.8),
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.white.withValues(alpha: 0.8),
                       width: 4,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 16,
                         offset: const Offset(0, 8),
                       ),
@@ -381,7 +381,7 @@ class _SideMenuState extends State<SideMenu> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: primaryColor.withOpacity(0.1),
+                color: primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -429,18 +429,18 @@ class _SideMenuState extends State<SideMenu> {
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
           overlayColor:
-              MaterialStateProperty.all(primaryColor.withOpacity(0.1)),
+              WidgetStateProperty.all(primaryColor.withValues(alpha: 0.1)),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withOpacity(0.03)
-                  : Colors.white.withOpacity(0.5),
+                  ? Colors.white.withValues(alpha: 0.03)
+                  : Colors.white.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.03)
-                    : Colors.white.withOpacity(0.4),
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.white.withValues(alpha: 0.4),
               ),
             ),
             child: Row(
@@ -501,8 +501,8 @@ class _SideMenuState extends State<SideMenu> {
         border: Border(
           top: BorderSide(
             color: isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.grey.withOpacity(0.1),
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.grey.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -529,18 +529,18 @@ class _SideMenuState extends State<SideMenu> {
               },
               borderRadius: BorderRadius.circular(16),
               overlayColor:
-                  MaterialStateProperty.all(Colors.red.withOpacity(0.1)),
+                  WidgetStateProperty.all(Colors.red.withValues(alpha: 0.1)),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? Colors.red.withOpacity(0.1)
-                      : Colors.red.withOpacity(0.05),
+                      ? Colors.red.withValues(alpha: 0.1)
+                      : Colors.red.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isDark
-                        ? Colors.red.withOpacity(0.2)
-                        : Colors.red.withOpacity(0.1),
+                        ? Colors.red.withValues(alpha: 0.2)
+                        : Colors.red.withValues(alpha: 0.1),
                   ),
                 ),
                 child: const Row(

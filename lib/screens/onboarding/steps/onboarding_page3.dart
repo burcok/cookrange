@@ -461,7 +461,6 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: Colors.grey.withValues(alpha: 0.5),
-                          width: 1,
                         ),
                       ),
                       child: TextField(
@@ -558,7 +557,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                                 : Text(
                                     localizations.translate(
                                         'onboarding.page3.custom_add'),
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       fontFamily: 'Poppins',
@@ -716,7 +715,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
             const SizedBox(width: 8),
             Text(
               _getIngredientLabel(ingredient),
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: Colors.white,
@@ -724,7 +723,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
               ),
             ),
             const SizedBox(width: 8),
-            Icon(
+            const Icon(
               Icons.close,
               size: 16,
               color: Colors.white,
@@ -746,7 +745,6 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
           borderRadius: BorderRadius.circular(99),
           border: Border.all(
             color: Colors.grey.withValues(alpha: 0.5),
-            width: 1,
           ),
         ),
         child: Row(
@@ -785,7 +783,6 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
           borderRadius: BorderRadius.circular(99),
           border: Border.all(
             color: colorScheme.primaryColorCustom.withValues(alpha: 0.5),
-            width: 1,
           ),
         ),
         child: Row(

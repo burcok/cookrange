@@ -71,7 +71,6 @@ class RecipeGenerationService {
         }).toList(),
         instructions: List<String>.from(jsonResponse['instructions'] as List),
         tags: List<String>.from(jsonResponse['tags'] as List),
-        imageUrl: null, // AI doesn't generate images yet
       );
     } catch (e) {
       // debugPrint('Recipe Generation Failed: $e');

@@ -192,8 +192,8 @@ class _DatePickerModalState extends State<DatePickerModal> {
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: orderedWeekdays
           .map((day) => Text(day,
-              style:
-                  TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)))
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.grey)))
           .toList(),
     );
   }
@@ -202,8 +202,7 @@ class _DatePickerModalState extends State<DatePickerModal> {
     final theme = Theme.of(context);
     final daysInMonth =
         DateTime(_displayMonth.year, _displayMonth.month + 1, 0).day;
-    final firstDayOfMonth =
-        DateTime(_displayMonth.year, _displayMonth.month, 1);
+    final firstDayOfMonth = DateTime(_displayMonth.year, _displayMonth.month);
     final weekdayOfFirstDay = firstDayOfMonth.weekday;
 
     final int firstDayOfWeek = formatter.dateSymbols.FIRSTDAYOFWEEK;

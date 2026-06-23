@@ -70,7 +70,7 @@ class GlobalErrorHandler {
         service: handler._serviceName, error: error, stackTrace: stack);
 
     // Record to Crashlytics
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: false);
+    FirebaseCrashlytics.instance.recordError(error, stack);
   }
 
   /// Handle network errors
@@ -91,7 +91,6 @@ class GlobalErrorHandler {
     FirebaseCrashlytics.instance.recordError(
       error,
       stack,
-      fatal: false,
       information: [
         'Endpoint: ${endpoint ?? 'unknown'}',
         'Method: ${method ?? 'unknown'}',
@@ -117,7 +116,6 @@ class GlobalErrorHandler {
     FirebaseCrashlytics.instance.recordError(
       error,
       stack,
-      fatal: false,
       information: [
         'User ID: ${userId ?? 'unknown'}',
         'Action: ${action ?? 'unknown'}',
@@ -142,7 +140,6 @@ class GlobalErrorHandler {
     FirebaseCrashlytics.instance.recordError(
       error,
       stack,
-      fatal: false,
       information: [
         'Operation: ${operation ?? 'unknown'}',
         'Table: ${table ?? 'unknown'}',
@@ -167,7 +164,6 @@ class GlobalErrorHandler {
     FirebaseCrashlytics.instance.recordError(
       error,
       stack,
-      fatal: false,
       information: [
         'Screen: ${screen ?? 'unknown'}',
         'Widget: ${widget ?? 'unknown'}',

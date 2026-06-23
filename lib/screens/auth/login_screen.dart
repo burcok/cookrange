@@ -400,7 +400,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
                       child: Text(
                         localizations.translate('auth.or_divider'),
-                        style: TextStyle(color: authSecondaryTextColor),
+                        style: const TextStyle(color: authSecondaryTextColor),
                       ),
                     ),
                     Expanded(

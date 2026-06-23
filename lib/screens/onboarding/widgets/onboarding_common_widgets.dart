@@ -38,8 +38,6 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
     _tapController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 100),
-      lowerBound: 0.0,
-      upperBound: 1.0,
     );
 
     _scaleAnim = Tween<double>(begin: 1.0, end: 0.95).animate(
@@ -268,7 +266,7 @@ class OnboardingCardInput extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 0),
+      margin: const EdgeInsets.symmetric(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         color: colorScheme.onboardingOptionBgColor,

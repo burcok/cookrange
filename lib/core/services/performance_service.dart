@@ -262,7 +262,7 @@ class PerformanceService {
         }
 
         if (snapshot.hasData) {
-          return builder(context, snapshot.data!);
+          return builder(context, snapshot.data as T);
         }
 
         return const SizedBox.shrink();
@@ -293,7 +293,7 @@ class PerformanceService {
         }
 
         if (snapshot.hasData) {
-          return builder(context, snapshot.data!);
+          return builder(context, snapshot.data as T);
         }
 
         return const SizedBox.shrink();

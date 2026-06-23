@@ -39,7 +39,7 @@ class FriendService {
     final nameOriginalQuery = _firestore
         .collection('users')
         .where('displayName', isGreaterThanOrEqualTo: qOriginal)
-        .where('displayName', isLessThan: qOriginal + '\uf8ff')
+        .where('displayName', isLessThan: '$qOriginal\uf8ff')
         .limit(10)
         .get();
 
@@ -47,7 +47,7 @@ class FriendService {
     final nameLowerQuery = _firestore
         .collection('users')
         .where('displayName', isGreaterThanOrEqualTo: qLower)
-        .where('displayName', isLessThan: qLower + '\uf8ff')
+        .where('displayName', isLessThan: '$qLower\uf8ff')
         .limit(10)
         .get();
 
@@ -55,7 +55,7 @@ class FriendService {
     final emailPrefixQuery = _firestore
         .collection('users')
         .where('email', isGreaterThanOrEqualTo: qLower)
-        .where('email', isLessThan: qLower + '\uf8ff')
+        .where('email', isLessThan: '$qLower\uf8ff')
         .limit(10)
         .get();
 

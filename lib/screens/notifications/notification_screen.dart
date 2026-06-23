@@ -73,11 +73,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
         _notifications.removeWhere((n) => n.id == notificationId);
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(AppLocalizations.of(context).translate(
                 'community.action_failed',
                 variables: {'error': e.toString()}))));
+      }
     }
   }
 
@@ -91,11 +92,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 .translate('community.friend_request_rejected'))));
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(AppLocalizations.of(context).translate(
                 'community.action_failed',
                 variables: {'error': e.toString()}))));
+      }
     }
   }
 
@@ -137,11 +139,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
               width: 380,
               height: 380,
               decoration: BoxDecoration(
-                  color: primaryColor.withOpacity(isDark ? 0.2 : 0.1),
+                  color: primaryColor.withValues(alpha: isDark ? 0.2 : 0.1),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                        color: primaryColor.withOpacity(0.3), blurRadius: 100)
+                        color: primaryColor.withValues(alpha: 0.3),
+                        blurRadius: 100)
                   ]),
             ),
           ),
@@ -155,7 +158,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    Colors.blue.withOpacity(isDark ? 0.15 : 0.25),
+                    Colors.blue.withValues(alpha: isDark ? 0.15 : 0.25),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.7],
@@ -170,11 +173,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
               width: 250,
               height: 250,
               decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(isDark ? 0.1 : 0.2),
+                  color: Colors.purple.withValues(alpha: isDark ? 0.1 : 0.2),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.purple.withOpacity(0.2), blurRadius: 150)
+                        color: Colors.purple.withValues(alpha: 0.2),
+                        blurRadius: 150)
                   ]),
             ),
           ),
@@ -182,8 +186,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
           Container(
             decoration: BoxDecoration(
               color: isDark
-                  ? const Color(0xFF0F172A).withOpacity(0.8)
-                  : const Color(0xFFF8FAFC).withOpacity(0.8),
+                  ? const Color(0xFF0F172A).withValues(alpha: 0.8)
+                  : const Color(0xFFF8FAFC).withValues(alpha: 0.8),
             ),
             child: Column(
               children: [
@@ -223,7 +227,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         ),
                       ),
                     ]),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
 
                 // Filters
                 SizedBox(
@@ -343,20 +347,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
           color: isSelected
               ? primaryColor
               : (isDark
-                  ? Colors.white.withOpacity(0.05)
-                  : Colors.white.withOpacity(0.4)),
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.white.withValues(alpha: 0.4)),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
                 ? primaryColor
                 : (isDark
-                    ? Colors.white.withOpacity(0.05)
-                    : Colors.white.withOpacity(0.6)),
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.white.withValues(alpha: 0.6)),
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                      color: primaryColor.withOpacity(0.3),
+                      color: primaryColor.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 4))
                 ]
@@ -410,7 +414,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     switch (notification.type) {
       case NotificationType.like:
-        iconBgColor = isDark ? Colors.red.withOpacity(0.2) : Colors.red.shade50;
+        iconBgColor =
+            isDark ? Colors.red.withValues(alpha: 0.2) : Colors.red.shade50;
         iconColor = Colors.red;
         iconData = Icons.favorite;
         headerText = AppLocalizations.of(context)
@@ -418,15 +423,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
         break;
       case NotificationType.comment:
         iconBgColor =
-            isDark ? Colors.blue.withOpacity(0.2) : Colors.blue.shade50;
+            isDark ? Colors.blue.withValues(alpha: 0.2) : Colors.blue.shade50;
         iconColor = Colors.blue;
         iconData = Icons.chat_bubble;
         headerText =
             AppLocalizations.of(context).translate('community.friends');
         break;
       case NotificationType.friend_request:
-        iconBgColor =
-            isDark ? Colors.purple.withOpacity(0.2) : Colors.purple.shade50;
+        iconBgColor = isDark
+            ? Colors.purple.withValues(alpha: 0.2)
+            : Colors.purple.shade50;
         iconColor = Colors.purple;
         iconData = Icons.person_add;
         headerText =
@@ -434,7 +440,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         break;
       case NotificationType.friend_accepted:
         iconBgColor =
-            isDark ? Colors.green.withOpacity(0.2) : Colors.green.shade50;
+            isDark ? Colors.green.withValues(alpha: 0.2) : Colors.green.shade50;
         iconColor = Colors.green;
         iconData = Icons.person_add;
         headerText =
@@ -442,7 +448,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         break;
       case NotificationType.system:
         iconBgColor = isDark
-            ? Colors.amber.withOpacity(0.2)
+            ? Colors.amber.withValues(alpha: 0.2)
             : Colors.amber.shade50; // Or slate
         iconColor = Colors.amber.shade800;
         iconData = Icons.system_update;
@@ -450,8 +456,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
         break;
       default:
         iconBgColor = isDark
-            ? primaryColor.withOpacity(0.2)
-            : primaryColor.withOpacity(0.1);
+            ? primaryColor.withValues(alpha: 0.2)
+            : primaryColor.withValues(alpha: 0.1);
         iconColor = primaryColor;
         iconData = Icons.notifications;
         headerText = AppLocalizations.of(context).translate('community.system');
@@ -461,7 +467,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (notification.title.contains("Plan") ||
         notification.title.contains("Yemek")) {
       iconBgColor =
-          isDark ? Colors.green.withOpacity(0.2) : Colors.green.shade50;
+          isDark ? Colors.green.withValues(alpha: 0.2) : Colors.green.shade50;
       iconColor = Colors.green;
       iconData = Icons.restaurant;
       headerText = "Meal Plan"; // Localization needed
@@ -469,7 +475,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
     // Override for "Water"
     if (notification.title.contains("Water") ||
         notification.title.contains("Su")) {
-      iconBgColor = isDark ? Colors.blue.withOpacity(0.2) : Colors.blue.shade50;
+      iconBgColor =
+          isDark ? Colors.blue.withValues(alpha: 0.2) : Colors.blue.shade50;
       iconColor = Colors.blue;
       iconData = Icons.water_drop;
       headerText = "Goal";
@@ -509,7 +516,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                            color: primaryColor.withOpacity(0.3), blurRadius: 4)
+                            color: primaryColor.withValues(alpha: 0.3),
+                            blurRadius: 4)
                       ]),
                 ),
               ),
@@ -588,7 +596,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                   boxShadow: [
                                     BoxShadow(
-                                        color: primaryColor.withOpacity(0.3),
+                                        color:
+                                            primaryColor.withValues(alpha: 0.3),
                                         blurRadius: 6,
                                         offset: const Offset(0, 2))
                                   ],
@@ -611,11 +620,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                     horizontal: 16, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: isDark
-                                      ? Colors.white.withOpacity(0.05)
+                                      ? Colors.white.withValues(alpha: 0.05)
                                       : Colors.white,
                                   borderRadius: BorderRadius.circular(10),
                                   border: Border.all(
-                                      color: Colors.red.withOpacity(0.5)),
+                                      color: Colors.red.withValues(alpha: 0.5)),
                                 ),
                                 child: Text(
                                     AppLocalizations.of(context)
@@ -642,10 +651,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   String _formatTime(DateTime time) {
     final diff = DateTime.now().difference(time);
-    if (diff.inMinutes < 60)
+    if (diff.inMinutes < 60) {
       return "${diff.inMinutes} ${AppLocalizations.of(context).translate('community.time.min')}";
-    if (diff.inHours < 24)
+    }
+    if (diff.inHours < 24) {
       return "${diff.inHours} ${AppLocalizations.of(context).translate('community.time.hour')}";
+    }
     return "${diff.inDays} ${AppLocalizations.of(context).translate('community.time.day')}";
   }
 }

@@ -129,7 +129,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       appBar: AppBar(
         title: Text(
           AppLocalizations.of(context).translate('shopping.title'),
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
@@ -166,7 +166,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                       child: Text(
                           AppLocalizations.of(context)
                               .translate('common.clear'),
-                          style: TextStyle(color: Colors.red)),
+                          style: const TextStyle(color: Colors.red)),
                     ),
                   ],
                 ),

@@ -106,7 +106,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new,
                     color: Colors.white, size: 20),
@@ -124,7 +124,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                 child: IconButton(
                   icon: const Icon(Icons.bookmark_border, color: Colors.white),
                   onPressed: () {
@@ -148,7 +148,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                 placeholder: (context, url) =>
                     Container(color: Colors.grey[200]),
                 errorWidget: (context, url, error) => Container(
-                  color: themeProvider.primaryColor.withOpacity(0.1),
+                  color: themeProvider.primaryColor.withValues(alpha: 0.1),
                   child: Icon(Icons.restaurant,
                       color: themeProvider.primaryColor, size: 50),
                 ),
@@ -160,9 +160,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.3),
+                    Colors.black.withValues(alpha: 0.3),
                     Colors.transparent,
-                    Colors.black.withOpacity(0.6),
+                    Colors.black.withValues(alpha: 0.6),
                   ],
                 ),
               ),
@@ -193,7 +193,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
               decoration: BoxDecoration(
-                color: themeProvider.primaryColor.withOpacity(0.1),
+                color: themeProvider.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: Text(
@@ -239,12 +239,12 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
         child: Container(
           padding: EdgeInsets.all(20.r),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(24.r),
-            border: Border.all(color: Colors.white.withOpacity(0.5)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.03),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 10,
                 offset: const Offset(0, 5),
               ),
@@ -366,7 +366,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
           borderRadius: BorderRadius.circular(14.r),
           boxShadow: [
             BoxShadow(
-              color: themeProvider.primaryColor.withOpacity(0.3),
+              color: themeProvider.primaryColor.withValues(alpha: 0.3),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -442,7 +442,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                     borderRadius: BorderRadius.circular(16.r),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
+                        color: Colors.black.withValues(alpha: 0.02),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -454,7 +454,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                         width: 40.w,
                         height: 40.w,
                         decoration: BoxDecoration(
-                          color: themeProvider.primaryColor.withOpacity(0.1),
+                          color:
+                              themeProvider.primaryColor.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.check,
@@ -511,7 +512,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: themeProvider.primaryColor.withOpacity(0.3),
+                    color: themeProvider.primaryColor.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -532,7 +533,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                   borderRadius: BorderRadius.circular(16.r),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
+                      color: Colors.black.withValues(alpha: 0.02),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -568,7 +569,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
           borderRadius: BorderRadius.vertical(top: Radius.circular(32.r)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -589,7 +590,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20.r)),
             elevation: 8,
-            shadowColor: themeProvider.primaryColor.withOpacity(0.5),
+            shadowColor: themeProvider.primaryColor.withValues(alpha: 0.5),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

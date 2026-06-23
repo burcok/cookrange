@@ -700,7 +700,7 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
           ),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
           child: Column(
             children: [
               _buildMealTimeline(

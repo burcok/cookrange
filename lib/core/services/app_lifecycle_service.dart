@@ -96,7 +96,7 @@ class AppLifecycleService with WidgetsBindingObserver {
     } else if (state == AppLifecycleState.paused) {
       // Inactive is often transient (e.g. notification shade), Paused is backgrounding.
       // We'll treat Paused as end of session.
-      _handleAppPaused(immediate: false);
+      _handleAppPaused();
     }
   }
 

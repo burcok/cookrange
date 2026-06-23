@@ -56,22 +56,17 @@ const ColorScheme lightColorScheme = ColorScheme.light(
   primary: c.primaryColor,
   secondary: c.secondaryColor,
   surface: c.backgroundColor2,
-  onPrimary: Colors.white,
   onSecondary: Colors.white,
   onSurface: c.subtitle,
   error: Colors.red,
-  onError: Colors.white,
 );
 
 const ColorScheme darkColorScheme = ColorScheme.dark(
   primary: c.primaryColorDark,
   secondary: c.secondaryColorDark,
   surface: c.backgroundColor2Dark,
-  onPrimary: Colors.black,
-  onSecondary: Colors.black,
   onSurface: c.subtitleDark,
   error: Colors.red,
-  onError: Colors.black,
 );
 
 // 3. ThemeData'lar

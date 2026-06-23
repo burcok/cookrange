@@ -57,7 +57,7 @@ class MockFirestoreService implements FirestoreService {
   @override
   dynamic noSuchMethod(Invocation invocation) {
     // Allow other calls (like addLoginHistoryToLogs) to just return null or Future.value()
-    if (invocation.memberName == Symbol('addLoginHistoryToLogs')) {
+    if (invocation.memberName == const Symbol('addLoginHistoryToLogs')) {
       return Future.value();
     }
     return super.noSuchMethod(invocation);
@@ -118,8 +118,8 @@ void main() {
       // 1. Pause Application
       service.didChangeAppLifecycleState(AppLifecycleState.paused);
 
-      // Advance time by 2 seconds (less than 4s debounce)
-      async.elapse(const Duration(seconds: 2));
+      // Advance time by 1 second (less than 2s debounce)
+      async.elapse(const Duration(seconds: 1));
 
       // Verify nothing happened yet (no session end logic that updates last_active)
       // Note: we can't easily verify internal session logic without side effects

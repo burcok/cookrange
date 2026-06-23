@@ -73,8 +73,8 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
 
     // Colors from design
     final primaryColor = Theme.of(context).primaryColor;
-    final bgLight = const Color(0xFFF8FAFC);
-    final bgDark = const Color(0xFF0F172A);
+    const bgLight = Color(0xFFF8FAFC);
+    const bgDark = Color(0xFF0F172A);
     // Use app theme background if possible, but design specified these.
     // We will overlay on current scaffold background to be safe or use these.
 
@@ -90,7 +90,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
               width: 384,
               height: 384,
               decoration: BoxDecoration(
-                color: primaryColor.withOpacity(isDark ? 0.2 : 0.1),
+                color: primaryColor.withValues(alpha: isDark ? 0.2 : 0.1),
                 shape: BoxShape.circle,
               ),
               child: BackdropFilter(
@@ -107,7 +107,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
               height: 320,
               decoration: BoxDecoration(
                 color: (isDark ? Colors.blue[900]! : Colors.blue[300]!)
-                    .withOpacity(isDark ? 0.1 : 0.2),
+                    .withValues(alpha: isDark ? 0.1 : 0.2),
                 shape: BoxShape.circle,
               ),
               child: BackdropFilter(
@@ -177,7 +177,8 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
                                     height: 96,
                                     decoration: BoxDecoration(
                                       color: isDark
-                                          ? Colors.red[900]!.withOpacity(0.2)
+                                          ? Colors.red[900]!
+                                              .withValues(alpha: 0.2)
                                           : Colors.red[50],
                                       shape: BoxShape.circle,
                                     ),
@@ -202,8 +203,8 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
                                         shape: BoxShape.circle,
                                         boxShadow: [
                                           BoxShadow(
-                                            color:
-                                                Colors.black.withOpacity(0.1),
+                                            color: Colors.black
+                                                .withValues(alpha: 0.1),
                                             blurRadius: 4,
                                           )
                                         ],
@@ -251,7 +252,8 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                     elevation: 4,
-                                    shadowColor: primaryColor.withOpacity(0.2),
+                                    shadowColor:
+                                        primaryColor.withValues(alpha: 0.2),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -337,7 +339,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
                           iconColor: const Color(0xFF3B82F6), // Blue
                           iconBgColor: const Color(0xFFEFF6FF), // Blue 50
                           iconBgColorDark:
-                              const Color(0xFF1E3A8A).withOpacity(0.3),
+                              const Color(0xFF1E3A8A).withValues(alpha: 0.3),
                           onTap: _showGuidelinesModal,
                         ),
                         const SizedBox(height: 12),
@@ -350,7 +352,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
                           iconColor: const Color(0xFF10B981), // Emerald
                           iconBgColor: const Color(0xFFECFDF5), // Emerald 50
                           iconBgColorDark:
-                              const Color(0xFF064E3B).withOpacity(0.3),
+                              const Color(0xFF064E3B).withValues(alpha: 0.3),
                           onTap: _showAppealModal,
                         ),
                       ],
@@ -463,7 +465,6 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
                   .translate('account_suspended.appeal_modal.step1_title'),
               localizations
                   .translate('account_suspended.appeal_modal.step1_desc'),
-              isLast: false,
             ),
             _buildAppealStep(
               context,
@@ -474,7 +475,6 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
                   .translate('account_suspended.appeal_modal.step2_desc'),
               extraInfo: localizations
                   .translate('account_suspended.appeal_modal.step2_wait'),
-              isLast: false,
             ),
             _buildAppealStep(
               context,
@@ -489,9 +489,9 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.red.withOpacity(0.2)),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [
@@ -530,7 +530,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                          color: const Color(0xFFF0507F).withOpacity(0.4),
+                          color: const Color(0xFFF0507F).withValues(alpha: 0.4),
                           blurRadius: 4,
                           offset: const Offset(0, 2))
                     ]),
@@ -571,7 +571,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: isDark
-                                ? Colors.blue[900]!.withOpacity(0.3)
+                                ? Colors.blue[900]!.withValues(alpha: 0.3)
                                 : Colors.blue[50],
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -616,11 +616,11 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
             height: MediaQuery.of(context).size.height * 0.7,
             decoration: BoxDecoration(
               color: isDark
-                  ? const Color(0xFF0F172A).withOpacity(0.9)
-                  : const Color(0xFFF8FAFC).withOpacity(0.9),
+                  ? const Color(0xFF0F172A).withValues(alpha: 0.9)
+                  : const Color(0xFFF8FAFC).withValues(alpha: 0.9),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(32)),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Column(
               children: [
@@ -638,7 +638,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
+                          color: color.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(icon, color: color),
@@ -746,18 +746,18 @@ class _GlassPanel extends StatelessWidget {
           padding: padding,
           decoration: BoxDecoration(
             color: isDark
-                ? const Color(0xFF1E293B).withOpacity(0.6)
-                : Colors.white.withOpacity(0.7),
+                ? const Color(0xFF1E293B).withValues(alpha: 0.6)
+                : Colors.white.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: isDark
-                  ? Colors.white.withOpacity(0.05)
-                  : Colors.white.withOpacity(0.6),
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.white.withValues(alpha: 0.6),
             ),
             boxShadow: [
               BoxShadow(
                 color: isDark
-                    ? Colors.black.withOpacity(0.3)
+                    ? Colors.black.withValues(alpha: 0.3)
                     : const Color.fromRGBO(31, 38, 135, 0.07),
                 blurRadius: 32,
                 offset: const Offset(0, 8),
@@ -800,12 +800,11 @@ class _GlassButton extends StatelessWidget {
           padding: padding,
           decoration: BoxDecoration(
             color: isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.white.withOpacity(0.4),
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.white.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: Colors.white.withOpacity(0.5),
-              width: 1,
+              color: Colors.white.withValues(alpha: 0.5),
             ),
           ),
           child: child, // Center handled by parent if needed, or child itself
@@ -839,7 +838,6 @@ class _ResourceCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return _GlassPanel(
-      padding: const EdgeInsets.all(16),
       child: InkWell(
         onTap: onTap,
         child: Row(
@@ -852,7 +850,7 @@ class _ResourceCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon,
-                  color: isDark ? iconColor.withOpacity(0.8) : iconColor,
+                  color: isDark ? iconColor.withValues(alpha: 0.8) : iconColor,
                   size: 20),
             ),
             const SizedBox(width: 16),

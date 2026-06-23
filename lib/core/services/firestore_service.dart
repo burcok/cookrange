@@ -28,7 +28,7 @@ class FirestoreService {
 
   /// Gathers device information into a map.
   Future<Map<String, dynamic>> _getDeviceInfo() async {
-    return await _log.getSystemContext();
+    return _log.getSystemContext();
   }
 
   // --- PUBLIC API ---

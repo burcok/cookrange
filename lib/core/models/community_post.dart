@@ -211,7 +211,6 @@ class CommunityPost {
               .toList() ??
           [],
       isLiked: isLikedByCurrentUser, // Real check
-      isBookmarked: false,
       reactions: Map<String, int>.from(map['reactions'] ?? {}),
       userReactions: () {
         // 1. Start with existing userReactions (from subcollection fetch if any, though ideally we move away from that)

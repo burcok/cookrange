@@ -73,7 +73,7 @@ class _SignalDialogState extends State<SignalDialog> {
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             DropdownButtonFormField<SignalType>(
-              value: _selectedType,
+              initialValue: _selectedType,
               items: SignalType.values.map((type) {
                 String label;
                 switch (type) {

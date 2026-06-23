@@ -103,7 +103,6 @@ class _AnimatedStepIndicatorState extends State<AnimatedStepIndicator>
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         Text(
           '${localizations.translate('onboarding.step')} ${widget.currentStep}/${widget.totalSteps}',
@@ -314,7 +313,6 @@ class OnboardingOption extends StatelessWidget {
             color: isSelected
                 ? primaryColor.withValues(alpha: 0.2)
                 : Colors.grey.withValues(alpha: 0.5),
-            width: 1,
           ),
         ),
         child: Row(

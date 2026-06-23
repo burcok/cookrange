@@ -68,7 +68,7 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
     if (parts.length == 2) {
       return [
         TextSpan(text: parts[0]),
-        TextSpan(
+        const TextSpan(
           text: 'cookrange',
           style: TextStyle(
             color: Color.fromRGBO(237, 122, 41, 1),
@@ -146,7 +146,6 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
                     localizations.translate('onboarding.page1.title'),
@@ -205,7 +204,7 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                       ),
                       child: Text(
                         localizations.translate('onboarding.page1.get_started'),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/admin_status_service.dart';
 import '../../core/services/auth_service.dart';
-import 'route_guard.dart';
 
 class BanCheckNavigatorObserver extends NavigatorObserver {
   @override

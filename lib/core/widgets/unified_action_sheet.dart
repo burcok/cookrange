@@ -43,14 +43,13 @@ class UnifiedActionSheet extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: isDark
-                ? const Color(0xFF1E293B).withOpacity(0.9)
-                : Colors.white.withOpacity(0.9),
+                ? const Color(0xFF1E293B).withValues(alpha: 0.9)
+                : Colors.white.withValues(alpha: 0.9),
             border: Border(
               top: BorderSide(
                 color: isDark
-                    ? Colors.white.withOpacity(0.1)
-                    : Colors.black.withOpacity(0.05),
-                width: 1,
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -65,8 +64,8 @@ class UnifiedActionSheet extends StatelessWidget {
                   height: 4,
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.white.withOpacity(0.2)
-                        : Colors.black.withOpacity(0.1),
+                        ? Colors.white.withValues(alpha: 0.2)
+                        : Colors.black.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -90,8 +89,8 @@ class UnifiedActionSheet extends StatelessWidget {
                   Divider(
                     height: 1,
                     color: isDark
-                        ? Colors.white.withOpacity(0.1)
-                        : Colors.black.withOpacity(0.05),
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.black.withValues(alpha: 0.05),
                   ),
                 ],
 
@@ -118,8 +117,8 @@ class UnifiedActionSheet extends StatelessWidget {
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor: isDark
-                            ? Colors.white.withOpacity(0.05)
-                            : Colors.black.withOpacity(0.05),
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.05),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -155,7 +154,7 @@ class UnifiedActionSheet extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         decoration: BoxDecoration(
           color: action.isSelected
-              ? primaryColor.withOpacity(isDark ? 0.2 : 0.1)
+              ? primaryColor.withValues(alpha: isDark ? 0.2 : 0.1)
               : Colors.transparent,
         ),
         child: Row(
@@ -164,12 +163,12 @@ class UnifiedActionSheet extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: action.isDestructive
-                    ? Colors.red.withOpacity(0.1)
+                    ? Colors.red.withValues(alpha: 0.1)
                     : (action.isSelected
-                        ? primaryColor.withOpacity(0.2)
+                        ? primaryColor.withValues(alpha: 0.2)
                         : (isDark
-                            ? Colors.white.withOpacity(0.05)
-                            : Colors.black.withOpacity(0.05))),
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.05))),
                 shape: BoxShape.circle,
               ),
               child: Icon(

@@ -108,7 +108,6 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
         },
         localeId: Localizations.localeOf(context).toString(),
         listenOptions: stt.SpeechListenOptions(
-          cancelOnError: false,
           partialResults: true,
           listenMode: stt.ListenMode.dictation,
         ),
@@ -198,7 +197,7 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
                     ),
                   ),
                 ),
-                const Spacer(flex: 1),
+                const Spacer(),
                 // Glowing AI Icon
                 _buildGlowingIcon(context),
                 SizedBox(height: _scale(context, 50)),

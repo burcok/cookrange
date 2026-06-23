@@ -34,7 +34,6 @@ class NumberPickerModal extends StatelessWidget {
             child: ListWheelScrollView.useDelegate(
               itemExtent: 44,
               diameterRatio: 1.2,
-              perspective: 0.003,
               physics: const FixedExtentScrollPhysics(),
               controller: FixedExtentScrollController(initialItem: tempIndex),
               onSelectedItemChanged: (i) {

@@ -71,7 +71,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       PageRouteBuilder(
         opaque: false,
         pageBuilder: (context, _, __) => Scaffold(
-          backgroundColor: Colors.black.withOpacity(0.95),
+          backgroundColor: Colors.black.withValues(alpha: 0.95),
           body: Stack(
             children: [
               // Swipeable Image View
@@ -120,7 +120,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -178,7 +178,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     color: context
                         .watch<ThemeProvider>()
                         .primaryColor
-                        .withOpacity(0.12),
+                        .withValues(alpha: 0.12),
                     blurRadius: 100,
                   ),
                 ],
@@ -195,7 +195,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blueAccent.withOpacity(0.08),
+                    color: Colors.blueAccent.withValues(alpha: 0.08),
                     blurRadius: 100,
                   ),
                 ],
@@ -249,9 +249,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                 ? Colors.white
                                                 : const Color(0xFF0F172A)),
                                         onSelected: (value) {
-                                          if (value == 'report')
+                                          if (value == 'report') {
                                             _showReportDialog(context);
-                                          else if (value == 'share')
+                                          } else if (value == 'share')
                                             _sharePost();
                                           else if (value == 'delete')
                                             _showDeleteDialog(context);
@@ -351,14 +351,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
                                       color: isDark
-                                          ? Colors.white.withOpacity(0.05)
-                                          : Colors.white.withOpacity(0.6),
+                                          ? Colors.white.withValues(alpha: 0.05)
+                                          : Colors.white.withValues(alpha: 0.6),
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(
                                           color: isDark
                                               ? Colors.white10
                                               : Colors.blueAccent
-                                                  .withOpacity(0.3)),
+                                                  .withValues(alpha: 0.3)),
                                     ),
                                     child: Column(
                                       crossAxisAlignment:
@@ -403,7 +403,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                             .watch<
                                                                 ThemeProvider>()
                                                             .primaryColor
-                                                            .withOpacity(0.1),
+                                                            .withValues(
+                                                                alpha: 0.1),
                                                         labelStyle: TextStyle(
                                                             color: context
                                                                 .watch<
@@ -478,8 +479,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                                         20)),
                                                     padding: const EdgeInsets
                                                         .symmetric(
-                                                        horizontal: 16,
-                                                        vertical: 0),
+                                                        horizontal: 16),
                                                   ),
                                                   child: Text(appLoc.translate(
                                                       'common.save')),
@@ -520,10 +520,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                     decoration: BoxDecoration(
                                                       color: isDark
                                                           ? Colors.white
-                                                              .withOpacity(0.1)
+                                                              .withValues(
+                                                                  alpha: 0.1)
                                                           : Colors.black
-                                                              .withOpacity(
-                                                                  0.05),
+                                                              .withValues(
+                                                                  alpha: 0.05),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                               20),
@@ -574,7 +575,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                       borderRadius: BorderRadius.circular(20),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
+                                          color: Colors.black
+                                              .withValues(alpha: 0.1),
                                           blurRadius: 15,
                                           offset: const Offset(0, 8),
                                         ),
@@ -631,9 +633,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                           _currentImageIndex ==
                                                                   index
                                                               ? Colors.white
-                                                              : Colors.white
-                                                                  .withOpacity(
-                                                                      0.5),
+                                                              : Colors
+                                                                  .white
+                                                                  .withValues(
+                                                                      alpha:
+                                                                          0.5),
                                                     ),
                                                   );
                                                 }),
@@ -695,7 +699,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                   ? context
                                                       .watch<ThemeProvider>()
                                                       .primaryColor
-                                                      .withOpacity(0.2)
+                                                      .withValues(alpha: 0.2)
                                                   : (isDark
                                                       ? Colors.white10
                                                       : Colors.grey.shade100),
@@ -857,8 +861,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.white.withOpacity(0.6),
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.white.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: isDark ? Colors.white10 : Colors.white),
       ),
@@ -1053,7 +1057,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 const SizedBox(height: 8),
                 // Reactions for Comment
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // Like Action
                     GestureDetector(
@@ -1100,7 +1103,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                       ? context
                                           .watch<ThemeProvider>()
                                           .primaryColor
-                                          .withOpacity(0.1)
+                                          .withValues(alpha: 0.1)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
@@ -1108,7 +1111,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                           ? context
                                               .watch<ThemeProvider>()
                                               .primaryColor
-                                          : Colors.grey.withOpacity(0.3)),
+                                          : Colors.grey.withValues(alpha: 0.3)),
                                 ),
                                 child: Text("${entry.key} ${entry.value}",
                                     style: const TextStyle(fontSize: 11)),
@@ -1309,8 +1312,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
           decoration: BoxDecoration(
             color: isDark
-                ? const Color(0xFF0F172A).withOpacity(0.8)
-                : Colors.white.withOpacity(0.8),
+                ? const Color(0xFF0F172A).withValues(alpha: 0.8)
+                : Colors.white.withValues(alpha: 0.8),
             border: Border(
                 top: BorderSide(
                     color: isDark ? Colors.white10 : Colors.grey.shade200)),
@@ -1330,7 +1333,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.white.withOpacity(0.1)
+                        ? Colors.white.withValues(alpha: 0.1)
                         : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(22),
                     border: Border.all(
@@ -1374,7 +1377,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                 color: context
                                     .watch<ThemeProvider>()
                                     .primaryColor
-                                    .withOpacity(0.8),
+                                    .withValues(alpha: 0.8),
                                 size: 20),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -1440,9 +1443,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       });
     }
 
-    if (likers.isEmpty)
+    if (likers.isEmpty) {
       return appLoc.translate('community.likes.simple',
           variables: {'count': likes.toString()});
+    }
 
     final name1 = likers[0].name.split(' ').first;
 
@@ -1453,9 +1457,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
     if (likers.length >= 2) {
       final name2 = likers[1].name.split(' ').first;
-      if (likes == 2)
+      if (likes == 2) {
         return appLoc.translate('community.likes.two',
             variables: {'name1': name1, 'name2': name2});
+      }
       return appLoc.translate('community.likes.many', variables: {
         'name1': name1,
         'name2': name2,
@@ -1586,12 +1591,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           }
                         });
                         // Also update parent state to reflect immediately if visible behind sheet
-                        this.setState(() {});
+                        setState(() {});
                       },
                       selectedColor: context
                           .watch<ThemeProvider>()
                           .primaryColor
-                          .withOpacity(0.2),
+                          .withValues(alpha: 0.2),
                       checkmarkColor:
                           context.watch<ThemeProvider>().primaryColor,
                       labelStyle: TextStyle(

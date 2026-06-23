@@ -198,13 +198,16 @@ class _ChatListScreenState extends State<ChatListScreen>
                               }
 
                               if (_selectedFilterIndex == 0) return true; // All
-                              if (_selectedFilterIndex == 1)
+                              if (_selectedFilterIndex == 1) {
                                 return chat.type == ChatType.gym; // Gym
-                              if (_selectedFilterIndex == 2)
+                              }
+                              if (_selectedFilterIndex == 2) {
                                 return chat.type == ChatType.group &&
                                     chat.metadata?['subtype'] == 'nutrition';
-                              if (_selectedFilterIndex == 3)
+                              }
+                              if (_selectedFilterIndex == 3) {
                                 return chat.type == ChatType.private;
+                              }
                               return true;
                             }).toList();
 
@@ -492,7 +495,6 @@ class _ChatListScreenState extends State<ChatListScreen>
             child: chat.image != null
                 ? AppImage(
                     imageUrl: chat.image!,
-                    fit: BoxFit.cover,
                     width: 56,
                     height: 56,
                     placeholder: const Icon(Icons.group),
@@ -557,17 +559,17 @@ class _ChatListScreenState extends State<ChatListScreen>
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.grey.shade900.withOpacity(0.8)
-            : Colors.white.withOpacity(0.9),
+            ? Colors.grey.shade900.withValues(alpha: 0.8)
+            : Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.05)
-              : Colors.white.withOpacity(0.6),
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.white.withValues(alpha: 0.6),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -786,7 +788,7 @@ class _ChatListScreenState extends State<ChatListScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFF5722).withOpacity(0.15),
+              color: const Color(0xFFFF5722).withValues(alpha: 0.15),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -798,7 +800,7 @@ class _ChatListScreenState extends State<ChatListScreen>
             children: [
               // Glass Effect (Lite - Opacity only)
               Container(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
               ),
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -861,7 +863,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                           Text(
                             "Bench Press\nMacFit - Peron 3",
                             style: TextStyle(
-                              color: const Color(0xFFDC2626).withOpacity(0.8),
+                              color: const Color(0xFFDC2626)
+                                  .withValues(alpha: 0.8),
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
@@ -879,14 +882,15 @@ class _ChatListScreenState extends State<ChatListScreen>
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFF97316).withOpacity(0.3),
+                            color:
+                                const Color(0xFFF97316).withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      child: Row(
-                        children: const [
+                      child: const Row(
+                        children: [
                           Text(
                             "YOLDAYIM",
                             style: TextStyle(
@@ -918,7 +922,6 @@ class _ChatListScreenState extends State<ChatListScreen>
         name: "Gold's Gym - Beşiktaş",
         type: ChatType.gym,
         updatedAt: DateTime.now(), // Added
-        image: null,
         lastMessage: MessageModel(
             id: 'm1',
             senderId: 's1',
@@ -939,7 +942,6 @@ class _ChatListScreenState extends State<ChatListScreen>
         name: "Mert Akın",
         type: ChatType.private, // Using private for generic user
         updatedAt: DateTime.now(), // Added
-        image: null, // Placeholder will be used or we can use specific image
         lastMessage: MessageModel(
             id: 'm2',
             senderId: 'merta',
@@ -956,7 +958,6 @@ class _ChatListScreenState extends State<ChatListScreen>
         name: "Sağlıklı Tarifler Grubu",
         type: ChatType.group,
         updatedAt: DateTime.now(), // Added
-        image: null,
         metadata: {'subtype': 'recipe', 'new_recipes_count': 45},
         lastMessage: MessageModel(
             id: 'm3',
@@ -996,11 +997,12 @@ class _ChatListScreenState extends State<ChatListScreen>
   Widget _buildGymChatCard(BuildContext context, ChatModel chat, bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6).withOpacity(0.8), // Light grayish bg
+        color:
+            const Color(0xFFF3F4F6).withValues(alpha: 0.8), // Light grayish bg
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1027,7 +1029,6 @@ class _ChatListScreenState extends State<ChatListScreen>
                     child: chat.image != null
                         ? AppImage(
                             imageUrl: chat.image!,
-                            fit: BoxFit.cover,
                             width: 56,
                             height: 56,
                           )
@@ -1121,7 +1122,7 @@ class _ChatListScreenState extends State<ChatListScreen>
       BuildContext context, ChatModel chat, bool isDark, String currentUserId) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6).withOpacity(0.6), // Very light
+        color: const Color(0xFFF3F4F6).withValues(alpha: 0.6), // Very light
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
@@ -1140,7 +1141,6 @@ class _ChatListScreenState extends State<ChatListScreen>
                   child: chat.image != null
                       ? AppImage(
                           imageUrl: chat.image!,
-                          fit: BoxFit.cover,
                           width: 56,
                           height: 56,
                           placeholder: const Icon(
@@ -1166,10 +1166,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                       decoration: BoxDecoration(
                         color: Colors.green,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1),
+                        border: Border.all(color: Colors.white),
                         boxShadow: [
                           BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 4)
                         ],
                       ),
@@ -1248,7 +1248,8 @@ class _ChatListScreenState extends State<ChatListScreen>
       BuildContext context, ChatModel chat, bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFECFDF5).withOpacity(0.6), // Very light green bg
+        color: const Color(0xFFECFDF5)
+            .withValues(alpha: 0.6), // Very light green bg
         borderRadius: BorderRadius.circular(24),
       ),
       child: Padding(

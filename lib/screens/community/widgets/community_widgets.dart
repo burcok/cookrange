@@ -33,12 +33,12 @@ class GlassContainer extends StatelessWidget {
       return Container(
         padding: padding,
         decoration: BoxDecoration(
-          color: color.withOpacity(opacity + 0.2 > 1.0 ? 1.0 : opacity + 0.2),
+          color: color.withValues(
+              alpha: opacity + 0.2 > 1.0 ? 1.0 : opacity + 0.2),
           borderRadius: borderRadius ?? BorderRadius.circular(24),
           border: border ??
               Border.all(
-                color: Colors.white.withOpacity(0.5),
-                width: 1.0,
+                color: Colors.white.withValues(alpha: 0.5),
               ),
           boxShadow: boxShadow,
         ),
@@ -60,11 +60,10 @@ class GlassContainer extends StatelessWidget {
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: color.withOpacity(opacity),
+              color: color.withValues(alpha: opacity),
               border: border ??
                   Border.all(
-                    color: Colors.white.withOpacity(0.5),
-                    width: 1.0,
+                    color: Colors.white.withValues(alpha: 0.5),
                   ),
             ),
             child: child,
@@ -138,7 +137,10 @@ class StoryCircle extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.8),
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -184,7 +186,6 @@ class MinimalCustomDropdown<T> extends StatelessWidget {
             final isSelected = item == value;
             return PopupMenuItem<T>(
               value: item,
-              height: 48,
               child: Row(
                 children: [
                   Expanded(

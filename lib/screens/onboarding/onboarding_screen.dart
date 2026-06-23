@@ -17,7 +17,7 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final PageController _pageController = PageController(initialPage: 0);
+  final PageController _pageController = PageController();
   int _currentStep = 0;
   int _previousStep = -1;
   final _analyticsService = AnalyticsService();

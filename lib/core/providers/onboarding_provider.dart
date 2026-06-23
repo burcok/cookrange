@@ -146,8 +146,9 @@ class OnboardingProvider with ChangeNotifier {
         if (itemA != itemB) return false;
       } else if (itemA is Map && itemB is Map) {
         if (!mapEquals(
-            itemA as Map<String, dynamic>, itemB as Map<String, dynamic>))
+            itemA as Map<String, dynamic>, itemB as Map<String, dynamic>)) {
           return false;
+        }
       } else {
         return false;
       }

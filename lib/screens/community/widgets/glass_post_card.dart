@@ -143,13 +143,12 @@ class _GlassPostCardState extends State<GlassPostCard> {
         onTap: widget.onTap,
         child: GlassContainer(
           borderRadius: BorderRadius.circular(24),
-          padding: const EdgeInsets.all(20),
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
           opacity: isDark ? 0.6 : 0.6,
           enableBlur: false, // OPTIMIZATION: Disable blur for list performance
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1F2687).withOpacity(0.05),
+              color: const Color(0xFF1F2687).withValues(alpha: 0.05),
               offset: const Offset(0, 8),
               blurRadius: 32,
             ),
@@ -183,7 +182,6 @@ class _GlassPostCardState extends State<GlassPostCard> {
                               imageUrl: _post.author.avatarUrl,
                               width: 44,
                               height: 44,
-                              fit: BoxFit.cover,
                             ),
                           ),
                         ),
@@ -254,8 +252,8 @@ class _GlassPostCardState extends State<GlassPostCard> {
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: isDark
-                                    ? Colors.white.withOpacity(0.1)
-                                    : Colors.black.withOpacity(0.05),
+                                    ? Colors.white.withValues(alpha: 0.1)
+                                    : Colors.black.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color:
@@ -289,7 +287,6 @@ class _GlassPostCardState extends State<GlassPostCard> {
                         imageUrl: _post.imageUrls.first,
                         height: 256,
                         width: double.infinity,
-                        fit: BoxFit.cover,
                       ),
                     ),
                     if (_post.imageUrls.length > 1)
@@ -335,7 +332,7 @@ class _GlassPostCardState extends State<GlassPostCard> {
                                 ? context
                                     .watch<ThemeProvider>()
                                     .primaryColor
-                                    .withOpacity(0.2)
+                                    .withValues(alpha: 0.2)
                                 : (isDark
                                     ? Colors.white10
                                     : Colors.grey.shade100),
@@ -412,7 +409,6 @@ class _GlassPostCardState extends State<GlassPostCard> {
                                     imageUrl: entry.value.avatarUrl,
                                     width: 20,
                                     height: 20,
-                                    fit: BoxFit.cover,
                                   ),
                                 ),
                               ),

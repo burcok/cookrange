@@ -31,7 +31,7 @@ class AppInitializationService {
   bool _isInitialized = false;
   bool _isInitializing = false;
   String? _initializationError;
-  Map<String, dynamic> _initializationResults = {};
+  final Map<String, dynamic> _initializationResults = {};
   Completer<InitializationResult>? _initCompleter;
 
   // Getters
@@ -114,7 +114,7 @@ class AppInitializationService {
       _configureDebugMode();
 
       // Load environment variables (Fixed path from assets/.env to .env)
-      await dotenv.load(fileName: ".env");
+      await dotenv.load();
 
       // Initialize AI Service
       final apiKey = dotenv.env['OPENROUTER_API_KEY'] ?? '';

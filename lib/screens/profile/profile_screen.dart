@@ -93,7 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _initializePrivateData() {
-    final user;
+    final UserModel? user;
     if (widget.viewUser != null) {
       user = widget.viewUser!;
     } else if (_fetchedUser != null) {
@@ -298,10 +298,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           GlassRefresher(
             onRefresh: () async {
               if (!isPublic) {
-                if (context.mounted)
+                if (context.mounted) {
                   await context.read<UserProvider>().refreshUser();
-                if (context.mounted)
+                }
+                if (context.mounted) {
                   _initializePrivateData(); // Re-sync local state
+                }
               } else {
                 await _checkFriendshipStatus();
               }
@@ -416,8 +418,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           height: 500,
           decoration: BoxDecoration(
             color: isDark
-                ? primaryColor.withOpacity(0.1)
-                : primaryColor.withOpacity(0.5),
+                ? primaryColor.withValues(alpha: 0.1)
+                : primaryColor.withValues(alpha: 0.5),
             shape: BoxShape.circle,
           ),
           child: BackdropFilter(
@@ -433,8 +435,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           height: 500,
           decoration: BoxDecoration(
             color: isDark
-                ? primaryColor.withOpacity(0.1)
-                : Colors.lightBlue.shade100.withOpacity(0.5),
+                ? primaryColor.withValues(alpha: 0.1)
+                : Colors.lightBlue.shade100.withValues(alpha: 0.5),
             shape: BoxShape.circle,
           ),
           child: BackdropFilter(
@@ -463,7 +465,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: primaryColor,
                 boxShadow: [
                   BoxShadow(
-                      color: primaryColor.withOpacity(0.15),
+                      color: primaryColor.withValues(alpha: 0.15),
                       blurRadius: 30,
                       offset: const Offset(0, 15))
                 ],
@@ -501,7 +503,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   : Colors.grey[100]!),
                           boxShadow: [
                             BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 4)
                           ]),
                       child:
@@ -553,11 +555,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final localizations = AppLocalizations.of(context);
 
     // Show loading spinner while checking status to prevent flickering
-    if (_isLoading || _isCheckingFriendship)
+    if (_isLoading || _isCheckingFriendship) {
       return const SizedBox(
           height: 20,
           width: 20,
           child: CircularProgressIndicator(strokeWidth: 2));
+    }
 
     String label = localizations.translate('profile.friend_actions.add');
     IconData icon = Icons.person_add;
@@ -604,10 +607,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: _handleRejectRequest,
-                child: Text(
-                    localizations.translate('profile.friend_actions.reject')),
                 style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red, foregroundColor: Colors.white),
+                child: Text(
+                    localizations.translate('profile.friend_actions.reject')),
               )
             ],
           )
@@ -628,11 +631,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildMessageActionButton(bool isDark, Color primaryColor) {
-    if (_isLoading)
+    if (_isLoading) {
       return const SizedBox(
           height: 20,
           width: 20,
           child: CircularProgressIndicator(strokeWidth: 2));
+    }
 
     return ElevatedButton.icon(
       onPressed: () async {
@@ -837,7 +841,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           boxShadow: [
                                             BoxShadow(
                                                 color: Colors.black
-                                                    .withOpacity(0.05),
+                                                    .withValues(alpha: 0.05),
                                                 blurRadius: 4)
                                           ]),
                                       child: CircleAvatar(
@@ -919,8 +923,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Icons
                             .check_circle_outline, // Generic icon for dynamic goals
                         primaryColor,
-                        isDark))
-                    .toList(),
+                        isDark)),
                 if ((user.onboardingData?['primary_goals'] as List?)?.isEmpty ??
                     true)
                   Text("No goals set",
@@ -938,9 +941,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-          color: isDark ? color.withOpacity(0.2) : color.withOpacity(0.1),
+          color: isDark
+              ? color.withValues(alpha: 0.2)
+              : color.withValues(alpha: 0.1),
           border: Border.all(
-              color: isDark ? color.withOpacity(0.4) : color.withOpacity(0.3)),
+              color: isDark
+                  ? color.withValues(alpha: 0.4)
+                  : color.withValues(alpha: 0.3)),
           borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -977,9 +984,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (isPublic) {
         val = personalInfo?[key];
       } else {
-        if (key == 'height')
+        if (key == 'height') {
           val = _heightController.text;
-        else if (key == 'weight')
+        } else if (key == 'weight')
           val = _weightController.text;
         else if (key == 'gender')
           val = _genderController.text;
@@ -1059,12 +1066,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
           color: isDark
-              ? Colors.grey[800]!.withOpacity(0.5)
-              : Colors.white.withOpacity(0.5),
+              ? Colors.grey[800]!.withValues(alpha: 0.5)
+              : Colors.white.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-              color:
-                  isDark ? Colors.grey[700]! : Colors.white.withOpacity(0.4))),
+              color: isDark
+                  ? Colors.grey[700]!
+                  : Colors.white.withValues(alpha: 0.4))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1110,7 +1118,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (cookingLevel.toLowerCase().contains('inter')) levelValue = 0.6;
     if (cookingLevel.toLowerCase().contains('adv') ||
         cookingLevel.toLowerCase().contains('pro') ||
-        cookingLevel.toLowerCase().contains('chef')) levelValue = 1.0;
+        cookingLevel.toLowerCase().contains('chef')) {
+      levelValue = 1.0;
+    }
 
     return _buildGlassPanel(
         isDark: isDark,
@@ -1188,7 +1198,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: isDark ? Colors.grey[400] : Colors.grey[500])),
                   const SizedBox(height: 8),
                   if (equipment.isEmpty)
-                    Text("No equipment listed",
+                    const Text("No equipment listed",
                         style: TextStyle(
                             color: Colors.grey,
                             fontSize: 12,
@@ -1287,12 +1297,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           backgroundColor:
-              isDark ? Colors.grey[800] : Colors.white.withOpacity(0.5),
+              isDark ? Colors.grey[800] : Colors.white.withValues(alpha: 0.5),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
                   color: isDark
-                      ? Colors.red.withOpacity(0.3)
+                      ? Colors.red.withValues(alpha: 0.3)
                       : Colors.red.shade200)),
         ),
         child: Text(
@@ -1328,15 +1338,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: padding ?? const EdgeInsets.all(16),
           decoration: BoxDecoration(
               color: isDark
-                  ? const Color(0xFF1F2937).withOpacity(0.7) // glass-dark
-                  : const Color(0xFFFFFFFF).withOpacity(0.7), // glass-light
+                  ? const Color(0xFF1F2937).withValues(alpha: 0.7) // glass-dark
+                  : const Color(0xFFFFFFFF)
+                      .withValues(alpha: 0.7), // glass-light
               border: Border.all(
-                color:
-                    isDark ? Colors.grey[700]! : Colors.white.withOpacity(0.6),
+                color: isDark
+                    ? Colors.grey[700]!
+                    : Colors.white.withValues(alpha: 0.6),
               ),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 2))
               ]),
@@ -1364,8 +1376,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             .doc(user.uid)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return _buildStatusIndicator(user.isOnline, null, isDark);
+          }
 
           final data = snapshot.data!.data() as Map<String, dynamic>?;
           if (data == null) return _buildStatusIndicator(false, null, isDark);
@@ -1538,9 +1551,10 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
         _searchResults = results.where((u) => u.uid != myUid).toList();
       });
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text("Search failed: $e")));
+      }
     } finally {
       if (mounted) setState(() => _searching = false);
     }
@@ -1554,9 +1568,10 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
             SnackBar(content: Text("Request sent to ${user.displayName}")));
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
     }
   }
 
@@ -1772,7 +1787,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
                                         ? Colors.white
                                         : Colors.black)),
                             trailing: isFriend
-                                ? Icon(Icons.check, color: Colors.green)
+                                ? const Icon(Icons.check, color: Colors.green)
                                 : IconButton(
                                     icon: const Icon(Icons.person_add,
                                         color: Color(0xFFF44075)),

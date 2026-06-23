@@ -67,7 +67,7 @@ Return fully structured JSON matching this schema:
       return "- [${d.id}] ${d.name} (${d.category}): ${d.calories}kcal (P:${d.protein} C:${d.carbs} F:${d.fat})";
     }).join('\n');
 
-    final jsonSchema = '''
+    const jsonSchema = '''
 {
   "total_calories": 14000,
   "avg_daily_calories": 2000,

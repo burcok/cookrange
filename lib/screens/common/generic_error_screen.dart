@@ -164,7 +164,8 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-                color: Colors.cyan.withOpacity(0.1), shape: BoxShape.circle),
+                color: Colors.cyan.withValues(alpha: 0.1),
+                shape: BoxShape.circle),
             alignment: Alignment.center,
             child: Text('$number',
                 style: const TextStyle(
@@ -184,7 +185,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[50],
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[50],
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -195,8 +196,8 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: operational
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.red.withOpacity(0.1),
+                  ? Colors.green.withValues(alpha: 0.1)
+                  : Colors.red.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -243,11 +244,11 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
             height: MediaQuery.of(context).size.height * 0.6,
             decoration: BoxDecoration(
               color: isDark
-                  ? const Color(0xFF0F172A).withOpacity(0.9)
-                  : const Color(0xFFF8FAFC).withOpacity(0.9),
+                  ? const Color(0xFF0F172A).withValues(alpha: 0.9)
+                  : const Color(0xFFF8FAFC).withValues(alpha: 0.9),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(32)),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Column(
               children: [
@@ -265,7 +266,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
+                            color: color.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12)),
                         child: Icon(icon, color: color),
                       ),
@@ -297,8 +298,8 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
     final localizations = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).primaryColor;
-    final bgLight = const Color(0xFFF8FAFC);
-    final bgDark = const Color(0xFF0F172A);
+    const bgLight = Color(0xFFF8FAFC);
+    const bgDark = Color(0xFF0F172A);
 
     return Scaffold(
       backgroundColor: isDark ? bgDark : bgLight,
@@ -312,7 +313,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
               width: 384,
               height: 384,
               decoration: BoxDecoration(
-                color: primaryColor.withOpacity(isDark ? 0.2 : 0.1),
+                color: primaryColor.withValues(alpha: isDark ? 0.2 : 0.1),
                 shape: BoxShape.circle,
               ),
               child: BackdropFilter(
@@ -329,7 +330,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
               height: 320,
               decoration: BoxDecoration(
                 color: (isDark ? Colors.blue[900]! : Colors.blue[300]!)
-                    .withOpacity(isDark ? 0.1 : 0.2),
+                    .withValues(alpha: isDark ? 0.1 : 0.2),
                 shape: BoxShape.circle,
               ),
               child: BackdropFilter(
@@ -394,7 +395,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                                       decoration: BoxDecoration(
                                         color: isDark
                                             ? Colors.orange[900]!
-                                                .withOpacity(0.2)
+                                                .withValues(alpha: 0.2)
                                             : Colors.orange[50],
                                         shape: BoxShape.circle,
                                       ),
@@ -420,7 +421,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                                           boxShadow: [
                                             BoxShadow(
                                                 color: Colors.black
-                                                    .withOpacity(0.1),
+                                                    .withValues(alpha: 0.1),
                                                 blurRadius: 4)
                                           ],
                                         ),
@@ -471,7 +472,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                                               BorderRadius.circular(16)),
                                       elevation: 4,
                                       shadowColor:
-                                          primaryColor.withOpacity(0.2),
+                                          primaryColor.withValues(alpha: 0.2),
                                     ),
                                     child: Row(
                                       mainAxisAlignment:
@@ -548,7 +549,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                             iconColor: Colors.purple,
                             iconBgColor: const Color(0xFFFAF5FF), // Purple 50
                             iconBgColorDark:
-                                Colors.purple[900]!.withOpacity(0.3),
+                                Colors.purple[900]!.withValues(alpha: 0.3),
                             onTap: _showSystemStatusModal,
                           ),
                           const SizedBox(height: 12),
@@ -560,7 +561,8 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                             icon: Icons.help_outline_rounded,
                             iconColor: Colors.cyan,
                             iconBgColor: const Color(0xFFECFEFF), // Cyan 50
-                            iconBgColorDark: Colors.cyan[900]!.withOpacity(0.3),
+                            iconBgColorDark:
+                                Colors.cyan[900]!.withValues(alpha: 0.3),
                             onTap: _showTroubleshootModal,
                           ),
                         ],
@@ -622,17 +624,17 @@ class _GlassPanel extends StatelessWidget {
           padding: padding,
           decoration: BoxDecoration(
             color: isDark
-                ? const Color(0xFF1E293B).withOpacity(0.6)
-                : Colors.white.withOpacity(0.7),
+                ? const Color(0xFF1E293B).withValues(alpha: 0.6)
+                : Colors.white.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.05)
-                    : Colors.white.withOpacity(0.6)),
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.white.withValues(alpha: 0.6)),
             boxShadow: [
               BoxShadow(
                   color: isDark
-                      ? Colors.black.withOpacity(0.3)
+                      ? Colors.black.withValues(alpha: 0.3)
                       : const Color.fromRGBO(31, 38, 135, 0.07),
                   blurRadius: 32,
                   offset: const Offset(0, 8))
@@ -671,10 +673,10 @@ class _GlassButton extends StatelessWidget {
           padding: padding,
           decoration: BoxDecoration(
             color: isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.white.withOpacity(0.4),
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.white.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.5), width: 1),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
           ),
           child: child,
         ),
@@ -703,7 +705,6 @@ class _ResourceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return _GlassPanel(
-      padding: const EdgeInsets.all(16),
       child: InkWell(
         onTap: onTap,
         child: Row(
@@ -715,7 +716,7 @@ class _ResourceCard extends StatelessWidget {
                   color: isDark ? iconBgColorDark : iconBgColor,
                   borderRadius: BorderRadius.circular(12)),
               child: Icon(icon,
-                  color: isDark ? iconColor.withOpacity(0.8) : iconColor,
+                  color: isDark ? iconColor.withValues(alpha: 0.8) : iconColor,
                   size: 20),
             ),
             const SizedBox(width: 16),

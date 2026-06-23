@@ -590,7 +590,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildMealPlanSection(
       BuildContext context, UserModel user, AppLocalizations l10n) {
     if (_isLoadingPlan) {
-      return Center(
+      return const Center(
           child: Padding(
         padding: EdgeInsets.all(32.0),
         child: CircularProgressIndicator(),
@@ -642,16 +642,14 @@ class _HomeScreenState extends State<HomeScreen>
                         ? context.watch<ThemeProvider>().primaryColor
                         : Colors.white.withAlpha(200),
                     borderRadius: BorderRadius.circular(16.r),
-                    border: isSelected
-                        ? null
-                        : Border.all(color: Colors.white, width: 1),
+                    border: isSelected ? null : Border.all(color: Colors.white),
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
                               color: context
                                   .watch<ThemeProvider>()
                                   .primaryColor
-                                  .withOpacity(0.3),
+                                  .withValues(alpha: 0.3),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             )
@@ -667,7 +665,7 @@ class _HomeScreenState extends State<HomeScreen>
                           fontSize: 14.sp,
                           color: isSelected
                               ? Colors.white
-                              : const Color(0xFF2E3A59).withOpacity(0.6),
+                              : const Color(0xFF2E3A59).withValues(alpha: 0.6),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -785,7 +783,7 @@ class _HomeScreenState extends State<HomeScreen>
     final mealOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
 
     return mealOrder.map((mealType) {
-      if (!day.meals.containsKey(mealType)) return SizedBox.shrink();
+      if (!day.meals.containsKey(mealType)) return const SizedBox.shrink();
 
       final dishId = day.meals[mealType]!;
       final dish = _dishCache[dishId];
@@ -795,7 +793,7 @@ class _HomeScreenState extends State<HomeScreen>
         return Container(
           height: 80.h,
           margin: EdgeInsets.only(bottom: 16.h),
-          child: Center(child: CircularProgressIndicator()),
+          child: const Center(child: CircularProgressIndicator()),
         );
       }
 
@@ -850,14 +848,14 @@ class _HomeScreenState extends State<HomeScreen>
                                   color: context
                                       .watch<ThemeProvider>()
                                       .primaryColor
-                                      .withOpacity(0.5),
+                                      .withValues(alpha: 0.5),
                                   size: 30.w),
                             )
                           : Icon(Icons.restaurant,
                               color: context
                                   .watch<ThemeProvider>()
                                   .primaryColor
-                                  .withOpacity(0.3),
+                                  .withValues(alpha: 0.3),
                               size: 30.w),
                     ),
                   ),
@@ -907,7 +905,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 color: context
                                     .watch<ThemeProvider>()
                                     .primaryColor
-                                    .withOpacity(0.1),
+                                    .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8.r),
                               ),
                               child: Text(

@@ -149,7 +149,6 @@ class ChatService {
       text: text,
       type: type,
       timestamp: timestamp,
-      isRead: false,
     );
 
     final chatRef = _firestore.collection('chats').doc(chatId);

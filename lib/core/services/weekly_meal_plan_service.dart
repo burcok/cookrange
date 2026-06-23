@@ -40,7 +40,7 @@ class WeeklyMealPlanService {
     }
 
     // 2. Generate new plan
-    return await _generateAndSaveMealPlan(user);
+    return _generateAndSaveMealPlan(user);
   }
 
   Future<WeeklyMealPlanModel?> _fetchUserMealPlan(String userId) async {
@@ -122,7 +122,6 @@ class WeeklyMealPlanService {
         createdAt: now,
         expiresAt: now.add(const Duration(days: 7)),
         generationPromptHash: _generateProfileHash(user),
-        isAiGenerated: true,
       );
 
       // 5. Save to Firestore

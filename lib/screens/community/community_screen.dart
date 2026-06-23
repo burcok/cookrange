@@ -93,14 +93,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: isDark
-                        ? const Color(0xFF1E293B).withOpacity(0.9)
-                        : Colors.white.withOpacity(0.9),
+                        ? const Color(0xFF1E293B).withValues(alpha: 0.9)
+                        : Colors.white.withValues(alpha: 0.9),
                     border: Border(
                       top: BorderSide(
                         color: isDark
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.black.withOpacity(0.05),
-                        width: 1,
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.black.withValues(alpha: 0.05),
                       ),
                     ),
                   ),
@@ -115,8 +114,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           height: 4,
                           decoration: BoxDecoration(
                             color: isDark
-                                ? Colors.white.withOpacity(0.2)
-                                : Colors.black.withOpacity(0.1),
+                                ? Colors.white.withValues(alpha: 0.2)
+                                : Colors.black.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -142,8 +141,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         Divider(
                           height: 1,
                           color: isDark
-                              ? Colors.white.withOpacity(0.1)
-                              : Colors.black.withOpacity(0.05),
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : Colors.black.withValues(alpha: 0.05),
                         ),
 
                         Flexible(
@@ -163,8 +162,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                         horizontal: 24, vertical: 16),
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? primaryColor
-                                              .withOpacity(isDark ? 0.2 : 0.1)
+                                          ? primaryColor.withValues(
+                                              alpha: isDark ? 0.2 : 0.1)
                                           : Colors.transparent,
                                     ),
                                     child: Row(
@@ -173,12 +172,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                           padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
                                             color: isSelected
-                                                ? primaryColor.withOpacity(0.2)
+                                                ? primaryColor.withValues(
+                                                    alpha: 0.2)
                                                 : (isDark
                                                     ? Colors.white
-                                                        .withOpacity(0.05)
-                                                    : Colors.black
-                                                        .withOpacity(0.05)),
+                                                        .withValues(alpha: 0.05)
+                                                    : Colors.black.withValues(
+                                                        alpha: 0.05)),
                                             shape: BoxShape.circle,
                                           ),
                                           child: Icon(
@@ -312,7 +312,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: GlassRefresher(
           onRefresh: _refreshData,
-          topPadding: 100, // Adjusted for Community Screen header
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics()),
@@ -322,8 +321,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
                     24, MediaQuery.of(context).padding.top + 24, 24, 24),
-                sliver: SliverToBoxAdapter(
-                  child: const MainHeader(),
+                sliver: const SliverToBoxAdapter(
+                  child: MainHeader(),
                 ),
               ),
 
@@ -470,7 +469,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     return SliverToBoxAdapter(
                         child: Center(
                             child: Padding(
-                                padding: EdgeInsets.all(40),
+                                padding: const EdgeInsets.all(40),
                                 child: Text(
                                     appLoc.translate('community.no_posts')))));
                   }
@@ -607,7 +606,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                 imageUrl: group.imageUrl,
                                 width: 60,
                                 height: 60,
-                                fit: BoxFit.cover,
                               )
                             : Image.asset(group.imageUrl, fit: BoxFit.cover))
                         : const Icon(Icons.group),

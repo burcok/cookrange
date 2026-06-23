@@ -6,7 +6,6 @@ import '../core/services/dish_image_service.dart';
 import '../core/data/dish_data.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/foundation.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -39,8 +39,8 @@ class SettingsScreen extends StatelessWidget {
                 gradient: RadialGradient(
                   colors: [
                     isDark
-                        ? primaryColor.withOpacity(0.2)
-                        : const Color(0xFFFFEDD5).withOpacity(0.6),
+                        ? primaryColor.withValues(alpha: 0.2)
+                        : const Color(0xFFFFEDD5).withValues(alpha: 0.6),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.7],
@@ -59,8 +59,8 @@ class SettingsScreen extends StatelessWidget {
                 gradient: RadialGradient(
                   colors: [
                     isDark
-                        ? Colors.blue[900]!.withOpacity(0.2)
-                        : const Color(0xFFEFF6FF).withOpacity(0.6),
+                        ? Colors.blue[900]!.withValues(alpha: 0.2)
+                        : const Color(0xFFEFF6FF).withValues(alpha: 0.6),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.7],
@@ -77,7 +77,6 @@ class SettingsScreen extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         IconButton(
                           onPressed: () => Navigator.pop(context),
@@ -105,7 +104,7 @@ class SettingsScreen extends StatelessWidget {
                           icon: Icons.dark_mode,
                           iconColor: Colors.indigo,
                           iconBgColor: isDark
-                              ? Colors.indigo.withOpacity(0.3)
+                              ? Colors.indigo.withValues(alpha: 0.3)
                               : const Color(0xFFEEF2FF), // indigo-50
                           title: appLoc.translate('settings.appearance.dark'),
                           isDark: isDark,
@@ -115,7 +114,7 @@ class SettingsScreen extends StatelessWidget {
                               themeProvider.setThemeMode(
                                   val ? ThemeMode.dark : ThemeMode.light);
                             },
-                            activeColor: primaryColor,
+                            activeThumbColor: primaryColor,
                           ),
                         ),
                         // Theme Color
@@ -124,7 +123,7 @@ class SettingsScreen extends StatelessWidget {
                           icon: Icons.palette,
                           iconColor: primaryColor,
                           iconBgColor: isDark
-                              ? primaryColor.withOpacity(0.3)
+                              ? primaryColor.withValues(alpha: 0.3)
                               : const Color(0xFFFCE7F3), // pink-50
                           title: appLoc
                               .translate('settings.appearance.theme_color'),
@@ -132,8 +131,8 @@ class SettingsScreen extends StatelessWidget {
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              _buildColorOption(
-                                  themeProvider, Color(0xFFF97300), isDark),
+                              _buildColorOption(themeProvider,
+                                  const Color(0xFFF97300), isDark),
                               const SizedBox(width: 8),
                               _buildColorOption(
                                   themeProvider, Colors.blue, isDark),
@@ -154,7 +153,7 @@ class SettingsScreen extends StatelessWidget {
                           icon: Icons.language,
                           iconColor: Colors.black54,
                           iconBgColor: isDark
-                              ? Colors.black.withOpacity(0.3)
+                              ? Colors.black.withValues(alpha: 0.3)
                               : const Color(0xFFFFF7ED), // orange-50
                           title: appLoc.translate('settings.language'),
                           isDark: isDark,
@@ -206,7 +205,7 @@ class SettingsScreen extends StatelessWidget {
                           icon: Icons.lock,
                           iconColor: Colors.blue,
                           iconBgColor: isDark
-                              ? Colors.blue.withOpacity(0.3)
+                              ? Colors.blue.withValues(alpha: 0.3)
                               : const Color(0xFFEFF6FF), // blue-50
                           title: appLoc
                               .translate('settings.privacy.account_privacy'),
@@ -216,7 +215,7 @@ class SettingsScreen extends StatelessWidget {
                           trailing: Switch(
                             value: true, // Mock value
                             onChanged: (val) {},
-                            activeColor: primaryColor,
+                            activeThumbColor: primaryColor,
                           ),
                         ),
                         _buildSettingsRow(
@@ -224,7 +223,7 @@ class SettingsScreen extends StatelessWidget {
                           icon: Icons.group_add,
                           iconColor: Colors.green,
                           iconBgColor: isDark
-                              ? Colors.green.withOpacity(0.3)
+                              ? Colors.green.withValues(alpha: 0.3)
                               : const Color(0xFFF0FDF4), // green-50
                           title: appLoc
                               .translate('settings.privacy.friend_requests'),
@@ -267,7 +266,7 @@ class SettingsScreen extends StatelessWidget {
                           icon: Icons.notifications,
                           iconColor: Colors.red,
                           iconBgColor: isDark
-                              ? Colors.red.withOpacity(0.3)
+                              ? Colors.red.withValues(alpha: 0.3)
                               : const Color(0xFFFEF2F2), // red-50
                           title: appLoc.translate('settings.notifications'),
                           isDark: isDark,
@@ -280,7 +279,7 @@ class SettingsScreen extends StatelessWidget {
                           icon: Icons.smartphone,
                           iconColor: Colors.teal,
                           iconBgColor: isDark
-                              ? Colors.teal.withOpacity(0.3)
+                              ? Colors.teal.withValues(alpha: 0.3)
                               : const Color(0xFFF0FDFA), // teal-50
                           title: appLoc.translate(
                               'settings.permissions.device_permissions'),
@@ -302,8 +301,6 @@ class SettingsScreen extends StatelessWidget {
                       children: [
                         _buildSettingsRow(
                           context,
-                          icon:
-                              null, // Just text for app info items if needed, or customize
                           title: appLoc.translate('settings.app_info.about'),
                           isDark: isDark,
                           paddingLeft: 0,
@@ -313,7 +310,6 @@ class SettingsScreen extends StatelessWidget {
                         ),
                         _buildSettingsRow(
                           context,
-                          icon: null,
                           title: appLoc.translate('settings.app_info.help'),
                           isDark: isDark,
                           paddingLeft: 0,
@@ -342,7 +338,7 @@ class SettingsScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "${appLoc.translate('settings.app_info.user_id')}: ${uid}",
+                            "${appLoc.translate('settings.app_info.user_id')}: $uid",
                             style: TextStyle(
                               fontSize: 10,
                               color:
@@ -379,7 +375,7 @@ class SettingsScreen extends StatelessWidget {
               width: 128,
               height: 128,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
             ),
@@ -391,7 +387,7 @@ class SettingsScreen extends StatelessWidget {
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: Colors.black12.withOpacity(0.1),
+                color: Colors.black12.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
             ),
@@ -413,7 +409,7 @@ class SettingsScreen extends StatelessWidget {
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                   ],
@@ -434,7 +430,7 @@ class SettingsScreen extends StatelessWidget {
                     appLoc.translate('settings.premium.description'),
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                     ),
                   ),
                 ),
@@ -480,15 +476,15 @@ class SettingsScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark
             ? const Color(0xFF1F2937)
-                .withOpacity(0.9) // Higher opacity since no blur
-            : Colors.white.withOpacity(0.95),
+                .withValues(alpha: 0.9) // Higher opacity since no blur
+            : Colors.white.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -503,8 +499,8 @@ class SettingsScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.grey[800]!.withOpacity(0.5)
-                    : Colors.grey[50]!.withOpacity(0.5),
+                    ? Colors.grey[800]!.withValues(alpha: 0.5)
+                    : Colors.grey[50]!.withValues(alpha: 0.5),
                 border: Border(
                   bottom: BorderSide(
                     color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
@@ -616,7 +612,7 @@ class SettingsScreen extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: color.withOpacity(0.4),
+                    color: color.withValues(alpha: 0.4),
                     blurRadius: 4,
                     spreadRadius: 2,
                   )
