@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:cookrange/core/widgets/app_image.dart';
 import '../../core/localization/app_localizations.dart';
@@ -39,12 +40,37 @@ class _CommunityScreenState extends State<CommunityScreen> {
   String _selectedFilter = "Latest Updates";
 
   late Stream<List<CommunityPost>> _postsStream;
+  List<CommunityPost> _additionalPosts = [];
+  DocumentSnapshot? _lastDoc;
+  bool _isLoadingMore = false;
+  bool _hasMorePosts = true;
 
   @override
   void initState() {
     super.initState();
     _loadGroups();
     _postsStream = _service.getPostsStream();
+  }
+
+  Future<void> _loadMorePosts() async {
+    if (_isLoadingMore || !_hasMorePosts) return;
+    setState(() => _isLoadingMore = true);
+    try {
+      final result = await _service.fetchPostsPage(
+        limit: 20,
+        startAfter: _lastDoc,
+      );
+      if (mounted) {
+        setState(() {
+          _additionalPosts.addAll(result.posts);
+          _lastDoc = result.lastDoc;
+          _hasMorePosts = result.posts.length == 20;
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingMore = false);
+    }
   }
 
   Future<void> _loadGroups() async {
@@ -59,11 +85,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   Future<void> _refreshData() async {
     _loadGroups();
-    // Refresh streams
     setState(() {
       _postsStream = _service.getPostsStream();
+      _additionalPosts = [];
+      _lastDoc = null;
+      _hasMorePosts = true;
     });
-    await Future.delayed(const Duration(seconds: 1)); // Reduced delay
+    await Future.delayed(const Duration(seconds: 1));
   }
 
   void _onFilterChanged(String filter) {
@@ -527,6 +555,69 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     ),
                   );
                 },
+              ),
+
+              // Additional paginated posts
+              if (_additionalPosts.isNotEmpty)
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final post = _additionalPosts[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                            bottom: 20, left: 24, right: 24),
+                        child: GlassPostCard(
+                          post: post,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    PostDetailScreen(postId: post.id)),
+                          ),
+                          onLike: () => _service.likePost(post.id),
+                          onComment: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    PostDetailScreen(postId: post.id)),
+                          ),
+                          onShare: () {},
+                          onReaction: (emoji) =>
+                              _service.toggleReaction(postId: post.id, emoji: emoji),
+                        ),
+                      );
+                    },
+                    childCount: _additionalPosts.length,
+                  ),
+                ),
+
+              // Load More button
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: _hasMorePosts
+                      ? OutlinedButton(
+                          onPressed: _isLoadingMore ? null : _loadMorePosts,
+                          child: _isLoadingMore
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2))
+                              : Text(appLoc.translate('common.load_more')),
+                        )
+                      : Center(
+                          child: Text(
+                            appLoc.translate('community.all_posts_loaded'),
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.4)),
+                          ),
+                        ),
+                ),
               ),
 
               const SliverToBoxAdapter(child: SizedBox(height: 100)),

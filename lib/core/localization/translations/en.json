@@ -313,6 +313,8 @@
     "email_client_error": "Could not launch email client. Please contact {email}",
     "register_with_google": "Register with Google",
     "login_with_google": "Login with Google",
+    "register_with_apple": "Register with Apple",
+    "login_with_apple": "Sign in with Apple",
     "sign_out": "Sign Out",
     "email": "Email",
     "password": "Password",
@@ -581,6 +583,13 @@
       "help": "Help & FAQ",
       "version": "App Version",
       "user_id": "User ID"
+    },
+    "account": {
+      "title": "Account",
+      "delete_account": "Delete Account",
+      "delete_title": "Delete Account",
+      "delete_warning": "This action is permanent and cannot be undone. Enter your password to confirm.",
+      "delete_confirm": "Delete"
     }
   },
   "error": {
@@ -626,6 +635,7 @@
     "back": "Back",
     "done": "Done",
     "clear": "Clear",
+    "load_more": "Load More",
     "continue_offline": "Continue Offline",
     "go_home": "Go Home",
     "retrying": "Retrying...",
@@ -743,7 +753,10 @@
     "good_morning": "Good Morning ",
     "good_afternoon": "Good Afternoon ",
     "good_evening": "Good Evening ",
-    "hello": "Hello "
+    "hello": "Hello ",
+    "regenerate": "Regenerate",
+    "mark_eaten": "Mark as Eaten",
+    "eaten": "Eaten"
   },
   "assistant": {
     "how_can_i_help": "How can I help you?",
@@ -834,6 +847,7 @@
       "new": "New"
     },
     "no_posts": "No posts found. Be the first to share!",
+    "all_posts_loaded": "You've seen all posts",
     "create_post": {
       "add_tags": "Add Tags",
       "add_image": "Add Image",

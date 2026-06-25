@@ -313,6 +313,8 @@
     "email_client_error": "E-posta istemcisi açılamadı. Lütfen {email} ile iletişime geçin.",
     "register_with_google": "Google ile Kayıt Ol",
     "login_with_google": "Google ile Giriş Yap",
+    "register_with_apple": "Apple ile Kayıt Ol",
+    "login_with_apple": "Apple ile Giriş Yap",
     "sign_out": "Çıkış Yap",
     "email": "E-posta",
     "password": "Şifre",
@@ -581,6 +583,13 @@
       "help": "Yardım & SSS",
       "version": "Uygulama Sürümü",
       "user_id": "Kullanıcı Kimliği"
+    },
+    "account": {
+      "title": "Hesap",
+      "delete_account": "Hesabı Sil",
+      "delete_title": "Hesabı Sil",
+      "delete_warning": "Bu işlem kalıcıdır ve geri alınamaz. Onaylamak için şifrenizi girin.",
+      "delete_confirm": "Sil"
     }
   },
   "error": {
@@ -626,6 +635,7 @@
     "back": "Geri",
     "done": "Tamam",
     "clear": "Temizle",
+    "load_more": "Daha Fazla Yükle",
     "continue_offline": "Çevrimdışı Devam Et",
     "go_home": "Anasayfaya Git",
     "retrying": "Yeniden deneniyor...",
@@ -743,7 +753,10 @@
     "good_morning": "Günaydın ",
     "good_afternoon": "Tünaydın ",
     "good_evening": "İyi akşamlar ",
-    "hello": "Merhaba "
+    "hello": "Merhaba ",
+    "regenerate": "Yeniden Oluştur",
+    "mark_eaten": "Yendim Olarak İşaretle",
+    "eaten": "Yendi"
   },
   "assistant": {
     "how_can_i_help": "Size nasıl yardımcı olabilirim?",
@@ -834,6 +847,7 @@
       "new": "Yeni"
     },
     "no_posts": "Gönderi bulunamadı. İlk paylaşan sen ol!",
+    "all_posts_loaded": "Tüm gönderileri gördünüz",
     "create_post": {
       "add_tags": "Etiket Ekle",
       "add_image": "Resim Ekle",

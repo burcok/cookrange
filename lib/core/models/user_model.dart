@@ -55,7 +55,9 @@ class UserModel {
       onboardingData: data['onboarding_data'] as Map<String, dynamic>?,
       appVersion: data['app_version'] as String?,
       buildNumber: data['build_number'] as String?,
-      userVerified: data['user_verified'] as Timestamp?,
+      userVerified: data['user_verified'] is Timestamp
+          ? data['user_verified'] as Timestamp
+          : null,
       profileVisibility:
           (data['profile_visibility'] as Map<String, dynamic>?)?.map(
         (key, value) => MapEntry(key, value as bool),

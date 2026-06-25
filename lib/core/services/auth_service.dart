@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
 import '../../../core/services/analytics_service.dart';
 import 'firestore_service.dart';
 import 'log_service.dart';
@@ -535,5 +539,159 @@ class AuthService {
       currentUser.uid,
       data,
     );
+  }
+
+  // ─── Apple Sign-In ──────────────────────────────────────────────────────────
+
+  /// Generates a cryptographically random nonce string for Apple Sign-In.
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
+        .join();
+  }
+
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  /// Sign in with Apple (iOS only for now; Android requires a web service).
+  Future<User?> signInWithApple() async {
+    _log.info('Attempting Apple Sign-In', service: _serviceName);
+    try {
+      final rawNonce = _generateNonce();
+      final nonce = _sha256ofString(rawNonce);
+
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: nonce,
+      );
+
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        rawNonce: rawNonce,
+      );
+
+      final result = await _auth.signInWithCredential(oauthCredential);
+      final user = result.user;
+
+      if (user != null) {
+        // Update display name from Apple credential if first sign-in
+        final fullName = [
+          appleCredential.givenName,
+          appleCredential.familyName,
+        ].where((s) => s != null && s.isNotEmpty).join(' ');
+
+        if (fullName.isNotEmpty && (user.displayName == null || user.displayName!.isEmpty)) {
+          await user.updateDisplayName(fullName);
+        }
+
+        final sessionId = _uuid.v4();
+        _currentSessionId = sessionId;
+        await _firestoreService.handleUserLogin(user, sessionId: sessionId);
+        _startSessionMonitoring(user.uid);
+
+        _log.info('Apple Sign-In successful for user: ${user.uid}',
+            service: _serviceName);
+      }
+
+      return user;
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        _log.warning('Apple Sign-In cancelled by user.', service: _serviceName);
+        return null;
+      }
+      _log.error('Apple Sign-In error: ${e.message}',
+          service: _serviceName, error: e);
+      throw AuthException('apple-sign-in-failed');
+    } on FirebaseAuthException catch (e) {
+      _log.error('FirebaseAuthException during Apple Sign-In',
+          service: _serviceName, error: e);
+      throw AuthException(e.code);
+    } catch (e, s) {
+      _log.error('Unexpected error during Apple Sign-In',
+          service: _serviceName, error: e, stackTrace: s);
+      throw AuthException('error-unknown');
+    }
+  }
+
+  // ─── Account Deletion (GDPR / App Store requirement) ───────────────────────
+
+  /// Permanently deletes the user account and all associated Firestore data.
+  /// Requires re-authentication for security.
+  Future<void> deleteAccount({
+    required String password,
+    String? appleAuthCode,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw AuthException('user-not-found');
+
+    _log.info('Attempting account deletion for user: ${user.uid}',
+        service: _serviceName);
+
+    try {
+      // Re-authenticate before deletion
+      if (user.providerData.any((p) => p.providerId == 'google.com')) {
+        final googleUser = await _googleSignIn.signIn();
+        if (googleUser == null) throw AuthException('cancelled');
+        final googleAuth = await googleUser.authentication;
+        final cred = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        await user.reauthenticateWithCredential(cred);
+      } else if (user.providerData.any((p) => p.providerId == 'apple.com')) {
+        if (appleAuthCode == null) throw AuthException('reauth-required');
+        final cred = OAuthProvider('apple.com').credential(
+          idToken: appleAuthCode,
+        );
+        await user.reauthenticateWithCredential(cred);
+      } else {
+        // Email/password
+        final email = user.email;
+        if (email == null) throw AuthException('user-not-found');
+        final cred = EmailAuthProvider.credential(
+            email: email, password: password);
+        await user.reauthenticateWithCredential(cred);
+      }
+
+      final uid = user.uid;
+
+      // Delete Firestore data first (before Firebase Auth deletion)
+      await _firestoreService.deleteUserData(uid);
+
+      // Cancel session monitoring
+      await _sessionSubscription?.cancel();
+      _sessionSubscription = null;
+
+      // Delete Firebase Auth account
+      await user.delete();
+      _userDataCache = null;
+
+      try {
+        await _googleSignIn.disconnect();
+      } catch (_) {}
+
+      await clearOnboardingData();
+
+      _log.info('Account deleted successfully for uid: $uid',
+          service: _serviceName);
+      _analyticsService.logEvent(name: 'account_deleted');
+    } on FirebaseAuthException catch (e) {
+      _log.error('FirebaseAuthException during account deletion',
+          service: _serviceName, error: e);
+      throw AuthException(e.code);
+    } catch (e, s) {
+      _log.error('Unexpected error during account deletion',
+          service: _serviceName, error: e, stackTrace: s);
+      if (e is AuthException) rethrow;
+      throw AuthException('error-unknown');
+    }
   }
 }

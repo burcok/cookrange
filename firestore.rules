@@ -1,0 +1,185 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ────────────────────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isParticipant(chatData) {
+      return isAuthenticated() && request.auth.uid in chatData.participants;
+    }
+
+    function isPostOwner(postData) {
+      return isAuthenticated() && request.auth.uid == postData.authorId;
+    }
+
+    function isSignalOwner(signalData) {
+      return isAuthenticated() && request.auth.uid == signalData.userId;
+    }
+
+    // Validate that only allowed fields are being written
+    function hasNoExtraFields(allowedFields) {
+      return request.resource.data.keys().hasOnly(allowedFields);
+    }
+
+    // ─── Users ──────────────────────────────────────────────────────────────
+    match /users/{uid} {
+      // Users can read any profile (needed for search, friend lists, chat presence)
+      allow read: if isAuthenticated();
+      // Only the owner can create/update their own document
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid);
+      allow delete: if isOwner(uid);
+
+      // Friends subcollection: owner reads; either party can create; owner can delete
+      match /friends/{friendId} {
+        allow read: if isOwner(uid);
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isOwner(uid);
+      }
+
+      // Friend requests subcollection
+      match /friend_requests/{requestId} {
+        allow read: if isOwner(uid);
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isOwner(uid) || isOwner(requestId);
+      }
+
+      // Notifications: owner reads; any authenticated user can create (for sending notifs to others)
+      match /notifications/{notifId} {
+        allow read: if isOwner(uid);
+        allow create: if isAuthenticated();
+        allow update: if isOwner(uid);
+        allow delete: if isOwner(uid);
+      }
+
+      // Meal plans: strictly owner-only
+      match /meal_plans/{planId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Food logs: strictly owner-only
+      match /food_logs/{logId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // ─── Logs (auth/session/activity audit trail) ───────────────────────────
+    match /logs/{userId} {
+      // Only the owner can read; auth service can write (uses server-side patterns)
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+    }
+
+    // ─── Failed login attempts (security monitoring) ────────────────────────
+    match /failed_login_attempts/{docId} {
+      // Write-only: any authenticated state (written before auth succeeds)
+      allow create: if true;
+      // Admin read only — enforced by denying client reads
+      allow read, update, delete: if false;
+    }
+
+    // ─── Dishes (read-only catalog for users) ───────────────────────────────
+    match /dishes/{dishId} {
+      allow read: if isAuthenticated();
+      // No client-side writes; seeding done via admin SDK or script with admin credentials
+      allow write: if false;
+    }
+
+    // ─── App Settings (read-only config) ────────────────────────────────────
+    match /settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ─── Community Posts ─────────────────────────────────────────────────────
+    match /posts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.resource.data.authorId == request.auth.uid;
+      allow update: if isAuthenticated()
+        && (isPostOwner(resource.data)
+          // Allow like/reaction counter updates from any authenticated user
+          || (!request.resource.data.diff(resource.data).affectedKeys()
+               .hasAny(['authorId', 'content', 'imageUrls', 'tags'])));
+      allow delete: if isAuthenticated() && isPostOwner(resource.data);
+
+      // Comments
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated()
+          && request.resource.data.authorId == request.auth.uid;
+        allow update: if isAuthenticated()
+          && (resource.data.authorId == request.auth.uid
+            || (!request.resource.data.diff(resource.data).affectedKeys()
+                 .hasAny(['authorId', 'content'])));
+        allow delete: if isAuthenticated()
+          && resource.data.authorId == request.auth.uid;
+
+        // Comment likes
+        match /likes/{userId} {
+          allow read: if isAuthenticated();
+          allow write: if isOwner(userId);
+        }
+      }
+
+      // Post likes
+      match /likes/{userId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+
+      // Post reactions
+      match /reactions/{userId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(userId);
+      }
+    }
+
+    // ─── Chats ────────────────────────────────────────────────────────────────
+    match /chats/{chatId} {
+      allow read: if isAuthenticated() && isParticipant(resource.data);
+      allow create: if isAuthenticated()
+        && request.auth.uid in request.resource.data.participants;
+      allow update: if isAuthenticated() && isParticipant(resource.data);
+      allow delete: if false; // Chats are never deleted client-side
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated()
+          && isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data);
+        allow create: if isAuthenticated()
+          && isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data)
+          && request.resource.data.senderId == request.auth.uid;
+        allow update: if isAuthenticated()
+          && isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data);
+        allow delete: if false;
+      }
+    }
+
+    // ─── Signals (ephemeral social broadcasts) ────────────────────────────────
+    match /signals/{signalId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated()
+        && (isSignalOwner(resource.data)
+          // Allow others to add themselves to ignoredBy list
+          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ignoredBy']));
+      allow delete: if isAuthenticated() && isSignalOwner(resource.data);
+    }
+
+    // ─── Deny everything else ─────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

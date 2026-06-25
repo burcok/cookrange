@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // Max file size: 5MB for images
+    function isValidImage() {
+      return request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // ─── Profile Photos ───────────────────────────────────────────────────────
+    // Path: profile_photos/{uid}.jpg
+    match /profile_photos/{uid} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(uid) && isValidImage();
+    }
+
+    // ─── Post Images ──────────────────────────────────────────────────────────
+    // Path: post_images/{uid}/{filename}
+    match /post_images/{uid}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(uid) && isValidImage();
+      allow delete: if isOwner(uid);
+    }
+
+    // ─── Deny all other paths ─────────────────────────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

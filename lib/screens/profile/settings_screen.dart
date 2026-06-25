@@ -5,9 +5,93 @@ import 'dart:ui';
 import '../../core/providers/language_provider.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/services/auth_service.dart';
+import '../../core/utils/app_routes.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
+    final appLoc = AppLocalizations.of(context);
+    final passwordController = TextEditingController();
+    bool isLoading = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(appLoc.translate('settings.account.delete_title')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(appLoc.translate('settings.account.delete_warning')),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: appLoc.translate('auth.password'),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      isLoading ? null : () => Navigator.pop(dialogContext),
+                  child: Text(appLoc.translate('common.cancel')),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setDialogState(() => isLoading = true);
+                          try {
+                            await AuthService().deleteAccount(
+                              password: passwordController.text,
+                            );
+                            if (!context.mounted) return;
+                            Navigator.pop(dialogContext);
+                            Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              AppRoutes.login,
+                              (route) => false,
+                            );
+                          } catch (e) {
+                            setDialogState(() => isLoading = false);
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e.toString()),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : Text(appLoc
+                          .translate('settings.account.delete_confirm')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    passwordController.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -315,6 +399,32 @@ class SettingsScreen extends StatelessWidget {
                           paddingLeft: 0,
                           trailing: Icon(Icons.open_in_new,
                               size: 20,
+                              color:
+                                  isDark ? Colors.grey[400] : Colors.grey[400]),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Account / Danger Zone
+                    _buildGlassSection(
+                      context: context,
+                      title: appLoc.translate('settings.account.title'),
+                      isDark: isDark,
+                      children: [
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.delete_forever,
+                          iconColor: Colors.red,
+                          iconBgColor: isDark
+                              ? Colors.red.withValues(alpha: 0.2)
+                              : const Color(0xFFFEF2F2),
+                          title: appLoc
+                              .translate('settings.account.delete_account'),
+                          isDark: isDark,
+                          onTap: () => _showDeleteAccountDialog(context),
+                          trailing: Icon(Icons.chevron_right,
                               color:
                                   isDark ? Colors.grey[400] : Colors.grey[400]),
                         ),

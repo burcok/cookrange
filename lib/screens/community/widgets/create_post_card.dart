@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:cookrange/core/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/services/community_service.dart';
+import '../../../../core/services/storage_upload_service.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/providers/theme_provider.dart';
 
@@ -23,6 +25,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
 
   bool _isExpanded = false;
   bool _isPosting = false;
+  bool _isUploadingImage = false;
   List<String> _attachedImageUrls = [];
   List<String> _selectedTags = [];
   final List<String> _suggestedTags = [
@@ -170,16 +173,33 @@ class _CreatePostCardState extends State<CreatePostCard> {
   }
 
   Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 1920,
+    );
+    if (image == null) return;
+
+    final userId = context.read<UserProvider>().user?.uid;
+    if (userId == null) return;
+
+    setState(() => _isUploadingImage = true);
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        setState(() {
-          _attachedImageUrls.add(
-              'https://source.unsplash.com/random/800x600/?food,cooking&${DateTime.now().millisecondsSinceEpoch}');
-        });
+      final url = await StorageUploadService().uploadPostImage(
+        userId: userId,
+        imageFile: File(image.path),
+      );
+      if (mounted) {
+        setState(() => _attachedImageUrls.add(url));
       }
     } catch (e) {
-      debugPrint("Image picker error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Image upload failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingImage = false);
     }
   }
 
@@ -338,13 +358,23 @@ class _CreatePostCardState extends State<CreatePostCard> {
               children: [
                 Row(
                   children: [
-                    IconButton(
-                      icon: Icon(Icons.image_outlined,
-                          color: context.watch<ThemeProvider>().primaryColor),
-                      onPressed: _pickImage,
-                      tooltip: AppLocalizations.of(context)
-                          .translate('community.create_post.add_image'),
-                    ),
+                    _isUploadingImage
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Padding(
+                              padding: EdgeInsets.all(4),
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : IconButton(
+                            icon: Icon(Icons.image_outlined,
+                                color:
+                                    context.watch<ThemeProvider>().primaryColor),
+                            onPressed: _pickImage,
+                            tooltip: AppLocalizations.of(context)
+                                .translate('community.create_post.add_image'),
+                          ),
                     IconButton(
                       icon: Icon(Icons.tag,
                           color: context.watch<ThemeProvider>().primaryColor),

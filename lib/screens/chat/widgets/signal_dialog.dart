@@ -113,7 +113,8 @@ class _SignalDialogState extends State<SignalDialog> {
                   label: Text(AppLocalizations.of(context).translate(preset),
                       style: const TextStyle(fontSize: 12)),
                   onPressed: () {
-                    _messageController.text = preset;
+                    _messageController.text =
+                        AppLocalizations.of(context).translate(preset);
                   },
                 );
               }).toList(),

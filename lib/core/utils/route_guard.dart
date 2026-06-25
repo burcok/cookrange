@@ -137,24 +137,36 @@ class _RouteGuardState extends State<RouteGuard> {
 
     // B. Logged In Check: Redirect away from Auth screens
     if (_isAuthRoute(routeName)) {
+      if (userModel == null && isLoading) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
+          final destination = !firebaseUser.emailVerified
+              ? AppRoutes.verifyEmail
+              : (userModel?.onboardingCompleted == true
+                  ? AppRoutes.main
+                  : AppRoutes.onboarding);
           Navigator.pushNamedAndRemoveUntil(
-              context, AppRoutes.main, (route) => false);
+              context, destination, (route) => false);
         }
       });
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     // C. Email Verification Check
-    if (routeName != AppRoutes.verifyEmail && !firebaseUser.emailVerified) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.pushNamedAndRemoveUntil(
-              context, AppRoutes.verifyEmail, (route) => false);
-        }
-      });
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (routeName != AppRoutes.verifyEmail) {
+      final isEmailVerified = firebaseUser.emailVerified;
+      final isVerifiedInFirestore = userModel == null || userModel.userVerified != null;
+      if (!isEmailVerified || !isVerifiedInFirestore) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, AppRoutes.verifyEmail, (route) => false);
+          }
+        });
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
     }
 
     // D. Onboarding Check (only if we have user data)

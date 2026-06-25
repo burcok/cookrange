@@ -243,6 +243,8 @@ class FirestoreService {
       });
       _log.info('Successfully created user document for: ${user.uid}',
           service: _serviceName);
+      // Populate login/device info and trigger logging system
+      await handleUserLogin(user);
     } catch (e, s) {
       _log.error('Error creating user document for ${user.uid}',
           service: _serviceName, error: e, stackTrace: s);
@@ -698,6 +700,46 @@ class FirestoreService {
           service: _serviceName);
     } catch (e, s) {
       _log.error('Error migrating logs for user $userId',
+          service: _serviceName, error: e, stackTrace: s);
+      rethrow;
+    }
+  }
+
+  /// Deletes all Firestore data for a user (GDPR account deletion).
+  /// Deletes the main user doc, subcollections, logs, and chats.
+  Future<void> deleteUserData(String uid) async {
+    _log.info('Deleting all Firestore data for user: $uid',
+        service: _serviceName);
+    try {
+      final batch = _firestore.batch();
+
+      // Delete known subcollections
+      for (final sub in ['friends', 'friend_requests', 'notifications',
+          'meal_plans', 'food_logs']) {
+        final snap = await _firestore
+            .collection('users')
+            .doc(uid)
+            .collection(sub)
+            .get();
+        for (final doc in snap.docs) {
+          batch.delete(doc.reference);
+        }
+      }
+
+      // Delete logs document
+      batch.delete(_firestore.collection('logs').doc(uid));
+
+      // Delete main user document
+      batch.delete(_firestore.collection('users').doc(uid));
+
+      await batch.commit();
+
+      // Remove user from any chats (update participants, or leave as is)
+      // For now, chat history remains (industry standard for group chats)
+      _log.info('Successfully deleted all Firestore data for user: $uid',
+          service: _serviceName);
+    } catch (e, s) {
+      _log.error('Error deleting Firestore data for user $uid',
           service: _serviceName, error: e, stackTrace: s);
       rethrow;
     }

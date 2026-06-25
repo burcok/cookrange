@@ -1,11 +1,14 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:cookrange/core/constants/onboarding_options.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 import 'package:cookrange/core/providers/theme_provider.dart';
 import 'package:cookrange/widgets/onboarding_common_widgets.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../core/services/firestore_service.dart';
+import '../../core/services/storage_upload_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/models/user_model.dart';
@@ -33,6 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic> _editableData = {};
 
   bool _isLoading = false;
+  bool _isUploadingAvatar = false;
   UserModel? _fetchedUser;
   bool _isFetchingUser = false;
 
@@ -172,6 +176,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _checkFriendshipStatus();
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 512,
+    );
+    if (image == null) return;
+
+    final uid = context.read<UserProvider>().user?.uid;
+    if (uid == null) return;
+
+    setState(() => _isUploadingAvatar = true);
+    try {
+      final url = await StorageUploadService().uploadProfilePhoto(
+        userId: uid,
+        imageFile: File(image.path),
+      );
+      await FirestoreService().updateUserData(uid, {'photoURL': url});
+      if (mounted) {
+        await context.read<UserProvider>().refreshUser();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Avatar upload failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
     }
   }
 
@@ -491,7 +527,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   bottom: 0,
                   right: 0,
                   child: GestureDetector(
-                    onTap: () {},
+                    onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -506,8 +542,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 4)
                           ]),
-                      child:
-                          Icon(Icons.camera_alt, color: primaryColor, size: 14),
+                      child: _isUploadingAvatar
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : Icon(Icons.camera_alt,
+                              color: primaryColor, size: 14),
                     ),
                   )),
           ],

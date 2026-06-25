@@ -16,6 +16,7 @@ import 'global_error_handler.dart';
 import 'log_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'ai/ai_service.dart';
+import 'push_notification_service.dart';
 
 /// Comprehensive app initialization service that handles all startup tasks
 /// with proper error handling, fallbacks, and user feedback.
@@ -56,6 +57,7 @@ class AppInitializationService {
     _initializationResults.clear();
 
     try {
+      _log.setup();
       _log.info('Starting app initialization', service: _serviceName);
 
       // Step 1: Core Flutter setup
@@ -251,6 +253,7 @@ class AppInitializationService {
         _initCrashlytics(),
         _initAnalytics(),
         _initAuth(),
+        _initPushNotifications(),
       ]);
 
       _log.info('App services initialized', service: _serviceName);
@@ -291,6 +294,17 @@ class AppInitializationService {
     } catch (e) {
       _initializationResults['auth'] = false;
       _log.warning('Auth service initialization failed',
+          service: _serviceName, error: e);
+    }
+  }
+
+  Future<void> _initPushNotifications() async {
+    try {
+      await PushNotificationService().initialize();
+      _initializationResults['push_notifications'] = true;
+    } catch (e) {
+      _initializationResults['push_notifications'] = false;
+      _log.warning('Push notification service initialization failed',
           service: _serviceName, error: e);
     }
   }

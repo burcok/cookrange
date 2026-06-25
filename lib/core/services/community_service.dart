@@ -76,6 +76,37 @@ class CommunityService {
     }
   }
 
+  /// Cursor-based pagination. Returns posts and the last document for the next page.
+  Future<({List<CommunityPost> posts, DocumentSnapshot? lastDoc})>
+      fetchPostsPage({
+    int limit = 20,
+    DocumentSnapshot? startAfter,
+  }) async {
+    try {
+      var query = _firestore
+          .collection('posts')
+          .orderBy('timestamp', descending: true)
+          .limit(limit);
+
+      if (startAfter != null) {
+        query = query.startAfterDocument(startAfter);
+      }
+
+      final snapshot = await query.get();
+      final userId = _currentUserId;
+      final posts = snapshot.docs
+          .map((doc) =>
+              CommunityPost.fromMap(doc.data(), doc.id, currentUserId: userId))
+          .toList();
+      final lastDoc =
+          snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
+      return (posts: posts, lastDoc: lastDoc);
+    } catch (e) {
+      _logger.error('fetchPostsPage failed', error: e);
+      return (posts: <CommunityPost>[], lastDoc: null);
+    }
+  }
+
   Future<void> createPost(
       String content, List<String> imageUrls, List<String> tags) async {
     final user = await _getCurrentCommunityUser();

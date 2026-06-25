@@ -55,7 +55,7 @@ class LogService {
       final activityItem = {
         'id': _firestore.collection('logs').doc().id,
         'event_type': eventType,
-        'timestamp': FieldValue.serverTimestamp(),
+        'timestamp': Timestamp.now(),
         'user_id': user.uid,
         'user_email': user.email,
         ...systemContext,

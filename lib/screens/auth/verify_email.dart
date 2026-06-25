@@ -37,7 +37,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       });
       return;
     }
-    _sendVerificationEmail();
+    _startCountdown();
 
     _timer = Timer.periodic(
         const Duration(seconds: 5), (_) => _checkEmailVerified());
@@ -92,6 +92,23 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           );
         }
         _startCountdown();
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        String errorMsg = e.message ?? e.toString();
+        if (e.code == 'too-many-requests') {
+          errorMsg = AppLocalizations.of(context).translate('auth.error.too_many_requests') ??
+              'Çok fazla istek yapıldı. Doğrulama e-postası zaten gönderilmiş olabilir, lütfen gelen kutunuzu kontrol edin.';
+          _startCountdown();
+        } else {
+          _canResend = true;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(AppLocalizations.of(context).translate(
+                  'auth.verify_email_failed',
+                  variables: {'error': errorMsg}))),
+        );
       }
     } catch (e) {
       if (mounted) {

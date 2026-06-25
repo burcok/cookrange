@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../constants.dart';
 import '../../core/localization/app_localizations.dart';
@@ -7,6 +8,8 @@ import '../../core/services/auth_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_routes.dart';
 import '../../core/utils/auth_error_handler.dart';
+import 'package:provider/provider.dart';
+import '../../core/providers/user_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -79,46 +82,20 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (user != null) {
-        try {
-          if (!user.emailVerified) {
+        if (!user.emailVerified) {
+          try {
             await AuthService().sendEmailVerification();
-
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              AppRoutes.verifyEmail,
-              (route) => false,
-            );
-            return;
+          } catch (e) {
+            debugPrint("Error sending email verification: $e");
           }
-        } catch (e) {
-          debugPrint("Error sending email verification: $e");
+          return;
         }
 
         // Check user's verification status from Firestore
         final userModel = await AuthService().getUserData(user.uid);
 
-        // Check if user is verified in Firestore (user_verified field)
-        if (userModel?.userVerified == null) {
-          // User is not verified in Firestore, redirect to verification
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            AppRoutes.verifyEmail,
-            (route) => false,
-          );
-          return;
-        }
-
-        final bool onboardingCompleted =
-            userModel?.onboardingCompleted ?? false;
-
         if (mounted) {
-          if (onboardingCompleted) {
-            Navigator.pushNamedAndRemoveUntil(
-                context, AppRoutes.main, (route) => false);
-          } else {
-            Navigator.pushNamedAndRemoveUntil(
-                context, AppRoutes.onboarding, (route) => false);
-          }
+          Provider.of<UserProvider>(context, listen: false).setUser(userModel);
         }
       }
     } on AuthException catch (e) {
@@ -167,40 +144,14 @@ class _LoginScreenState extends State<LoginScreen> {
       if (user != null) {
         final currentUser = AuthService().currentUser;
         if (currentUser != null && !currentUser.emailVerified) {
-          // If email is not verified, navigate to verification screen
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            AppRoutes.verifyEmail,
-            (route) => false,
-          );
           return;
         }
 
         // Check user's verification status from Firestore
         final userModel = await AuthService().getUserData(user.uid);
 
-        // Check if user is verified in Firestore (user_verified field)
-        if (userModel?.userVerified == null) {
-          // User is not verified in Firestore, redirect to verification
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            AppRoutes.verifyEmail,
-            (route) => false,
-          );
-          return;
-        }
-
-        final bool onboardingCompleted =
-            userModel?.onboardingCompleted ?? false;
-
         if (mounted) {
-          if (onboardingCompleted) {
-            Navigator.pushNamedAndRemoveUntil(
-                context, AppRoutes.main, (route) => false);
-          } else {
-            Navigator.pushNamedAndRemoveUntil(
-                context, AppRoutes.onboarding, (route) => false);
-          }
+          Provider.of<UserProvider>(context, listen: false).setUser(userModel);
         }
       }
     } on AuthException catch (e) {
@@ -235,6 +186,40 @@ class _LoginScreenState extends State<LoginScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _loginWithApple(BuildContext context) async {
+    setState(() => _isLoading = true);
+    try {
+      final user = await AuthService().signInWithApple();
+      if (!mounted) return;
+      if (user != null) {
+        final userModel = await AuthService().getUserData(user.uid);
+        if (mounted) {
+          Provider.of<UserProvider>(context, listen: false).setUser(userModel);
+        }
+      }
+    } on AuthException catch (e) {
+      if (mounted) AuthErrorHandler.showSnackBar(context, e);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)
+                .translate('auth.login_errors.unexpected_error'),
+            style: const TextStyle(fontFamily: 'Poppins', fontSize: 14,
+                color: Colors.white),
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -426,6 +411,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
+                if (Platform.isIOS) ...[
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed:
+                        _isLoading ? null : () => _loginWithApple(context),
+                    icon: const Icon(Icons.apple, color: Colors.white, size: 24),
+                    label: Text(
+                        localizations.translate('auth.login_with_apple'),
+                        style: const TextStyle(
+                            fontSize: 16, color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 40),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

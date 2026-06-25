@@ -109,8 +109,12 @@ class _MainScaffoldState extends State<MainScaffold>
       }
     });
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scaffoldBg =
+        isDark ? const Color(0xFF0D1117) : const Color(0xFFFCFBF9);
+
     return Material(
-      color: const Color(0xFFFCFBF9), // Base background color
+      color: scaffoldBg,
       child: Stack(
         children: [
           // 1. Background Blobs
@@ -167,9 +171,10 @@ class _MainScaffoldState extends State<MainScaffold>
 
   Widget _buildBackgroundGlows(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return RepaintBoundary(
       child: Container(
-        color: const Color(0xFFFCFBF9),
+        color: isDark ? const Color(0xFF0D1117) : const Color(0xFFFCFBF9),
         child: Stack(
           children: [
             Positioned(

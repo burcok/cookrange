@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'dart:math' as math;
 
@@ -8,10 +9,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/utils/calorie_calculator.dart';
 import '../../core/models/user_model.dart';
+import '../../core/models/dish_model.dart';
+import '../../core/models/food_log_model.dart';
 import '../../core/models/weekly_meal_plan_model.dart';
+import '../../core/services/food_log_service.dart';
 import '../../core/services/weekly_meal_plan_service.dart';
 import '../../core/services/dish_service.dart';
-import '../../core/models/dish_model.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/admin_status_service.dart';
 import '../../core/localization/app_localizations.dart';
@@ -32,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   final WeeklyMealPlanService _mealPlanService = WeeklyMealPlanService();
   final DishService _dishService = DishService();
+  final FoodLogService _foodLogService = FoodLogService();
 
   WeeklyMealPlanModel? _weeklyPlan;
   int _selectedDayIndex = 0;
@@ -40,6 +44,12 @@ class _HomeScreenState extends State<HomeScreen>
   // Cache for dishes to avoid repeated fetches
   final Map<String, DishModel> _dishCache = {};
   DateTime? _lastRefreshTime;
+
+  // Food logging state — real-time consumed nutrition
+  NutritionTotals _consumed = NutritionTotals.zero;
+  Set<String> _loggedMealTypes = {};
+  StreamSubscription<List<FoodLog>>? _foodLogSubscription;
+  final Map<String, bool> _loggingInProgress = {};
 
   // Custom Refresh State
   final ValueNotifier<double> _pullDistanceNotifier = ValueNotifier(0.0);
@@ -50,25 +60,63 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    // Defer loading slightly to ensure context is ready or just call it
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadWeeklyPlan();
+      _subscribeToFoodLogs();
     });
-    _loadHydration();
     _refreshController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
   }
 
+  void _subscribeToFoodLogs() {
+    final uid = context.read<UserProvider>().user?.uid;
+    if (uid == null) return;
+    _foodLogSubscription?.cancel();
+    _foodLogSubscription =
+        _foodLogService.todayLogsStream(uid).listen((logs) {
+      if (!mounted) return;
+      setState(() {
+        _consumed = FoodLog.sumLogs(logs);
+        _loggedMealTypes = logs.map((l) => l.mealType).toSet();
+      });
+    });
+  }
+
+  Future<void> _logMeal(
+      String userId, String mealType, DishModel dish) async {
+    if (_loggingInProgress[mealType] == true) return;
+    setState(() => _loggingInProgress[mealType] = true);
+    try {
+      await _foodLogService.logMeal(
+        userId: userId,
+        mealType: mealType,
+        dish: dish,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not log meal: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loggingInProgress.remove(mealType));
+    }
+  }
+
   @override
   void dispose() {
+    _foodLogSubscription?.cancel();
     _refreshController.dispose();
     _pullDistanceNotifier.dispose();
     super.dispose();
   }
 
-  void _loadHydration() {}
+  void _loadHydration() {
+    // Hydration tracking: storage layer exists (StorageService.saveHydration)
+    // UI widget planned for Phase 2. No-op here for now.
+  }
 
   Future<void> _loadWeeklyPlan() async {
     final user = context.read<UserProvider>().user;
@@ -474,9 +522,11 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildNutritionCard(BuildContext context, double targetCalories,
       Map<String, double> macros, AppLocalizations l10n) {
-    const currentCalories = 1350;
+    final currentCalories = _consumed.calories.toInt();
     final targetCalInt = targetCalories.toInt();
-    final progress = (currentCalories / targetCalInt).clamp(0.0, 1.0);
+    final progress = targetCalInt > 0
+        ? (_consumed.calories / targetCalInt).clamp(0.0, 1.0)
+        : 0.0;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24.r),
@@ -546,14 +596,31 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               SizedBox(height: 24.h),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _macroInfoMini(context, l10n.translate('home.macros.protein'),
-                      "${macros['protein']?.toInt()}g"),
-                  _macroInfoMini(context, l10n.translate('home.macros.carbs'),
-                      "${macros['carbs']?.toInt()}g"),
-                  _macroInfoMini(context, l10n.translate('home.macros.fat'),
-                      "${macros['fat']?.toInt()}g"),
+                  Expanded(
+                    child: _macroInfoMini(
+                      context,
+                      l10n.translate('home.macros.protein'),
+                      _consumed.protein,
+                      macros['protein'] ?? 0.0,
+                    ),
+                  ),
+                  Expanded(
+                    child: _macroInfoMini(
+                      context,
+                      l10n.translate('home.macros.carbs'),
+                      _consumed.carbs,
+                      macros['carbs'] ?? 0.0,
+                    ),
+                  ),
+                  Expanded(
+                    child: _macroInfoMini(
+                      context,
+                      l10n.translate('home.macros.fat'),
+                      _consumed.fat,
+                      macros['fat'] ?? 0.0,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -563,24 +630,45 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _macroInfoMini(BuildContext context, String label, String value) {
+  Widget _macroInfoMini(
+      BuildContext context, String label, double consumed, double target) {
     return Column(
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w600,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-        SizedBox(height: 8.h),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20.sp,
-            color: const Color(0xFF2E3A59),
+        SizedBox(height: 6.h),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: RichText(
+            text: TextSpan(
+              style: TextStyle(
+                fontSize: 15.sp,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF2E3A59),
+                fontFamily: 'Poppins',
+              ),
+              children: [
+                TextSpan(text: "${consumed.toInt()}g"),
+                TextSpan(
+                  text: " / ${target.toInt()}g",
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12.sp,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -714,7 +802,7 @@ class _HomeScreenState extends State<HomeScreen>
                 size: 16.sp,
                 color: context.watch<ThemeProvider>().primaryColor),
             label: Text(
-              "Regenerate", // Localize this later
+              l10n.translate('home.regenerate'),
               style: TextStyle(
                 color: context.watch<ThemeProvider>().primaryColor,
                 fontWeight: FontWeight.bold,
@@ -781,6 +869,11 @@ class _HomeScreenState extends State<HomeScreen>
 
   List<Widget> _buildMealsList(AppLocalizations l10n, DayMealPlan day) {
     final mealOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
+    final userId = context.read<UserProvider>().user?.uid;
+    final now = DateTime.now();
+    final isToday = day.date.year == now.year &&
+        day.date.month == now.month &&
+        day.date.day == now.day;
 
     return mealOrder.map((mealType) {
       if (!day.meals.containsKey(mealType)) return const SizedBox.shrink();
@@ -788,7 +881,6 @@ class _HomeScreenState extends State<HomeScreen>
       final dishId = day.meals[mealType]!;
       final dish = _dishCache[dishId];
 
-      // If dish is not in cache yet (should be prefetched), show loader or placeholder
       if (dish == null) {
         return Container(
           height: 80.h,
@@ -797,12 +889,14 @@ class _HomeScreenState extends State<HomeScreen>
         );
       }
 
+      final isLogged = _loggedMealTypes.contains(mealType);
+      final isLoggingNow = _loggingInProgress[mealType] == true;
+
       return GestureDetector(
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-                // Convert DishModel to Recipe for the detail screen
                 builder: (context) =>
                     RecipeDetailScreen(recipe: dish.toRecipe())),
           );
@@ -923,6 +1017,45 @@ class _HomeScreenState extends State<HomeScreen>
                       ],
                     ),
                   ),
+                  // ── Mark as eaten (today only) ──
+                  if (userId != null && isToday)
+                    Padding(
+                      padding: EdgeInsets.only(left: 8.w),
+                      child: isLoggingNow
+                          ? SizedBox(
+                              width: 24.w,
+                              height: 24.w,
+                              child: const CircularProgressIndicator(
+                                  strokeWidth: 2),
+                            )
+                          : GestureDetector(
+                              onTap: isLogged
+                                  ? null
+                                  : () => _logMeal(userId, mealType, dish),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                width: 32.w,
+                                height: 32.w,
+                                decoration: BoxDecoration(
+                                  color: isLogged
+                                      ? context
+                                          .watch<ThemeProvider>()
+                                          .primaryColor
+                                      : Colors.grey.shade200,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  isLogged
+                                      ? Icons.check
+                                      : Icons.check_outlined,
+                                  size: 18.sp,
+                                  color: isLogged
+                                      ? Colors.white
+                                      : Colors.grey.shade500,
+                                ),
+                              ),
+                            ),
+                    ),
                 ],
               ),
             ),

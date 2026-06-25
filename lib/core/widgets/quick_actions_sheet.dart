@@ -24,7 +24,7 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
       onPointerUp: (event) {
         if (!_controller.isAttached) return;
         final extent = _controller.size;
-        final snapPoints = [0.12, 0.35, 0.65];
+        final snapPoints = [0.12, 0.42];
         double nearest = snapPoints[0];
         double minDistance = (extent - snapPoints[0]).abs();
 
@@ -41,7 +41,7 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
         controller: _controller,
         initialChildSize: 0.12,
         minChildSize: 0.12,
-        maxChildSize: 0.65,
+        maxChildSize: 0.42,
         builder: (context, scrollController) {
           // REMOVED: ClipRRect here was clipping the overflowing FAB
           return Material(
@@ -76,11 +76,12 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                 CustomScrollView(
                   controller: scrollController,
                   clipBehavior: Clip.none, // Vital for the FAB to overflow
+                  physics: const ClampingScrollPhysics(),
                   slivers: [
                     SliverPersistentHeader(
                       pinned: true,
                       delegate: _BottomBarDelegate(
-                        height: 115,
+                        height: 100,
                         child: Container(
                           // No background here, using the base glass layer
                           child: Column(
@@ -97,57 +98,56 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 32),
+                            horizontal: 24, vertical: 16),
                         child: Column(
-                          children: [
-                            Center(
-                              child: Text(
-                                AppLocalizations.of(context)
-                                    .translate('quick_actions.title'),
-                                style: const TextStyle(
-                                  fontSize:
-                                      24, // Optimized scale: using 24 directly or ScreenUtil if available
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF2E3A59),
-                                  letterSpacing: -0.5,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 32),
-                            _buildActionItem(
-                              context,
-                              Icons.shopping_basket_outlined,
-                              AppLocalizations.of(context)
-                                  .translate('quick_actions.shopping_list'),
-                              () {
-                                nav.setIndex(2);
-                                _collapse();
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            _buildActionItem(
-                              context,
-                              Icons.settings_outlined,
-                              AppLocalizations.of(context)
-                                  .translate('quick_actions.settings'),
-                              () {
-                                nav.setIndex(3);
-                                _collapse();
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            _buildActionItem(
-                              context,
-                              Icons.history_outlined,
-                              AppLocalizations.of(context)
-                                  .translate('quick_actions.history'),
-                              () {
-                                _collapse();
-                              },
-                            ),
-                            const SizedBox(height: 100),
-                          ],
+                           children: [
+                             Center(
+                               child: Text(
+                                 AppLocalizations.of(context)
+                                     .translate('quick_actions.title'),
+                                 style: const TextStyle(
+                                   fontSize: 22,
+                                   fontWeight: FontWeight.bold,
+                                   color: Color(0xFF2E3A59),
+                                   letterSpacing: -0.5,
+                                   fontFamily: 'Poppins',
+                                 ),
+                               ),
+                             ),
+                             const SizedBox(height: 16),
+                             _buildActionItem(
+                               context,
+                               Icons.shopping_basket_outlined,
+                               AppLocalizations.of(context)
+                                   .translate('quick_actions.shopping_list'),
+                               () {
+                                 nav.setIndex(2);
+                                 _collapse();
+                               },
+                             ),
+                             const SizedBox(height: 10),
+                             _buildActionItem(
+                               context,
+                               Icons.settings_outlined,
+                               AppLocalizations.of(context)
+                                   .translate('quick_actions.settings'),
+                               () {
+                                 nav.setIndex(3);
+                                 _collapse();
+                               },
+                             ),
+                             const SizedBox(height: 10),
+                             _buildActionItem(
+                               context,
+                               Icons.history_outlined,
+                               AppLocalizations.of(context)
+                                   .translate('quick_actions.history'),
+                               () {
+                                 _collapse();
+                               },
+                             ),
+                             const SizedBox(height: 12),
+                           ],
                         ),
                       ),
                     ),
@@ -318,8 +318,8 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white.withAlpha(120),
           borderRadius: BorderRadius.circular(16),

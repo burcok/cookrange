@@ -75,6 +75,9 @@ class DeviceInfoService {
             if (value is Map) {
               return MapEntry(key, value.toString());
             }
+            if (value is bool) {
+              return MapEntry(key, value ? 1 : 0);
+            }
             return MapEntry(key, value);
           }),
           'timestamp': DateTime.now().millisecondsSinceEpoch,

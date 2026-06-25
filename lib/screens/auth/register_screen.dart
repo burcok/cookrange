@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../../constants.dart';
@@ -120,14 +121,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (user != null) {
-        // After registration, user needs to verify their email
-        if (mounted) {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            AppRoutes.verifyEmail,
-            (route) => false,
-          );
-        }
+        // No manual Navigator calls here - RouteGuard handles this reactively
       }
     } on AuthException catch (e) {
       if (mounted) {
@@ -197,30 +191,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       if (user != null) {
-        final currentUser = AuthService().currentUser;
-        if (currentUser != null && !currentUser.emailVerified) {
-          // After registration, user needs to verify their email
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            AppRoutes.verifyEmail,
-            (route) => false,
-          );
-          return;
-        }
-
-        final userModel = await AuthService().getUserData(user.uid);
-        final bool onboardingCompleted =
-            userModel?.onboardingCompleted ?? false;
-
-        if (mounted) {
-          if (onboardingCompleted) {
-            Navigator.pushNamedAndRemoveUntil(
-                context, AppRoutes.main, (route) => false);
-          } else {
-            Navigator.pushNamedAndRemoveUntil(
-                context, AppRoutes.onboarding, (route) => false);
-          }
-        }
+        // No manual Navigator calls here - RouteGuard handles this reactively
       }
     } on AuthException catch (e) {
       if (mounted) {
@@ -254,6 +225,56 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _registerWithApple(BuildContext context) async {
+    if (!_agreementsAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)
+                .translate('auth.register_errors.agreements_not_accepted'),
+            style: const TextStyle(fontFamily: 'Poppins', fontSize: 14,
+                color: Colors.white),
+          ),
+          duration: const Duration(seconds: 5),
+          backgroundColor: Colors.red,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(10),
+        ),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final user = await AuthService().signInWithApple();
+      if (!mounted) return;
+      if (user != null) {
+        // No manual Navigator calls here - RouteGuard handles this reactively
+      }
+    } on AuthException catch (e) {
+      if (mounted) AuthErrorHandler.showSnackBar(context, e);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)
+                .translate('auth.register_errors.register_error'),
+            style: const TextStyle(fontFamily: 'Poppins', fontSize: 14,
+                color: Colors.white),
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -567,6 +588,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                 ),
+                if (Platform.isIOS) ...[
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _isLoading
+                        ? null
+                        : () => _registerWithApple(context),
+                    icon: const Icon(Icons.apple,
+                        color: Colors.white, size: 24),
+                    label: Text(
+                        localizations.translate('auth.register_with_apple'),
+                        style: const TextStyle(
+                            fontSize: 16, color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 40),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
