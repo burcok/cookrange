@@ -1,610 +1,560 @@
-# Cookrange
+# 🧠 Cookrange
+
+## The AI Operating System for Gyms, Coaches & Fitness Communities
 
 <p align="center">
-  <img src="cookrange-icon.png" alt="Cookrange Logo" width="200"/>
-</p>
-
-<h1 align="center">Cookrange</h1>
-
-<p align="center">
-AI-Powered Fitness & Nutrition Ecosystem
+  <img src="cookrange-icon.png" width="180"/>
 </p>
 
 <p align="center">
-From Meal Planning to Gym Communities.
+<strong>Not just a meal planner.</strong><br/>
+An AI-powered fitness ecosystem that connects people, gyms, and coaches into one intelligent network.
 </p>
 
 ---
 
-# 🚀 What is Cookrange?
+# 🚀 Vision
 
-Cookrange is an AI-powered fitness and nutrition ecosystem designed to transform how individuals, coaches, dietitians, and gyms manage health, nutrition, and fitness journeys.
+Cookrange is built on a simple truth:
 
-Unlike traditional meal planning applications, Cookrange combines:
+> People don’t fail because they don’t know what to do.
+> They fail because they stop doing it.
+
+Fitness is not an information problem — it is a **consistency and motivation problem**.
+
+Cookrange solves this by combining:
 
 * Artificial Intelligence
-* Personalized Nutrition
-* Fitness Tracking
+* Behavioral Psychology
 * Gym Communities
-* Social Accountability
-* Voice Assistants
-* Gym Management Tools
+* Coach Ecosystems
+* Gamification
+* Real-world accountability
 
-into a single platform.
-
-Cookrange is not just an application that tells people what to eat.
-
-It creates a complete health environment where users can:
-
-* Follow personalized meal plans
-* Interact with gym communities
-* Receive AI-generated recommendations
-* Track progress
-* Stay accountable
-* Communicate with coaches
-* Build long-term healthy habits
+into one unified platform.
 
 ---
 
-# 🎯 Vision
+# 🧬 What Cookrange Actually Is
 
-We believe that the biggest challenge in fitness is not information.
+Cookrange is not:
 
-It is consistency.
+* ❌ A calorie tracker
+* ❌ A diet app
+* ❌ A fitness journal
+* ❌ A simple AI chatbot
 
-People do not fail because they don't know what to eat.
+Cookrange is:
 
-They fail because they lose motivation, feel isolated, lack accountability, and stop following their plans.
+> 🧠 A **Fitness Operating System**
 
-Cookrange solves this problem by combining:
+that powers:
 
-* AI
-* Community
-* Gym Partnerships
-* Behavioral Motivation
-
-into a single ecosystem.
+* Gyms
+* Personal trainers
+* Dietitians
+* Fitness communities
+* Individual users
 
 ---
 
 # 🌍 The Problem
 
-Today most gyms operate using:
+## Today’s fitness ecosystem is broken:
 
-* WhatsApp groups
-* PDF meal plans
-* Excel sheets
-* Manual follow-ups
+### For Users
 
-This creates multiple problems:
-
-### For Members
-
-* Generic meal plans
-* Lack of motivation
+* No consistency
 * No accountability
-* Poor communication
-* Difficult progress tracking
+* Generic meal plans
+* Motivation drops after 2–3 weeks
+* No real community support
 
 ### For Coaches
 
-* Time-consuming follow-ups
-* Repetitive nutrition planning
-* Managing dozens of clients manually
+* WhatsApp-based communication
+* Manual diet planning
+* Time-consuming client management
+* No scalable system
 
-### For Gym Owners
+### For Gyms
 
 * Low retention rates
-* Weak member engagement
-* Limited digital presence
-* No meaningful member analytics
+* No digital ecosystem
+* No data on members
+* Weak engagement after signup
 
 ---
 
-# 💡 The Solution
+# 💡 The Cookrange Solution
 
-Cookrange provides a modern AI-powered operating system for gyms and fitness communities.
+Cookrange transforms fitness into a **connected intelligent system**:
 
-Members receive:
+### Instead of:
 
-* Personalized nutrition plans
-* AI coaching
-* Community engagement
-* Progress tracking
-* Habit-building tools
+WhatsApp + PDFs + Excel + Guesswork
 
-Gyms receive:
+### You get:
 
-* White-label mobile applications
-* Community management
-* AI nutrition tools
-* Retention analytics
-* Digital member engagement
+AI + Community + Automation + Analytics + Gamification
 
 ---
 
-# 🏋️ Core Platform Features
+# 🏋️ Core Platform
 
-## 🤖 AI Nutrition Assistant
+---
 
-Cookrange AI analyzes:
+## 🤖 AI Nutrition Engine
 
-* Goals
+Cookrange AI generates fully personalized plans based on:
+
+* Body metrics
+* Goals (fat loss, muscle gain, maintenance)
 * Activity levels
-* Age
-* Gender
-* Weight
-* Height
+* Dietary restrictions
 * Allergies
-* Dietary preferences
+* Lifestyle patterns
 
-and generates fully personalized meal plans.
+### Dynamic Adaptation
 
-Supported goals:
+Plans are not static.
 
-* Fat Loss
-* Muscle Gain
-* Weight Maintenance
-* Athletic Performance
-* General Health
-* Body Recomposition
+They evolve based on:
 
-The AI continuously adapts recommendations based on user progress.
+* Progress
+* Compliance
+* Behavior patterns
+* Gym activity
 
 ---
 
-## 🍽 Intelligent Meal Planning
-
-Users receive:
+## 🍽 Meal Intelligence System
 
 * Daily meal plans
-* Weekly meal plans
-* Calorie targets
-* Macro targets
-* Portion suggestions
-* Alternative meal recommendations
+* Weekly structured plans
+* Macro tracking (protein, carbs, fat)
+* Smart substitutions
+* Real-time adjustments
 
-Plans automatically evolve based on progress.
+Example:
+
+> “No chicken today? Replace with equivalent protein alternative.”
 
 ---
 
-## 🎤 AI Voice Assistant
+## 🎤 AI Coach Assistant
 
-Users can interact naturally.
+Users can interact naturally:
 
-Examples:
+* “What should I eat today?”
+* “Adjust my plan for tomorrow”
+* “I missed my workout”
+* “Create a low-carb dinner”
 
-"Change tomorrow's breakfast."
-
-"I don't have chicken at home."
-
-"Generate a vegetarian meal plan."
-
-"How much protein should I eat today?"
-
-The assistant updates plans instantly.
+Cookrange responds like a real coach.
 
 ---
 
 ## 🛒 Smart Grocery System
 
-Cookrange automatically creates:
+Automatically generates:
 
-* Daily shopping lists
 * Weekly shopping lists
-* Ingredient summaries
-
-Users can:
-
-* Export shopping lists
-* Share lists
-* Remove ingredients
-* Replace ingredients using AI
+* Recipe-based ingredient lists
+* Budget-optimized lists
 
 ---
 
-## 📊 Nutrition Intelligence
+## 📊 Nutrition Analytics
 
-Track:
+Tracks:
 
 * Calories
-* Protein
-* Carbohydrates
-* Fat
-* Fiber
-* Micronutrients
-* Water intake
-
-All data is visualized through detailed analytics dashboards.
+* Macros
+* Micros
+* Hydration
+* Consistency score
+* Progress trends
 
 ---
 
-# 🏢 Gym Partnership Ecosystem
+# 🏢 Gym Ecosystem (Core Differentiator)
 
 This is where Cookrange becomes unique.
 
 ---
 
-## 🤝 Gym-Integrated Experience
+## 🤝 Gym-First Architecture
 
-Members can join Cookrange through partner gyms.
+Gyms are not just partners.
 
-Benefits:
+They are **the core distribution layer**.
 
-* Free premium trials
-* Coach integration
-* Gym-exclusive communities
-* Personalized programs
+### Gyms get:
 
-The gym becomes the center of the user experience.
+* Branded Cookrange app (white-label option)
+* Member dashboards
+* AI-driven insights
+* Retention analytics
+
+### And importantly:
+
+> ❗ Cookrange charges NO commission or fee from gyms.
 
 ---
 
-## 📍 Gym Presence Detection
+## 📍 Gym Presence System
 
-Cookrange can identify when members are physically inside a partner gym.
+When users enter a gym:
 
-Features:
-
-* Gym activity verification
-* Community engagement
-* Visit tracking
-* Attendance analytics
-
-Members can choose to share their presence with the community.
+* Presence is detected (opt-in)
+* Active members are shown
+* Community visibility increases
 
 Example:
 
-"12 Cookrange members are currently training."
+> “18 members are currently training at your gym.”
 
 ---
 
-## 🏆 Gym Loyalty Program
+## 🧑‍🤝‍🧑 Gym Communities
 
-Members earn rewards for:
+Each gym has its own ecosystem:
 
-* Gym visits
-* Completing workouts
-* Hitting nutrition goals
-* Maintaining streaks
-* Participating in challenges
-
-Rewards may include:
-
-* Supplements
-* Merchandise
-* Personal training sessions
-* Partner discounts
+* Group chat
+* Challenges
+* Leaderboards
+* Announcements
+* Member interaction
 
 ---
 
-# 👥 Community System
+## 🏆 Gym Wars (Competition System)
 
-Fitness is easier together.
+Gyms can compete:
 
-Cookrange includes a social layer designed specifically for fitness communities.
+* Total workouts
+* Calories burned
+* Consistency score
+* Attendance rate
+
+Creates:
+
+> Local competitive fitness culture
 
 ---
 
-## 💬 Gym Communities
+# 👥 Community Layer
 
-Every gym can have:
+---
 
-* Community feeds
-* Discussion groups
-* Challenge groups
-* Announcement channels
+## 💬 Fitness Circles
 
-Members support and motivate each other.
+Interest-based groups:
+
+* Fat Loss Circle
+* Bodybuilding Circle
+* Beginners Circle
+* Busy Professionals Circle
 
 ---
 
 ## 🔥 Progress Sharing
 
-Users may share:
+Users can share:
 
-* Weight loss milestones
-* Muscle gain achievements
+* Transformation photos
+* Weekly progress
 * Streaks
-* Workouts
-* Nutrition goals
-
-Community support increases retention and consistency.
+* Achievements
 
 ---
 
 ## 🏅 Challenges
 
-Examples:
-
-* 30-Day Fat Loss Challenge
+* 7 Day Reset Challenge
+* 30 Day Fat Loss Challenge
 * Summer Transformation Challenge
-* 100KM Running Challenge
-* 21-Day Nutrition Challenge
-
-AI automatically tracks challenge participation.
+* Protein Consistency Challenge
 
 ---
 
-## ⚔️ Team Competitions
+# 🎮 Gamification System
 
-Gyms can create:
-
-* Team vs Team competitions
-* Leaderboards
-* Seasonal events
-
-This creates a gamified fitness experience.
-
----
-
-# 🎮 Gamification Engine
-
-Cookrange transforms fitness into a rewarding journey.
+Cookrange turns fitness into a game.
 
 Users earn:
 
 * XP
-* Badges
 * Levels
-* Achievements
+* Badges
+* Streaks
+* Rankings
 
-Activities include:
-
-* Completing workouts
-* Meeting nutrition goals
-* Drinking water
-* Daily logins
-* Challenge participation
-
-Example Levels:
+### Example Levels:
 
 * Rookie
 * Athlete
-* Warrior
 * Elite
+* Champion
 * Legend
 
 ---
 
-# 🧠 AI Fitness Twin
-
-One of Cookrange's most innovative features.
-
-The platform builds a dynamic digital representation of each user.
-
-It understands:
-
-* Nutrition habits
-* Workout history
-* Body composition
-* Activity levels
-* Sleep data
-* Goal progress
-
-The AI can predict:
-
-"Based on your current consistency, you may reach your target weight in 72 days."
-
-or
-
-"Your current adherence rate has dropped by 18%. Estimated completion time increased by 2 weeks."
+# 🧠 AI Fitness Intelligence Layer
 
 ---
 
-# 🚨 AI Retention System
+## 🧬 AI Fitness Twin
 
-Cookrange identifies users at risk of quitting.
+Each user has a digital model that predicts:
 
-Examples:
+* Weight change
+* Fat loss timeline
+* Muscle gain progression
+* Goal completion date
 
-* Missing workouts
+Example:
+
+> “At your current consistency, your goal will be reached in 68 days.”
+
+---
+
+## 🚨 AI Risk Detection
+
+Cookrange detects:
+
+* Drop in motivation
+* Missed workouts
 * Declining nutrition adherence
-* Reduced app activity
-* Falling motivation patterns
 
-The system can:
+And triggers:
 
-* Notify coaches
-* Recommend interventions
-* Generate motivational content
-* Trigger personalized reminders
-
-This helps gyms improve member retention.
+* Coach alerts
+* Motivational interventions
+* Personalized adjustments
 
 ---
 
-# 🥤 Smart Supplement Recommendations
+## 📈 AI Transformation Forecast
 
-Cookrange may recommend supplements when appropriate.
+Users can visualize future outcomes:
 
-Examples:
-
-* Protein powder
-* Creatine
-* Electrolytes
-* Recovery products
-
-Recommendations are based on:
-
-* User goals
-* Nutrition deficiencies
-* Training intensity
-
-Partner products may be featured where applicable.
+* 30 / 60 / 90 day projections
+* Dynamic updates based on behavior
 
 ---
 
-# 🏢 White-Label Gym Platform
+# 💳 Monetization Model
 
-Partner gyms can adopt Cookrange as their own branded application.
-
-Features include:
-
-* Custom branding
-* Custom logo
-* Custom colors
-* Custom onboarding
-* Custom communities
-
-Members experience the app as part of their gym.
+Cookrange uses a **hybrid freemium + credits + marketplace model**
 
 ---
 
-# 📈 Gym Analytics Dashboard
+# 🆓 Free Plan
 
-Gym owners gain access to:
+Users can:
 
-* Member engagement
+* Access basic meal plans
+* Ask AI (3 messages/day)
+* Track limited nutrition data
+* Join basic communities
+
+---
+
+# 💎 Premium Plan
+
+Unlocks:
+
+* 20 AI messages/day
+* Advanced meal customization
+* Full nutrition analytics
+* Coach visibility features
+* Advanced AI insights
+* Gym analytics access (if linked)
+
+---
+
+# ➕ Credit System (Pay-as-you-grow)
+
+Users can buy:
+
+* +15 AI messages
+* +50 AI messages
+* Extra meal regenerations
+* Extra scans
+
+This enables flexible monetization beyond subscriptions.
+
+---
+
+# 🧑‍🏫 Coach Monetization System
+
+---
+
+## 💰 Referral Revenue Model
+
+Each coach gets a unique code:
+
+```
+AHMETFIT
+```
+
+When users subscribe via this code:
+
+* Coach earns commission
+* Platform grows organically
+
+---
+
+## 🧠 Coach Intelligence Dashboard (Premium Users Only)
+
+Coaches can see:
+
 * Nutrition adherence
-* Community participation
-* Retention insights
-* Active member statistics
+* Workout consistency
+* AI risk score
+* Progress tracking
 
-This turns Cookrange into a complete digital operating system for fitness businesses.
+### Free users:
 
----
+* Basic profile only
 
-# 🌐 Multi-Language Support
+### Premium users:
 
-Supported Languages:
-
-* English
-* Turkish
-
-Additional languages planned.
+* Full analytics visible to coach
 
 ---
 
-# 📱 Technology Stack
+## ⚠️ Strategic Upsell Mechanism
 
-## Mobile
+Coaches naturally encourage premium upgrades:
 
-* Flutter
-* Dart
+> “If you upgrade, I can track your progress better.”
 
-## Backend
-
-* Firebase
-* Cloud Functions
-* Firestore
-
-## AI
-
-* Large Language Models
-* Nutrition Recommendation Systems
-* Behavioral Analysis Models
-
-## Local Storage
-
-* Hive
-* Shared Preferences
-
-## Analytics
-
-* Firebase Analytics
-* Crashlytics
+Cookrange does NOT sell directly — coaches do.
 
 ---
 
-# 🔮 Future Roadmap
-
-## Phase 1
-
-* AI Meal Planning
-* Nutrition Tracking
-* Grocery Lists
-* Voice Assistant
-
-## Phase 2
-
-* Gym Communities
-* Challenges
-* Gamification
-* Progress Sharing
-
-## Phase 3
-
-* White-Label Gyms
-* Coach Dashboard
-* Retention Analytics
-* Gym Presence Detection
-
-## Phase 4
-
-* AI Fitness Twin
-* Smart Predictions
-* Advanced Behavioral Analysis
-* Global Gym Network
+# 🏪 Marketplace System
 
 ---
 
-# 📥 Installation
+## 🧑‍🍳 Program Marketplace
 
-## Requirements
+Coaches can sell:
 
-* Flutter SDK >= 3.0
-* Dart SDK
-* Android Studio
-* Xcode
-* Firebase Account
+* Meal plans
+* Workout programs
+* Transformation packages
 
-## Clone Repository
-
-```bash
-git clone https://github.com/burcok/cookrange.git
-cd cookrange
-```
-
-## Install Dependencies
-
-```bash
-flutter clean
-flutter pub upgrade --major-versions
-flutter pub get
-```
-
-## Run Application
-
-```bash
-flutter run
-```
+Cookrange takes commission.
 
 ---
 
-# 🤝 Contributing
+## 🏆 Challenge Marketplace
 
-Contributions are welcome.
-
-Please open an issue before creating major pull requests.
+* Sponsored challenges
+* Paid programs
+* Brand collaborations
 
 ---
 
-# 📄 License
+# 🥤 Supplement Ecosystem
 
-This project is proprietary and confidential.
+AI can recommend supplements based on:
 
-All rights reserved.
+* Nutrition gaps
+* Training intensity
+* Recovery needs
 
-Unauthorized copying, modification, distribution, or commercial use is strictly prohibited without written permission.
+Partner brands can be integrated.
+
+---
+
+# 🔁 Retention Engine
+
+Cookrange focuses heavily on retention:
+
+* Streak system
+* Daily goals
+* Behavioral nudges
+* AI accountability partner
+
+---
+
+# 🔥 Viral Mechanics
+
+* Transformation reports (shareable)
+* Fitness score profiles
+* Gym leaderboards
+* Challenge rankings
+
+---
+
+# 📊 Gym Analytics Dashboard
+
+Gyms can track:
+
+* Member retention
+* Activity levels
+* Nutrition adherence
+* Engagement score
+
+---
+
+# 🧩 White Label System
+
+Gyms can fully brand Cookrange:
+
+* Logo
+* Colors
+* Onboarding
+* Community structure
+
+Cookrange becomes invisible infrastructure.
+
+---
+
+# 🧠 Core Philosophy
+
+Cookrange is built on one principle:
+
+> “Fitness success is not about knowledge. It is about behavior.”
+
+Everything in the system is designed to:
+
+* Increase consistency
+* Reduce friction
+* Build habit loops
+* Increase accountability
+
+---
+
+# 🔮 Future Vision
+
+Cookrange evolves into:
+
+> The global operating system for fitness communities
+
+A world where:
+
+* Every gym is connected
+* Every coach is scalable
+* Every user has an AI twin
+* Every behavior is guided
 
 ---
 
 # 📬 Contact
 
 Burak Dereli
-
-Email:
-[burakdereli05@gmail.com](mailto:burakdereli05@gmail.com)
-
-GitHub:
-https://github.com/burcok
-
-LinkedIn:
-https://linkedin.com/in/burcok
+📧 [burakdereli05@gmail.com](mailto:burakdereli05@gmail.com)
+🌐 GitHub: https://github.com/burcok
+🔗 LinkedIn: https://linkedin.com/in/burcok
 
 ---
 
 <p align="center">
-Cookrange — The Future of AI-Powered Fitness Communities.
+<strong>Cookrange — Build consistency. Build identity. Build transformation.</strong>
 </p>
