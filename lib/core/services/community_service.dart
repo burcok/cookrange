@@ -1,7 +1,12 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../models/community_post.dart';
+import '../models/notification_model.dart';
+import 'analytics_service.dart';
 import 'log_service.dart';
+import 'notification_service.dart';
 
 class CommunityService {
   static final CommunityService _instance = CommunityService._internal();
@@ -40,19 +45,35 @@ class CommunityService {
 
   // --- Posts ---
 
-  Stream<List<CommunityPost>> getPostsStream({int limit = 20}) {
+  /// [authorIds] — restrict to posts from these user IDs (Friends filter; max 30).
+  /// [gymOnly] — restrict to posts tagged with gym-related tags.
+  /// Automatically filters out posts from blocked users (client-side).
+  Stream<List<CommunityPost>> getPostsStream({
+    int limit = 20,
+    List<String>? authorIds,
+    bool gymOnly = false,
+  }) async* {
+    final blockedIds = await getBlockedIds();
     final userId = _currentUserId;
-    return _firestore
-        .collection('posts')
+
+    Query<Map<String, dynamic>> query = _firestore.collection('posts');
+
+    if (authorIds != null && authorIds.isNotEmpty) {
+      query = query.where('authorId', whereIn: authorIds.take(30).toList());
+    } else if (gymOnly) {
+      query = query.where('tags',
+          arrayContainsAny: ['gym', 'fitness', 'workout', 'training', 'crossfit', 'powerlifting']);
+    }
+
+    yield* query
         .orderBy('timestamp', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) =>
-              CommunityPost.fromMap(doc.data(), doc.id, currentUserId: userId))
-          .toList();
-    });
+        .map((snapshot) => snapshot.docs
+            .map((doc) =>
+                CommunityPost.fromMap(doc.data(), doc.id, currentUserId: userId))
+            .where((p) => !blockedIds.contains(p.author.id))
+            .toList());
   }
 
   Future<List<CommunityPost>> getPosts({int limit = 10}) async {
@@ -77,16 +98,25 @@ class CommunityService {
   }
 
   /// Cursor-based pagination. Returns posts and the last document for the next page.
+  /// Pass the same [authorIds]/[gymOnly] as the active stream filter.
   Future<({List<CommunityPost> posts, DocumentSnapshot? lastDoc})>
       fetchPostsPage({
     int limit = 20,
     DocumentSnapshot? startAfter,
+    List<String>? authorIds,
+    bool gymOnly = false,
   }) async {
     try {
-      var query = _firestore
-          .collection('posts')
-          .orderBy('timestamp', descending: true)
-          .limit(limit);
+      Query<Map<String, dynamic>> query = _firestore.collection('posts');
+
+      if (authorIds != null && authorIds.isNotEmpty) {
+        query = query.where('authorId', whereIn: authorIds.take(30).toList());
+      } else if (gymOnly) {
+        query = query.where('tags',
+            arrayContainsAny: ['gym', 'fitness', 'workout', 'training', 'crossfit', 'powerlifting']);
+      }
+
+      query = query.orderBy('timestamp', descending: true).limit(limit);
 
       if (startAfter != null) {
         query = query.startAfterDocument(startAfter);
@@ -94,12 +124,13 @@ class CommunityService {
 
       final snapshot = await query.get();
       final userId = _currentUserId;
+      final blockedIds = await getBlockedIds();
       final posts = snapshot.docs
           .map((doc) =>
               CommunityPost.fromMap(doc.data(), doc.id, currentUserId: userId))
+          .where((p) => !blockedIds.contains(p.author.id))
           .toList();
-      final lastDoc =
-          snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
+      final lastDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
       return (posts: posts, lastDoc: lastDoc);
     } catch (e) {
       _logger.error('fetchPostsPage failed', error: e);
@@ -123,7 +154,8 @@ class CommunityService {
 
     final docRef = await _firestore.collection('posts').add({
       ...newPost.toMap(),
-      'likedUserIds': [], // Init empty list
+      'authorId': user.id, // top-level for filter queries (authorId + timestamp index)
+      'likedUserIds': [],
       'commentsCount': 0,
       'likesCount': 0,
     });
@@ -134,6 +166,13 @@ class CommunityService {
       'has_images': imageUrls.isNotEmpty,
       'tags': tags,
     });
+    unawaited(AnalyticsService().logEvent(
+      name: 'post_created',
+      parameters: {
+        'has_images': imageUrls.isNotEmpty,
+        'tag_count': tags.length,
+      },
+    ));
   }
 
   Future<void> updatePost(String postId, String newContent,
@@ -210,11 +249,32 @@ class CommunityService {
       final authorId = (postDoc.data() as Map<String, dynamic>)['author']['id'];
       if (authorId != userId) return false;
 
-      // Delete the document
-      // Note: Subcollections (likes, comments) are not automatically deleted by client SDKs
-      // A Cloud Function is usually best for recursive delete.
-      // For now, we delete the post doc which makes it disappear from queries.
-      await _firestore.collection('posts').doc(postId).delete();
+      final postRef = _firestore.collection('posts').doc(postId);
+
+      // Client-side subcollection cleanup (best-effort; Cloud Function handles edge cases)
+      final batch = _firestore.batch();
+
+      // Delete top-level likes and reactions
+      for (final sub in ['likes', 'reactions']) {
+        final snap = await postRef.collection(sub).get();
+        for (final doc in snap.docs) {
+          batch.delete(doc.reference);
+        }
+      }
+
+      // Delete comments + each comment's likes
+      final commentsSnap = await postRef.collection('comments').get();
+      for (final commentDoc in commentsSnap.docs) {
+        final commentLikesSnap =
+            await commentDoc.reference.collection('likes').get();
+        for (final likeDoc in commentLikesSnap.docs) {
+          batch.delete(likeDoc.reference);
+        }
+        batch.delete(commentDoc.reference);
+      }
+
+      batch.delete(postRef);
+      await batch.commit();
 
       await _logger.logActivity('post_delete', {
         'post_id': postId,
@@ -234,17 +294,20 @@ class CommunityService {
     final postRef = _firestore.collection('posts').doc(postId);
     final likeRef = postRef.collection('likes').doc(userId);
 
-    // We also need to update the top-level 'likedUserIds' array for the feed efficiently
-    return _firestore.runTransaction((transaction) async {
+    String? authorId;
+
+    final liked = await _firestore.runTransaction((transaction) async {
       final likeDoc = await transaction.get(likeRef);
       final postDoc = await transaction.get(postRef);
 
       if (!postDoc.exists) return false;
 
+      final pData = postDoc.data();
+      authorId = (pData?['author'] as Map<String, dynamic>?)?['id'] as String?;
+
       List<dynamic> recentLikers = [];
-      if (postDoc.data() != null &&
-          (postDoc.data() as Map).containsKey('recentLikers')) {
-        recentLikers = List.from(postDoc['recentLikers']);
+      if (pData != null && pData.containsKey('recentLikers')) {
+        recentLikers = List.from(pData['recentLikers']);
       }
 
       if (likeDoc.exists) {
@@ -262,7 +325,6 @@ class CommunityService {
         final user = await _getCurrentCommunityUser();
         final userMap = user.toMap();
 
-        // Avoid duplicates just in case
         recentLikers.removeWhere((item) => item['id'] == userId);
         recentLikers.insert(0, userMap);
         if (recentLikers.length > 3) {
@@ -282,14 +344,37 @@ class CommunityService {
         });
         return true;
       }
-    }).then((result) {
-      if (result) {
-        _logger.logActivity('post_like', {'post_id': postId});
-      } else {
-        _logger.logActivity('post_unlike', {'post_id': postId});
-      }
-      return result;
     });
+
+    if (liked) {
+      _logger.logActivity('post_like', {'post_id': postId});
+    } else {
+      _logger.logActivity('post_unlike', {'post_id': postId});
+    }
+
+    // Notification fan-out (skip self-like)
+    final aid = authorId;
+    if (aid != null && aid != userId) {
+      final ns = NotificationService();
+      final senderName = _auth.currentUser?.displayName ?? 'Someone';
+      if (liked) {
+        unawaited(ns.sendNotification(
+          targetUserId: aid,
+          title: 'New like',
+          body: '$senderName liked your post.',
+          type: NotificationType.like,
+          relatedId: postId,
+        ));
+      } else {
+        unawaited(ns.deleteNotificationByRelatedId(
+          targetUserId: aid,
+          relatedId: postId,
+          type: NotificationType.like,
+        ));
+      }
+    }
+
+    return liked;
   }
 
   Future<bool> likeComment(String postId, String commentId) async {
@@ -303,21 +388,22 @@ class CommunityService {
         .doc(commentId);
     final likeRef = commentRef.collection('likes').doc(userId);
 
-    return _firestore.runTransaction((transaction) async {
+    String? commentAuthorId;
+
+    final liked = await _firestore.runTransaction((transaction) async {
       final likeDoc = await transaction.get(likeRef);
       final commentDoc = await transaction.get(commentRef);
 
       if (!commentDoc.exists) return false;
 
+      final cData = commentDoc.data();
+      commentAuthorId =
+          (cData?['author'] as Map<String, dynamic>?)?['id'] as String?;
+
       if (likeDoc.exists) {
         // Unlike
         transaction.delete(likeRef);
-        transaction.update(commentRef, {
-          'likesCount': FieldValue.increment(-1),
-          'isLiked':
-              false, // For local simple tracking if stored, but 'isLiked' logic is client side typically
-          // Actually, update likedUserIds if needed? Comments might not need face pile.
-        });
+        transaction.update(commentRef, {'likesCount': FieldValue.increment(-1)});
         return false;
       } else {
         // Like
@@ -328,21 +414,41 @@ class CommunityService {
           'userName': user.name,
           'userAvatar': user.avatarUrl,
         });
-        transaction.update(commentRef, {
-          'likesCount': FieldValue.increment(1),
-        });
+        transaction.update(commentRef, {'likesCount': FieldValue.increment(1)});
         return true;
       }
-    }).then((result) {
-      if (result) {
-        _logger.logActivity(
-            'comment_like', {'post_id': postId, 'comment_id': commentId});
-      } else {
-        _logger.logActivity(
-            'comment_unlike', {'post_id': postId, 'comment_id': commentId});
-      }
-      return result;
     });
+
+    if (liked) {
+      _logger.logActivity('comment_like', {'post_id': postId, 'comment_id': commentId});
+    } else {
+      _logger.logActivity('comment_unlike', {'post_id': postId, 'comment_id': commentId});
+    }
+
+    // Notification fan-out (skip self-like)
+    final aid = commentAuthorId;
+    if (aid != null && aid != userId) {
+      final ns = NotificationService();
+      final senderName = _auth.currentUser?.displayName ?? 'Someone';
+      final relatedId = '${commentId}_like';
+      if (liked) {
+        unawaited(ns.sendNotification(
+          targetUserId: aid,
+          title: 'New like',
+          body: '$senderName liked your comment.',
+          type: NotificationType.like,
+          relatedId: relatedId,
+        ));
+      } else {
+        unawaited(ns.deleteNotificationByRelatedId(
+          targetUserId: aid,
+          relatedId: relatedId,
+          type: NotificationType.like,
+        ));
+      }
+    }
+
+    return liked;
   }
 
   Future<CommunityComment> addComment(String postId, String content) async {
@@ -358,7 +464,6 @@ class CommunityService {
       timestamp: DateTime.now(),
     );
 
-    // Batch or Transaction to ensure count updates
     final batch = _firestore.batch();
     batch.set(commentRef, newComment.toMap());
     batch.update(_firestore.collection('posts').doc(postId),
@@ -372,7 +477,79 @@ class CommunityService {
       'content_len': content.length,
     });
 
+    // Notify post author (fire-and-forget)
+    unawaited(_sendCommentNotification(postId, user.name));
+
     return newComment;
+  }
+
+  Future<void> _sendCommentNotification(
+      String postId, String commenterName) async {
+    try {
+      final postSnap =
+          await _firestore.collection('posts').doc(postId).get();
+      if (!postSnap.exists) return;
+      final authorId = (postSnap.data()?['author'] as Map<String, dynamic>?)?[
+          'id'] as String?;
+      final myId = _currentUserId;
+      if (authorId == null || authorId == myId) return;
+      await NotificationService().sendNotification(
+        targetUserId: authorId,
+        title: 'New comment',
+        body: '$commenterName commented on your post.',
+        type: NotificationType.comment,
+        relatedId: postId,
+      );
+    } catch (e) {
+      _logger.error('_sendCommentNotification failed', error: e);
+    }
+  }
+
+  /// Real-time stream of comments for [postId], ordered oldest-first.
+  ///
+  /// Reaction sub-reads are skipped here to keep the stream fast; they are
+  /// fetched on demand when the user interacts with a specific comment.
+  Stream<List<CommunityComment>> commentsStream(String postId) {
+    return _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .orderBy('timestamp', descending: false)
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((doc) => CommunityComment.fromMap(doc.data(), doc.id))
+            .toList())
+        .handleError((Object e) {
+      debugPrint('commentsStream error: $e');
+      return <CommunityComment>[];
+    });
+  }
+
+  /// Cursor-based page of comments (newest-first). Pass [startAfter] from the
+  /// last doc in the previous page to continue pagination.
+  Future<({List<CommunityComment> items, DocumentSnapshot? lastDoc})>
+      getCommentsPage(
+    String postId, {
+    DocumentSnapshot? startAfter,
+    int limit = 20,
+  }) async {
+    try {
+      var query = _firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .orderBy('timestamp', descending: true)
+          .limit(limit);
+      if (startAfter != null) query = query.startAfterDocument(startAfter);
+      final snap = await query.get();
+      final items = snap.docs
+          .map((d) => CommunityComment.fromMap(d.data(), d.id))
+          .toList();
+      return (items: items, lastDoc: snap.docs.isNotEmpty ? snap.docs.last : null);
+    } catch (e) {
+      debugPrint('getCommentsPage error: $e');
+      return (items: <CommunityComment>[], lastDoc: null);
+    }
   }
 
   Future<List<CommunityComment>> getComments(String postId) async {
@@ -488,16 +665,21 @@ class CommunityService {
 
     final reactionRef = docRef.collection('reactions').doc(userId);
 
+    String? authorId;
+    bool reactionAdded = false;
+
     await _firestore.runTransaction((transaction) async {
       final reactionDoc = await transaction.get(reactionRef);
       final parentDoc = await transaction.get(docRef);
 
       if (!parentDoc.exists) return;
 
+      final pData = parentDoc.data() as Map<String, dynamic>?;
+      authorId = (pData?['author'] as Map<String, dynamic>?)?['id'] as String?;
+
       Map<String, int> currentCounts = {};
-      if (parentDoc.data() != null &&
-          (parentDoc.data() as Map).containsKey('reactions')) {
-        currentCounts = Map<String, int>.from(parentDoc['reactions']);
+      if (pData != null && pData.containsKey('reactions')) {
+        currentCounts = Map<String, int>.from(pData['reactions']);
       }
 
       List<String> userEmojis = [];
@@ -506,19 +688,20 @@ class CommunityService {
         if (rData['emojis'] != null) {
           userEmojis = List<String>.from(rData['emojis']);
         } else if (rData['emoji'] != null) {
-          // Migration
           userEmojis = [rData['emoji']];
         }
       }
 
       if (userEmojis.contains(emoji)) {
         // REMOVE
+        reactionAdded = false;
         userEmojis.remove(emoji);
         int count = currentCounts[emoji] ?? 0;
         if (count > 0) currentCounts[emoji] = count - 1;
         if (currentCounts[emoji] == 0) currentCounts.remove(emoji);
       } else {
         // ADD
+        reactionAdded = true;
         userEmojis.add(emoji);
         currentCounts[emoji] = (currentCounts[emoji] ?? 0) + 1;
       }
@@ -535,12 +718,7 @@ class CommunityService {
 
       final Map<String, dynamic> updates = {'reactions': currentCounts};
 
-      // Sync "Heart" reaction with "likedUserIds" for feed visibility checking
-      // Only do this for Posts, not Comments (commentId == null)
       if (commentId == null) {
-        // Sync emojis for feed visibility
-        // Field: reactionUserIds.{emoji}
-        // Note: Firestore map keys cannot contain '.', but emojis are fine.
         final fieldPath = 'reactionUserIds.$emoji';
         final isRemoving = !userEmojis.contains(emoji);
         if (!isRemoving) {
@@ -558,6 +736,33 @@ class CommunityService {
       'comment_id': commentId,
       'emoji': emoji,
     });
+
+    // Notification fan-out (skip self-reaction)
+    final aid = authorId;
+    if (aid != null && aid != userId) {
+      final ns = NotificationService();
+      final senderName = _auth.currentUser?.displayName ?? 'Someone';
+      final target = commentId ?? postId;
+      final relatedId = '${target}_rx_$emoji';
+      if (reactionAdded) {
+        final body = commentId == null
+            ? '$senderName reacted $emoji to your post.'
+            : '$senderName reacted $emoji to your comment.';
+        unawaited(ns.sendNotification(
+          targetUserId: aid,
+          title: 'New reaction',
+          body: body,
+          type: NotificationType.like,
+          relatedId: relatedId,
+        ));
+      } else {
+        unawaited(ns.deleteNotificationByRelatedId(
+          targetUserId: aid,
+          relatedId: relatedId,
+          type: NotificationType.like,
+        ));
+      }
+    }
   }
 
   List<CommunityGroup> getGroups() {
@@ -572,29 +777,119 @@ class CommunityService {
     ];
   }
 
-  // --- Reporting ---
+  // --- Reporting & Moderation ---
 
   Future<void> reportPost(String postId, String reason) async {
-    // In a real app, this would write to a reports collection
-    await _logger.logActivity('post_report', {
-      'post_id': postId,
-      'reason': reason,
-      'reporter_id': _currentUserId,
-    });
-    // Simulating API call
-    await Future.delayed(const Duration(milliseconds: 500));
+    final userId = _currentUserId;
+    if (userId == 'guest') return;
+    try {
+      final postSnap = await _firestore.collection('posts').doc(postId).get();
+      final authorId =
+          (postSnap.data()?['author'] as Map<String, dynamic>?)?['id'] as String?;
+      await _firestore.collection('reports').add({
+        'reporterId': userId,
+        'targetType': 'post',
+        'targetId': postId,
+        'postId': postId,
+        'authorId': authorId,
+        'reason': reason,
+        'status': 'pending',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      unawaited(_logger.logActivity('post_report', {'post_id': postId, 'reason': reason}));
+    } catch (e) {
+      _logger.error('reportPost failed', error: e);
+    }
   }
 
   Future<void> reportComment(
       String postId, String commentId, String reason) async {
-    await _logger.logActivity('comment_report', {
-      'post_id': postId,
-      'comment_id': commentId,
-      'reason': reason,
-      'reporter_id': _currentUserId,
-    });
-    // Simulating API call
-    await Future.delayed(const Duration(milliseconds: 500));
+    final userId = _currentUserId;
+    if (userId == 'guest') return;
+    try {
+      final commentSnap = await _firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .doc(commentId)
+          .get();
+      final authorId =
+          (commentSnap.data()?['author'] as Map<String, dynamic>?)?['id'] as String?;
+      await _firestore.collection('reports').add({
+        'reporterId': userId,
+        'targetType': 'comment',
+        'targetId': commentId,
+        'postId': postId,
+        'authorId': authorId,
+        'reason': reason,
+        'status': 'pending',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      unawaited(_logger.logActivity('comment_report', {
+        'post_id': postId,
+        'comment_id': commentId,
+        'reason': reason,
+      }));
+    } catch (e) {
+      _logger.error('reportComment failed', error: e);
+    }
+  }
+
+  // --- Block List ---
+
+  Future<void> blockUser(String targetUserId) async {
+    final userId = _currentUserId;
+    if (userId == 'guest' || userId == targetUserId) return;
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('block_list')
+        .doc(targetUserId)
+        .set({'timestamp': FieldValue.serverTimestamp()});
+    unawaited(_logger.logActivity('user_block', {'target_id': targetUserId}));
+  }
+
+  Future<void> unblockUser(String targetUserId) async {
+    final userId = _currentUserId;
+    if (userId == 'guest') return;
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('block_list')
+        .doc(targetUserId)
+        .delete();
+    unawaited(_logger.logActivity('user_unblock', {'target_id': targetUserId}));
+  }
+
+  Future<List<String>> getBlockedIds() async {
+    final userId = _currentUserId;
+    if (userId == 'guest') return [];
+    try {
+      final snap = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('block_list')
+          .get();
+      return snap.docs.map((d) => d.id).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<bool> isBlocked(String targetUserId) async {
+    final userId = _currentUserId;
+    if (userId == 'guest') return false;
+    try {
+      final doc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('block_list')
+          .doc(targetUserId)
+          .get();
+      return doc.exists;
+    } catch (e) {
+      return false;
+    }
   }
 
   /// Preload feeds to warm up cache

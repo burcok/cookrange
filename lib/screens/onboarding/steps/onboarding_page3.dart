@@ -57,6 +57,10 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
   String _currentSearchQuery = '';
   bool _isLoadingAI = false;
 
+  // Allergy & dietary restriction state (mirrors provider on init)
+  List<String> _selectedAllergyIds = [];
+  List<String> _selectedDietaryIds = [];
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +69,10 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
     _predefinedIngredientLabels.addAll(_allIngredients.map((i) => i.label));
 
     final onboarding = context.read<OnboardingProvider>();
+
+    // Restore allergy and dietary selections from provider
+    _selectedAllergyIds = List.of(onboarding.allergyIds);
+    _selectedDietaryIds = List.of(onboarding.dietaryRestrictionIds);
 
     // Reconstruct custom ingredients and populate selected values
     _selectedIngredientValues = [];
@@ -432,27 +440,76 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                   children: [
                     const SizedBox(height: 16),
 
-                    // Main Title
-                    Text(
-                      localizations.translate('onboarding.page3.main_title'),
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: colorScheme.onboardingTitleColor,
-                        fontFamily: 'Poppins',
-                      ),
+                    // ── Allergies & Medical Flags ───────────────────────────
+                    _buildSectionHeader(
+                      localizations
+                          .translate('onboarding.page3.allergies_title'),
+                      localizations
+                          .translate('onboarding.page3.allergies_subtitle'),
+                      icon: Icons.warning_amber_rounded,
+                      iconColor: const Color(0xFFD97706),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: OnboardingOptions.allergies.entries.map((e) {
+                        final id = e.key;
+                        final label =
+                            localizations.translate(e.value['label'] as String);
+                        final icon = e.value['icon'] as IconData;
+                        final selected = _selectedAllergyIds.contains(id);
+                        return _buildAllergyChip(
+                            id: id,
+                            label: label,
+                            icon: icon,
+                            selected: selected);
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // ── Dietary Restrictions ────────────────────────────────
+                    _buildSectionHeader(
+                      localizations
+                          .translate('onboarding.page3.dietary_title'),
+                      localizations
+                          .translate('onboarding.page3.dietary_subtitle'),
+                      icon: Icons.restaurant_menu,
+                      iconColor: colorScheme.primaryColorCustom,
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: OnboardingOptions.dietaryRestrictions.entries
+                          .map((e) {
+                        final id = e.key;
+                        final label =
+                            localizations.translate(e.value['label'] as String);
+                        final icon = e.value['icon'] as IconData;
+                        final selected = _selectedDietaryIds.contains(id);
+                        return _buildDietaryChip(
+                            id: id,
+                            label: label,
+                            icon: icon,
+                            selected: selected);
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // ── Divider ─────────────────────────────────────────────
+                    Divider(color: colorScheme.outline.withValues(alpha: 0.3)),
+                    const SizedBox(height: 16),
+
+                    // ── Foods You Dislike ───────────────────────────────────
+                    _buildSectionHeader(
+                      localizations
+                          .translate('onboarding.page3.dislikes_title'),
                       localizations.translate('onboarding.page3.subtitle'),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: colorScheme.onboardingSubtitleColor,
-                        fontFamily: 'Poppins',
-                      ),
+                      icon: Icons.thumb_down_alt_outlined,
+                      iconColor: colorScheme.onboardingSubtitleColor,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     // Search Input
                     Container(
@@ -688,6 +745,149 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
               },
               text: localizations.translate('onboarding.page3.continue'),
               isLoadingNotifier: widget.isLoadingNotifier,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(
+    String title,
+    String subtitle, {
+    required IconData icon,
+    required Color iconColor,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: iconColor),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onboardingTitleColor,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.onboardingSubtitleColor,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAllergyChip({
+    required String id,
+    required String label,
+    required IconData icon,
+    required bool selected,
+  }) {
+    const amber = Color(0xFFD97706);
+    const amberLight = Color(0xFFFEF3C7);
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (selected) {
+            _selectedAllergyIds.remove(id);
+          } else {
+            _selectedAllergyIds.add(id);
+          }
+        });
+        context.read<OnboardingProvider>().toggleAllergy(id);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? amber : amberLight.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(
+            color: selected ? amber : amber.withValues(alpha: 0.5),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16,
+                color: selected ? Colors.white : amber),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : amber,
+                fontFamily: 'Poppins',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDietaryChip({
+    required String id,
+    required String label,
+    required IconData icon,
+    required bool selected,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final primary = colorScheme.primaryColorCustom;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (selected) {
+            _selectedDietaryIds.remove(id);
+          } else {
+            _selectedDietaryIds.add(id);
+          }
+        });
+        context.read<OnboardingProvider>().toggleDietaryRestriction(id);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? primary : colorScheme.onboardingOptionBgColor,
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(
+            color: selected ? primary : primary.withValues(alpha: 0.4),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16,
+                color: selected ? Colors.white : primary),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : primary,
+                fontFamily: 'Poppins',
+              ),
             ),
           ],
         ),

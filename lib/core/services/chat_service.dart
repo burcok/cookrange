@@ -296,6 +296,31 @@ class ChatService {
     });
   }
 
+  /// Creates a new group chat and returns the resulting [ChatModel].
+  Future<ChatModel> createGroupChat({
+    required String name,
+    required List<String> participantIds,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw Exception('Not authenticated');
+
+    final allParticipants = {...participantIds, uid}.toList();
+    final unreadCounts = {for (final p in allParticipants) p: 0};
+
+    final ref = await _firestore.collection('chats').add({
+      'type': ChatType.group.name,
+      'name': name,
+      'participants': allParticipants,
+      'unreadCounts': unreadCounts,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'isPublic': false,
+      'createdBy': uid,
+    });
+
+    final doc = await ref.get();
+    return ChatModel.fromJson(doc.data()!, doc.id);
+  }
+
   /// Preload chats to warm up cache
   Future<void> preloadChats() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;

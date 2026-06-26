@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
 import 'home/home.dart';
-import 'profile/profile_screen.dart';
 import 'community/community_screen.dart';
 import '../core/providers/navigation_provider.dart';
 import '../core/providers/user_provider.dart';
@@ -52,14 +51,6 @@ class _MainScaffoldState extends State<MainScaffold>
         _menuController.status != AnimationStatus.reverse &&
         _menuController.status != AnimationStatus.dismissed) {
       _menuController.reverse();
-    }
-
-    if (nav.currentIndex == 3) {
-      nav.setIndex(0);
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const ProfileScreen()),
-      );
-      return;
     }
 
     if (nav.currentIndex <= 1 && _pageController.hasClients) {

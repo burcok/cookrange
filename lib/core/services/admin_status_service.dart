@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:async';
 import 'log_service.dart';
+import 'remote_config_service.dart';
 
 /// Enum for Admin Status Check Result
 enum AdminStatus {
@@ -22,36 +23,26 @@ class AdminStatusService {
   final String _serviceName = 'AdminStatusService';
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Cache settings to avoid excessive reads
-  Map<String, dynamic>? _remoteConfigCache;
-  DateTime? _lastFetchTime;
-  static const Duration _cacheDuration = Duration(minutes: 5);
-
   final _banController = StreamController<bool>.broadcast();
   Stream<bool> get onBanStatusChanged => _banController.stream;
 
   /// Main method to check all status conditions
-  Future<AdminStatus> checkStatus(String? userId,
-      {bool forceRefresh = false}) async {
+  Future<AdminStatus> checkStatus(String? userId) async {
     try {
-      // 1. Fetch Remote Config (mocked or from Firestore 'settings/global')
-      final config = await _getGlobalConfig(forceRefresh: forceRefresh);
+      final rc = RemoteConfigService();
 
-      // 2. Check Maintenance Mode
-      if (config['maintenance_mode'] == true) {
+      if (rc.maintenanceMode) {
         _log.warning('App is in maintenance mode', service: _serviceName);
         return AdminStatus.maintenance;
       }
 
-      // 3. Check Minimum Version
-      final minVersion = config['min_version'] as String?;
-      if (minVersion != null && await _isUpdateRequired(minVersion)) {
+      final minVersion = rc.minVersion;
+      if (minVersion.isNotEmpty && await _isUpdateRequired(minVersion)) {
         _log.warning('App update required. Min: $minVersion',
             service: _serviceName);
         return AdminStatus.updateRequired;
       }
 
-      // 4. Check User Ban Status (if logged in)
       if (userId != null) {
         final isBanned = await _checkIfUserBanned(userId);
         if (isBanned) {
@@ -64,42 +55,7 @@ class AdminStatusService {
     } catch (e, stackTrace) {
       _log.error('Error checking admin status',
           service: _serviceName, error: e, stackTrace: stackTrace);
-      // Fail open (allow access) on error, or fail closed depending on security requirement
-      // For now, let's treat error as OK to prevent blocking users due to network glitches
       return AdminStatus.ok;
-    }
-  }
-
-  Future<Map<String, dynamic>> _getGlobalConfig(
-      {bool forceRefresh = false}) async {
-    // Cache check
-    if (!forceRefresh &&
-        _remoteConfigCache != null &&
-        _lastFetchTime != null &&
-        DateTime.now().difference(_lastFetchTime!) < _cacheDuration) {
-      return _remoteConfigCache!;
-    }
-
-    try {
-      final doc = await _firestore.collection('settings').doc('global').get();
-      if (doc.exists) {
-        _remoteConfigCache = doc.data()!;
-      } else {
-        // Defaults if no config found
-        _remoteConfigCache = {
-          'maintenance_mode': false,
-          'min_version': '1.0.0',
-        };
-      }
-      _lastFetchTime = DateTime.now();
-      return _remoteConfigCache!;
-    } catch (e) {
-      _log.error('Failed to fetch global config',
-          service: _serviceName, error: e);
-      return {
-        'maintenance_mode': false,
-        'min_version': '1.0.0',
-      };
     }
   }
 

@@ -15,6 +15,7 @@ import '../core/services/notification_service.dart';
 import '../core/services/chat_service.dart';
 import '../core/services/community_service.dart';
 import '../core/services/friend_service.dart';
+import '../core/services/billing_service.dart';
 import '../core/localization/app_localizations.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../core/services/auth_service.dart';
@@ -186,6 +187,9 @@ class _SplashScreenState extends State<SplashScreen>
     FriendService()
         .preloadFriends()
         .catchError((e) => debugPrint('Friend preload error: $e'));
+    BillingService()
+        .initialize()
+        .catchError((e) => debugPrint('Billing init error: $e'));
   }
 
   /// Fire-and-forget device info initialization

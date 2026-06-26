@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cookrange/core/localization/app_localizations.dart';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'logging_navigator_observer.dart';
@@ -17,6 +16,8 @@ import '../../screens/onboarding/priority_onboarding_screen.dart';
 import '../../screens/main_scaffold.dart';
 import '../../screens/chat/chat_list_screen.dart';
 import '../../screens/chat/chat_detail_screen.dart';
+import '../../screens/home/nutrition_analytics_screen.dart';
+import '../../screens/chat/ai_chat_screen.dart';
 import '../models/chat_model.dart';
 import '../widgets/error_fallback_widget.dart';
 
@@ -46,11 +47,16 @@ class RouteConfigurationService {
           const RouteGuard(child: ChatListScreen()),
       AppRoutes.forgotPassword: (context) =>
           const RouteGuard(child: ForgotPasswordScreen()),
+      AppRoutes.nutritionAnalytics: (context) =>
+          const RouteGuard(child: NutritionAnalyticsScreen()),
+      AppRoutes.aiChat: (context) {
+        final args = ModalRoute.of(context)?.settings.arguments as String?;
+        return RouteGuard(child: AIChatScreen(initialMessage: args));
+      },
       AppRoutes.chatDetail: (context) {
         final chat = ModalRoute.of(context)!.settings.arguments as ChatModel;
         return RouteGuard(child: ChatDetailScreen(chat: chat));
       },
-      '/offline': (context) => const OfflineModeScreen(),
     };
   }
 
@@ -143,32 +149,5 @@ class RouteConfigurationService {
         (route) => false,
       );
     }
-  }
-}
-
-/// Offline mode screen
-class OfflineModeScreen extends StatelessWidget {
-  const OfflineModeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context).translate('offline.title')),
-        automaticallyImplyLeading: false,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(AppLocalizations.of(context).translate('offline.message')),
-            const SizedBox(height: 8),
-            Text(AppLocalizations.of(context).translate('offline.description')),
-          ],
-        ),
-      ),
-    );
   }
 }

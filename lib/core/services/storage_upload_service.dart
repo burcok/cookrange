@@ -36,6 +36,17 @@ class StorageUploadService {
     return _upload(ref, imageFile, onProgress);
   }
 
+  /// Upload a chat image message. Returns the public download URL.
+  Future<String> uploadChatImage({
+    required String userId,
+    required File imageFile,
+    void Function(double progress)? onProgress,
+  }) async {
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final ref = _storage.ref().child('chat_images/$userId/${ts}.jpg');
+    return _upload(ref, imageFile, onProgress);
+  }
+
   Future<String> _upload(
     Reference ref,
     File file,

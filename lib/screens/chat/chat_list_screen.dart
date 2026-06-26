@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:cookrange/core/widgets/app_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 import 'package:cookrange/core/services/chat_service.dart';
 import 'package:cookrange/screens/common/generic_error_screen.dart';
@@ -10,12 +11,14 @@ import '../../core/providers/user_provider.dart';
 import '../../core/models/message_model.dart';
 import 'widgets/signal_dialog.dart';
 import 'widgets/select_friend_sheet.dart';
+import 'widgets/create_group_chat_sheet.dart';
 import 'chat_detail_screen.dart';
 import '../../core/providers/navigation_provider.dart';
 import '../community/widgets/glass_refresher.dart';
 import '../../core/widgets/side_menu.dart';
 import '../../core/widgets/unified_action_sheet.dart';
 import '../../core/providers/theme_provider.dart';
+import '../../core/utils/app_routes.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -31,6 +34,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   // Power FAB Animation
   late AnimationController _fabController;
   late Animation<double> _fabCreateAnimation;
+  late Animation<double> _fabGroupAnimation;
   late Animation<double> _fabShareAnimation;
   late Animation<double> _fabSignalAnimation;
   bool _isFabOpen = false;
@@ -87,6 +91,10 @@ class _ChatListScreenState extends State<ChatListScreen>
     _fabCreateAnimation = CurvedAnimation(
       parent: _fabController,
       curve: const Interval(0.0, 1.0, curve: Curves.easeOut),
+    );
+    _fabGroupAnimation = CurvedAnimation(
+      parent: _fabController,
+      curve: const Interval(0.0, 0.9, curve: Curves.easeOut),
     );
     _fabShareAnimation = CurvedAnimation(
       parent: _fabController,
@@ -252,12 +260,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                                   filteredChats.length + 1, // +1 for Help Card
                               itemBuilder: (context, index) {
                                 if (index == 0) {
-                                  // Don't show help card if searching to focus on results
                                   if (_searchQuery.isNotEmpty) {
                                     return const SizedBox.shrink();
                                   }
-                                  // Placeholder for commented out support toast
-                                  return const SizedBox.shrink();
+                                  return _buildAIBanner(context, isDark);
                                 }
 
                                 final chat =
@@ -660,6 +666,42 @@ class _ChatListScreenState extends State<ChatListScreen>
           ),
           const SizedBox(height: 12),
           ScaleTransition(
+            scale: _fabGroupAnimation,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                      AppLocalizations.of(context).translate('chat.new_group'),
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 12)),
+                ),
+                const SizedBox(width: 8),
+                FloatingActionButton.small(
+                  heroTag: 'fab_group',
+                  onPressed: () {
+                    _toggleFab();
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => const CreateGroupChatSheet(),
+                    );
+                  },
+                  backgroundColor: const Color(0xFF6366F1),
+                  child: const Icon(Icons.group_add, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          ScaleTransition(
             scale: _fabCreateAnimation,
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -768,6 +810,73 @@ class _ChatListScreenState extends State<ChatListScreen>
                       .primaryColor
                       .withValues(alpha: 0.15)),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAIBanner(BuildContext context, bool isDark) {
+    String t(String key) => AppLocalizations.of(context).translate(key);
+    final primary = context.read<ThemeProvider>().primaryColor;
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.aiChat),
+      child: Container(
+        margin: EdgeInsets.only(bottom: 16.h),
+        padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 14.h),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [primary, primary.withValues(alpha: 0.75)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20.r),
+          boxShadow: [
+            BoxShadow(
+              color: primary.withValues(alpha: 0.35),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46.w,
+              height: 46.w,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.smart_toy_outlined,
+                  size: 24.sp, color: Colors.white),
+            ),
+            SizedBox(width: 14.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    t('ai_chat.banner_title'),
+                    style: TextStyle(
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    t('ai_chat.banner_subtitle'),
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios,
+                size: 16.sp, color: Colors.white.withValues(alpha: 0.8)),
           ],
         ),
       ),

@@ -12,20 +12,21 @@ import '../../core/models/user_model.dart';
 import '../../core/models/dish_model.dart';
 import '../../core/models/food_log_model.dart';
 import '../../core/models/weekly_meal_plan_model.dart';
-import '../../core/services/food_log_service.dart';
-import '../../core/services/weekly_meal_plan_service.dart';
-import '../../core/services/dish_service.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/admin_status_service.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/repositories/meal_plan_repository.dart';
+import '../../core/repositories/food_log_repository.dart';
+import '../../core/repositories/dish_repository.dart';
+import '../../core/services/analytics_service.dart';
 import '../common/generic_error_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
 import 'widgets/tracking_card.dart';
+import 'food_scan_screen.dart';
 
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/test_mode_provider.dart';
-import '../../core/services/test_mode_service.dart';
-import '../../core/data/test_data_library.dart';
+import '../../core/utils/app_routes.dart';
 import '../../core/widgets/main_header.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -37,9 +38,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
-  final WeeklyMealPlanService _mealPlanService = WeeklyMealPlanService();
-  final DishService _dishService = DishService();
-  final FoodLogService _foodLogService = FoodLogService();
+  final MealPlanRepository _mealPlanRepo = MealPlanRepository();
+  final FoodLogRepository _foodLogRepo = FoodLogRepository();
+  final DishRepository _dishRepo = DishRepository();
 
   WeeklyMealPlanModel? _weeklyPlan;
   int _selectedDayIndex = 0;
@@ -56,6 +57,12 @@ class _HomeScreenState extends State<HomeScreen>
   final Map<String, bool> _loggingInProgress = {};
 
   TestModeProvider? _testModeProvider;
+
+  // Swap state — tracks which meal slot is currently swapping
+  final Map<String, bool> _swapInProgress = {};
+
+  // Streak milestone banner — dismissed per session
+  bool _streakMilestoneDismissed = false;
 
   // Custom Refresh State
   final ValueNotifier<double> _pullDistanceNotifier = ValueNotifier(0.0);
@@ -89,18 +96,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (uid == null) return;
     _foodLogSubscription?.cancel();
 
-    if (TestModeService().isActive) {
-      final logs = TestDataLibrary.todayFoodLogs(uid);
-      if (!mounted) return;
-      setState(() {
-        _consumed = FoodLog.sumLogs(logs);
-        _loggedMealTypes = logs.map((l) => l.mealType).toSet();
-      });
-      return;
-    }
-
-    _foodLogSubscription =
-        _foodLogService.todayLogsStream(uid).listen((logs) {
+    _foodLogSubscription = _foodLogRepo.todayLogsStream(uid).listen((logs) {
       if (!mounted) return;
       setState(() {
         _consumed = FoodLog.sumLogs(logs);
@@ -114,11 +110,19 @@ class _HomeScreenState extends State<HomeScreen>
     if (_loggingInProgress[mealType] == true) return;
     setState(() => _loggingInProgress[mealType] = true);
     try {
-      await _foodLogService.logMeal(
+      await _foodLogRepo.logMeal(
         userId: userId,
         mealType: mealType,
         dish: dish,
       );
+      unawaited(AnalyticsService().logEvent(
+        name: 'food_logged',
+        parameters: {
+          'meal_type': mealType,
+          'dish_id': dish.id,
+          'calories': dish.calories,
+        },
+      ));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -127,6 +131,76 @@ class _HomeScreenState extends State<HomeScreen>
       }
     } finally {
       if (mounted) setState(() => _loggingInProgress.remove(mealType));
+    }
+  }
+
+  Future<void> _showSwapSheet(
+      AppLocalizations l10n, String mealType, int dayIndex) async {
+    final userId = context.read<UserProvider>().user?.uid;
+    if (userId == null) return;
+    if (_weeklyPlan == null || dayIndex >= _weeklyPlan!.days.length) return;
+
+    final alternatives = await _dishRepo.getByMealType(mealType);
+    final currentDishId = _weeklyPlan!.days[dayIndex].meals[mealType];
+    final choices =
+        alternatives.where((d) => d.id != currentDishId).toList();
+
+    if (!mounted) return;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _SwapSheet(
+        mealType: mealType,
+        dishes: choices,
+        l10n: l10n,
+        onSelect: (dish) async {
+          Navigator.of(ctx).pop();
+          await _performSwap(
+              userId: userId,
+              dayIndex: dayIndex,
+              mealType: mealType,
+              newDish: dish);
+        },
+      ),
+    );
+  }
+
+  Future<void> _performSwap({
+    required String userId,
+    required int dayIndex,
+    required String mealType,
+    required DishModel newDish,
+  }) async {
+    final key = '${dayIndex}_$mealType';
+    if (_swapInProgress[key] == true) return;
+    setState(() => _swapInProgress[key] = true);
+    try {
+      final day = _weeklyPlan!.days[dayIndex];
+      final updated = await _mealPlanRepo.swapMeal(
+        userId: userId,
+        dayDate: day.date,
+        mealType: mealType,
+        newDishId: newDish.id,
+      );
+      if (!mounted) return;
+      if (updated != null) {
+        _dishCache[newDish.id] = newDish;
+        setState(() => _weeklyPlan = updated);
+      }
+      unawaited(AnalyticsService().logEvent(
+        name: 'meal_swapped',
+        parameters: {'meal_type': mealType, 'new_dish_id': newDish.id},
+      ));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not swap meal: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _swapInProgress.remove(key));
     }
   }
 
@@ -146,26 +220,7 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() => _isLoadingPlan = true);
 
     try {
-      if (TestModeService().isActive) {
-        final plan = TestDataLibrary.weeklyPlan(user.uid);
-        final cache = TestDataLibrary.dishCache();
-        final now = DateTime.now();
-        int initialIndex = plan.days.indexWhere((d) =>
-            d.date.year == now.year &&
-            d.date.month == now.month &&
-            d.date.day == now.day);
-        if (initialIndex == -1) initialIndex = 0;
-        if (mounted) {
-          setState(() {
-            _dishCache.addAll(cache);
-            _weeklyPlan = plan;
-            _selectedDayIndex = initialIndex;
-          });
-        }
-        return;
-      }
-
-      final plan = await _mealPlanService.getWeeklyMealPlan(user);
+      final plan = await _mealPlanRepo.getWeeklyPlan(user);
       if (plan != null) {
         final allDishIds = plan.days.expand((d) => d.meals.values).toSet();
         await _fetchDishes(allDishIds.toList());
@@ -178,10 +233,13 @@ class _HomeScreenState extends State<HomeScreen>
 
         if (initialIndex == -1) initialIndex = 0;
 
-        setState(() {
-          _weeklyPlan = plan;
-          _selectedDayIndex = initialIndex;
-        });
+        if (mounted) {
+          setState(() {
+            _dishCache.addAll(_dishRepo.snapshot);
+            _weeklyPlan = plan;
+            _selectedDayIndex = initialIndex;
+          });
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoadingPlan = false);
@@ -189,31 +247,28 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _fetchDishes(List<String> ids) async {
-    // Only fetch what we don't have
-    final missingIds = ids.where((id) => !_dishCache.containsKey(id)).toList();
-    if (missingIds.isEmpty) return;
-
-    // This could be optimized if DishService supported batch fetch
-    for (final id in missingIds) {
-      final dish = await _dishService.getDishById(id);
-      if (dish != null) {
-        _dishCache[id] = dish;
-      }
-    }
+    await _dishRepo.prefetch(ids);
   }
 
   Future<void> _generateWeeklyPlan(UserModel user) async {
     setState(() => _isLoadingPlan = true);
+    unawaited(AnalyticsService().logEvent(name: 'ai_meal_plan_started'));
     try {
-      final plan =
-          await _mealPlanService.getWeeklyMealPlan(user, forceRefresh: true);
+      final plan = await _mealPlanRepo.getWeeklyPlan(user, forceRefresh: true);
       if (plan != null) {
+        unawaited(AnalyticsService().logEvent(
+          name: 'ai_meal_plan_generated',
+          parameters: {'days': plan.days.length},
+        ));
         final allDishIds = plan.days.expand((d) => d.meals.values).toSet();
         await _fetchDishes(allDishIds.toList());
-        setState(() {
-          _weeklyPlan = plan;
-          _selectedDayIndex = 0;
-        });
+        if (mounted) {
+          setState(() {
+            _dishCache.addAll(_dishRepo.snapshot);
+            _weeklyPlan = plan;
+            _selectedDayIndex = 0;
+          });
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoadingPlan = false);
@@ -248,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (userId != null) {
         // Check ban status on refresh
         await AdminStatusService()
-            .checkStatus(userId, forceRefresh: true)
+            .checkStatus(userId)
             .then((status) {
           if (status == AdminStatus.banned) {
             AdminStatusService().notifyBanned(userId);
@@ -481,10 +536,20 @@ class _HomeScreenState extends State<HomeScreen>
         tdee: tdee, primaryGoal: primaryGoal);
     final macros = CalorieCalculator.calculateMacros(adjustedTDEE);
 
+    final streak =
+        (userModel.onboardingData?['streak'] as num?)?.toInt() ?? 0;
+    final goalMet = adjustedTDEE > 0 &&
+        _consumed.calories >= adjustedTDEE * 0.85;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildWelcomeHeader(context, userModel, l10n),
+        _buildWelcomeHeader(context, userModel, l10n, streak: streak),
+        if (!_streakMilestoneDismissed &&
+            const [7, 14, 30, 60, 100, 365].contains(streak)) ...[
+          SizedBox(height: 12.h),
+          _buildStreakMilestoneBanner(context, streak),
+        ],
         SizedBox(height: 32.h),
         Text(
           l10n.translate('home.nutrition_title'),
@@ -496,6 +561,12 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         SizedBox(height: 16.h),
         _buildNutritionCard(context, adjustedTDEE, macros, l10n),
+        SizedBox(height: 10.h),
+        _buildScanFoodButton(context, l10n),
+        if (goalMet) ...[
+          SizedBox(height: 12.h),
+          _buildGoalMetBanner(context, l10n),
+        ],
         SizedBox(height: 24.h),
         const TrackingCard(),
         SizedBox(height: 32.h),
@@ -506,7 +577,8 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildWelcomeHeader(
-      BuildContext context, UserModel userModel, AppLocalizations l10n) {
+      BuildContext context, UserModel userModel, AppLocalizations l10n,
+      {int streak = 0}) {
     final displayName = userModel.displayName?.split(' ').first ??
         (userModel.email?.split('@').first) ??
         'User';
@@ -517,44 +589,222 @@ class _HomeScreenState extends State<HomeScreen>
         : hour < 18
             ? l10n.translate('home.good_afternoon')
             : l10n.translate('home.good_evening');
-    return Column(
+    final primary = context.watch<ThemeProvider>().primaryColor;
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(
-              greeting,
-              style: TextStyle(
-                fontSize: 18.sp,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              "☀️",
-              style: TextStyle(fontSize: 18.sp),
-            ),
-          ],
-        ),
-        SizedBox(height: 8.h),
-        RichText(
-          text: TextSpan(
-            style: TextStyle(
-              fontSize: 36.sp,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF2E3A59),
-            ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextSpan(text: l10n.translate('home.hello')),
-              TextSpan(
-                text: "$displayName!",
-                style: TextStyle(
-                    color: context.watch<ThemeProvider>().primaryColor),
+              Row(
+                children: [
+                  Text(
+                    greeting,
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text("☀️", style: TextStyle(fontSize: 18.sp)),
+                ],
+              ),
+              SizedBox(height: 8.h),
+              RichText(
+                text: TextSpan(
+                  style: TextStyle(
+                    fontSize: 36.sp,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF2E3A59),
+                  ),
+                  children: [
+                    TextSpan(text: l10n.translate('home.hello')),
+                    TextSpan(
+                      text: "$displayName!",
+                      style: TextStyle(color: primary),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
+        if (streak > 0)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            margin: EdgeInsets.only(top: 4.h),
+            padding:
+                EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF97316).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20.r),
+              border: Border.all(
+                  color: const Color(0xFFF97316).withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🔥', style: TextStyle(fontSize: 16)),
+                SizedBox(width: 4.w),
+                Text(
+                  l10n.translate('home.streak_days',
+                      variables: {'count': '$streak'}),
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFF97316),
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
+    );
+  }
+
+  Widget _buildGoalMetBanner(BuildContext context, AppLocalizations l10n) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFF22C55E).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+            color: const Color(0xFF22C55E).withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          const Text('🎉', style: TextStyle(fontSize: 20)),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.translate('home.goal_met'),
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF15803D),
+                  ),
+                ),
+                Text(
+                  l10n.translate('home.goal_met_sub'),
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: const Color(0xFF15803D).withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStreakMilestoneBanner(BuildContext context, int streak) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF97316).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+            color: const Color(0xFFF97316).withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          const Text('🔥', style: TextStyle(fontSize: 22)),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$streak-Day Streak Milestone!',
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.bold,
+                    color: isDark
+                        ? const Color(0xFFFB923C)
+                        : const Color(0xFFC2410C),
+                  ),
+                ),
+                Text(
+                  'You\'ve logged in $streak days in a row. Keep the fire going!',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: (isDark
+                            ? const Color(0xFFFB923C)
+                            : const Color(0xFFC2410C))
+                        .withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _streakMilestoneDismissed = true),
+            child: Icon(Icons.close,
+                size: 18,
+                color: isDark
+                    ? const Color(0xFFFB923C)
+                    : const Color(0xFFC2410C)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScanFoodButton(BuildContext context, AppLocalizations l10n) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = context.watch<ThemeProvider>().primaryColor;
+    return GestureDetector(
+      onTap: () async {
+        final messenger = ScaffoldMessenger.of(context);
+        final successText = l10n.translate('food_scan.log_success');
+        final logged = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(builder: (_) => const FoodScanScreen()),
+        );
+        if (logged == true && mounted) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(successText),
+              backgroundColor: primary,
+            ),
+          );
+        }
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+        decoration: BoxDecoration(
+          color: isDark
+              ? primary.withValues(alpha: 0.15)
+              : primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: primary.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.auto_awesome, color: primary, size: 18),
+            SizedBox(width: 8.w),
+            Text(
+              l10n.translate('food_scan.scan_btn'),
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w600,
+                color: primary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -822,6 +1072,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildSectionHeader(BuildContext context, AppLocalizations l10n,
       {bool showRegenerate = false, UserModel? user}) {
+    final primary = context.watch<ThemeProvider>().primaryColor;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -833,21 +1084,52 @@ class _HomeScreenState extends State<HomeScreen>
             color: const Color(0xFF2E3A59),
           ),
         ),
-        if (showRegenerate && user != null)
-          TextButton.icon(
-            onPressed: () => _generateWeeklyPlan(user),
-            icon: Icon(Icons.refresh,
-                size: 16.sp,
-                color: context.watch<ThemeProvider>().primaryColor),
-            label: Text(
-              l10n.translate('home.regenerate'),
-              style: TextStyle(
-                color: context.watch<ThemeProvider>().primaryColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 14.sp,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () =>
+                  Navigator.pushNamed(context, AppRoutes.nutritionAnalytics),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20.r),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.bar_chart, size: 15.sp, color: primary),
+                    SizedBox(width: 4.w),
+                    Text(
+                      l10n.translate('home.analytics_btn'),
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: primary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
+            if (showRegenerate && user != null) ...[
+              SizedBox(width: 6.w),
+              TextButton.icon(
+                onPressed: () => _generateWeeklyPlan(user),
+                icon: Icon(Icons.refresh, size: 16.sp, color: primary),
+                label: Text(
+                  l10n.translate('home.regenerate'),
+                  style: TextStyle(
+                    color: primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14.sp,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ],
     );
   }
@@ -929,6 +1211,8 @@ class _HomeScreenState extends State<HomeScreen>
 
       final isLogged = _loggedMealTypes.contains(mealType);
       final isLoggingNow = _loggingInProgress[mealType] == true;
+      final swapKey = '${_selectedDayIndex}_$mealType';
+      final isSwapping = _swapInProgress[swapKey] == true;
 
       return GestureDetector(
         onTap: () {
@@ -960,35 +1244,72 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               child: Row(
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16.r),
-                    child: Container(
-                      width: 90.w,
-                      height: 90.w,
-                      color: Colors.white.withAlpha(150),
-                      child: dish.imageUrl != null
-                          ? CachedNetworkImage(
-                              imageUrl: dish.imageUrl!,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 200,
-                              memCacheHeight: 200,
-                              placeholder: (context, url) => const Center(
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2)),
-                              errorWidget: (context, url, error) => Icon(
-                                  Icons.restaurant,
-                                  color: context
-                                      .watch<ThemeProvider>()
-                                      .primaryColor
-                                      .withValues(alpha: 0.5),
-                                  size: 30.w),
-                            )
-                          : Icon(Icons.restaurant,
-                              color: context
-                                  .watch<ThemeProvider>()
-                                  .primaryColor
-                                  .withValues(alpha: 0.3),
-                              size: 30.w),
+                  SizedBox(
+                    width: 90.w,
+                    height: 90.w,
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16.r),
+                          child: Container(
+                            width: 90.w,
+                            height: 90.w,
+                            color: Colors.white.withAlpha(150),
+                            child: dish.imageUrl != null
+                                ? CachedNetworkImage(
+                                    imageUrl: dish.imageUrl!,
+                                    fit: BoxFit.cover,
+                                    memCacheWidth: 200,
+                                    memCacheHeight: 200,
+                                    placeholder: (context, url) => const Center(
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2)),
+                                    errorWidget: (context, url, error) => Icon(
+                                        Icons.restaurant,
+                                        color: context
+                                            .watch<ThemeProvider>()
+                                            .primaryColor
+                                            .withValues(alpha: 0.5),
+                                        size: 30.w),
+                                  )
+                                : Icon(Icons.restaurant,
+                                    color: context
+                                        .watch<ThemeProvider>()
+                                        .primaryColor
+                                        .withValues(alpha: 0.3),
+                                    size: 30.w),
+                          ),
+                        ),
+                        // ── Swap button ──────────────────────────────
+                        Positioned(
+                          bottom: 4.h,
+                          right: 4.w,
+                          child: GestureDetector(
+                            onTap: isSwapping
+                                ? null
+                                : () => _showSwapSheet(
+                                    l10n, mealType, _selectedDayIndex),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 26.w,
+                              height: 26.w,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.55),
+                                shape: BoxShape.circle,
+                              ),
+                              child: isSwapping
+                                  ? Padding(
+                                      padding: EdgeInsets.all(5.r),
+                                      child: const CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white),
+                                    )
+                                  : Icon(Icons.swap_horiz,
+                                      color: Colors.white, size: 16.sp),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   SizedBox(width: 20.w),
@@ -1101,6 +1422,196 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       );
     }).toList();
+  }
+}
+
+// ── Swap bottom sheet ───────────────────────────────────────────────────────
+
+class _SwapSheet extends StatelessWidget {
+  final String mealType;
+  final List<DishModel> dishes;
+  final AppLocalizations l10n;
+  final void Function(DishModel) onSelect;
+
+  const _SwapSheet({
+    required this.mealType,
+    required this.dishes,
+    required this.l10n,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF1C2533) : Colors.white;
+    final primary = context.read<ThemeProvider>().primaryColor;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── Handle ──────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.dividerColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          // ── Title ───────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Icon(Icons.swap_horiz, color: primary, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.translate('home.swap_meal_title'),
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.onSurface,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                      Text(
+                        l10n.translate('home.swap_meal_subtitle'),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Divider(indent: 20, endIndent: 20, color: theme.dividerColor),
+          // ── Dish list ────────────────────────────────────────────────
+          dishes.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Text(
+                    'No alternatives available for $mealType.',
+                    style: TextStyle(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              : ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.55,
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    itemCount: dishes.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, i) {
+                      final dish = dishes[i];
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () => onSelect(dish),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                  color: theme.dividerColor, width: 1),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Row(
+                              children: [
+                                // Thumbnail
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: SizedBox(
+                                    width: 56,
+                                    height: 56,
+                                    child: dish.imageUrl != null
+                                        ? CachedNetworkImage(
+                                            imageUrl: dish.imageUrl!,
+                                            fit: BoxFit.cover,
+                                            memCacheWidth: 120,
+                                            errorWidget: (_, __, ___) => Icon(
+                                                Icons.restaurant,
+                                                color: primary
+                                                    .withValues(alpha: 0.4)),
+                                          )
+                                        : Icon(Icons.restaurant,
+                                            color:
+                                                primary.withValues(alpha: 0.4)),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Name + calories
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        dish.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: theme.colorScheme.onSurface,
+                                          fontFamily: 'Poppins',
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        '${dish.calories.toInt()} kcal · ${dish.protein.toInt()}g P',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.55),
+                                          fontFamily: 'Poppins',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Select arrow
+                                Icon(Icons.arrow_forward_ios,
+                                    size: 14,
+                                    color: primary.withValues(alpha: 0.7)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
   }
 }
 

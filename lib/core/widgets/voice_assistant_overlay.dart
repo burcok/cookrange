@@ -6,6 +6,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../providers/navigation_provider.dart';
 import '../localization/app_localizations.dart';
 import '../providers/theme_provider.dart';
+import '../utils/app_routes.dart';
 
 class VoiceAssistantOverlay extends StatefulWidget {
   const VoiceAssistantOverlay({super.key});
@@ -355,13 +356,16 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
   }
 
   Widget _buildSuggestions(BuildContext context) {
+    final nav = context.read<NavigationProvider>();
     final suggestions =
         AppLocalizations.of(context).translateArray('assistant.suggestions');
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: EdgeInsets.symmetric(horizontal: _scale(context, 20)),
       child: Row(
-        children: suggestions.map((s) => _suggestionChip(context, s)).toList(),
+        children: suggestions
+            .map((s) => _suggestionChip(context, s, nav))
+            .toList(),
       ),
     );
   }
@@ -395,7 +399,15 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
                   icon: Icon(Icons.send,
                       color: context.watch<ThemeProvider>().primaryColor),
                   onPressed: () {
+                    final transcript = _textController.text.trim();
                     nav.toggleVoiceAssistant(false);
+                    if (transcript.isNotEmpty) {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.aiChat,
+                        arguments: transcript,
+                      );
+                    }
                   },
                 ),
               ),
@@ -406,24 +418,31 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
     );
   }
 
-  Widget _suggestionChip(BuildContext context, String text) {
-    return Container(
-      margin: EdgeInsets.only(right: _scale(context, 10)),
-      padding: EdgeInsets.symmetric(
-        horizontal: _scale(context, 20),
-        vertical: _scale(context, 12),
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(20),
-        borderRadius: BorderRadius.circular(_scale(context, 30)),
-        border: Border.all(color: Colors.white.withAlpha(30)),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: _scale(context, 14),
-          fontWeight: FontWeight.w500,
+  Widget _suggestionChip(
+      BuildContext context, String text, NavigationProvider nav) {
+    return GestureDetector(
+      onTap: () {
+        nav.toggleVoiceAssistant(false);
+        Navigator.pushNamed(context, AppRoutes.aiChat, arguments: text);
+      },
+      child: Container(
+        margin: EdgeInsets.only(right: _scale(context, 10)),
+        padding: EdgeInsets.symmetric(
+          horizontal: _scale(context, 20),
+          vertical: _scale(context, 12),
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(20),
+          borderRadius: BorderRadius.circular(_scale(context, 30)),
+          border: Border.all(color: Colors.white.withAlpha(30)),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: _scale(context, 14),
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );

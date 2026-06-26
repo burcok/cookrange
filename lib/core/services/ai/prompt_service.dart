@@ -89,6 +89,11 @@ Return fully structured JSON matching this schema:
 }
 ''';
 
+    final allergiesStr = userProfile['allergies'] as String? ?? 'None';
+    final allergyWarning = allergiesStr != 'None'
+        ? '\n⚠️  CRITICAL ALLERGY ALERT: The user is allergic to $allergiesStr. You MUST NEVER include any dish containing these allergens. This is a strict safety requirement.'
+        : '';
+
     return '''
 Act as a professional nutritionist and personal chef. Create a 7-day weekly meal plan for a user with the following profile:
 
@@ -96,13 +101,14 @@ Profile:
 - Goal: ${userProfile['goal']}
 - Daily Calorie Target: $dailyCalorieTarget kcal
 - Dietary Restrictions: ${userProfile['restrictions']}
+- Confirmed Allergies: $allergiesStr$allergyWarning
 - Dislikes: ${userProfile['dislikes']}
 - Activity Level: ${userProfile['activity_level']}
 - Meal Frequency: 3 main meals + optional snack
 
 Task:
 Select dishes ONLY from the following list to build the plan. Do not invent new dishes. You must use the EXACT IDs provided in brackets [id].
-Ensure nutritional balance and variety. Try to use ingredients efficiently (e.g., if chicken is cooked for lunch, maybe use chicken for dinner another day, but avoid repetition in same day).
+Ensure nutritional balance and variety. Strictly honour all dietary restrictions and allergies listed above — never select a dish that conflicts with them.
 
 Available Dishes Database:
 $dishesContext

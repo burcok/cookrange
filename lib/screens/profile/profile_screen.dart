@@ -17,6 +17,7 @@ import '../../core/providers/user_provider.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/friend_service.dart';
 import '../../core/services/chat_service.dart';
+import '../../core/services/reputation_service.dart';
 import '../../core/models/chat_model.dart';
 import '../../screens/community/widgets/glass_refresher.dart';
 import '../../core/widgets/unified_action_sheet.dart';
@@ -50,6 +51,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Friend Request State (Public Mode only)
   FriendshipStatus _friendshipStatus = FriendshipStatus.none;
   int _postCount = 0;
+  ReputationData? _reputationData;
 
   late Stream<List<UserModel>> _friendsStream; // Optimization
 
@@ -81,7 +83,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .where('author.id', isEqualTo: uid)
           .count()
           .get();
-      if (mounted) setState(() => _postCount = snap.count ?? 0);
+      final count = snap.count ?? 0;
+      if (mounted) setState(() => _postCount = count);
+      _loadReputation(uid, count);
+    } catch (_) {}
+  }
+
+  Future<void> _loadReputation(String uid, int postCount) async {
+    final user = widget.viewUser ??
+        widget.viewUser ??
+        context.read<UserProvider>().user;
+    final streak = (user?.onboardingData?['streak'] as num?)?.toInt() ?? 0;
+    try {
+      final rep = await ReputationService().computeReputation(
+        uid: uid,
+        streak: streak,
+        postCount: postCount,
+      );
+      if (mounted) setState(() => _reputationData = rep);
     } catch (_) {}
   }
 
@@ -409,6 +428,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _buildAvatarSection(user, isDark, isPublic),
                       const SizedBox(height: 24),
                       _buildStatsRow(isDark),
+                      _buildStreakTierBadge(isDark),
+                      if (_reputationData != null)
+                        _buildReputationBadge(isDark),
                       const SizedBox(height: 24),
 
                       // Friends Section (Moved Above Goals)
@@ -784,6 +806,111 @@ class _ProfileScreenState extends State<ProfileScreen> {
             "${localizations.translate('profile.stats.streak')} 🔥",
             isDark),
       ],
+    );
+  }
+
+  Widget _buildStreakTierBadge(bool isDark) {
+    final streak =
+        (widget.viewUser ?? context.read<UserProvider>().user)?.onboardingData?['streak'] ?? 0;
+    final s = (streak as num).toInt();
+
+    String? emoji;
+    String? label;
+    Color? color;
+
+    if (s >= 365) {
+      emoji = '💎';
+      label = 'Diamond Flame';
+      color = const Color(0xFF7C3AED);
+    } else if (s >= 100) {
+      emoji = '🥇';
+      label = 'Gold Flame';
+      color = const Color(0xFFD97706);
+    } else if (s >= 30) {
+      emoji = '🥈';
+      label = 'Silver Flame';
+      color = const Color(0xFF6B7280);
+    } else if (s >= 7) {
+      emoji = '🥉';
+      label = 'Bronze Flame';
+      color = const Color(0xFFB45309);
+    }
+
+    if (emoji == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: color!.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 16)),
+              const SizedBox(width: 6),
+              Text(
+                label!,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReputationBadge(bool isDark) {
+    final rep = _reputationData;
+    if (rep == null) return const SizedBox.shrink();
+
+    const tierColors = {
+      ReputationTier.newcomer: Color(0xFF6B7280),
+      ReputationTier.active: Color(0xFF3B82F6),
+      ReputationTier.contributor: Color(0xFF8B5CF6),
+      ReputationTier.expert: Color(0xFFF59E0B),
+      ReputationTier.legend: Color(0xFFEC4899),
+    };
+
+    final color = tierColors[rep.tier] ?? const Color(0xFF6B7280);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Center(
+        child: Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(rep.tierEmoji,
+                  style: const TextStyle(fontSize: 16)),
+              const SizedBox(width: 6),
+              Text(
+                '${rep.tierName} · ${rep.score} pts',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

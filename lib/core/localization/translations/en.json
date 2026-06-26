@@ -120,6 +120,11 @@
       "header": "Dietary Preferences",
       "main_title": "Items you don't want in your meal plan",
       "subtitle": "Dislikes, Allergens, Diets,...",
+      "allergies_title": "Allergies & Medical Flags",
+      "allergies_subtitle": "We'll make sure these never appear in your plan",
+      "dietary_title": "Dietary Restrictions",
+      "dietary_subtitle": "Lifestyle and ethical food choices",
+      "dislikes_title": "Foods You Dislike",
       "search_hint": "Search ingredients...",
       "selected_title": "Selected Items",
       "available_title": "Available Ingredients",
@@ -127,7 +132,29 @@
       "custom_not_found": "This ingredient is not in our database. ",
       "custom_add_hint": "Click to add it to your preferences",
       "custom_add": "Add",
-      "custom_slots_remaining": "Custom ingredients remaining: "
+      "custom_slots_remaining": "Custom ingredients remaining: ",
+      "allergies": {
+        "dairy": "Dairy",
+        "eggs": "Eggs",
+        "fish": "Fish",
+        "shellfish": "Shellfish",
+        "tree_nuts": "Tree Nuts",
+        "peanuts": "Peanuts",
+        "wheat": "Wheat / Gluten",
+        "soy": "Soy",
+        "sesame": "Sesame"
+      },
+      "dietary": {
+        "vegetarian": "Vegetarian",
+        "vegan": "Vegan",
+        "gluten_free": "Gluten-Free",
+        "halal": "Halal",
+        "kosher": "Kosher",
+        "lactose_free": "Lactose-Free",
+        "low_carb": "Low-Carb",
+        "keto": "Keto",
+        "paleo": "Paleo"
+      }
     },
     "page4": {
       "header": "Kitchen Preferences",
@@ -577,7 +604,14 @@
       "badge": "Get Premium",
       "title": "Unlimited Features",
       "description": "Get ad-free experience, detailed analytics and access to special recipes.",
-      "button": "Buy Premium"
+      "button": "Buy Premium",
+      "paywall_title": "Upgrade to Premium",
+      "paywall_subtitle": "Unlock all features and get the most out of Cookrange.",
+      "upgrade_btn": "Upgrade Now",
+      "maybe_later": "Maybe later",
+      "perk_meal_plans": "Unlimited Plans",
+      "perk_ai_chat": "AI Chat",
+      "perk_analytics": "Advanced Stats"
     },
     "privacy": {
       "title": "Privacy Settings",
@@ -786,7 +820,51 @@
     "hello": "Hello ",
     "regenerate": "Regenerate",
     "mark_eaten": "Mark as Eaten",
-    "eaten": "Eaten"
+    "eaten": "Eaten",
+    "swap_meal_title": "Choose a replacement",
+    "swap_meal_subtitle": "Pick a dish to replace this meal",
+    "swap_loading": "Applying swap...",
+    "swap_done": "Meal swapped",
+    "analytics_btn": "Weekly Stats",
+    "streak_days": "{count} days",
+    "goal_met": "Daily Goal Achieved! 🎉",
+    "goal_met_sub": "You've hit your calorie target today."
+  },
+  "ai_chat": {
+    "title": "AI Nutritionist",
+    "subtitle": "Ask me anything about nutrition",
+    "input_hint": "Ask about meals, nutrition, recipes...",
+    "send": "Send",
+    "thinking": "Thinking...",
+    "ai_label": "AI",
+    "not_configured": "AI assistant is not configured yet.",
+    "banner_title": "AI Nutritionist",
+    "banner_subtitle": "Get personalized nutrition advice",
+    "suggestions": [
+      "What should I eat for breakfast?",
+      "How can I increase my protein intake?",
+      "Suggest a healthy snack for my goals.",
+      "What foods should I avoid?"
+    ]
+  },
+  "analytics": {
+    "title": "Nutrition Analytics",
+    "subtitle": "Last 7 days",
+    "consistency_score": "Consistency Score",
+    "logged_days": "{count}/7 days logged",
+    "avg_calories": "Avg. Calories",
+    "avg_protein": "Avg. Protein",
+    "avg_carbs": "Avg. Carbs",
+    "avg_fat": "Avg. Fat",
+    "weekly_chart": "Daily Calories",
+    "no_data": "No food logs yet",
+    "no_data_subtitle": "Start logging meals to see your nutrition trends.",
+    "target_line": "Target",
+    "score_great": "Great",
+    "score_good": "Good",
+    "score_needs_work": "Needs Work",
+    "kcal": "kcal",
+    "g": "g"
   },
   "assistant": {
     "how_can_i_help": "How can I help you?",
@@ -839,7 +917,9 @@
       "regional": "Regional",
       "global": "Global",
       "friends": "Friends Only",
-      "gym": "Gym"
+      "gym": "Gym",
+      "no_friends_posts": "No posts from friends yet. Connect with people to see their updates here.",
+      "no_gym_posts": "No gym posts found. Share your workout and tag it with 'gym' or 'fitness'!"
     },
     "time": {
       "min": "min ago",
@@ -853,9 +933,22 @@
       "delete": "Delete Post",
       "edit": "Edit Post",
       "report": "Report",
+      "block": "Block User",
       "share": "Share",
       "options": "Options"
     },
+    "report": {
+      "dialog_title": "Report Content",
+      "dialog_subtitle": "Select a reason for reporting this content.",
+      "reason_spam": "Spam",
+      "reason_harassment": "Harassment or bullying",
+      "reason_inappropriate": "Inappropriate content",
+      "reason_misinformation": "False information",
+      "reason_other": "Other",
+      "submitted": "Report submitted. We'll review this shortly."
+    },
+    "block_success": "User blocked.",
+    "unblock_success": "User unblocked.",
     "delete_confirm": {
       "title": "Delete Post?",
       "content": "Are you sure you want to delete this post? This action cannot be undone.",
@@ -986,12 +1079,22 @@
     "meal_share": "Share Meal",
     "meal_share_soon": "Meal Share feature coming soon!",
     "new_chat": "New Chat",
+    "new_group": "New Group",
     "no_friends": "No friends yet.",
     "no_results": "No results found.",
     "offline": "Offline",
     "online": "Online",
     "search_friend_hint": "Search friend...",
     "signal_send": "Send Signal",
+    "group": {
+      "create_title": "New Group Chat",
+      "name_hint": "Group name (e.g. Workout Buddies)",
+      "name_label": "Group Name",
+      "select_members": "Select Members",
+      "selected_count": "{count} selected",
+      "create_btn": "Create Group",
+      "no_friends": "Add some friends first to create a group."
+    },
     "unnamed_user": "Unnamed User",
     "time": {
       "days_ago": "{d}d ago",
@@ -1073,5 +1176,92 @@
       "log": "Log & Finish",
       "skip": "Skip"
     }
+  },
+  "leaderboard": {
+    "screen_title": "Leaderboard",
+    "tab_global": "Global",
+    "tab_friends": "Friends",
+    "empty": "No data yet.",
+    "empty_friends": "Add friends to see their rankings.",
+    "error": "Failed to load leaderboard."
+  },
+  "challenge": {
+    "screen_title": "Challenges",
+    "tab_active": "Active",
+    "tab_mine": "My Challenges",
+    "create_btn": "Create",
+    "empty_active": "No active challenges yet.\nBe the first to create one!",
+    "empty_mine": "You haven't joined any challenges yet.",
+    "error_loading": "Failed to load challenges.",
+    "ended": "Ended",
+    "days_left": "{days}d left",
+    "join": "Join Challenge",
+    "leave": "Leave Challenge",
+    "my_progress": "My Progress",
+    "update_progress": "Update Progress",
+    "save_progress": "Save",
+    "progress_hint": "Enter current value",
+    "leaderboard": "Participants",
+    "type": {
+      "steps": "Steps",
+      "calories": "Calories",
+      "workoutDays": "Workout Days",
+      "custom": "Custom",
+      "custom_unit": "pts"
+    },
+    "create": {
+      "title": "New Challenge",
+      "name_label": "Challenge Name",
+      "name_hint": "e.g. 10K Steps a Day",
+      "desc_label": "Description (optional)",
+      "desc_hint": "What is this challenge about?",
+      "type_label": "Challenge Type",
+      "goal_label": "Goal",
+      "goal_hint": "Target value",
+      "end_date_label": "End Date",
+      "public_label": "Public Challenge",
+      "public_subtitle": "Visible to all community members",
+      "btn": "Create Challenge"
+    }
+  },
+  "premium": {
+    "badge": "Get Premium",
+    "title": "Unlimited Features",
+    "description": "Get ad-free experience, detailed analytics and access to special recipes.",
+    "button": "Buy Premium",
+    "paywall_title": "Upgrade to Premium",
+    "paywall_subtitle": "Unlock all features and get the most out of Cookrange.",
+    "upgrade_btn": "Upgrade Now",
+    "maybe_later": "Maybe later",
+    "perk_meal_plans": "Unlimited Plans",
+    "perk_ai_chat": "AI Chat",
+    "perk_analytics": "Advanced Stats"
+  },
+  "billing": {
+    "monthly": "Monthly",
+    "yearly": "Yearly (Best Value)",
+    "restore": "Restore Purchases",
+    "unavailable": "In-app purchases are not available on this device."
+  },
+  "food_scan": {
+    "title": "Analyze Food",
+    "subtitle": "Describe what you ate and let AI estimate the nutritional values.",
+    "scan_btn": "Analyze Food with AI",
+    "input_hint": "e.g. 2 boiled eggs with 1 slice of whole wheat toast and a glass of milk",
+    "analyze_btn": "Analyze",
+    "analyzing": "Analyzing...",
+    "not_configured": "AI is not configured. Nutrition analysis requires an AI API key.",
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "fat": "Fat",
+    "meal_type_label": "Log as",
+    "meal": {
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "dinner": "Dinner",
+      "snack": "Snack"
+    },
+    "log_btn": "Log this meal",
+    "log_success": "Meal logged successfully!"
   }
 }

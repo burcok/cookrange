@@ -36,8 +36,7 @@ class BanCheckNavigatorObserver extends NavigatorObserver {
     // To be safe, we might want forceRefresh: true on critical paths or
     // just rely on the fact that we are calling it frequently.
 
-    final status =
-        await AdminStatusService().checkStatus(userId, forceRefresh: false);
+    final status = await AdminStatusService().checkStatus(userId);
 
     if (status == AdminStatus.banned) {
       // Find the RouteGuard state to trigger the banned screen,

@@ -11,4 +11,6 @@ class AppRoutes {
   static const String chatDetail = '/chat_detail';
   static const String forgotPassword = '/forgot_password';
   static const String resetPassword = '/reset_password';
+  static const String nutritionAnalytics = '/nutrition_analytics';
+  static const String aiChat = '/ai_chat';
 }

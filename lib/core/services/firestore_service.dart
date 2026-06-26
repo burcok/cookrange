@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'log_service.dart';
+import 'notification_service.dart';
+import '../models/notification_model.dart';
 import '../models/user_profile_model.dart';
 import '../models/user_model.dart';
 import '../models/user_logs_model.dart';
@@ -173,6 +175,7 @@ class FirestoreService {
             if (difference == 1) {
               // Consecutive day
               currentStreak++;
+              _maybeSendStreakMilestone(user.uid, currentStreak);
             } else if (difference > 1) {
               // Missed a day or more
               currentStreak = 1;
@@ -223,6 +226,20 @@ class FirestoreService {
       _log.error('Error handling user login for ${user.uid}',
           service: _serviceName, error: e, stackTrace: s);
     }
+  }
+
+  static const List<int> _streakMilestones = [7, 14, 30, 60, 100, 365];
+
+  void _maybeSendStreakMilestone(String uid, int streak) {
+    if (!_streakMilestones.contains(streak)) return;
+    final ns = NotificationService();
+    ns.sendNotification(
+      targetUserId: uid,
+      title: '🔥 $streak-Day Streak!',
+      body: 'Amazing! You\'ve logged in $streak days in a row. Keep it up!',
+      type: NotificationType.system,
+      relatedId: 'streak_$streak',
+    );
   }
 
   /// Creates a user document during the initial registration process.

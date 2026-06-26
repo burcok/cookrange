@@ -103,10 +103,10 @@ class DishSeederService {
             }
           }
 
-          // Try queries in order
+          // Try queries in order; pass dish ID as seed for stable results
           for (final q in queries.toSet()) {
             if (q.isEmpty || q.length < 3) continue;
-            imageUrl = await _imageService.fetchDishImage(q);
+            imageUrl = await _imageService.fetchDishImage(q, seed: id);
             if (imageUrl != null) break;
           }
 

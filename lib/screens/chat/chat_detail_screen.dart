@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
@@ -7,8 +8,10 @@ import 'package:cookrange/core/models/message_model.dart';
 import 'package:cookrange/core/services/chat_service.dart';
 import 'package:cookrange/core/services/firestore_service.dart';
 import 'package:cookrange/core/models/user_model.dart';
+import 'package:cookrange/core/services/storage_upload_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final ChatModel chat;
@@ -25,6 +28,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final ChatService _chatService = ChatService();
   final String _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
   Timer? _typingDebounce;
+  bool _isUploadingImage = false;
 
   Stream<List<MessageModel>>? _messageStream;
   Stream<DocumentSnapshot>? _otherUserStream;
@@ -93,6 +97,39 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
+    }
+  }
+
+  Future<void> _pickAndSendImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null || !mounted) return;
+
+    setState(() => _isUploadingImage = true);
+    try {
+      final url = await StorageUploadService().uploadChatImage(
+        userId: _currentUserId,
+        imageFile: File(picked.path),
+      );
+      if (!mounted) return;
+      await _chatService.sendMessage(
+        chatId: widget.chat.id,
+        senderId: _currentUserId,
+        text: url,
+        type: MessageType.image,
+      );
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(0,
+            duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingImage = false);
     }
   }
 
@@ -337,6 +374,47 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           }
                         }
 
+                        final br = BorderRadius.circular(20).copyWith(
+                          bottomRight: isMe
+                              ? const Radius.circular(0)
+                              : const Radius.circular(20),
+                          bottomLeft: isMe
+                              ? const Radius.circular(20)
+                              : const Radius.circular(0),
+                        );
+                        final isImage =
+                            message.type == MessageType.image;
+                        final timestampWidget = Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "${message.timestamp.hour}:${message.timestamp.minute.toString().padLeft(2, '0')}",
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isImage
+                                    ? Colors.white
+                                    : (isMe
+                                        ? Colors.white
+                                            .withValues(alpha: 0.7)
+                                        : Colors.grey),
+                              ),
+                            ),
+                            if (isMe) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                message.isRead
+                                    ? Icons.done_all
+                                    : Icons.done,
+                                size: 14,
+                                color: message.isRead
+                                    ? Colors.blue.shade100
+                                    : Colors.white
+                                        .withValues(alpha: 0.7),
+                              ),
+                            ],
+                          ],
+                        );
+
                         return Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -347,79 +425,109 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   ? Alignment.centerRight
                                   : Alignment.centerLeft,
                               child: Container(
-                                margin: const EdgeInsets.symmetric(vertical: 4),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 10),
+                                margin: const EdgeInsets.symmetric(
+                                    vertical: 4),
+                                constraints: const BoxConstraints(
+                                    maxWidth: 240),
                                 decoration: BoxDecoration(
-                                  color: isMe
-                                      ? theme.primaryColor
-                                      : (isDark
-                                          ? const Color(0xFF374151)
-                                          : Colors.white),
-                                  borderRadius:
-                                      BorderRadius.circular(20).copyWith(
-                                    bottomRight: isMe
-                                        ? const Radius.circular(0)
-                                        : const Radius.circular(20),
-                                    bottomLeft: isMe
-                                        ? const Radius.circular(20)
-                                        : const Radius.circular(0),
-                                  ),
+                                  color: isImage
+                                      ? null
+                                      : (isMe
+                                          ? theme.primaryColor
+                                          : (isDark
+                                              ? const Color(0xFF374151)
+                                              : Colors.white)),
+                                  borderRadius: br,
                                   boxShadow: [
                                     BoxShadow(
-                                      color:
-                                          Colors.black.withValues(alpha: 0.05),
+                                      color: Colors.black
+                                          .withValues(alpha: 0.05),
                                       blurRadius: 4,
                                       offset: const Offset(0, 2),
                                     ),
                                   ],
                                 ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      message.text,
-                                      style: TextStyle(
-                                        color: isMe
-                                            ? Colors.white
-                                            : (isDark
-                                                ? Colors.white
-                                                : Colors.black87),
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          "${message.timestamp.hour}:${message.timestamp.minute.toString().padLeft(2, '0')}",
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: isMe
-                                                ? Colors.white
-                                                    .withValues(alpha: 0.7)
-                                                : Colors.grey,
-                                          ),
+                                child: isImage
+                                    ? ClipRRect(
+                                        borderRadius: br,
+                                        child: Stack(
+                                          children: [
+                                            Image.network(
+                                              message.text,
+                                              fit: BoxFit.cover,
+                                              width: 240,
+                                              loadingBuilder:
+                                                  (ctx, child,
+                                                      progress) =>
+                                                      progress == null
+                                                          ? child
+                                                          : const SizedBox(
+                                                              width: 240,
+                                                              height: 180,
+                                                              child: Center(
+                                                                child:
+                                                                    CircularProgressIndicator(),
+                                                              ),
+                                                            ),
+                                              errorBuilder:
+                                                  (ctx, err, st) =>
+                                                      const SizedBox(
+                                                        width: 240,
+                                                        height: 180,
+                                                        child: Center(
+                                                          child: Icon(
+                                                              Icons
+                                                                  .broken_image,
+                                                              color: Colors
+                                                                  .grey),
+                                                        ),
+                                                      ),
+                                            ),
+                                            Positioned(
+                                              bottom: 6,
+                                              right: 8,
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.black54,
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          10),
+                                                ),
+                                                child: timestampWidget,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        if (isMe) ...[
-                                          const SizedBox(width: 4),
-                                          Icon(
-                                            message.isRead
-                                                ? Icons.done_all
-                                                : Icons.done,
-                                            size: 14,
-                                            color: message.isRead
-                                                ? Colors.blue.shade100
-                                                : Colors.white
-                                                    .withValues(alpha: 0.7),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                      )
+                                    : Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 10),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              message.text,
+                                              style: TextStyle(
+                                                color: isMe
+                                                    ? Colors.white
+                                                    : (isDark
+                                                        ? Colors.white
+                                                        : Colors.black87),
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            timestampWidget,
+                                          ],
+                                        ),
+                                      ),
                               ),
                             ),
                           ],
@@ -508,11 +616,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 ),
                 child: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
-                      color: Colors.grey,
-                      onPressed: () {},
-                    ),
+                    _isUploadingImage
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : IconButton(
+                            icon: const Icon(Icons.add_circle_outline),
+                            color: Colors.grey,
+                            onPressed: _pickAndSendImage,
+                          ),
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(

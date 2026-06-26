@@ -64,7 +64,8 @@ class _GlassPostCardState extends State<GlassPostCard> {
 
   void _showPostOptions(BuildContext context) {
     final appLoc = AppLocalizations.of(context);
-    final isOwner = _post.author.id == CommunityService().currentUserId;
+    final service = CommunityService();
+    final isOwner = _post.author.id == service.currentUserId;
 
     showUnifiedActionSheet(
       context: context,
@@ -75,19 +76,27 @@ class _GlassPostCardState extends State<GlassPostCard> {
           icon: Icons.share_outlined,
           onTap: widget.onShare,
         ),
-        ActionSheetItem(
-          label: appLoc.translate('community.menu.report'),
-          icon: Icons.report_gmailerrorred,
-          isDestructive: true,
-          onTap: () {
-            CommunityService().reportPost(_post.id, "Inappropriate content");
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text(appLoc.translate('community.report_success',
-                      variables: {'type': 'Post'}))),
-            );
-          },
-        ),
+        if (!isOwner) ...[
+          ActionSheetItem(
+            label: appLoc.translate('community.menu.report'),
+            icon: Icons.report_gmailerrorred,
+            isDestructive: true,
+            onTap: () => _showReportSheet(context, service),
+          ),
+          ActionSheetItem(
+            label: appLoc.translate('community.menu.block'),
+            icon: Icons.block,
+            isDestructive: true,
+            onTap: () async {
+              await service.blockUser(_post.author.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(
+                        appLoc.translate('community.block_success'))));
+              }
+            },
+          ),
+        ],
         if (isOwner)
           ActionSheetItem(
             label: appLoc.translate('community.menu.delete'),
@@ -96,6 +105,120 @@ class _GlassPostCardState extends State<GlassPostCard> {
             onTap: () => _showDeleteDialog(context, _post.id),
           ),
       ],
+    );
+  }
+
+  void _showReportSheet(BuildContext context, CommunityService service) {
+    final l10n = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final reasons = [
+      ('spam', l10n.translate('community.report.reason_spam')),
+      ('harassment', l10n.translate('community.report.reason_harassment')),
+      ('inappropriate', l10n.translate('community.report.reason_inappropriate')),
+      ('misinformation', l10n.translate('community.report.reason_misinformation')),
+      ('other', l10n.translate('community.report.reason_other')),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        String? selectedReason;
+        bool submitting = false;
+
+        return StatefulBuilder(builder: (context, setModal) {
+          return Container(
+            padding: EdgeInsets.fromLTRB(
+                24, 12, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1C2333) : Colors.white,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Text(
+                  l10n.translate('community.report.dialog_title'),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.translate('community.report.dialog_subtitle'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white54 : Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...reasons.map((r) => RadioListTile<String>(
+                      value: r.$1,
+                      groupValue: selectedReason,
+                      onChanged: (v) => setModal(() => selectedReason = v),
+                      title: Text(r.$2,
+                          style: TextStyle(
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A))),
+                      activeColor: Colors.red,
+                      contentPadding: EdgeInsets.zero,
+                    )),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: (selectedReason == null || submitting)
+                        ? null
+                        : () async {
+                            setModal(() => submitting = true);
+                            await service.reportPost(_post.id, selectedReason!);
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(l10n.translate(
+                                          'community.report.submitted'))));
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: submitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2))
+                        : Text(l10n.translate('post.submit')),
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
     );
   }
 

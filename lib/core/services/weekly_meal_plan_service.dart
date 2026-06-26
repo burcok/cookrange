@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import '../models/weekly_meal_plan_model.dart';
 import '../models/user_model.dart';
-
+import '../models/user_nutrition_profile.dart';
 import '../utils/calorie_calculator.dart';
 import 'dish_service.dart';
 import 'ai/ai_service.dart';
@@ -74,8 +74,9 @@ class WeeklyMealPlanService {
         if ((await _dishService.getAllDishes()).isEmpty) return null;
       }
 
-      final userProfile = _extractUserProfile(user);
-      final tdee = _calculateUserCalories(user, userProfile);
+      final nutritionProfile = user.profile;
+      final userProfile = _extractUserProfile(nutritionProfile);
+      final tdee = _calculateUserCalories(nutritionProfile);
 
       // 2. Create Prompt
       final prompt = _promptService.generateWeeklyMealPlanPrompt(
@@ -170,44 +171,91 @@ class WeeklyMealPlanService {
     }
   }
 
-  Map<String, dynamic> _extractUserProfile(UserModel user) {
-    final data = user.onboardingData ?? {};
-    // Safely extract fields, providing defaults
+  /// Replaces a single meal in the stored plan without regenerating the whole week.
+  Future<WeeklyMealPlanModel?> swapMeal({
+    required String userId,
+    required DateTime dayDate,
+    required String mealType,
+    required String newDishId,
+  }) async {
+    try {
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('meal_plans')
+          .doc('current');
+      final doc = await docRef.get();
+      if (!doc.exists) return null;
+
+      final plan = WeeklyMealPlanModel.fromFirestore(doc);
+      final updatedDays = plan.days.map((d) {
+        final sameDay = d.date.year == dayDate.year &&
+            d.date.month == dayDate.month &&
+            d.date.day == dayDate.day;
+        if (!sameDay) return d;
+        final newMeals = Map<String, String>.from(d.meals);
+        newMeals[mealType] = newDishId;
+        return DayMealPlan(
+          date: d.date,
+          dayName: d.dayName,
+          meals: newMeals,
+          totalCalories: d.totalCalories,
+          macros: d.macros,
+        );
+      }).toList();
+
+      final updatedPlan = WeeklyMealPlanModel(
+        id: plan.id,
+        userId: plan.userId,
+        weekStartDate: plan.weekStartDate,
+        days: updatedDays,
+        totalCalories: plan.totalCalories,
+        avgDailyCalories: plan.avgDailyCalories,
+        avgMacros: plan.avgMacros,
+        createdAt: plan.createdAt,
+        expiresAt: plan.expiresAt,
+        generationPromptHash: plan.generationPromptHash,
+      );
+
+      await docRef.update({
+        'days': updatedDays
+            .map((d) => {
+                  'date': d.date.toIso8601String(),
+                  'day_name': d.dayName,
+                  'meals': d.meals,
+                  'total_calories': d.totalCalories,
+                  'macros': d.macros,
+                })
+            .toList(),
+      });
+
+      return updatedPlan;
+    } catch (e) {
+      print('WeeklyMealPlanService.swapMeal error: $e');
+      return null;
+    }
+  }
+
+  Map<String, dynamic> _extractUserProfile(UserNutritionProfile p) {
+    final restrictions = [...p.dietaryRestrictionIds, ...p.allergyIds];
     return {
-      'goal': _safeGet(data, 'primary_goals', 'maintain_weight'),
-      'activity_level': _safeGet(data, 'activity_level', 'sedentary'),
-      'restrictions': 'None', // Extract from data if available
-      'dislikes': (data['disliked_foods'] as List?)
-              ?.map((e) => e.toString())
-              .join(', ') ??
-          'None',
+      'goal': p.primaryGoals.isNotEmpty ? p.primaryGoals.first : 'maintain_weight',
+      'activity_level': p.activityLevel,
+      'restrictions': restrictions.isNotEmpty ? restrictions.join(', ') : 'None',
+      'allergies': p.allergyIds.isNotEmpty ? p.allergyIds.join(', ') : 'None',
+      'dislikes': p.dislikedFoodKeys.isNotEmpty
+          ? p.dislikedFoodKeys.join(', ')
+          : 'None',
     };
   }
 
-  String _safeGet(Map data, String key, String defaultVal) {
-    if (data[key] == null) return defaultVal;
-    if (data[key] is String) return data[key];
-    if (data[key] is Map) return data[key]['value'] ?? defaultVal;
-    return defaultVal;
-  }
-
-  double _calculateUserCalories(UserModel user, Map<String, dynamic> profile) {
-    // Reuse CalorieCalculator logic here or approximate
-    // Since CalorieCalculator requires specific types, we might need parsing.
-    // For brevity, using a safe default or simple logic if CalorieCalculator is complex to instantiate.
-    // Assuming CalorieCalculator has static methods:
-
-    final data = user.onboardingData?['personal_info'];
-    if (data == null) return 2000.0;
-
-    final height = (data['height'] as num?)?.toDouble() ?? 170;
-    final weight = (data['weight'] as num?)?.toDouble() ?? 70;
-    final ageDate = DateTime.tryParse(data['birth_date']?.toString() ?? '') ??
-        DateTime(1990);
-    final age = DateTime.now().year - ageDate.year;
-    final gender = data['gender']?.toString() ?? 'Male';
-    final activity = profile['activity_level'].toString();
-    final goal = profile['goal'].toString();
+  double _calculateUserCalories(UserNutritionProfile p) {
+    final height = p.heightCm?.toDouble() ?? 170;
+    final weight = p.weightKg?.toDouble() ?? 70;
+    final age = p.age ?? 30;
+    final gender = p.gender ?? 'Male';
+    final activity = p.activityLevel;
+    final goal = p.primaryGoals.isNotEmpty ? p.primaryGoals.first : 'maintain_weight';
 
     final bmr = CalorieCalculator.calculateBMR(
         weight: weight, height: height, age: age, gender: gender);
@@ -217,10 +265,9 @@ class WeeklyMealPlanService {
   }
 
   String _generateProfileHash(UserModel user) {
-    // Generate a hash based on critical logic fields to detect changes
-    final data = user.onboardingData ?? {};
+    final p = user.profile;
     final rawString =
-        '${data['primary_goals']}-${data['activity_level']}-${data['disliked_foods']}';
+        '${p.primaryGoals}-${p.activityLevel}-${p.dislikedFoodKeys}-${p.allergyIds}-${p.dietaryRestrictionIds}';
     return md5.convert(utf8.encode(rawString)).toString();
   }
 }

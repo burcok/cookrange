@@ -101,12 +101,17 @@ class FriendService {
       final friendIds = snapshot.docs.map((doc) => doc.id).toList();
       if (friendIds.isEmpty) return [];
 
-      final List<UserModel> friends = [];
-      // Chunking if needed, but for now simple loop for reliability
-      for (final fid in friendIds) {
-        final userDoc = await _firestore.collection('users').doc(fid).get();
-        if (userDoc.exists) {
-          friends.add(UserModel.fromFirestore(userDoc));
+      // Batch fetch in chunks of 30 (Firestore whereIn limit)
+      final friends = <UserModel>[];
+      for (var i = 0; i < friendIds.length; i += 30) {
+        final chunk = friendIds.sublist(
+            i, i + 30 > friendIds.length ? friendIds.length : i + 30);
+        final snap = await _firestore
+            .collection('users')
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+        for (final doc in snap.docs) {
+          friends.add(UserModel.fromFirestore(doc));
         }
       }
       return friends;
@@ -290,6 +295,23 @@ class FriendService {
         .collection('friends')
         .doc(uid)
         .delete();
+  }
+
+  /// Returns just the UIDs of the current user's friends (lightweight).
+  Future<List<String>> getFriendIds() async {
+    final uid = currentUserId;
+    if (uid == null) return [];
+    try {
+      final snap = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('friends')
+          .get();
+      return snap.docs.map((d) => d.id).toList();
+    } catch (e) {
+      debugPrint('getFriendIds error: $e');
+      return [];
+    }
   }
 
   /// Preload friends to warm up cache

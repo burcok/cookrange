@@ -1,5 +1,6 @@
 import '../models/dish_model.dart';
 import '../models/food_log_model.dart';
+import '../models/ingredient_model.dart';
 import '../models/weekly_meal_plan_model.dart';
 
 /// Static dummy data for Test Mode — max volume stress-test scenarios.
@@ -165,6 +166,67 @@ class TestDataLibrary {
         ),
     ];
   }
+
+  /// Synthetic weekly food logs for analytics screen in test mode.
+  static Map<String, List<FoodLog>> weeklyFoodLogs(
+      String uid, DateTime start, DateTime end) {
+    final result = <String, List<FoodLog>>{};
+    final cals = [1800.0, 2100.0, 0.0, 1950.0, 2200.0, 1700.0, 2050.0];
+    final proteins = [120.0, 140.0, 0.0, 130.0, 150.0, 110.0, 135.0];
+    final carbs = [200.0, 230.0, 0.0, 210.0, 240.0, 190.0, 220.0];
+    final fats = [60.0, 70.0, 0.0, 65.0, 75.0, 55.0, 68.0];
+    int i = 0;
+    for (var d = start; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
+      final key =
+          '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      final idx = i % cals.length;
+      if (cals[idx] == 0) {
+        result[key] = [];
+      } else {
+        result[key] = [
+          FoodLog(
+            id: 'test_weekly_${key}_1',
+            userId: uid,
+            mealType: 'breakfast',
+            dishId: 'test_dish',
+            dishName: 'Test Meal',
+            calories: cals[idx],
+            protein: proteins[idx],
+            carbs: carbs[idx],
+            fat: fats[idx],
+            loggedAt: d,
+            date: key,
+          ),
+        ];
+      }
+      i++;
+    }
+    return result;
+  }
+
+  /// 20-item shopping list — stress-tests list rendering and grouping.
+  static List<Ingredient> shoppingList() => const [
+        Ingredient(name: 'Yumurta', amount: 12, unit: 'adet', calories: 72),
+        Ingredient(name: 'Domates', amount: 500, unit: 'g', calories: 90),
+        Ingredient(name: 'Ispanak', amount: 200, unit: 'g', calories: 46),
+        Ingredient(name: 'Avokado', amount: 3, unit: 'adet', calories: 160),
+        Ingredient(name: 'Tavuk Göğsü', amount: 800, unit: 'g', calories: 165),
+        Ingredient(name: 'Somon Fileto', amount: 600, unit: 'g', calories: 208),
+        Ingredient(name: 'Kinoa', amount: 300, unit: 'g', calories: 368),
+        Ingredient(name: 'Yulaf Ezmesi', amount: 500, unit: 'g', calories: 389),
+        Ingredient(name: 'Muz', amount: 4, unit: 'adet', calories: 89),
+        Ingredient(name: 'Fıstık Ezmesi', amount: 250, unit: 'g', calories: 588),
+        Ingredient(name: 'Nohut', amount: 400, unit: 'g', calories: 364),
+        Ingredient(name: 'Granola', amount: 300, unit: 'g', calories: 471),
+        Ingredient(name: 'Tam Tahıllı Ekmek', amount: 1, unit: 'somun', calories: 265),
+        Ingredient(name: 'Biber (Karışık)', amount: 300, unit: 'g', calories: 31),
+        Ingredient(name: 'Zeytinyağı', amount: 250, unit: 'ml', calories: 884),
+        Ingredient(name: 'Dana Kıyma', amount: 500, unit: 'g', calories: 254),
+        Ingredient(name: 'Bulgur', amount: 400, unit: 'g', calories: 342),
+        Ingredient(name: 'Ton Balığı (Konserve)', amount: 4, unit: 'kutu', calories: 128),
+        Ingredient(name: 'Yunan Yoğurdu', amount: 500, unit: 'g', calories: 97),
+        Ingredient(name: 'Limon', amount: 4, unit: 'adet', calories: 29),
+      ];
 
   // --- Private helpers ---
 

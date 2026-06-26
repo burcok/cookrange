@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:provider/provider.dart';
 import 'package:cookrange/core/providers/user_provider.dart';
@@ -23,6 +24,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   CommunityPost? _post;
   List<CommunityComment> _comments = [];
   bool _isLoading = true;
+  StreamSubscription<List<CommunityComment>>? _commentsSub;
   final PageController _pageController = PageController();
   int _currentImageIndex = 0;
   final TextEditingController _commentController = TextEditingController();
@@ -50,6 +52,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   @override
   void dispose() {
+    _commentsSub?.cancel();
     _pageController.dispose();
     _commentController.dispose();
     _editCommentController.dispose();
@@ -250,13 +253,25 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                             color: isDark
                                                 ? Colors.white
                                                 : const Color(0xFF0F172A)),
-                                        onSelected: (value) {
+                                        onSelected: (value) async {
                                           if (value == 'report') {
                                             _showReportDialog(context);
-                                          } else if (value == 'share')
+                                          } else if (value == 'share') {
                                             _sharePost();
-                                          else if (value == 'delete')
+                                          } else if (value == 'delete') {
                                             _showDeleteDialog(context);
+                                          } else if (value == 'block' &&
+                                              _post != null) {
+                                            await _service.blockUser(
+                                                _post!.author.id);
+                                            if (context.mounted) {
+                                              Navigator.pop(context);
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(SnackBar(
+                                                      content: Text(appLoc.translate(
+                                                          'community.block_success'))));
+                                            }
+                                          }
                                         },
                                         shape: RoundedRectangleBorder(
                                             borderRadius:
@@ -271,20 +286,37 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                 Text(appLoc.translate(
                                                     'community.menu.share'))
                                               ])),
-                                          PopupMenuItem(
-                                              value: 'report',
-                                              child: Row(children: [
-                                                const Icon(
-                                                    Icons.report_gmailerrorred,
-                                                    size: 20,
-                                                    color: Colors.red),
-                                                const SizedBox(width: 12),
-                                                Text(
-                                                    appLoc.translate(
-                                                        'community.menu.report'),
-                                                    style: const TextStyle(
-                                                        color: Colors.red))
-                                              ])),
+                                          if (_post != null &&
+                                              _post!.author.id !=
+                                                  _service.currentUserId) ...[
+                                            PopupMenuItem(
+                                                value: 'report',
+                                                child: Row(children: [
+                                                  const Icon(
+                                                      Icons.report_gmailerrorred,
+                                                      size: 20,
+                                                      color: Colors.red),
+                                                  const SizedBox(width: 12),
+                                                  Text(
+                                                      appLoc.translate(
+                                                          'community.menu.report'),
+                                                      style: const TextStyle(
+                                                          color: Colors.red))
+                                                ])),
+                                            PopupMenuItem(
+                                                value: 'block',
+                                                child: Row(children: [
+                                                  const Icon(Icons.block,
+                                                      size: 20,
+                                                      color: Colors.red),
+                                                  const SizedBox(width: 12),
+                                                  Text(
+                                                      appLoc.translate(
+                                                          'community.menu.block'),
+                                                      style: const TextStyle(
+                                                          color: Colors.red))
+                                                ])),
+                                          ],
                                           if (_post != null &&
                                               _post!.author.id ==
                                                   _service.currentUserId)
@@ -941,16 +973,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         }
                         if (val == 'delete') _onDeleteComment(comment.id);
                         if (val == 'report') {
-                          await _service.reportComment(widget.postId,
-                              comment.id, "Inappropriate content");
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(AppLocalizations.of(context)
-                                      .translate('community.report_success',
-                                          variables: {'type': 'Comment'}))),
-                            );
-                          }
+                          _showReportDialog(context,
+                              commentId: comment.id);
                         }
                       },
                       itemBuilder: (ctx) {
@@ -1261,11 +1285,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Future<void> _loadData() async {
     try {
       final post = await _service.getPostDetails(widget.postId);
-      final comments = await _service.getComments(widget.postId);
       if (mounted) {
         setState(() {
           _post = post;
-          _comments = comments;
           _isLoading = false;
         });
       }
@@ -1273,6 +1295,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       if (mounted) setState(() => _isLoading = false);
       debugPrint("Error loading post details: $e");
     }
+
+    // Subscribe to real-time comments stream
+    _commentsSub?.cancel();
+    _commentsSub = _service.commentsStream(widget.postId).listen((comments) {
+      if (mounted) setState(() => _comments = comments);
+    });
   }
 
   void _sharePost() {
@@ -1281,25 +1309,120 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             Text(AppLocalizations.of(context).translate('post.link_copied'))));
   }
 
-  void _showReportDialog(BuildContext context) {
-    showDialog(
+  void _showReportDialog(BuildContext context, {String? commentId}) {
+    final l10n = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final reasons = [
+      ('spam', l10n.translate('community.report.reason_spam')),
+      ('harassment', l10n.translate('community.report.reason_harassment')),
+      ('inappropriate', l10n.translate('community.report.reason_inappropriate')),
+      ('misinformation', l10n.translate('community.report.reason_misinformation')),
+      ('other', l10n.translate('community.report.reason_other')),
+    ];
+
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title:
-            Text(AppLocalizations.of(context).translate('post.report_title')),
-        content: Text(
-            AppLocalizations.of(context).translate('post.report_reason_hint')),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                  AppLocalizations.of(context).translate('common.cancel'))),
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child:
-                  Text(AppLocalizations.of(context).translate('post.submit'))),
-        ],
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        String? selectedReason;
+        bool submitting = false;
+
+        return StatefulBuilder(builder: (context, setModal) {
+          return Container(
+            padding: EdgeInsets.fromLTRB(
+                24, 12, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1C2333) : Colors.white,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.black12,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Text(
+                  l10n.translate('community.report.dialog_title'),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.translate('community.report.dialog_subtitle'),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white54 : Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ...reasons.map((r) => RadioListTile<String>(
+                      value: r.$1,
+                      groupValue: selectedReason,
+                      onChanged: (v) => setModal(() => selectedReason = v),
+                      title: Text(r.$2,
+                          style: TextStyle(
+                              color: isDark ? Colors.white : const Color(0xFF0F172A))),
+                      activeColor: Colors.red,
+                      contentPadding: EdgeInsets.zero,
+                    )),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: (selectedReason == null || submitting)
+                        ? null
+                        : () async {
+                            setModal(() => submitting = true);
+                            if (commentId != null) {
+                              await _service.reportComment(
+                                  widget.postId, commentId, selectedReason!);
+                            } else {
+                              await _service.reportPost(
+                                  widget.postId, selectedReason!);
+                            }
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: Text(
+                                      l10n.translate('community.report.submitted'))));
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: submitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2))
+                        : Text(l10n.translate('post.submit')),
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
     );
   }
 

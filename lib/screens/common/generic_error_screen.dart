@@ -56,7 +56,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
   Future<void> _handleContactSupport() async {
     final localizations = AppLocalizations.of(context);
     final isTr = localizations.locale.languageCode == 'tr';
-    final email = isTr ? 'destek@cookrange.com' : 'help@cookrange.com';
+    final email = isTr ? 'destek@cookrangeapp.com' : 'help@cookrangeapp.com';
     final code = widget.errorCode ?? '500-UNK';
 
     final Uri emailLaunchUri = Uri(
@@ -295,7 +295,9 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
+    final _loc = AppLocalizations.maybeOf(context);
+    String tl(String key, {Map<String, String>? variables}) =>
+        _loc?.translate(key, variables: variables) ?? key;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).primaryColor;
     const bgLight = Color(0xFFF8FAFC);
@@ -360,7 +362,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                                 isDark ? Colors.grey[300] : Colors.grey[600]),
                       ),
                       Text(
-                        localizations.translate('generic_error.title_header'),
+                        tl('generic_error.title_header'),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -433,8 +435,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                                 ),
                                 const SizedBox(height: 24),
                                 Text(
-                                  localizations
-                                      .translate('generic_error.title_main'),
+                                  tl('generic_error.title_main'),
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
@@ -446,8 +447,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  localizations
-                                      .translate('generic_error.description'),
+                                  tl('generic_error.description'),
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 14,
@@ -481,9 +481,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                                         const Icon(Icons.refresh_rounded,
                                             size: 24),
                                         const SizedBox(width: 8),
-                                        Text(
-                                            localizations.translate(
-                                                'generic_error.button_retry'),
+                                        Text(tl('generic_error.button_retry'),
                                             style: const TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w600)),
@@ -508,9 +506,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                                                     ? Colors.grey[200]
                                                     : Colors.grey[700]),
                                             const SizedBox(width: 8),
-                                            Text(
-                                                localizations.translate(
-                                                    'generic_error.button_contact'),
+                                            Text(tl('generic_error.button_contact'),
                                                 style: TextStyle(
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.w500,
@@ -528,8 +524,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                             child: Padding(
                               padding: const EdgeInsets.only(left: 8.0),
                               child: Text(
-                                localizations
-                                    .translate('generic_error.resources_title'),
+                                tl('generic_error.resources_title'),
                                 style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -541,10 +536,9 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                           ),
                           const SizedBox(height: 16),
                           _ResourceCard(
-                            title: localizations.translate(
-                                'generic_error.resource_system_status'),
-                            subtitle: localizations.translate(
-                                'generic_error.resource_system_status_desc'),
+                            title: tl('generic_error.resource_system_status'),
+                            subtitle:
+                                tl('generic_error.resource_system_status_desc'),
                             icon: Icons.dns_rounded,
                             iconColor: Colors.purple,
                             iconBgColor: const Color(0xFFFAF5FF), // Purple 50
@@ -554,10 +548,9 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                           ),
                           const SizedBox(height: 12),
                           _ResourceCard(
-                            title: localizations.translate(
-                                'generic_error.resource_troubleshoot'),
-                            subtitle: localizations.translate(
-                                'generic_error.resource_troubleshoot_desc'),
+                            title: tl('generic_error.resource_troubleshoot'),
+                            subtitle:
+                                tl('generic_error.resource_troubleshoot_desc'),
                             icon: Icons.help_outline_rounded,
                             iconColor: Colors.cyan,
                             iconBgColor: const Color(0xFFECFEFF), // Cyan 50
@@ -573,7 +566,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                 Padding(
                   padding: const EdgeInsets.only(bottom: 24.0, top: 16),
                   child: Text(
-                    localizations.translate('generic_error.footer_code',
+                    tl('generic_error.footer_code',
                         variables: {'code': widget.errorCode ?? '500-UNK'}),
                     style: TextStyle(
                         fontSize: 12,

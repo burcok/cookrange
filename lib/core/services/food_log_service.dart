@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/food_log_model.dart';
 import '../models/dish_model.dart';
 import '../models/recipe_model.dart';
+import 'food_analysis_service.dart';
 
 /// Manages food/meal logging for a user.
 /// Collection: users/{uid}/food_logs/{logId}
@@ -63,6 +64,27 @@ class FoodLogService {
     });
   }
 
+  /// Log an AI-analyzed food description as a meal entry.
+  Future<void> logScannedFood({
+    required String userId,
+    required String mealType,
+    required NutritionEstimate estimate,
+  }) async {
+    final now = DateTime.now();
+    await _logsRef(userId).add({
+      'userId': userId,
+      'mealType': mealType,
+      'dishId': 'scanned_${now.millisecondsSinceEpoch}',
+      'dishName': estimate.foodName,
+      'calories': estimate.calories,
+      'protein': estimate.protein,
+      'carbs': estimate.carbs,
+      'fat': estimate.fat,
+      'loggedAt': Timestamp.fromDate(now),
+      'date': _todayKey(),
+    });
+  }
+
   /// Remove a previously logged meal entry.
   Future<void> removeLog(String userId, String logId) async {
     await _logsRef(userId).doc(logId).delete();
@@ -106,4 +128,39 @@ class FoodLogService {
       return NutritionTotals.zero;
     }
   }
+
+  /// Fetches logs for each day in [start]..[end] (inclusive).
+  ///
+  /// Returns a map keyed by `YYYY-MM-DD` date string.
+  /// Days with no logs are still present with an empty list.
+  Future<Map<String, List<FoodLog>>> getLogsForDateRange(
+    String userId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    final result = <String, List<FoodLog>>{};
+    for (var d = start;
+        !d.isAfter(end);
+        d = d.add(const Duration(days: 1))) {
+      result[_dateKey(d)] = [];
+    }
+    try {
+      final startKey = _dateKey(start);
+      final endKey = _dateKey(end);
+      final snap = await _logsRef(userId)
+          .where('date', isGreaterThanOrEqualTo: startKey)
+          .where('date', isLessThanOrEqualTo: endKey)
+          .get();
+      for (final doc in snap.docs) {
+        final log = FoodLog.fromFirestore(doc);
+        result.putIfAbsent(log.date, () => []).add(log);
+      }
+    } catch (e) {
+      debugPrint('FoodLogService.getLogsForDateRange error: $e');
+    }
+    return result;
+  }
+
+  String _dateKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }

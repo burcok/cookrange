@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cookrange/core/widgets/app_image.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/community_service.dart';
+import '../../core/services/friend_service.dart';
 
 import '../../core/models/community_post.dart';
 import 'widgets/glass_post_card.dart';
@@ -24,20 +25,22 @@ class CommunityScreen extends StatefulWidget {
 
 class _CommunityScreenState extends State<CommunityScreen> {
   final CommunityService _service = CommunityService();
+  final FriendService _friendService = FriendService();
   final ScrollController _scrollController = ScrollController();
 
   List<CommunityGroup> _groups = [];
   bool _isLoadingGroups = true;
 
-  // Filters (Keep UI for now, logic later)
   final List<String> _filters = [
     "Latest Updates",
-    "Regional",
     "Global",
     "Friends Only",
-    "Gym"
+    "Gym",
   ];
   String _selectedFilter = "Latest Updates";
+
+  // Cached friend IDs for the Friends Only filter (reused by load-more)
+  List<String> _cachedFriendIds = [];
 
   late Stream<List<CommunityPost>> _postsStream;
   List<CommunityPost> _additionalPosts = [];
@@ -59,6 +62,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
       final result = await _service.fetchPostsPage(
         limit: 20,
         startAfter: _lastDoc,
+        authorIds: _selectedFilter == 'Friends Only' ? _cachedFriendIds : null,
+        gymOnly: _selectedFilter == 'Gym',
       );
       if (mounted) {
         setState(() {
@@ -96,6 +101,43 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   void _onFilterChanged(String filter) {
     setState(() => _selectedFilter = filter);
+    _applyFilter(filter);
+  }
+
+  Future<void> _applyFilter(String filter) async {
+    switch (filter) {
+      case 'Friends Only':
+        final ids = await _friendService.getFriendIds();
+        _cachedFriendIds = ids;
+        if (!mounted) return;
+        setState(() {
+          _additionalPosts = [];
+          _lastDoc = null;
+          _hasMorePosts = true;
+          _postsStream = ids.isEmpty
+              ? Stream.value([])
+              : _service.getPostsStream(authorIds: ids.take(30).toList());
+        });
+        break;
+      case 'Gym':
+        if (!mounted) return;
+        setState(() {
+          _additionalPosts = [];
+          _lastDoc = null;
+          _hasMorePosts = true;
+          _postsStream = _service.getPostsStream(gymOnly: true);
+        });
+        break;
+      default: // 'Latest Updates' or 'Global'
+        if (!mounted) return;
+        setState(() {
+          _cachedFriendIds = [];
+          _additionalPosts = [];
+          _lastDoc = null;
+          _hasMorePosts = true;
+          _postsStream = _service.getPostsStream();
+        });
+    }
   }
 
   void _showFilterSheet(BuildContext context, List<String> filters,
@@ -301,8 +343,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
     switch (filter) {
       case "Latest Updates":
         return Icons.access_time;
-      case "Regional":
-        return Icons.location_on;
       case "Global":
         return Icons.public;
       case "Friends Only":
@@ -325,13 +365,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final appLoc = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Filter Keys for localization map
     final Map<String, String> filterKeys = {
       "Latest Updates": "community.filters.latest",
-      "Regional": "community.filters.regional",
       "Global": "community.filters.global",
       "Friends Only": "community.filters.friends",
-      "Gym": "community.filters.gym"
+      "Gym": "community.filters.gym",
     };
 
     return Scaffold(
@@ -494,12 +532,44 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   final posts = snapshot.data ?? [];
 
                   if (posts.isEmpty) {
+                    final emptyKey = _selectedFilter == 'Friends Only'
+                        ? 'community.filters.no_friends_posts'
+                        : _selectedFilter == 'Gym'
+                            ? 'community.filters.no_gym_posts'
+                            : 'community.no_posts';
                     return SliverToBoxAdapter(
-                        child: Center(
-                            child: Padding(
-                                padding: const EdgeInsets.all(40),
-                                child: Text(
-                                    appLoc.translate('community.no_posts')))));
+                      child: Padding(
+                        padding: const EdgeInsets.all(40),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _selectedFilter == 'Friends Only'
+                                  ? Icons.people_outline
+                                  : _selectedFilter == 'Gym'
+                                      ? Icons.fitness_center
+                                      : Icons.article_outlined,
+                              size: 48,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withValues(alpha: 0.3),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              appLoc.translate(emptyKey),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   }
 
                   return SliverList(

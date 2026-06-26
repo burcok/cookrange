@@ -147,6 +147,86 @@ class OnboardingOptions {
     },
   };
 
+  // Food Allergies & Medical Flags (page 3)
+  static const Map<String, Map<String, dynamic>> allergies = {
+    'allergy_dairy': {
+      'label': 'onboarding.page3.allergies.dairy',
+      'icon': Icons.water_drop,
+    },
+    'allergy_eggs': {
+      'label': 'onboarding.page3.allergies.eggs',
+      'icon': Icons.egg_alt,
+    },
+    'allergy_fish': {
+      'label': 'onboarding.page3.allergies.fish',
+      'icon': Icons.set_meal,
+    },
+    'allergy_shellfish': {
+      'label': 'onboarding.page3.allergies.shellfish',
+      'icon': Icons.water,
+    },
+    'allergy_tree_nuts': {
+      'label': 'onboarding.page3.allergies.tree_nuts',
+      'icon': Icons.spa,
+    },
+    'allergy_peanuts': {
+      'label': 'onboarding.page3.allergies.peanuts',
+      'icon': Icons.grain,
+    },
+    'allergy_wheat': {
+      'label': 'onboarding.page3.allergies.wheat',
+      'icon': Icons.grass,
+    },
+    'allergy_soy': {
+      'label': 'onboarding.page3.allergies.soy',
+      'icon': Icons.eco,
+    },
+    'allergy_sesame': {
+      'label': 'onboarding.page3.allergies.sesame',
+      'icon': Icons.circle,
+    },
+  };
+
+  // Dietary Restrictions (page 3)
+  static const Map<String, Map<String, dynamic>> dietaryRestrictions = {
+    'vegetarian': {
+      'label': 'onboarding.page3.dietary.vegetarian',
+      'icon': Icons.eco,
+    },
+    'vegan': {
+      'label': 'onboarding.page3.dietary.vegan',
+      'icon': Icons.nature,
+    },
+    'gluten_free': {
+      'label': 'onboarding.page3.dietary.gluten_free',
+      'icon': Icons.no_meals,
+    },
+    'halal': {
+      'label': 'onboarding.page3.dietary.halal',
+      'icon': Icons.verified,
+    },
+    'kosher': {
+      'label': 'onboarding.page3.dietary.kosher',
+      'icon': Icons.star,
+    },
+    'lactose_free': {
+      'label': 'onboarding.page3.dietary.lactose_free',
+      'icon': Icons.water_drop,
+    },
+    'low_carb': {
+      'label': 'onboarding.page3.dietary.low_carb',
+      'icon': Icons.trending_down,
+    },
+    'keto': {
+      'label': 'onboarding.page3.dietary.keto',
+      'icon': Icons.bolt,
+    },
+    'paleo': {
+      'label': 'onboarding.page3.dietary.paleo',
+      'icon': Icons.park,
+    },
+  };
+
   // Disliked Foods (Predefined ones from page 3)
   static const Map<String, Map<String, dynamic>> predefinedIngredients = {
     // Vegetables

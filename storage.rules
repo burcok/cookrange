@@ -32,6 +32,14 @@ service firebase.storage {
       allow delete: if isOwner(uid);
     }
 
+    // ─── Chat Images ─────────────────────────────────────────────────────────
+    // Path: chat_images/{uid}/{filename}
+    match /chat_images/{uid}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(uid) && isValidImage();
+      allow delete: if isOwner(uid);
+    }
+
     // ─── Deny all other paths ─────────────────────────────────────────────────
     match /{allPaths=**} {
       allow read, write: if false;

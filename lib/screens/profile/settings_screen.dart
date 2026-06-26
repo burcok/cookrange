@@ -6,6 +6,7 @@ import '../../core/providers/theme_provider.dart';
 import '../../core/providers/test_mode_provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/feature_gate_service.dart';
 import '../../core/utils/app_routes.dart';
 import '../legal/legal_screen.dart';
 
@@ -621,7 +622,8 @@ class SettingsScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () =>
+                        FeatureGateService().showPaywall(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: primaryColor,

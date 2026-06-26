@@ -5,9 +5,10 @@ import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/ingredient_model.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/repositories/shopping_repository.dart';
+import '../../core/services/analytics_service.dart';
 import '../../core/services/dish_service.dart';
 import '../../core/services/shopping_list_sync_service.dart';
-import '../../core/services/storage_service.dart';
 import '../../core/services/weekly_meal_plan_service.dart';
 
 class ShoppingListScreen extends StatefulWidget {
@@ -19,7 +20,7 @@ class ShoppingListScreen extends StatefulWidget {
 
 class _ShoppingListScreenState extends State<ShoppingListScreen>
     with SingleTickerProviderStateMixin {
-  final StorageService _storageService = StorageService();
+  final ShoppingRepository _shoppingRepo = ShoppingRepository();
   final ShoppingListSyncService _syncService = ShoppingListSyncService();
   List<Ingredient> _shoppingList = [];
   final Set<String> _checkedItems = {};
@@ -43,9 +44,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
   }
 
   void _loadShoppingList() {
-    // Load from Hive immediately, then try Firestore for fresher cross-device data
     setState(() {
-      _shoppingList = _storageService.getShoppingList();
+      _shoppingList = _shoppingRepo.getList();
     });
     final uid = context.read<UserProvider>().user?.uid;
     if (uid != null) {
@@ -81,7 +81,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
   }
 
   Future<void> _deleteItem(String name) async {
-    await _storageService.removeFromShoppingList(name);
+    await _shoppingRepo.remove(name);
     if (mounted) {
       setState(() {
         _shoppingList.removeWhere((i) => i.name == name);
@@ -114,7 +114,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
       ),
     );
     if (confirmed == true) {
-      await _storageService.clearShoppingList();
+      await _shoppingRepo.clear();
       if (mounted) {
         setState(() {
           _shoppingList.clear();
@@ -183,12 +183,15 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         return;
       }
 
-      // Clear current list and add aggregated ingredients
-      await _storageService.clearShoppingList();
+      await _shoppingRepo.clear();
       for (final ingredient in merged.values) {
-        await _storageService.addToShoppingList(ingredient);
+        await _shoppingRepo.add(ingredient);
       }
 
+      unawaited(AnalyticsService().logEvent(
+        name: 'shopping_list_generated',
+        parameters: {'item_count': merged.length},
+      ));
       if (mounted) {
         _loadShoppingList();
         _syncToCloud();
@@ -235,7 +238,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
       builder: (ctx) => _AddItemDialog(
         l10n: l10n,
         onAdd: (name, amount, unit) async {
-          await _storageService.addToShoppingList(Ingredient(
+          await _shoppingRepo.add(Ingredient(
             name: name,
             amount: amount,
             unit: unit,

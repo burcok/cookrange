@@ -21,6 +21,8 @@ class OnboardingProvider with ChangeNotifier {
   List<String> _primaryGoalIds = [];
   String? _activityLevelId;
   List<Map<String, dynamic>> _dislikedFoods = [];
+  List<String> _allergyIds = [];
+  List<String> _dietaryRestrictionIds = [];
   String? _cookingLevelId;
   List<String> _kitchenEquipmentIds = [];
 
@@ -91,6 +93,9 @@ class OnboardingProvider with ChangeNotifier {
   }
 
   List<Map<String, dynamic>> get dislikedFoods => _dislikedFoods;
+  List<String> get allergyIds => List.unmodifiable(_allergyIds);
+  List<String> get dietaryRestrictionIds =>
+      List.unmodifiable(_dietaryRestrictionIds);
 
   Map<String, dynamic>? get cookingLevel {
     if (_cookingLevelId == null) return null;
@@ -121,7 +126,6 @@ class OnboardingProvider with ChangeNotifier {
     final currentData = _toMap();
     if (_initialData == null) return false;
 
-    // Compare field by field
     return !mapEquals(
             _initialData!['personal_info'], currentData['personal_info']) ||
         _initialData!['lifestyle_profile'] != _lifestyleProfileId ||
@@ -130,6 +134,9 @@ class OnboardingProvider with ChangeNotifier {
         _initialData!['activity_level'] != _activityLevelId ||
         !_dislikedFoodsEquals(
             _initialData!['disliked_foods'] as List?, _dislikedFoods) ||
+        !listEquals(_initialData!['allergies'] as List?, _allergyIds) ||
+        !listEquals(_initialData!['dietary_restrictions'] as List?,
+            _dietaryRestrictionIds) ||
         _initialData!['cooking_level'] != _cookingLevelId ||
         !listEquals(
             _initialData!['kitchen_equipments'] as List?, _kitchenEquipmentIds);
@@ -176,6 +183,8 @@ class OnboardingProvider with ChangeNotifier {
         }
         return f;
       }).toList(),
+      'allergies': _allergyIds,
+      'dietary_restrictions': _dietaryRestrictionIds,
       'cooking_level': _cookingLevelId,
       'kitchen_equipments': _kitchenEquipmentIds,
     };
@@ -240,6 +249,8 @@ class OnboardingProvider with ChangeNotifier {
     _primaryGoalIds = _extractIds(onboardingData['primary_goals']);
     _activityLevelId = _extractId(onboardingData['activity_level']);
     _dislikedFoods = _convertDislikedFoods(onboardingData['disliked_foods']);
+    _allergyIds = _extractIds(onboardingData['allergies']);
+    _dietaryRestrictionIds = _extractIds(onboardingData['dietary_restrictions']);
     _cookingLevelId = _extractId(onboardingData['cooking_level']);
     _kitchenEquipmentIds = _extractIds(onboardingData['kitchen_equipments']);
 
@@ -341,6 +352,8 @@ class OnboardingProvider with ChangeNotifier {
     _primaryGoalIds = [];
     _activityLevelId = null;
     _dislikedFoods = [];
+    _allergyIds = [];
+    _dietaryRestrictionIds = [];
     _cookingLevelId = null;
     _kitchenEquipmentIds = [];
     _initialData = null;
@@ -514,6 +527,24 @@ class OnboardingProvider with ChangeNotifier {
           .removeWhere((element) => element['value'] == food['value']);
     } else {
       _dislikedFoods.add(food);
+    }
+    notifyListeners();
+  }
+
+  void toggleAllergy(String allergyId) {
+    if (_allergyIds.contains(allergyId)) {
+      _allergyIds.remove(allergyId);
+    } else {
+      _allergyIds.add(allergyId);
+    }
+    notifyListeners();
+  }
+
+  void toggleDietaryRestriction(String restrictionId) {
+    if (_dietaryRestrictionIds.contains(restrictionId)) {
+      _dietaryRestrictionIds.remove(restrictionId);
+    } else {
+      _dietaryRestrictionIds.add(restrictionId);
     }
     notifyListeners();
   }

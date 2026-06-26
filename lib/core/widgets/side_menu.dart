@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:cookrange/screens/chat/chat_list_screen.dart';
+import 'package:cookrange/screens/challenges/challenges_screen.dart';
+import 'package:cookrange/screens/leaderboard/leaderboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -171,6 +173,34 @@ class _SideMenuState extends State<SideMenu> {
                       isDark: isDark,
                       primaryColor: primaryColor,
                       onTap: () => _navigateToMainTab(1),
+                    ),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.emoji_events_rounded,
+                      label: "Meydan Okumalar",
+                      isDark: isDark,
+                      primaryColor: primaryColor,
+                      onTap: () => _handleNavigation(context, () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const ChallengesScreen()),
+                        );
+                      }),
+                    ),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.leaderboard_rounded,
+                      label: "Sıralama",
+                      isDark: isDark,
+                      primaryColor: primaryColor,
+                      onTap: () => _handleNavigation(context, () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const LeaderboardScreen()),
+                        );
+                      }),
                     ),
                     const SizedBox(height: 32),
                     _buildSectionHeader("HESAP & DİĞER"),

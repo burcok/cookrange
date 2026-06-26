@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../crashlytics_service.dart';
+import '../performance_service.dart';
 
 class AIService {
   static final AIService _instance = AIService._internal();
@@ -17,17 +21,29 @@ class AIService {
 
   String? _apiKey;
 
-  void initialize({required String apiKey}) {
+  // When set, all AI calls are proxied through the Cloud Function and the
+  // API key stays server-side. Populated from Remote Config `ai_proxy_url`.
+  String? _proxyUrl;
+
+  void initialize({required String apiKey, String? proxyUrl}) {
     final trimmed = apiKey.trim();
     _apiKey = (trimmed.isEmpty ||
             trimmed.contains('your_') ||
             trimmed.contains('_here'))
         ? null
         : trimmed;
+    final proxyTrimmed = proxyUrl?.trim() ?? '';
+    _proxyUrl = proxyTrimmed.isEmpty ? null : proxyTrimmed;
     unawaited(CrashlyticsService().setCustomKeys(aiModel: _model));
   }
 
-  bool get isConfigured => _apiKey != null;
+  bool get isConfigured => _proxyUrl != null || _apiKey != null;
+
+  /// Called after Remote Config loads to activate server-side key proxying.
+  void setProxyUrl(String? url) {
+    final trimmed = url?.trim() ?? '';
+    _proxyUrl = trimmed.isEmpty ? null : trimmed;
+  }
 
   // ─── Public API ────────────────────────────────────────────────────────────
 
@@ -42,11 +58,11 @@ class AIService {
       if (systemPrompt != null && systemPrompt.contains('JSON')) {
         final lowerPrompt = prompt.toLowerCase();
         final lowerSystem = systemPrompt.toLowerCase();
-        
-        if (lowerPrompt.contains('weekly') || 
-            lowerPrompt.contains('meal_plans') || 
-            lowerPrompt.contains('meal plan') || 
-            lowerSystem.contains('weekly') || 
+
+        if (lowerPrompt.contains('weekly') ||
+            lowerPrompt.contains('meal_plans') ||
+            lowerPrompt.contains('meal plan') ||
+            lowerSystem.contains('weekly') ||
             lowerSystem.contains('meal')) {
           return '''
 {
@@ -141,7 +157,8 @@ class AIService {
   ]
 }
           ''';
-        } else if (lowerPrompt.contains('recipe') || lowerSystem.contains('recipe')) {
+        } else if (lowerPrompt.contains('recipe') ||
+            lowerSystem.contains('recipe')) {
           return '''
 {
   "title": "Mock Healthy Stir Fry",
@@ -170,8 +187,8 @@ class AIService {
   "tags": ["Healthy", "Quick", "High-Protein"]
 }
           ''';
-        } else if (lowerPrompt.contains('ingredient') || 
-            lowerPrompt.contains('food item') || 
+        } else if (lowerPrompt.contains('ingredient') ||
+            lowerPrompt.contains('food item') ||
             lowerSystem.contains('ingredient')) {
           return '''
 {
@@ -212,6 +229,93 @@ class AIService {
       }
     }
     throw lastError ?? Exception('AIService: all retries exhausted');
+  }
+
+  /// Send a multi-turn chat conversation and return the assistant's reply.
+  ///
+  /// [messages] is the full history: `[{'role': 'user'|'assistant'|'system', 'content': '...'}]`.
+  Future<String> generateChatResponse({
+    required List<Map<String, String>> messages,
+    double temperature = 0.7,
+  }) async {
+    if (!isConfigured) {
+      return 'I am your AI nutrition assistant. Unfortunately I need an API key to give you personalized advice right now. Please configure the AI key in settings.';
+    }
+
+    Exception? lastError;
+    for (int attempt = 1; attempt <= _maxRetries; attempt++) {
+      try {
+        return await _callApiWithMessages(
+          messages: messages,
+          temperature: temperature,
+        );
+      } on AIRetryableException catch (e) {
+        lastError = e;
+        if (attempt < _maxRetries) await Future.delayed(_retryDelay * attempt);
+      } on AIFatalException {
+        rethrow;
+      } catch (e) {
+        lastError = Exception(e.toString());
+        if (attempt < _maxRetries) await Future.delayed(_retryDelay * attempt);
+      }
+    }
+    throw lastError ?? Exception('AIService: all retries exhausted');
+  }
+
+  Future<String> _callApiWithMessages({
+    required List<Map<String, String>> messages,
+    required double temperature,
+  }) async {
+    final url = _proxyUrl ?? _baseUrl;
+    final metric = PerformanceService().newHttpMetric(url, HttpMethod.Post);
+    await metric.start();
+    final http.Response response;
+    try {
+      final Map<String, String> headers = {'Content-Type': 'application/json'};
+      if (_proxyUrl != null) {
+        final user = FirebaseAuth.instance.currentUser;
+        final token = await user?.getIdToken();
+        if (token != null) headers['Authorization'] = 'Bearer $token';
+        try {
+          final appCheckToken = await FirebaseAppCheck.instance.getToken();
+          if (appCheckToken != null) {
+            headers['X-Firebase-AppCheck'] = appCheckToken;
+          }
+        } catch (_) {}
+      } else {
+        headers['Authorization'] = 'Bearer $_apiKey';
+        headers['HTTP-Referer'] = 'https://cookrangeapp.com';
+        headers['X-Title'] = 'Cookrange';
+      }
+      response = await http
+          .post(
+            Uri.parse(url),
+            headers: headers,
+            body: jsonEncode({
+              'model': _model,
+              'messages': messages,
+              'temperature': temperature,
+            }),
+          )
+          .timeout(const Duration(seconds: 45));
+      metric.httpResponseCode = response.statusCode;
+      metric.responsePayloadSize = response.bodyBytes.length;
+    } finally {
+      await metric.stop();
+    }
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>?;
+      if (choices == null || choices.isEmpty) {
+        throw AIFatalException('Empty choices in API response');
+      }
+      return choices[0]['message']['content'] as String;
+    }
+    if (response.statusCode == 429 || response.statusCode >= 500) {
+      throw AIRetryableException('HTTP ${response.statusCode}: ${response.body}');
+    }
+    throw AIFatalException('HTTP ${response.statusCode}: ${response.body}');
   }
 
   /// Generate and parse a JSON response.
@@ -258,26 +362,54 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
     String? systemPrompt,
     required double temperature,
   }) async {
-    final response = await http
-        .post(
-          Uri.parse(_baseUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $_apiKey',
-            'HTTP-Referer': 'https://cookrange.app',
-            'X-Title': 'Cookrange',
-          },
-          body: jsonEncode({
-            'model': _model,
-            'messages': [
-              if (systemPrompt != null)
-                {'role': 'system', 'content': systemPrompt},
-              {'role': 'user', 'content': prompt},
-            ],
-            'temperature': temperature,
-          }),
-        )
-        .timeout(const Duration(seconds: 45));
+    final messages = [
+      if (systemPrompt != null) {'role': 'system', 'content': systemPrompt},
+      {'role': 'user', 'content': prompt},
+    ];
+
+    final url = _proxyUrl ?? _baseUrl;
+    final metric = PerformanceService().newHttpMetric(url, HttpMethod.Post);
+    await metric.start();
+    final http.Response response;
+    try {
+      final Map<String, String> headers = {
+        'Content-Type': 'application/json',
+      };
+
+      if (_proxyUrl != null) {
+        // Server-side key: authenticate with Firebase ID token + App Check.
+        final user = FirebaseAuth.instance.currentUser;
+        final token = await user?.getIdToken();
+        if (token != null) headers['Authorization'] = 'Bearer $token';
+        try {
+          final appCheckToken =
+              await FirebaseAppCheck.instance.getToken();
+          if (appCheckToken != null) {
+            headers['X-Firebase-AppCheck'] = appCheckToken;
+          }
+        } catch (_) {}
+      } else {
+        headers['Authorization'] = 'Bearer $_apiKey';
+        headers['HTTP-Referer'] = 'https://cookrangeapp.com';
+        headers['X-Title'] = 'Cookrange';
+      }
+
+      response = await http
+          .post(
+            Uri.parse(url),
+            headers: headers,
+            body: jsonEncode({
+              'model': _model,
+              'messages': messages,
+              'temperature': temperature,
+            }),
+          )
+          .timeout(const Duration(seconds: 45));
+      metric.httpResponseCode = response.statusCode;
+      metric.responsePayloadSize = response.bodyBytes.length;
+    } finally {
+      await metric.stop();
+    }
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;

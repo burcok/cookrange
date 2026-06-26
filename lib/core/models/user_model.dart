@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'user_nutrition_profile.dart';
+import 'subscription_model.dart';
 
 /// Represents the main user document in Firestore.
 class UserModel {
@@ -18,6 +20,7 @@ class UserModel {
   final Timestamp? userVerified;
   final Map<String, bool>? profileVisibility; // Field: isVisible
   final int? primaryColor;
+  final SubscriptionTier subscriptionTier;
 
   UserModel({
     required this.uid,
@@ -36,6 +39,7 @@ class UserModel {
     this.userVerified,
     this.profileVisibility,
     this.primaryColor,
+    this.subscriptionTier = SubscriptionTier.free,
   });
 
   /// Creates a UserModel from a Firestore document snapshot.
@@ -63,8 +67,17 @@ class UserModel {
         (key, value) => MapEntry(key, value as bool),
       ),
       primaryColor: data['primary_color'] as int?,
+      subscriptionTier:
+          SubscriptionTier.fromString(data['subscription_tier'] as String?),
     );
   }
+
+  /// Typed view over the raw [onboardingData] map.
+  UserNutritionProfile get profile =>
+      UserNutritionProfile.fromOnboardingData(onboardingData);
+
+  /// Typed entitlements for the user's current subscription tier.
+  Entitlements get entitlements => Entitlements(subscriptionTier);
 
   UserModel copyWith({
     String? uid,
@@ -83,6 +96,7 @@ class UserModel {
     Timestamp? userVerified,
     Map<String, bool>? profileVisibility,
     int? primaryColor,
+    SubscriptionTier? subscriptionTier,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -102,6 +116,7 @@ class UserModel {
       userVerified: userVerified ?? this.userVerified,
       profileVisibility: profileVisibility ?? this.profileVisibility,
       primaryColor: primaryColor ?? this.primaryColor,
+      subscriptionTier: subscriptionTier ?? this.subscriptionTier,
     );
   }
 }

@@ -20,6 +20,9 @@ import 'push_notification_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dish_seeder_service.dart';
 import 'test_mode_service.dart';
+import 'remote_config_service.dart';
+import 'performance_service.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 
 /// Comprehensive app initialization service that handles all startup tasks
 /// with proper error handling, fallbacks, and user feedback.
@@ -178,6 +181,16 @@ class AppInitializationService {
         _log.info('Firebase already initialized in main()',
             service: _serviceName);
       }
+      // Activate App Check (debug tokens in debug/profile, platform attestation in release)
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: kReleaseMode
+            ? AndroidProvider.playIntegrity
+            : AndroidProvider.debug,
+        appleProvider: kReleaseMode
+            ? AppleProvider.deviceCheck
+            : AppleProvider.debug,
+      );
+
       // Explicitly configure Firestore persistence + unlimited cache
       FirebaseFirestore.instance.settings = const Settings(
         persistenceEnabled: true,
@@ -264,6 +277,8 @@ class AppInitializationService {
         _initAnalytics(),
         _initAuth(),
         _initPushNotifications(),
+        _initRemoteConfig(),
+        _initPerformance(),
       ]);
 
       _log.info('App services initialized', service: _serviceName);
@@ -318,6 +333,29 @@ class AppInitializationService {
     } catch (e) {
       _initializationResults['push_notifications'] = false;
       _log.warning('Push notification service initialization failed',
+          service: _serviceName, error: e);
+    }
+  }
+
+  Future<void> _initRemoteConfig() async {
+    try {
+      await RemoteConfigService().initialize();
+      AIService().setProxyUrl(RemoteConfigService().aiProxyUrl);
+      _initializationResults['remote_config'] = true;
+    } catch (e) {
+      _initializationResults['remote_config'] = false;
+      _log.warning('Remote Config initialization failed',
+          service: _serviceName, error: e);
+    }
+  }
+
+  Future<void> _initPerformance() async {
+    try {
+      await PerformanceService().initialize();
+      _initializationResults['performance'] = true;
+    } catch (e) {
+      _initializationResults['performance'] = false;
+      _log.warning('Firebase Performance initialization failed',
           service: _serviceName, error: e);
     }
   }

@@ -120,6 +120,11 @@
       "header": "Beslenme Tercihleri",
       "main_title": "Yemek planınızda olmamasını istediğiniz",
       "subtitle": "Beğenmediğiniz, Alerjiniz olan vb. malzemeleri seçin.",
+      "allergies_title": "Alerjenler & Tıbbi Kısıtlamalar",
+      "allergies_subtitle": "Bunları planınıza hiçbir zaman eklemeyeceğiz",
+      "dietary_title": "Diyet Kısıtlamaları",
+      "dietary_subtitle": "Yaşam tarzı ve etik gıda tercihleriniz",
+      "dislikes_title": "Sevmediğiniz Yiyecekler",
       "selected_title": "Seçilen Malzemeler",
       "available_title": "Mevcut Malzemeler",
       "search_hint": "Malzeme ara...",
@@ -127,7 +132,29 @@
       "custom_not_found": "Bu malzeme veritabanımızda bulunmuyor. ",
       "custom_add_hint": "Tercihlerinize eklemek için tıklayın",
       "custom_add": "Ekle",
-      "custom_slots_remaining": "Kalan özel malzeme hakkı: "
+      "custom_slots_remaining": "Kalan özel malzeme hakkı: ",
+      "allergies": {
+        "dairy": "Süt Ürünleri",
+        "eggs": "Yumurta",
+        "fish": "Balık",
+        "shellfish": "Kabuklu Deniz Ürünleri",
+        "tree_nuts": "Sert Kabuklu Meyveler",
+        "peanuts": "Fıstık",
+        "wheat": "Buğday / Gluten",
+        "soy": "Soya",
+        "sesame": "Susam"
+      },
+      "dietary": {
+        "vegetarian": "Vejetaryen",
+        "vegan": "Vegan",
+        "gluten_free": "Glutensiz",
+        "halal": "Helal",
+        "kosher": "Koşer",
+        "lactose_free": "Laktozsuz",
+        "low_carb": "Düşük Karbonhidrat",
+        "keto": "Keto",
+        "paleo": "Paleo"
+      }
     },
     "page4": {
       "header": "Mutfak Tercihleri",
@@ -577,7 +604,14 @@
       "badge": "Premium'a Geç",
       "title": "Limitsiz Özellikler",
       "description": "Reklamsız deneyim, detaylı analizler ve özel tariflere erişim kazanın.",
-      "button": "Premium Satın Al"
+      "button": "Premium Satın Al",
+      "paywall_title": "Premium'a Yükselt",
+      "paywall_subtitle": "Tüm özelliklerin kilidini açın ve Cookrange'den en iyi şekilde yararlanın.",
+      "upgrade_btn": "Şimdi Yükselt",
+      "maybe_later": "Belki daha sonra",
+      "perk_meal_plans": "Sınırsız Plan",
+      "perk_ai_chat": "Yapay Zeka Sohbet",
+      "perk_analytics": "Gelişmiş İstatistik"
     },
     "privacy": {
       "title": "Gizlilik Ayarları",
@@ -786,7 +820,51 @@
     "hello": "Merhaba ",
     "regenerate": "Yeniden Oluştur",
     "mark_eaten": "Yendim Olarak İşaretle",
-    "eaten": "Yendi"
+    "eaten": "Yendi",
+    "swap_meal_title": "Yedek seçin",
+    "swap_meal_subtitle": "Bu öğünü değiştirmek için bir yemek seçin",
+    "swap_loading": "Değiştiriliyor...",
+    "swap_done": "Öğün değiştirildi",
+    "analytics_btn": "Haftalık İstatistik",
+    "streak_days": "{count} gün",
+    "goal_met": "Günlük Hedef Tamamlandı! 🎉",
+    "goal_met_sub": "Bugün kalori hedefinize ulaştınız."
+  },
+  "ai_chat": {
+    "title": "Yapay Zeka Diyetisyen",
+    "subtitle": "Beslenme hakkında her şeyi sorabilirsiniz",
+    "input_hint": "Öğün, beslenme, tarif hakkında sorun...",
+    "send": "Gönder",
+    "thinking": "Düşünüyor...",
+    "ai_label": "YZ",
+    "not_configured": "Yapay zeka asistanı henüz yapılandırılmadı.",
+    "banner_title": "Yapay Zeka Diyetisyen",
+    "banner_subtitle": "Kişisel beslenme tavsiyeleri alın",
+    "suggestions": [
+      "Kahvaltıda ne yemeliyim?",
+      "Protein alımımı nasıl artırabilirim?",
+      "Hedeflerim için sağlıklı bir atıştırmalık öner.",
+      "Hangi yiyeceklerden kaçınmalıyım?"
+    ]
+  },
+  "analytics": {
+    "title": "Beslenme Analizi",
+    "subtitle": "Son 7 gün",
+    "consistency_score": "Tutarlılık Puanı",
+    "logged_days": "{count}/7 gün kaydedildi",
+    "avg_calories": "Ort. Kalori",
+    "avg_protein": "Ort. Protein",
+    "avg_carbs": "Ort. Karbonhidrat",
+    "avg_fat": "Ort. Yağ",
+    "weekly_chart": "Günlük Kalori",
+    "no_data": "Henüz besin kaydı yok",
+    "no_data_subtitle": "Beslenme eğilimlerinizi görmek için öğün kaydetmeye başlayın.",
+    "target_line": "Hedef",
+    "score_great": "Harika",
+    "score_good": "İyi",
+    "score_needs_work": "Geliştirilebilir",
+    "kcal": "kkal",
+    "g": "g"
   },
   "assistant": {
     "how_can_i_help": "Size nasıl yardımcı olabilirim?",
@@ -839,7 +917,9 @@
       "regional": "Bölgesel",
       "global": "Küresel",
       "friends": "Sadece Arkadaşlar",
-      "gym": "Spor Salonu"
+      "gym": "Spor Salonu",
+      "no_friends_posts": "Henüz arkadaşlarından gönderi yok. Güncellemelerini görmek için insanlarla bağlantı kur.",
+      "no_gym_posts": "Spor salonu gönderisi bulunamadı. Antrenmanını paylaş ve 'gym' veya 'fitness' etiketle!"
     },
     "time": {
       "min": "dk önce",
@@ -853,9 +933,22 @@
       "delete": "Gönderiyi Sil",
       "edit": "Düzenle",
       "report": "Bildir",
+      "block": "Kullanıcıyı Engelle",
       "share": "Paylaş",
       "options": "Seçenekler"
     },
+    "report": {
+      "dialog_title": "İçerik Bildir",
+      "dialog_subtitle": "Bu içeriği neden bildirdiğinizi seçin.",
+      "reason_spam": "Spam",
+      "reason_harassment": "Taciz veya zorbalık",
+      "reason_inappropriate": "Uygunsuz içerik",
+      "reason_misinformation": "Yanlış bilgi",
+      "reason_other": "Diğer",
+      "submitted": "Bildirim gönderildi. Kısa süre içinde inceleyeceğiz."
+    },
+    "block_success": "Kullanıcı engellendi.",
+    "unblock_success": "Engel kaldırıldı.",
     "delete_confirm": {
       "title": "Gönderiyi Sil?",
       "content": "Bu gönderiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
@@ -986,12 +1079,22 @@
     "meal_share": "Öğün Paylaş",
     "meal_share_soon": "Öğün Paylaş özelliği yakında!",
     "new_chat": "Yeni Sohbet",
+    "new_group": "Yeni Grup",
     "no_friends": "Henüz arkadaşınız yok.",
     "no_results": "Sonuç bulunamadı.",
     "offline": "Çevrimdışı",
     "online": "Çevrimiçi",
     "search_friend_hint": "Arkadaş ara...",
     "signal_send": "Sinyal Gönder",
+    "group": {
+      "create_title": "Yeni Grup Sohbeti",
+      "name_hint": "Grup adı (örn. Antrenman Arkadaşları)",
+      "name_label": "Grup Adı",
+      "select_members": "Üyeleri Seç",
+      "selected_count": "{count} seçili",
+      "create_btn": "Grup Oluştur",
+      "no_friends": "Grup oluşturmak için önce arkadaş ekleyin."
+    },
     "unnamed_user": "İsimsiz Kullanıcı",
     "time": {
       "days_ago": "{d}g önce",
@@ -1073,5 +1176,92 @@
       "log": "Kaydet & Bitir",
       "skip": "Geç"
     }
+  },
+  "leaderboard": {
+    "screen_title": "Sıralama",
+    "tab_global": "Global",
+    "tab_friends": "Arkadaşlar",
+    "empty": "Henüz veri yok.",
+    "empty_friends": "Sıralamayı görmek için arkadaş ekle.",
+    "error": "Sıralama yüklenemedi."
+  },
+  "challenge": {
+    "screen_title": "Meydan Okumalar",
+    "tab_active": "Aktif",
+    "tab_mine": "Katıldıklarım",
+    "create_btn": "Oluştur",
+    "empty_active": "Henüz aktif meydan okuma yok.\nİlk sen oluştur!",
+    "empty_mine": "Henüz bir meydan okumaya katılmadın.",
+    "error_loading": "Meydan okumalar yüklenemedi.",
+    "ended": "Sona Erdi",
+    "days_left": "{days}g kaldı",
+    "join": "Katıl",
+    "leave": "Ayrıl",
+    "my_progress": "İlerlemem",
+    "update_progress": "İlerlemeyi Güncelle",
+    "save_progress": "Kaydet",
+    "progress_hint": "Mevcut değeri girin",
+    "leaderboard": "Katılımcılar",
+    "type": {
+      "steps": "Adım",
+      "calories": "Kalori",
+      "workoutDays": "Antrenman Günü",
+      "custom": "Özel",
+      "custom_unit": "puan"
+    },
+    "create": {
+      "title": "Yeni Meydan Okuma",
+      "name_label": "Meydan Okuma Adı",
+      "name_hint": "ör. Günde 10K Adım",
+      "desc_label": "Açıklama (isteğe bağlı)",
+      "desc_hint": "Bu meydan okuma hakkında ne söylemek istersiniz?",
+      "type_label": "Meydan Okuma Türü",
+      "goal_label": "Hedef",
+      "goal_hint": "Hedef değer",
+      "end_date_label": "Bitiş Tarihi",
+      "public_label": "Herkese Açık",
+      "public_subtitle": "Tüm topluluk üyeleri görebilir",
+      "btn": "Meydan Okuma Oluştur"
+    }
+  },
+  "premium": {
+    "badge": "Premium'a Geç",
+    "title": "Limitsiz Özellikler",
+    "description": "Reklamsız deneyim, detaylı analizler ve özel tariflere erişim kazanın.",
+    "button": "Premium Satın Al",
+    "paywall_title": "Premium'a Yükselt",
+    "paywall_subtitle": "Tüm özelliklerin kilidini açın ve Cookrange'den en iyi şekilde yararlanın.",
+    "upgrade_btn": "Şimdi Yükselt",
+    "maybe_later": "Belki daha sonra",
+    "perk_meal_plans": "Sınırsız Plan",
+    "perk_ai_chat": "Yapay Zeka Sohbet",
+    "perk_analytics": "Gelişmiş İstatistikler"
+  },
+  "billing": {
+    "monthly": "Aylık",
+    "yearly": "Yıllık (En İyi Değer)",
+    "restore": "Satın Almaları Geri Yükle",
+    "unavailable": "Bu cihazda uygulama içi satın alma kullanılamıyor."
+  },
+  "food_scan": {
+    "title": "Besin Analizi",
+    "subtitle": "Ne yediğinizi yazın, yapay zeka besin değerlerini tahmin etsin.",
+    "scan_btn": "Yapay Zeka ile Besin Analizi",
+    "input_hint": "ör. 2 haşlanmış yumurta, 1 dilim tam buğday ekmeği ve 1 bardak süt",
+    "analyze_btn": "Analiz Et",
+    "analyzing": "Analiz ediliyor...",
+    "not_configured": "Yapay zeka yapılandırılmamış. Besin analizi için AI API anahtarı gereklidir.",
+    "protein": "Protein",
+    "carbs": "Karbonhidrat",
+    "fat": "Yağ",
+    "meal_type_label": "Olarak kaydet",
+    "meal": {
+      "breakfast": "Kahvaltı",
+      "lunch": "Öğle",
+      "dinner": "Akşam",
+      "snack": "Ara Öğün"
+    },
+    "log_btn": "Bu öğünü kaydet",
+    "log_success": "Öğün başarıyla kaydedildi!"
   }
 }

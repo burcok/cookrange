@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../providers/navigation_provider.dart';
 import '../localization/app_localizations.dart';
 import '../providers/theme_provider.dart';
+import '../../screens/shopping/shopping_list_screen.dart';
+import '../../screens/profile/settings_screen.dart';
 
 class QuickActionsSheet extends StatefulWidget {
   const QuickActionsSheet({super.key});
@@ -15,6 +17,19 @@ class QuickActionsSheet extends StatefulWidget {
 class _QuickActionsSheetState extends State<QuickActionsSheet> {
   final DraggableScrollableController _controller =
       DraggableScrollableController();
+
+  static Route<T> _slideUpRoute<T>(Widget page) {
+    return PageRouteBuilder<T>(
+      pageBuilder: (_, __, ___) => page,
+      transitionDuration: const Duration(milliseconds: 320),
+      reverseTransitionDuration: const Duration(milliseconds: 280),
+      transitionsBuilder: (_, animation, __, child) {
+        final tween = Tween(begin: const Offset(0, 1), end: Offset.zero)
+            .chain(CurveTween(curve: Curves.easeOutCubic));
+        return SlideTransition(position: animation.drive(tween), child: child);
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,8 +136,12 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                                  AppLocalizations.of(context)
                                      .translate('quick_actions.shopping_list'),
                                  () {
-                                   nav.setIndex(2);
                                    _collapse();
+                                   Navigator.of(context).push(
+                                     _slideUpRoute(
+                                       const ShoppingListScreen(),
+                                     ),
+                                   );
                                  },
                                ),
                                const SizedBox(height: 10),
@@ -132,8 +151,12 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                                  AppLocalizations.of(context)
                                      .translate('quick_actions.settings'),
                                  () {
-                                   nav.setIndex(3);
                                    _collapse();
+                                   Navigator.of(context).push(
+                                     _slideUpRoute(
+                                       const SettingsScreen(),
+                                     ),
+                                   );
                                  },
                                ),
                                const SizedBox(height: 10),

@@ -112,7 +112,7 @@ class LegalScreen extends StatelessWidget {
         ),
         _buildSection(
           '9. Contact',
-          'If you have questions about this Privacy Policy, please contact us at privacy@cookrange.app.',
+          'If you have questions about this Privacy Policy, please contact us at privacy@cookrangapp.com.',
         ),
         const SizedBox(height: 32),
       ],
@@ -169,7 +169,7 @@ class LegalScreen extends StatelessWidget {
         ),
         _buildSection(
           '11. Contact',
-          'Questions about these Terms? Contact us at legal@cookrange.app.',
+          'Questions about these Terms? Contact us at legal@cookrangapp.com.',
         ),
         const SizedBox(height: 32),
       ],

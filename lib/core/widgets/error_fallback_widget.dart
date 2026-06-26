@@ -4,8 +4,6 @@ import '../localization/app_localizations.dart';
 import '../services/crashlytics_service.dart';
 import '../../screens/common/generic_error_screen.dart';
 
-/// A comprehensive error fallback widget that provides user-friendly error handling
-/// with retry options and offline mode support.
 class ErrorFallbackWidget extends StatefulWidget {
   final String? error;
   final VoidCallback? onRetry;
@@ -13,7 +11,6 @@ class ErrorFallbackWidget extends StatefulWidget {
   final String? customTitle;
   final String? customMessage;
   final Widget? customIcon;
-  final bool isOfflineMode;
 
   const ErrorFallbackWidget({
     super.key,
@@ -23,7 +20,6 @@ class ErrorFallbackWidget extends StatefulWidget {
     this.customTitle,
     this.customMessage,
     this.customIcon,
-    this.isOfflineMode = false,
   });
 
   @override
@@ -46,7 +42,6 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Error Icon
               Container(
                 width: 120,
                 height: 120,
@@ -56,9 +51,7 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
                 ),
                 child: widget.customIcon ??
                     Icon(
-                      widget.isOfflineMode
-                          ? Icons.wifi_off
-                          : Icons.error_outline,
+                      Icons.error_outline,
                       size: 60,
                       color: theme.colorScheme.error,
                     ),
@@ -66,9 +59,11 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
 
               const SizedBox(height: 32),
 
-              // Error Title
               Text(
-                widget.customTitle ?? _getErrorTitle(localizations),
+                widget.customTitle ??
+                    (localizations?.translate(
+                            'error.initialization_failed_title') ??
+                        'Initialization Failed'),
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.onSurface,
@@ -78,9 +73,11 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
 
               const SizedBox(height: 16),
 
-              // Error Message
               Text(
-                widget.customMessage ?? _getErrorMessage(localizations),
+                widget.customMessage ??
+                    (localizations?.translate(
+                            'error.initialization_failed_message') ??
+                        'An error occurred during app startup.'),
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
@@ -123,8 +120,7 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
 
               const SizedBox(height: 32),
 
-              // Action Buttons
-              if (widget.showRetryButton) ...[
+              if (widget.showRetryButton)
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -156,27 +152,6 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-              ],
-
-              // Offline Mode Button
-              if (widget.isOfflineMode)
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _handleOfflineMode,
-                    icon: const Icon(Icons.offline_bolt),
-                    label: Text(
-                        localizations?.translate('common.continue_offline') ??
-                            'Continue Offline'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
@@ -184,71 +159,36 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
     );
   }
 
-  String _getErrorTitle(AppLocalizations? localizations) {
-    if (widget.isOfflineMode) {
-      return localizations?.translate('error.offline_title') ?? 'Offline';
-    }
-    return localizations?.translate('error.initialization_failed_title') ??
-        'Initialization Failed';
-  }
-
-  String _getErrorMessage(AppLocalizations? localizations) {
-    if (widget.isOfflineMode) {
-      return localizations?.translate('error.offline_message') ??
-          'Please check your internet connection.';
-    }
-    return localizations?.translate('error.initialization_failed_message') ??
-        'An error occurred during app startup.';
-  }
-
   Future<void> _handleRetry() async {
     if (_isRetrying) return;
-
-    setState(() {
-      _isRetrying = true;
-    });
-
+    setState(() => _isRetrying = true);
     try {
-      // Log retry attempt
-      await CrashlyticsService().log('User initiated retry from error screen');
-
-      // Call the retry callback
+      try {
+        await CrashlyticsService().log('User initiated retry from error screen');
+      } catch (_) {}
       if (widget.onRetry != null) {
-        await Future.delayed(
-            const Duration(milliseconds: 500)); // Small delay for UX
+        await Future.delayed(const Duration(milliseconds: 500));
         widget.onRetry!();
       }
     } catch (e) {
-      // Log retry failure
-      await CrashlyticsService().recordError(
-        e,
-        StackTrace.current,
-        reason: 'Retry failed from error screen',
-      );
+      try {
+        await CrashlyticsService().recordError(
+          e,
+          StackTrace.current,
+          reason: 'Retry failed from error screen',
+        );
+      } catch (_) {}
     } finally {
-      if (mounted) {
-        setState(() {
-          _isRetrying = false;
-        });
-      }
+      if (mounted) setState(() => _isRetrying = false);
     }
-  }
-
-  void _handleOfflineMode() {
-    // Navigate to offline mode or show offline functionality
-    // This would typically involve setting a flag or navigating to a specific screen
-    Navigator.of(context).pushReplacementNamed('/offline');
   }
 }
 
-/// A simple error screen for unknown routes
 class UnknownRouteScreen extends StatelessWidget {
   const UnknownRouteScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const GenericErrorScreen(
-      errorCode: '404',
-    );
+    return const GenericErrorScreen(errorCode: '404');
   }
 }

@@ -383,7 +383,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
   Future<void> _handleContactSupport() async {
     final localizations = AppLocalizations.of(context);
     final isTr = localizations.locale.languageCode == 'tr';
-    final email = isTr ? 'destek@cookrange.com' : 'help@cookrange.com';
+    final email = isTr ? 'destek@cookrangeapp.com' : 'help@cookrangeapp.com';
 
     final Uri emailLaunchUri = Uri(
       scheme: 'mailto',
