@@ -174,6 +174,7 @@ These exist and work in code today. Evidence in `file:line` form.
 **Monitoring**
 - [ ] Add **Firebase Performance** (currently `performance_service.dart` is unused dead code, no backend). — Medium · Medium · 2 d · v0.7.0 · ❌
 - [x] ✅ Crashlytics custom keys — Done (`CrashlyticsService.setCustomKeys(screen, userTier, aiModel)`; wired at login and AI init)
+- [x] ✅ **Menu lag / scaffold rebuild fix** — removed `context.watch<NavigationProvider>()` from `_MainScaffoldState.build()`; replaced with `Selector<NavigationProvider, bool>` per section; removed accumulating `addPostFrameCallback` from `build()`; `_buildBackgroundGlows` now uses `Theme.of(context)` (no `ThemeProvider.watch`) — Done (`main_scaffold.dart`)
 
 **Testing**
 - [ ] Real test suite: unit tests for `CalorieCalculator`, `WeeklyMealPlanService` parsing, AI response parsing, streak logic. — High · Medium · 3–4 d · v0.6.0 · 🟡
@@ -228,6 +229,7 @@ These exist and work in code today. Evidence in `file:line` form.
 - [x] ✅ Auto-generate consolidated list from the weekly meal plan — ingredient aggregation, duplicate merging. — Done (`shopping_list_screen.dart:_generateFromPlan`)
 - [x] ✅ Share / copy — Clipboard copy of full list. — Done (`_copyToClipboard`)
 - [x] ✅ Sync shopping list to Firestore (cross-device) — Done (`ShoppingListSyncService`, `users/{uid}/lists/shopping`; loads from Firestore on open, saves on every mutation)
+- [x] ✅ **Test Mode** (developer stress-testing) — `TestModeProvider` + `TestModeService` (SharedPreferences); `TestDataLibrary` (17 unique dishes, 7-day plan, 10 food logs, ~3940 kcal/day); toggle in Settings > Developer; wired into `home.dart` meal plan + food logs — Done
 - [x] ✅ Dark mode & theme consistency — full Theme.of(context) usage, animated item states. — Done
 
 **Progress Tracking**
@@ -257,6 +259,7 @@ These exist and work in code today. Evidence in `file:line` form.
 - [ ] **Group chat** creation flow (model exists, no creation path). — Medium · Medium · 3–4 d · v0.8.0 · 🟡
 - [ ] **Image messages** in chat (model exists). — Medium · Medium · 2 d · v0.8.0 · ❌
 - [x] ✅ **Notifications screen** → switched to live `StreamSubscription` via `getNotificationsStream()`; auto-marks-read on first load; real-time updates. — Done
+- [x] ✅ **Notification screen transition** → replaced `MaterialPageRoute` with `PageRouteBuilder` bottom-to-top `SlideTransition` (320ms, `easeOutCubic`); fixed hardcoded `Colors.black` icons to `Theme.of(context).colorScheme.onSurface`. — Done (`main_header.dart`)
 - [ ] **Challenges** (community) — full feature: create/join/track. — High · Large · 6–8 d · v0.9.0 · ❌
 - [ ] **Streaks** surfaced socially + milestones/rewards. — Medium · Medium · 2–3 d · v0.9.0 · 🚧
 - [ ] **Leaderboards** (global/friends). — Medium · Large · 4–5 d · v0.9.0 · ❌

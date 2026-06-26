@@ -613,6 +613,11 @@
       "current_password": "Mevcut Şifre",
       "new_password": "Yeni Şifre",
       "change_password_success": "Şifre başarıyla değiştirildi."
+    },
+    "developer": {
+      "title": "Geliştirici",
+      "test_mode": "Test Modu",
+      "test_mode_subtitle": "Arayüz stres testi için uygulamayı maksimum hacimli sahte verilerle doldur"
     }
   },
   "error": {

@@ -303,11 +303,13 @@ class _ChatListScreenState extends State<ChatListScreen>
           AnimatedBuilder(
             animation: _menuController,
             builder: (context, child) {
-              return SideMenu(
-                navProvider: context.read<NavigationProvider>(),
-                animationController: _menuController,
-              );
+              if (_menuController.isDismissed) return const SizedBox.shrink();
+              return child!;
             },
+            child: SideMenu(
+              navProvider: context.read<NavigationProvider>(),
+              animationController: _menuController,
+            ),
           ),
         ],
       ),

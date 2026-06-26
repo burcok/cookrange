@@ -43,7 +43,6 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
         minChildSize: 0.12,
         maxChildSize: 0.42,
         builder: (context, scrollController) {
-          // REMOVED: ClipRRect here was clipping the overflowing FAB
           return Material(
             color: Colors.transparent,
             child: Stack(
@@ -73,85 +72,97 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                 ),
 
                 // Content Layer
-                CustomScrollView(
-                  controller: scrollController,
-                  clipBehavior: Clip.none, // Vital for the FAB to overflow
-                  physics: const ClampingScrollPhysics(),
-                  slivers: [
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _BottomBarDelegate(
-                        height: 100,
-                        child: Container(
-                          // No background here, using the base glass layer
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _buildIntegratedBottomBar(context, nav),
-                              Center(child: _buildHandle()),
-                              const SizedBox(height: 5),
-                            ],
+                Positioned.fill(
+                  child: CustomScrollView(
+                    controller: scrollController,
+                    clipBehavior: Clip.hardEdge, // CLIPS scrolled items, fixing the glitch
+                    physics: const ClampingScrollPhysics(),
+                    slivers: [
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _BottomBarDelegate(
+                          height: 100,
+                          child: Container(
+                            // No background here, using the base glass layer
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _buildIntegratedBottomBar(context, nav),
+                                Center(child: _buildHandle()),
+                                const SizedBox(height: 5),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 16),
-                        child: Column(
-                           children: [
-                             Center(
-                               child: Text(
-                                 AppLocalizations.of(context)
-                                     .translate('quick_actions.title'),
-                                 style: const TextStyle(
-                                   fontSize: 22,
-                                   fontWeight: FontWeight.bold,
-                                   color: Color(0xFF2E3A59),
-                                   letterSpacing: -0.5,
-                                   fontFamily: 'Poppins',
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 16),
+                          child: Column(
+                             children: [
+                               Center(
+                                 child: Text(
+                                   AppLocalizations.of(context)
+                                       .translate('quick_actions.title'),
+                                   style: const TextStyle(
+                                     fontSize: 22,
+                                     fontWeight: FontWeight.bold,
+                                     color: Color(0xFF2E3A59),
+                                     letterSpacing: -0.5,
+                                     fontFamily: 'Poppins',
+                                   ),
                                  ),
                                ),
-                             ),
-                             const SizedBox(height: 16),
-                             _buildActionItem(
-                               context,
-                               Icons.shopping_basket_outlined,
-                               AppLocalizations.of(context)
-                                   .translate('quick_actions.shopping_list'),
-                               () {
-                                 nav.setIndex(2);
-                                 _collapse();
-                               },
-                             ),
-                             const SizedBox(height: 10),
-                             _buildActionItem(
-                               context,
-                               Icons.settings_outlined,
-                               AppLocalizations.of(context)
-                                   .translate('quick_actions.settings'),
-                               () {
-                                 nav.setIndex(3);
-                                 _collapse();
-                               },
-                             ),
-                             const SizedBox(height: 10),
-                             _buildActionItem(
-                               context,
-                               Icons.history_outlined,
-                               AppLocalizations.of(context)
-                                   .translate('quick_actions.history'),
-                               () {
-                                 _collapse();
-                               },
-                             ),
-                             const SizedBox(height: 12),
-                           ],
+                               const SizedBox(height: 16),
+                               _buildActionItem(
+                                 context,
+                                 Icons.shopping_basket_outlined,
+                                 AppLocalizations.of(context)
+                                     .translate('quick_actions.shopping_list'),
+                                 () {
+                                   nav.setIndex(2);
+                                   _collapse();
+                                 },
+                               ),
+                               const SizedBox(height: 10),
+                               _buildActionItem(
+                                 context,
+                                 Icons.settings_outlined,
+                                 AppLocalizations.of(context)
+                                     .translate('quick_actions.settings'),
+                                 () {
+                                   nav.setIndex(3);
+                                   _collapse();
+                                 },
+                               ),
+                               const SizedBox(height: 10),
+                               _buildActionItem(
+                                 context,
+                                 Icons.history_outlined,
+                                 AppLocalizations.of(context)
+                                     .translate('quick_actions.history'),
+                                 () {
+                                   _collapse();
+                                 },
+                               ),
+                               const SizedBox(height: 12),
+                             ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+
+                // Floating Action Button (Outside ScrollView to prevent clipping)
+                Positioned(
+                  top: -30,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: _buildAssistantFAB(nav),
+                  ),
                 ),
               ],
             ),
@@ -205,10 +216,7 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
               ],
             ),
           ),
-          Positioned(
-            top: -30, // Move FAB exactly where it needs to be
-            child: _buildAssistantFAB(nav),
-          ),
+          // FAB has been moved to the outer Stack in build() to allow scrolling clipping
         ],
       ),
     );

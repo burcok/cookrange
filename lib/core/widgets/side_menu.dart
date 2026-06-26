@@ -26,6 +26,39 @@ class SideMenu extends StatefulWidget {
 
 class _SideMenuState extends State<SideMenu> {
   bool _isLoggingOut = false;
+  bool _shouldBlur = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _shouldBlur = widget.animationController.isCompleted;
+    widget.animationController.addStatusListener(_onAnimationStatusChanged);
+  }
+
+  @override
+  void didUpdateWidget(SideMenu oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.animationController != widget.animationController) {
+      oldWidget.animationController.removeStatusListener(_onAnimationStatusChanged);
+      widget.animationController.addStatusListener(_onAnimationStatusChanged);
+      _shouldBlur = widget.animationController.isCompleted;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.animationController.removeStatusListener(_onAnimationStatusChanged);
+    super.dispose();
+  }
+
+  void _onAnimationStatusChanged(AnimationStatus status) {
+    final newShouldBlur = status == AnimationStatus.completed;
+    if (newShouldBlur != _shouldBlur) {
+      setState(() {
+        _shouldBlur = newShouldBlur;
+      });
+    }
+  }
 
   void _handleNavigation(BuildContext context, VoidCallback action) {
     widget.navProvider.toggleMenu(false);
@@ -54,6 +87,147 @@ class _SideMenuState extends State<SideMenu> {
 
     if (widget.animationController.isDismissed) return const SizedBox.shrink();
 
+    final menuContent = Container(
+      width: MediaQuery.of(context).size.width * 0.80,
+      constraints: const BoxConstraints(maxWidth: 320),
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF0F172A).withValues(alpha: 0.85)
+            : Colors.white.withValues(alpha: 0.9),
+        border: Border(
+          right: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.white.withValues(alpha: 0.6),
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 24,
+            offset: const Offset(8, 0),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Profile Section
+            _buildProfileSection(context, user, isDark, primaryColor),
+
+            // Navigation Items
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader("MENÜ"),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.home_rounded,
+                      label: "Ana Sayfa",
+                      isDark: isDark,
+                      primaryColor: primaryColor,
+                      onTap: () => _navigateToMainTab(0),
+                    ),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.restaurant_menu_rounded,
+                      label: "Yemek Planı",
+                      isDark: isDark,
+                      primaryColor: primaryColor,
+                      onTap: () {
+                        _handleNavigation(context, () {
+                          // TODO: Implement Meal Plan Screen
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text("Yemek Planı yakında gelecek!")),
+                          );
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 32),
+                    _buildSectionHeader("Sosyal"),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.chat_bubble_rounded,
+                      label: "Sohbet",
+                      isDark: isDark,
+                      primaryColor: primaryColor,
+                      onTap: () => _handleNavigation(context, () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const ChatListScreen()));
+                      }),
+                    ),
+                    _buildMenuItem(
+                      context,
+                      icon: Icons.groups_rounded,
+                      label: "Topluluk",
+                      isDark: isDark,
+                      primaryColor: primaryColor,
+                      onTap: () => _navigateToMainTab(1),
+                    ),
+                    const SizedBox(height: 32),
+                    _buildSectionHeader("HESAP & DİĞER"),
+                    _buildSimpleMenuItem(
+                      context,
+                      icon: Icons.person_rounded,
+                      label: "Hesabım",
+                      isDark: isDark,
+                      onTap: () => _handleNavigation(context, () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const ProfileScreen()));
+                      }),
+                    ),
+                    _buildSimpleMenuItem(
+                      context,
+                      icon: Icons.settings_rounded,
+                      label: "Ayarlar",
+                      isDark: isDark,
+                      onTap: () => _handleNavigation(context, () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const SettingsScreen()));
+                      }),
+                    ),
+                    _buildSimpleMenuItem(
+                      context,
+                      icon: Icons.help_outline_rounded,
+                      label: "Yardım",
+                      isDark: isDark,
+                      onTap: () {
+                        // TODO: Help
+                      },
+                    ),
+                    _buildSimpleMenuItem(
+                      context,
+                      icon: Icons.info_outline_rounded,
+                      label: "Uygulama Hakkında",
+                      isDark: isDark,
+                      onTap: () {
+                        // TODO: About
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Footer
+            _buildFooter(context, isDark, primaryColor),
+          ],
+        ),
+      ),
+    );
+
     return Material(
       color: Colors.transparent,
       child: Stack(
@@ -64,8 +238,7 @@ class _SideMenuState extends State<SideMenu> {
             child: GestureDetector(
               onTap: () => widget.navProvider.toggleMenu(false),
               child: Container(
-                color:
-                    Colors.black.withValues(alpha: 0.4), // Slightly lighter dim
+                color: Colors.black.withValues(alpha: 0.4),
                 width: double.infinity,
                 height: double.infinity,
               ),
@@ -79,7 +252,7 @@ class _SideMenuState extends State<SideMenu> {
               end: Offset.zero,
             ).animate(CurvedAnimation(
               parent: widget.animationController,
-              curve: Curves.easeOutCubic, // Smoother curve
+              curve: Curves.easeOutCubic,
               reverseCurve: Curves.easeInCubic,
             )),
             child: GestureDetector(
@@ -88,165 +261,14 @@ class _SideMenuState extends State<SideMenu> {
                   widget.navProvider.toggleMenu(false);
                 }
               },
-              // OPTIMIZATION: Use ClipRect instead of ClipRRect as we don't need rounded corners here
-              // OPTIMIZATION: Wrapped in RepaintBoundary to cache the rasterized static menu
               child: RepaintBoundary(
                 child: ClipRect(
-                  child: BackdropFilter(
-                    // OPTIMIZATION: Reduced blur sigma from 20 to 5 for better performance
-                    filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 0.80,
-                      constraints: const BoxConstraints(maxWidth: 320),
-                      height: double.infinity,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF0F172A).withValues(alpha: 0.85)
-                            : Colors.white.withValues(alpha: 0.9),
-                        border: Border(
-                          right: BorderSide(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.05)
-                                : Colors.white.withValues(alpha: 0.6),
-                          ),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            // OPTIMIZATION: Reduced blur radius from 32 to 24
-                            blurRadius: 24,
-                            offset: const Offset(8, 0),
-                          ),
-                        ],
-                      ),
-                      child: SafeArea(
-                        child: Column(
-                          children: [
-                            // Profile Section
-                            _buildProfileSection(
-                                context, user, isDark, primaryColor),
-
-                            // Navigation Items
-                            Expanded(
-                              child: SingleChildScrollView(
-                                physics: const BouncingScrollPhysics(),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 24),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildSectionHeader("MENÜ"),
-                                    _buildMenuItem(
-                                      context,
-                                      icon: Icons.home_rounded,
-                                      label: "Ana Sayfa",
-                                      isDark: isDark,
-                                      primaryColor: primaryColor,
-                                      onTap: () => _navigateToMainTab(0),
-                                    ),
-                                    _buildMenuItem(
-                                      context,
-                                      icon: Icons.restaurant_menu_rounded,
-                                      label: "Yemek Planı",
-                                      isDark: isDark,
-                                      primaryColor: primaryColor,
-                                      onTap: () {
-                                        _handleNavigation(context, () {
-                                          // TODO: Implement Meal Plan Screen
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                                content: Text(
-                                                    "Yemek Planı yakında gelecek!")),
-                                          );
-                                        });
-                                      },
-                                    ),
-                                    const SizedBox(height: 32),
-                                    _buildSectionHeader("Sosyal"),
-                                    _buildMenuItem(
-                                      context,
-                                      icon: Icons.chat_bubble_rounded,
-                                      label: "Sohbet",
-                                      isDark: isDark,
-                                      primaryColor: primaryColor,
-                                      onTap: () =>
-                                          _handleNavigation(context, () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const ChatListScreen()));
-                                      }),
-                                    ),
-                                    _buildMenuItem(
-                                      context,
-                                      icon: Icons.groups_rounded,
-                                      label: "Topluluk",
-                                      isDark: isDark,
-                                      primaryColor: primaryColor,
-                                      onTap: () => _navigateToMainTab(1),
-                                    ),
-                                    const SizedBox(height: 32),
-                                    _buildSectionHeader("HESAP & DİĞER"),
-                                    _buildSimpleMenuItem(
-                                      context,
-                                      icon: Icons.person_rounded,
-                                      label: "Hesabım",
-                                      isDark: isDark,
-                                      onTap: () =>
-                                          _handleNavigation(context, () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const ProfileScreen()));
-                                      }),
-                                    ),
-                                    _buildSimpleMenuItem(
-                                      context,
-                                      icon: Icons.settings_rounded,
-                                      label: "Ayarlar",
-                                      isDark: isDark,
-                                      onTap: () =>
-                                          _handleNavigation(context, () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const SettingsScreen()));
-                                      }),
-                                    ),
-                                    _buildSimpleMenuItem(
-                                      context,
-                                      icon: Icons.help_outline_rounded,
-                                      label: "Yardım",
-                                      isDark: isDark,
-                                      onTap: () {
-                                        // TODO: Help
-                                      },
-                                    ),
-                                    _buildSimpleMenuItem(
-                                      context,
-                                      icon: Icons.info_outline_rounded,
-                                      label: "Uygulama Hakkında",
-                                      isDark: isDark,
-                                      onTap: () {
-                                        // TODO: About
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            // Footer
-                            _buildFooter(context, isDark, primaryColor),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: _shouldBlur
+                      ? BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                          child: menuContent,
+                        )
+                      : menuContent,
                 ),
               ),
             ),
@@ -474,7 +496,9 @@ class _SideMenuState extends State<SideMenu> {
     required bool isDark,
     required VoidCallback onTap,
   }) {
-    return ListTile(
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
       onTap: onTap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -491,6 +515,7 @@ class _SideMenuState extends State<SideMenu> {
           color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
         ),
       ),
+    ),
     );
   }
 

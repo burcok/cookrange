@@ -6,6 +6,7 @@ import '../providers/onboarding_provider.dart';
 import '../providers/device_info_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/navigation_provider.dart';
+import '../providers/test_mode_provider.dart';
 
 /// Service to manage provider initialization and optimization
 class ProviderInitializationService {
@@ -34,6 +35,7 @@ class ProviderInitializationService {
       ChangeNotifierProvider<NavigationProvider>(
           create: (_) => NavigationProvider()),
       ChangeNotifierProvider<UserProvider>(create: (_) => UserProvider()),
+      ChangeNotifierProvider<TestModeProvider>(create: (_) => TestModeProvider()),
     ];
   }
 

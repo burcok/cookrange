@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/language_provider.dart';
 import '../../core/providers/theme_provider.dart';
+import '../../core/providers/test_mode_provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/utils/app_routes.dart';
@@ -73,6 +74,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final testModeProvider = Provider.of<TestModeProvider>(context);
     final appLoc = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -419,6 +421,33 @@ class SettingsScreen extends StatelessWidget {
                               color: isDark
                                   ? Colors.grey[400]
                                   : Colors.grey[400]),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Developer Section
+                    _buildGlassSection(
+                      context: context,
+                      title: appLoc.translate('settings.developer.title'),
+                      isDark: isDark,
+                      children: [
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.bug_report_outlined,
+                          iconColor: Colors.purple,
+                          iconBgColor: isDark
+                              ? Colors.purple.withValues(alpha: 0.3)
+                              : const Color(0xFFF5F3FF),
+                          title: appLoc.translate('settings.developer.test_mode'),
+                          subtitle: appLoc.translate('settings.developer.test_mode_subtitle'),
+                          isDark: isDark,
+                          trailing: Switch(
+                            value: testModeProvider.isActive,
+                            onChanged: (_) => testModeProvider.toggle(),
+                            activeThumbColor: Colors.purple,
+                          ),
                         ),
                       ],
                     ),

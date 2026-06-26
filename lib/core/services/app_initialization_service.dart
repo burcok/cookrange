@@ -19,6 +19,7 @@ import 'ai/ai_service.dart';
 import 'push_notification_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dish_seeder_service.dart';
+import 'test_mode_service.dart';
 
 /// Comprehensive app initialization service that handles all startup tasks
 /// with proper error handling, fallbacks, and user feedback.
@@ -207,6 +208,7 @@ class AppInitializationService {
 
       // Initialize SharedPreferences
       await SharedPreferences.getInstance();
+      await TestModeService().initialize();
 
       _log.info('Local storage initialized successfully',
           service: _serviceName);

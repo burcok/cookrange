@@ -97,59 +97,62 @@ class _SelectFriendSheetState extends State<SelectFriendSheet> {
                   itemCount: filteredFriends.length,
                   itemBuilder: (context, index) {
                     final friend = filteredFriends[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: friend.photoURL != null
-                            ? NetworkImage(friend.photoURL!)
-                            : null,
-                        child: friend.photoURL == null
-                            ? const Icon(Icons.person)
-                            : null,
-                      ),
-                      title: Text(friend.displayName ??
-                          AppLocalizations.of(context)
-                              .translate('chat.unnamed_user')),
-                      subtitle: Text(friend.isOnline
-                          ? AppLocalizations.of(context)
-                              .translate('chat.online')
-                          : AppLocalizations.of(context)
-                              .translate('chat.offline')),
-                      trailing: const Icon(Icons.chat_bubble_outline,
-                          color: Colors.blue),
-                      onTap: () async {
-                        // Create 1:1 chat logic here
-                        // We need current user ID, assuming FriendService access it or we pass it
-                        final currentUserId = _friendService.currentUserId;
-                        if (currentUserId != null) {
-                          // Navigate to chat
-                          // We need to create/get chat ID first
-                          final chatId =
-                              await _chatService.createOrGetPrivateChat(
-                                  currentUserId, friend.uid);
-
-                          if (mounted) {
-                            Navigator.pop(context); // Close sheet
-
-                            // Construct a ChatModel to pass
-                            final chat = ChatModel(
-                              id: chatId,
-                              participants: [currentUserId, friend.uid],
-                              type: ChatType.private,
-                              unreadCounts: {}, // Empty initially
-                              updatedAt: DateTime.now(),
-                              name: friend.displayName,
-                              image: friend.photoURL,
-                            );
-
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ChatDetailScreen(chat: chat),
-                              ),
-                            );
+                    return Material(
+                      color: Colors.transparent,
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: friend.photoURL != null
+                              ? NetworkImage(friend.photoURL!)
+                              : null,
+                          child: friend.photoURL == null
+                              ? const Icon(Icons.person)
+                              : null,
+                        ),
+                        title: Text(friend.displayName ??
+                            AppLocalizations.of(context)
+                                .translate('chat.unnamed_user')),
+                        subtitle: Text(friend.isOnline
+                            ? AppLocalizations.of(context)
+                                .translate('chat.online')
+                            : AppLocalizations.of(context)
+                                .translate('chat.offline')),
+                        trailing: const Icon(Icons.chat_bubble_outline,
+                            color: Colors.blue),
+                        onTap: () async {
+                          // Create 1:1 chat logic here
+                          // We need current user ID, assuming FriendService access it or we pass it
+                          final currentUserId = _friendService.currentUserId;
+                          if (currentUserId != null) {
+                            // Navigate to chat
+                            // We need to create/get chat ID first
+                            final chatId =
+                                await _chatService.createOrGetPrivateChat(
+                                    currentUserId, friend.uid);
+  
+                            if (mounted) {
+                              Navigator.pop(context); // Close sheet
+  
+                              // Construct a ChatModel to pass
+                              final chat = ChatModel(
+                                id: chatId,
+                                participants: [currentUserId, friend.uid],
+                                type: ChatType.private,
+                                unreadCounts: {}, // Empty initially
+                                updatedAt: DateTime.now(),
+                                name: friend.displayName,
+                                image: friend.photoURL,
+                              );
+  
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChatDetailScreen(chat: chat),
+                                ),
+                              );
+                            }
                           }
-                        }
-                      },
+                        },
+                      ),
                     );
                   },
                 );

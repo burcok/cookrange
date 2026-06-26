@@ -450,60 +450,65 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                     ),
                   ],
           ),
-          child: ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            leading: GestureDetector(
-              onTap: () => _toggleItem(item.name),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: isChecked ? primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: isChecked
-                        ? primary
-                        : isDark
-                            ? Colors.grey[500]!
-                            : Colors.grey[400]!,
-                    width: 2,
+          child: Material(
+            color: Colors.transparent,
+            clipBehavior: Clip.antiAlias,
+            borderRadius: BorderRadius.circular(12),
+            child: ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              leading: GestureDetector(
+                onTap: () => _toggleItem(item.name),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: isChecked ? primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isChecked
+                          ? primary
+                          : isDark
+                              ? Colors.grey[500]!
+                              : Colors.grey[400]!,
+                      width: 2,
+                    ),
                   ),
+                  child: isChecked
+                      ? const Icon(Icons.check, size: 16, color: Colors.white)
+                      : null,
                 ),
-                child: isChecked
-                    ? const Icon(Icons.check, size: 16, color: Colors.white)
-                    : null,
               ),
-            ),
-            title: AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight:
-                    isChecked ? FontWeight.normal : FontWeight.w600,
-                decoration: isChecked
-                    ? TextDecoration.lineThrough
-                    : TextDecoration.none,
-                decorationColor:
-                    isDark ? Colors.grey[500] : Colors.grey[400],
-                color: isChecked
-                    ? (isDark ? Colors.grey[500] : Colors.grey[400])
-                    : (isDark ? Colors.white : Colors.black87),
+              title: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight:
+                      isChecked ? FontWeight.normal : FontWeight.w600,
+                  decoration: isChecked
+                      ? TextDecoration.lineThrough
+                      : TextDecoration.none,
+                  decorationColor:
+                      isDark ? Colors.grey[500] : Colors.grey[400],
+                  color: isChecked
+                      ? (isDark ? Colors.grey[500] : Colors.grey[400])
+                      : (isDark ? Colors.white : Colors.black87),
+                ),
+                child: Text(item.name),
               ),
-              child: Text(item.name),
-            ),
-            trailing: Text(
-              '${item.amount % 1 == 0 ? item.amount.toInt() : item.amount} ${item.unit}',
-              style: TextStyle(
-                color: isChecked
-                    ? (isDark ? Colors.grey[600] : Colors.grey[400])
-                    : primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
+              trailing: Text(
+                '${item.amount % 1 == 0 ? item.amount.toInt() : item.amount} ${item.unit}',
+                style: TextStyle(
+                  color: isChecked
+                      ? (isDark ? Colors.grey[600] : Colors.grey[400])
+                      : primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
+              onTap: () => _toggleItem(item.name),
             ),
-            onTap: () => _toggleItem(item.name),
           ),
         ),
       ),

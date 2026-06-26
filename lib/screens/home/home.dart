@@ -23,6 +23,9 @@ import '../recipe/recipe_detail_screen.dart';
 import 'widgets/tracking_card.dart';
 
 import '../../core/providers/theme_provider.dart';
+import '../../core/providers/test_mode_provider.dart';
+import '../../core/services/test_mode_service.dart';
+import '../../core/data/test_data_library.dart';
 import '../../core/widgets/main_header.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -52,6 +55,8 @@ class _HomeScreenState extends State<HomeScreen>
   StreamSubscription<List<FoodLog>>? _foodLogSubscription;
   final Map<String, bool> _loggingInProgress = {};
 
+  TestModeProvider? _testModeProvider;
+
   // Custom Refresh State
   final ValueNotifier<double> _pullDistanceNotifier = ValueNotifier(0.0);
   bool _isRefreshing = false;
@@ -62,6 +67,8 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _testModeProvider = context.read<TestModeProvider>();
+      _testModeProvider!.addListener(_onTestModeChanged);
       _loadWeeklyPlan();
       _subscribeToFoodLogs();
     });
@@ -71,10 +78,27 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  void _onTestModeChanged() {
+    if (!mounted) return;
+    _subscribeToFoodLogs();
+    _loadWeeklyPlan();
+  }
+
   void _subscribeToFoodLogs() {
     final uid = context.read<UserProvider>().user?.uid;
     if (uid == null) return;
     _foodLogSubscription?.cancel();
+
+    if (TestModeService().isActive) {
+      final logs = TestDataLibrary.todayFoodLogs(uid);
+      if (!mounted) return;
+      setState(() {
+        _consumed = FoodLog.sumLogs(logs);
+        _loggedMealTypes = logs.map((l) => l.mealType).toSet();
+      });
+      return;
+    }
+
     _foodLogSubscription =
         _foodLogService.todayLogsStream(uid).listen((logs) {
       if (!mounted) return;
@@ -108,6 +132,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _testModeProvider?.removeListener(_onTestModeChanged);
     _foodLogSubscription?.cancel();
     _refreshController.dispose();
     _pullDistanceNotifier.dispose();
@@ -121,16 +146,31 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() => _isLoadingPlan = true);
 
     try {
+      if (TestModeService().isActive) {
+        final plan = TestDataLibrary.weeklyPlan(user.uid);
+        final cache = TestDataLibrary.dishCache();
+        final now = DateTime.now();
+        int initialIndex = plan.days.indexWhere((d) =>
+            d.date.year == now.year &&
+            d.date.month == now.month &&
+            d.date.day == now.day);
+        if (initialIndex == -1) initialIndex = 0;
+        if (mounted) {
+          setState(() {
+            _dishCache.addAll(cache);
+            _weeklyPlan = plan;
+            _selectedDayIndex = initialIndex;
+          });
+        }
+        return;
+      }
+
       final plan = await _mealPlanService.getWeeklyMealPlan(user);
       if (plan != null) {
-        // Pre-fetch dishes for the current day or all days?
-        // Let's pre-fetch all distinct dish IDs in the plan to ensure smooth UI
         final allDishIds = plan.days.expand((d) => d.meals.values).toSet();
         await _fetchDishes(allDishIds.toList());
 
-        // precise day selection
         final now = DateTime.now();
-        // Find the index that matches today, or default to 0
         int initialIndex = plan.days.indexWhere((d) =>
             d.date.year == now.year &&
             d.date.month == now.month &&

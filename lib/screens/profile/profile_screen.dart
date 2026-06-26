@@ -1716,39 +1716,42 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
               itemCount: _filteredFriends.length,
               itemBuilder: (context, index) {
                 final friend = _filteredFriends[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: friend.photoURL != null
-                        ? NetworkImage(friend.photoURL!)
-                        : null,
-                    child: friend.photoURL == null
-                        ? Text((friend.displayName ?? "U")[0])
-                        : null,
-                  ),
-                  title: Text(friend.displayName ?? "User",
-                      style: TextStyle(
-                          color: widget.isDark ? Colors.white : Colors.black)),
-                  trailing: PopupMenuButton(
-                    icon: const Icon(Icons.more_vert),
-                    itemBuilder: (ctx) => [
-                      PopupMenuItem(
-                        value: 'unfriend',
-                        child: Text(AppLocalizations.of(context)
-                            .translate('profile.friends_modal.unfriend')),
-                      )
-                    ],
-                    onSelected: (val) {
-                      if (val == 'unfriend') {
-                        _unfriend(friend);
-                      }
+                return Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: friend.photoURL != null
+                          ? NetworkImage(friend.photoURL!)
+                          : null,
+                      child: friend.photoURL == null
+                          ? Text((friend.displayName ?? "U")[0])
+                          : null,
+                    ),
+                    title: Text(friend.displayName ?? "User",
+                        style: TextStyle(
+                            color: widget.isDark ? Colors.white : Colors.black)),
+                    trailing: PopupMenuButton(
+                      icon: const Icon(Icons.more_vert),
+                      itemBuilder: (ctx) => [
+                        PopupMenuItem(
+                          value: 'unfriend',
+                          child: Text(AppLocalizations.of(context)
+                              .translate('profile.friends_modal.unfriend')),
+                        )
+                      ],
+                      onSelected: (val) {
+                        if (val == 'unfriend') {
+                          _unfriend(friend);
+                        }
+                      },
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => ProfileScreen(viewUser: friend)));
                     },
                   ),
-                  onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => ProfileScreen(viewUser: friend)));
-                  },
                 );
               },
             ),
@@ -1832,34 +1835,37 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
                           final u = _searchResults[i];
                           final isFriend = _friendIds.contains(u.uid);
 
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundImage: u.photoURL != null
-                                  ? NetworkImage(u.photoURL!)
-                                  : null,
-                              child: u.photoURL == null
-                                  ? Text((u.displayName ?? "U")[0])
-                                  : null,
+                          return Material(
+                            color: Colors.transparent,
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage: u.photoURL != null
+                                    ? NetworkImage(u.photoURL!)
+                                    : null,
+                                child: u.photoURL == null
+                                    ? Text((u.displayName ?? "U")[0])
+                                    : null,
+                              ),
+                              title: Text(u.displayName ?? "User",
+                                  style: TextStyle(
+                                      color: widget.isDark
+                                          ? Colors.white
+                                          : Colors.black)),
+                              trailing: isFriend
+                                  ? const Icon(Icons.check, color: Colors.green)
+                                  : IconButton(
+                                      icon: const Icon(Icons.person_add,
+                                          color: Color(0xFFF44075)),
+                                      onPressed: () => _sendRequest(u),
+                                    ),
+                              onTap: () {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                            ProfileScreen(viewUser: u)));
+                              },
                             ),
-                            title: Text(u.displayName ?? "User",
-                                style: TextStyle(
-                                    color: widget.isDark
-                                        ? Colors.white
-                                        : Colors.black)),
-                            trailing: isFriend
-                                ? const Icon(Icons.check, color: Colors.green)
-                                : IconButton(
-                                    icon: const Icon(Icons.person_add,
-                                        color: Color(0xFFF44075)),
-                                    onPressed: () => _sendRequest(u),
-                                  ),
-                            onTap: () {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          ProfileScreen(viewUser: u)));
-                            },
                           );
                         },
                       ))

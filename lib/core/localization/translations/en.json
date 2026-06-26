@@ -613,6 +613,11 @@
       "current_password": "Current Password",
       "new_password": "New Password",
       "change_password_success": "Password changed successfully."
+    },
+    "developer": {
+      "title": "Developer",
+      "test_mode": "Test Mode",
+      "test_mode_subtitle": "Fill app with maximum-volume dummy data for UI stress testing"
     }
   },
   "error": {
