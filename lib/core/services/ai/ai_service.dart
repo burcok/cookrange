@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import '../crashlytics_service.dart';
 
 class AIService {
   static final AIService _instance = AIService._internal();
@@ -17,10 +19,12 @@ class AIService {
 
   void initialize({required String apiKey}) {
     final trimmed = apiKey.trim();
-    // Only set the key if it looks like a real key (not the placeholder)
-    _apiKey = (trimmed.isEmpty || trimmed.contains('your_') || trimmed.contains('_here'))
+    _apiKey = (trimmed.isEmpty ||
+            trimmed.contains('your_') ||
+            trimmed.contains('_here'))
         ? null
         : trimmed;
+    unawaited(CrashlyticsService().setCustomKeys(aiModel: _model));
   }
 
   bool get isConfigured => _apiKey != null;

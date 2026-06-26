@@ -6,6 +6,7 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/models/ingredient_model.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/dish_service.dart';
+import '../../core/services/shopping_list_sync_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/weekly_meal_plan_service.dart';
 
@@ -19,6 +20,7 @@ class ShoppingListScreen extends StatefulWidget {
 class _ShoppingListScreenState extends State<ShoppingListScreen>
     with SingleTickerProviderStateMixin {
   final StorageService _storageService = StorageService();
+  final ShoppingListSyncService _syncService = ShoppingListSyncService();
   List<Ingredient> _shoppingList = [];
   final Set<String> _checkedItems = {};
   bool _isGenerating = false;
@@ -41,9 +43,29 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
   }
 
   void _loadShoppingList() {
+    // Load from Hive immediately, then try Firestore for fresher cross-device data
     setState(() {
       _shoppingList = _storageService.getShoppingList();
     });
+    final uid = context.read<UserProvider>().user?.uid;
+    if (uid != null) {
+      _syncService.load(uid).then((remote) {
+        if (remote != null && mounted) {
+          setState(() {
+            _shoppingList = remote.items;
+            _checkedItems
+              ..clear()
+              ..addAll(remote.checked);
+          });
+        }
+      });
+    }
+  }
+
+  void _syncToCloud() {
+    final uid = context.read<UserProvider>().user?.uid;
+    if (uid == null) return;
+    unawaited(_syncService.save(uid, _shoppingList, _checkedItems));
   }
 
   void _toggleItem(String name) {
@@ -54,7 +76,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         _checkedItems.add(name);
       }
     });
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
+    _syncToCloud();
   }
 
   Future<void> _deleteItem(String name) async {
@@ -64,6 +87,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         _shoppingList.removeWhere((i) => i.name == name);
         _checkedItems.remove(name);
       });
+      _syncToCloud();
     }
   }
 
@@ -96,6 +120,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
           _shoppingList.clear();
           _checkedItems.clear();
         });
+        _syncToCloud();
       }
     }
   }
@@ -166,6 +191,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
 
       if (mounted) {
         _loadShoppingList();
+        _syncToCloud();
         unawaited(HapticFeedback.mediumImpact());
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -270,7 +296,10 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                 calories: 0,
               ));
               navigator.pop();
-              if (mounted) _loadShoppingList();
+              if (mounted) {
+                _loadShoppingList();
+                _syncToCloud();
+              }
             },
             child: Text(l10n.translate('common.add')),
           ),

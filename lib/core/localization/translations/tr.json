@@ -1036,5 +1036,37 @@
         "general_1": "Motivasyon lazım!",
         "general_2": "Bugün salona giden var mı?"
       }
+  },
+  "tracking": {
+    "hydration": {
+      "title": "Hidrasyon",
+      "glasses": "bardak",
+      "remaining": "kaldı"
+    },
+    "weight": {
+      "title": "Kilo",
+      "log": "Kilo gir",
+      "log_title": "Bugünkü Kilonu Gir",
+      "field_label": "Kilo (kg)",
+      "recent": "Son girişler"
+    }
+  },
+  "cooking": {
+    "finish": {
+      "title": "Tarif Tamamlandı!",
+      "calories": "kal",
+      "protein": "protein",
+      "carbs": "karb",
+      "fat": "yağ",
+      "meal_type": "Şu öğün olarak kaydet",
+      "meal": {
+        "breakfast": "Kahvaltı",
+        "lunch": "Öğle",
+        "dinner": "Akşam",
+        "snack": "Atıştırmalık"
+      },
+      "log": "Kaydet & Bitir",
+      "skip": "Geç"
+    }
   }
 }

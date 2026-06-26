@@ -5,7 +5,7 @@ import '../providers/theme_provider.dart';
 import '../providers/onboarding_provider.dart';
 import '../providers/device_info_provider.dart';
 import '../providers/user_provider.dart';
-import '../services/navigation_provider.dart';
+import '../providers/navigation_provider.dart';
 
 /// Service to manage provider initialization and optimization
 class ProviderInitializationService {

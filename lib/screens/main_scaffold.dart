@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'home/home.dart';
 import 'profile/profile_screen.dart';
 import 'community/community_screen.dart';
-import '../core/services/navigation_provider.dart';
+import '../core/providers/navigation_provider.dart';
 import '../core/providers/user_provider.dart';
 import '../core/widgets/quick_actions_sheet.dart';
 import '../core/widgets/voice_assistant_overlay.dart';

@@ -2,7 +2,7 @@ import 'package:cookrange/screens/chat/chat_list_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/services/navigation_provider.dart';
+import '../../co../providers/navigation_provider.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/chat_service.dart';
 import '../../screens/notifications/notification_screen.dart';

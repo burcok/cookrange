@@ -20,6 +20,7 @@ import '../../core/services/admin_status_service.dart';
 import '../../core/localization/app_localizations.dart';
 import '../common/generic_error_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
+import 'widgets/tracking_card.dart';
 
 import '../../core/providers/theme_provider.dart';
 import '../../core/widgets/main_header.dart';
@@ -455,6 +456,8 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         SizedBox(height: 16.h),
         _buildNutritionCard(context, adjustedTDEE, macros, l10n),
+        SizedBox(height: 24.h),
+        const TrackingCard(),
         SizedBox(height: 32.h),
         _buildMealPlanSection(context, userModel, l10n),
         SizedBox(height: 32.h),

@@ -86,13 +86,13 @@ These exist and work in code today. Evidence in `file:line` form.
 |---|---|---|
 | 🚧 Home dashboard | Real calculated targets + real weekly meal plan + real consumed calories stream + mark-as-eaten | Streak not surfaced prominently; hydration unwired; |
 | 🚧 AI integration | Real OpenRouter client + 3 working features + robust response parsing | **Committed `.env` key is a placeholder** → all AI dead until real key added; fragile unguarded JSON casts; failures swallowed → `null`; single free model, no retry |
-| 🚧 Cooking mode | Step-by-step PageView + wakelock + progress ring | Timer is a generic stopwatch, **not step-aware**; "Finish" is a no-op `// TODO` (`cooking_mode_screen.dart:219`); no completion logging |
+| ✅ Cooking mode | Step-by-step PageView + wakelock + progress ring + finish celebration sheet + food log | Timer is a generic stopwatch (not step-aware) |
 | 🚧 Shopping list | Local Hive persistence, add/remove/clear, swipe-delete | **Not auto-generated from meal plan**; share button stub; check-state not persisted; local-only (no Firestore sync) |
 | 🚧 Profile screen | Rich display + real avatar upload + real post count stat | Edit fields have no persistence path for non-photo data; fake report/block |
 | 🚧 Settings screen | Dark mode + color picker + EN/TR + change email/password + account deletion + Privacy/Terms links | Privacy toggle stub; notifications/about/help dead rows; premium card dead button |
 | 🚧 Community feed | All CRUD real + real image upload + load-more pagination | Filters cosmetic; report stub; groups stub |
 | 🚧 Chat | 1:1 fully real | Group chat is model-only (no creation path); image messages model-only; mock "gym" chat in dead code |
-| 🚧 Notifications screen | In-app DB notifications render | Uses one-shot FutureBuilder (no live update); no pagination; **no push/FCM at all** |
+| ✅ Notifications screen | In-app DB notifications render + live stream + auto mark-read | No pagination; no push/FCM at all |
 | 🚧 Account suspended screen | Polished 889-LOC UI + mailto support | Shows **no real ban data** (static strings); appeal modal is informational-only |
 | 🚧 Dark mode | Both themes fully defined | `main_scaffold.dart:113` hardcodes light bg; default is light; effectively **light-only in practice** |
 | 🚧 Offline support | Firestore SDK disk cache + 1 cache-source fallback | **No real sync, no write queue/retry, no connectivity-driven UI**; `connectivity_plus` only one-shot |
@@ -157,11 +157,11 @@ These exist and work in code today. Evidence in `file:line` form.
 
 **State Management**
 - [ ] Consolidate state sources (Provider / SharedPreferences / Hive / Firestore) behind repositories. — High · Large · part of architecture item · v0.6.0 · 🚧
-- [ ] Move `NavigationProvider` from `services/` to `providers/` for consistency. — Low · Small · 0.25 d · v0.6.0 · 🚧
+- [x] ✅ Move `NavigationProvider` from `services/` to `providers/` for consistency. — Done
 
 **Caching / Offline**
 - [ ] Decide scope: either implement real offline (local mirror + write queue + connectivity stream) or remove the offline scaffolding/strings. — Medium · Large · 5–8 d (if building) · v0.7.0 · 🚧
-- [ ] Configure explicit Firestore persistence settings. — Low · Small · 0.25 d · v0.6.0 · 🚧
+- [x] ✅ Configure explicit Firestore persistence settings — Done (`persistenceEnabled: true`, `CACHE_SIZE_UNLIMITED` in `_initializeFirebase`)
 
 **Error Handling**
 - [x] ✅ Fix triple `FlutterError.onError` collision — `GlobalErrorHandler` is the sole handler; removed duplicate assignment from `CrashlyticsService` and `ErrorBoundary.initState()`. — Done
@@ -173,12 +173,12 @@ These exist and work in code today. Evidence in `file:line` form.
 
 **Monitoring**
 - [ ] Add **Firebase Performance** (currently `performance_service.dart` is unused dead code, no backend). — Medium · Medium · 2 d · v0.7.0 · ❌
-- [ ] Crashlytics custom keys (user tier, screen, AI model) for triage. — Low · Small · 0.5 d · v0.6.0 · 🚧
+- [x] ✅ Crashlytics custom keys — Done (`CrashlyticsService.setCustomKeys(screen, userTier, aiModel)`; wired at login and AI init)
 
 **Testing**
 - [ ] Real test suite: unit tests for `CalorieCalculator`, `WeeklyMealPlanService` parsing, AI response parsing, streak logic. — High · Medium · 3–4 d · v0.6.0 · 🟡
 - [ ] Widget tests for auth + onboarding + home (replace no-op `widget_test.dart`). — High · Medium · 3–4 d · v0.7.0 · 🟡
-- [ ] Delete stale `test_output.txt`; move misplaced `*_test.dart` from `lib/` to `test/`. — Low · Small · 0.25 d · v0.5.0 · 🚧
+- [x] ✅ Delete stale `test_output.txt`; move misplaced `*_test.dart` from `lib/` to `test/`. — Done
 
 **CI/CD**
 - [x] ✅ GitHub Actions: `flutter analyze` + `flutter test` + Android debug build on PR (B13). — Done (`.github/workflows/ci.yml`)
@@ -207,14 +207,14 @@ These exist and work in code today. Evidence in `file:line` form.
 **Meal Planning**
 - [x] ✅ AI JSON schema enforcement + retry + graceful UI (B9). — Done (typed exceptions, null-safe parse, 3 retries in `ai_service.dart`)
 - [ ] Per-meal swap/substitution ("no chicken today"). — High · Medium · 3–4 d · v0.7.0 · 📋
-- [ ] Auto-seed dish DB on first run (currently a manual script). — Medium · Medium · 1–2 d · v0.6.0 · 🚧
+- [x] ✅ Auto-seed dish DB on first run — Done (`DishSeederService.seedIfEmpty()` via batch writes; wired as `unawaited()` in `_initializeServices`)
 - [ ] Better dish imagery (current sources partly random/non-matching). — Medium · Medium · 2 d · v0.7.0 · 🚧
 
 **Nutrition Tracking**
 - [x] ✅ **Food/calorie diary** — log meals, real consumed calories/macros (B3). — Done (`food_log_model.dart`, `food_log_service.dart`, real-time stream in `home.dart`)
-- [ ] Weight logging UI + history + chart (storage layer already exists). — High · Medium · 3–4 d · v0.7.0 · 🟡
-- [ ] Hydration tracking UI (storage exists, unwired). — Medium · Small · 1–2 d · v0.7.0 · 🟡
-- [ ] "Mark meal as eaten" from plan/cooking-mode → feeds the diary. — High · Medium · 2 d · v0.7.0 · 🚧
+- [x] ✅ Weight logging UI + history + mini chart — Done (`TrackingCard` in `home/widgets/tracking_card.dart`, Hive-backed, dialog log entry, 7-day bar chart)
+- [x] ✅ Hydration tracking UI — Done (`TrackingCard` — progress bar, +250ml / -250ml buttons, daily goal 2000ml)
+- [x] ✅ "Mark meal as eaten" from cooking-mode → feeds the diary. — Done (`cooking_mode_screen.dart:_showFinishSheet`, `FoodLogService.logRecipe`)
 - [ ] Nutrition analytics (trends, consistency score, weekly summary). — Medium · Medium · 3–4 d · v0.8.0 · ❌
 
 **AI Assistant**
@@ -227,11 +227,11 @@ These exist and work in code today. Evidence in `file:line` form.
 **Shopping Lists**
 - [x] ✅ Auto-generate consolidated list from the weekly meal plan — ingredient aggregation, duplicate merging. — Done (`shopping_list_screen.dart:_generateFromPlan`)
 - [x] ✅ Share / copy — Clipboard copy of full list. — Done (`_copyToClipboard`)
-- [ ] Sync shopping list to Firestore (cross-device). — Medium · Small · 1 d · v0.7.0 · 🚧
+- [x] ✅ Sync shopping list to Firestore (cross-device) — Done (`ShoppingListSyncService`, `users/{uid}/lists/shopping`; loads from Firestore on open, saves on every mutation)
 - [x] ✅ Dark mode & theme consistency — full Theme.of(context) usage, animated item states. — Done
 
 **Progress Tracking**
-- [ ] Cooking-mode completion → log + celebration (currently no-op). — Medium · Small · 1 d · v0.7.0 · 🚧
+- [x] ✅ Cooking-mode completion → log + celebration — Done (meal type selector bottom sheet, logs to Firestore, haptics)
 - [ ] Daily goal completion + streak surfaced on home. — Medium · Medium · 2 d · v0.8.0 · 🚧
 
 **Premium System (foundation)**
@@ -256,7 +256,7 @@ These exist and work in code today. Evidence in `file:line` form.
 - [ ] **Report/moderation** — real reports collection + admin review + block enforcement. — High · Medium · 3–4 d · v0.8.0 · 🟡
 - [ ] **Group chat** creation flow (model exists, no creation path). — Medium · Medium · 3–4 d · v0.8.0 · 🟡
 - [ ] **Image messages** in chat (model exists). — Medium · Medium · 2 d · v0.8.0 · ❌
-- [ ] **Notifications screen** → switch to live stream; add push (depends B5). — High · Small · 1 d · v0.7.0 · 🚧
+- [x] ✅ **Notifications screen** → switched to live `StreamSubscription` via `getNotificationsStream()`; auto-marks-read on first load; real-time updates. — Done
 - [ ] **Challenges** (community) — full feature: create/join/track. — High · Large · 6–8 d · v0.9.0 · ❌
 - [ ] **Streaks** surfaced socially + milestones/rewards. — Medium · Medium · 2–3 d · v0.9.0 · 🚧
 - [ ] **Leaderboards** (global/friends). — Medium · Large · 4–5 d · v0.9.0 · ❌

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/food_log_model.dart';
 import '../models/dish_model.dart';
+import '../models/recipe_model.dart';
 
 /// Manages food/meal logging for a user.
 /// Collection: users/{uid}/food_logs/{logId}
@@ -36,6 +37,27 @@ class FoodLogService {
       'protein': dish.protein.toDouble(),
       'carbs': dish.carbs.toDouble(),
       'fat': dish.fat.toDouble(),
+      'loggedAt': Timestamp.fromDate(now),
+      'date': _todayKey(),
+    });
+  }
+
+  /// Log a cooked recipe as a meal entry.
+  Future<void> logRecipe({
+    required String userId,
+    required String mealType,
+    required Recipe recipe,
+  }) async {
+    final now = DateTime.now();
+    await _logsRef(userId).add({
+      'userId': userId,
+      'mealType': mealType,
+      'dishId': recipe.id,
+      'dishName': recipe.title,
+      'calories': (recipe.macros['calories'] ?? 0).toDouble(),
+      'protein': (recipe.macros['protein'] ?? 0).toDouble(),
+      'carbs': (recipe.macros['carbs'] ?? 0).toDouble(),
+      'fat': (recipe.macros['fat'] ?? 0).toDouble(),
       'loggedAt': Timestamp.fromDate(now),
       'date': _todayKey(),
     });

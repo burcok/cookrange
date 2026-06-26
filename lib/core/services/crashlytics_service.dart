@@ -86,4 +86,28 @@ class CrashlyticsService {
           service: _serviceName, error: e);
     }
   }
+
+  /// Set structured triage keys visible in the Crashlytics dashboard.
+  /// Call whenever one of these values changes (login, screen transition, etc.)
+  Future<void> setCustomKeys({
+    String? screen,
+    String? userTier,
+    String? aiModel,
+  }) async {
+    if (!_crashlytics.isCrashlyticsCollectionEnabled) return;
+    try {
+      if (screen != null) {
+        await _crashlytics.setCustomKey('screen', screen);
+      }
+      if (userTier != null) {
+        await _crashlytics.setCustomKey('user_tier', userTier);
+      }
+      if (aiModel != null) {
+        await _crashlytics.setCustomKey('ai_model', aiModel);
+      }
+    } catch (e) {
+      LogService().error('CrashlyticsService: Error setting custom keys',
+          service: _serviceName, error: e);
+    }
+  }
 }

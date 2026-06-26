@@ -17,6 +17,8 @@ import 'log_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'ai/ai_service.dart';
 import 'push_notification_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dish_seeder_service.dart';
 
 /// Comprehensive app initialization service that handles all startup tasks
 /// with proper error handling, fallbacks, and user feedback.
@@ -175,6 +177,12 @@ class AppInitializationService {
         _log.info('Firebase already initialized in main()',
             service: _serviceName);
       }
+      // Explicitly configure Firestore persistence + unlimited cache
+      FirebaseFirestore.instance.settings = const Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+      );
+
       _log.info('Firebase initialization check complete',
           service: _serviceName);
       _initializationResults['firebase'] = true;
@@ -257,6 +265,9 @@ class AppInitializationService {
       ]);
 
       _log.info('App services initialized', service: _serviceName);
+
+      // Auto-seed dish DB in background on first install (non-blocking)
+      unawaited(DishSeederService().seedIfEmpty());
     } catch (e) {
       _log.error('Service initialization failed',
           service: _serviceName, error: e);

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 
@@ -19,59 +20,66 @@ class NotificationScreen extends StatefulWidget {
 class _NotificationScreenState extends State<NotificationScreen> {
   final NotificationService _service = NotificationService();
   final FriendService _friendService = FriendService();
+
+  late final StreamSubscription<List<NotificationModel>> _sub;
   List<NotificationModel> _notifications = [];
   bool _isLoading = true;
-  String _selectedFilter = 'all'; // all, unread, friends, system
+  bool _hasAutoMarkedRead = false;
+  String _selectedFilter = 'all';
 
   @override
   void initState() {
     super.initState();
-    _loadNotifications();
+    _sub = _service.getNotificationsStream().listen(_onData);
   }
 
-  Future<void> _loadNotifications() async {
-    final notifications = await _service.getNotifications();
-    if (mounted) {
-      setState(() {
-        _notifications = notifications;
-        _isLoading = false;
-      });
+  @override
+  void dispose() {
+    _sub.cancel();
+    super.dispose();
+  }
 
-      // Auto-mark all unread notifications as read
+  void _onData(List<NotificationModel> notifications) {
+    if (!mounted) return;
+    setState(() {
+      _notifications = notifications;
+      _isLoading = false;
+    });
+
+    // Auto-mark unread as read exactly once when screen first loads
+    if (!_hasAutoMarkedRead) {
+      _hasAutoMarkedRead = true;
       final unreadIds =
           notifications.where((n) => !n.isRead).map((n) => n.id).toList();
       if (unreadIds.isNotEmpty) {
-        await _service.markMultipleAsRead(unreadIds);
+        _service.markMultipleAsRead(unreadIds);
       }
     }
   }
 
   Future<void> _markAllRead() async {
-    for (var n in _notifications) {
-      if (!n.isRead) {
-        await _service.markAsRead(n.id);
-      }
-    }
-    await _loadNotifications();
+    final unread = _notifications.where((n) => !n.isRead).toList();
+    if (unread.isEmpty) return;
+    await _service.markMultipleAsRead(unread.map((n) => n.id).toList());
+    // Stream will update automatically
   }
 
   Future<void> _delete(String id) async {
     await _service.deleteNotification(id);
+    // Optimistic update — stream will confirm
     if (mounted) {
-      setState(() {
-        _notifications.removeWhere((n) => n.id == id);
-      });
+      setState(() => _notifications.removeWhere((n) => n.id == id));
     }
   }
 
-  Future<void> _acceptRequest(String senderId, String notificationId) async {
+  Future<void> _acceptRequest(
+      String senderId, String notificationId) async {
     try {
       await _friendService.acceptFriendRequest(context, senderId);
-
-      // Logic handles deletion in backend, but we remove from UI instantly for better UX
-      setState(() {
-        _notifications.removeWhere((n) => n.id == notificationId);
-      });
+      if (mounted) {
+        setState(
+            () => _notifications.removeWhere((n) => n.id == notificationId));
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -82,7 +90,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
-  Future<void> _rejectRequest(String senderId, String notificationId) async {
+  Future<void> _rejectRequest(
+      String senderId, String notificationId) async {
     try {
       await _friendService.rejectFriendRequest(senderId);
       await _delete(notificationId);
@@ -131,7 +140,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          // Background Elements
+          // Background elements
           Positioned(
             top: -80,
             right: -80,
@@ -139,7 +148,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
               width: 380,
               height: 380,
               decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: isDark ? 0.2 : 0.1),
+                  color:
+                      primaryColor.withValues(alpha: isDark ? 0.2 : 0.1),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -158,7 +168,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    Colors.blue.withValues(alpha: isDark ? 0.15 : 0.25),
+                    Colors.blue
+                        .withValues(alpha: isDark ? 0.15 : 0.25),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.7],
@@ -173,7 +184,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
               width: 250,
               height: 250,
               decoration: BoxDecoration(
-                  color: Colors.purple.withValues(alpha: isDark ? 0.1 : 0.2),
+                  color: Colors.purple
+                      .withValues(alpha: isDark ? 0.1 : 0.2),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -191,42 +203,47 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ),
             child: Column(
               children: [
-                SizedBox(height: MediaQuery.of(context).padding.top + 24),
-
+                SizedBox(
+                    height: MediaQuery.of(context).padding.top + 24),
                 Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(left: 24),
-                        child: IconButton(
-                          icon: Icon(Icons.arrow_back,
-                              color:
-                                  isDark ? Colors.grey[300] : Colors.grey[600]),
-                          onPressed: () => Navigator.pop(context),
-                        ),
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(left: 24),
+                      child: IconButton(
+                        icon: Icon(Icons.arrow_back,
+                            color: isDark
+                                ? Colors.grey[300]
+                                : Colors.grey[600]),
+                        onPressed: () => Navigator.pop(context),
                       ),
-                      Text(
-                        AppLocalizations.of(context)
-                            .translate('community.notifications_title'),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                          color: isDark ? Colors.grey[200] : Colors.grey[800],
-                        ),
+                    ),
+                    Text(
+                      AppLocalizations.of(context).translate(
+                          'community.notifications_title'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        color: isDark
+                            ? Colors.grey[200]
+                            : Colors.grey[800],
                       ),
-                      Container(
-                        margin: const EdgeInsets.only(right: 24),
-                        child: IconButton(
-                          icon: Icon(Icons.settings,
-                              color:
-                                  isDark ? Colors.grey[300] : Colors.grey[600]),
-                          onPressed: () {
-                            // Navigate to settings or show options
-                          },
-                        ),
+                    ),
+                    Container(
+                      margin: const EdgeInsets.only(right: 24),
+                      child: IconButton(
+                        icon: Icon(Icons.done_all,
+                            color: isDark
+                                ? Colors.grey[300]
+                                : Colors.grey[600]),
+                        onPressed: _markAllRead,
+                        tooltip: AppLocalizations.of(context)
+                            .translate('community.mark_all_read'),
                       ),
-                    ]),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
 
                 // Filters
@@ -237,12 +254,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     children: [
-                      _buildFilterChip(
-                          'all',
-                          AppLocalizations.of(context)
-                              .translate('community.all'),
-                          primaryColor,
-                          isDark),
+                      _buildFilterChip('all',
+                          AppLocalizations.of(context).translate('community.all'),
+                          primaryColor, isDark),
                       const SizedBox(width: 12),
                       _buildFilterChip(
                           'unread',
@@ -268,58 +282,38 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   ),
                 ),
 
-                // Mark all Read Action
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      GestureDetector(
-                        onTap: _markAllRead,
-                        child: Row(
-                          children: [
-                            Icon(Icons.done_all, size: 16, color: primaryColor),
-                            const SizedBox(width: 4),
-                            Text(
-                              AppLocalizations.of(context)
-                                  .translate('community.mark_all_read'),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: primaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                const SizedBox(height: 8),
 
                 // List
                 Expanded(
                   child: _isLoading
                       ? Center(
-                          child: CircularProgressIndicator(color: primaryColor))
+                          child: CircularProgressIndicator(
+                              color: primaryColor))
                       : _filteredNotifications.isEmpty
                           ? _buildEmptyState(context)
                           : GlassRefresher(
-                              onRefresh: _loadNotifications,
+                              onRefresh: () async {
+                                // Stream keeps data live; nothing to do
+                              },
                               topPadding:
                                   MediaQuery.of(context).padding.top + 24,
                               child: ListView.separated(
-                                physics: const BouncingScrollPhysics(
-                                    parent: AlwaysScrollableScrollPhysics()),
-                                padding:
-                                    const EdgeInsets.fromLTRB(24, 24, 24, 100),
-                                itemCount: _filteredNotifications.length,
+                                physics:
+                                    const BouncingScrollPhysics(
+                                        parent:
+                                            AlwaysScrollableScrollPhysics()),
+                                padding: const EdgeInsets.fromLTRB(
+                                    24, 24, 24, 100),
+                                itemCount:
+                                    _filteredNotifications.length,
                                 separatorBuilder: (c, i) =>
                                     const SizedBox(height: 16),
                                 itemBuilder: (context, index) {
-                                  final notification =
+                                  final n =
                                       _filteredNotifications[index];
                                   return _buildNotificationCard(
-                                      notification, isDark, primaryColor);
+                                      n, isDark, primaryColor);
                                 },
                               ),
                             ),
@@ -336,13 +330,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
       String filterId, String label, Color primaryColor, bool isDark) {
     final isSelected = _selectedFilter == filterId;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedFilter = filterId;
-        });
-      },
+      onTap: () => setState(() => _selectedFilter = filterId),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? primaryColor
@@ -406,7 +397,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   Widget _buildNotificationCard(
       NotificationModel notification, bool isDark, Color primaryColor) {
-    // Determine style based on type
     Color iconBgColor;
     Color iconColor;
     IconData iconData;
@@ -414,20 +404,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     switch (notification.type) {
       case NotificationType.like:
-        iconBgColor =
-            isDark ? Colors.red.withValues(alpha: 0.2) : Colors.red.shade50;
+        iconBgColor = isDark
+            ? Colors.red.withValues(alpha: 0.2)
+            : Colors.red.shade50;
         iconColor = Colors.red;
         iconData = Icons.favorite;
         headerText = AppLocalizations.of(context)
-            .translate('community.friends'); // Or "Community"
+            .translate('community.friends');
         break;
       case NotificationType.comment:
-        iconBgColor =
-            isDark ? Colors.blue.withValues(alpha: 0.2) : Colors.blue.shade50;
+        iconBgColor = isDark
+            ? Colors.blue.withValues(alpha: 0.2)
+            : Colors.blue.shade50;
         iconColor = Colors.blue;
         iconData = Icons.chat_bubble;
-        headerText =
-            AppLocalizations.of(context).translate('community.friends');
+        headerText = AppLocalizations.of(context)
+            .translate('community.friends');
         break;
       case NotificationType.friend_request:
         iconBgColor = isDark
@@ -435,24 +427,26 @@ class _NotificationScreenState extends State<NotificationScreen> {
             : Colors.purple.shade50;
         iconColor = Colors.purple;
         iconData = Icons.person_add;
-        headerText =
-            AppLocalizations.of(context).translate('community.friends');
+        headerText = AppLocalizations.of(context)
+            .translate('community.friends');
         break;
       case NotificationType.friend_accepted:
-        iconBgColor =
-            isDark ? Colors.green.withValues(alpha: 0.2) : Colors.green.shade50;
+        iconBgColor = isDark
+            ? Colors.green.withValues(alpha: 0.2)
+            : Colors.green.shade50;
         iconColor = Colors.green;
         iconData = Icons.person_add;
-        headerText =
-            AppLocalizations.of(context).translate('community.friends');
+        headerText = AppLocalizations.of(context)
+            .translate('community.friends');
         break;
       case NotificationType.system:
         iconBgColor = isDark
             ? Colors.amber.withValues(alpha: 0.2)
-            : Colors.amber.shade50; // Or slate
+            : Colors.amber.shade50;
         iconColor = Colors.amber.shade800;
         iconData = Icons.system_update;
-        headerText = AppLocalizations.of(context).translate('community.system');
+        headerText = AppLocalizations.of(context)
+            .translate('community.system');
         break;
       default:
         iconBgColor = isDark
@@ -460,23 +454,24 @@ class _NotificationScreenState extends State<NotificationScreen> {
             : primaryColor.withValues(alpha: 0.1);
         iconColor = primaryColor;
         iconData = Icons.notifications;
-        headerText = AppLocalizations.of(context).translate('community.system');
+        headerText = AppLocalizations.of(context)
+            .translate('community.system');
     }
 
-    // Override for specific "Meal Plan" if title matches
     if (notification.title.contains("Plan") ||
         notification.title.contains("Yemek")) {
-      iconBgColor =
-          isDark ? Colors.green.withValues(alpha: 0.2) : Colors.green.shade50;
+      iconBgColor = isDark
+          ? Colors.green.withValues(alpha: 0.2)
+          : Colors.green.shade50;
       iconColor = Colors.green;
       iconData = Icons.restaurant;
-      headerText = "Meal Plan"; // Localization needed
+      headerText = "Meal Plan";
     }
-    // Override for "Water"
     if (notification.title.contains("Water") ||
         notification.title.contains("Su")) {
-      iconBgColor =
-          isDark ? Colors.blue.withValues(alpha: 0.2) : Colors.blue.shade50;
+      iconBgColor = isDark
+          ? Colors.blue.withValues(alpha: 0.2)
+          : Colors.blue.shade50;
       iconColor = Colors.blue;
       iconData = Icons.water_drop;
       headerText = "Goal";
@@ -496,14 +491,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
         child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
       child: GlassContainer(
-        enableBlur: false, // Performance optimization
+        enableBlur: false,
         borderRadius: BorderRadius.circular(20),
         padding: const EdgeInsets.all(16),
         opacity: isDark ? 0.6 : 0.9,
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         child: Stack(
           children: [
-            // Unread dot
             if (!notification.isRead)
               Positioned(
                 top: 0,
@@ -521,7 +515,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       ]),
                 ),
               ),
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -540,7 +533,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        headerText, // Category
+                        headerText,
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -554,7 +547,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.grey[900],
+                          color: isDark
+                              ? Colors.white
+                              : Colors.grey[900],
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -565,20 +560,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           height: 1.4,
-                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          color: isDark
+                              ? Colors.grey[400]
+                              : Colors.grey[600],
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _formatTime(notification.timestamp),
+                        _formatRelativeTime(notification.timestamp),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
                           color: Colors.grey[500],
                         ),
                       ),
-
-                      // Actions for Friend Request
                       if (notification.type ==
                               NotificationType.friend_request &&
                           notification.relatedId != null) ...[
@@ -587,17 +582,19 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           children: [
                             GestureDetector(
                               onTap: () => _acceptRequest(
-                                  notification.relatedId!, notification.id),
+                                  notification.relatedId!,
+                                  notification.id),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: primaryColor,
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius:
+                                      BorderRadius.circular(10),
                                   boxShadow: [
                                     BoxShadow(
-                                        color:
-                                            primaryColor.withValues(alpha: 0.3),
+                                        color: primaryColor
+                                            .withValues(alpha: 0.3),
                                         blurRadius: 6,
                                         offset: const Offset(0, 2))
                                   ],
@@ -614,17 +611,21 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             const SizedBox(width: 8),
                             GestureDetector(
                               onTap: () => _rejectRequest(
-                                  notification.relatedId!, notification.id),
+                                  notification.relatedId!,
+                                  notification.id),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: isDark
-                                      ? Colors.white.withValues(alpha: 0.05)
+                                      ? Colors.white
+                                          .withValues(alpha: 0.05)
                                       : Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius:
+                                      BorderRadius.circular(10),
                                   border: Border.all(
-                                      color: Colors.red.withValues(alpha: 0.5)),
+                                      color: Colors.red
+                                          .withValues(alpha: 0.5)),
                                 ),
                                 child: Text(
                                     AppLocalizations.of(context)
@@ -649,7 +650,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  String _formatTime(DateTime time) {
+  String _formatRelativeTime(DateTime time) {
     final diff = DateTime.now().difference(time);
     if (diff.inMinutes < 60) {
       return "${diff.inMinutes} ${AppLocalizations.of(context).translate('community.time.min')}";

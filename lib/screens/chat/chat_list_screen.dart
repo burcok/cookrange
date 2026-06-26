@@ -11,7 +11,7 @@ import '../../core/models/message_model.dart';
 import 'widgets/signal_dialog.dart';
 import 'widgets/select_friend_sheet.dart';
 import 'chat_detail_screen.dart';
-import '../../core/services/navigation_provider.dart';
+import '../../core/providers/navigation_provider.dart';
 import '../community/widgets/glass_refresher.dart';
 import '../../core/widgets/side_menu.dart';
 import '../../core/widgets/unified_action_sheet.dart';

@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/navigation_provider.dart';
+import '../providers/navigation_provider.dart';
 import '../localization/app_localizations.dart';
 import '../providers/theme_provider.dart';
 

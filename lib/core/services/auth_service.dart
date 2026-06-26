@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import '../../../core/services/analytics_service.dart';
+import 'crashlytics_service.dart';
 import 'firestore_service.dart';
 import 'log_service.dart';
 import '../models/user_model.dart';
@@ -143,6 +144,8 @@ class AuthService {
 
       // Start Monitoring Session
       _startSessionMonitoring(result.user!.uid);
+
+      unawaited(CrashlyticsService().setCustomKeys(userTier: 'free'));
 
       _log.info('Successfully signed in user: ${result.user!.uid}',
           service: _serviceName);
@@ -345,6 +348,7 @@ class AuthService {
         await _firestoreService.handleUserLogin(user, sessionId: sessionId);
 
         _startSessionMonitoring(user.uid);
+        unawaited(CrashlyticsService().setCustomKeys(userTier: 'free'));
 
         _log.info('Google Sign-In successful for user: ${user.uid}',
             service: _serviceName);
@@ -596,6 +600,7 @@ class AuthService {
         _currentSessionId = sessionId;
         await _firestoreService.handleUserLogin(user, sessionId: sessionId);
         _startSessionMonitoring(user.uid);
+        unawaited(CrashlyticsService().setCustomKeys(userTier: 'free'));
 
         _log.info('Apple Sign-In successful for user: ${user.uid}',
             service: _serviceName);

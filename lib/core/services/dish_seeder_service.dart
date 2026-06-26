@@ -167,6 +167,82 @@ class DishSeederService {
     print('Seeding complete. Success: $successCount, Failed: $failCount');
   }
 
+  /// Seeds all dishes from local data if the Firestore dishes collection is empty.
+  /// Uses batch writes for efficiency. Does NOT fetch images — uses image_url
+  /// already present in the data or leaves imageUrl null.
+  Future<void> seedIfEmpty() async {
+    try {
+      final existing = await _firestore
+          .collection('dishes')
+          .limit(1)
+          .get(const GetOptions(source: Source.server));
+      if (existing.docs.isNotEmpty) return;
+
+      const batchSize = 450; // Stay well under the 500-op Firestore batch limit
+      final items = allDishes;
+      int batchStart = 0;
+
+      while (batchStart < items.length) {
+        final batch = _firestore.batch();
+        final end = (batchStart + batchSize).clamp(0, items.length);
+
+        for (int i = batchStart; i < end; i++) {
+          final dishData = items[i];
+          try {
+            final rawIngredients =
+                dishData['ingredients'] as List<dynamic>? ?? [];
+            final ingredients = rawIngredients.map((item) {
+              final map = item as Map<String, dynamic>;
+              return Ingredient(
+                name: map['name'] ?? '',
+                amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+                unit: map['unit'] ?? '',
+                calories: (map['calories'] as num?)?.toDouble() ?? 0.0,
+              );
+            }).toList();
+
+            final dish = DishModel(
+              id: dishData['id'],
+              name: dishData['name'],
+              nameEn: dishData['name_en'],
+              description: dishData['description'],
+              descriptionEn: dishData['description_en'] ?? '',
+              imageUrl: dishData['image_url'] as String?,
+              calories: (dishData['calories'] as num).toDouble(),
+              protein: (dishData['protein'] as num).toDouble(),
+              carbs: (dishData['carbs'] as num).toDouble(),
+              fat: (dishData['fat'] as num).toDouble(),
+              fiber: (dishData['fiber'] as num?)?.toDouble() ?? 0.0,
+              category: dishData['category'],
+              tags: List<String>.from(dishData['tags'] ?? []),
+              mealType: dishData['meal_type'] ?? 'main',
+              prepTimeMinutes: dishData['prep_time_minutes'] ?? 0,
+              cookTimeMinutes: dishData['cook_time_minutes'] ?? 0,
+              difficulty: dishData['difficulty'] ?? 'medium',
+              servings: dishData['servings'] ?? 1,
+              ingredients: ingredients,
+              instructions: List<String>.from(dishData['instructions'] ?? []),
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            );
+
+            batch.set(
+              _firestore.collection('dishes').doc(dish.id),
+              dish.toJson(),
+            );
+          } catch (_) {
+            // Skip individual bad entries; don't abort the whole batch
+          }
+        }
+
+        await batch.commit();
+        batchStart = end;
+      }
+    } catch (_) {
+      // Seeding failure is non-fatal; app works without pre-seeded dishes
+    }
+  }
+
   Future<void> seedSingleDish(
       Map<String, dynamic> dishData, String imageUrl) async {
     try {

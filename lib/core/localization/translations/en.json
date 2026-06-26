@@ -1036,5 +1036,37 @@
       "general_1": "Need motivation!",
       "general_2": "Anyone going to the gym today?"
     }
+  },
+  "tracking": {
+    "hydration": {
+      "title": "Hydration",
+      "glasses": "glasses",
+      "remaining": "remaining"
+    },
+    "weight": {
+      "title": "Weight",
+      "log": "Log weight",
+      "log_title": "Log Today's Weight",
+      "field_label": "Weight (kg)",
+      "recent": "Recent entries"
+    }
+  },
+  "cooking": {
+    "finish": {
+      "title": "Recipe Complete!",
+      "calories": "cal",
+      "protein": "protein",
+      "carbs": "carbs",
+      "fat": "fat",
+      "meal_type": "Log as",
+      "meal": {
+        "breakfast": "Breakfast",
+        "lunch": "Lunch",
+        "dinner": "Dinner",
+        "snack": "Snack"
+      },
+      "log": "Log & Finish",
+      "skip": "Skip"
+    }
   }
 }
