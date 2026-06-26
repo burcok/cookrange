@@ -147,5 +147,11 @@ class _ExploreScreenState extends State<ExploreScreen>
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   bool get wantKeepAlive => true;
 }

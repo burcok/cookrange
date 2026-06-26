@@ -52,6 +52,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   void dispose() {
     _pageController.dispose();
     _commentController.dispose();
+    _editCommentController.dispose();
+    _editPostController.dispose();
     _commentFocusNode.dispose();
     super.dispose();
   }

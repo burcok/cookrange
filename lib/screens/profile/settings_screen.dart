@@ -13,240 +13,60 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _showChangeEmailDialog(BuildContext context) async {
     final appLoc = AppLocalizations.of(context);
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
-    bool isLoading = false;
-
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(appLoc.translate('settings.account.change_email_title')),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: appLoc.translate('settings.account.change_email_new'),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: appLoc.translate('settings.account.change_email_password'),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
-                  child: Text(appLoc.translate('common.cancel')),
-                ),
-                ElevatedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          setDialogState(() => isLoading = true);
-                          try {
-                            await AuthService().updateEmail(
-                              emailController.text.trim(),
-                              passwordController.text,
-                            );
-                            if (!context.mounted) return;
-                            Navigator.pop(dialogContext);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(appLoc.translate('settings.account.change_email_success'))),
-                            );
-                          } catch (e) {
-                            setDialogState(() => isLoading = false);
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-                            );
-                          }
-                        },
-                  child: isLoading
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Text(appLoc.translate('common.save')),
-                ),
-              ],
+      builder: (ctx) => _ChangeEmailDialog(
+        appLoc: appLoc,
+        onSave: (email, password) async {
+          await AuthService().updateEmail(email, password);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(appLoc.translate('settings.account.change_email_success'))),
             );
-          },
-        );
-      },
+          }
+        },
+      ),
     );
-    emailController.dispose();
-    passwordController.dispose();
   }
 
   Future<void> _showChangePasswordDialog(BuildContext context) async {
     final appLoc = AppLocalizations.of(context);
-    final currentPasswordController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    bool isLoading = false;
-
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(appLoc.translate('settings.account.change_password_title')),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: currentPasswordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: appLoc.translate('settings.account.current_password'),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: newPasswordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: appLoc.translate('settings.account.new_password'),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
-                  child: Text(appLoc.translate('common.cancel')),
-                ),
-                ElevatedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          setDialogState(() => isLoading = true);
-                          try {
-                            await AuthService().updatePassword(
-                              currentPasswordController.text,
-                              newPasswordController.text,
-                            );
-                            if (!context.mounted) return;
-                            Navigator.pop(dialogContext);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(appLoc.translate('settings.account.change_password_success'))),
-                            );
-                          } catch (e) {
-                            setDialogState(() => isLoading = false);
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-                            );
-                          }
-                        },
-                  child: isLoading
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Text(appLoc.translate('common.save')),
-                ),
-              ],
+      builder: (ctx) => _ChangePasswordDialog(
+        appLoc: appLoc,
+        onSave: (currentPassword, newPassword) async {
+          await AuthService().updatePassword(currentPassword, newPassword);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(appLoc.translate('settings.account.change_password_success'))),
             );
-          },
-        );
-      },
+          }
+        },
+      ),
     );
-    currentPasswordController.dispose();
-    newPasswordController.dispose();
   }
 
   Future<void> _showDeleteAccountDialog(BuildContext context) async {
     final appLoc = AppLocalizations.of(context);
-    final passwordController = TextEditingController();
-    bool isLoading = false;
-
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(appLoc.translate('settings.account.delete_title')),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(appLoc.translate('settings.account.delete_warning')),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: appLoc.translate('auth.password'),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed:
-                      isLoading ? null : () => Navigator.pop(dialogContext),
-                  child: Text(appLoc.translate('common.cancel')),
-                ),
-                ElevatedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          setDialogState(() => isLoading = true);
-                          try {
-                            await AuthService().deleteAccount(
-                              password: passwordController.text,
-                            );
-                            if (!context.mounted) return;
-                            Navigator.pop(dialogContext);
-                            Navigator.pushNamedAndRemoveUntil(
-                              context,
-                              AppRoutes.login,
-                              (route) => false,
-                            );
-                          } catch (e) {
-                            setDialogState(() => isLoading = false);
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(e.toString()),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white),
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : Text(appLoc
-                          .translate('settings.account.delete_confirm')),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (ctx) => _DeleteAccountDialog(
+        appLoc: appLoc,
+        onDelete: (password) async {
+          await AuthService().deleteAccount(password: password);
+          if (!context.mounted) return;
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.login,
+            (route) => false,
+          );
+        },
+      ),
     );
-    passwordController.dispose();
   }
 
   @override
@@ -962,6 +782,283 @@ class SettingsScreen extends StatelessWidget {
                         color: Colors.white, shape: BoxShape.circle)))
             : null,
       ),
+    );
+  }
+}
+
+class _ChangeEmailDialog extends StatefulWidget {
+  final AppLocalizations appLoc;
+  final Future<void> Function(String email, String password) onSave;
+
+  const _ChangeEmailDialog({
+    required this.appLoc,
+    required this.onSave,
+  });
+
+  @override
+  State<_ChangeEmailDialog> createState() => _ChangeEmailDialogState();
+}
+
+class _ChangeEmailDialogState extends State<_ChangeEmailDialog> {
+  late final TextEditingController _emailController;
+  late final TextEditingController _passwordController;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController();
+    _passwordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.appLoc.translate('settings.account.change_email_title')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              labelText: widget.appLoc.translate('settings.account.change_email_new'),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _passwordController,
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: widget.appLoc.translate('settings.account.change_email_password'),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          child: Text(widget.appLoc.translate('common.cancel')),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading
+              ? null
+              : () async {
+                  final email = _emailController.text.trim();
+                  if (email.isEmpty) return;
+                  setState(() => _isLoading = true);
+                  try {
+                    await widget.onSave(
+                      email,
+                      _passwordController.text,
+                    );
+                    if (mounted) Navigator.pop(context);
+                  } catch (e) {
+                    setState(() => _isLoading = false);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                      );
+                    }
+                  }
+                },
+          child: _isLoading
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(widget.appLoc.translate('common.save')),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChangePasswordDialog extends StatefulWidget {
+  final AppLocalizations appLoc;
+  final Future<void> Function(String currentPassword, String newPassword) onSave;
+
+  const _ChangePasswordDialog({
+    required this.appLoc,
+    required this.onSave,
+  });
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  late final TextEditingController _currentPasswordController;
+  late final TextEditingController _newPasswordController;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentPasswordController = TextEditingController();
+    _newPasswordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.appLoc.translate('settings.account.change_password_title')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _currentPasswordController,
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: widget.appLoc.translate('settings.account.current_password'),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _newPasswordController,
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: widget.appLoc.translate('settings.account.new_password'),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          child: Text(widget.appLoc.translate('common.cancel')),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading
+              ? null
+              : () async {
+                  final cur = _currentPasswordController.text;
+                  final n = _newPasswordController.text;
+                  if (cur.isEmpty || n.isEmpty) return;
+                  setState(() => _isLoading = true);
+                  try {
+                    await widget.onSave(
+                      cur,
+                      n,
+                    );
+                    if (mounted) Navigator.pop(context);
+                  } catch (e) {
+                    setState(() => _isLoading = false);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                      );
+                    }
+                  }
+                },
+          child: _isLoading
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(widget.appLoc.translate('common.save')),
+        ),
+      ],
+    );
+  }
+}
+
+class _DeleteAccountDialog extends StatefulWidget {
+  final AppLocalizations appLoc;
+  final Future<void> Function(String password) onDelete;
+
+  const _DeleteAccountDialog({
+    required this.appLoc,
+    required this.onDelete,
+  });
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  late final TextEditingController _passwordController;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.appLoc.translate('settings.account.delete_title')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(widget.appLoc.translate('settings.account.delete_warning')),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _passwordController,
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: widget.appLoc.translate('auth.password'),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.pop(context),
+          child: Text(widget.appLoc.translate('common.cancel')),
+        ),
+        ElevatedButton(
+          onPressed: _isLoading
+              ? null
+              : () async {
+                  final pass = _passwordController.text;
+                  if (pass.isEmpty) return;
+                  setState(() => _isLoading = true);
+                  try {
+                    await widget.onDelete(pass);
+                    if (mounted) Navigator.pop(context);
+                  } catch (e) {
+                    setState(() => _isLoading = false);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                      );
+                    }
+                  }
+                },
+          style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white),
+          child: _isLoading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
+              : Text(widget.appLoc.translate('settings.account.delete_confirm')),
+        ),
+      ],
     );
   }
 }

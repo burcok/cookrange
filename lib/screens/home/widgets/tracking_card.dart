@@ -55,80 +55,19 @@ class _TrackingCardState extends State<TrackingCard> {
 
   Future<void> _showWeightDialog() async {
     final l10n = AppLocalizations.of(context);
-    final controller = TextEditingController(
-      text: _todayWeight?.toStringAsFixed(1) ?? '',
-    );
-    bool isSaving = false;
 
     await showDialog<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
-          title: Text(l10n.translate('tracking.weight.log_title')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: l10n.translate('tracking.weight.field_label'),
-                  suffix: const Text('kg'),
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              if (_weightHistory.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  l10n.translate('tracking.weight.recent'),
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                ...(_weightHistory.take(5).map(
-                      (e) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(e['date'] as String,
-                                style: const TextStyle(fontSize: 12)),
-                            Text('${e['weight']} kg',
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                    )),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(l10n.translate('common.cancel')),
-            ),
-            ElevatedButton(
-              onPressed: isSaving
-                  ? null
-                  : () async {
-                      final val = double.tryParse(controller.text.trim());
-                      if (val == null || val <= 0) return;
-                      setDialog(() => isSaving = true);
-                      await _storage.saveWeight(DateTime.now(), val);
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      _load();
-                    },
-              child: Text(l10n.translate('common.save')),
-            ),
-          ],
-        ),
+      builder: (ctx) => _WeightInputDialog(
+        initialWeight: _todayWeight,
+        weightHistory: _weightHistory,
+        l10n: l10n,
+        onSave: (val) async {
+          await _storage.saveWeight(DateTime.now(), val);
+          _load();
+        },
       ),
     );
-    controller.dispose();
   }
 
   @override
@@ -375,6 +314,112 @@ class _TrackingCardState extends State<TrackingCard> {
             : Icon(icon,
                 color: onTap != null ? color : Colors.grey, size: 16),
       ),
+    );
+  }
+}
+
+class _WeightInputDialog extends StatefulWidget {
+  final double? initialWeight;
+  final List<dynamic> weightHistory;
+  final AppLocalizations l10n;
+  final Future<void> Function(double) onSave;
+
+  const _WeightInputDialog({
+    required this.initialWeight,
+    required this.weightHistory,
+    required this.l10n,
+    required this.onSave,
+  });
+
+  @override
+  State<_WeightInputDialog> createState() => _WeightInputDialogState();
+}
+
+class _WeightInputDialogState extends State<_WeightInputDialog> {
+  late final TextEditingController _controller;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: widget.initialWeight?.toStringAsFixed(1) ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.l10n.translate('tracking.weight.log_title')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: widget.l10n.translate('tracking.weight.field_label'),
+              suffix: const Text('kg'),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          if (widget.weightHistory.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              widget.l10n.translate('tracking.weight.recent'),
+              style: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            ...(widget.weightHistory.take(5).map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(e['date'] as String,
+                            style: const TextStyle(fontSize: 12)),
+                        Text('${e['weight']} kg',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                )),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(widget.l10n.translate('common.cancel')),
+        ),
+        ElevatedButton(
+          onPressed: _isSaving
+              ? null
+              : () async {
+                  final val = double.tryParse(_controller.text.trim());
+                  if (val == null || val <= 0) return;
+                  setState(() => _isSaving = true);
+                  await widget.onSave(val);
+                  if (mounted) Navigator.pop(context);
+                },
+          child: _isSaving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(widget.l10n.translate('common.save')),
+        ),
+      ],
     );
   }
 }

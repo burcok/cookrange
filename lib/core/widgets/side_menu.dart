@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/localization/app_localizations.dart';
-import '../../co../providers/navigation_provider.dart';
+import '../../core/providers/navigation_provider.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/providers/user_provider.dart';
 import '../../screens/profile/profile_screen.dart';

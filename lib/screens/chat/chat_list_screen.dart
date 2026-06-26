@@ -103,6 +103,7 @@ class _ChatListScreenState extends State<ChatListScreen>
     _navProvider?.removeListener(_handleNavChange);
     _menuController.dispose();
     _fabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 

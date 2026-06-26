@@ -229,87 +229,25 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
 
   void _showAddItemDialog() {
     final l10n = AppLocalizations.of(context);
-    final nameController = TextEditingController();
-    final amountController = TextEditingController(text: '1');
-    final unitController = TextEditingController(text: 'pcs');
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.translate('shopping.add_item')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              autofocus: true,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                labelText: l10n.translate('shopping.item_name'),
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: amountController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: l10n.translate('shopping.amount'),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: unitController,
-                    decoration: InputDecoration(
-                      labelText: l10n.translate('shopping.unit'),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.translate('common.cancel')),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final name = nameController.text.trim();
-              if (name.isEmpty) return;
-              final navigator = Navigator.of(ctx);
-              await _storageService.addToShoppingList(Ingredient(
-                name: name,
-                amount: double.tryParse(amountController.text) ?? 1.0,
-                unit: unitController.text.trim().isEmpty
-                    ? 'pcs'
-                    : unitController.text.trim(),
-                calories: 0,
-              ));
-              navigator.pop();
-              if (mounted) {
-                _loadShoppingList();
-                _syncToCloud();
-              }
-            },
-            child: Text(l10n.translate('common.add')),
-          ),
-        ],
+      builder: (ctx) => _AddItemDialog(
+        l10n: l10n,
+        onAdd: (name, amount, unit) async {
+          await _storageService.addToShoppingList(Ingredient(
+            name: name,
+            amount: amount,
+            unit: unit,
+            calories: 0,
+          ));
+          if (mounted) {
+            _loadShoppingList();
+            _syncToCloud();
+          }
+        },
       ),
-    ).then((_) {
-      nameController.dispose();
-      amountController.dispose();
-      unitController.dispose();
-    });
+    );
   }
 
   @override
@@ -569,6 +507,117 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AddItemDialog extends StatefulWidget {
+  final AppLocalizations l10n;
+  final Future<void> Function(String name, double amount, String unit) onAdd;
+
+  const _AddItemDialog({
+    required this.l10n,
+    required this.onAdd,
+  });
+
+  @override
+  State<_AddItemDialog> createState() => _AddItemDialogState();
+}
+
+class _AddItemDialogState extends State<_AddItemDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _amountController;
+  late final TextEditingController _unitController;
+  bool _isAdding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _amountController = TextEditingController(text: '1');
+    _unitController = TextEditingController(text: 'pcs');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _amountController.dispose();
+    _unitController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.l10n.translate('shopping.add_item')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _nameController,
+            autofocus: true,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              labelText: widget.l10n.translate('shopping.item_name'),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _amountController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: widget.l10n.translate('shopping.amount'),
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _unitController,
+                  decoration: InputDecoration(
+                    labelText: widget.l10n.translate('shopping.unit'),
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(widget.l10n.translate('common.cancel')),
+        ),
+        ElevatedButton(
+          onPressed: _isAdding
+              ? null
+              : () async {
+                  final name = _nameController.text.trim();
+                  if (name.isEmpty) return;
+                  setState(() => _isAdding = true);
+                  final amount =
+                      double.tryParse(_amountController.text) ?? 1.0;
+                  final unit = _unitController.text.trim().isEmpty
+                      ? 'pcs'
+                      : _unitController.text.trim();
+                  await widget.onAdd(name, amount, unit);
+                  if (mounted) Navigator.pop(context);
+                },
+          child: _isAdding
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(widget.l10n.translate('common.add')),
+        ),
+      ],
     );
   }
 }

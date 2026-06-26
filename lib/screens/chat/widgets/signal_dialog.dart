@@ -61,6 +61,12 @@ class _SignalDialogState extends State<SignalDialog> {
   }
 
   @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(AppLocalizations.of(context).translate('signal.title')),
