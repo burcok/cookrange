@@ -11,6 +11,7 @@ import 'core/services/provider_initialization_service.dart';
 import 'core/services/route_configuration_service.dart';
 import 'core/services/screen_util_service.dart';
 import 'core/services/auth_service.dart';
+import 'core/services/global_error_handler.dart';
 
 /// PERFORMANCE OPTIMIZATION: main() initializes Firebase (required for providers)
 /// but backgrounds the rest of the heavy setup (dotenv, AI, Hive, Analytics Detailed)
@@ -34,23 +35,15 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  final AppLifecycleService _appLifecycleService = AppLifecycleService();
+class _MyAppState extends State<MyApp> {
   final ProviderInitializationService _providerService =
       ProviderInitializationService();
   final RouteConfigurationService _routeService = RouteConfigurationService();
   final ScreenUtilService _screenUtilService = ScreenUtilService();
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _appLifecycleService.dispose();
+    AppLifecycleService().dispose();
     super.dispose();
   }
 
@@ -83,7 +76,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               builder: (context, child) {
                 return MediaQuery(
                   data: _screenUtilService.createResponsiveMediaQuery(context),
-                  child: child!,
+                  child: GlobalErrorHandler.createErrorBoundary(
+                    screen: 'root',
+                    child: child!,
+                  ),
                 );
               },
             ),

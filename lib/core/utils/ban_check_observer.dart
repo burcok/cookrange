@@ -37,7 +37,7 @@ class BanCheckNavigatorObserver extends NavigatorObserver {
     // just rely on the fact that we are calling it frequently.
 
     final status =
-        await AdminStatusService().checkStatus(userId, forceRefresh: true);
+        await AdminStatusService().checkStatus(userId, forceRefresh: false);
 
     if (status == AdminStatus.banned) {
       // Find the RouteGuard state to trigger the banned screen,

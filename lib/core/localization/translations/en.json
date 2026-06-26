@@ -294,8 +294,15 @@
       "invalid_step": "Invalid step"
     },
     "priority": {
-      "title": "Priority Onboarding",
-      "description": "This is the priority onboarding screen."
+      "title": "Quick Setup",
+      "description": "Let's personalize your experience in 2 quick steps.",
+      "badge": "Quick Setup",
+      "goal_title": "What's your main goal?",
+      "goal_subtitle": "We'll tailor your meal plan around this.",
+      "activity_title": "How active are you?",
+      "activity_subtitle": "This helps us calculate your daily calorie target.",
+      "get_started": "Get Started",
+      "skip": "Skip for now"
     }
   },
   "auth": {
@@ -533,10 +540,16 @@
     "empty": "Your shopping list is empty.",
     "clear_confirm": "Are you sure you want to clear the list?",
     "add_item": "Add Item",
-    "sharing_soon": "Sharing coming soon!",
-    "share_soon": "Sharing feature coming soon!",
     "clear_list": "Clear List",
-    "clear": "Clear"
+    "clear": "Clear",
+    "generate_from_plan": "Generate from Meal Plan",
+    "no_plan": "No active meal plan found. Generate one from Home first.",
+    "no_ingredients": "No ingredients found in your meal plan.",
+    "generated": "Added {count} ingredients from your weekly plan.",
+    "copy": "Copy to Clipboard",
+    "copied": "Shopping list copied to clipboard.",
+    "to_buy": "To Buy",
+    "in_cart": "In Cart"
   },
   "settings": {
     "title": "Settings",
@@ -589,7 +602,17 @@
       "delete_account": "Delete Account",
       "delete_title": "Delete Account",
       "delete_warning": "This action is permanent and cannot be undone. Enter your password to confirm.",
-      "delete_confirm": "Delete"
+      "delete_confirm": "Delete",
+      "change_email": "Change Email",
+      "change_email_title": "Change Email Address",
+      "change_email_new": "New Email Address",
+      "change_email_password": "Current Password",
+      "change_email_success": "Verification email sent. Please check your inbox.",
+      "change_password": "Change Password",
+      "change_password_title": "Change Password",
+      "current_password": "Current Password",
+      "new_password": "New Password",
+      "change_password_success": "Password changed successfully."
     }
   },
   "error": {
@@ -649,7 +672,9 @@
     "retry_in_seconds": "Retry in {seconds} seconds",
     "retry_in_minutes": "Retry in {minutes} minutes",
     "retry_in_hours": "Retry in {hours} hours",
-    "retry_in_days": "Retry in {days} days"
+    "retry_in_days": "Retry in {days} days",
+    "next": "Next",
+    "error": "Error"
   },
   "errors": {
     "general": "Something went wrong",

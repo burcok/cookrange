@@ -9,6 +9,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_routes.dart';
 import '../../core/utils/auth_error_handler.dart';
+import '../legal/legal_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -278,24 +279,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void _showAgreement(BuildContext context, String title, String content) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: SingleChildScrollView(
-          child: Text(content),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context).translate('common.close')),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
@@ -496,11 +479,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _showAgreement(
+                                ..onTap = () => Navigator.push(
                                       context,
-                                      localizations.translate(
-                                          'auth.agreements.privacy_policy'),
-                                      'Buraya gizlilik sözleşmesi metni gelecek...',
+                                      MaterialPageRoute(
+                                          builder: (_) => const LegalScreen(
+                                              type: LegalDocumentType
+                                                  .privacyPolicy)),
                                     ),
                             ),
                             TextSpan(
@@ -514,11 +498,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _showAgreement(
+                                ..onTap = () => Navigator.push(
                                       context,
-                                      localizations.translate(
-                                          'auth.agreements.terms_of_use'),
-                                      'Buraya kullanım şartları metni gelecek...',
+                                      MaterialPageRoute(
+                                          builder: (_) => const LegalScreen(
+                                              type:
+                                                  LegalDocumentType.termsOfUse)),
                                     ),
                             ),
                             TextSpan(

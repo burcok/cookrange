@@ -247,21 +247,5 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
   @override
   void initState() {
     super.initState();
-    // Set up error boundary
-    FlutterError.onError = (FlutterErrorDetails details) {
-      if (mounted) {
-        setState(() {
-          _hasError = true;
-          _error = details.exception;
-        });
-      }
-
-      // Log the error
-      GlobalErrorHandler.handleUIError(
-        details.exception,
-        details.stack ?? StackTrace.empty,
-        screen: widget.screen,
-      );
-    };
   }
 }

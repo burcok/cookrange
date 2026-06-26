@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
@@ -48,6 +49,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Friend Request State (Public Mode only)
   FriendshipStatus _friendshipStatus = FriendshipStatus.none;
+  int _postCount = 0;
 
   late Stream<List<UserModel>> _friendsStream; // Optimization
 
@@ -56,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _friendsStream = FriendService().getFriendsStream(); // Initialize once
+    _friendsStream = FriendService().getFriendsStream();
     if (widget.viewUser == null && widget.userId != null) {
       _isFetchingUser = true;
       _fetchUser();
@@ -65,6 +67,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else {
       _checkFriendshipStatus();
     }
+    unawaited(_loadPostCount());
+  }
+
+  Future<void> _loadPostCount() async {
+    final uid = widget.viewUser?.uid ??
+        widget.userId ??
+        context.read<UserProvider>().user?.uid;
+    if (uid == null) return;
+    try {
+      final snap = await firestore.FirebaseFirestore.instance
+          .collection('posts')
+          .where('author.id', isEqualTo: uid)
+          .count()
+          .get();
+      if (mounted) setState(() => _postCount = snap.count ?? 0);
+    } catch (_) {}
   }
 
   Future<void> _fetchUser() async {
@@ -751,17 +769,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildStatsRow(bool isDark) {
     final localizations = AppLocalizations.of(context);
+    final streak =
+        (widget.viewUser ?? context.read<UserProvider>().user)?.onboardingData?['streak'] ?? 1;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _buildStatItem("2",
-            "${localizations.translate('profile.stats.posts')} 🚀", isDark),
-        const SizedBox(width: 24),
-        _buildStatItem("12K",
-            "${localizations.translate('profile.stats.scores')} ⭐", isDark),
+        _buildStatItem(
+            '$_postCount',
+            "${localizations.translate('profile.stats.posts')} 🚀",
+            isDark),
         const SizedBox(width: 24),
         _buildStatItem(
-            "${(widget.viewUser ?? context.read<UserProvider>().user)?.onboardingData?['streak'] ?? 1}",
+            '$streak',
             "${localizations.translate('profile.stats.streak')} 🔥",
             isDark),
       ],

@@ -21,20 +21,6 @@ class ProviderInitializationService {
   bool get isInitialized => _isInitialized;
   Map<String, dynamic> get initializationResults => _initializationResults;
 
-  /// Create optimized provider list
-  List<ChangeNotifierProvider> createProviders() {
-    return [
-      ChangeNotifierProvider(create: (_) => LanguageProvider()),
-      ChangeNotifierProvider(create: (_) => ThemeProvider()),
-      ChangeNotifierProvider(create: (_) => OnboardingProvider()),
-      // Accessing UserProvider depends on if it needs services or just pure state,
-      // usually it might need AuthService which is a service.
-      // But assuming UserProvider is simple change notifier for now:
-      ChangeNotifierProvider(create: (_) => UserProvider()),
-      ChangeNotifierProvider(create: (_) => DeviceInfoProvider()),
-    ];
-  }
-
   /// Create provider list with proper typing
   List<ChangeNotifierProvider> createChangeNotifierProviders() {
     return [

@@ -92,33 +92,62 @@ class WeeklyMealPlanService {
 
       // 4. Parse Response
       final now = DateTime.now();
-      // Calculate start of week (e.g., next Monday or today)
       final weekStart = DateTime(now.year, now.month, now.day);
 
-      final daysList = (jsonResponse['days'] as List).map((d) {
-        final offset = d['date_offset'] as int? ?? 0;
-        return DayMealPlan(
-          date: weekStart.add(Duration(days: offset)),
-          dayName: d['day_name'] ?? '',
-          meals: Map<String, String>.from(d['meals']),
-          totalCalories: (d['total_calories'] as num).toDouble(),
-          macros: (d['macros'] as Map<String, dynamic>).map(
-            (k, v) => MapEntry(k, (v as num).toDouble()),
-          ),
-        );
-      }).toList();
+      final rawDays = jsonResponse['days'];
+      if (rawDays is! List || rawDays.isEmpty) {
+        print('WeeklyMealPlanService: invalid or empty days in AI response');
+        return null;
+      }
+
+      final daysList = <DayMealPlan>[];
+      for (final d in rawDays) {
+        if (d is! Map<String, dynamic>) continue;
+        try {
+          final offset = (d['date_offset'] as num?)?.toInt() ?? 0;
+          final rawMeals = d['meals'];
+          final meals = rawMeals is Map
+              ? Map<String, String>.from(
+                  rawMeals.map((k, v) => MapEntry(k.toString(), v.toString())))
+              : <String, String>{};
+          final rawMacros = d['macros'];
+          final macros = rawMacros is Map
+              ? rawMacros.map((k, v) =>
+                  MapEntry(k.toString(), (v as num? ?? 0).toDouble()))
+              : <String, double>{};
+          daysList.add(DayMealPlan(
+            date: weekStart.add(Duration(days: offset)),
+            dayName: d['day_name']?.toString() ?? '',
+            meals: meals,
+            totalCalories: (d['total_calories'] as num? ?? 0).toDouble(),
+            macros: macros,
+          ));
+        } catch (e) {
+          print('WeeklyMealPlanService: skipping malformed day: $e');
+        }
+      }
+
+      if (daysList.isEmpty) {
+        print('WeeklyMealPlanService: no valid days parsed from AI response');
+        return null;
+      }
+
+      final rawAvgMacros = jsonResponse['avg_macros'];
+      final avgMacros = rawAvgMacros is Map
+          ? rawAvgMacros.map((k, v) =>
+              MapEntry(k.toString(), (v as num? ?? 0).toDouble()))
+          : <String, double>{};
 
       final plan = WeeklyMealPlanModel(
-        id: 'current', // or generate unique ID
+        id: 'current',
         userId: user.uid,
         weekStartDate: weekStart,
         days: daysList,
-        totalCalories: (jsonResponse['total_calories'] as num).toDouble(),
+        totalCalories:
+            (jsonResponse['total_calories'] as num? ?? 0).toDouble(),
         avgDailyCalories:
-            (jsonResponse['avg_daily_calories'] as num).toDouble(),
-        avgMacros: (jsonResponse['avg_macros'] as Map<String, dynamic>).map(
-          (k, v) => MapEntry(k, (v as num).toDouble()),
-        ),
+            (jsonResponse['avg_daily_calories'] as num? ?? 0).toDouble(),
+        avgMacros: avgMacros,
         createdAt: now,
         expiresAt: now.add(const Duration(days: 7)),
         generationPromptHash: _generateProfileHash(user),

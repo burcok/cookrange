@@ -294,8 +294,15 @@
       "invalid_step": "Geçersiz adım"
     },
     "priority": {
-      "title": "Öncelikli Başlangıç",
-      "description": "Bu, öncelikli başlangıç ekranıdır."
+      "title": "Hızlı Kurulum",
+      "description": "2 hızlı adımda deneyiminizi kişiselleştirelim.",
+      "badge": "Hızlı Kurulum",
+      "goal_title": "Ana hedefiniz nedir?",
+      "goal_subtitle": "Yemek planınızı buna göre özelleştireceğiz.",
+      "activity_title": "Ne kadar aktifsiniz?",
+      "activity_subtitle": "Günlük kalori hedefinizi hesaplamamıza yardımcı olur.",
+      "get_started": "Başlayalım",
+      "skip": "Şimdilik atla"
     }
   },
   "auth": {
@@ -533,10 +540,16 @@
     "empty": "Alışveriş listeniz boş.",
     "clear_confirm": "Listeyi temizlemek istediğinizden emin misiniz?",
     "add_item": "Ürün Ekle",
-    "sharing_soon": "Paylaşım çok yakında!",
-    "share_soon": "Paylaşma özelliği çok yakında!",
     "clear_list": "Listeyi Temizle",
-    "clear": "Temizle"
+    "clear": "Temizle",
+    "generate_from_plan": "Yemek Planından Oluştur",
+    "no_plan": "Aktif yemek planı bulunamadı. Önce Ana Sayfa'dan plan oluşturun.",
+    "no_ingredients": "Yemek planınızda malzeme bulunamadı.",
+    "generated": "Haftalık planınızdan {count} malzeme eklendi.",
+    "copy": "Panoya Kopyala",
+    "copied": "Alışveriş listesi panoya kopyalandı.",
+    "to_buy": "Alınacaklar",
+    "in_cart": "Sepette"
   },
   "settings": {
     "title": "Ayarlar",
@@ -589,7 +602,17 @@
       "delete_account": "Hesabı Sil",
       "delete_title": "Hesabı Sil",
       "delete_warning": "Bu işlem kalıcıdır ve geri alınamaz. Onaylamak için şifrenizi girin.",
-      "delete_confirm": "Sil"
+      "delete_confirm": "Sil",
+      "change_email": "E-posta Değiştir",
+      "change_email_title": "E-posta Adresini Değiştir",
+      "change_email_new": "Yeni E-posta Adresi",
+      "change_email_password": "Mevcut Şifre",
+      "change_email_success": "Doğrulama e-postası gönderildi. Gelen kutunuzu kontrol edin.",
+      "change_password": "Şifre Değiştir",
+      "change_password_title": "Şifre Değiştir",
+      "current_password": "Mevcut Şifre",
+      "new_password": "Yeni Şifre",
+      "change_password_success": "Şifre başarıyla değiştirildi."
     }
   },
   "error": {
@@ -649,7 +672,9 @@
     "retry_in_seconds": "{seconds} saniye içinde tekrar denenecek",
     "retry_in_minutes": "Tekrar {minutes} dakika içinde denenecek",
     "retry_in_hours": "Tekrar {hours} saat içinde denenecek",
-    "retry_in_days": "Tekrar {days} gün içinde denenecek"
+    "retry_in_days": "Tekrar {days} gün içinde denenecek",
+    "next": "İleri",
+    "error": "Hata"
   },
   "errors": {
     "general": "Bir şeyler yanlış gitti",

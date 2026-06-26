@@ -113,11 +113,6 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  void _loadHydration() {
-    // Hydration tracking: storage layer exists (StorageService.saveHydration)
-    // UI widget planned for Phase 2. No-op here for now.
-  }
-
   Future<void> _loadWeeklyPlan() async {
     final user = context.read<UserProvider>().user;
     if (user == null) return;

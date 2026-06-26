@@ -1,15 +1,171 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:ui';
 import '../../core/providers/language_provider.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/utils/app_routes.dart';
+import '../legal/legal_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  Future<void> _showChangeEmailDialog(BuildContext context) async {
+    final appLoc = AppLocalizations.of(context);
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    bool isLoading = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(appLoc.translate('settings.account.change_email_title')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: appLoc.translate('settings.account.change_email_new'),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: appLoc.translate('settings.account.change_email_password'),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+                  child: Text(appLoc.translate('common.cancel')),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setDialogState(() => isLoading = true);
+                          try {
+                            await AuthService().updateEmail(
+                              emailController.text.trim(),
+                              passwordController.text,
+                            );
+                            if (!context.mounted) return;
+                            Navigator.pop(dialogContext);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(appLoc.translate('settings.account.change_email_success'))),
+                            );
+                          } catch (e) {
+                            setDialogState(() => isLoading = false);
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                            );
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(appLoc.translate('common.save')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    emailController.dispose();
+    passwordController.dispose();
+  }
+
+  Future<void> _showChangePasswordDialog(BuildContext context) async {
+    final appLoc = AppLocalizations.of(context);
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    bool isLoading = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(appLoc.translate('settings.account.change_password_title')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: currentPasswordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: appLoc.translate('settings.account.current_password'),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: newPasswordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: appLoc.translate('settings.account.new_password'),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+                  child: Text(appLoc.translate('common.cancel')),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setDialogState(() => isLoading = true);
+                          try {
+                            await AuthService().updatePassword(
+                              currentPasswordController.text,
+                              newPasswordController.text,
+                            );
+                            if (!context.mounted) return;
+                            Navigator.pop(dialogContext);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(appLoc.translate('settings.account.change_password_success'))),
+                            );
+                          } catch (e) {
+                            setDialogState(() => isLoading = false);
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                            );
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(appLoc.translate('common.save')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    currentPasswordController.dispose();
+    newPasswordController.dispose();
+  }
 
   Future<void> _showDeleteAccountDialog(BuildContext context) async {
     final appLoc = AppLocalizations.of(context);
@@ -402,6 +558,48 @@ class SettingsScreen extends StatelessWidget {
                               color:
                                   isDark ? Colors.grey[400] : Colors.grey[400]),
                         ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.privacy_tip_outlined,
+                          iconColor: Colors.teal,
+                          iconBgColor: isDark
+                              ? Colors.teal.withValues(alpha: 0.2)
+                              : const Color(0xFFF0FDFA),
+                          title: appLoc.translate('settings.privacy_policy'),
+                          isDark: isDark,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LegalScreen(
+                                  type: LegalDocumentType.privacyPolicy),
+                            ),
+                          ),
+                          trailing: Icon(Icons.chevron_right,
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[400]),
+                        ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.description_outlined,
+                          iconColor: Colors.blue,
+                          iconBgColor: isDark
+                              ? Colors.blue.withValues(alpha: 0.2)
+                              : const Color(0xFFEFF6FF),
+                          title: appLoc.translate('settings.terms_of_service'),
+                          isDark: isDark,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LegalScreen(
+                                  type: LegalDocumentType.termsOfUse),
+                            ),
+                          ),
+                          trailing: Icon(Icons.chevron_right,
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[400]),
+                        ),
                       ],
                     ),
 
@@ -413,6 +611,32 @@ class SettingsScreen extends StatelessWidget {
                       title: appLoc.translate('settings.account.title'),
                       isDark: isDark,
                       children: [
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.email_outlined,
+                          iconColor: Colors.blue,
+                          iconBgColor: isDark
+                              ? Colors.blue.withValues(alpha: 0.2)
+                              : const Color(0xFFEFF6FF),
+                          title: appLoc.translate('settings.account.change_email'),
+                          isDark: isDark,
+                          onTap: () => _showChangeEmailDialog(context),
+                          trailing: Icon(Icons.chevron_right,
+                              color: isDark ? Colors.grey[400] : Colors.grey[400]),
+                        ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.lock_outline,
+                          iconColor: Colors.orange,
+                          iconBgColor: isDark
+                              ? Colors.orange.withValues(alpha: 0.2)
+                              : const Color(0xFFFFF7ED),
+                          title: appLoc.translate('settings.account.change_password'),
+                          isDark: isDark,
+                          onTap: () => _showChangePasswordDialog(context),
+                          trailing: Icon(Icons.chevron_right,
+                              color: isDark ? Colors.grey[400] : Colors.grey[400]),
+                        ),
                         _buildSettingsRow(
                           context,
                           icon: Icons.delete_forever,

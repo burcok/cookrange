@@ -27,10 +27,8 @@ class CrashlyticsService {
             service: _serviceName);
       }
 
-      // Pass all uncaught errors from the framework to Crashlytics.
-      FlutterError.onError = _crashlytics.recordFlutterError;
       LogService()
-          .info('Crashlytics FlutterError handler set.', service: _serviceName);
+          .info('Crashlytics initialized.', service: _serviceName);
 
       // Listen to the log stream for severe errors.
       Logger.root.onRecord.listen((record) {
