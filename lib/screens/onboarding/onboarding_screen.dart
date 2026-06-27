@@ -93,7 +93,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           .catchError((error) {
         // Silently handle errors during dispose
         if (kDebugMode) {
-          print('Error logging screen time during dispose: $error');
+          debugPrint('Error logging screen time during dispose: $error');
         }
       });
     }

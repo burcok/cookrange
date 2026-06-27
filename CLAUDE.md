@@ -167,7 +167,7 @@ lib/
 ## Localization
 
 - Two locales: `en` (English) and `tr` (Turkish) — **must remain in parity**
-- Files: `lib/core/localization/translations/{en,tr}.json`
+- Files: `assets/localization/{en,tr}.json`
 - Access: `AppLocalizations.of(context).translate('key.path')`
 - **When adding any user-visible string, add both EN and TR keys simultaneously**
 - Key naming: `screen.section.element` (e.g. `settings.account.change_email`)
@@ -232,4 +232,4 @@ CI runs on every PR: `flutter analyze` + `flutter test` + Android debug build (`
 2. `lib/screens/splash_screen.dart` — all heavy initialization (Firebase, Hive, AI, push)
 3. `lib/core/services/auth_service.dart` — auth state machine
 4. `lib/screens/home/home.dart` — core product screen (~1200 LOC)
-5. `lib/core/localization/translations/en.json` — all user-visible strings
+5. `assets/localization/en.json` — all user-visible strings

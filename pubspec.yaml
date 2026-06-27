@@ -150,7 +150,7 @@ flutter:
     - assets/icons/
     - assets/images/
     - assets/fonts/
-    - lib/core/localization/translations/
+    - assets/localization/
     - .env
 
   # Localization Configuration

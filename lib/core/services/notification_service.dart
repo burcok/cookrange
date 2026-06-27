@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/notification_model.dart';
 import 'auth_service.dart';
 
@@ -108,7 +109,7 @@ class NotificationService {
         'relatedId': relatedId,
       });
     } catch (e) {
-      print('Error sending notification: $e');
+      debugPrint('Error sending notification: $e');
     }
   }
 
@@ -174,7 +175,7 @@ class NotificationService {
         await doc.reference.delete();
       }
     } catch (e) {
-      print('Error deleting notification by relatedId: $e');
+      debugPrint('Error deleting notification by relatedId: $e');
     }
   }
 }

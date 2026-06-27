@@ -92,7 +92,7 @@ class CommunityService {
 
       return posts;
     } catch (e) {
-      print("Error fetching posts: $e");
+      debugPrint("Error fetching posts: $e");
       return [];
     }
   }
@@ -230,7 +230,7 @@ class CommunityService {
 
       return CommunityPost.fromMap(data, doc.id, currentUserId: _currentUserId);
     } catch (e) {
-      print("Error fetching post details: $e");
+      debugPrint("Error fetching post details: $e");
       return null;
     }
   }
@@ -282,7 +282,7 @@ class CommunityService {
 
       return true;
     } catch (e) {
-      print("Error deleting post: $e");
+      debugPrint("Error deleting post: $e");
       return false;
     }
   }
@@ -587,7 +587,7 @@ class CommunityService {
 
       return comments;
     } catch (e) {
-      print("Error fetching comments: $e");
+      debugPrint("Error fetching comments: $e");
       return [];
     }
   }
@@ -638,7 +638,7 @@ class CommunityService {
 
       return true;
     } catch (e) {
-      print("Error deleting comment: $e");
+      debugPrint("Error deleting comment: $e");
       return false;
     }
   }

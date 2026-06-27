@@ -55,7 +55,7 @@ class DishImageService {
         }
       }
     } catch (e) {
-      if (kDebugMode) print('TheMealDB Error for $query: $e');
+      if (kDebugMode) debugPrint('TheMealDB Error for $query: $e');
     }
     return null;
   }
@@ -75,7 +75,7 @@ class DishImageService {
           : query.codeUnits.fold(0, (p, e) => p + e) % 1000;
       return 'https://source.unsplash.com/800x600/?$keywords&sig=$numericSeed';
     } catch (e) {
-      if (kDebugMode) print('Unsplash Error for $query: $e');
+      if (kDebugMode) debugPrint('Unsplash Error for $query: $e');
     }
     return null;
   }

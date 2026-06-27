@@ -43,7 +43,7 @@ class AppLocalizations {
       // Dil dosyası yolunu oluştur
       final String languageCode = locale.languageCode == 'tr' ? 'tr' : 'en';
       final String jsonPath =
-          'lib/core/localization/translations/$languageCode.json';
+          'assets/localization/$languageCode.json';
       debugPrint('Loading translations from: $jsonPath');
 
       // Dosyayı yükle

@@ -75,7 +75,7 @@ class DeviceInfoProvider extends ChangeNotifier {
       // A second notification will come from _getPermissionInfo when it's done.
       notifyListeners();
     } catch (e) {
-      print('Error initializing device info: $e');
+      debugPrint('Error initializing device info: $e');
     }
   }
 
@@ -103,7 +103,7 @@ class DeviceInfoProvider extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      print('Error getting permission info: $e');
+      debugPrint('Error getting permission info: $e');
     }
   }
 }

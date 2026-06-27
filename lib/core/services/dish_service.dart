@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/dish_model.dart';
 import 'dish_seeder_service.dart';
 
@@ -16,7 +17,7 @@ class DishService {
       final snapshot = await _firestore.collection('dishes').get();
       return snapshot.docs.map((doc) => DishModel.fromFirestore(doc)).toList();
     } catch (e) {
-      print('Error fetching dishes: $e');
+      debugPrint('Error fetching dishes: $e');
       return [];
     }
   }
@@ -30,7 +31,7 @@ class DishService {
           .get();
       return snapshot.docs.map((doc) => DishModel.fromFirestore(doc)).toList();
     } catch (e) {
-      print('Error fetching dishes by category $category: $e');
+      debugPrint('Error fetching dishes by category $category: $e');
       return [];
     }
   }
@@ -44,7 +45,7 @@ class DishService {
       }
       return null;
     } catch (e) {
-      print('Error fetching dish $id: $e');
+      debugPrint('Error fetching dish $id: $e');
       return null;
     }
   }

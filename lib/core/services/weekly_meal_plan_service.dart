@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:crypto/crypto.dart';
 import '../models/weekly_meal_plan_model.dart';
 import '../models/user_model.dart';
@@ -31,10 +32,10 @@ class WeeklyMealPlanService {
         // Also check if profile drastically changed => regenerate?
         final currentHash = _generateProfileHash(user);
         if (existingPlan.generationPromptHash == currentHash) {
-          print('Using cached meal plan for user ${user.uid}');
+          debugPrint('Using cached meal plan for user ${user.uid}');
           return existingPlan;
         } else {
-          print('User profile changed, regenerating plan...');
+          debugPrint('User profile changed, regenerating plan...');
         }
       }
     }
@@ -55,14 +56,14 @@ class WeeklyMealPlanService {
         return WeeklyMealPlanModel.fromFirestore(doc);
       }
     } catch (e) {
-      print('Error fetching meal plan: $e');
+      debugPrint('Error fetching meal plan: $e');
     }
     return null;
   }
 
   Future<WeeklyMealPlanModel?> _generateAndSaveMealPlan(UserModel user) async {
     try {
-      print('Generating new AI meal plan for user ${user.uid}...');
+      debugPrint('Generating new AI meal plan for user ${user.uid}...');
 
       // 1. Gather Data
       final dishes = await _dishService.getAllDishes();
@@ -97,7 +98,7 @@ class WeeklyMealPlanService {
 
       final rawDays = jsonResponse['days'];
       if (rawDays is! List || rawDays.isEmpty) {
-        print('WeeklyMealPlanService: invalid or empty days in AI response');
+        debugPrint('WeeklyMealPlanService: invalid or empty days in AI response');
         return null;
       }
 
@@ -124,12 +125,12 @@ class WeeklyMealPlanService {
             macros: macros,
           ));
         } catch (e) {
-          print('WeeklyMealPlanService: skipping malformed day: $e');
+          debugPrint('WeeklyMealPlanService: skipping malformed day: $e');
         }
       }
 
       if (daysList.isEmpty) {
-        print('WeeklyMealPlanService: no valid days parsed from AI response');
+        debugPrint('WeeklyMealPlanService: no valid days parsed from AI response');
         return null;
       }
 
@@ -166,7 +167,7 @@ class WeeklyMealPlanService {
 
       return plan;
     } catch (e) {
-      print('Error generating meal plan: $e');
+      debugPrint('Error generating meal plan: $e');
       return null;
     }
   }
@@ -231,7 +232,7 @@ class WeeklyMealPlanService {
 
       return updatedPlan;
     } catch (e) {
-      print('WeeklyMealPlanService.swapMeal error: $e');
+      debugPrint('WeeklyMealPlanService.swapMeal error: $e');
       return null;
     }
   }

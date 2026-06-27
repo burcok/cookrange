@@ -147,7 +147,7 @@ class AppInitializationService {
             (message.contains('ERROR') ||
                 message.contains('FATAL') ||
                 message.contains('CRITICAL'))) {
-          print(message);
+          debugPrint(message);
         }
       };
     }

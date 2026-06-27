@@ -1,4 +1,5 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter/foundation.dart';
 import '../providers/device_info_provider.dart';
 
 class DeviceInfoService {
@@ -51,9 +52,9 @@ class DeviceInfoService {
         },
       );
 
-      print('Device info sent to Firebase Analytics successfully');
+      debugPrint('Device info sent to Firebase Analytics successfully');
     } catch (e) {
-      print('Error sending device info to Firebase Analytics: $e');
+      debugPrint('Error sending device info to Firebase Analytics: $e');
     }
   }
 
@@ -84,9 +85,9 @@ class DeviceInfoService {
         },
       );
 
-      print('Detailed device info sent to Firebase Analytics successfully');
+      debugPrint('Detailed device info sent to Firebase Analytics successfully');
     } catch (e) {
-      print('Error sending detailed device info to Firebase Analytics: $e');
+      debugPrint('Error sending detailed device info to Firebase Analytics: $e');
     }
   }
 
@@ -100,9 +101,9 @@ class DeviceInfoService {
         await sendDeviceInfoToAnalytics(deviceInfo);
       }
 
-      print('Device info sent to Firebase Analytics successfully');
+      debugPrint('Device info sent to Firebase Analytics successfully');
     } catch (e) {
-      print('Error sending device info to Firebase Analytics: $e');
+      debugPrint('Error sending device info to Firebase Analytics: $e');
     }
   }
 }

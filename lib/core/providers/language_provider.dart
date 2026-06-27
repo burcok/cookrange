@@ -19,8 +19,8 @@ class LanguageProvider extends ChangeNotifier {
       final String? savedLanguageCode = _prefs.getString(_languageKey);
       final String deviceLanguage =
           WidgetsBinding.instance.platformDispatcher.locale.languageCode;
-      print('Device language: $deviceLanguage');
-      print('Saved language code: $savedLanguageCode');
+      debugPrint('Device language: $deviceLanguage');
+      debugPrint('Saved language code: $savedLanguageCode');
 
       // Eğer kayıtlı dil yoksa veya ilk kurulum ise telefonun dilini kullan
       if (savedLanguageCode == null) {
@@ -36,13 +36,13 @@ class LanguageProvider extends ChangeNotifier {
       } else {
         // Kayıtlı dil varsa onu kullan
         _currentLocale = Locale(savedLanguageCode);
-        print('Using saved language: $savedLanguageCode');
+        debugPrint('Using saved language: $savedLanguageCode');
       }
 
       _isInitialized = true;
       notifyListeners();
     } catch (e) {
-      print('Error initializing language: $e');
+      debugPrint('Error initializing language: $e');
       // Hata durumunda telefonun dilini kullan
       final String deviceLanguage =
           WidgetsBinding.instance.platformDispatcher.locale.languageCode;
@@ -55,12 +55,12 @@ class LanguageProvider extends ChangeNotifier {
 
   Future<void> setLanguage(String languageCode) async {
     if (!_isInitialized) {
-      print('Language provider not initialized yet');
+      debugPrint('Language provider not initialized yet');
       return;
     }
 
     if (_currentLocale.languageCode != languageCode) {
-      print('Changing language to: $languageCode');
+      debugPrint('Changing language to: $languageCode');
       _currentLocale = Locale(languageCode);
       await _prefs.setString(_languageKey, languageCode);
       notifyListeners();

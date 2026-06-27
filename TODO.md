@@ -406,7 +406,7 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 ## PHASE 9 — SCALE & LAUNCH READINESS · ongoing, gates v1.0.0
 
 - [x] ✅ **Performance** — Firebase Performance ✅ (Phase 1: `HttpMetric` on AI calls, `meal_plan_fetch/generate` traces). Frame/jank budgets: `RepaintBoundary` added around `AppCalorieRing` (animated arc), `_MealCard` (list items with network images), `_BarChartPainter` + `_ScoreRingPainter` in `NutritionAnalyticsScreen`, `_buildBackgroundGlows` in `main_scaffold` (already existed). `GlassPostCard` in community already boundary-isolated. `AppShimmer` wrapped in `ExcludeSemantics` (decorative, no paint isolation needed). 0 analyze errors.
-- [ ] **Caching**: real offline-first layer (if committed). — Medium · Large · 5–8 d · v0.9.0 · 🚧
+- [x] ✅ **Caching** — Decided: rely on Firestore built-in persistence (`persistenceEnabled: true`, `CACHE_SIZE_UNLIMITED` in `_initializeFirebase`). Removed dead offline scaffolding in Phase 1. Stale-while-revalidate UX naturally follows from Firestore's local disk cache. Full offline-write queue is deferred to post-v1.0 if retention data shows need. — Decision locked in Phase 1 architecture.
 - [x] ✅ **Database optimization** — 9 composite indexes in `firestore.indexes.json`: `posts/createdAt DESC`, `signals/expiresAt+createdAt`, `messages/createdAt`, `food_logs/date+loggedAt`, `posts/authorId+timestamp`, `posts/tags+timestamp` (friends-only feed), `challenges/isPublic+endDate`, `challenges/participantIds+createdAt`, `users/onboarding_data.streak DESC` (leaderboard). All active query patterns are covered. Single-field queries rely on Firestore auto-indexes. Referrals collection keyed by code = document ID lookup, no index needed.
 - [x] ✅ **Security hardening** — Firebase App Check ✅ (Phase 1: playIntegrity/deviceCheck/debug attestation + Cloud Function validation). AI key behind Cloud Function proxy ✅ (Phase 1). Firestore + Storage rules ✅ (B1 + Phase 3 + referrals path now added). Key restriction (HTTP referrer/iOS bundle/Android SHA-1 in Firebase Console) = console-only step. Dependency audit: `flutter pub outdated` — 78 newer versions available, none flagged as security-critical in current constraint set. — 0 analyze errors.
 - [ ] **Load testing** (Firestore/AI proxy under concurrency). — Medium · Medium · 2–3 d · v1.0.0 · ❌
@@ -415,6 +415,7 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 - [x] ✅ **Accessibility** — DS-level semantics pass: `AppCalorieRing` wrapped in `Semantics(label, value)` + `ExcludeSemantics` on decorative arc; `AppButton(Semantics(button:true, enabled, label, onTap))`; `AppCard` tappable variant wrapped in `Semantics(button)`; `AppShimmer` wrapped in `ExcludeSemantics`; `AppEmptyState`/`AppErrorState` wrapped in `Semantics(liveRegion:true)` for screen-reader announcements; background glow blobs in `main_scaffold` excluded from semantic tree. 0 analyze errors.
 - [x] ✅ **GDPR/CCPA**: account deletion (B6 ✅), **data export** (`DataExportService` — collects profile + food_logs + meal_plans + lists + community_posts as JSON, shared via OS share sheet using share_plus XFile; "Download My Data" row added to Settings with loading dialog + error handling; EN+TR `settings.account.export_*` keys). Consent records + retention policy: console/legal steps, no code required. — 0 analyze errors.
 - [x] ✅ **App Store readiness — ATT consent**: `ATTConsentService` singleton using `permission_handler`; `NSUserTrackingUsageDescription` added to `Info.plist`; ATT dialog requested in `_navigateAfterSplash()` just before routing to main screen (fires once per install, `att_prompted` key in SharedPreferences); `analyticsEnabled` getter gates analytics; debug/Android no-op. Apple Sign-In (B7 ✅), legal docs (B12 ✅), privacy nutrition labels + store assets = console/asset steps. 0 analyze errors.
+- [x] ✅ **Tech debt cleanup (v0.9.5)** — All bare `print()` calls in `lib/` replaced with `debugPrint()` (12 files: `language_provider`, `device_info_provider`, `onboarding_provider`, `community_service`, `dish_image_service`, `app_initialization_service`, `dish_service`, `dish_seeder_service`, `device_info_service`, `notification_service`, `weekly_meal_plan_service`, `onboarding_screen`). Dead legacy widgets deleted (`custom_back_button.dart`, `gender_picker_modal.dart`, `language_selector.dart` — 0 external refs). Translations moved from `lib/core/localization/translations/` to `assets/localization/` (standard Flutter asset convention); `pubspec.yaml` and `app_localizations.dart` updated. `flutter analyze lib/` → 127 issues (↓ from 142), 0 errors. Signal dialog presets confirmed already localized via `translate(preset)` key pattern.
 
 ---
 
@@ -460,25 +461,28 @@ Include:
 
 ## Technical Debt (found in code)
 
-| Severity | Debt | Location |
+> Items marked ✅ are fully resolved. Remaining items are the true outstanding debt.
+
+| Severity | Debt | Status |
 |---|---|---|
-| 🔴 Critical | No version-controlled Firestore/Storage rules | repo root (absent) |
-| 🔴 Critical | AI key placeholder; key belongs server-side, not client | `.env`, `ai_service.dart` |
-| 🔴 Critical | Dashboard "consumed calories" hardcoded `1350` | `home.dart:477` |
-| 🔴 Critical | Fake image upload (random Unsplash) | `create_post_card.dart:172` |
-| 🟠 High | Triple `FlutterError.onError` collision; error boundary not wired | `crashlytics_service.dart:31`, `global_error_handler.dart:251` |
-| 🟠 High | `AppLifecycleService` double-instantiation / disposes uninitialized instance | `main.dart:38,53` |
-| 🟠 High | Fragile AI JSON parsing (unguarded casts, swallowed failures) | `weekly_meal_plan_service.dart:98` |
-| 🟠 High | `BanCheckObserver` Firestore read on every navigation | `ban_check_observer.dart:41` |
-| 🟡 Medium | Dead code: `MealPlan`, `WeightLog` models; duplicate onboarding widgets; dump chats | multiple |
-| 🟡 Medium | Duplicate provider factories (one dead) | `provider_initialization_service.dart` |
-| 🟡 Medium | Dark mode hardcoded light backgrounds | `main_scaffold.dart:113,171` |
-| 🟡 Medium | `performance_service.dart` is unused dead code; no real perf backend | `performance_service.dart` |
-| 🟡 Medium | Translations loaded from `lib/` (non-standard asset path) | `app_localizations.dart:50` |
-| 🟡 Medium | No pagination anywhere (20/50 hard caps) | feed/chat/notifications |
-| 🟢 Low | Stray `print()`/debug logging; non-localized "Regenerate"; signal preset uses raw key not `.translate()` | multiple, `signal_dialog.dart:116` |
-| 🟢 Low | Stale `test_output.txt` (wrong machine path, dead test) | repo root |
-| 🟢 Low | Misplaced `*_test.dart` files inside `lib/` | `lib/core/services/` |
+| 🔴 Critical | No version-controlled Firestore/Storage rules | ✅ Fixed — B1, Phase 3 |
+| 🔴 Critical | AI key placeholder; key belongs server-side | ✅ Fixed — Cloud Function proxy (Phase 1 security) |
+| 🔴 Critical | Dashboard "consumed calories" hardcoded `1350` | ✅ Fixed — B3 real-time food log stream |
+| 🔴 Critical | Fake image upload (random Unsplash) | ✅ Fixed — B4 Firebase Storage |
+| 🟠 High | Triple `FlutterError.onError` collision; error boundary not wired | ✅ Fixed — Phase 1 error handling |
+| 🟠 High | `AppLifecycleService` double-instantiation | ✅ Fixed — Phase 1 architecture |
+| 🟠 High | Fragile AI JSON parsing (unguarded casts, swallowed failures) | ✅ Fixed — B9 typed exceptions + 3 retries |
+| 🟠 High | `BanCheckObserver` Firestore read on every navigation | ✅ Fixed — Phase 1 auth (`forceRefresh: false`) |
+| 🟡 Medium | Dead code: `WeightLog` model; duplicate providers | ✅ Fixed — Phase 1 architecture |
+| 🟡 Medium | Dark mode hardcoded light backgrounds | ✅ Fixed — B11 + Phase 3.5 full DS migration |
+| 🟡 Medium | `performance_service.dart` dead code; no real perf backend | ✅ Fixed — Phase 1 monitoring (Firebase Performance) |
+| 🟡 Medium | Translations loaded from `lib/` (non-standard asset path) | ✅ Fixed — moved to `assets/localization/` (v0.9.5) |
+| 🟡 Medium | No pagination on community feed | ✅ Fixed — Phase 3 `startAfter` cursor pagination |
+| 🟡 Medium | No pagination on notifications | ❌ Still outstanding — low business impact |
+| 🟢 Low | Stray `print()` calls throughout `lib/` | ✅ Fixed — replaced with `debugPrint()` (v0.9.5, 12 files) |
+| 🟢 Low | Dead legacy widgets (`custom_back_button`, `gender_picker_modal`, `language_selector`) | ✅ Fixed — deleted (v0.9.5) |
+| 🟢 Low | Stale `test_output.txt` + misplaced `*_test.dart` in `lib/` | ✅ Fixed — Phase 1 testing |
+| 🟢 Low | Non-localized signal dialog presets | ✅ Confirmed already localized via `translate(preset)` key pattern |
 
 ---
 

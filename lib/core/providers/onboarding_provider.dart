@@ -199,7 +199,7 @@ class OnboardingProvider with ChangeNotifier {
       return DateTime.tryParse(birthDate);
     } else if (birthDate != null) {
       if (kDebugMode) {
-        print(
+        debugPrint(
             'Warning: birth_date was expected to be a String but received type ${birthDate.runtimeType}.');
       }
     }
@@ -332,7 +332,7 @@ class OnboardingProvider with ChangeNotifier {
         _setInitialData();
         return true;
       } catch (e) {
-        if (kDebugMode) print('Error saving onboarding data: $e');
+        if (kDebugMode) debugPrint('Error saving onboarding data: $e');
         return true;
       }
     }

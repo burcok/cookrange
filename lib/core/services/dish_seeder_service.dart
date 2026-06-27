@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/dish_model.dart';
 import '../models/ingredient_model.dart';
@@ -18,7 +19,7 @@ class DishSeederService {
     int successCount = 0;
     int failCount = 0;
 
-    print('Starting dish seeding for ${items.length} items...');
+    debugPrint('Starting dish seeding for ${items.length} items...');
 
     for (final dishData in items) {
       try {
@@ -111,9 +112,9 @@ class DishSeederService {
           }
 
           if (imageUrl != null) {
-            print('Fetched image for $id: $imageUrl');
+            debugPrint('Fetched image for $id: $imageUrl');
           } else {
-            print('Could not fetch image for $id');
+            debugPrint('Could not fetch image for $id');
           }
         }
 
@@ -159,12 +160,12 @@ class DishSeederService {
         await _firestore.collection('dishes').doc(id).set(dish.toJson());
         successCount++;
       } catch (e) {
-        print('Error seeding dish ${dishData['id']}: $e');
+        debugPrint('Error seeding dish ${dishData['id']}: $e');
         failCount++;
       }
     }
 
-    print('Seeding complete. Success: $successCount, Failed: $failCount');
+    debugPrint('Seeding complete. Success: $successCount, Failed: $failCount');
   }
 
   /// Seeds all dishes from local data if the Firestore dishes collection is empty.
@@ -288,9 +289,9 @@ class DishSeederService {
 
       // 3. Save to Firestore
       await _firestore.collection('dishes').doc(id).set(dish.toJson());
-      print('Successfully seeded single dish: $id');
+      debugPrint('Successfully seeded single dish: $id');
     } catch (e) {
-      print('Error seeding single dish ${dishData['id']}: $e');
+      debugPrint('Error seeding single dish ${dishData['id']}: $e');
       rethrow;
     }
   }
