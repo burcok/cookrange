@@ -573,6 +573,7 @@
     "no_plan": "Aktif yemek planı bulunamadı. Önce Ana Sayfa'dan plan oluşturun.",
     "no_ingredients": "Yemek planınızda malzeme bulunamadı.",
     "generated": "Haftalık planınızdan {count} malzeme eklendi.",
+    "share": "Listeyi Paylaş",
     "copy": "Panoya Kopyala",
     "copied": "Alışveriş listesi panoya kopyalandı.",
     "to_buy": "Alınacaklar",
@@ -646,13 +647,44 @@
       "change_password_title": "Şifre Değiştir",
       "current_password": "Mevcut Şifre",
       "new_password": "Yeni Şifre",
-      "change_password_success": "Şifre başarıyla değiştirildi."
+      "change_password_success": "Şifre başarıyla değiştirildi.",
+      "export_data": "Verilerimi İndir",
+      "export_data_subtitle": "Tüm verilerinizi JSON olarak dışa aktarın (GDPR)",
+      "export_error": "Veri dışa aktarılamadı. Lütfen tekrar deneyin."
+    },
+    "referral": {
+      "title": "Arkadaşını Davet Et",
+      "subtitle": "Arkadaşlarını davet et, ikiniz de 7 gün Premium bedava kazanın.",
+      "share": "Kodu Paylaş",
+      "have_code": "Kodum var",
+      "enter_code_title": "Referans Kodu Gir",
+      "enter_code_label": "Referans Kodu",
+      "apply": "Kodu Uygula",
+      "applied_success": "🎉 Kod uygulandı! İkiniz de 7 gün Premium kazandınız."
     },
     "developer": {
       "title": "Geliştirici",
       "test_mode": "Test Modu",
       "test_mode_subtitle": "Arayüz stres testi için uygulamayı maksimum hacimli sahte verilerle doldur"
     }
+  },
+  "sharing": {
+    "recipe_title": "🍽️ {name}\n🔥 {calories} kcal\nProtein: {protein}g · Karb: {carbs}g · Yağ: {fat}g\n\nYapay zeka destekli Cookrange ile öğünlerini planla! {appTag}{link}",
+    "recipe_subject": "{name}",
+    "progress_text": "💪 Bugünkü beslenmem: {consumed} / {target} kcal (%{pct}){streak}\n\nBeslenmemi Cookrange AI ile takip ediyorum! {appTag}",
+    "progress_subject": "Cookrange İlerlemem",
+    "streak_line": "\n🔥 {days} günlük seri!",
+    "post_author_line": "{author} tarafından, ",
+    "post_on_line": "",
+    "post_text": "\"{caption}\"\n\n— {authorLine}Cookrange Topluluğu {appTag}{link}",
+    "post_subject": "Cookrange Topluluk Gönderisi",
+    "shopping_list_prefix": "🛒 {title}\n\n",
+    "shopping_list_default_prefix": "🛒 Alışveriş Listesi {date}\n\n",
+    "challenge_goal": "\n🎯 Hedef: {goal}",
+    "challenge_text": "💪 Cookrange'de \"{name}\" hedefine sen de katıl!{goalLine}\n\n{link}\n\n{appTag}",
+    "challenge_subject": "\"{name}\" Hedefine Cookrange'de Katıl",
+    "referral_text": "🎁 Yapay zeka destekli beslenme uygulaması Cookrange'e katıl!\n\nDavet kodumu (**{code}**) kullanarak sen de ben de {rewardDays} ücretsiz Premium kazanalım.\n\n{link}\n\n{appTag}",
+    "referral_subject": "Cookrange'e Katıl — Ücretsiz Premium Daveti"
   },
   "error": {
     "initialization_failed_message": "Uygulama başlatılamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.",
@@ -801,6 +833,7 @@
   },
   "home": {
     "nutrition_title": "Değerler",
+    "share_progress": "Paylaş",
     "calories": "Kalori",
     "kcal": "/{target} kCal",
     "macros": {

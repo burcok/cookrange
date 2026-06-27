@@ -62,7 +62,8 @@ class _AppShimmerState extends State<AppShimmer>
     if (!widget.enabled) return widget.child;
     final palette = AppPalette.of(context);
 
-    return AnimatedBuilder(
+    return ExcludeSemantics(
+      child: AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         return ShaderMask(
@@ -83,6 +84,7 @@ class _AppShimmerState extends State<AppShimmer>
         );
       },
       child: widget.child,
+      ),
     );
   }
 }
@@ -149,6 +151,7 @@ class AppSkeletonList extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppShimmer(
       child: ListView.separated(
+        shrinkWrap: true,
         padding: padding.add(EdgeInsets.only(top: AppSpacing.sm.h)),
         physics: const NeverScrollableScrollPhysics(),
         itemCount: itemCount,

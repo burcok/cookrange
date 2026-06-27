@@ -202,6 +202,21 @@ service cloud.firestore {
         && resource.data.createdBy == request.auth.uid;
     }
 
+    // ─── Referral codes ───────────────────────────────────────────────────────
+    match /referrals/{code} {
+      // Any authenticated user may read a referral doc (to validate a code).
+      allow read: if isAuthenticated();
+      // Only the owner may create their own referral doc.
+      allow create: if isAuthenticated()
+        && request.resource.data.owner_uid == request.auth.uid;
+      // Any authenticated user may update used_by_uids (applying the code).
+      // max_uses and owner_uid cannot be changed.
+      allow update: if isAuthenticated()
+        && request.resource.data.owner_uid == resource.data.owner_uid
+        && request.resource.data.max_uses == resource.data.max_uses;
+      allow delete: if false;
+    }
+
     // ─── Deny everything else ─────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

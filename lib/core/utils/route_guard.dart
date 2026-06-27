@@ -29,6 +29,7 @@ class _RouteGuardState extends State<RouteGuard> {
   StreamSubscription<bool>? _banSubscription;
   AdminStatus? _realtimeAdminStatus;
   bool _authInitialized = false;
+  bool _hasRedirected = false;
 
   @override
   void initState() {
@@ -126,12 +127,15 @@ class _RouteGuardState extends State<RouteGuard> {
       }
 
       // Redirect to login
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.pushNamedAndRemoveUntil(
-              context, AppRoutes.login, (route) => false);
-        }
-      });
+      if (!_hasRedirected) {
+        _hasRedirected = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, AppRoutes.login, (route) => false);
+          }
+        });
+      }
       return const Scaffold(body: SizedBox.shrink());
     }
 
@@ -140,17 +144,20 @@ class _RouteGuardState extends State<RouteGuard> {
       if (userModel == null && isLoading) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          final destination = !firebaseUser.emailVerified
-              ? AppRoutes.verifyEmail
-              : (userModel?.onboardingCompleted == true
-                  ? AppRoutes.main
-                  : AppRoutes.onboarding);
-          Navigator.pushNamedAndRemoveUntil(
-              context, destination, (route) => false);
-        }
-      });
+      if (!_hasRedirected) {
+        _hasRedirected = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            final destination = !firebaseUser.emailVerified
+                ? AppRoutes.verifyEmail
+                : (userModel?.onboardingCompleted == true
+                    ? AppRoutes.main
+                    : AppRoutes.onboarding);
+            Navigator.pushNamedAndRemoveUntil(
+                context, destination, (route) => false);
+          }
+        });
+      }
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
@@ -159,12 +166,15 @@ class _RouteGuardState extends State<RouteGuard> {
       final isEmailVerified = firebaseUser.emailVerified;
       final isVerifiedInFirestore = userModel == null || userModel.userVerified != null;
       if (!isEmailVerified || !isVerifiedInFirestore) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            Navigator.pushNamedAndRemoveUntil(
-                context, AppRoutes.verifyEmail, (route) => false);
-          }
-        });
+        if (!_hasRedirected) {
+          _hasRedirected = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.pushNamedAndRemoveUntil(
+                  context, AppRoutes.verifyEmail, (route) => false);
+            }
+          });
+        }
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
     }
@@ -173,12 +183,15 @@ class _RouteGuardState extends State<RouteGuard> {
     if (userModel != null &&
         !userModel.onboardingCompleted &&
         routeName != AppRoutes.onboarding) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.pushNamedAndRemoveUntil(
-              context, AppRoutes.onboarding, (route) => false);
-        }
-      });
+      if (!_hasRedirected) {
+        _hasRedirected = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, AppRoutes.onboarding, (route) => false);
+          }
+        });
+      }
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 

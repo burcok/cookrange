@@ -7,6 +7,7 @@ import '../../core/models/challenge_model.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/services/challenge_service.dart';
 import '../../core/services/firestore_service.dart';
+import '../../core/services/sharing_service.dart';
 import '../../core/widgets/ds/ds.dart';
 
 class ChallengeDetailScreen extends StatefulWidget {
@@ -152,6 +153,26 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                   icon: const Icon(Icons.arrow_back_ios_new, size: 18),
                   onPressed: () => Navigator.pop(context),
                 ),
+                actions: [
+                  Builder(
+                    builder: (buttonContext) => IconButton(
+                      icon: Icon(Icons.share_outlined,
+                          color: palette.textSecondary, size: 20),
+                      onPressed: () {
+                        final box = buttonContext.findRenderObject() as RenderBox?;
+                        final rect = box != null ? box.localToGlobal(Offset.zero) & box.size : null;
+                        SharingService().shareChallenge(
+                          buttonContext,
+                          name: challenge.title,
+                          challengeId: challenge.id,
+                          goal: '${challenge.goal} ${challenge.unit}',
+                          sharePositionOrigin: rect,
+                        );
+                      },
+                      tooltip: 'Share Challenge',
+                    ),
+                  ),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
                   title: Text(
                     challenge.title,

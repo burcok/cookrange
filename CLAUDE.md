@@ -131,6 +131,7 @@ lib/
 | `dishes/{dishId}` | Recipe/dish database (seeded once) |
 | `signals/{uid}` | Ephemeral social broadcasts |
 | `admin/status/{uid}` | Ban/admin flags |
+| `referrals/{code}` | Referral code docs (owner, usedByUids, maxUses) |
 
 ## Key Services
 
@@ -146,6 +147,12 @@ lib/
 | `CommunityService` | `community_service.dart` | Posts CRUD + cursor-based pagination |
 | `DishService` | `dish_service.dart` | Firestore dish DB, seed on demand |
 | `GlobalErrorHandler` | `global_error_handler.dart` | **Single** `FlutterError.onError` owner; wired into `MaterialApp.builder` |
+| `ATTConsentService` | `att_consent_service.dart` | iOS App Tracking Transparency; one-shot prompt, SharedPrefs `att_prompted` key |
+| `DeepLinkService` | `deep_link_service.dart` | `app_links` universal + custom-scheme routing; `init(navigatorKey)` in splash |
+| `ReferralService` | `referral_service.dart` | 6-char referral codes; Firestore `referrals/{code}`; batch-write reward on apply |
+| `SharingService` | `sharing_service.dart` | Native share-sheet wrapper for recipes, progress, posts, challenges, referrals |
+| `DataExportService` | `data_export_service.dart` | GDPR data export — downloads user Firestore data as JSON |
+| `ShareableFitnessCard` | `widgets/shareable_fitness_card.dart` | Capture-to-PNG progress card; `capture(key)` → share_plus |
 
 ## AI Integration
 
@@ -205,7 +212,10 @@ lib/
 
 ## MVP Status
 
-All B1-B13 blockers are complete. App is in beta-ready state. See `TODO.md` for current roadmap.
+All B1-B13 blockers are complete. App is in **v0.9.5 consumer-beta state**. Phase 2–3.5 are fully shipped:
+design system, food scanning, nutrition analytics, cooking mode, community, challenges, shopping list,
+settings, referral program, deep linking, ATT consent, accessibility semantics, performance RepaintBoundaries,
+GDPR data export, social sharing, and shareable fitness card. See `TODO.md` for current roadmap.
 
 ## Running Locally
 

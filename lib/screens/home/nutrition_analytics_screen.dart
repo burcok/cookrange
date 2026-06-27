@@ -202,7 +202,8 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
       ),
       child: Row(
         children: [
-          AnimatedBuilder(
+          RepaintBoundary(
+            child: AnimatedBuilder(
             animation: _barAnim,
             builder: (_, __) => SizedBox(
               width: 72.w,
@@ -223,6 +224,7 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
                   ),
                 ),
               ),
+            ),
             ),
           ),
           SizedBox(width: AppSpacing.md.w),
@@ -360,18 +362,20 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
             ],
           ),
           SizedBox(height: AppSpacing.md.h),
-          AnimatedBuilder(
-            animation: _barAnim,
-            builder: (_, __) => SizedBox(
-              height: 160.h,
-              child: CustomPaint(
-                size: Size(double.infinity, 160.h),
-                painter: _BarChartPainter(
-                  days: summary.days,
-                  targetCalories: _targetCalories,
-                  progress: _barAnim.value,
-                  primaryColor: primary,
-                  palette: palette,
+          RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _barAnim,
+              builder: (_, __) => SizedBox(
+                height: 160.h,
+                child: CustomPaint(
+                  size: Size(double.infinity, 160.h),
+                  painter: _BarChartPainter(
+                    days: summary.days,
+                    targetCalories: _targetCalories,
+                    progress: _barAnim.value,
+                    primaryColor: primary,
+                    palette: palette,
+                  ),
                 ),
               ),
             ),

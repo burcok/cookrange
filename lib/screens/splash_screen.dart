@@ -20,6 +20,8 @@ import '../core/services/billing_service.dart';
 import '../core/localization/app_localizations.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../core/services/auth_service.dart';
+import '../core/services/att_consent_service.dart';
+import '../core/services/deep_link_service.dart';
 import '../core/providers/device_info_provider.dart';
 import 'package:provider/provider.dart';
 import '../core/providers/onboarding_provider.dart';
@@ -191,6 +193,9 @@ class _SplashScreenState extends State<SplashScreen>
     BillingService()
         .initialize()
         .catchError((e) => debugPrint('Billing init error: $e'));
+    DeepLinkService()
+        .init(AuthService().navigatorKey)
+        .catchError((e) => debugPrint('DeepLink init error: $e'));
   }
 
   /// Fire-and-forget device info initialization
@@ -421,6 +426,9 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     if (_isOnboardingDataComplete(userModel)) {
+      // Request ATT before navigating — only prompts once per install.
+      await ATTConsentService().requestIfNeeded();
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.main);
     } else {
       if (userModel?.onboardingData != null) {

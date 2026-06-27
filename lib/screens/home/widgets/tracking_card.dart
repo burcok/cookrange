@@ -59,9 +59,10 @@ class _TrackingCardState extends State<TrackingCard> {
 
   Future<void> _showWeightDialog() async {
     final l10n = AppLocalizations.of(context);
-    await showDialog<void>(
+    await AppSheet.show(
       context: context,
-      builder: (ctx) => _WeightInputDialog(
+      title: l10n.translate('tracking.weight.log_title'),
+      child: _WeightInputSheet(
         initialWeight: _todayWeight,
         weightHistory: _weightHistory,
         l10n: l10n,
@@ -302,13 +303,13 @@ class _TrackingCardState extends State<TrackingCard> {
   }
 }
 
-class _WeightInputDialog extends StatefulWidget {
+class _WeightInputSheet extends StatefulWidget {
   final double? initialWeight;
   final List<dynamic> weightHistory;
   final AppLocalizations l10n;
   final Future<void> Function(double) onSave;
 
-  const _WeightInputDialog({
+  const _WeightInputSheet({
     required this.initialWeight,
     required this.weightHistory,
     required this.l10n,
@@ -316,10 +317,10 @@ class _WeightInputDialog extends StatefulWidget {
   });
 
   @override
-  State<_WeightInputDialog> createState() => _WeightInputDialogState();
+  State<_WeightInputSheet> createState() => _WeightInputSheetState();
 }
 
-class _WeightInputDialogState extends State<_WeightInputDialog> {
+class _WeightInputSheetState extends State<_WeightInputSheet> {
   late final TextEditingController _controller;
   bool _isSaving = false;
 
@@ -341,59 +342,74 @@ class _WeightInputDialogState extends State<_WeightInputDialog> {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final t = AppText.of(context);
-    return AlertDialog(
-      backgroundColor: palette.surface,
-      title: Text(widget.l10n.translate('tracking.weight.log_title'),
-          style: t.headlineS.copyWith(color: palette.textPrimary)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _controller,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
-            autofocus: true,
-            style: t.bodyL.copyWith(color: palette.textPrimary),
-            decoration: InputDecoration(
-              labelText: widget.l10n.translate('tracking.weight.field_label'),
-              suffix: const Text('kg'),
-              border: const OutlineInputBorder(),
+    final primary = context.watch<ThemeProvider>().primaryColor;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Input field
+        TextField(
+          controller: _controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          autofocus: true,
+          cursorColor: primary,
+          style: t.bodyL.copyWith(color: palette.textPrimary),
+          decoration: InputDecoration(
+            labelText: widget.l10n.translate('tracking.weight.field_label'),
+            labelStyle: TextStyle(color: palette.textSecondary),
+            suffixText: 'kg',
+            suffixStyle: t.bodyL.copyWith(color: palette.textSecondary),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.input.r),
+              borderSide: BorderSide(color: palette.border),
             ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppRadius.input.r),
+              borderSide: BorderSide(color: primary, width: 2),
+            ),
+            filled: true,
+            fillColor: palette.surfaceVariant.withValues(alpha: 0.5),
+            contentPadding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.xl.w, vertical: AppSpacing.md.h),
           ),
-          if (widget.weightHistory.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              widget.l10n.translate('tracking.weight.recent'),
-              style: t.labelM
-                  .copyWith(fontWeight: FontWeight.w600, color: palette.textSecondary),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            ...widget.weightHistory.take(5).map(
-                  (e) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(e['date'] as String,
-                            style: t.labelS
-                                .copyWith(color: palette.textSecondary)),
-                        Text('${e['weight']} kg',
+        ),
+        if (widget.weightHistory.isNotEmpty) ...[
+          SizedBox(height: AppSpacing.lg.h),
+          Text(
+            widget.l10n.translate('tracking.weight.recent'),
+            style: t.labelM.copyWith(
+                fontWeight: FontWeight.w600, color: palette.textSecondary),
+          ),
+          SizedBox(height: AppSpacing.xs.h),
+          ...widget.weightHistory.take(5).map(
+                (e) => Padding(
+                  padding: EdgeInsets.symmetric(vertical: 5.h),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(e['date'] as String,
+                          style: t.labelS.copyWith(color: palette.textSecondary)),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm.w, vertical: 2.h),
+                        decoration: BoxDecoration(
+                          color: primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(AppRadius.xs.r),
+                        ),
+                        child: Text('${e['weight']} kg',
                             style: t.labelS.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: palette.textPrimary)),
-                      ],
-                    ),
+                                fontWeight: FontWeight.w700, color: primary)),
+                      ),
+                    ],
                   ),
                 ),
-          ],
+              ),
         ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(widget.l10n.translate('common.cancel')),
-        ),
-        ElevatedButton(
+        SizedBox(height: AppSpacing.xl.h),
+        AppButton(
+          label: widget.l10n.translate('common.save'),
+          loading: _isSaving,
           onPressed: _isSaving
               ? null
               : () async {
@@ -405,13 +421,6 @@ class _WeightInputDialogState extends State<_WeightInputDialog> {
                   if (!mounted) return;
                   nav.pop();
                 },
-          child: _isSaving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child:
-                      CircularProgressIndicator(strokeWidth: 2))
-              : Text(widget.l10n.translate('common.save')),
         ),
       ],
     );

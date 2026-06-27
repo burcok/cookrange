@@ -40,9 +40,7 @@ class _ExploreScreenState extends State<ExploreScreen>
         if (mounted) {
           unawaited(Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => RecipeDetailScreen(recipe: recipe),
-            ),
+            AppTransitions.slideUp(RecipeDetailScreen(recipe: recipe)),
           ));
         }
       } else {

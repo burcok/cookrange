@@ -8,6 +8,7 @@ import '../../core/providers/user_provider.dart';
 import '../../core/repositories/shopping_repository.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/services/dish_service.dart';
+import '../../core/services/sharing_service.dart';
 import '../../core/services/shopping_list_sync_service.dart';
 import '../../core/services/weekly_meal_plan_service.dart';
 import '../../core/widgets/ds/ds.dart';
@@ -136,11 +137,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
     try {
       final plan = await WeeklyMealPlanService().getWeeklyMealPlan(user);
       if (plan == null || plan.days.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(l10n.translate('shopping.no_plan'))),
-          );
-        }
+        if (mounted) AppSnackBar.warning(context, l10n.translate('shopping.no_plan'));
         return;
       }
 
@@ -150,14 +147,14 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         allDishNames.addAll(day.meals.values);
       }
 
-      // Fetch all dishes and build a name lookup
+      // Fetch all dishes and build an ID lookup
       final dishes = await DishService().getAllDishes();
-      final nameMap = {for (final d in dishes) d.name.toLowerCase(): d};
+      final idMap = {for (final d in dishes) d.id: d};
 
       // Aggregate ingredients, merging duplicates by name
       final merged = <String, Ingredient>{};
-      for (final dishName in allDishNames) {
-        final dish = nameMap[dishName.toLowerCase()];
+      for (final dishId in allDishNames) {
+        final dish = idMap[dishId];
         if (dish == null) continue;
         for (final ingredient in dish.ingredients) {
           final key = ingredient.name.toLowerCase();
@@ -176,12 +173,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
       }
 
       if (merged.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(l10n.translate('shopping.no_ingredients'))),
-          );
-        }
+        if (mounted) AppSnackBar.warning(context, l10n.translate('shopping.no_ingredients'));
         return;
       }
 
@@ -198,24 +190,11 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         _loadShoppingList();
         _syncToCloud();
         unawaited(HapticFeedback.mediumImpact());
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.translate('shopping.generated',
-                variables: {'count': '${merged.length}'})),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-          ),
-        );
+        AppSnackBar.success(context,
+            l10n.translate('shopping.generated', variables: {'count': '${merged.length}'}));
       }
     } catch (e) {
-      if (mounted) {
-        final palette = AppPalette.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${l10n.translate('common.error')}: $e'),
-            backgroundColor: palette.error,
-          ),
-        );
-      }
+      if (mounted) AppSnackBar.error(context, '${l10n.translate('common.error')}: $e');
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }
@@ -228,8 +207,19 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         .map((i) => '• ${i.name}  ${i.amount} ${i.unit}')
         .join('\n');
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.translate('shopping.copied'))),
+    AppSnackBar.success(context, l10n.translate('shopping.copied'));
+  }
+
+  void _shareList(BuildContext buttonContext) {
+    if (_shoppingList.isEmpty) return;
+
+    final box = buttonContext.findRenderObject() as RenderBox?;
+    final rect = box != null ? box.localToGlobal(Offset.zero) & box.size : null;
+
+    SharingService().shareShoppingList(
+      buttonContext,
+      _shoppingList.map((i) => '${i.name}  ${i.amount} ${i.unit}').toList(),
+      sharePositionOrigin: rect,
     );
   }
 
@@ -299,6 +289,13 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
               onPressed: _generateFromPlan,
             ),
           if (_shoppingList.isNotEmpty) ...[
+            Builder(
+              builder: (buttonContext) => IconButton(
+                tooltip: l10n.translate('shopping.share'),
+                icon: const Icon(Icons.share_outlined),
+                onPressed: () => _shareList(buttonContext),
+              ),
+            ),
             IconButton(
               tooltip: l10n.translate('shopping.copy'),
               icon: const Icon(Icons.copy_outlined),

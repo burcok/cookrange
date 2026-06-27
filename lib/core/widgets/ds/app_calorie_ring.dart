@@ -22,6 +22,10 @@ class AppCalorieRing extends StatefulWidget {
   /// Optional label under the number (e.g. "of 2,000 kcal").
   final String? caption;
 
+  /// Overrides the VoiceOver / TalkBack announcement. If null, a default
+  /// "{consumed} of {target} kilocalories consumed" label is generated.
+  final String? semanticLabel;
+
   const AppCalorieRing({
     super.key,
     required this.consumed,
@@ -29,6 +33,7 @@ class AppCalorieRing extends StatefulWidget {
     this.size = 200,
     this.strokeWidth = 16,
     this.caption,
+    this.semanticLabel,
   });
 
   @override
@@ -84,39 +89,50 @@ class _AppCalorieRingState extends State<AppCalorieRing>
     final t = AppText.of(context);
     final dim = widget.size.r;
 
-    return SizedBox(
-      width: dim,
-      height: dim,
-      child: AnimatedBuilder(
-        animation: _anim,
-        builder: (context, _) {
-          final consumedNow = (widget.consumed * _animFractionForReadout()).round();
-          return CustomPaint(
-            painter: _RingPainter(
-              progress: _anim.value,
-              trackColor: palette.surfaceVariant,
-              gradient: AppGradients.ring(primary),
-              strokeWidth: widget.strokeWidth.r,
-              glowColor: primary.withValues(alpha: 0.35),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    consumedNow.toString(),
-                    style: t.displayM.copyWith(height: 1),
+    final pct = (_progress * 100).round();
+    final label = widget.semanticLabel ??
+        '${widget.consumed.round()} of ${widget.target.round()} kilocalories consumed, $pct percent';
+
+    return Semantics(
+      label: label,
+      value: '$pct%',
+      child: SizedBox(
+        width: dim,
+        height: dim,
+        child: AnimatedBuilder(
+          animation: _anim,
+          builder: (context, _) {
+            final consumedNow =
+                (widget.consumed * _animFractionForReadout()).round();
+            return ExcludeSemantics(
+              child: CustomPaint(
+                painter: _RingPainter(
+                  progress: _anim.value,
+                  trackColor: palette.surfaceVariant,
+                  gradient: AppGradients.ring(primary),
+                  strokeWidth: widget.strokeWidth.r,
+                  glowColor: primary.withValues(alpha: 0.35),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        consumedNow.toString(),
+                        style: t.displayM.copyWith(height: 1),
+                      ),
+                      Text('kcal', style: t.labelM),
+                      if (widget.caption != null) ...[
+                        SizedBox(height: AppSpacing.xxs.h),
+                        Text(widget.caption!, style: t.labelS),
+                      ],
+                    ],
                   ),
-                  Text('kcal', style: t.labelM),
-                  if (widget.caption != null) ...[
-                    SizedBox(height: AppSpacing.xxs.h),
-                    Text(widget.caption!, style: t.labelS),
-                  ],
-                ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

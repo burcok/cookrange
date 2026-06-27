@@ -33,17 +33,25 @@ class _FoodScanScreenState extends State<FoodScanScreen>
   String _selectedMealType = 'snack';
   String? _errorMessage;
 
-  late final AnimationController _resultAnimController = AnimationController(
-    vsync: this,
-    duration: AppMotion.slow,
-  );
-  late final Animation<double> _resultFade =
-      CurvedAnimation(parent: _resultAnimController, curve: AppMotion.decelerate);
-  late final Animation<Offset> _resultSlide = Tween<Offset>(
-    begin: const Offset(0, 0.12),
-    end: Offset.zero,
-  ).animate(CurvedAnimation(
-      parent: _resultAnimController, curve: AppMotion.standard));
+  late final AnimationController _resultAnimController;
+  late final Animation<double> _resultFade;
+  late final Animation<Offset> _resultSlide;
+
+  @override
+  void initState() {
+    super.initState();
+    _resultAnimController = AnimationController(
+      vsync: this,
+      duration: AppMotion.slow,
+    );
+    _resultFade = CurvedAnimation(
+        parent: _resultAnimController, curve: AppMotion.decelerate);
+    _resultSlide = Tween<Offset>(
+      begin: const Offset(0, 0.12),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+        parent: _resultAnimController, curve: AppMotion.standard));
+  }
 
   @override
   void dispose() {

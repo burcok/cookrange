@@ -573,6 +573,7 @@
     "no_plan": "No active meal plan found. Generate one from Home first.",
     "no_ingredients": "No ingredients found in your meal plan.",
     "generated": "Added {count} ingredients from your weekly plan.",
+    "share": "Share List",
     "copy": "Copy to Clipboard",
     "copied": "Shopping list copied to clipboard.",
     "to_buy": "To Buy",
@@ -646,13 +647,44 @@
       "change_password_title": "Change Password",
       "current_password": "Current Password",
       "new_password": "New Password",
-      "change_password_success": "Password changed successfully."
+      "change_password_success": "Password changed successfully.",
+      "export_data": "Download My Data",
+      "export_data_subtitle": "Export all your data as a JSON file (GDPR)",
+      "export_error": "Failed to export data. Please try again."
+    },
+    "referral": {
+      "title": "Refer a Friend",
+      "subtitle": "Invite friends and you both get 7 days of Premium free.",
+      "share": "Share Code",
+      "have_code": "I have a code",
+      "enter_code_title": "Enter Referral Code",
+      "enter_code_label": "Referral Code",
+      "apply": "Apply Code",
+      "applied_success": "🎉 Code applied! You both get 7 days of Premium."
     },
     "developer": {
       "title": "Developer",
       "test_mode": "Test Mode",
       "test_mode_subtitle": "Fill app with maximum-volume dummy data for UI stress testing"
     }
+  },
+  "sharing": {
+    "recipe_title": "🍽️ {name}\n🔥 {calories} kcal\nProtein: {protein}g · Carbs: {carbs}g · Fat: {fat}g\n\nDiscover AI-powered meal plans on Cookrange! {appTag}{link}",
+    "recipe_subject": "{name}",
+    "progress_text": "💪 Today's nutrition: {consumed} / {target} kcal ({pct}%){streak}\n\nTracking my nutrition with Cookrange AI! {appTag}",
+    "progress_subject": "My Cookrange Progress",
+    "streak_line": "\n🔥 {days}-day streak!",
+    "post_author_line": "by {author} on ",
+    "post_on_line": "on ",
+    "post_text": "\"{caption}\"\n\n— {authorLine}Cookrange Community {appTag}{link}",
+    "post_subject": "Cookrange Community Post",
+    "shopping_list_prefix": "🛒 {title}\n\n",
+    "shopping_list_default_prefix": "🛒 Shopping List {date}\n\n",
+    "challenge_goal": "\n🎯 Goal: {goal}",
+    "challenge_text": "💪 Join me in the \"{name}\" challenge on Cookrange!{goalLine}\n\n{link}\n\n{appTag}",
+    "challenge_subject": "Join \"{name}\" Challenge on Cookrange",
+    "referral_text": "🎁 Join me on Cookrange — the AI-powered nutrition app!\n\nUse my invite code **{code}** and we both get {rewardDays} of Premium free.\n\n{link}\n\n{appTag}",
+    "referral_subject": "Join Cookrange — Free Premium Invite"
   },
   "error": {
     "initialization_failed_message": "Application failed to initialize. Please check your internet connection and try again.",
@@ -801,6 +833,7 @@
   },
   "home": {
     "nutrition_title": "Nutrition",
+    "share_progress": "Share Progress",
     "calories": "Calories",
     "kcal": "/{target} kCal",
     "macros": {

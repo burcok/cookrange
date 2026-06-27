@@ -1,12 +1,17 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/language_provider.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/test_mode_provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/data_export_service.dart';
 import '../../core/services/feature_gate_service.dart';
+import '../../core/services/referral_service.dart';
 import '../../core/utils/app_routes.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../legal/legal_screen.dart';
@@ -16,10 +21,10 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _showChangeEmailDialog(BuildContext context) async {
     final appLoc = AppLocalizations.of(context);
-    await showDialog<void>(
+    await AppSheet.show(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => _ChangeEmailDialog(
+      title: appLoc.translate('settings.account.change_email_title'),
+      child: _ChangeEmailSheet(
         appLoc: appLoc,
         onSave: (email, password) async {
           await AuthService().updateEmail(email, password);
@@ -35,10 +40,10 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _showChangePasswordDialog(BuildContext context) async {
     final appLoc = AppLocalizations.of(context);
-    await showDialog<void>(
+    await AppSheet.show(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) => _ChangePasswordDialog(
+      title: appLoc.translate('settings.account.change_password_title'),
+      child: _ChangePasswordSheet(
         appLoc: appLoc,
         onSave: (currentPassword, newPassword) async {
           await AuthService().updatePassword(currentPassword, newPassword);
@@ -52,21 +57,44 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _showDeleteAccountDialog(BuildContext context) async {
+  Future<void> _exportUserData(BuildContext context) async {
     final appLoc = AppLocalizations.of(context);
-    await showDialog<void>(
+    // Show loading dialog — intentionally not awaited; dismissed after export
+    unawaited(showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _DeleteAccountDialog(
+      builder: (_) => const AlertDialog(
+        content: SizedBox(
+          height: 80,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+    ));
+    try {
+      await DataExportService().exportAndShare();
+      if (context.mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      AppSnackBar.error(context, appLoc.translate('settings.account.export_error'));
+    }
+  }
+
+  Future<void> _showDeleteAccountDialog(BuildContext context) async {
+    final appLoc = AppLocalizations.of(context);
+    await AppSheet.show(
+      context: context,
+      title: appLoc.translate('settings.account.delete_title'),
+      child: _DeleteAccountSheet(
         appLoc: appLoc,
         onDelete: (password) async {
           await AuthService().deleteAccount(password: password);
           if (!context.mounted) return;
-          Navigator.pushNamedAndRemoveUntil(
+          unawaited(Navigator.pushNamedAndRemoveUntil(
             context,
             AppRoutes.login,
             (route) => false,
-          );
+          ));
         },
       ),
     );
@@ -432,6 +460,11 @@ class SettingsScreen extends StatelessWidget {
 
                     const SizedBox(height: 24),
 
+                    // Refer a Friend
+                    _ReferralCard(palette: palette, appLoc: appLoc),
+
+                    const SizedBox(height: 24),
+
                     // Account / Danger Zone
                     _buildGlassSection(
                       context: context,
@@ -461,6 +494,22 @@ class SettingsScreen extends StatelessWidget {
                           title: appLoc.translate('settings.account.change_password'),
                           palette: palette,
                           onTap: () => _showChangePasswordDialog(context),
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.download_outlined,
+                          iconColor: palette.info,
+                          iconBgColor: palette.isDark
+                              ? palette.info.withValues(alpha: 0.2)
+                              : palette.info.withValues(alpha: 0.15),
+                          title: appLoc
+                              .translate('settings.account.export_data'),
+                          subtitle: appLoc.translate(
+                              'settings.account.export_data_subtitle'),
+                          palette: palette,
+                          onTap: () => _exportUserData(context),
                           trailing: Icon(Icons.chevron_right,
                               color: palette.textSecondary),
                         ),
@@ -786,256 +835,257 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-class _ChangeEmailDialog extends StatefulWidget {
+// ── Settings bottom sheet helpers ──────────────────────────────────────────
+
+Widget _dsTextField({
+  required TextEditingController controller,
+  required String label,
+  required AppPalette palette,
+  required Color primary,
+  bool obscureText = false,
+  TextInputType? keyboardType,
+}) {
+  return TextField(
+    controller: controller,
+    obscureText: obscureText,
+    keyboardType: keyboardType,
+    cursorColor: primary,
+    style: TextStyle(color: palette.textPrimary),
+    decoration: InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: palette.textSecondary),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.input.r),
+        borderSide: BorderSide(color: palette.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.input.r),
+        borderSide: BorderSide(color: primary, width: 2),
+      ),
+      filled: true,
+      fillColor: palette.surfaceVariant.withValues(alpha: 0.5),
+      contentPadding:
+          EdgeInsets.symmetric(horizontal: AppSpacing.xl.w, vertical: AppSpacing.md.h),
+    ),
+  );
+}
+
+class _ChangeEmailSheet extends StatefulWidget {
   final AppLocalizations appLoc;
   final Future<void> Function(String email, String password) onSave;
 
-  const _ChangeEmailDialog({
-    required this.appLoc,
-    required this.onSave,
-  });
+  const _ChangeEmailSheet({required this.appLoc, required this.onSave});
 
   @override
-  State<_ChangeEmailDialog> createState() => _ChangeEmailDialogState();
+  State<_ChangeEmailSheet> createState() => _ChangeEmailSheetState();
 }
 
-class _ChangeEmailDialogState extends State<_ChangeEmailDialog> {
-  late final TextEditingController _emailController;
-  late final TextEditingController _passwordController;
+class _ChangeEmailSheetState extends State<_ChangeEmailSheet> {
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
   bool _isLoading = false;
 
   @override
-  void initState() {
-    super.initState();
-    _emailController = TextEditingController();
-    _passwordController = TextEditingController();
-  }
-
-  @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return AlertDialog(
-      title: Text(widget.appLoc.translate('settings.account.change_email_title')),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              labelText: widget.appLoc.translate('settings.account.change_email_new'),
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _passwordController,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: widget.appLoc.translate('settings.account.change_email_password'),
-              border: const OutlineInputBorder(),
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: Text(widget.appLoc.translate('common.cancel')),
+    final primary = context.watch<ThemeProvider>().primaryColor;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _dsTextField(
+          controller: _emailCtrl,
+          label: widget.appLoc.translate('settings.account.change_email_new'),
+          palette: palette,
+          primary: primary,
+          keyboardType: TextInputType.emailAddress,
         ),
-        ElevatedButton(
+        SizedBox(height: AppSpacing.md.h),
+        _dsTextField(
+          controller: _passCtrl,
+          label: widget.appLoc.translate('settings.account.change_email_password'),
+          palette: palette,
+          primary: primary,
+          obscureText: true,
+        ),
+        SizedBox(height: AppSpacing.xl.h),
+        AppButton(
+          label: widget.appLoc.translate('common.save'),
+          loading: _isLoading,
           onPressed: _isLoading
               ? null
               : () async {
-                  final email = _emailController.text.trim();
+                  final email = _emailCtrl.text.trim();
                   if (email.isEmpty) return;
                   setState(() => _isLoading = true);
                   try {
-                    await widget.onSave(
-                      email,
-                      _passwordController.text,
-                    );
+                    await widget.onSave(email, _passCtrl.text);
                     if (mounted) Navigator.pop(context);
                   } catch (e) {
                     setState(() => _isLoading = false);
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(e.toString()), backgroundColor: palette.error),
-                      );
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(e.toString()),
+                          backgroundColor: palette.error));
                     }
                   }
                 },
-          child: _isLoading
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : Text(widget.appLoc.translate('common.save')),
         ),
       ],
     );
   }
 }
 
-class _ChangePasswordDialog extends StatefulWidget {
+class _ChangePasswordSheet extends StatefulWidget {
   final AppLocalizations appLoc;
   final Future<void> Function(String currentPassword, String newPassword) onSave;
 
-  const _ChangePasswordDialog({
-    required this.appLoc,
-    required this.onSave,
-  });
+  const _ChangePasswordSheet({required this.appLoc, required this.onSave});
 
   @override
-  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+  State<_ChangePasswordSheet> createState() => _ChangePasswordSheetState();
 }
 
-class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
-  late final TextEditingController _currentPasswordController;
-  late final TextEditingController _newPasswordController;
+class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
+  final _currentCtrl = TextEditingController();
+  final _newCtrl = TextEditingController();
   bool _isLoading = false;
 
   @override
-  void initState() {
-    super.initState();
-    _currentPasswordController = TextEditingController();
-    _newPasswordController = TextEditingController();
-  }
-
-  @override
   void dispose() {
-    _currentPasswordController.dispose();
-    _newPasswordController.dispose();
+    _currentCtrl.dispose();
+    _newCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return AlertDialog(
-      title: Text(widget.appLoc.translate('settings.account.change_password_title')),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _currentPasswordController,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: widget.appLoc.translate('settings.account.current_password'),
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _newPasswordController,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: widget.appLoc.translate('settings.account.new_password'),
-              border: const OutlineInputBorder(),
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: Text(widget.appLoc.translate('common.cancel')),
+    final primary = context.watch<ThemeProvider>().primaryColor;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _dsTextField(
+          controller: _currentCtrl,
+          label: widget.appLoc.translate('settings.account.current_password'),
+          palette: palette,
+          primary: primary,
+          obscureText: true,
         ),
-        ElevatedButton(
+        SizedBox(height: AppSpacing.md.h),
+        _dsTextField(
+          controller: _newCtrl,
+          label: widget.appLoc.translate('settings.account.new_password'),
+          palette: palette,
+          primary: primary,
+          obscureText: true,
+        ),
+        SizedBox(height: AppSpacing.xl.h),
+        AppButton(
+          label: widget.appLoc.translate('common.save'),
+          loading: _isLoading,
           onPressed: _isLoading
               ? null
               : () async {
-                  final cur = _currentPasswordController.text;
-                  final n = _newPasswordController.text;
+                  final cur = _currentCtrl.text;
+                  final n = _newCtrl.text;
                   if (cur.isEmpty || n.isEmpty) return;
                   setState(() => _isLoading = true);
                   try {
-                    await widget.onSave(
-                      cur,
-                      n,
-                    );
+                    await widget.onSave(cur, n);
                     if (mounted) Navigator.pop(context);
                   } catch (e) {
                     setState(() => _isLoading = false);
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(e.toString()), backgroundColor: palette.error),
-                      );
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(e.toString()),
+                          backgroundColor: palette.error));
                     }
                   }
                 },
-          child: _isLoading
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : Text(widget.appLoc.translate('common.save')),
         ),
       ],
     );
   }
 }
 
-class _DeleteAccountDialog extends StatefulWidget {
+class _DeleteAccountSheet extends StatefulWidget {
   final AppLocalizations appLoc;
   final Future<void> Function(String password) onDelete;
 
-  const _DeleteAccountDialog({
-    required this.appLoc,
-    required this.onDelete,
-  });
+  const _DeleteAccountSheet({required this.appLoc, required this.onDelete});
 
   @override
-  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+  State<_DeleteAccountSheet> createState() => _DeleteAccountSheetState();
 }
 
-class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
-  late final TextEditingController _passwordController;
+class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
+  final _passCtrl = TextEditingController();
   bool _isLoading = false;
 
   @override
-  void initState() {
-    super.initState();
-    _passwordController = TextEditingController();
-  }
-
-  @override
   void dispose() {
-    _passwordController.dispose();
+    _passCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return AlertDialog(
-      title: Text(widget.appLoc.translate('settings.account.delete_title')),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(widget.appLoc.translate('settings.account.delete_warning')),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _passwordController,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: widget.appLoc.translate('auth.password'),
-              border: const OutlineInputBorder(),
-            ),
+    final primary = context.watch<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: EdgeInsets.all(AppSpacing.md.r),
+          decoration: BoxDecoration(
+            color: palette.error.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            border: Border.all(color: palette.error.withValues(alpha: 0.3)),
           ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: Text(widget.appLoc.translate('common.cancel')),
+          child: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded,
+                  color: palette.error, size: 20.r),
+              SizedBox(width: AppSpacing.sm.w),
+              Expanded(
+                child: Text(
+                  widget.appLoc.translate('settings.account.delete_warning'),
+                  style: t.labelM.copyWith(color: palette.error),
+                ),
+              ),
+            ],
+          ),
         ),
-        ElevatedButton(
+        SizedBox(height: AppSpacing.lg.h),
+        _dsTextField(
+          controller: _passCtrl,
+          label: widget.appLoc.translate('auth.password'),
+          palette: palette,
+          primary: primary,
+          obscureText: true,
+        ),
+        SizedBox(height: AppSpacing.xl.h),
+        AppButton(
+          label: widget.appLoc.translate('settings.account.delete_confirm'),
+          loading: _isLoading,
           onPressed: _isLoading
               ? null
               : () async {
-                  final pass = _passwordController.text;
+                  final pass = _passCtrl.text;
                   if (pass.isEmpty) return;
                   setState(() => _isLoading = true);
                   try {
@@ -1044,23 +1094,247 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                   } catch (e) {
                     setState(() => _isLoading = false);
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(e.toString()), backgroundColor: palette.error),
-                      );
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(e.toString()),
+                          backgroundColor: palette.error));
                     }
                   }
                 },
-          style: ElevatedButton.styleFrom(
-              backgroundColor: palette.error,
-              foregroundColor: Colors.white),
-          child: _isLoading
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
-              : Text(widget.appLoc.translate('settings.account.delete_confirm')),
         ),
+      ],
+    );
+  }
+}
+
+// ── Referral card ────────────────────────────────────────────────────────────
+
+class _ReferralCard extends StatefulWidget {
+  final AppPalette palette;
+  final AppLocalizations appLoc;
+
+  const _ReferralCard({required this.palette, required this.appLoc});
+
+  @override
+  State<_ReferralCard> createState() => _ReferralCardState();
+}
+
+class _ReferralCardState extends State<_ReferralCard> {
+  String? _code;
+  int _referralCount = 0;
+  bool _loading = true;
+  bool _applying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final code = await ReferralService().getOrCreateCode();
+      final count = await ReferralService().getReferralCount();
+      if (mounted) {
+        setState(() {
+          _code = code;
+          _referralCount = count;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _share(BuildContext buttonContext) {
+    if (_code == null) return;
+    
+    final box = buttonContext.findRenderObject() as RenderBox?;
+    final rect = box != null ? box.localToGlobal(Offset.zero) & box.size : null;
+
+    ReferralService().shareCode(buttonContext, _code!, sharePositionOrigin: rect);
+  }
+
+  Future<void> _showApplySheet() async {
+    await AppSheet.show(
+      context: context,
+      title: widget.appLoc.translate('settings.referral.enter_code_title'),
+      child: _ApplyCodeSheet(
+        appLoc: widget.appLoc,
+        palette: widget.palette,
+        onApply: (code) async {
+          if (mounted) setState(() => _applying = true);
+          final error = await ReferralService().applyCode(code);
+          if (!mounted) return;
+          setState(() => _applying = false);
+          // ignore: use_build_context_synchronously
+          Navigator.pop(context);
+          if (error != null) {
+            // ignore: use_build_context_synchronously
+            AppSnackBar.error(context, error);
+          } else {
+            // ignore: use_build_context_synchronously
+            AppSnackBar.success(
+              context,
+              widget.appLoc.translate('settings.referral.applied_success'),
+            );
+          }
+        },
+        applying: _applying,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = widget.palette;
+    final l10n = widget.appLoc;
+    final primary = context.read<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
+
+    return AppCard(
+      padding: EdgeInsets.all(AppSpacing.lg.r),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36.r,
+                height: 36.r,
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.card_giftcard_rounded,
+                    color: primary, size: 20.r),
+              ),
+              SizedBox(width: AppSpacing.sm.w),
+              Expanded(
+                child: Text(
+                  l10n.translate('settings.referral.title'),
+                  style: t.titleL,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: AppSpacing.xs.h),
+          Text(
+            l10n.translate('settings.referral.subtitle'),
+            style: t.bodyM.copyWith(color: palette.textSecondary, fontSize: 13),
+          ),
+          SizedBox(height: AppSpacing.md.h),
+          if (_loading)
+            AppSkeletonBox(height: 48.h, width: double.infinity)
+          else if (_code != null) ...[
+            Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppRadius.input.r),
+                border: Border.all(
+                    color: primary.withValues(alpha: 0.25), width: 1.5),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _code!,
+                    style: t.headlineS.copyWith(
+                      letterSpacing: 4,
+                      fontWeight: FontWeight.bold,
+                      color: primary,
+                    ),
+                  ),
+                  if (_referralCount > 0)
+                    Text(
+                      '${_referralCount}x used',
+                      style: t.labelM.copyWith(color: palette.textSecondary),
+                    ),
+                ],
+              ),
+            ),
+            SizedBox(height: AppSpacing.sm.h),
+            Row(
+              children: [
+                Expanded(
+                  child: Builder(
+                    builder: (buttonContext) => AppButton(
+                      label: l10n.translate('settings.referral.share'),
+                      onPressed: () => _share(buttonContext),
+                      size: AppButtonSize.medium,
+                      icon: Icons.share_outlined,
+                    ),
+                  ),
+                ),
+                SizedBox(width: AppSpacing.sm.w),
+                AppButton(
+                  label: l10n.translate('settings.referral.have_code'),
+                  onPressed: _showApplySheet,
+                  variant: AppButtonVariant.tonal,
+                  size: AppButtonSize.medium,
+                  expand: false,
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ApplyCodeSheet extends StatefulWidget {
+  final AppLocalizations appLoc;
+  final AppPalette palette;
+  final Future<void> Function(String) onApply;
+  final bool applying;
+
+  const _ApplyCodeSheet({
+    required this.appLoc,
+    required this.palette,
+    required this.onApply,
+    required this.applying,
+  });
+
+  @override
+  State<_ApplyCodeSheet> createState() => _ApplyCodeSheetState();
+}
+
+class _ApplyCodeSheetState extends State<_ApplyCodeSheet> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppTextField(
+          controller: _ctrl,
+          labelText:
+              widget.appLoc.translate('settings.referral.enter_code_label'),
+          hintText: 'AB3X9K',
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+          ],
+        ),
+        SizedBox(height: AppSpacing.lg.h),
+        AppButton(
+          label: widget.appLoc.translate('settings.referral.apply'),
+          loading: widget.applying,
+          onPressed: () {
+            final code = _ctrl.text.trim();
+            if (code.isNotEmpty) widget.onApply(code);
+          },
+        ),
+        SizedBox(height: AppSpacing.xl.h),
       ],
     );
   }

@@ -143,6 +143,7 @@ class _MainScaffoldState extends State<MainScaffold>
     final primary = Theme.of(context).colorScheme.primary;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return RepaintBoundary(
+      child: ExcludeSemantics(
       child: Container(
         color: isDark ? const Color(0xFF0D1117) : const Color(0xFFFCFBF9),
         child: Stack(
@@ -164,6 +165,7 @@ class _MainScaffoldState extends State<MainScaffold>
             ),
           ],
         ),
+      ),
       ),
     );
   }

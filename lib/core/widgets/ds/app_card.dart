@@ -18,6 +18,10 @@ class AppCard extends StatefulWidget {
   final bool bordered;
   final bool elevated;
 
+  /// Screen-reader label for tappable cards. If null and [onTap] is set,
+  /// TalkBack/VoiceOver will fall back to the card's visible text content.
+  final String? semanticLabel;
+
   const AppCard({
     super.key,
     required this.child,
@@ -27,6 +31,7 @@ class AppCard extends StatefulWidget {
     this.radius = AppRadius.card,
     this.bordered = false,
     this.elevated = true,
+    this.semanticLabel,
   });
 
   @override
@@ -88,15 +93,20 @@ class _AppCardState extends State<AppCard>
 
     if (widget.onTap == null) return card;
 
-    return GestureDetector(
-      onTapDown: (_) => _c.forward(),
-      onTapUp: (_) => _c.reverse(),
-      onTapCancel: () => _c.reverse(),
-      onTap: () {
-        HapticFeedback.selectionClick();
-        widget.onTap!();
-      },
-      child: card,
+    return Semantics(
+      button: true,
+      label: widget.semanticLabel,
+      onTap: widget.onTap,
+      child: GestureDetector(
+        onTapDown: (_) => _c.forward(),
+        onTapUp: (_) => _c.reverse(),
+        onTapCancel: () => _c.reverse(),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          widget.onTap!();
+        },
+        child: card,
+      ),
     );
   }
 }

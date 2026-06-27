@@ -220,7 +220,7 @@ class WeeklyMealPlanService {
       await docRef.update({
         'days': updatedDays
             .map((d) => {
-                  'date': d.date.toIso8601String(),
+                  'date': Timestamp.fromDate(d.date),
                   'day_name': d.dayName,
                   'meals': d.meals,
                   'total_calories': d.totalCalories,

@@ -145,15 +145,19 @@ class AppEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final primary = context.watch<ThemeProvider>().primaryColor;
-    return _CenteredState(
-      icon: icon,
-      iconColor: primary,
-      iconBg: primary.withValues(alpha: palette.isDark ? 0.18 : 0.10),
-      title: title,
-      message: message,
-      actionLabel: actionLabel,
-      onAction: onAction,
-      compact: compact,
+    return Semantics(
+      liveRegion: true,
+      label: [title, if (message != null) message].join('. '),
+      child: _CenteredState(
+        icon: icon,
+        iconColor: primary,
+        iconBg: primary.withValues(alpha: palette.isDark ? 0.18 : 0.10),
+        title: title,
+        message: message,
+        actionLabel: actionLabel,
+        onAction: onAction,
+        compact: compact,
+      ),
     );
   }
 }
@@ -178,15 +182,19 @@ class AppErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return _CenteredState(
-      icon: Icons.error_outline_rounded,
-      iconColor: palette.error,
-      iconBg: palette.error.withValues(alpha: palette.isDark ? 0.18 : 0.10),
-      title: title,
-      message: message,
-      actionLabel: onRetry != null ? (retryLabel ?? 'Retry') : null,
-      onAction: onRetry,
-      compact: compact,
+    return Semantics(
+      liveRegion: true,
+      label: [title, if (message != null) message].join('. '),
+      child: _CenteredState(
+        icon: Icons.error_outline_rounded,
+        iconColor: palette.error,
+        iconBg: palette.error.withValues(alpha: palette.isDark ? 0.18 : 0.10),
+        title: title,
+        message: message,
+        actionLabel: onRetry != null ? (retryLabel ?? 'Retry') : null,
+        onAction: onRetry,
+        compact: compact,
+      ),
     );
   }
 }

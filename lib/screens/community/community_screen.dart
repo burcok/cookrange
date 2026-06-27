@@ -16,9 +16,8 @@ import 'post_detail_screen.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/main_header.dart';
 import '../../core/providers/theme_provider.dart';
-import '../../core/theme/app_palette.dart';
-import '../../core/theme/app_typography.dart';
-import '../../core/theme/app_dimensions.dart';
+import '../../core/services/sharing_service.dart';
+import '../../core/widgets/ds/ds.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -522,32 +521,21 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           child: RepaintBoundary(
                             child: GlassPostCard(
                               post: post,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        PostDetailScreen(postId: post.id),
-                                  ),
-                                );
-                              },
+                              onTap: () => Navigator.push(context,
+                                  AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
                               onLike: () async {
                                 await _service.likePost(post.id);
                               },
-                              onComment: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        PostDetailScreen(postId: post.id),
-                                  ),
-                                );
-                              },
+                              onComment: () => Navigator.push(context,
+                                  AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
                               onShare: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(AppLocalizations.of(context)
-                                          .translate('community.menu.share'))),
+                                final box = context.findRenderObject() as RenderBox?;
+                                final rect = box != null ? box.localToGlobal(Offset.zero) & box.size : null;
+                                SharingService().sharePost(
+                                  context,
+                                  caption: post.content,
+                                  authorName: post.author.name,
+                                  sharePositionOrigin: rect,
                                 );
                               },
                               onReaction: (emoji) async {
@@ -575,19 +563,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             bottom: AppSpacing.lg, left: AppSpacing.xl, right: AppSpacing.xl),
                         child: GlassPostCard(
                           post: post,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    PostDetailScreen(postId: post.id)),
-                          ),
+                          onTap: () => Navigator.push(context,
+                              AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
                           onLike: () => _service.likePost(post.id),
-                          onComment: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    PostDetailScreen(postId: post.id)),
-                          ),
+                          onComment: () => Navigator.push(context,
+                              AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
                           onShare: () {},
                           onReaction: (emoji) =>
                               _service.toggleReaction(postId: post.id, emoji: emoji),

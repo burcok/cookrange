@@ -15,7 +15,7 @@ class AIService {
 
   static const String _baseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
-  static const String _model = 'tngtech/deepseek-r1t-chimera:free';
+  static const String _model = 'google/gemma-4-26b-a4b-it:free';
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(seconds: 2);
 
@@ -74,10 +74,10 @@ class AIService {
       "day_name": "Monday",
       "date_offset": 0,
       "meals": {
-        "breakfast": "dish_1",
-        "lunch": "dish_2",
-        "dinner": "dish_3",
-        "snack": "dish_4"
+        "breakfast": "geleneksel_menemen",
+        "lunch": "somonlu_kinoa_bowl",
+        "dinner": "izgara_somon_sebze",
+        "snack": "smoothie_bowl_protein"
       },
       "total_calories": 2000.0,
       "macros": { "protein": 150.0, "carbs": 200.0, "fat": 70.0 }
@@ -86,10 +86,10 @@ class AIService {
       "day_name": "Tuesday",
       "date_offset": 1,
       "meals": {
-        "breakfast": "dish_1",
-        "lunch": "dish_2",
-        "dinner": "dish_3",
-        "snack": "dish_4"
+        "breakfast": "geleneksel_menemen",
+        "lunch": "somonlu_kinoa_bowl",
+        "dinner": "izgara_somon_sebze",
+        "snack": "smoothie_bowl_protein"
       },
       "total_calories": 2000.0,
       "macros": { "protein": 150.0, "carbs": 200.0, "fat": 70.0 }
@@ -98,10 +98,10 @@ class AIService {
       "day_name": "Wednesday",
       "date_offset": 2,
       "meals": {
-        "breakfast": "dish_1",
-        "lunch": "dish_2",
-        "dinner": "dish_3",
-        "snack": "dish_4"
+        "breakfast": "geleneksel_menemen",
+        "lunch": "somonlu_kinoa_bowl",
+        "dinner": "izgara_somon_sebze",
+        "snack": "smoothie_bowl_protein"
       },
       "total_calories": 2000.0,
       "macros": { "protein": 150.0, "carbs": 200.0, "fat": 70.0 }
@@ -110,10 +110,10 @@ class AIService {
       "day_name": "Thursday",
       "date_offset": 3,
       "meals": {
-        "breakfast": "dish_1",
-        "lunch": "dish_2",
-        "dinner": "dish_3",
-        "snack": "dish_4"
+        "breakfast": "geleneksel_menemen",
+        "lunch": "somonlu_kinoa_bowl",
+        "dinner": "izgara_somon_sebze",
+        "snack": "smoothie_bowl_protein"
       },
       "total_calories": 2000.0,
       "macros": { "protein": 150.0, "carbs": 200.0, "fat": 70.0 }
@@ -122,10 +122,10 @@ class AIService {
       "day_name": "Friday",
       "date_offset": 4,
       "meals": {
-        "breakfast": "dish_1",
-        "lunch": "dish_2",
-        "dinner": "dish_3",
-        "snack": "dish_4"
+        "breakfast": "geleneksel_menemen",
+        "lunch": "somonlu_kinoa_bowl",
+        "dinner": "izgara_somon_sebze",
+        "snack": "smoothie_bowl_protein"
       },
       "total_calories": 2000.0,
       "macros": { "protein": 150.0, "carbs": 200.0, "fat": 70.0 }
@@ -134,10 +134,10 @@ class AIService {
       "day_name": "Saturday",
       "date_offset": 5,
       "meals": {
-        "breakfast": "dish_1",
-        "lunch": "dish_2",
-        "dinner": "dish_3",
-        "snack": "dish_4"
+        "breakfast": "geleneksel_menemen",
+        "lunch": "somonlu_kinoa_bowl",
+        "dinner": "izgara_somon_sebze",
+        "snack": "smoothie_bowl_protein"
       },
       "total_calories": 2000.0,
       "macros": { "protein": 150.0, "carbs": 200.0, "fat": 70.0 }
@@ -146,10 +146,10 @@ class AIService {
       "day_name": "Sunday",
       "date_offset": 6,
       "meals": {
-        "breakfast": "dish_1",
-        "lunch": "dish_2",
-        "dinner": "dish_3",
-        "snack": "dish_4"
+        "breakfast": "geleneksel_menemen",
+        "lunch": "somonlu_kinoa_bowl",
+        "dinner": "izgara_somon_sebze",
+        "snack": "smoothie_bowl_protein"
       },
       "total_calories": 2000.0,
       "macros": { "protein": 150.0, "carbs": 200.0, "fat": 70.0 }

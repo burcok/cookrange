@@ -64,6 +64,8 @@
 		<string>Mikrofonu sesli asistan için kullanıyoruz.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 		<string>Sesinizi metne dönüştürmek için izin istiyoruz.</string>
+	<key>NSUserTrackingUsageDescription</key>
+		<string>We use analytics to improve your nutrition and fitness experience. No data is shared with advertisers.</string>
     <key>LSApplicationQueriesSchemes</key>
     <array>
       <string>mailto</string>

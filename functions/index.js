@@ -7,7 +7,7 @@ const fetch = require('node-fetch');
 admin.initializeApp();
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'tngtech/deepseek-r1t-chimera:free';
+const DEFAULT_MODEL = 'google/gemma-4-26b-a4b-it:free';
 
 /**
  * AI proxy endpoint — keeps OPENROUTER_API_KEY server-side.

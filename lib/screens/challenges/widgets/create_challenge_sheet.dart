@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/challenge_model.dart';
@@ -131,9 +133,7 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _isCreating = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        AppSnackBar.error(context, e.toString());
       }
     }
   }
@@ -142,267 +142,154 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     final primary = context.read<ThemeProvider>().primaryColor;
+
+    final typeOptions = ChallengeType.values
+        .map((ct) => AppChipOption<ChallengeType>(
+              value: ct,
+              label: l10n.translate(_typeLabelKey(ct)),
+              icon: _typeIcon(ct),
+            ))
+        .toList();
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.88,
       decoration: BoxDecoration(
         color: palette.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.sheet.r)),
       ),
       child: Column(
         children: [
+          // Handle
           Container(
-            width: 36,
-            height: 4,
-            margin: const EdgeInsets.only(top: 12, bottom: 20),
+            width: AppSize.sheetHandleW.w,
+            height: AppSize.sheetHandleH.h,
+            margin: EdgeInsets.only(top: AppSpacing.sm.h, bottom: AppSpacing.lg.h),
             decoration: BoxDecoration(
               color: palette.border,
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(AppRadius.full.r),
             ),
           ),
 
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     l10n.translate('challenge.create.title'),
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: palette.textPrimary,
-                    ),
+                    style: t.headlineS
+                        .copyWith(color: palette.textPrimary, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: AppSpacing.xl.h),
 
-                  _label(l10n.translate('challenge.create.name_label'), palette),
-                  const SizedBox(height: 6),
-                  _textField(
+                  // Name
+                  AppTextField(
                     controller: _titleCtrl,
-                    hint: l10n.translate('challenge.create.name_hint'),
-                    palette: palette,
+                    labelText: l10n.translate('challenge.create.name_label'),
+                    hintText: l10n.translate('challenge.create.name_hint'),
                     onChanged: (_) => setState(() {}),
+                    textInputAction: TextInputAction.next,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: AppSpacing.md.h),
 
-                  _label(l10n.translate('challenge.create.desc_label'), palette),
-                  const SizedBox(height: 6),
-                  _textField(
+                  // Description
+                  AppTextField(
                     controller: _descCtrl,
-                    hint: l10n.translate('challenge.create.desc_hint'),
-                    palette: palette,
+                    labelText: l10n.translate('challenge.create.desc_label'),
+                    hintText: l10n.translate('challenge.create.desc_hint'),
                     maxLines: 3,
+                    textInputAction: TextInputAction.newline,
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: AppSpacing.lg.h),
 
-                  _label(l10n.translate('challenge.create.type_label'), palette),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: ChallengeType.values.map((t) {
-                      final isSelected = _selectedType == t;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedType = t;
-                            _goalCtrl.text = _typeDefaultGoal(t);
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? primary
-                                : palette.surfaceVariant,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected ? primary : Colors.transparent,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(_typeIcon(t),
-                                  size: 16,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : palette.textSecondary),
-                              const SizedBox(width: 6),
-                              Text(
-                                l10n.translate(_typeLabelKey(t)),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : palette.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                  // Type picker
+                  Text(
+                    l10n.translate('challenge.create.type_label'),
+                    style: t.labelL.copyWith(
+                        color: palette.textSecondary, fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: AppSpacing.sm.h),
+                  AppChipPicker<ChallengeType>(
+                    options: typeOptions,
+                    selected: {_selectedType},
+                    onToggle: (ct) => setState(() {
+                      _selectedType = ct;
+                      _goalCtrl.text = _typeDefaultGoal(ct);
+                    }),
+                  ),
+                  SizedBox(height: AppSpacing.lg.h),
 
-                  _label(l10n.translate('challenge.create.goal_label'), palette),
-                  const SizedBox(height: 6),
-                  _textField(
+                  // Goal
+                  AppTextField(
                     controller: _goalCtrl,
-                    hint: l10n.translate('challenge.create.goal_hint'),
-                    palette: palette,
+                    labelText: l10n.translate('challenge.create.goal_label'),
+                    hintText: l10n.translate('challenge.create.goal_hint'),
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     onChanged: (_) => setState(() {}),
+                    textInputAction: TextInputAction.done,
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: AppSpacing.lg.h),
 
-                  _label(l10n.translate('challenge.create.end_date_label'),
-                      palette),
-                  const SizedBox(height: 6),
+                  // End date
+                  Text(
+                    l10n.translate('challenge.create.end_date_label'),
+                    style: t.labelL.copyWith(
+                        color: palette.textSecondary, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: AppSpacing.xs.h),
                   GestureDetector(
                     onTap: _pickEndDate,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xl.w, vertical: AppSpacing.md.h),
                       decoration: BoxDecoration(
-                        color: palette.surfaceVariant,
-                        borderRadius: BorderRadius.circular(14),
+                        color: palette.surfaceVariant.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(AppRadius.input.r),
+                        border: Border.all(color: palette.border, width: 1.5),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.calendar_today,
-                              size: 18,
-                              color: palette.textSecondary),
-                          const SizedBox(width: 10),
+                          Icon(Icons.calendar_today_rounded,
+                              size: AppSize.iconSm.r, color: primary),
+                          SizedBox(width: AppSpacing.sm.w),
                           Text(
-                            '${_endDate.day.toString().padLeft(2, '0')}.${_endDate.month.toString().padLeft(2, '0')}.${_endDate.year}',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: palette.textPrimary,
-                            ),
+                            DateFormat('dd MMM yyyy').format(_endDate),
+                            style: t.bodyL.copyWith(color: palette.textPrimary),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: AppSpacing.lg.h),
 
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              l10n.translate(
-                                  'challenge.create.public_label'),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: palette.textPrimary,
-                              ),
-                            ),
-                            Text(
-                              l10n.translate(
-                                  'challenge.create.public_subtitle'),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: palette.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Switch(
-                        value: _isPublic,
-                        onChanged: (v) => setState(() => _isPublic = v),
-                        activeThumbColor: primary,
-                      ),
-                    ],
+                  // Public toggle
+                  AppToggle(
+                    value: _isPublic,
+                    onChanged: (v) => setState(() => _isPublic = v),
+                    label: l10n.translate('challenge.create.public_label'),
+                    description: l10n.translate('challenge.create.public_subtitle'),
                   ),
-                  const SizedBox(height: 28),
+                  SizedBox(height: AppSpacing.xxl.h),
                 ],
               ),
             ),
           ),
 
           Padding(
-            padding: EdgeInsets.fromLTRB(
-                24, 8, 24, MediaQuery.of(context).padding.bottom + 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _canCreate ? _create : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primary,
-                  disabledBackgroundColor: palette.border,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                child: _isCreating
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                    : Text(
-                        l10n.translate('challenge.create.btn'),
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-              ),
+            padding: EdgeInsets.fromLTRB(AppSpacing.xl.w, AppSpacing.xs.h,
+                AppSpacing.xl.w, MediaQuery.of(context).padding.bottom + AppSpacing.md.h),
+            child: AppButton(
+              label: l10n.translate('challenge.create.btn'),
+              loading: _isCreating,
+              onPressed: _canCreate ? _create : null,
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _label(String text, AppPalette palette) => Text(
-        text,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: palette.textSecondary,
-        ),
-      );
-
-  Widget _textField({
-    required TextEditingController controller,
-    required String hint,
-    required AppPalette palette,
-    int maxLines = 1,
-    TextInputType? keyboardType,
-    List<TextInputFormatter>? inputFormatters,
-    ValueChanged<String>? onChanged,
-  }) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      onChanged: onChanged,
-      style: TextStyle(color: palette.textPrimary),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: palette.textTertiary),
-        filled: true,
-        fillColor: palette.surfaceVariant,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
   }

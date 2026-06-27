@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/recipe_model.dart';
 import '../../core/providers/theme_provider.dart';
+import '../../core/services/sharing_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/widgets/ds/ds.dart';
 import 'cooking_mode_screen.dart';
@@ -127,11 +128,23 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
                 color: Colors.black.withValues(alpha: 0.2),
-                child: IconButton(
-                  icon: const Icon(Icons.bookmark_border, color: Colors.white),
-                  onPressed: () {
-                    // TODO: Implement Bookmark
-                  },
+                child: Builder(
+                  builder: (buttonContext) => IconButton(
+                    icon: const Icon(Icons.share_rounded, color: Colors.white),
+                    onPressed: () {
+                      final box = buttonContext.findRenderObject() as RenderBox?;
+                      final rect = box != null ? box.localToGlobal(Offset.zero) & box.size : null;
+                      SharingService().shareRecipe(
+                        buttonContext,
+                        name: widget.recipe.title,
+                        calories: widget.recipe.macros['calories'] ?? 0,
+                        protein: widget.recipe.macros['protein'] ?? 0,
+                        carbs: widget.recipe.macros['carbs'] ?? 0,
+                        fat: widget.recipe.macros['fat'] ?? 0,
+                        sharePositionOrigin: rect,
+                      );
+                    },
+                  ),
                 ),
               ),
             ),

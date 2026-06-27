@@ -144,7 +144,12 @@ class _AppButtonState extends State<AppButton>
             ],
           );
 
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      enabled: !_disabled,
+      label: widget.loading ? '${widget.label}, loading' : widget.label,
+      onTap: _disabled ? null : _onTap,
+      child: GestureDetector(
       onTapDown: _onTapDown,
       onTapUp: _onTapUp,
       onTapCancel: () => _onTapUp(null),
@@ -188,6 +193,7 @@ class _AppButtonState extends State<AppButton>
           ),
           child: content,
         ),
+      ),
       ),
     );
   }

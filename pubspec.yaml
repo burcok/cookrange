@@ -73,7 +73,9 @@ dependencies:
   speech_to_text: ^7.3.0
   image_picker: ^1.2.1
   url_launcher: ^6.3.2
+  share_plus: ^10.1.4
   in_app_purchase: ^3.2.0
+  app_links: ^6.3.4
 dev_dependencies:
   flutter_test:
     sdk: flutter

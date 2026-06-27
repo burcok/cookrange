@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -19,6 +18,8 @@ import '../../core/repositories/meal_plan_repository.dart';
 import '../../core/repositories/food_log_repository.dart';
 import '../../core/repositories/dish_repository.dart';
 import '../../core/services/analytics_service.dart';
+import '../../core/services/sharing_service.dart';
+import '../../core/widgets/shareable_fitness_card.dart';
 import '../common/generic_error_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
 import 'widgets/tracking_card.dart';
@@ -64,6 +65,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   // Streak milestone banner — dismissed per session
   bool _streakMilestoneDismissed = false;
+
+  // Shareable card capture key
+  final _shareCardKey = GlobalKey();
 
   // Custom Refresh State
   final ValueNotifier<double> _pullDistanceNotifier = ValueNotifier(0.0);
@@ -125,14 +129,49 @@ class _HomeScreenState extends State<HomeScreen>
         },
       ));
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not log meal: $e')),
-        );
-      }
+      if (mounted) AppSnackBar.error(context, 'Could not log meal: $e');
     } finally {
       if (mounted) setState(() => _loggingInProgress.remove(mealType));
     }
+  }
+
+  void _showShareCard(
+    BuildContext context,
+    AppLocalizations l10n,
+    double target,
+    Map<String, double> macros,
+    int streak,
+    String? displayName,
+  ) {
+    AppSheet.show(
+      context: context,
+      title: l10n.translate('home.share_progress'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ShareableFitnessCard(
+            repaintKey: _shareCardKey,
+            consumedCalories: _consumed.calories,
+            targetCalories: target,
+            streakDays: streak,
+            userName: displayName,
+            protein: _consumed.protein,
+            carbs: _consumed.carbs,
+            fat: _consumed.fat,
+          ),
+          SizedBox(height: AppSpacing.lg.h),
+          AppButton(
+            label: l10n.translate('home.share_progress'),
+            icon: Icons.share_outlined,
+            onPressed: () => ShareableFitnessCard.capture(
+              _shareCardKey,
+              text: 'Tracking my nutrition with Cookrange AI! #Cookrange',
+            ),
+          ),
+          SizedBox(height: AppSpacing.xl.h),
+        ],
+      ),
+    );
   }
 
   Future<void> _showSwapSheet(
@@ -195,11 +234,7 @@ class _HomeScreenState extends State<HomeScreen>
         parameters: {'meal_type': mealType, 'new_dish_id': newDish.id},
       ));
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not swap meal: $e')),
-        );
-      }
+      if (mounted) AppSnackBar.error(context, 'Could not swap meal: $e');
     } finally {
       if (mounted) setState(() => _swapInProgress.remove(key));
     }
@@ -554,11 +589,29 @@ class _HomeScreenState extends State<HomeScreen>
           _buildStreakMilestoneBanner(context, streak, l10n),
         ],
         SizedBox(height: 32.h),
-        Text(
-          l10n.translate('home.nutrition_title'),
-          style: AppText.of(context).headlineM,
+        Row(
+          children: [
+            Text(
+              l10n.translate('home.nutrition_title'),
+              style: AppText.of(context).headlineM,
+            ),
+            const Spacer(),
+            IconButton(
+              icon: Icon(Icons.share_outlined,
+                  color: AppPalette.of(context).textSecondary, size: 20.r),
+              onPressed: () => _showShareCard(
+                context,
+                l10n,
+                adjustedTDEE,
+                macros,
+                streak,
+                userModel.displayName,
+              ),
+              tooltip: l10n.translate('home.share_progress'),
+            ),
+          ],
         ),
-        SizedBox(height: 16.h),
+        SizedBox(height: 8.h),
         _buildNutritionHero(context, adjustedTDEE, macros, l10n),
         SizedBox(height: 10.h),
         _buildScanFoodButton(context, l10n),
@@ -732,23 +785,19 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildScanFoodButton(BuildContext context, AppLocalizations l10n) {
-    final primary = context.watch<ThemeProvider>().primaryColor;
     return AppButton(
       label: l10n.translate('food_scan.scan_btn'),
       icon: Icons.auto_awesome,
       variant: AppButtonVariant.tonal,
       size: AppButtonSize.medium,
       onPressed: () async {
-        final messenger = ScaffoldMessenger.of(context);
         final successText = l10n.translate('food_scan.log_success');
         final logged = await Navigator.of(context).push<bool>(
-          MaterialPageRoute(builder: (_) => const FoodScanScreen()),
+          AppTransitions.slideUp(const FoodScanScreen()),
         );
-        if (logged == true && mounted) {
-          messenger.showSnackBar(
-            SnackBar(content: Text(successText), backgroundColor: primary),
-          );
-        }
+        if (!mounted) return;
+        // ignore: use_build_context_synchronously
+        if (logged == true) AppSnackBar.success(context, successText);
       },
     );
   }
@@ -778,12 +827,14 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       child: Column(
         children: [
-          AppCalorieRing(
-            consumed: _consumed.calories,
-            target: targetCalories,
-            size: 188,
-            caption: l10n.translate('home.kcal',
-                variables: {'target': targetCalInt.toString()}),
+          RepaintBoundary(
+            child: AppCalorieRing(
+              consumed: _consumed.calories,
+              target: targetCalories,
+              size: 188,
+              caption: l10n.translate('home.kcal',
+                  variables: {'target': targetCalInt.toString()}),
+            ),
           ),
           SizedBox(height: AppSpacing.xl.h),
           Row(
@@ -960,54 +1011,51 @@ class _HomeScreenState extends State<HomeScreen>
     final t = AppText.of(context);
     final primary = context.watch<ThemeProvider>().primaryColor;
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          l10n.translate('home.meal_plan_title'),
-          style: t.headlineL.copyWith(color: palette.textPrimary),
+        Expanded(
+          child: Text(
+            l10n.translate('home.meal_plan_title'),
+            style: t.headlineL.copyWith(color: palette.textPrimary),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GestureDetector(
-              onTap: () =>
-                  Navigator.pushNamed(context, AppRoutes.nutritionAnalytics),
+        // Analytics icon button
+        Tooltip(
+          message: l10n.translate('home.analytics_btn'),
+          child: GestureDetector(
+            onTap: () =>
+                Navigator.pushNamed(context, AppRoutes.nutritionAnalytics),
+            child: Container(
+              width: 36.w,
+              height: 36.w,
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.bar_chart_rounded,
+                  size: AppSize.iconSm, color: primary),
+            ),
+          ),
+        ),
+        if (showRegenerate && user != null) ...[
+          SizedBox(width: AppSpacing.xs.w),
+          Tooltip(
+            message: l10n.translate('home.regenerate'),
+            child: GestureDetector(
+              onTap: () => _generateWeeklyPlan(user),
               child: Container(
-                padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm.w, vertical: AppSpacing.xxs.h),
+                width: 36.w,
+                height: 36.w,
                 decoration: BoxDecoration(
                   color: primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.full.r),
+                  shape: BoxShape.circle,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.bar_chart_rounded, size: AppSize.iconSm, color: primary),
-                    SizedBox(width: AppSpacing.xxs.w),
-                    Text(
-                      l10n.translate('home.analytics_btn'),
-                      style: t.labelM.copyWith(
-                          fontWeight: FontWeight.w600, color: primary),
-                    ),
-                  ],
-                ),
+                child: Icon(Icons.refresh_rounded,
+                    size: AppSize.iconSm, color: primary),
               ),
             ),
-            if (showRegenerate && user != null) ...[
-              SizedBox(width: AppSpacing.xxs.w),
-              TextButton.icon(
-                onPressed: () => _generateWeeklyPlan(user),
-                icon: Icon(Icons.refresh_rounded,
-                    size: AppSize.iconSm, color: primary),
-                label: Text(
-                  l10n.translate('home.regenerate'),
-                  style: t.labelL
-                      .copyWith(fontWeight: FontWeight.bold, color: primary),
-                ),
-              ),
-            ],
-          ],
-        ),
+          ),
+        ],
       ],
     );
   }
@@ -1052,203 +1100,281 @@ class _HomeScreenState extends State<HomeScreen>
       final t = AppText.of(context);
       final primary = context.watch<ThemeProvider>().primaryColor;
       final mealLabel = l10n.translate('home.meal_type_$mealType');
-      return GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) =>
-                    RecipeDetailScreen(recipe: dish.toRecipe())),
-          );
-        },
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.card.r),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-            child: Container(
-              margin: EdgeInsets.only(bottom: AppSpacing.md.h),
-              padding: EdgeInsets.all(AppSpacing.md.r),
-              decoration: BoxDecoration(
-                color: palette.surface.withValues(
-                    alpha: palette.isDark ? 0.65 : 0.82),
-                borderRadius: BorderRadius.circular(AppRadius.card.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: palette.shadow,
-                    blurRadius: AppElevation.blurMd.r,
-                    offset: AppElevation.offsetSm,
-                  ),
-                ],
-                border: Border.all(
-                    color: palette.border.withValues(alpha: 0.5)),
-              ),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 90.w,
-                    height: 90.w,
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(AppRadius.lg.r),
-                          child: SizedBox(
-                            width: 90.w,
-                            height: 90.w,
-                            child: dish.imageUrl != null
-                                ? CachedNetworkImage(
-                                    imageUrl: dish.imageUrl!,
-                                    fit: BoxFit.cover,
-                                    memCacheWidth: 200,
-                                    memCacheHeight: 200,
-                                    placeholder: (context, url) =>
-                                        AppSkeletonBox(
-                                            height: 90.w, width: 90.w),
-                                    errorWidget: (context, url, error) =>
-                                        Container(
-                                          color: palette.surfaceVariant,
-                                          child: Icon(Icons.restaurant_rounded,
-                                              color: primary
-                                                  .withValues(alpha: 0.5),
-                                              size: AppSize.iconLg.w),
-                                        ),
-                                  )
-                                : Container(
-                                    color: palette.surfaceVariant,
-                                    child: Icon(Icons.restaurant_rounded,
-                                        color: primary.withValues(alpha: 0.35),
-                                        size: AppSize.iconLg.w),
-                                  ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 4.h,
-                          right: 4.w,
-                          child: GestureDetector(
-                            onTap: isSwapping
-                                ? null
-                                : () => _showSwapSheet(
-                                    l10n, mealType, _selectedDayIndex),
-                            child: AnimatedContainer(
-                              duration: AppMotion.fast,
-                              width: 26.w,
-                              height: 26.w,
-                              decoration: BoxDecoration(
-                                color: palette.scrim,
-                                shape: BoxShape.circle,
-                              ),
-                              child: isSwapping
-                                  ? Padding(
-                                      padding: EdgeInsets.all(5.r),
-                                      child: const CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white),
-                                    )
-                                  : Icon(Icons.swap_horiz_rounded,
-                                      color: Colors.white,
-                                      size: AppSize.iconXs.sp),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: AppSpacing.lg.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          mealLabel.isEmpty ? mealType : mealLabel,
-                          style: t.labelM.copyWith(
-                              color: palette.textSecondary,
-                              fontWeight: FontWeight.w600),
-                        ),
-                        SizedBox(height: AppSpacing.xs.h),
-                        Text(
-                          dish.name,
-                          style: t.titleL.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: palette.textPrimary),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: AppSpacing.xs.h),
-                        Row(
-                          children: [
-                            Text(
-                              l10n.translate('home.calories_suffix',
-                                  variables: {
-                                    'count': dish.calories.toInt().toString()
-                                  }),
-                              style: t.bodyM.copyWith(
-                                  color: palette.textSecondary,
-                                  fontWeight: FontWeight.w500),
-                            ),
-                            SizedBox(width: AppSpacing.sm.w),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.xs.w,
-                                  vertical: 2.h),
-                              decoration: BoxDecoration(
-                                color: primary.withValues(alpha: 0.1),
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.xs.r),
-                              ),
-                              child: Text(
-                                '${dish.protein.toInt()}g P',
-                                style: t.labelS.copyWith(
-                                    color: primary,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            )
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (userId != null && isToday)
-                    Padding(
-                      padding: EdgeInsets.only(left: AppSpacing.xs.w),
-                      child: isLoggingNow
-                          ? SizedBox(
-                              width: 24.w,
-                              height: 24.w,
-                              child: const CircularProgressIndicator(
-                                  strokeWidth: 2),
-                            )
-                          : GestureDetector(
-                              onTap: isLogged
-                                  ? null
-                                  : () => _logMeal(userId, mealType, dish),
-                              child: AnimatedContainer(
-                                duration: AppMotion.fast,
-                                width: 32.w,
-                                height: 32.w,
-                                decoration: BoxDecoration(
-                                  color: isLogged
-                                      ? primary
-                                      : palette.surfaceVariant,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  isLogged
-                                      ? Icons.check_rounded
-                                      : Icons.check_circle_outline_rounded,
-                                  size: AppSize.iconSm.sp,
-                                  color: isLogged
-                                      ? Colors.white
-                                      : palette.textTertiary,
-                                ),
-                              ),
-                            ),
-                    ),
-                ],
-              ),
-            ),
-          ),
+      return RepaintBoundary(
+        child: _MealCard(
+        key: ValueKey('meal_${_selectedDayIndex}_$mealType'),
+        dish: dish,
+        mealLabel: mealLabel.isEmpty ? mealType : mealLabel,
+        isLogged: isLogged,
+        isLoggingNow: isLoggingNow,
+        isSwapping: isSwapping,
+        isToday: isToday,
+        userId: userId,
+        palette: palette,
+        t: t,
+        primary: primary,
+        l10n: l10n,
+        onTap: () => Navigator.push(
+          context,
+          AppTransitions.slideUp(RecipeDetailScreen(recipe: dish.toRecipe())),
+        ),
+        onLog: () => _logMeal(userId!, mealType, dish),
+        onSwap: () => _showSwapSheet(l10n, mealType, _selectedDayIndex),
         ),
       );
     }).toList();
+  }
+}
+
+// ── Meal card ───────────────────────────────────────────────────────────────
+
+class _MealCard extends StatelessWidget {
+  final DishModel dish;
+  final String mealLabel;
+  final bool isLogged;
+  final bool isLoggingNow;
+  final bool isSwapping;
+  final bool isToday;
+  final String? userId;
+  final AppPalette palette;
+  final AppText t;
+  final Color primary;
+  final AppLocalizations l10n;
+  final VoidCallback onTap;
+  final VoidCallback onLog;
+  final VoidCallback onSwap;
+
+  const _MealCard({
+    super.key,
+    required this.dish,
+    required this.mealLabel,
+    required this.isLogged,
+    required this.isLoggingNow,
+    required this.isSwapping,
+    required this.isToday,
+    required this.userId,
+    required this.palette,
+    required this.t,
+    required this.primary,
+    required this.l10n,
+    required this.onTap,
+    required this.onLog,
+    required this.onSwap,
+  });
+
+  Widget _macroChip(String label, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Text(label,
+          style: t.labelS.copyWith(
+              color: color, fontWeight: FontWeight.bold, fontSize: 10.sp)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: AppSpacing.md.h),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: AppMotion.fast,
+          decoration: BoxDecoration(
+            color: isLogged
+                ? primary.withValues(alpha: 0.06)
+                : palette.surface,
+            borderRadius: BorderRadius.circular(AppRadius.card.r),
+            border: Border.all(
+              color: isLogged
+                  ? primary.withValues(alpha: 0.3)
+                  : palette.border.withValues(alpha: 0.6),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: palette.shadow.withValues(alpha: 0.07),
+                blurRadius: 12.r,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Image
+              ClipRRect(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(AppRadius.card.r),
+                  bottomLeft: Radius.circular(AppRadius.card.r),
+                ),
+                child: SizedBox(
+                  width: 100.w,
+                  height: 110.h,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      dish.imageUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: dish.imageUrl!,
+                              fit: BoxFit.cover,
+                              memCacheWidth: 220,
+                              memCacheHeight: 220,
+                              placeholder: (_, __) =>
+                                  AppSkeletonBox(height: 110.h, width: 100.w),
+                              errorWidget: (_, __, ___) => Container(
+                                color: palette.surfaceVariant,
+                                child: Icon(Icons.restaurant_rounded,
+                                    color: primary.withValues(alpha: 0.4),
+                                    size: 32.r),
+                              ),
+                            )
+                          : Container(
+                              color: palette.surfaceVariant,
+                              child: Icon(Icons.restaurant_rounded,
+                                  color: primary.withValues(alpha: 0.35),
+                                  size: 32.r),
+                            ),
+                      // Swap button overlay
+                      Positioned(
+                        bottom: 6.h,
+                        right: 6.w,
+                        child: GestureDetector(
+                          onTap: isSwapping ? null : onSwap,
+                          child: AnimatedContainer(
+                            duration: AppMotion.fast,
+                            width: 28.w,
+                            height: 28.w,
+                            decoration: BoxDecoration(
+                              color: palette.scrim,
+                              shape: BoxShape.circle,
+                            ),
+                            child: isSwapping
+                                ? Padding(
+                                    padding: EdgeInsets.all(6.r),
+                                    child: const CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white),
+                                  )
+                                : Icon(Icons.swap_horiz_rounded,
+                                    color: Colors.white, size: 15.sp),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Content
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md.w,
+                      vertical: AppSpacing.sm.h),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Meal type label
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 7.w, vertical: 2.h),
+                            decoration: BoxDecoration(
+                              color: primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20.r),
+                            ),
+                            child: Text(
+                              mealLabel,
+                              style: t.labelS.copyWith(
+                                  color: primary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10.sp),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: AppSpacing.xs.h),
+                      // Dish name
+                      Text(
+                        dish.name,
+                        style: t.titleL.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: palette.textPrimary,
+                            height: 1.2),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: AppSpacing.xs.h),
+                      // Calories
+                      Text(
+                        '${dish.calories.toInt()} kcal',
+                        style: t.labelM.copyWith(
+                            color: palette.textSecondary,
+                            fontWeight: FontWeight.w500),
+                      ),
+                      SizedBox(height: AppSpacing.xs.h),
+                      // Macro chips
+                      Wrap(
+                        spacing: 4.w,
+                        runSpacing: 4.h,
+                        children: [
+                          _macroChip('${dish.protein.toInt()}g P',
+                              palette.protein),
+                          _macroChip('${dish.carbs.toInt()}g C',
+                              palette.carbs),
+                          _macroChip('${dish.fat.toInt()}g F',
+                              palette.fat),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Log button
+              if (userId != null && isToday)
+                Padding(
+                  padding: EdgeInsets.only(right: AppSpacing.md.w),
+                  child: isLoggingNow
+                      ? SizedBox(
+                          width: 28.w,
+                          height: 28.w,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: primary),
+                        )
+                      : GestureDetector(
+                          onTap: isLogged ? null : onLog,
+                          child: AnimatedContainer(
+                            duration: AppMotion.normal,
+                            width: 36.w,
+                            height: 36.w,
+                            decoration: BoxDecoration(
+                              color: isLogged
+                                  ? primary
+                                  : palette.surfaceVariant,
+                              shape: BoxShape.circle,
+                              border: isLogged
+                                  ? null
+                                  : Border.all(
+                                      color: palette.border, width: 1.5),
+                            ),
+                            child: Icon(
+                              isLogged
+                                  ? Icons.check_rounded
+                                  : Icons.add_rounded,
+                              size: 18.sp,
+                              color: isLogged
+                                  ? Colors.white
+                                  : palette.textSecondary,
+                            ),
+                          ),
+                        ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
