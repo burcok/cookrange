@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/ds/ds.dart';
 
 enum LegalDocumentType { privacyPolicy, termsOfUse }
 
@@ -9,42 +10,29 @@ class LegalScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final title = type == LegalDocumentType.privacyPolicy
         ? 'Privacy Policy'
         : 'Terms of Use';
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF111827) : const Color(0xFFFDFDFD),
+      backgroundColor: palette.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back,
-              color: isDark ? Colors.white : Colors.black),
+          icon: Icon(Icons.arrow_back, color: palette.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          title,
-          style: TextStyle(
-            color: isDark ? Colors.white : Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: Text(title, style: AppText.of(context).titleL),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: DefaultTextStyle(
-          style: TextStyle(
-            color: isDark ? Colors.white70 : Colors.black87,
-            fontSize: 14,
-            height: 1.6,
-            fontFamily: 'Poppins',
-          ),
+          style: AppText.of(context).bodyM.copyWith(height: 1.6),
           child: type == LegalDocumentType.privacyPolicy
-              ? _buildPrivacyPolicy()
-              : _buildTermsOfUse(),
+              ? _buildPrivacyPolicy(context)
+              : _buildTermsOfUse(context),
         ),
       ),
     );
@@ -70,13 +58,18 @@ class LegalScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPrivacyPolicy() {
+  Widget _buildPrivacyPolicy(BuildContext context) {
     const lastUpdated = 'Last updated: June 2026';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(lastUpdated,
-            style: TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(
+          lastUpdated,
+          style: TextStyle(
+            fontSize: 12,
+            color: AppPalette.of(context).textTertiary,
+          ),
+        ),
         const SizedBox(height: 16),
         _buildSection(
           '1. Information We Collect',
@@ -119,13 +112,18 @@ class LegalScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTermsOfUse() {
+  Widget _buildTermsOfUse(BuildContext context) {
     const lastUpdated = 'Last updated: June 2026';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(lastUpdated,
-            style: TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(
+          lastUpdated,
+          style: TextStyle(
+            fontSize: 12,
+            color: AppPalette.of(context).textTertiary,
+          ),
+        ),
         const SizedBox(height: 16),
         _buildSection(
           '1. Acceptance of Terms',

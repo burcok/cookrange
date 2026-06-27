@@ -2,6 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/theme/app_palette.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/app_dimensions.dart';
 
 class GlassContainer extends StatelessWidget {
   final Widget child;
@@ -18,10 +21,10 @@ class GlassContainer extends StatelessWidget {
     super.key,
     required this.child,
     this.blur = 16.0,
-    this.opacity = 0.6, // bg-white/60
+    this.opacity = 0.6,
     this.color = Colors.white,
     this.borderRadius,
-    this.padding = const EdgeInsets.all(20),
+    this.padding = const EdgeInsets.all(AppSpacing.lg),
     this.border,
     this.boxShadow,
     this.enableBlur = true,
@@ -29,17 +32,17 @@ class GlassContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+
     if (!enableBlur) {
       return Container(
         padding: padding,
         decoration: BoxDecoration(
           color: color.withValues(
               alpha: opacity + 0.2 > 1.0 ? 1.0 : opacity + 0.2),
-          borderRadius: borderRadius ?? BorderRadius.circular(24),
+          borderRadius: borderRadius ?? BorderRadius.circular(AppRadius.xl),
           border: border ??
-              Border.all(
-                color: Colors.white.withValues(alpha: 0.5),
-              ),
+              Border.all(color: palette.border),
           boxShadow: boxShadow,
         ),
         child: child,
@@ -48,13 +51,12 @@ class GlassContainer extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color:
-            Colors.transparent, // Important for shadow to look right with glass
+        color: Colors.transparent,
         boxShadow: boxShadow,
-        borderRadius: borderRadius ?? BorderRadius.circular(24),
+        borderRadius: borderRadius ?? BorderRadius.circular(AppRadius.xl),
       ),
       child: ClipRRect(
-        borderRadius: borderRadius ?? BorderRadius.circular(24),
+        borderRadius: borderRadius ?? BorderRadius.circular(AppRadius.xl),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
           child: Container(
@@ -62,9 +64,7 @@ class GlassContainer extends StatelessWidget {
             decoration: BoxDecoration(
               color: color.withValues(alpha: opacity),
               border: border ??
-                  Border.all(
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
+                  Border.all(color: palette.border),
             ),
             child: child,
           ),
@@ -92,29 +92,28 @@ class StoryCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
+
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
           Container(
-            width: 64,
-            height: 64,
+            width: AppSize.avatarLg,
+            height: AppSize.avatarLg,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              // If hasUpdate, show colored border
               border: isNew || hasUpdate
-                  ? Border.all(
-                      color: context.watch<ThemeProvider>().primaryColor,
-                      width: 2) // Primary Color
+                  ? Border.all(color: primaryColor, width: 2)
                   : Border.all(color: Colors.transparent, width: 2),
             ),
-            padding:
-                const EdgeInsets.all(2), // Spacing between border and image
+            padding: const EdgeInsets.all(2),
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color:
-                    isNew ? const Color(0xFFFFF7ED) : Colors.white, // Orange-50
+                color: isNew ? primaryColor.withValues(alpha: 0.12) : palette.surface,
                 image: imageUrl != null
                     ? DecorationImage(
                         image: NetworkImage(imageUrl!),
@@ -125,23 +124,16 @@ class StoryCircle extends StatelessWidget {
               child: isNew
                   ? Center(
                       child: Icon(Icons.add_rounded,
-                          color: context.watch<ThemeProvider>().primaryColor,
+                          color: primaryColor,
                           size: 30),
                     )
                   : null,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xxs),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.8),
-            ),
+            style: textStyles.labelS,
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -166,7 +158,9 @@ class MinimalCustomDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
 
     return Theme(
       data: Theme.of(context).copyWith(
@@ -176,10 +170,10 @@ class MinimalCustomDropdown<T> extends StatelessWidget {
       ),
       child: PopupMenuButton<T>(
         onSelected: onChanged,
-        offset: const Offset(0, 32), // Slightly lower to not cover the button
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        offset: const Offset(0, 32),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
         elevation: 4,
-        surfaceTintColor: Colors.transparent, // Remove M3 tint
+        surfaceTintColor: Colors.transparent,
         tooltip: '',
         itemBuilder: (context) {
           return items.map((T item) {
@@ -191,43 +185,36 @@ class MinimalCustomDropdown<T> extends StatelessWidget {
                   Expanded(
                     child: Text(
                       itemBuilder(item),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSelected
-                            ? context.watch<ThemeProvider>().primaryColor
-                            : (isDark ? Colors.white : const Color(0xFF2E3A59)),
+                      style: textStyles.titleM.copyWith(
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? primaryColor : palette.textPrimary,
                       ),
                     ),
                   ),
                   if (isSelected)
                     Icon(Icons.check_rounded,
-                        size: 18,
-                        color: context.watch<ThemeProvider>().primaryColor)
+                        size: AppSize.iconSm,
+                        color: primaryColor)
                 ],
               ),
             );
           }).toList();
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md, vertical: AppSpacing.xs),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 itemBuilder(value),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : const Color(0xFF2E3A59),
-                ),
+                style: textStyles.titleM,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               Icon(
                 Icons.keyboard_arrow_down_rounded,
-                size: 20,
-                color: context.watch<ThemeProvider>().primaryColor,
+                size: AppSize.iconMd,
+                color: primaryColor,
               ),
             ],
           ),

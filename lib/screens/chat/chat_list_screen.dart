@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'dart:ui';
 import 'package:cookrange/core/widgets/app_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -8,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/models/chat_model.dart';
 import '../../core/providers/user_provider.dart';
-import '../../core/models/message_model.dart';
+import '../../core/theme/app_palette.dart';
 import 'widgets/signal_dialog.dart';
 import 'widgets/select_friend_sheet.dart';
 import 'widgets/create_group_chat_sheet.dart';
@@ -45,7 +46,6 @@ class _ChatListScreenState extends State<ChatListScreen>
   final TextEditingController _searchController = TextEditingController();
 
   Future<void> _refreshChats() async {
-    // Simulate refresh for UI effect since streams update automatically
     await Future.delayed(const Duration(seconds: 1));
     setState(() {});
   }
@@ -65,7 +65,6 @@ class _ChatListScreenState extends State<ChatListScreen>
       duration: const Duration(milliseconds: 300),
     );
 
-    // Initialize Chat Stream
     final currentUser = context.read<UserProvider>().user;
     if (currentUser != null) {
       _chatStream = ChatService().getUserChatsWithStatus(currentUser.uid);
@@ -73,10 +72,6 @@ class _ChatListScreenState extends State<ChatListScreen>
       _chatStream = const Stream.empty();
     }
 
-    // Dump Data
-    // _chatStream = Stream.value(_getDumpChats());
-
-    // Defer listener to avoid build conflicts
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _navProvider = context.read<NavigationProvider>();
       _navProvider?.addListener(_handleNavChange);
@@ -87,7 +82,6 @@ class _ChatListScreenState extends State<ChatListScreen>
       duration: const Duration(milliseconds: 250),
     );
 
-    // Staggered animations for FAB items
     _fabCreateAnimation = CurvedAnimation(
       parent: _fabController,
       curve: const Interval(0.0, 1.0, curve: Curves.easeOut),
@@ -143,13 +137,10 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Localization helper
     String t(String key) => AppLocalizations.of(context).translate(key);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final currentUser = context.watch<UserProvider>().user;
 
-    // Filters from translation
     final List<String> filters = [
       t('chat.filters.all'),
       t('chat.filters.gym'),
@@ -161,14 +152,11 @@ class _ChatListScreenState extends State<ChatListScreen>
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // Background Blurs (Fixed Position)
-          _buildBackgroundGlows(context),
+          _buildBackgroundGlows(context, palette),
 
-          // Main Content
           Column(
             children: [
-              // Header
-              _buildHeader(context, isDark, filters),
+              _buildHeader(context, palette, filters),
               const SizedBox(height: 12),
 
               Expanded(
@@ -194,10 +182,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                               );
                             }
 
-                            // Filter Logic
                             final allChats = snapshot.data ?? [];
                             final filteredChats = allChats.where((chat) {
-                              // Search Filter
                               if (_searchQuery.isNotEmpty) {
                                 final name = chat.name?.toLowerCase() ?? "";
                                 if (!name
@@ -206,9 +192,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                                 }
                               }
 
-                              if (_selectedFilterIndex == 0) return true; // All
+                              if (_selectedFilterIndex == 0) return true;
                               if (_selectedFilterIndex == 1) {
-                                return chat.type == ChatType.gym; // Gym
+                                return chat.type == ChatType.gym;
                               }
                               if (_selectedFilterIndex == 2) {
                                 return chat.type == ChatType.group &&
@@ -223,13 +209,12 @@ class _ChatListScreenState extends State<ChatListScreen>
                             if (filteredChats.isEmpty) {
                               return ListView(
                                 physics: const BouncingScrollPhysics(
-                                    parent:
-                                        AlwaysScrollableScrollPhysics()), // Enforce bounce for GlassRefresher
+                                    parent: AlwaysScrollableScrollPhysics()),
                                 padding:
                                     const EdgeInsets.fromLTRB(16, 0, 16, 100),
                                 children: [
                                   if (_searchQuery.isEmpty)
-                                    _buildSupportToast(context),
+                                    _buildSupportToast(context, palette),
                                   const SizedBox(height: 32),
                                   Center(
                                     child: Column(
@@ -237,10 +222,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                                       children: [
                                         Text(t('chat.no_chats_found'),
                                             style: TextStyle(
-                                                color: isDark
-                                                    ? Colors.grey
-                                                    : Colors.black54)),
-                                        // Optional: Add a button to retry or debug
+                                                color: palette.textSecondary)),
                                         if (snapshot.hasError)
                                           Text(snapshot.error.toString())
                                       ],
@@ -252,22 +234,19 @@ class _ChatListScreenState extends State<ChatListScreen>
 
                             return ListView.builder(
                               physics: const BouncingScrollPhysics(
-                                  parent:
-                                      AlwaysScrollableScrollPhysics()), // Enforce bounce for GlassRefresher
+                                  parent: AlwaysScrollableScrollPhysics()),
                               padding:
                                   const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                              itemCount:
-                                  filteredChats.length + 1, // +1 for Help Card
+                              itemCount: filteredChats.length + 1,
                               itemBuilder: (context, index) {
                                 if (index == 0) {
                                   if (_searchQuery.isNotEmpty) {
                                     return const SizedBox.shrink();
                                   }
-                                  return _buildAIBanner(context, isDark);
+                                  return _buildAIBanner(context, palette);
                                 }
 
-                                final chat =
-                                    filteredChats[index - 1]; // Offset by 1
+                                final chat = filteredChats[index - 1];
                                 return RepaintBoundary(
                                   child: Column(
                                     children: [
@@ -283,7 +262,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                                           );
                                         },
                                         child: _buildChatCard(context, chat,
-                                            isDark, currentUser.uid),
+                                            palette, currentUser.uid),
                                       ),
                                       const SizedBox(height: 16),
                                     ],
@@ -302,7 +281,7 @@ class _ChatListScreenState extends State<ChatListScreen>
           Positioned(
             bottom: 24,
             right: 24,
-            child: _buildFab(context),
+            child: _buildFab(context, palette),
           ),
 
           // Side Menu Overlay
@@ -345,9 +324,9 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isDark, List<String> filters) {
-    final theme = Theme.of(context);
-    final primaryColor = theme.primaryColor;
+  Widget _buildHeader(
+      BuildContext context, AppPalette palette, List<String> filters) {
+    final primary = context.watch<ThemeProvider>().primaryColor;
     return ClipRRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
@@ -363,7 +342,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                   children: [
                     IconButton(
                       icon: const Icon(Icons.menu, size: 28),
-                      color: isDark ? Colors.white : Colors.black,
+                      color: palette.textPrimary,
                       onPressed: () =>
                           context.read<NavigationProvider>().toggleMenu(true),
                     ),
@@ -373,16 +352,15 @@ class _ChatListScreenState extends State<ChatListScreen>
                               controller: _searchController,
                               autofocus: true,
                               decoration: InputDecoration(
-                                hintText: AppLocalizations.of(context).translate(
-                                    'chat.list_title'), // Using title as hint for now "Cookrange Chat" or "Search..."
+                                hintText: AppLocalizations.of(context)
+                                    .translate('chat.list_title'),
                                 border: InputBorder.none,
                                 hintStyle: TextStyle(
-                                  color:
-                                      isDark ? Colors.white70 : Colors.black54,
+                                  color: palette.textSecondary,
                                 ),
                               ),
                               style: TextStyle(
-                                color: isDark ? Colors.white : Colors.black,
+                                color: palette.textPrimary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
                               ),
@@ -397,7 +375,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                     IconButton(
                       icon: Icon(_isSearchOpen ? Icons.close : Icons.search,
                           size: 28),
-                      color: isDark ? Colors.white : Colors.black,
+                      color: palette.textPrimary,
                       onPressed: () {
                         setState(() {
                           if (_isSearchOpen) {
@@ -414,8 +392,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                       icon: Icon(Icons.tune,
                           size: 28,
                           color: _selectedFilterIndex != 0
-                              ? primaryColor
-                              : (isDark ? Colors.white : Colors.black)),
+                              ? primary
+                              : palette.textPrimary),
                       onPressed: () => _showFilterSheet(context, filters),
                     ),
                   ],
@@ -429,21 +407,22 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   Widget _buildNutritionChatCard(
-      BuildContext context, ChatModel chat, bool isDark) {
+      BuildContext context, ChatModel chat, AppPalette palette) {
     return _buildGlassCard(
       context,
-      isDark,
+      palette,
       child: Row(
         children: [
           Container(
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: Colors.green.shade50,
+              color: palette.success.withValues(alpha: 0.1),
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.green.shade100, width: 2),
+              border: Border.all(
+                  color: palette.success.withValues(alpha: 0.2), width: 2),
             ),
-            child: const Icon(Icons.restaurant_menu, color: Colors.green),
+            child: Icon(Icons.restaurant_menu, color: palette.success),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -459,16 +438,15 @@ class _ChatListScreenState extends State<ChatListScreen>
                               .translate('chat.filters.nutrition'),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.grey.shade900,
+                        color: palette.textPrimary,
                       ),
                     ),
                     if (chat.lastMessage != null)
                       Text(
-                        _formatTime(
-                            context, chat.lastMessage!.timestamp), // Helper
+                        _formatTime(context, chat.lastMessage!.timestamp),
                         style: TextStyle(
                           fontSize: 10,
-                          color: Colors.grey.shade400,
+                          color: palette.textTertiary,
                         ),
                       ),
                   ],
@@ -476,7 +454,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                 const SizedBox(height: 4),
                 Text(
                   chat.lastMessage?.text ?? '',
-                  style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                  style: TextStyle(color: palette.textSecondary, fontSize: 12),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -488,28 +466,26 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   Widget _buildGenericGroupChatCard(
-      BuildContext context, ChatModel chat, bool isDark) {
+      BuildContext context, ChatModel chat, AppPalette palette) {
     return _buildGlassCard(
       context,
-      isDark,
+      palette,
       child: Row(
         children: [
           Container(
             width: 56,
             height: 56,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-            ),
+            decoration: const BoxDecoration(shape: BoxShape.circle),
             clipBehavior: Clip.antiAlias,
             child: chat.image != null
                 ? AppImage(
                     imageUrl: chat.image!,
                     width: 56,
                     height: 56,
-                    placeholder: const Icon(Icons.group),
-                    errorWidget: const Icon(Icons.error),
+                    placeholder: Icon(Icons.group, color: palette.textTertiary),
+                    errorWidget: Icon(Icons.error, color: palette.error),
                   )
-                : const Icon(Icons.group),
+                : Icon(Icons.group, color: palette.textTertiary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -525,7 +501,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                               .translate('chat.filters.gym'),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.grey.shade900,
+                        color: palette.textPrimary,
                       ),
                     ),
                     if (chat.lastMessage != null)
@@ -533,7 +509,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                         _formatTime(context, chat.lastMessage!.timestamp),
                         style: TextStyle(
                           fontSize: 10,
-                          color: Colors.grey.shade400,
+                          color: palette.textTertiary,
                         ),
                       ),
                   ],
@@ -541,7 +517,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                 const SizedBox(height: 4),
                 Text(
                   chat.lastMessage?.text ?? '',
-                  style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                  style: TextStyle(color: palette.textSecondary, fontSize: 12),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -553,32 +529,28 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   Widget _buildSystemChatCard(
-      BuildContext context, ChatModel chat, bool isDark) {
-    return _buildGlassCard(context, isDark,
+      BuildContext context, ChatModel chat, AppPalette palette) {
+    return _buildGlassCard(context, palette,
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Text(chat.lastMessage?.text ?? 'System Message',
-              style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+              style: TextStyle(color: palette.textPrimary)),
         ));
   }
 
-  Widget _buildGlassCard(BuildContext context, bool isDark,
+  Widget _buildGlassCard(BuildContext context, AppPalette palette,
       {required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.grey.shade900.withValues(alpha: 0.8)
-            : Colors.white.withValues(alpha: 0.9),
+        color: palette.surface.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.white.withValues(alpha: 0.6),
+          color: palette.border.withValues(alpha: 0.5),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: palette.shadow.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -588,7 +560,8 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildFab(BuildContext context) {
+  Widget _buildFab(BuildContext context, AppPalette palette) {
+    final primary = context.watch<ThemeProvider>().primaryColor;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -603,26 +576,26 @@ class _ChatListScreenState extends State<ChatListScreen>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.black87,
+                    color: palette.scrim,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                       AppLocalizations.of(context)
                           .translate('chat.signal_send'),
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 12)),
+                      style: TextStyle(
+                          color: palette.textInverse, fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(
                   heroTag: 'fab_signal',
                   onPressed: () async {
                     _toggleFab();
-                    showDialog(
+                    unawaited(showDialog(
                       context: context,
                       builder: (_) => const SignalDialog(),
-                    );
+                    ));
                   },
-                  backgroundColor: Colors.red,
+                  backgroundColor: palette.error,
                   child: const Icon(Icons.warning_amber_rounded,
                       color: Colors.white),
                 ),
@@ -639,13 +612,14 @@ class _ChatListScreenState extends State<ChatListScreen>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.black87,
+                    color: palette.scrim,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                      AppLocalizations.of(context).translate('chat.meal_share'),
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 12)),
+                      AppLocalizations.of(context)
+                          .translate('chat.meal_share'),
+                      style: TextStyle(
+                          color: palette.textInverse, fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(
@@ -658,7 +632,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                     );
                     _toggleFab();
                   },
-                  backgroundColor: Colors.orange,
+                  backgroundColor: palette.warning,
                   child: const Icon(Icons.restaurant_menu, color: Colors.white),
                 ),
               ],
@@ -674,13 +648,14 @@ class _ChatListScreenState extends State<ChatListScreen>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.black87,
+                    color: palette.scrim,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                      AppLocalizations.of(context).translate('chat.new_group'),
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 12)),
+                      AppLocalizations.of(context)
+                          .translate('chat.new_group'),
+                      style: TextStyle(
+                          color: palette.textInverse, fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(
@@ -694,7 +669,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                       builder: (_) => const CreateGroupChatSheet(),
                     );
                   },
-                  backgroundColor: const Color(0xFF6366F1),
+                  backgroundColor: palette.info,
                   child: const Icon(Icons.group_add, color: Colors.white),
                 ),
               ],
@@ -710,13 +685,14 @@ class _ChatListScreenState extends State<ChatListScreen>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.black87,
+                    color: palette.scrim,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                      AppLocalizations.of(context).translate('chat.new_chat'),
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 12)),
+                      AppLocalizations.of(context)
+                          .translate('chat.new_chat'),
+                      style: TextStyle(
+                          color: palette.textInverse, fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(
@@ -730,9 +706,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                       builder: (_) => const SelectFriendSheet(),
                     );
                   },
-                  backgroundColor: const Color.fromARGB(255, 61, 144, 64),
-                  child: const Icon(Icons.chat_bubble_outline,
-                      color: Color.fromARGB(255, 150, 255, 30)),
+                  backgroundColor: palette.success,
+                  child: Icon(Icons.chat_bubble_outline,
+                      color: palette.textInverse),
                 ),
               ],
             ),
@@ -742,9 +718,7 @@ class _ChatListScreenState extends State<ChatListScreen>
         FloatingActionButton(
           heroTag: 'fab_main',
           onPressed: _toggleFab,
-          backgroundColor: Theme.of(context).brightness == Brightness.dark
-              ? Theme.of(context).primaryColor
-              : Colors.black,
+          backgroundColor: primary,
           child: AnimatedRotation(
             turns: _isFabOpen ? 0.125 : 0,
             duration: const Duration(milliseconds: 200),
@@ -773,42 +747,28 @@ class _ChatListScreenState extends State<ChatListScreen>
     }
   }
 
-  Widget _buildBackgroundGlows(BuildContext context) {
+  Widget _buildBackgroundGlows(BuildContext context, AppPalette palette) {
     final size = MediaQuery.of(context).size;
+    final primary = context.watch<ThemeProvider>().primaryColor;
     return RepaintBoundary(
       child: Container(
-        color: const Color(0xFFFCFBF9),
+        color: palette.background,
         child: Stack(
           children: [
             Positioned(
               top: -100,
               right: -50,
-              child: _glowBlob(
-                  300,
-                  context
-                      .watch<ThemeProvider>()
-                      .primaryColor
-                      .withValues(alpha: 0.2)),
+              child: _glowBlob(300, primary.withValues(alpha: 0.2)),
             ),
             Positioned(
               top: size.height * 0.4,
               left: -100,
-              child: _glowBlob(
-                  350,
-                  context
-                      .watch<ThemeProvider>()
-                      .primaryColor
-                      .withValues(alpha: 0.18)),
+              child: _glowBlob(350, primary.withValues(alpha: 0.18)),
             ),
             Positioned(
               bottom: 50,
               right: -80,
-              child: _glowBlob(
-                  320,
-                  context
-                      .watch<ThemeProvider>()
-                      .primaryColor
-                      .withValues(alpha: 0.15)),
+              child: _glowBlob(320, primary.withValues(alpha: 0.15)),
             ),
           ],
         ),
@@ -816,7 +776,7 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildAIBanner(BuildContext context, bool isDark) {
+  Widget _buildAIBanner(BuildContext context, AppPalette palette) {
     String t(String key) => AppLocalizations.of(context).translate(key);
     final primary = context.read<ThemeProvider>().primaryColor;
     return GestureDetector(
@@ -883,24 +843,25 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildSupportToast(BuildContext context) {
+  Widget _buildSupportToast(BuildContext context, AppPalette palette) {
     return Dismissible(
       key: const Key('support_toast'),
-      onDismissed: (direction) {
-        // Handle dismiss if needed
-      },
+      onDismissed: (direction) {},
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFDE8E8), Color(0xFFFDF2F8)], // Light pinkish
+          gradient: LinearGradient(
+            colors: [
+              palette.error.withValues(alpha: 0.12),
+              palette.error.withValues(alpha: 0.06),
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFF5722).withValues(alpha: 0.15),
+              color: palette.error.withValues(alpha: 0.15),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -910,9 +871,8 @@ class _ChatListScreenState extends State<ChatListScreen>
           borderRadius: BorderRadius.circular(24),
           child: Stack(
             children: [
-              // Glass Effect (Lite - Opacity only)
               Container(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: palette.surface.withValues(alpha: 0.2),
               ),
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -924,13 +884,14 @@ class _ChatListScreenState extends State<ChatListScreen>
                           width: 52,
                           height: 52,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFF7ED),
+                            color: palette.warning.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(
+                                color: palette.surface, width: 2),
                           ),
-                          child: const Center(
-                            child:
-                                Icon(Icons.person, color: Colors.orangeAccent),
+                          child: Center(
+                            child: Icon(Icons.person,
+                                color: palette.warning),
                           ),
                         ),
                         Positioned(
@@ -940,15 +901,16 @@ class _ChatListScreenState extends State<ChatListScreen>
                             width: 18,
                             height: 18,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444),
+                              color: palette.error,
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
+                              border: Border.all(
+                                  color: palette.surface, width: 2),
                             ),
-                            child: const Center(
+                            child: Center(
                               child: Text(
                                 "!",
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: palette.textInverse,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -963,10 +925,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             "Caner, destek bekliyor!",
                             style: TextStyle(
-                              color: Color(0xFF1F2937),
+                              color: palette.textPrimary,
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
                             ),
@@ -975,8 +937,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                           Text(
                             "Bench Press\nMacFit - Peron 3",
                             style: TextStyle(
-                              color: const Color(0xFFDC2626)
-                                  .withValues(alpha: 0.8),
+                              color: palette.error.withValues(alpha: 0.8),
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
@@ -989,13 +950,15 @@ class _ChatListScreenState extends State<ChatListScreen>
                           horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFFF97316), Color(0xFFEA580C)],
+                          colors: [
+                            AppPalette.sunsetB,
+                            AppPalette.sunsetC,
+                          ],
                         ),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color:
-                                const Color(0xFFF97316).withValues(alpha: 0.3),
+                            color: AppPalette.brand.withValues(alpha: 0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -1026,95 +989,15 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  // Override to inject custom dump data
-  List<ChatModel> _getDumpChats() {
-    return [
-      ChatModel(
-        id: '1',
-        name: "Gold's Gym - Beşiktaş",
-        type: ChatType.gym,
-        updatedAt: DateTime.now(), // Added
-        lastMessage: MessageModel(
-            id: 'm1',
-            senderId: 's1',
-            text: 'Etkinlik Günü: Yoga',
-            timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-            type: MessageType.text,
-            isRead: true),
-        unreadCounts: {'sys': 1}, // Simulate unread dot
-        participants: ['me', 'gym'],
-        metadata: {
-          'peopleCount': 14,
-          'status_text': '14 Kişi Antrenmanda',
-          'event_text': 'Etkinlik Günü: Yoga'
-        },
-      ),
-      ChatModel(
-        id: '2',
-        name: "Mert Akın",
-        type: ChatType.private, // Using private for generic user
-        updatedAt: DateTime.now(), // Added
-        lastMessage: MessageModel(
-            id: 'm2',
-            senderId: 'merta',
-            text: 'Akşamki antrenmana pre-workout ...',
-            timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-            type: MessageType.text,
-            isRead: true),
-        unreadCounts: {},
-        participants: ['me', 'merta'],
-        metadata: {'status': '🏋️'},
-      ),
-      ChatModel(
-        id: '3',
-        name: "Sağlıklı Tarifler Grubu",
-        type: ChatType.group,
-        updatedAt: DateTime.now(), // Added
-        metadata: {'subtype': 'recipe', 'new_recipes_count': 45},
-        lastMessage: MessageModel(
-            id: 'm3',
-            senderId: 'selin',
-            text:
-                'Selin: Yulaf ezmeli pancake tarifini denedim, harika oldu! Fotoğrafını attım 👇',
-            timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-            type: MessageType.text,
-            isRead: true),
-        unreadCounts: {},
-        participants: ['me', 'group1'],
-      ),
-      ChatModel(
-        id: '4',
-        name: "Ayşe Yılmaz",
-        type: ChatType.private,
-        updatedAt: DateTime.now(), // Added
-        image:
-            'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150&h=150',
-        lastMessage: MessageModel(
-            id: 'm4',
-            senderId: 'ayse',
-            text: 'Dinlenme günüm bugün, yarın görüşür...',
-            timestamp: DateTime.now().subtract(const Duration(days: 1)),
-            type: MessageType.text,
-            isRead: true),
-        unreadCounts: {'me': 1}, // Shows blue dot
-        participants: ['me', 'ayse'],
-      ),
-    ];
-  }
-
-  // UPDATED BUILDERS for Glass UI
-
-  // UPDATED BUILDERS for Glass UI
-
-  Widget _buildGymChatCard(BuildContext context, ChatModel chat, bool isDark) {
+  Widget _buildGymChatCard(
+      BuildContext context, ChatModel chat, AppPalette palette) {
     return Container(
       decoration: BoxDecoration(
-        color:
-            const Color(0xFFF3F4F6).withValues(alpha: 0.8), // Light grayish bg
+        color: palette.surfaceVariant.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: palette.shadow.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1133,9 +1016,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                        color: const Color(0xFFD1FAE5),
-                        width: 2), // Greenish ring
-                    color: Colors.white,
+                        color: palette.success.withValues(alpha: 0.3),
+                        width: 2),
+                    color: palette.surface,
                   ),
                   child: ClipOval(
                     child: chat.image != null
@@ -1144,10 +1027,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                             width: 56,
                             height: 56,
                           )
-                        : const Icon(Icons.fitness_center, color: Colors.black),
+                        : Icon(Icons.fitness_center,
+                            color: palette.textPrimary),
                   ),
                 ),
-                // Red dot
                 Positioned(
                   top: 0,
                   right: 0,
@@ -1155,9 +1038,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                     width: 14,
                     height: 14,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444), // Red
+                      color: palette.error,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: palette.surface, width: 2),
                     ),
                   ),
                 ),
@@ -1174,33 +1057,32 @@ class _ChatListScreenState extends State<ChatListScreen>
                       Expanded(
                         child: Text(
                           chat.name ?? 'Gym Chat',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: Color(0xFF111827), // Dark text
+                            color: palette.textPrimary,
                           ),
                         ),
                       ),
                       Text(
-                        "10:42", // Hardcoded for dump data match
+                        "10:42",
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade400,
+                          color: palette.textTertiary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  // Custom Gym Status Rows
                   Row(
                     children: [
                       const Text("🔥", style: TextStyle(fontSize: 12)),
                       const SizedBox(width: 6),
                       Text(
                         chat.metadata?['status_text'] ?? "14 Kişi Antrenmanda",
-                        style: const TextStyle(
-                          color: Color(0xFF4B5563),
+                        style: TextStyle(
+                          color: palette.textSecondary,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -1214,8 +1096,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                       const SizedBox(width: 6),
                       Text(
                         chat.metadata?['event_text'] ?? "Etkinlik Günü: Yoga",
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
+                        style: TextStyle(
+                          color: palette.textTertiary,
                           fontSize: 13,
                         ),
                       ),
@@ -1230,11 +1112,11 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildPrivateChatCard(
-      BuildContext context, ChatModel chat, bool isDark, String currentUserId) {
+  Widget _buildPrivateChatCard(BuildContext context, ChatModel chat,
+      AppPalette palette, String currentUserId) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6).withValues(alpha: 0.6), // Very light
+        color: palette.surfaceVariant.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
@@ -1246,29 +1128,28 @@ class _ChatListScreenState extends State<ChatListScreen>
                 Container(
                   width: 56,
                   height: 56,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: const BoxDecoration(shape: BoxShape.circle),
                   clipBehavior: Clip.antiAlias,
                   child: chat.image != null
                       ? AppImage(
                           imageUrl: chat.image!,
                           width: 56,
                           height: 56,
-                          placeholder: const Icon(
+                          placeholder: Icon(
                             Icons.person,
-                            color: Colors.grey,
+                            color: palette.textTertiary,
                             size: 30,
                           ),
-                          errorWidget: const Icon(
+                          errorWidget: Icon(
                             Icons.error,
-                            color: Colors.red,
+                            color: palette.error,
                             size: 30,
                           ),
                         )
-                      : const Icon(Icons.person, color: Colors.grey, size: 30),
+                      : Icon(Icons.person,
+                          color: palette.textTertiary, size: 30),
                 ),
-                if (chat.metadata?['is_online'] ?? false) //online check
+                if (chat.metadata?['is_online'] ?? false)
                   Positioned(
                     bottom: 0,
                     right: 0,
@@ -1276,12 +1157,12 @@ class _ChatListScreenState extends State<ChatListScreen>
                       width: 22,
                       height: 22,
                       decoration: BoxDecoration(
-                        color: Colors.green,
+                        color: palette.success,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white),
+                        border: Border.all(color: palette.surface),
                         boxShadow: [
                           BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
+                              color: palette.shadow.withValues(alpha: 0.1),
                               blurRadius: 4)
                         ],
                       ),
@@ -1300,10 +1181,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                     children: [
                       Text(
                         chat.name ?? 'User',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: Color(0xFF111827),
+                          color: palette.textPrimary,
                         ),
                       ),
                       Text(
@@ -1312,7 +1193,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                             : '',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade400,
+                          color: palette.textTertiary,
                         ),
                       ),
                     ],
@@ -1324,14 +1205,13 @@ class _ChatListScreenState extends State<ChatListScreen>
                         child: Text(
                           chat.lastMessage?.text ?? '',
                           style: TextStyle(
-                            color: Colors.grey.shade600,
+                            color: palette.textSecondary,
                             fontSize: 13,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      // Only show tick if I sent the last message
                       if (chat.lastMessage?.senderId == currentUserId) ...[
                         const SizedBox(width: 4),
                         Icon(
@@ -1340,8 +1220,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                               : Icons.done,
                           size: 16,
                           color: chat.lastMessage?.isRead == true
-                              ? const Color(0xFF3B82F6) // Blue for read
-                              : Colors.grey.shade400, // Grey for sent
+                              ? palette.info
+                              : palette.textTertiary,
                         ),
                       ],
                     ],
@@ -1355,13 +1235,11 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  // Renaming/Overriding for Recipe Card specifically
   Widget _buildRecipeChatCard(
-      BuildContext context, ChatModel chat, bool isDark) {
+      BuildContext context, ChatModel chat, AppPalette palette) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFECFDF5)
-            .withValues(alpha: 0.6), // Very light green bg
+        color: palette.success.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Padding(
@@ -1373,11 +1251,11 @@ class _ChatListScreenState extends State<ChatListScreen>
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFFD1FAE5), // Light green
-                borderRadius: BorderRadius.circular(16), // Rounded squareish
+                color: palette.success.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.ramen_dining,
-                  color: Color(0xFF059669), size: 28), // Bowl icon
+              child: Icon(Icons.ramen_dining,
+                  color: palette.success, size: 28),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -1390,10 +1268,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                       Expanded(
                         child: Text(
                           chat.name ?? 'Group',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: Color(0xFF111827),
+                            color: palette.textPrimary,
                           ),
                         ),
                       ),
@@ -1401,7 +1279,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                         "08:30",
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade400,
+                          color: palette.textTertiary,
                         ),
                       ),
                     ],
@@ -1413,19 +1291,20 @@ class _ChatListScreenState extends State<ChatListScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFEF3C7), // Light orange/yellow
+                          color: palette.warning.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                              color: const Color(0xFFFDE68A)), // border
+                              color: palette.warning.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           children: [
-                            const Text("🥕", style: TextStyle(fontSize: 10)),
+                            const Text("🥕",
+                                style: TextStyle(fontSize: 10)),
                             const SizedBox(width: 4),
                             Text(
                               "${chat.metadata?['new_recipes_count']} Yeni Tarif",
-                              style: const TextStyle(
-                                  color: Color(0xFFD97706),
+                              style: TextStyle(
+                                  color: palette.warning,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold),
                             ),
@@ -1433,10 +1312,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         "~ Popüler",
                         style: TextStyle(
-                            color: Color(0xFF059669),
+                            color: palette.success,
                             fontSize: 11,
                             fontWeight: FontWeight.bold),
                       ),
@@ -1446,7 +1325,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                   Text(
                     chat.lastMessage?.text ?? '',
                     style: TextStyle(
-                      color: Colors.grey.shade600,
+                      color: palette.textSecondary,
                       fontSize: 13,
                       height: 1.4,
                     ),
@@ -1462,23 +1341,23 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildChatCard(
-      BuildContext context, ChatModel chat, bool isDark, String currentUserId) {
+  Widget _buildChatCard(BuildContext context, ChatModel chat, AppPalette palette,
+      String currentUserId) {
     if (chat.metadata?['subtype'] == 'recipe') {
-      return _buildRecipeChatCard(context, chat, isDark);
+      return _buildRecipeChatCard(context, chat, palette);
     }
     switch (chat.type) {
       case ChatType.gym:
-        return _buildGymChatCard(context, chat, isDark);
+        return _buildGymChatCard(context, chat, palette);
       case ChatType.private:
-        return _buildPrivateChatCard(context, chat, isDark, currentUserId);
+        return _buildPrivateChatCard(context, chat, palette, currentUserId);
       case ChatType.group:
         if (chat.metadata?['subtype'] == 'nutrition') {
-          return _buildNutritionChatCard(context, chat, isDark);
+          return _buildNutritionChatCard(context, chat, palette);
         }
-        return _buildGenericGroupChatCard(context, chat, isDark);
+        return _buildGenericGroupChatCard(context, chat, palette);
       case ChatType.system:
-        return _buildSystemChatCard(context, chat, isDark);
+        return _buildSystemChatCard(context, chat, palette);
     }
   }
 

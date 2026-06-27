@@ -7,6 +7,7 @@ import '../../core/models/challenge_model.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/services/challenge_service.dart';
 import '../../core/services/firestore_service.dart';
+import '../../core/widgets/ds/ds.dart';
 
 class ChallengeDetailScreen extends StatefulWidget {
   final String challengeId;
@@ -39,7 +40,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
 
   Future<void> _showUpdateProgressSheet(ChallengeModel challenge) async {
     final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final primary = context.read<ThemeProvider>().primaryColor;
     final ctrl = TextEditingController(
       text: '${challenge.progressOf(_uid)}',
@@ -54,7 +55,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF111827) : Colors.white,
+            color: palette.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
@@ -66,7 +67,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  color: palette.textPrimary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -75,17 +76,13 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                 autofocus: true,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                style: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                style: TextStyle(color: palette.textPrimary),
                 decoration: InputDecoration(
                   hintText: l10n.translate('challenge.progress_hint'),
-                  hintStyle: TextStyle(
-                      color: isDark ? Colors.white38 : Colors.black38),
+                  hintStyle: TextStyle(color: palette.textTertiary),
                   suffixText: challenge.unit,
                   filled: true,
-                  fillColor: isDark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : Colors.grey.shade100,
+                  fillColor: palette.surfaceVariant,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -124,12 +121,11 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final primary = context.read<ThemeProvider>().primaryColor;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF0D1117) : const Color(0xFFFCFBF9),
+      backgroundColor: palette.background,
       body: StreamBuilder<ChallengeModel>(
         stream: _service.getChallengeStream(widget.challengeId),
         builder: (context, snapshot) {
@@ -143,7 +139,6 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
 
           final challenge = snapshot.data!;
           final isParticipant = challenge.participantIds.contains(_uid);
-          final isCreator = challenge.createdBy == _uid;
           final myProgress = challenge.progressOf(_uid);
           final progressPct = challenge.progressPercent(_uid);
 
@@ -152,8 +147,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
               SliverAppBar(
                 expandedHeight: 160,
                 pinned: true,
-                backgroundColor:
-                    isDark ? const Color(0xFF111827) : Colors.white,
+                backgroundColor: palette.surface,
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back_ios_new, size: 18),
                   onPressed: () => Navigator.pop(context),
@@ -214,14 +208,14 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                                       'days': '${challenge.daysRemaining}'
                                     }),
                             color: challenge.isExpired
-                                ? Colors.grey
-                                : Colors.green,
+                                ? palette.textTertiary
+                                : palette.success,
                           ),
                           const SizedBox(width: 8),
                           _chip(
                             icon: Icons.group,
                             label: '${challenge.participantIds.length}',
-                            color: Colors.blue,
+                            color: palette.info,
                           ),
                         ],
                       ),
@@ -234,7 +228,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                           style: TextStyle(
                             fontSize: 15,
                             height: 1.5,
-                            color: isDark ? Colors.white70 : Colors.black87,
+                            color: palette.textSecondary,
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -257,9 +251,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                                 l10n.translate('challenge.my_progress'),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: isDark
-                                      ? Colors.white
-                                      : const Color(0xFF0F172A),
+                                  color: palette.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 12),
@@ -270,9 +262,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                                       borderRadius: BorderRadius.circular(4),
                                       child: LinearProgressIndicator(
                                         value: progressPct,
-                                        backgroundColor: isDark
-                                            ? Colors.white12
-                                            : Colors.black12,
+                                        backgroundColor: palette.border,
                                         valueColor:
                                             AlwaysStoppedAnimation(primary),
                                         minHeight: 8,
@@ -322,9 +312,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: isDark
-                              ? Colors.white
-                              : const Color(0xFF0F172A),
+                          color: palette.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -334,7 +322,6 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                                 challenge: challenge,
                                 isMe: uid == _uid,
                                 primary: primary,
-                                isDark: isDark,
                                 firestoreService: _firestoreService,
                               ))
                           ,
@@ -359,6 +346,8 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
 
           if (isCreator && !isParticipant) return const SizedBox.shrink();
 
+          final palette = AppPalette.of(context);
+
           return SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
@@ -376,10 +365,10 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isParticipant
-                      ? (isDark ? Colors.white12 : Colors.grey.shade200)
+                      ? palette.surfaceVariant
                       : primary,
                   foregroundColor: isParticipant
-                      ? (isDark ? Colors.white70 : Colors.black54)
+                      ? palette.textSecondary
                       : Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -433,7 +422,6 @@ class _ParticipantRow extends StatelessWidget {
   final ChallengeModel challenge;
   final bool isMe;
   final Color primary;
-  final bool isDark;
   final FirestoreService firestoreService;
 
   const _ParticipantRow({
@@ -441,7 +429,6 @@ class _ParticipantRow extends StatelessWidget {
     required this.challenge,
     required this.isMe,
     required this.primary,
-    required this.isDark,
     required this.firestoreService,
   });
 
@@ -449,6 +436,7 @@ class _ParticipantRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final progress = challenge.progressOf(uid);
     final pct = challenge.progressPercent(uid);
+    final palette = AppPalette.of(context);
 
     return FutureBuilder(
       future: firestoreService.getUserData(uid),
@@ -462,9 +450,7 @@ class _ParticipantRow extends StatelessWidget {
           decoration: BoxDecoration(
             color: isMe
                 ? primary.withValues(alpha: 0.08)
-                : (isDark
-                    ? Colors.white.withValues(alpha: 0.04)
-                    : Colors.grey.shade50),
+                : palette.surfaceVariant,
             borderRadius: BorderRadius.circular(12),
             border: isMe
                 ? Border.all(color: primary.withValues(alpha: 0.3))
@@ -491,7 +477,7 @@ class _ParticipantRow extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        color: palette.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -499,10 +485,9 @@ class _ParticipantRow extends StatelessWidget {
                       borderRadius: BorderRadius.circular(3),
                       child: LinearProgressIndicator(
                         value: pct,
-                        backgroundColor:
-                            isDark ? Colors.white12 : Colors.black12,
+                        backgroundColor: palette.border,
                         valueColor: AlwaysStoppedAnimation(
-                            isMe ? primary : Colors.teal),
+                            isMe ? primary : palette.energy),
                         minHeight: 5,
                       ),
                     ),
@@ -515,7 +500,7 @@ class _ParticipantRow extends StatelessWidget {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  color: isMe ? primary : (isDark ? Colors.white70 : Colors.black54),
+                  color: isMe ? primary : palette.textSecondary,
                 ),
               ),
             ],

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 import '../../../core/models/signal_model.dart';
 import '../../../core/services/signal_service.dart';
+import '../../../core/theme/app_palette.dart';
+import '../../../core/theme/app_typography.dart';
 
 class SignalDialog extends StatefulWidget {
   const SignalDialog({super.key});
@@ -41,10 +43,10 @@ class _SignalDialogState extends State<SignalDialog> {
       await _signalService.sendSignal(
         type: _selectedType,
         message: _messageController.text.trim(),
-        durationMinutes: 60, // Default 1 hour
+        durationMinutes: 60,
       );
       if (mounted) {
-        Navigator.pop(context, true); // Return success
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -68,18 +70,29 @@ class _SignalDialogState extends State<SignalDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final appText = AppText.of(context);
+
     return AlertDialog(
-      title: Text(AppLocalizations.of(context).translate('signal.title')),
+      backgroundColor: palette.surface,
+      title: Text(
+        AppLocalizations.of(context).translate('signal.title'),
+        style: appText.titleL,
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(AppLocalizations.of(context).translate('signal.select_type'),
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              AppLocalizations.of(context).translate('signal.select_type'),
+              style: appText.labelL.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             DropdownButtonFormField<SignalType>(
               initialValue: _selectedType,
+              dropdownColor: palette.surfaceVariant,
+              style: TextStyle(color: palette.textPrimary),
               items: SignalType.values.map((type) {
                 String label;
                 switch (type) {
@@ -106,18 +119,31 @@ class _SignalDialogState extends State<SignalDialog> {
                   });
                 }
               },
-              decoration: const InputDecoration(border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(color: palette.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: palette.border),
+                ),
+              ),
             ),
             const SizedBox(height: 16),
-            Text(AppLocalizations.of(context).translate('signal.message_label'),
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              AppLocalizations.of(context).translate('signal.message_label'),
+              style: appText.labelL.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: (_presets[_selectedType] ?? []).map((preset) {
                 return ActionChip(
-                  label: Text(AppLocalizations.of(context).translate(preset),
-                      style: const TextStyle(fontSize: 12)),
+                  label: Text(
+                    AppLocalizations.of(context).translate(preset),
+                    style: TextStyle(
+                        fontSize: 12, color: palette.textSecondary),
+                  ),
+                  backgroundColor: palette.surfaceVariant,
                   onPressed: () {
                     _messageController.text =
                         AppLocalizations.of(context).translate(preset);
@@ -128,10 +154,17 @@ class _SignalDialogState extends State<SignalDialog> {
             const SizedBox(height: 8),
             TextField(
               controller: _messageController,
+              style: TextStyle(color: palette.textPrimary),
               decoration: InputDecoration(
                 hintText: AppLocalizations.of(context)
                     .translate('signal.custom_message_hint'),
-                border: const OutlineInputBorder(),
+                hintStyle: TextStyle(color: palette.textTertiary),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(color: palette.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: palette.border),
+                ),
               ),
               maxLines: 2,
             ),
@@ -141,15 +174,24 @@ class _SignalDialogState extends State<SignalDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(AppLocalizations.of(context).translate('signal.cancel')),
+          child: Text(
+            AppLocalizations.of(context).translate('signal.cancel'),
+            style: TextStyle(color: palette.textSecondary),
+          ),
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _sendSignal,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: palette.error,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: palette.border,
+          ),
           child: _isLoading
               ? const SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2))
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
               : Text(AppLocalizations.of(context).translate('signal.send')),
         ),
       ],

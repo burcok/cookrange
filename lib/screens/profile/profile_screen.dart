@@ -21,6 +21,7 @@ import '../../core/services/reputation_service.dart';
 import '../../core/models/chat_model.dart';
 import '../../screens/community/widgets/glass_refresher.dart';
 import '../../core/widgets/unified_action_sheet.dart';
+import '../../core/widgets/ds/ds.dart';
 import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -358,14 +359,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildScaffold(BuildContext context, UserModel user, bool isPublic) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).primaryColor;
+    final palette = AppPalette.of(context);
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF111827) : const Color(0xFFFDFDFD),
+      backgroundColor: palette.background,
       body: Stack(
         children: [
           // Background Blobs
-          _buildBlobs(isDark, primaryColor),
+          _buildBlobs(context, isDark, primaryColor),
 
           // Main Content
           GlassRefresher(
@@ -399,7 +400,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           // Back Button
                           _buildGlassCircleButton(
-                              context, Icons.arrow_back, isDark,
+                              context, Icons.arrow_back,
                               onTap: () async {
                             if (!isPublic) {
                               if (context.mounted) Navigator.pop(context);
@@ -411,7 +412,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildGlassCircleButton(
                             context,
                             Icons.more_vert,
-                            isDark,
                             onTap: () {
                               if (!isPublic) {
                                 _showPrivateOptions(context);
@@ -467,8 +467,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // --- Helper Widgets ---
 
   Widget _buildGlassCircleButton(
-      BuildContext context, IconData icon, bool isDark,
+      BuildContext context, IconData icon,
       {VoidCallback? onTap}) {
+    final palette = AppPalette.of(context);
     return GestureDetector(
       onTap: onTap,
       child: ClipOval(
@@ -477,14 +478,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Container(
             padding: const EdgeInsets.all(10),
             child: Icon(icon,
-                color: isDark ? Colors.white : Colors.black, size: 28),
+                color: palette.textPrimary, size: 28),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildBlobs(bool isDark, Color primaryColor) {
+  Widget _buildBlobs(BuildContext context, bool isDark, Color primaryColor) {
+    final palette = AppPalette.of(context);
     return Stack(children: [
       Positioned(
         top: -150,
@@ -512,7 +514,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: BoxDecoration(
             color: isDark
                 ? primaryColor.withValues(alpha: 0.1)
-                : Colors.lightBlue.shade100.withValues(alpha: 0.5),
+                : palette.info.withValues(alpha: 0.15),
             shape: BoxShape.circle,
           ),
           child: BackdropFilter(
@@ -526,6 +528,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildAvatarSection(UserModel user, bool isDark, bool isPublic) {
     final localizations = AppLocalizations.of(context);
     final primaryColor = Theme.of(context).primaryColor;
+    final palette = AppPalette.of(context);
     final displayName = user.displayName ?? "User";
     final photoURL = user.photoURL;
 
@@ -571,15 +574,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                          color: isDark ? Colors.grey[800] : Colors.white,
+                          color: palette.surface,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                              color: isDark
-                                  ? Colors.grey[700]!
-                                  : Colors.grey[100]!),
+                          border: Border.all(color: palette.border),
                           boxShadow: [
                             BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
+                                color: palette.shadow.withValues(alpha: 0.1),
                                 blurRadius: 4)
                           ]),
                       child: _isUploadingAvatar
@@ -598,7 +598,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : Colors.grey[900])),
+                color: palette.textPrimary)),
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -613,7 +613,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 14,
-                  color: isDark ? Colors.grey[400] : Colors.grey[500])),
+                  color: palette.textSecondary)),
         ),
         if (isPublic) ...[
           const SizedBox(height: 24),
@@ -634,6 +634,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildFriendActionButton(bool isDark, Color primaryColor) {
     final localizations = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
 
     // Show loading spinner while checking status to prevent flickering
     if (_isLoading || _isCheckingFriendship) {
@@ -649,28 +650,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     VoidCallback? onTap = _handleFriendAction;
 
     if (_friendshipStatus == FriendshipStatus.friends) {
-      // If already friends, we might not want to show this button here if the user prefers "Message" only,
-      // but per requirements, "Message" button comes AFTER "Add Friend" logic resolves.
-      // However, the prompt says: "profile screen'de isPublic olduğu zaman zaten arkadaşım olan bir kişi için sayfa ilk açıldığında önce arkadaş ekle butonu geliyor daha sonra mesaj butonu geliyor. Bu yapıyı düzelt."
-      // By using _isCheckingFriendship, we avoid showing "Add Friend" initially.
-
-      // If they are friends, we return SizedBox.shrink() because the Message button will be shown next to it
-      // OR we show a "Friends" indicator. Let's show "Friends" indicator as before but maybe disabled or different style?
-      // Actually, standard pattern: Show "Friends" (checked) button + "Message" button.
       label = localizations.translate('profile.friend_actions.already_friends');
       icon = Icons.check;
-      color = Colors.green;
+      color = palette.success;
     } else if (_friendshipStatus == FriendshipStatus.pending_sent) {
       label = localizations.translate('profile.friend_actions.sent');
       icon = Icons.access_time;
-      color = Colors.grey;
+      color = palette.textSecondary;
     } else if (_friendshipStatus == FriendshipStatus.pending_received) {
       return Column(
         children: [
           Text(
             localizations.translate('profile.friend_actions.received_text'),
             style: TextStyle(
-                fontSize: 16, color: isDark ? Colors.white : Colors.grey[900]),
+                fontSize: 16, color: palette.textPrimary),
           ),
           const SizedBox(height: 6),
           Row(
@@ -682,14 +675,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     localizations.translate('profile.friend_actions.accept')),
                 onPressed: _handleFriendAction,
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: palette.success,
                     foregroundColor: Colors.white),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: _handleRejectRequest,
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red, foregroundColor: Colors.white),
+                    backgroundColor: palette.error, foregroundColor: Colors.white),
                 child: Text(
                     localizations.translate('profile.friend_actions.reject')),
               )
@@ -781,7 +774,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .translate('profile.friend_actions.message'),
           style: TextStyle(color: primaryColor)),
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
+        backgroundColor: AppPalette.of(context).surface,
         foregroundColor: primaryColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         side: BorderSide(color: primaryColor),
@@ -813,6 +806,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final streak =
         (widget.viewUser ?? context.read<UserProvider>().user)?.onboardingData?['streak'] ?? 0;
     final s = (streak as num).toInt();
+    final palette = AppPalette.of(context);
 
     String? emoji;
     String? label;
@@ -821,19 +815,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (s >= 365) {
       emoji = '💎';
       label = 'Diamond Flame';
-      color = const Color(0xFF7C3AED);
+      color = palette.energy;
     } else if (s >= 100) {
       emoji = '🥇';
       label = 'Gold Flame';
-      color = const Color(0xFFD97706);
+      color = palette.calories;
     } else if (s >= 30) {
       emoji = '🥈';
       label = 'Silver Flame';
-      color = const Color(0xFF6B7280);
+      color = palette.textSecondary;
     } else if (s >= 7) {
       emoji = '🥉';
       label = 'Bronze Flame';
-      color = const Color(0xFFB45309);
+      color = palette.warning;
     }
 
     if (emoji == null) return const SizedBox.shrink();
@@ -872,15 +866,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final rep = _reputationData;
     if (rep == null) return const SizedBox.shrink();
 
-    const tierColors = {
-      ReputationTier.newcomer: Color(0xFF6B7280),
-      ReputationTier.active: Color(0xFF3B82F6),
-      ReputationTier.contributor: Color(0xFF8B5CF6),
-      ReputationTier.expert: Color(0xFFF59E0B),
-      ReputationTier.legend: Color(0xFFEC4899),
+    final palette = AppPalette.of(context);
+    final tierColors = {
+      ReputationTier.newcomer: palette.textSecondary,
+      ReputationTier.active: palette.info,
+      ReputationTier.contributor: palette.fat,
+      ReputationTier.expert: palette.warning,
+      ReputationTier.legend: palette.error,
     };
 
-    final color = tierColors[rep.tier] ?? const Color(0xFF6B7280);
+    final color = tierColors[rep.tier] ?? palette.textSecondary;
 
     return Padding(
       padding: const EdgeInsets.only(top: 8),
@@ -915,17 +910,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildStatItem(String value, String label, bool isDark) {
+    final palette = AppPalette.of(context);
     return Column(
       children: [
         Text(value,
             style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : Colors.black)),
+                color: palette.textPrimary)),
         Text(label.toUpperCase(),
             style: TextStyle(
                 fontSize: 10,
-                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                color: palette.textSecondary,
                 letterSpacing: 1)),
       ],
     );
@@ -935,6 +931,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       BuildContext context, bool isDark, bool isPublic) {
     if (isPublic) return const SizedBox.shrink();
     final localizations = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
 
     // If no friends, show "Add Friend" placeholder in place (as requested)
     // If friends exist, show list in modal on click
@@ -960,13 +957,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Icons.group,
                           isDark),
                       if (friends.isNotEmpty)
-                        Container(
-                            child: Text("${friends.length}",
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    color: isDark
-                                        ? Colors.grey[400]
-                                        : Colors.grey[500])))
+                        Text("${friends.length}",
+                            style: TextStyle(
+                                fontSize: 14,
+                                color: palette.textSecondary))
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -982,9 +976,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: isDark
-                                    ? Colors.grey[800]
-                                    : Colors.grey[100],
+                                color: palette.surfaceVariant,
                               ),
                               child: Icon(Icons.add,
                                   color: Theme.of(context).primaryColor),
@@ -995,9 +987,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               localizations.translate(
                                   'profile.friends_modal.no_friends'),
                               style: TextStyle(
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[600],
+                                  color: palette.textSecondary,
                                   fontSize: 12))
                         ],
                       ),
@@ -1021,13 +1011,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           border: Border.all(
-                                              color: isDark
-                                                  ? Colors.grey[700]!
-                                                  : Colors.white,
+                                              color: palette.border,
                                               width: 2),
                                           boxShadow: [
                                             BoxShadow(
-                                                color: Colors.black
+                                                color: palette.shadow
                                                     .withValues(alpha: 0.05),
                                                 blurRadius: 4)
                                           ]),
@@ -1050,9 +1038,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                               fontSize: 10,
-                                              color: isDark
-                                                  ? Colors.grey[300]
-                                                  : Colors.grey[600])),
+                                              color: palette.textSecondary)),
                                     ),
                                   ]),
                                 )),
@@ -1062,14 +1048,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 padding: const EdgeInsets.only(left: 8),
                                 child: CircleAvatar(
                                   radius: 20,
-                                  backgroundColor: isDark
-                                      ? Colors.grey[800]
-                                      : Colors.grey[200],
+                                  backgroundColor: palette.surfaceVariant,
                                   child: Text("+${friends.length - 5}",
                                       style: TextStyle(
-                                          color: isDark
-                                              ? Colors.white
-                                              : Colors.black,
+                                          color: palette.textPrimary,
                                           fontSize: 12)),
                                 ),
                               )
@@ -1115,7 +1097,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     true)
                   Text("No goals set",
                       style: TextStyle(
-                          color: isDark ? Colors.grey : Colors.grey[600],
+                          color: AppPalette.of(context).textSecondary,
                           fontStyle: FontStyle.italic))
               ],
             )
@@ -1139,7 +1121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: isDark ? color.withAlpha(200) : color),
+          Icon(icon, size: 16, color: color),
           const SizedBox(width: 4),
           Text(
               OnboardingOptions.primaryGoals.entries
@@ -1155,7 +1137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: isDark ? color.withAlpha(200) : color)),
+                  color: color)),
         ],
       ),
     );
@@ -1249,17 +1231,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildInfoCard(String label, String value, String unit, bool isDark) {
+    final palette = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-          color: isDark
-              ? Colors.grey[800]!.withValues(alpha: 0.5)
-              : Colors.white.withValues(alpha: 0.5),
+          color: palette.surface.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: isDark
-                  ? Colors.grey[700]!
-                  : Colors.white.withValues(alpha: 0.4))),
+          border: Border.all(color: palette.border)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1267,7 +1245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(label,
               style: TextStyle(
                   fontSize: 12,
-                  color: isDark ? Colors.grey[400] : Colors.grey[500])),
+                  color: palette.textSecondary)),
           const SizedBox(height: 4),
           Row(
             children: [
@@ -1275,12 +1253,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.grey[900])),
+                      color: palette.textPrimary)),
               if (unit.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(left: 4, top: 4),
                   child: Text(unit,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      style: TextStyle(fontSize: 12, color: palette.textTertiary)),
                 )
             ],
           )
@@ -1298,6 +1276,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final dislikedFoods =
         user.onboardingData?['disliked_foods'] as List<dynamic>? ?? [];
     final primaryColor = context.watch<ThemeProvider>().primaryColor;
+    final palette = AppPalette.of(context);
 
     final localizations = AppLocalizations.of(context);
 
@@ -1338,7 +1317,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: isDark ? Colors.grey[400] : Colors.grey[500])),
+                          color: palette.textSecondary)),
                   const SizedBox(height: 8),
 
                   // Progress Bar
@@ -1346,7 +1325,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     height: 10,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                        color: isDark ? Colors.grey[700] : Colors.grey[200],
+                        color: palette.border,
                         borderRadius: BorderRadius.circular(5)),
                     child: FractionallySizedBox(
                       alignment: Alignment.centerLeft,
@@ -1365,13 +1344,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Text(
                           localizations
                               .translate('profile.kitchen_lifestyle.novice'),
-                          style:
-                              TextStyle(fontSize: 10, color: Colors.grey[400])),
+                          style: TextStyle(fontSize: 10, color: palette.textTertiary)),
                       Text(
                           localizations
                               .translate('profile.kitchen_lifestyle.expert'),
-                          style:
-                              TextStyle(fontSize: 10, color: Colors.grey[400])),
+                          style: TextStyle(fontSize: 10, color: palette.textTertiary)),
                     ],
                   ),
 
@@ -1382,12 +1359,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: isDark ? Colors.grey[400] : Colors.grey[500])),
+                          color: palette.textSecondary)),
                   const SizedBox(height: 8),
                   if (equipment.isEmpty)
-                    const Text("No equipment listed",
+                    Text("No equipment listed",
                         style: TextStyle(
-                            color: Colors.grey,
+                            color: palette.textTertiary,
                             fontSize: 12,
                             fontStyle: FontStyle.italic))
                   else
@@ -1399,13 +1376,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                    color: isDark
-                                        ? Colors.grey[800]
-                                        : Colors.white,
-                                    border: Border.all(
-                                        color: isDark
-                                            ? Colors.grey[600]!
-                                            : Colors.grey[200]!),
+                                    color: palette.surface,
+                                    border: Border.all(color: palette.border),
                                     borderRadius: BorderRadius.circular(8)),
                                 child: Text(
                                     localizations.translate(OnboardingOptions
@@ -1413,9 +1385,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         e.toString()),
                                     style: TextStyle(
                                         fontSize: 12,
-                                        color: isDark
-                                            ? Colors.grey[300]
-                                            : Colors.grey[600])),
+                                        color: palette.textSecondary)),
                               ))
                           .toList(),
                     ),
@@ -1427,8 +1397,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color:
-                                isDark ? Colors.grey[400] : Colors.grey[500])),
+                            color: palette.textSecondary)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -1438,13 +1407,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                    color: isDark
-                                        ? Colors.grey[800]
-                                        : Colors.white,
-                                    border: Border.all(
-                                        color: isDark
-                                            ? Colors.grey[600]!
-                                            : Colors.grey[200]!),
+                                    color: palette.surface,
+                                    border: Border.all(color: palette.border),
                                     borderRadius: BorderRadius.circular(8)),
                                 child: Text(
                                     OnboardingOptions
@@ -1462,9 +1426,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         .label,
                                     style: TextStyle(
                                         fontSize: 12,
-                                        color: isDark
-                                            ? Colors.grey[300]
-                                            : Colors.grey[600])),
+                                        color: palette.textSecondary)),
                               ))
                           .toList(),
                     ),
@@ -1477,65 +1439,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildLogoutButton(BuildContext context, bool isDark) {
+    final palette = AppPalette.of(context);
     return SizedBox(
       width: double.infinity,
       child: TextButton(
         onPressed: () => AuthService().signOut(),
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor:
-              isDark ? Colors.grey[800] : Colors.white.withValues(alpha: 0.5),
+          backgroundColor: palette.surface.withValues(alpha: 0.5),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                  color: isDark
-                      ? Colors.red.withValues(alpha: 0.3)
-                      : Colors.red.shade200)),
+                  color: palette.error.withValues(alpha: 0.3))),
         ),
         child: Text(
             AppLocalizations.of(context).translate('auth.logout_button'),
-            style: const TextStyle(
-                color: Colors.red, fontWeight: FontWeight.w500)),
+            style: TextStyle(
+                color: palette.error, fontWeight: FontWeight.w500)),
       ),
     );
   }
 
   Widget _buildSectionTitle(String title, IconData icon, bool isDark) {
     final primaryColor = Theme.of(context).primaryColor;
+    final palette = AppPalette.of(context);
     return Row(
       children: [
-        Icon(icon, color: primaryColor, size: 20), // Orange icon
+        Icon(icon, color: primaryColor, size: 20),
         const SizedBox(width: 8),
         Text(title,
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : Colors.grey[800])),
+                color: palette.textPrimary)),
       ],
     );
   }
 
   Widget _buildGlassPanel(
       {required Widget child, required bool isDark, EdgeInsets? padding}) {
+    final palette = AppPalette.of(context);
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20), // Matches rounded-2xl
+      borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           padding: padding ?? const EdgeInsets.all(16),
           decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF1F2937).withValues(alpha: 0.7) // glass-dark
-                  : const Color(0xFFFFFFFF)
-                      .withValues(alpha: 0.7), // glass-light
-              border: Border.all(
-                color: isDark
-                    ? Colors.grey[700]!
-                    : Colors.white.withValues(alpha: 0.6),
-              ),
+              color: palette.surface.withValues(alpha: 0.7),
+              border: Border.all(color: palette.border),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color: palette.shadow.withValues(alpha: 0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 2))
               ]),
@@ -1595,6 +1550,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildStatusIndicator(
       bool isOnline, DateTime? lastSeenDate, bool isDark) {
+    final palette = AppPalette.of(context);
     if (isOnline) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -1603,8 +1559,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             width: 8,
             height: 8,
-            decoration: const BoxDecoration(
-              color: Colors.green,
+            decoration: BoxDecoration(
+              color: palette.success,
               shape: BoxShape.circle,
             ),
           ),
@@ -1612,7 +1568,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(AppLocalizations.of(context).translate('profile.online'),
               style: TextStyle(
                   fontSize: 12,
-                  color: isDark ? Colors.green[300] : Colors.green[700],
+                  color: palette.success,
                   fontWeight: FontWeight.w500)),
         ],
       );
@@ -1630,7 +1586,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           textAlign: TextAlign.end,
           style: TextStyle(
               fontSize: 12,
-              color: isDark ? Colors.grey[400] : Colors.grey[500],
+              color: palette.textSecondary,
               fontStyle: FontStyle.italic));
     }
   }
@@ -1764,11 +1720,12 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       height: MediaQuery.of(context).size.height * 0.8,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: widget.isDark ? const Color(0xFF1F2937) : Colors.white,
+        color: palette.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
       ),
       child: Column(
@@ -1777,7 +1734,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: Colors.grey, borderRadius: BorderRadius.circular(2))),
+                  color: palette.border, borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 20),
           if (_mode == _FriendsSheetMode.list)
             _buildListView()
@@ -1789,6 +1746,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
   }
 
   Widget _buildListView() {
+    final palette = AppPalette.of(context);
     return Expanded(
       child: Column(
         children: [
@@ -1802,7 +1760,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
                   style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: widget.isDark ? Colors.white : Colors.black)),
+                      color: palette.textPrimary)),
               IconButton(
                 onPressed: () {
                   setState(() {
@@ -1822,16 +1780,14 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
           // Local Search Field
           TextField(
               controller: _localSearchCtrl,
-              style:
-                  TextStyle(color: widget.isDark ? Colors.white : Colors.black),
+              style: TextStyle(color: palette.textPrimary),
               decoration: InputDecoration(
                 hintText: AppLocalizations.of(context)
                     .translate('profile.friends_modal.search_hint'),
-                hintStyle: TextStyle(
-                    color: widget.isDark ? Colors.grey : Colors.black54),
+                hintStyle: TextStyle(color: palette.textTertiary),
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
-                fillColor: widget.isDark ? Colors.white10 : Colors.grey[200],
+                fillColor: palette.surfaceVariant,
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none),
@@ -1855,8 +1811,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
                           : null,
                     ),
                     title: Text(friend.displayName ?? "User",
-                        style: TextStyle(
-                            color: widget.isDark ? Colors.white : Colors.black)),
+                        style: TextStyle(color: palette.textPrimary)),
                     trailing: PopupMenuButton(
                       icon: const Icon(Icons.more_vert),
                       itemBuilder: (ctx) => [
@@ -1890,6 +1845,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
 
   Widget _buildSearchView() {
     final localizations = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
     return Expanded(
       child: Column(
         children: [
@@ -1899,7 +1855,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
               IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () => setState(() => _mode = _FriendsSheetMode.list),
-                color: widget.isDark ? Colors.white : Colors.black,
+                color: palette.textPrimary,
               ),
               const SizedBox(width: 8),
               Text(
@@ -1908,7 +1864,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
                   style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: widget.isDark ? Colors.white : Colors.black)),
+                      color: palette.textPrimary)),
             ],
           ),
           const SizedBox(height: 20),
@@ -1916,15 +1872,13 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
           // Global Search Field
           TextField(
               controller: _globalSearchCtrl,
-              style:
-                  TextStyle(color: widget.isDark ? Colors.white : Colors.black),
+              style: TextStyle(color: palette.textPrimary),
               decoration: InputDecoration(
                   hintText: localizations.translate('profile.search.hint'),
-                  hintStyle: TextStyle(
-                      color: widget.isDark ? Colors.grey : Colors.black54),
+                  hintStyle: TextStyle(color: palette.textTertiary),
                   prefixIcon: const Icon(Icons.search),
                   filled: true,
-                  fillColor: widget.isDark ? Colors.white10 : Colors.grey[200],
+                  fillColor: palette.surfaceVariant,
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none),
@@ -1952,10 +1906,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
                         child: Text(
                             localizations
                                 .translate('profile.search.no_results'),
-                            style: TextStyle(
-                                color: widget.isDark
-                                    ? Colors.grey
-                                    : Colors.black54)))
+                            style: TextStyle(color: palette.textTertiary)))
                     : ListView.builder(
                         itemCount: _searchResults.length,
                         itemBuilder: (ctx, i) {
@@ -1974,15 +1925,12 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
                                     : null,
                               ),
                               title: Text(u.displayName ?? "User",
-                                  style: TextStyle(
-                                      color: widget.isDark
-                                          ? Colors.white
-                                          : Colors.black)),
+                                  style: TextStyle(color: palette.textPrimary)),
                               trailing: isFriend
-                                  ? const Icon(Icons.check, color: Colors.green)
+                                  ? Icon(Icons.check, color: palette.success)
                                   : IconButton(
-                                      icon: const Icon(Icons.person_add,
-                                          color: Color(0xFFF44075)),
+                                      icon: Icon(Icons.person_add,
+                                          color: palette.error),
                                       onPressed: () => _sendRequest(u),
                                     ),
                               onTap: () {

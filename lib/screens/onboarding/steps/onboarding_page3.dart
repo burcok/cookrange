@@ -1,15 +1,15 @@
-import 'package:cookrange/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/localization/app_localizations.dart';
-import '../../../core/services/analytics_service.dart';
-import '../../../widgets/onboarding_common_widgets.dart';
 import '../../../core/providers/onboarding_provider.dart';
+import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/ai/ai_service.dart';
 import '../../../core/services/ai/prompt_service.dart';
+import '../../../core/services/analytics_service.dart';
 import '../../../core/constants/onboarding_options.dart';
+import '../../../core/widgets/ds/ds.dart';
+import '../../../widgets/onboarding_common_widgets.dart';
 
 class OnboardingPage3 extends StatefulWidget {
   final int step;
@@ -400,12 +400,13 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final palette = AppPalette.of(context);
+    final primary = context.watch<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
     final localizations = AppLocalizations.of(context);
 
     return Scaffold(
-      backgroundColor: colorScheme.backgroundColor2,
+      backgroundColor: palette.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -447,7 +448,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                       localizations
                           .translate('onboarding.page3.allergies_subtitle'),
                       icon: Icons.warning_amber_rounded,
-                      iconColor: const Color(0xFFD97706),
+                      iconColor: palette.warning,
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -475,7 +476,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                       localizations
                           .translate('onboarding.page3.dietary_subtitle'),
                       icon: Icons.restaurant_menu,
-                      iconColor: colorScheme.primaryColorCustom,
+                      iconColor: primary,
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -498,7 +499,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                     const SizedBox(height: 28),
 
                     // ── Divider ─────────────────────────────────────────────
-                    Divider(color: colorScheme.outline.withValues(alpha: 0.3)),
+                    Divider(color: palette.divider),
                     const SizedBox(height: 16),
 
                     // ── Foods You Dislike ───────────────────────────────────
@@ -507,7 +508,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                           .translate('onboarding.page3.dislikes_title'),
                       localizations.translate('onboarding.page3.subtitle'),
                       icon: Icons.thumb_down_alt_outlined,
-                      iconColor: colorScheme.onboardingSubtitleColor,
+                      iconColor: palette.textSecondary,
                     ),
                     const SizedBox(height: 16),
 
@@ -517,7 +518,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                         color: Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Colors.grey.withValues(alpha: 0.5),
+                          color: palette.border,
                         ),
                       ),
                       child: TextField(
@@ -530,14 +531,12 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                         decoration: InputDecoration(
                           hintText: localizations
                               .translate('onboarding.page3.search_hint'),
-                          hintStyle: TextStyle(
-                            color: colorScheme.onboardingSubtitleColor,
-                            fontSize: 14,
-                            fontFamily: 'Poppins',
+                          hintStyle: t.bodyM.copyWith(
+                            color: palette.textSecondary,
                           ),
                           prefixIcon: Icon(
                             Icons.search,
-                            color: colorScheme.onboardingSubtitleColor,
+                            color: palette.textSecondary,
                             size: 20,
                           ),
                           border: InputBorder.none,
@@ -546,11 +545,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                             vertical: 16,
                           ),
                         ),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontFamily: 'Poppins',
-                          color: colorScheme.onboardingTitleColor,
-                        ),
+                        style: t.bodyM.copyWith(color: palette.textPrimary),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -566,20 +561,12 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                                   TextSpan(
                                     text: localizations.translate(
                                         'onboarding.page3.custom_not_found'),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: colorScheme.onboardingTitleColor,
-                                      fontFamily: 'Poppins',
-                                    ),
+                                    style: t.bodyM.copyWith(color: palette.textPrimary),
                                   ),
                                   TextSpan(
                                     text: localizations.translate(
                                         'onboarding.page3.custom_add_hint'),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: colorScheme.onboardingTitleColor,
-                                      fontFamily: 'Poppins',
-                                    ),
+                                    style: t.bodyM.copyWith(color: palette.textPrimary),
                                   ),
                                 ],
                               ),
@@ -590,7 +577,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                             onPressed:
                                 _isLoadingAI ? null : _addCustomIngredient,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryColor,
+                              backgroundColor: primary,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
@@ -607,17 +594,16 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation<Color>(
-                                        colorScheme.onboardingOptionBgColor,
+                                        palette.surfaceVariant,
                                       ),
                                     ),
                                   )
                                 : Text(
                                     localizations.translate(
                                         'onboarding.page3.custom_add'),
-                                    style: const TextStyle(
-                                      fontSize: 12,
+                                    style: t.labelM.copyWith(
                                       fontWeight: FontWeight.w600,
-                                      fontFamily: 'Poppins',
+                                      color: Colors.white,
                                     ),
                                   ),
                           ),
@@ -630,11 +616,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                     if (_remainingCustomSlots < 3) ...[
                       Text(
                         '${localizations.translate('onboarding.page3.custom_slots_remaining')}$_remainingCustomSlots',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colorScheme.onboardingSubtitleColor,
-                          fontFamily: 'Poppins',
-                        ),
+                        style: t.labelS.copyWith(color: palette.textSecondary),
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -644,12 +626,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                       Text(
                         localizations
                             .translate('onboarding.page3.selected_title'),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onboardingTitleColor,
-                          fontFamily: 'Poppins',
-                        ),
+                        style: t.titleM.copyWith(color: palette.textPrimary),
                       ),
                       const SizedBox(height: 12),
                       Wrap(
@@ -693,12 +670,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
                       Text(
                         localizations
                             .translate('onboarding.page3.available_title'),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onboardingTitleColor,
-                          fontFamily: 'Poppins',
-                        ),
+                        style: t.titleM.copyWith(color: palette.textPrimary),
                       ),
                       const SizedBox(height: 12),
                       Wrap(
@@ -758,7 +730,8 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
     required IconData icon,
     required Color iconColor,
   }) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -770,21 +743,12 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
             children: [
               Text(
                 title,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: colorScheme.onboardingTitleColor,
-                  fontFamily: 'Poppins',
-                ),
+                style: t.titleM.copyWith(color: palette.textPrimary),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: colorScheme.onboardingSubtitleColor,
-                  fontFamily: 'Poppins',
-                ),
+                style: t.labelS.copyWith(color: palette.textSecondary),
               ),
             ],
           ),
@@ -799,8 +763,9 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
     required IconData icon,
     required bool selected,
   }) {
-    const amber = Color(0xFFD97706);
-    const amberLight = Color(0xFFFEF3C7);
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+    final amber = palette.warning;
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -816,7 +781,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? amber : amberLight.withValues(alpha: 0.4),
+          color: selected ? amber : amber.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(99),
           border: Border.all(
             color: selected ? amber : amber.withValues(alpha: 0.5),
@@ -831,11 +796,9 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
             const SizedBox(width: 6),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 13,
+              style: t.labelL.copyWith(
                 fontWeight: FontWeight.w600,
                 color: selected ? Colors.white : amber,
-                fontFamily: 'Poppins',
               ),
             ),
           ],
@@ -850,8 +813,9 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
     required IconData icon,
     required bool selected,
   }) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final primary = colorScheme.primaryColorCustom;
+    final palette = AppPalette.of(context);
+    final primary = context.read<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -867,7 +831,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? primary : colorScheme.onboardingOptionBgColor,
+          color: selected ? primary : palette.surfaceVariant,
           borderRadius: BorderRadius.circular(99),
           border: Border.all(
             color: selected ? primary : primary.withValues(alpha: 0.4),
@@ -882,11 +846,9 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
             const SizedBox(width: 6),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 13,
+              style: t.labelL.copyWith(
                 fontWeight: FontWeight.w600,
                 color: selected ? Colors.white : primary,
-                fontFamily: 'Poppins',
               ),
             ),
           ],
@@ -896,12 +858,14 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
   }
 
   Widget _buildSelectedIngredient(OptionData ingredient) {
+    final primary = context.read<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
     return GestureDetector(
       onTap: () => _toggleIngredient(ingredient),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: primaryColor,
+          color: primary,
           borderRadius: BorderRadius.circular(99),
         ),
         child: Row(
@@ -915,11 +879,9 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
             const SizedBox(width: 8),
             Text(
               _getIngredientLabel(ingredient),
-              style: const TextStyle(
-                fontSize: 14,
+              style: t.bodyM.copyWith(
                 fontWeight: FontWeight.w500,
                 color: Colors.white,
-                fontFamily: 'Poppins',
               ),
             ),
             const SizedBox(width: 8),
@@ -935,7 +897,8 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
   }
 
   Widget _buildAvailableIngredient(OptionData ingredient) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
 
     return GestureDetector(
       onTap: () => _toggleIngredient(ingredient),
@@ -944,7 +907,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(99),
           border: Border.all(
-            color: Colors.grey.withValues(alpha: 0.5),
+            color: palette.border,
           ),
         ),
         child: Row(
@@ -953,16 +916,14 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
             Icon(
               ingredient.icon,
               size: 20,
-              color: colorScheme.onboardingTitleColor,
+              color: palette.textPrimary,
             ),
             const SizedBox(width: 8),
             Text(
               _getIngredientLabel(ingredient),
-              style: TextStyle(
-                fontSize: 14,
+              style: t.bodyM.copyWith(
                 fontWeight: FontWeight.w500,
-                color: colorScheme.onboardingTitleColor,
-                fontFamily: 'Poppins',
+                color: palette.textPrimary,
               ),
             ),
           ],
@@ -972,17 +933,19 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
   }
 
   Widget _buildCustomAvailableIngredient(OptionData ingredient) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
+    final primary = context.read<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
 
     return GestureDetector(
       onTap: () => _toggleIngredient(ingredient),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: colorScheme.onboardingOptionBgColor,
+          color: palette.surfaceVariant,
           borderRadius: BorderRadius.circular(99),
           border: Border.all(
-            color: colorScheme.primaryColorCustom.withValues(alpha: 0.5),
+            color: primary.withValues(alpha: 0.5),
           ),
         ),
         child: Row(
@@ -991,16 +954,14 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
             Icon(
               ingredient.icon,
               size: 20,
-              color: colorScheme.primaryColorCustom,
+              color: primary,
             ),
             const SizedBox(width: 8),
             Text(
               _getIngredientLabel(ingredient),
-              style: TextStyle(
-                fontSize: 14,
+              style: t.bodyM.copyWith(
                 fontWeight: FontWeight.w500,
-                color: colorScheme.primaryColorCustom,
-                fontFamily: 'Poppins',
+                color: primary,
               ),
             ),
             const SizedBox(width: 8),
@@ -1009,7 +970,7 @@ class _OnboardingPage3State extends State<OnboardingPage3> {
               child: Icon(
                 Icons.remove_circle_outline,
                 size: 16,
-                color: colorScheme.primaryColorCustom.withValues(alpha: 0.7),
+                color: primary.withValues(alpha: 0.7),
               ),
             ),
           ],

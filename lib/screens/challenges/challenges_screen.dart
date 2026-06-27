@@ -4,6 +4,7 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/models/challenge_model.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/services/challenge_service.dart';
+import '../../core/widgets/ds/ds.dart';
 import 'challenge_detail_screen.dart';
 import 'widgets/create_challenge_sheet.dart';
 
@@ -43,32 +44,30 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final primary = context.read<ThemeProvider>().primaryColor;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF0D1117) : const Color(0xFFFCFBF9),
+      backgroundColor: palette.background,
       appBar: AppBar(
         title: Text(
           l10n.translate('challenge.screen_title'),
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : const Color(0xFF0F172A),
+            color: palette.textPrimary,
           ),
         ),
-        backgroundColor:
-            isDark ? const Color(0xFF111827) : Colors.white,
+        backgroundColor: palette.surface,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18),
           onPressed: () => Navigator.pop(context),
-          color: isDark ? Colors.white : const Color(0xFF0F172A),
+          color: palette.textPrimary,
         ),
         bottom: TabBar(
           controller: _tabController,
           labelColor: primary,
-          unselectedLabelColor: isDark ? Colors.white54 : Colors.black45,
+          unselectedLabelColor: palette.textSecondary,
           indicatorColor: primary,
           tabs: [
             Tab(text: l10n.translate('challenge.tab_active')),
@@ -83,13 +82,11 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             stream: _service.getActiveChallengesStream(),
             emptyKey: 'challenge.empty_active',
             primary: primary,
-            isDark: isDark,
           ),
           _ChallengeList(
             stream: _service.getMyChallengesStream(),
             emptyKey: 'challenge.empty_mine',
             primary: primary,
-            isDark: isDark,
           ),
         ],
       ),
@@ -108,18 +105,17 @@ class _ChallengeList extends StatelessWidget {
   final Stream<List<ChallengeModel>> stream;
   final String emptyKey;
   final Color primary;
-  final bool isDark;
 
   const _ChallengeList({
     required this.stream,
     required this.emptyKey,
     required this.primary,
-    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
 
     return StreamBuilder<List<ChallengeModel>>(
       stream: stream,
@@ -141,13 +137,13 @@ class _ChallengeList extends StatelessWidget {
                 children: [
                   Icon(Icons.emoji_events_outlined,
                       size: 64,
-                      color: isDark ? Colors.white24 : Colors.black12),
+                      color: palette.border),
                   const SizedBox(height: 16),
                   Text(
                     l10n.translate(emptyKey),
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        color: isDark ? Colors.white54 : Colors.black45,
+                        color: palette.textSecondary,
                         fontSize: 15),
                   ),
                 ],
@@ -163,7 +159,6 @@ class _ChallengeList extends StatelessWidget {
           itemBuilder: (context, i) => _ChallengeCard(
             challenge: challenges[i],
             primary: primary,
-            isDark: isDark,
           ),
         );
       },
@@ -174,12 +169,10 @@ class _ChallengeList extends StatelessWidget {
 class _ChallengeCard extends StatelessWidget {
   final ChallengeModel challenge;
   final Color primary;
-  final bool isDark;
 
   const _ChallengeCard({
     required this.challenge,
     required this.primary,
-    required this.isDark,
   });
 
   IconData get _icon {
@@ -198,6 +191,7 @@ class _ChallengeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -210,11 +204,11 @@ class _ChallengeCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1F2937) : Colors.white,
+          color: palette.surface,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: palette.shadow.withValues(alpha: 0.06),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -243,7 +237,7 @@ class _ChallengeCard extends StatelessWidget {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 15,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          color: palette.textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -253,7 +247,7 @@ class _ChallengeCard extends StatelessWidget {
                         l10n.translate('challenge.type.${challenge.type.name}'),
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDark ? Colors.white54 : Colors.black45,
+                          color: palette.textSecondary,
                         ),
                       ),
                     ],
@@ -264,8 +258,8 @@ class _ChallengeCard extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: challenge.isExpired
-                        ? Colors.grey.withValues(alpha: 0.15)
-                        : Colors.green.withValues(alpha: 0.12),
+                        ? palette.textTertiary.withValues(alpha: 0.15)
+                        : palette.success.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -276,7 +270,7 @@ class _ChallengeCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: challenge.isExpired ? Colors.grey : Colors.green,
+                      color: challenge.isExpired ? palette.textTertiary : palette.success,
                     ),
                   ),
                 ),
@@ -288,7 +282,7 @@ class _ChallengeCard extends StatelessWidget {
                 challenge.description,
                 style: TextStyle(
                   fontSize: 13,
-                  color: isDark ? Colors.white60 : Colors.black54,
+                  color: palette.textSecondary,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -299,25 +293,25 @@ class _ChallengeCard extends StatelessWidget {
               children: [
                 Icon(Icons.flag_outlined,
                     size: 14,
-                    color: isDark ? Colors.white38 : Colors.black38),
+                    color: palette.textTertiary),
                 const SizedBox(width: 4),
                 Text(
                   '${challenge.goal} ${challenge.unit}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDark ? Colors.white54 : Colors.black45,
+                    color: palette.textSecondary,
                   ),
                 ),
                 const Spacer(),
                 Icon(Icons.group_outlined,
                     size: 14,
-                    color: isDark ? Colors.white38 : Colors.black38),
+                    color: palette.textTertiary),
                 const SizedBox(width: 4),
                 Text(
                   '${challenge.participantIds.length}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDark ? Colors.white54 : Colors.black45,
+                    color: palette.textSecondary,
                   ),
                 ),
               ],

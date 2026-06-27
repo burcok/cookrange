@@ -7,6 +7,9 @@ import '../../../../core/services/community_service.dart';
 import '../../../../core/services/storage_upload_service.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/providers/theme_provider.dart';
+import '../../../../core/theme/app_palette.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../../core/theme/app_dimensions.dart';
 
 class CreatePostCard extends StatefulWidget {
   final VoidCallback onPostCreated;
@@ -66,12 +69,15 @@ class _CreatePostCardState extends State<CreatePostCard> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final palette = AppPalette.of(context);
+        final textStyles = AppText.of(context);
+        final primaryColor = context.watch<ThemeProvider>().primaryColor;
         return Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF0F172A) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            color: palette.surface,
+            borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(AppRadius.card)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -80,16 +86,12 @@ class _CreatePostCardState extends State<CreatePostCard> {
               Text(
                 AppLocalizations.of(context)
                     .translate('community.create_post.add_tags'),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
+                style: textStyles.headlineS,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
                 children: _suggestedTags.map((tag) {
                   final isSelected = _selectedTags.contains(tag);
                   return FilterChip(
@@ -105,42 +107,31 @@ class _CreatePostCardState extends State<CreatePostCard> {
                           _selectedTags.remove(tag);
                         }
                       });
-                      Navigator.pop(
-                          context); // Close for single select or stay open? Let's close for flow or keep open?
-                      // Better UX: keep open to select multiple, but user requested specific examples.
-                      // Let's keep open and add a 'Done' button or just allow tap out.
-                      // Actually for smoothness, let's keep open.
-                      // Rebuild the bottom sheet? StatefulBuilder needed for BottomSheet updating.
+                      Navigator.pop(context);
                     },
-                    selectedColor: context
-                        .watch<ThemeProvider>()
-                        .primaryColor
-                        .withValues(alpha: 0.2),
-                    checkmarkColor: context.watch<ThemeProvider>().primaryColor,
+                    selectedColor: primaryColor.withValues(alpha: 0.2),
+                    checkmarkColor: primaryColor,
                     labelStyle: TextStyle(
                       color: isSelected
-                          ? context.watch<ThemeProvider>().primaryColor
-                          : (isDark ? Colors.white70 : Colors.black54),
+                          ? primaryColor
+                          : palette.textSecondary,
                     ),
-                    backgroundColor:
-                        isDark ? Colors.white10 : Colors.grey.shade100,
+                    backgroundColor: palette.surfaceVariant,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                       side: BorderSide(
-                        color: isSelected
-                            ? context.watch<ThemeProvider>().primaryColor
-                            : Colors.transparent,
+                        color: isSelected ? primaryColor : Colors.transparent,
                       ),
                     ),
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.lg),
             ],
           ),
         );
       },
-    ).then((_) => setState(() {})); // Refresh parent to show selected tags
+    ).then((_) => setState(() {}));
   }
 
   Future<void> _handlePost() async {
@@ -173,15 +164,15 @@ class _CreatePostCardState extends State<CreatePostCard> {
   }
 
   Future<void> _pickImage() async {
+    final userId = context.read<UserProvider>().user?.uid;
+    if (userId == null) return;
+
     final XFile? image = await _picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 80,
       maxWidth: 1920,
     );
     if (image == null) return;
-
-    final userId = context.read<UserProvider>().user?.uid;
-    if (userId == null) return;
 
     setState(() => _isUploadingImage = true);
     try {
@@ -205,26 +196,25 @@ class _CreatePostCardState extends State<CreatePostCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
     final user = Provider.of<UserProvider>(context, listen: false).user;
     final userImage = user?.photoURL;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xl, vertical: AppSpacing.xs),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.white.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color:
-                isDark ? Colors.white10 : Colors.white.withValues(alpha: 0.5)),
+        color: palette.surface.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: palette.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: palette.shadow.withValues(alpha: AppElevation.opacityLight),
+            blurRadius: AppElevation.blurMd,
+            offset: AppElevation.offsetMd,
           ),
         ],
       ),
@@ -239,7 +229,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
                     userImage ?? 'https://i.pravatar.cc/150?u=current'),
                 radius: 20,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: TextField(
                   controller: _controller,
@@ -250,14 +240,13 @@ class _CreatePostCardState extends State<CreatePostCard> {
                         .translate('community.whats_cooking', variables: {
                       'name': user?.displayName?.split(' ').first ?? 'Chef'
                     }),
-                    hintStyle: TextStyle(
-                        color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                    hintStyle: textStyles.bodyM,
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
                   ),
-                  style: TextStyle(
-                      color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                  style: textStyles.bodyL.copyWith(color: palette.textPrimary),
                 ),
               ),
             ],
@@ -266,38 +255,32 @@ class _CreatePostCardState extends State<CreatePostCard> {
               _controller.text.isNotEmpty ||
               _attachedImageUrls.isNotEmpty ||
               _selectedTags.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
 
             // Selected Tags
             if (_selectedTags.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                 child: Wrap(
-                  spacing: 8,
+                  spacing: AppSpacing.xs,
                   children: _selectedTags
                       .map((tag) => Chip(
-                            label:
-                                Text(tag, style: const TextStyle(fontSize: 12)),
-                            backgroundColor: context
-                                .watch<ThemeProvider>()
-                                .primaryColor
-                                .withValues(alpha: 0.1),
-                            labelStyle: TextStyle(
-                                color: context
-                                    .watch<ThemeProvider>()
-                                    .primaryColor),
+                            label: Text(tag,
+                                style: textStyles.labelS),
+                            backgroundColor:
+                                primaryColor.withValues(alpha: 0.1),
+                            labelStyle: TextStyle(color: primaryColor),
                             deleteIcon: Icon(Icons.close,
-                                size: 14,
-                                color: context
-                                    .watch<ThemeProvider>()
-                                    .primaryColor),
+                                size: AppSize.iconXs,
+                                color: primaryColor),
                             onDeleted: () {
                               setState(() {
                                 _selectedTags.remove(tag);
                               });
                             },
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20)),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.full)),
                             side: BorderSide.none,
                           ))
                       .toList(),
@@ -317,9 +300,9 @@ class _CreatePostCardState extends State<CreatePostCard> {
                         Container(
                           width: 80,
                           height: 80,
-                          margin: const EdgeInsets.only(right: 8),
+                          margin: const EdgeInsets.only(right: AppSpacing.xs),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
                             image: DecorationImage(
                               image: NetworkImage(_attachedImageUrls[index]),
                               fit: BoxFit.cover,
@@ -336,7 +319,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
                               });
                             },
                             child: Container(
-                              padding: const EdgeInsets.all(4),
+                              padding: const EdgeInsets.all(AppSpacing.xxs),
                               decoration: const BoxDecoration(
                                 color: Colors.black54,
                                 shape: BoxShape.circle,
@@ -351,7 +334,8 @@ class _CreatePostCardState extends State<CreatePostCard> {
                   },
                 ),
               ),
-            if (_attachedImageUrls.isNotEmpty) const SizedBox(height: 12),
+            if (_attachedImageUrls.isNotEmpty)
+              const SizedBox(height: AppSpacing.sm),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -359,25 +343,24 @@ class _CreatePostCardState extends State<CreatePostCard> {
                 Row(
                   children: [
                     _isUploadingImage
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 24,
                             height: 24,
                             child: Padding(
-                              padding: EdgeInsets.all(4),
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              padding: const EdgeInsets.all(AppSpacing.xxs),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: primaryColor),
                             ),
                           )
                         : IconButton(
                             icon: Icon(Icons.image_outlined,
-                                color:
-                                    context.watch<ThemeProvider>().primaryColor),
+                                color: primaryColor),
                             onPressed: _pickImage,
                             tooltip: AppLocalizations.of(context)
                                 .translate('community.create_post.add_image'),
                           ),
                     IconButton(
-                      icon: Icon(Icons.tag,
-                          color: context.watch<ThemeProvider>().primaryColor),
+                      icon: Icon(Icons.tag, color: primaryColor),
                       onPressed: _openTagPicker,
                       tooltip: AppLocalizations.of(context)
                           .translate('community.create_post.add_tags'),
@@ -387,13 +370,12 @@ class _CreatePostCardState extends State<CreatePostCard> {
                 ElevatedButton(
                   onPressed: _isPosting ? null : _handlePost,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        context.watch<ThemeProvider>().primaryColor,
+                    backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20)),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                        borderRadius: BorderRadius.circular(AppRadius.full)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xl, vertical: AppSpacing.xs),
                     elevation: 0,
                   ),
                   child: _isPosting

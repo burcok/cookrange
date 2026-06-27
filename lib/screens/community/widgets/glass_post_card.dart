@@ -9,11 +9,14 @@ import 'draggable_reaction_button.dart';
 import '../../../../core/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/widgets/unified_action_sheet.dart';
+import '../../../core/theme/app_palette.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/app_dimensions.dart';
 
 class GlassPostCard extends StatefulWidget {
   final CommunityPost post;
   final VoidCallback onTap;
-  final VoidCallback onLike; // Legacy, can use onReaction('❤️') instead
+  final VoidCallback onLike;
   final VoidCallback onComment;
   final VoidCallback onShare;
   final Function(String emoji) onReaction;
@@ -110,7 +113,8 @@ class _GlassPostCardState extends State<GlassPostCard> {
 
   void _showReportSheet(BuildContext context, CommunityService service) {
     final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
 
     final reasons = [
       ('spam', l10n.translate('community.report.reason_spam')),
@@ -131,11 +135,12 @@ class _GlassPostCardState extends State<GlassPostCard> {
         return StatefulBuilder(builder: (context, setModal) {
           return Container(
             padding: EdgeInsets.fromLTRB(
-                24, 12, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+                AppSpacing.xl, AppSpacing.sm, AppSpacing.xl,
+                MediaQuery.of(context).viewInsets.bottom + AppSpacing.xxl),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1C2333) : Colors.white,
+              color: palette.surface,
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
+                  const BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -143,45 +148,40 @@ class _GlassPostCardState extends State<GlassPostCard> {
               children: [
                 Center(
                   child: Container(
-                    width: 36,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
+                    width: AppSize.sheetHandleW,
+                    height: AppSize.sheetHandleH,
+                    margin: const EdgeInsets.only(bottom: AppSpacing.lg),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white24 : Colors.black12,
-                      borderRadius: BorderRadius.circular(2),
+                      color: palette.border,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
                   ),
                 ),
                 Text(
                   l10n.translate('community.report.dialog_title'),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  ),
+                  style: textStyles.headlineS,
                 ),
                 const SizedBox(height: 6),
                 Text(
                   l10n.translate('community.report.dialog_subtitle'),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.white54 : Colors.black54,
+                  style: textStyles.bodyM,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                RadioGroup<String>(
+                  groupValue: selectedReason,
+                  onChanged: (v) => setModal(() => selectedReason = v),
+                  child: Column(
+                    children: reasons
+                        .map((r) => RadioListTile<String>(
+                              value: r.$1,
+                              title: Text(r.$2, style: textStyles.titleM),
+                              activeColor: palette.error,
+                              contentPadding: EdgeInsets.zero,
+                            ))
+                        .toList(),
                   ),
                 ),
-                const SizedBox(height: 16),
-                ...reasons.map((r) => RadioListTile<String>(
-                      value: r.$1,
-                      groupValue: selectedReason,
-                      onChanged: (v) => setModal(() => selectedReason = v),
-                      title: Text(r.$2,
-                          style: TextStyle(
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF0F172A))),
-                      activeColor: Colors.red,
-                      contentPadding: EdgeInsets.zero,
-                    )),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -199,11 +199,11 @@ class _GlassPostCardState extends State<GlassPostCard> {
                             }
                           },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
+                      backgroundColor: palette.error,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                          borderRadius: BorderRadius.circular(AppRadius.md)),
                     ),
                     child: submitting
                         ? const SizedBox(
@@ -254,26 +254,27 @@ class _GlassPostCardState extends State<GlassPostCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
 
-    // Filter out '❤️' from the chips display
     final displayReactions =
         _post.reactions.entries.where((e) => e.key != '❤️').toList();
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
+      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
       child: GestureDetector(
         onTap: widget.onTap,
         child: GlassContainer(
-          borderRadius: BorderRadius.circular(24),
-          color: isDark ? const Color(0xFF1E293B) : Colors.white,
-          opacity: isDark ? 0.6 : 0.6,
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          color: palette.surface,
+          opacity: 1.0,
           enableBlur: false, // OPTIMIZATION: Disable blur for list performance
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1F2687).withValues(alpha: 0.05),
-              offset: const Offset(0, 8),
-              blurRadius: 32,
+              color: palette.shadow.withValues(alpha: AppElevation.opacityLight),
+              offset: AppElevation.offsetLg,
+              blurRadius: AppElevation.blurLg,
             ),
           ],
           child: Column(
@@ -296,41 +297,29 @@ class _GlassPostCardState extends State<GlassPostCard> {
                     child: Row(
                       children: [
                         Container(
-                          width: 44,
-                          height: 44,
+                          width: AppSize.avatarMd,
+                          height: AppSize.avatarMd,
                           decoration:
                               const BoxDecoration(shape: BoxShape.circle),
                           child: ClipOval(
                             child: AppImage(
                               imageUrl: _post.author.avatarUrl,
-                              width: 44,
-                              height: 44,
+                              width: AppSize.avatarMd,
+                              height: AppSize.avatarMd,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.sm),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               _post.author.name,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF0F172A),
-                              ),
+                              style: textStyles.titleM,
                             ),
                             Text(
                               _formatTime(context, _post.timestamp),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
-                              ),
+                              style: textStyles.labelS,
                             ),
                           ],
                         ),
@@ -338,66 +327,46 @@ class _GlassPostCardState extends State<GlassPostCard> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.more_vert,
-                        color: isDark
-                            ? const Color(0xFF94A3B8)
-                            : const Color(0xFF94A3B8)),
+                    icon: Icon(Icons.more_vert, color: palette.textTertiary),
                     onPressed: () => _showPostOptions(context),
                   )
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
 
               // Content Text
               RichText(
                 text: TextSpan(
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.6,
-                    color: isDark
-                        ? const Color(0xFFCBD5E1)
-                        : const Color(0xFF334155),
-                    fontFamily: 'Poppins',
-                  ),
-                  children: _parseContentFull(_post.content, _post.tags),
+                  style: textStyles.bodyL,
+                  children: _parseContentFull(_post.content, _post.tags, primaryColor),
                 ),
               ),
 
               if (_post.tags.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.only(top: AppSpacing.sm),
                   child: Wrap(
                     spacing: 6,
                     runSpacing: 6,
                     children: _post.tags
                         .map((tag) => Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
+                                  horizontal: AppSpacing.xs + 2, vertical: AppSpacing.xxs),
                               decoration: BoxDecoration(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.1)
-                                    : Colors.black.withValues(alpha: 0.05),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color:
-                                      isDark ? Colors.white10 : Colors.black12,
-                                ),
+                                color: palette.surfaceVariant,
+                                borderRadius: BorderRadius.circular(AppRadius.full),
+                                border: Border.all(color: palette.border),
                               ),
                               child: Text(
                                 tag,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  color:
-                                      isDark ? Colors.white70 : Colors.black87,
-                                ),
+                                style: textStyles.labelS,
                               ),
                             ))
                         .toList(),
                   ),
                 ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
 
               // Image content
               if (_post.imageUrls.isNotEmpty)
@@ -405,7 +374,7 @@ class _GlassPostCardState extends State<GlassPostCard> {
                   alignment: Alignment.topRight,
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                       child: AppImage(
                         imageUrl: _post.imageUrls.first,
                         height: 256,
@@ -414,12 +383,12 @@ class _GlassPostCardState extends State<GlassPostCard> {
                     ),
                     if (_post.imageUrls.length > 1)
                       Container(
-                        margin: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.all(AppSpacing.sm),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                            horizontal: AppSpacing.xs + 2, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.black54,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(AppRadius.full),
                         ),
                         child: Text(
                           "+${_post.imageUrls.length - 1}",
@@ -432,14 +401,14 @@ class _GlassPostCardState extends State<GlassPostCard> {
                   ],
                 ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
 
               // Reactions Component (Always Visible)
               Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                 child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     ...displayReactions.map((entry) {
@@ -449,37 +418,30 @@ class _GlassPostCardState extends State<GlassPostCard> {
                         onTap: () => _handleReaction(entry.key),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                              horizontal: AppSpacing.xs, vertical: AppSpacing.xxs),
                           decoration: BoxDecoration(
                             color: isUserReaction
-                                ? context
-                                    .watch<ThemeProvider>()
-                                    .primaryColor
-                                    .withValues(alpha: 0.2)
-                                : (isDark
-                                    ? Colors.white10
-                                    : Colors.grey.shade100),
-                            borderRadius: BorderRadius.circular(20),
+                                ? primaryColor.withValues(alpha: 0.2)
+                                : palette.surfaceVariant,
+                            borderRadius: BorderRadius.circular(AppRadius.full),
                             border: Border.all(
                                 color: isUserReaction
-                                    ? context
-                                        .watch<ThemeProvider>()
-                                        .primaryColor
+                                    ? primaryColor
                                     : Colors.transparent),
                           ),
                           child: Text(
                             "${entry.key} ${entry.value}",
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: isDark ? Colors.white : Colors.black87,
-                                fontWeight: isUserReaction
-                                    ? FontWeight.bold
-                                    : FontWeight.normal),
+                            style: textStyles.bodyM.copyWith(
+                              color: palette.textPrimary,
+                              fontWeight: isUserReaction
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
                           ),
                         ),
                       );
                     }),
-                    _buildAddReactionButton(context, isDark, isSmall: true),
+                    _buildAddReactionButton(context, isSmall: true),
                   ],
                 ),
               ),
@@ -493,16 +455,14 @@ class _GlassPostCardState extends State<GlassPostCard> {
                     child: Icon(
                       _post.isLiked ? Icons.favorite : Icons.favorite_border,
                       color: _post.isLiked
-                          ? Colors.red
-                          : (isDark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF64748B)),
-                      size: 24,
+                          ? palette.error
+                          : palette.textSecondary,
+                      size: AppSize.iconLg,
                     ),
                   ),
                   // Face Pile & Text
                   if (_post.likesCount > 0) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.xs),
                     if (_post.likedByUsers.isNotEmpty)
                       SizedBox(
                         width: 24.0 +
@@ -521,9 +481,7 @@ class _GlassPostCardState extends State<GlassPostCard> {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: isDark
-                                        ? const Color(0xFF1E293B)
-                                        : Colors.white,
+                                    color: palette.surface,
                                     width: 2,
                                   ),
                                 ),
@@ -539,53 +497,36 @@ class _GlassPostCardState extends State<GlassPostCard> {
                           }).toList(),
                         ),
                       ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.xs),
                     Flexible(
                       child: Text(
                         _getLikeText(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color:
-                              isDark ? Colors.white70 : const Color(0xFF64748B),
-                        ),
+                        style: textStyles.labelM,
                       ),
                     ),
                   ] else ...[
                     const SizedBox(width: 6),
                     Text(
                       "${_post.likesCount}",
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      ),
+                      style: textStyles.titleM,
                     ),
                   ],
 
-                  const SizedBox(width: 24),
+                  const SizedBox(width: AppSpacing.xl),
                   // Comments
                   GestureDetector(
                     onTap: widget.onComment,
                     child: Row(
                       children: [
                         Icon(Icons.chat_bubble_outline,
-                            color: isDark
-                                ? const Color(0xFF94A3B8)
-                                : const Color(0xFF64748B),
-                            size: 22),
+                            color: palette.textSecondary,
+                            size: AppSize.iconMd),
                         const SizedBox(width: 6),
                         Text(
                           "${_post.commentsCount}",
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: isDark
-                                ? const Color(0xFF94A3B8)
-                                : const Color(0xFF64748B),
-                          ),
+                          style: textStyles.labelM,
                         ),
                       ],
                     ),
@@ -612,7 +553,8 @@ class _GlassPostCardState extends State<GlassPostCard> {
     return "${diff.inDays} ${diff.inDays == 1 ? appLoc.translate('community.time.day') : appLoc.translate('community.time.days')}";
   }
 
-  List<InlineSpan> _parseContentFull(String content, List<String> tags) {
+  List<InlineSpan> _parseContentFull(
+      String content, List<String> tags, Color primaryColor) {
     List<InlineSpan> spans = [];
     final words = content.split(' ');
     for (var word in words) {
@@ -620,19 +562,18 @@ class _GlassPostCardState extends State<GlassPostCard> {
         spans.add(TextSpan(
           text: "$word ",
           style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: context.watch<ThemeProvider>().primaryColor),
+              fontWeight: FontWeight.w600, color: primaryColor),
         ));
       } else {
         spans.add(TextSpan(text: "$word "));
       }
     }
-
     return spans;
   }
 
   void _showDeleteDialog(BuildContext context, String postId) {
     final appLoc = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -650,7 +591,7 @@ class _GlassPostCardState extends State<GlassPostCard> {
             },
             child: Text(
               appLoc.translate('community.delete_confirm.action'),
-              style: const TextStyle(color: Colors.red),
+              style: TextStyle(color: palette.error),
             ),
           ),
         ],
@@ -658,8 +599,8 @@ class _GlassPostCardState extends State<GlassPostCard> {
     );
   }
 
-  Widget _buildAddReactionButton(BuildContext context, bool isDark,
-      {bool isSmall = false}) {
+  Widget _buildAddReactionButton(BuildContext context, {bool isSmall = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return DraggableReactionButton(
       isDark: isDark,
       isSmall: isSmall,
@@ -674,25 +615,11 @@ class _GlassPostCardState extends State<GlassPostCard> {
     final appLoc = AppLocalizations.of(context);
     final likers = _post.likedByUsers;
 
-    // Check isLiked
-    // Note: In GlassPostCard, _post is a CommunityPost which has isLiked
     final isLikedByMe = _post.isLiked;
-    // We can't easily get currentUserId here without a provider look up or service call,
-    // but we can check if likers contains 'Me'? No, assume isLiked is source.
-    // However, to filter 'Me' out of names, we need my ID.
-    // GlassPostCard is usually stateless-ish but has state.
-    // Let's assume we can get ID from simple check or pass it.
-    // Actually we can check 'isLiked'. If true, we *should* see if one of the avatars matches us?
-    // But simplest is to match logic:
 
     if (isLikedByMe) {
       if (likes == 1) return appLoc.translate('community.likes.you');
 
-      // We need to remove 'Self' from names list if present.
-      // Since we don't have 'currentUserId' easily handy as a variable (it's in service),
-      // let's grab it or try to find a user with "You"? No.
-      // Let's look at `CommunityService`.
-      // We can use `CommunityService().currentUserId`.
       final currentUserId = CommunityService().currentUserId;
 
       final otherLikers = likers.where((u) => u.id != currentUserId).toList();

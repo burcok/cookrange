@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +9,10 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/services/food_analysis_service.dart';
 import '../../core/services/food_log_service.dart';
+import '../../core/widgets/ds/ds.dart';
 
+/// AI nutrition analysis — describe a food, get an estimate, log it.
+/// Reference implementation of the Cookrange Design System (Rule R7).
 class FoodScanScreen extends StatefulWidget {
   const FoodScanScreen({super.key});
 
@@ -29,29 +33,17 @@ class _FoodScanScreenState extends State<FoodScanScreen>
   String _selectedMealType = 'snack';
   String? _errorMessage;
 
-  late AnimationController _resultAnimController;
-  late Animation<double> _resultFade;
-  late Animation<Offset> _resultSlide;
-
-  @override
-  void initState() {
-    super.initState();
-    _resultAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _resultFade = CurvedAnimation(
-      parent: _resultAnimController,
-      curve: Curves.easeOut,
-    );
-    _resultSlide = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _resultAnimController,
-      curve: Curves.easeOut,
-    ));
-  }
+  late final AnimationController _resultAnimController = AnimationController(
+    vsync: this,
+    duration: AppMotion.slow,
+  );
+  late final Animation<double> _resultFade =
+      CurvedAnimation(parent: _resultAnimController, curve: AppMotion.decelerate);
+  late final Animation<Offset> _resultSlide = Tween<Offset>(
+    begin: const Offset(0, 0.12),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(
+      parent: _resultAnimController, curve: AppMotion.standard));
 
   @override
   void dispose() {
@@ -65,6 +57,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     _focusNode.unfocus();
+    unawaited(HapticFeedback.lightImpact());
 
     setState(() {
       _isAnalyzing = true;
@@ -80,9 +73,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
         _estimate = result;
         _isAnalyzing = false;
       });
-      if (result != null) {
-        unawaited(_resultAnimController.forward());
-      }
+      if (result != null) unawaited(_resultAnimController.forward());
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -105,6 +96,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
         estimate: estimate,
       );
       if (!mounted) return;
+      unawaited(HapticFeedback.mediumImpact());
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
@@ -118,77 +110,60 @@ class _FoodScanScreenState extends State<FoodScanScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primary = context.watch<ThemeProvider>().primaryColor;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF0D1117) : const Color(0xFFFCFBF9),
+      backgroundColor: palette.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          l10n.translate('food_scan.title'),
-          style: TextStyle(
-            fontSize: 20.sp,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : const Color(0xFF2E3A59),
-          ),
-        ),
+        scrolledUnderElevation: 0,
+        title: Text(l10n.translate('food_scan.title'), style: t.headlineS),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new,
-              color: isDark ? Colors.white70 : const Color(0xFF2E3A59)),
+          icon: Icon(Icons.arrow_back_ios_new, color: palette.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+        padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.screenH.w, vertical: AppSpacing.xs.h),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              l10n.translate('food_scan.subtitle'),
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: isDark ? Colors.white54 : Colors.grey[600],
+            Text(l10n.translate('food_scan.subtitle'), style: t.bodyM),
+            SizedBox(height: AppSpacing.lg.h),
+            _buildInputCard(l10n, palette, t),
+            SizedBox(height: AppSpacing.md.h),
+            if (!_analysisService.isAvailable)
+              _buildNotConfiguredBanner(l10n, palette, t),
+            if (_isAnalyzing) _buildAnalyzing(l10n, palette, t),
+            if (_errorMessage != null && !_isAnalyzing)
+              AppErrorState(
+                title: l10n.translate('common.error'),
+                message: _errorMessage,
+                retryLabel: l10n.translate('food_scan.analyze_btn'),
+                onRetry: _analyze,
+                compact: true,
               ),
-            ),
-            SizedBox(height: 20.h),
-            _buildInputCard(context, isDark, primary, l10n),
-            SizedBox(height: 16.h),
-            if (!_analysisService.isAvailable) _buildNotConfiguredBanner(isDark, l10n),
-            if (_errorMessage != null) _buildErrorBanner(isDark),
-            if (_isAnalyzing) _buildAnalyzingIndicator(primary, l10n),
-            if (_estimate != null) ...[
+            if (_estimate != null)
               SlideTransition(
                 position: _resultSlide,
                 child: FadeTransition(
                   opacity: _resultFade,
-                  child: _buildResultCard(context, isDark, primary, l10n),
+                  child: _buildResultCard(l10n, palette, t),
                 ),
               ),
-            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInputCard(BuildContext context, bool isDark, Color primary,
-      AppLocalizations l10n) {
-    return Container(
-      padding: EdgeInsets.all(16.r),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A2332) : Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-            blurRadius: 12.r,
-            offset: Offset(0, 4.h),
-          ),
-        ],
-      ),
+  Widget _buildInputCard(
+      AppLocalizations l10n, AppPalette palette, AppText t) {
+    final primary = context.watch<ThemeProvider>().primaryColor;
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -197,89 +172,60 @@ class _FoodScanScreenState extends State<FoodScanScreen>
             focusNode: _focusNode,
             maxLines: 3,
             minLines: 2,
-            style: TextStyle(
-              fontSize: 15.sp,
-              color: isDark ? Colors.white : const Color(0xFF2E3A59),
-            ),
+            style: t.bodyL.copyWith(color: palette.textPrimary),
             decoration: InputDecoration(
               hintText: l10n.translate('food_scan.input_hint'),
-              hintStyle: TextStyle(
-                color: isDark ? Colors.white38 : Colors.grey[400],
-                fontSize: 14.sp,
-              ),
+              hintStyle: t.bodyM.copyWith(color: palette.textTertiary),
+              filled: true,
+              fillColor: palette.surfaceVariant,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(
-                  color: isDark ? Colors.white12 : Colors.grey.shade200,
-                ),
+                borderRadius: BorderRadius.circular(AppRadius.input.r),
+                borderSide: BorderSide(color: palette.border),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(
-                  color: isDark ? Colors.white12 : Colors.grey.shade200,
-                ),
+                borderRadius: BorderRadius.circular(AppRadius.input.r),
+                borderSide: BorderSide(color: palette.border),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(AppRadius.input.r),
                 borderSide: BorderSide(color: primary, width: 2),
               ),
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+              contentPadding: EdgeInsets.all(AppSpacing.sm.r),
             ),
           ),
-          SizedBox(height: 12.h),
-          ElevatedButton.icon(
-            onPressed:
-                (_isAnalyzing || !_analysisService.isAvailable) ? null : _analyze,
-            icon: _isAnalyzing
-                ? SizedBox(
-                    width: 16.w,
-                    height: 16.h,
-                    child: const CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.auto_awesome, size: 18),
-            label: Text(
-              _isAnalyzing
-                  ? l10n.translate('food_scan.analyzing')
-                  : l10n.translate('food_scan.analyze_btn'),
-              style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primary,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: primary.withValues(alpha: 0.4),
-              padding: EdgeInsets.symmetric(vertical: 14.h),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-            ),
+          SizedBox(height: AppSpacing.sm.h),
+          AppButton(
+            label: _isAnalyzing
+                ? l10n.translate('food_scan.analyzing')
+                : l10n.translate('food_scan.analyze_btn'),
+            icon: Icons.auto_awesome,
+            loading: _isAnalyzing,
+            onPressed: _analysisService.isAvailable ? _analyze : null,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNotConfiguredBanner(bool isDark, AppLocalizations l10n) {
+  Widget _buildNotConfiguredBanner(
+      AppLocalizations l10n, AppPalette palette, AppText t) {
     return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
-      padding: EdgeInsets.all(14.r),
+      margin: EdgeInsets.only(bottom: AppSpacing.sm.h),
+      padding: EdgeInsets.all(AppSpacing.sm.r),
       decoration: BoxDecoration(
-        color: Colors.amber.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+        color: palette.warning.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+        border: Border.all(color: palette.warning.withValues(alpha: 0.35)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, color: Colors.amber, size: 20),
-          SizedBox(width: 10.w),
+          Icon(Icons.info_outline_rounded,
+              color: palette.warning, size: AppSize.iconMd.r),
+          SizedBox(width: AppSpacing.xs.w),
           Expanded(
             child: Text(
               l10n.translate('food_scan.not_configured'),
-              style: TextStyle(
-                fontSize: 13.sp,
-                color: isDark ? Colors.amber.shade200 : Colors.amber.shade900,
-              ),
+              style: t.bodyM.copyWith(color: palette.warning),
             ),
           ),
         ],
@@ -287,212 +233,24 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     );
   }
 
-  Widget _buildErrorBanner(bool isDark) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 12.h),
-      padding: EdgeInsets.all(14.r),
-      decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 20),
-          SizedBox(width: 10.w),
-          Expanded(
-            child: Text(
-              _errorMessage!,
-              style: TextStyle(
-                fontSize: 13.sp,
-                color: isDark ? Colors.red.shade300 : Colors.red.shade700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAnalyzingIndicator(Color primary, AppLocalizations l10n) {
+  Widget _buildAnalyzing(AppLocalizations l10n, AppPalette palette, AppText t) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 20.h),
-      child: Column(
-        children: [
-          CircularProgressIndicator(color: primary),
-          SizedBox(height: 12.h),
-          Text(
-            l10n.translate('food_scan.analyzing'),
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: primary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResultCard(BuildContext context, bool isDark, Color primary,
-      AppLocalizations l10n) {
-    final est = _estimate!;
-    return Container(
-      padding: EdgeInsets.all(20.r),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A2332) : Colors.white,
-        borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-            blurRadius: 16.r,
-            offset: Offset(0, 6.h),
-          ),
-        ],
-        border: Border.all(
-          color: primary.withValues(alpha: 0.3),
-          width: 1.5,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8.r),
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10.r),
-                ),
-                child: Icon(Icons.restaurant_menu, color: primary, size: 20),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      est.foodName,
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : const Color(0xFF2E3A59),
-                      ),
-                    ),
-                    if (est.servingSize.isNotEmpty)
-                      Text(
-                        est.servingSize,
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          color: isDark ? Colors.white54 : Colors.grey[500],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                decoration: BoxDecoration(
-                  color: primary,
-                  borderRadius: BorderRadius.circular(20.r),
-                ),
-                child: Text(
-                  '${est.calories.toInt()} kcal',
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 20.h),
-          Row(
-            children: [
-              _macroChip(l10n.translate('food_scan.protein'),
-                  est.protein, Colors.blue, isDark),
-              SizedBox(width: 8.w),
-              _macroChip(l10n.translate('food_scan.carbs'),
-                  est.carbs, Colors.orange, isDark),
-              SizedBox(width: 8.w),
-              _macroChip(l10n.translate('food_scan.fat'),
-                  est.fat, Colors.purple, isDark),
-            ],
-          ),
-          SizedBox(height: 20.h),
-          Text(
-            l10n.translate('food_scan.meal_type_label'),
-            style: TextStyle(
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white70 : Colors.grey[700],
-            ),
-          ),
-          SizedBox(height: 10.h),
-          _buildMealTypeSelector(isDark, primary, l10n),
-          SizedBox(height: 16.h),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isLogging ? null : _logEstimate,
-              icon: _isLogging
-                  ? SizedBox(
-                      width: 16.w,
-                      height: 16.h,
-                      child: const CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.add_circle_outline, size: 18),
-              label: Text(
-                l10n.translate('food_scan.log_btn'),
-                style:
-                    TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primary,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: primary.withValues(alpha: 0.4),
-                padding: EdgeInsets.symmetric(vertical: 14.h),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14.r),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _macroChip(
-      String label, double value, Color color, bool isDark) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 10.h),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: isDark ? 0.2 : 0.08),
-          borderRadius: BorderRadius.circular(12.r),
-        ),
+      padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+      child: AppShimmer(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              '${value.toInt()}g',
-              style: TextStyle(
-                fontSize: 15.sp,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            SizedBox(height: 2.h),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11.sp,
-                color: isDark ? Colors.white54 : Colors.grey[600],
-              ),
+            const AppSkeletonBox(
+                width: double.infinity, height: 120, radius: AppRadius.card),
+            SizedBox(height: AppSpacing.sm.h),
+            Row(
+              children: [
+                const Expanded(child: AppSkeletonBox(height: 56)),
+                SizedBox(width: AppSpacing.xs.w),
+                const Expanded(child: AppSkeletonBox(height: 56)),
+                SizedBox(width: AppSpacing.xs.w),
+                const Expanded(child: AppSkeletonBox(height: 56)),
+              ],
             ),
           ],
         ),
@@ -500,54 +258,144 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     );
   }
 
+  Widget _buildResultCard(
+      AppLocalizations l10n, AppPalette palette, AppText t) {
+    final est = _estimate!;
+    final primary = context.watch<ThemeProvider>().primaryColor;
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(AppSpacing.xs.r),
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                ),
+                child: Icon(Icons.restaurant_menu_rounded,
+                    color: primary, size: AppSize.iconMd.r),
+              ),
+              SizedBox(width: AppSpacing.sm.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(est.foodName, style: t.titleL),
+                    if (est.servingSize.isNotEmpty)
+                      Text(est.servingSize, style: t.labelS),
+                  ],
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm.w, vertical: AppSpacing.xxs.h),
+                decoration: BoxDecoration(
+                  color: primary,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+                child: Text(
+                  '${est.calories.toInt()} kcal',
+                  style: t.labelM.copyWith(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: AppSpacing.lg.h),
+          Row(
+            children: [
+              _macroChip(l10n.translate('food_scan.protein'), est.protein,
+                  palette.protein, t),
+              SizedBox(width: AppSpacing.xs.w),
+              _macroChip(l10n.translate('food_scan.carbs'), est.carbs,
+                  palette.carbs, t),
+              SizedBox(width: AppSpacing.xs.w),
+              _macroChip(l10n.translate('food_scan.fat'), est.fat, palette.fat, t),
+            ],
+          ),
+          SizedBox(height: AppSpacing.lg.h),
+          Text(l10n.translate('food_scan.meal_type_label'), style: t.titleM),
+          SizedBox(height: AppSpacing.sm.h),
+          _buildMealTypeSelector(l10n, palette, t, primary),
+          SizedBox(height: AppSpacing.md.h),
+          AppButton(
+            label: l10n.translate('food_scan.log_btn'),
+            icon: Icons.add_circle_outline_rounded,
+            loading: _isLogging,
+            onPressed: _logEstimate,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _macroChip(String label, double value, Color color, AppText t) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
+        ),
+        child: Column(
+          children: [
+            Text('${value.toInt()}g',
+                style: t.titleL.copyWith(color: color)),
+            SizedBox(height: AppSpacing.xxxs.h),
+            Text(label, style: t.labelS),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMealTypeSelector(
-      bool isDark, Color primary, AppLocalizations l10n) {
-    final types = [
-      ('breakfast', l10n.translate('food_scan.meal.breakfast'), Icons.wb_sunny_outlined),
-      ('lunch', l10n.translate('food_scan.meal.lunch'), Icons.lunch_dining_outlined),
-      ('dinner', l10n.translate('food_scan.meal.dinner'), Icons.dinner_dining_outlined),
+      AppLocalizations l10n, AppPalette palette, AppText t, Color primary) {
+    final types = <(String, String, IconData)>[
+      ('breakfast', l10n.translate('food_scan.meal.breakfast'),
+          Icons.wb_sunny_outlined),
+      ('lunch', l10n.translate('food_scan.meal.lunch'),
+          Icons.lunch_dining_outlined),
+      ('dinner', l10n.translate('food_scan.meal.dinner'),
+          Icons.dinner_dining_outlined),
       ('snack', l10n.translate('food_scan.meal.snack'), Icons.apple_outlined),
     ];
 
     return Row(
-      children: types.map((t) {
-        final isSelected = _selectedMealType == t.$1;
+      children: types.map((type) {
+        final isSelected = _selectedMealType == type.$1;
         return Expanded(
           child: GestureDetector(
-            onTap: () => setState(() => _selectedMealType = t.$1),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _selectedMealType = type.$1);
+            },
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: EdgeInsets.only(right: t.$1 != 'snack' ? 6.w : 0),
-              padding: EdgeInsets.symmetric(vertical: 8.h),
+              duration: AppMotion.fast,
+              curve: AppMotion.standard,
+              margin: EdgeInsets.only(right: type.$1 != 'snack' ? AppSpacing.xs.w : 0),
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? primary
-                    : (isDark ? Colors.white10 : Colors.grey.shade100),
-                borderRadius: BorderRadius.circular(10.r),
-                border: Border.all(
-                  color: isSelected ? primary : Colors.transparent,
-                ),
+                color: isSelected ? primary : palette.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppRadius.sm.r),
               ),
               child: Column(
                 children: [
                   Icon(
-                    t.$3,
-                    size: 18,
-                    color: isSelected
-                        ? Colors.white
-                        : (isDark ? Colors.white54 : Colors.grey[600]),
+                    type.$3,
+                    size: AppSize.iconSm.r,
+                    color: isSelected ? Colors.white : palette.textSecondary,
                   ),
-                  SizedBox(height: 3.h),
+                  SizedBox(height: AppSpacing.xxxs.h),
                   Text(
-                    t.$2,
-                    style: TextStyle(
-                      fontSize: 10.sp,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      color: isSelected
-                          ? Colors.white
-                          : (isDark ? Colors.white54 : Colors.grey[600]),
+                    type.$2,
+                    style: t.labelS.copyWith(
+                      color: isSelected ? Colors.white : palette.textSecondary,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,

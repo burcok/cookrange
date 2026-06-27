@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/onboarding_options.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/providers/theme_provider.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/utils/app_routes.dart';
+import '../../core/widgets/ds/ds.dart';
 
 class PriorityOnboardingScreen extends StatefulWidget {
   const PriorityOnboardingScreen({super.key});
@@ -80,7 +83,7 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString()),
-            backgroundColor: Colors.red,
+            backgroundColor: AppPalette.of(context).error,
           ),
         );
       }
@@ -92,20 +95,18 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primary = theme.colorScheme.primary;
-    final bg = isDark ? const Color(0xFF0D1117) : const Color(0xFFFCFBF9);
+    final palette = AppPalette.of(context);
+    final primary = context.watch<ThemeProvider>().primaryColor;
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: palette.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(l10n, isDark, primary),
+              _buildHeader(l10n, palette, primary),
               const SizedBox(height: 32),
               Expanded(
                 child: FadeTransition(
@@ -113,12 +114,12 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
                   child: SlideTransition(
                     position: _slideAnim,
                     child: _step == 0
-                        ? _buildGoalStep(l10n, isDark, primary)
-                        : _buildActivityStep(l10n, isDark, primary),
+                        ? _buildGoalStep(l10n, palette, primary)
+                        : _buildActivityStep(l10n, palette, primary),
                   ),
                 ),
               ),
-              _buildFooter(l10n, isDark, primary),
+              _buildFooter(l10n, palette, primary),
             ],
           ),
         ),
@@ -126,7 +127,8 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
     );
   }
 
-  Widget _buildHeader(AppLocalizations l10n, bool isDark, Color primary) {
+  Widget _buildHeader(AppLocalizations l10n, AppPalette palette, Color primary) {
+    final t = AppText.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -143,11 +145,7 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
             const SizedBox(width: 12),
             Text(
               l10n.translate('onboarding.priority.badge'),
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: primary,
-              ),
+              style: t.labelL.copyWith(color: primary),
             ),
           ],
         ),
@@ -156,22 +154,14 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
           _step == 0
               ? l10n.translate('onboarding.priority.goal_title')
               : l10n.translate('onboarding.priority.activity_title'),
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black87,
-            height: 1.2,
-          ),
+          style: t.headlineL.copyWith(color: palette.textPrimary),
         ),
         const SizedBox(height: 8),
         Text(
           _step == 0
               ? l10n.translate('onboarding.priority.goal_subtitle')
               : l10n.translate('onboarding.priority.activity_subtitle'),
-          style: TextStyle(
-            fontSize: 15,
-            color: isDark ? Colors.grey[400] : Colors.grey[600],
-          ),
+          style: t.bodyL.copyWith(color: palette.textSecondary),
         ),
         const SizedBox(height: 24),
         // Step indicator
@@ -186,9 +176,7 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
                   duration: const Duration(milliseconds: 300),
                   height: 4,
                   decoration: BoxDecoration(
-                    color: active || done
-                        ? primary
-                        : (isDark ? Colors.grey[800] : Colors.grey[200]),
+                    color: active || done ? primary : palette.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -200,7 +188,7 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
     );
   }
 
-  Widget _buildGoalStep(AppLocalizations l10n, bool isDark, Color primary) {
+  Widget _buildGoalStep(AppLocalizations l10n, AppPalette palette, Color primary) {
     return GridView.count(
       crossAxisCount: 2,
       mainAxisSpacing: 12,
@@ -213,7 +201,7 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
           icon: option['icon'] as IconData,
           label: l10n.translate(option['label'] as String),
           isSelected: isSelected,
-          isDark: isDark,
+          palette: palette,
           primary: primary,
           onTap: () => setState(() => _selectedGoal = key),
         );
@@ -221,7 +209,7 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
     );
   }
 
-  Widget _buildActivityStep(AppLocalizations l10n, bool isDark, Color primary) {
+  Widget _buildActivityStep(AppLocalizations l10n, AppPalette palette, Color primary) {
     return ListView(
       children: OnboardingOptions.activityLevels.entries.map((entry) {
         final isSelected = _selectedActivity == entry.key;
@@ -232,7 +220,7 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
             icon: option['icon'] as IconData,
             label: l10n.translate(option['label'] as String),
             isSelected: isSelected,
-            isDark: isDark,
+            palette: palette,
             primary: primary,
             onTap: () => setState(() => _selectedActivity = entry.key),
             height: 72,
@@ -247,12 +235,13 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
     required IconData icon,
     required String label,
     required bool isSelected,
-    required bool isDark,
+    required AppPalette palette,
     required Color primary,
     required VoidCallback onTap,
     double? height,
     bool isRow = false,
   }) {
+    final t = AppText.of(context);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -261,12 +250,10 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
         decoration: BoxDecoration(
           color: isSelected
               ? primary.withValues(alpha: 0.12)
-              : (isDark ? const Color(0xFF1C2330) : Colors.white),
+              : palette.surfaceVariant,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? primary
-                : (isDark ? Colors.white10 : Colors.grey.shade200),
+            color: isSelected ? primary : palette.border,
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
@@ -279,7 +266,7 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                    color: palette.shadow.withValues(alpha: 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -291,19 +278,17 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
                 child: Row(
                   children: [
                     Icon(icon,
-                        color: isSelected ? primary : Colors.grey, size: 26),
+                        color: isSelected ? primary : palette.textSecondary,
+                        size: 26),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
                         label,
-                        style: TextStyle(
-                          fontSize: 15,
+                        style: t.bodyL.copyWith(
                           fontWeight: isSelected
                               ? FontWeight.w700
                               : FontWeight.w500,
-                          color: isSelected
-                              ? primary
-                              : (isDark ? Colors.white70 : Colors.black87),
+                          color: isSelected ? primary : palette.textPrimary,
                         ),
                       ),
                     ),
@@ -316,21 +301,19 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(icon,
-                      color: isSelected ? primary : Colors.grey, size: 32),
+                      color: isSelected ? primary : palette.textSecondary,
+                      size: 32),
                   const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Text(
                       label,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
+                      style: t.labelL.copyWith(
                         fontWeight: isSelected
                             ? FontWeight.w700
                             : FontWeight.w500,
-                        color: isSelected
-                            ? primary
-                            : (isDark ? Colors.white70 : Colors.black87),
+                        color: isSelected ? primary : palette.textPrimary,
                       ),
                     ),
                   ),
@@ -340,9 +323,10 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
     );
   }
 
-  Widget _buildFooter(AppLocalizations l10n, bool isDark, Color primary) {
+  Widget _buildFooter(AppLocalizations l10n, AppPalette palette, Color primary) {
     final canProceed =
         _step == 0 ? _selectedGoal != null : _selectedActivity != null;
+    final t = AppText.of(context);
 
     return Column(
       children: [
@@ -375,9 +359,9 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
                     _step == 0
                         ? l10n.translate('common.next')
                         : l10n.translate('onboarding.priority.get_started'),
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: t.titleM.copyWith(
                       fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
                   ),
           ),
@@ -391,9 +375,7 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
           ),
           child: Text(
             l10n.translate('onboarding.priority.skip'),
-            style: TextStyle(
-              color: isDark ? Colors.grey[500] : Colors.grey[600],
-            ),
+            style: t.bodyM.copyWith(color: palette.textSecondary),
           ),
         ),
       ],

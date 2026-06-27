@@ -6,6 +6,8 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/ai/ai_chat_service.dart';
+import '../../core/theme/app_palette.dart';
+import '../../core/theme/app_typography.dart';
 
 class AIChatScreen extends StatefulWidget {
   /// Optional message auto-sent when the screen opens (from voice transcript).
@@ -81,7 +83,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _messages.add(AIChatMessage(
+        _messages.add(const AIChatMessage(
           role: 'assistant',
           content: 'Sorry, something went wrong. Please try again.',
         ));
@@ -94,19 +96,19 @@ class _AIChatScreenState extends State<AIChatScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
+    final appText = AppText.of(context);
     final primary = context.watch<ThemeProvider>().primaryColor;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF0D1117) : const Color(0xFFF5F5F5),
+      backgroundColor: palette.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new,
               size: 20.sp,
-              color: isDark ? Colors.white : const Color(0xFF2E3A59)),
+              color: palette.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -123,19 +125,17 @@ class _AIChatScreenState extends State<AIChatScreen> {
               children: [
                 Text(
                   l10n.translate('ai_chat.title'),
-                  style: TextStyle(
+                  style: appText.titleM.copyWith(
                     fontSize: 15.sp,
                     fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : const Color(0xFF2E3A59),
+                    color: palette.textPrimary,
                   ),
                 ),
                 Text(
                   l10n.translate('ai_chat.subtitle'),
-                  style: TextStyle(
+                  style: appText.labelS.copyWith(
                     fontSize: 11.sp,
-                    color: isDark
-                        ? Colors.white54
-                        : const Color(0xFF2E3A59).withAlpha(140),
+                    color: palette.textTertiary,
                   ),
                 ),
               ],
@@ -147,18 +147,18 @@ class _AIChatScreenState extends State<AIChatScreen> {
         children: [
           Expanded(
             child: _messages.isEmpty
-                ? _buildEmptyState(l10n, isDark, primary)
-                : _buildMessageList(isDark, primary),
+                ? _buildEmptyState(l10n, palette, appText, primary)
+                : _buildMessageList(palette, primary),
           ),
-          if (_isTyping) _buildTypingIndicator(l10n, isDark, primary),
-          _buildInputBar(l10n, isDark, primary),
+          if (_isTyping) _buildTypingIndicator(l10n, palette, primary),
+          _buildInputBar(l10n, palette, appText, primary),
         ],
       ),
     );
   }
 
   Widget _buildEmptyState(
-      AppLocalizations l10n, bool isDark, Color primary) {
+      AppLocalizations l10n, AppPalette palette, AppText appText, Color primary) {
     final suggestions = l10n.translateArray('ai_chat.suggestions');
     return ListView(
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
@@ -178,21 +178,18 @@ class _AIChatScreenState extends State<AIChatScreen> {
         Text(
           l10n.translate('ai_chat.title'),
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: appText.headlineS.copyWith(
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : const Color(0xFF2E3A59),
           ),
         ),
         SizedBox(height: 8.h),
         Text(
           l10n.translate('ai_chat.subtitle'),
           textAlign: TextAlign.center,
-          style: TextStyle(
+          style: appText.bodyM.copyWith(
             fontSize: 13.sp,
-            color: isDark
-                ? Colors.white54
-                : const Color(0xFF2E3A59).withAlpha(140),
+            color: palette.textSecondary,
           ),
         ),
         SizedBox(height: 32.h),
@@ -205,16 +202,14 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 padding:
                     EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF1C2333)
-                      : Colors.white,
+                  color: palette.surface,
                   borderRadius: BorderRadius.circular(14.r),
                   border: Border.all(
                     color: primary.withValues(alpha: 0.25),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                      color: palette.shadow.withValues(alpha: 0.06),
                       blurRadius: 8,
                     ),
                   ],
@@ -227,10 +222,9 @@ class _AIChatScreenState extends State<AIChatScreen> {
                     Expanded(
                       child: Text(
                         s,
-                        style: TextStyle(
+                        style: appText.bodyM.copyWith(
                           fontSize: 13.sp,
-                          color:
-                              isDark ? Colors.white : const Color(0xFF2E3A59),
+                          color: palette.textPrimary,
                         ),
                       ),
                     ),
@@ -244,19 +238,19 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
   }
 
-  Widget _buildMessageList(bool isDark, Color primary) {
+  Widget _buildMessageList(AppPalette palette, Color primary) {
     return ListView.builder(
       controller: _scrollController,
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
       itemCount: _messages.length,
       itemBuilder: (context, i) {
         final msg = _messages[i];
-        return _buildBubble(msg, isDark, primary);
+        return _buildBubble(msg, palette, primary);
       },
     );
   }
 
-  Widget _buildBubble(AIChatMessage msg, bool isDark, Color primary) {
+  Widget _buildBubble(AIChatMessage msg, AppPalette palette, Color primary) {
     final isUser = msg.role == 'user';
     return Padding(
       padding: EdgeInsets.only(bottom: 12.h),
@@ -280,9 +274,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
               padding:
                   EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
               decoration: BoxDecoration(
-                color: isUser
-                    ? primary
-                    : (isDark ? const Color(0xFF1C2333) : Colors.white),
+                color: isUser ? primary : palette.surfaceVariant,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(16.r),
                   topRight: Radius.circular(16.r),
@@ -291,8 +283,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color:
-                        Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+                    color: palette.shadow.withValues(alpha: 0.08),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -301,10 +292,10 @@ class _AIChatScreenState extends State<AIChatScreen> {
               child: Text(
                 msg.content,
                 style: TextStyle(
+                  fontFamily: 'Poppins',
                   fontSize: 14.sp,
-                  color: isUser
-                      ? Colors.white
-                      : (isDark ? Colors.white : const Color(0xFF2E3A59)),
+                  // sent bubble: white for contrast; received: textPrimary
+                  color: isUser ? Colors.white : palette.textPrimary,
                   height: 1.45,
                 ),
               ),
@@ -317,7 +308,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   }
 
   Widget _buildTypingIndicator(
-      AppLocalizations l10n, bool isDark, Color primary) {
+      AppLocalizations l10n, AppPalette palette, Color primary) {
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 4.h),
       child: Row(
@@ -331,7 +322,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1C2333) : Colors.white,
+              color: palette.surfaceVariant,
               borderRadius: BorderRadius.circular(16.r),
             ),
             child: Row(
@@ -351,38 +342,36 @@ class _AIChatScreenState extends State<AIChatScreen> {
   }
 
   Widget _buildInputBar(
-      AppLocalizations l10n, bool isDark, Color primary) {
+      AppLocalizations l10n, AppPalette palette, AppText appText, Color primary) {
     return SafeArea(
       child: Container(
-        color: isDark ? const Color(0xFF0D1117) : const Color(0xFFF5F5F5),
+        color: palette.background,
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
         child: Row(
           children: [
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1C2333) : Colors.white,
+                  color: palette.surface,
                   borderRadius: BorderRadius.circular(24.r),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+                      color: palette.shadow.withValues(alpha: 0.06),
                       blurRadius: 8,
                     ),
                   ],
                 ),
                 child: TextField(
                   controller: _inputController,
-                  style: TextStyle(
+                  style: appText.bodyM.copyWith(
                     fontSize: 14.sp,
-                    color: isDark ? Colors.white : const Color(0xFF2E3A59),
+                    color: palette.textPrimary,
                   ),
                   decoration: InputDecoration(
                     hintText: l10n.translate('ai_chat.input_hint'),
-                    hintStyle: TextStyle(
+                    hintStyle: appText.bodyM.copyWith(
                       fontSize: 13.sp,
-                      color: isDark
-                          ? Colors.white38
-                          : const Color(0xFF2E3A59).withAlpha(100),
+                      color: palette.textTertiary,
                     ),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(

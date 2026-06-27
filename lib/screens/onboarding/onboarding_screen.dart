@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:cookrange/core/widgets/ds/ds.dart';
 import 'widgets/onboarding_step.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/onboarding_provider.dart';
@@ -152,9 +153,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       SnackBar(
         content: Text(
           message,
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 14,
+          style: AppText.of(context).bodyM.copyWith(
             color: Colors.white,
           ),
           textAlign: TextAlign.center,

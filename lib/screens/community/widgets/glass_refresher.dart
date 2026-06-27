@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:provider/provider.dart';
@@ -7,7 +8,7 @@ class GlassRefresher extends StatefulWidget {
   final Future<void> Function() onRefresh;
   final Widget child;
   final double refreshThreshold;
-  final double topPadding; // To adjust for different headers
+  final double topPadding;
 
   const GlassRefresher({
     super.key,
@@ -71,7 +72,7 @@ class _GlassRefresherState extends State<GlassRefresher>
   Future<void> _startRefresh() async {
     setState(() => _isRefreshing = true);
     _pullDistanceNotifier.value = widget.refreshThreshold;
-    _refreshController.repeat();
+    unawaited(_refreshController.repeat());
 
     try {
       await widget.onRefresh();
@@ -130,10 +131,13 @@ class _GlassRefresherState extends State<GlassRefresher>
                       ? _refreshController.value * 2 * math.pi
                       : progress * math.pi;
 
+                  final primaryColor =
+                      context.watch<ThemeProvider>().primaryColor;
+
                   return Container(
                     width: 48,
                     height: 48,
-                    transform: Matrix4.identity()..scale(currentScale),
+                    transform: Matrix4.identity()..scaleByDouble(currentScale, currentScale, 1.0, 1.0),
                     transformAlignment: Alignment.center,
                     child: Stack(
                       alignment: Alignment.center,
@@ -143,14 +147,14 @@ class _GlassRefresherState extends State<GlassRefresher>
                           painter: _RefreshRingPainter(
                             progress: _isRefreshing ? 0.3 : progress,
                             rotation: rotation,
-                            color: context.watch<ThemeProvider>().primaryColor,
+                            color: primaryColor,
                           ),
                         ),
                         Transform.rotate(
                           angle: rotation,
                           child: Icon(
                             Icons.refresh_rounded,
-                            color: context.watch<ThemeProvider>().primaryColor,
+                            color: primaryColor,
                             size: 22,
                           ),
                         ),

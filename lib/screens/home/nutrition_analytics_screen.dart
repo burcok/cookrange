@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -5,12 +6,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/app_localizations.dart';
-import '../../core/models/food_log_model.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/repositories/food_log_repository.dart';
 import '../../core/services/nutrition_analytics_service.dart';
 import '../../core/utils/calorie_calculator.dart';
+import '../../core/widgets/ds/ds.dart';
 
 class NutritionAnalyticsScreen extends StatefulWidget {
   const NutritionAnalyticsScreen({super.key});
@@ -38,9 +39,10 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: AppMotion.slow,
     );
-    _barAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _barAnim =
+        CurvedAnimation(parent: _animController, curve: AppMotion.decelerate);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
@@ -81,77 +83,63 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
       _summary = summary;
       _loading = false;
     });
-    _animController.forward();
+    unawaited(_animController.forward());
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     final primary = context.watch<ThemeProvider>().primaryColor;
 
     return Scaffold(
-      backgroundColor: isDark
-          ? const Color(0xFF0D1117)
-          : const Color(0xFFF5F5F5),
+      backgroundColor: palette.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new,
-              size: 20.sp,
-              color: isDark ? Colors.white : const Color(0xFF2E3A59)),
+              size: 20.sp, color: palette.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           l10n.translate('analytics.title'),
-          style: TextStyle(
-            fontSize: 20.sp,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : const Color(0xFF2E3A59),
-          ),
+          style: t.headlineS,
         ),
         centerTitle: false,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(color: primary),
+            )
           : _summary == null || _summary!.loggedDays == 0
-              ? _buildEmptyState(l10n, isDark)
-              : _buildContent(l10n, isDark, primary),
+              ? _buildEmptyState(l10n, palette, t)
+              : _buildContent(l10n, palette, t, primary),
     );
   }
 
-  Widget _buildEmptyState(AppLocalizations l10n, bool isDark) {
+  Widget _buildEmptyState(
+      AppLocalizations l10n, AppPalette palette, AppText t) {
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(32.r),
+        padding: EdgeInsets.all(AppSpacing.xxl.r),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.bar_chart_outlined,
                 size: 72.sp,
-                color: isDark
-                    ? Colors.white30
-                    : const Color(0xFF2E3A59).withAlpha(80)),
-            SizedBox(height: 16.h),
+                color: palette.textTertiary),
+            SizedBox(height: AppSpacing.md.h),
             Text(
               l10n.translate('analytics.no_data'),
-              style: TextStyle(
-                fontSize: 18.sp,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF2E3A59),
-              ),
+              style: t.headlineS,
             ),
-            SizedBox(height: 8.h),
+            SizedBox(height: AppSpacing.xs.h),
             Text(
               l10n.translate('analytics.no_data_subtitle'),
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: isDark
-                    ? Colors.white54
-                    : const Color(0xFF2E3A59).withAlpha(140),
-              ),
+              style: t.bodyM,
             ),
           ],
         ),
@@ -160,42 +148,38 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
   }
 
   Widget _buildContent(
-      AppLocalizations l10n, bool isDark, Color primary) {
+      AppLocalizations l10n, AppPalette palette, AppText t, Color primary) {
     final summary = _summary!;
     return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+      padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg.w, vertical: AppSpacing.xs.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             l10n.translate('analytics.subtitle'),
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: isDark
-                  ? Colors.white54
-                  : const Color(0xFF2E3A59).withAlpha(140),
-            ),
+            style: t.bodyM,
           ),
-          SizedBox(height: 20.h),
-          _buildConsistencyCard(l10n, isDark, primary, summary),
-          SizedBox(height: 16.h),
-          _buildStatCards(l10n, isDark, primary, summary),
-          SizedBox(height: 16.h),
-          _buildBarChart(l10n, isDark, primary, summary),
-          SizedBox(height: 24.h),
+          SizedBox(height: AppSpacing.lg.h),
+          _buildConsistencyCard(l10n, palette, t, primary, summary),
+          SizedBox(height: AppSpacing.md.h),
+          _buildStatCards(l10n, palette, t, primary, summary),
+          SizedBox(height: AppSpacing.md.h),
+          _buildBarChart(l10n, palette, t, primary, summary),
+          SizedBox(height: AppSpacing.xl.h),
         ],
       ),
     );
   }
 
-  Widget _buildConsistencyCard(AppLocalizations l10n, bool isDark, Color primary,
-      WeeklyNutritionSummary summary) {
+  Widget _buildConsistencyCard(AppLocalizations l10n, AppPalette palette,
+      AppText t, Color primary, WeeklyNutritionSummary summary) {
     final score = summary.consistencyScore;
     final scoreColor = score >= 70
-        ? const Color(0xFF22C55E)
+        ? palette.success
         : score >= 40
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFFEF4444);
+            ? palette.warning
+            : palette.error;
     final scoreLabel = score >= 70
         ? l10n.translate('analytics.score_great')
         : score >= 40
@@ -204,15 +188,15 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(20.r),
+      padding: EdgeInsets.all(AppSpacing.lg.r),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C2333) : Colors.white,
-        borderRadius: BorderRadius.circular(20.r),
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: palette.shadow.withValues(alpha: AppElevation.opacityLight),
+            blurRadius: AppElevation.blurMd,
+            offset: AppElevation.offsetMd,
           ),
         ],
       ),
@@ -227,15 +211,12 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
                 painter: _ScoreRingPainter(
                   progress: _barAnim.value * score / 100,
                   color: scoreColor,
-                  backgroundColor: isDark
-                      ? Colors.white12
-                      : const Color(0xFFE5E7EB),
+                  backgroundColor: palette.surfaceVariant,
                 ),
                 child: Center(
                   child: Text(
                     '$score',
-                    style: TextStyle(
-                      fontSize: 22.sp,
+                    style: t.headlineS.copyWith(
                       fontWeight: FontWeight.bold,
                       color: scoreColor,
                     ),
@@ -244,40 +225,26 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
               ),
             ),
           ),
-          SizedBox(width: 16.w),
+          SizedBox(width: AppSpacing.md.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   l10n.translate('analytics.consistency_score'),
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    color: isDark
-                        ? Colors.white54
-                        : const Color(0xFF2E3A59).withAlpha(140),
-                  ),
+                  style: t.bodyM,
                 ),
-                SizedBox(height: 4.h),
+                SizedBox(height: AppSpacing.xxs.h),
                 Text(
                   scoreLabel,
-                  style: TextStyle(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.bold,
-                    color: scoreColor,
-                  ),
+                  style: t.headlineS.copyWith(color: scoreColor),
                 ),
-                SizedBox(height: 4.h),
+                SizedBox(height: AppSpacing.xxs.h),
                 Text(
                   l10n
                       .translate('analytics.logged_days')
                       .replaceAll('{count}', '${summary.loggedDays}'),
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: isDark
-                        ? Colors.white38
-                        : const Color(0xFF2E3A59).withAlpha(100),
-                  ),
+                  style: t.labelS,
                 ),
               ],
             ),
@@ -287,43 +254,48 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
     );
   }
 
-  Widget _buildStatCards(AppLocalizations l10n, bool isDark, Color primary,
-      WeeklyNutritionSummary summary) {
+  Widget _buildStatCards(AppLocalizations l10n, AppPalette palette, AppText t,
+      Color primary, WeeklyNutritionSummary summary) {
     final kcal = l10n.translate('analytics.kcal');
     final g = l10n.translate('analytics.g');
     final items = [
       (l10n.translate('analytics.avg_calories'),
-          '${summary.avgCalories.round()} $kcal', Icons.local_fire_department,
+          '${summary.avgCalories.round()} $kcal',
+          Icons.local_fire_department,
           primary),
       (l10n.translate('analytics.avg_protein'),
-          '${summary.avgProtein.round()} $g', Icons.fitness_center,
-          const Color(0xFF3B82F6)),
+          '${summary.avgProtein.round()} $g',
+          Icons.fitness_center,
+          palette.protein),
       (l10n.translate('analytics.avg_carbs'),
-          '${summary.avgCarbs.round()} $g', Icons.grain,
-          const Color(0xFFF59E0B)),
+          '${summary.avgCarbs.round()} $g',
+          Icons.grain,
+          palette.carbs),
       (l10n.translate('analytics.avg_fat'),
-          '${summary.avgFat.round()} $g', Icons.water_drop,
-          const Color(0xFF8B5CF6)),
+          '${summary.avgFat.round()} $g',
+          Icons.water_drop,
+          palette.fat),
     ];
 
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12.w,
-      mainAxisSpacing: 12.h,
+      crossAxisSpacing: AppSpacing.sm.w,
+      mainAxisSpacing: AppSpacing.sm.h,
       childAspectRatio: 1.6,
       children: items.map((item) {
         return Container(
           padding: EdgeInsets.all(14.r),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1C2333) : Colors.white,
-            borderRadius: BorderRadius.circular(16.r),
+            color: palette.surface,
+            borderRadius: BorderRadius.circular(AppRadius.card.r),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-                blurRadius: 12,
-                offset: const Offset(0, 2),
+                color:
+                    palette.shadow.withValues(alpha: AppElevation.opacityLight),
+                blurRadius: AppElevation.blurSm,
+                offset: AppElevation.offsetSm,
               ),
             ],
           ),
@@ -331,25 +303,16 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(item.$3, size: 20.sp, color: item.$4),
-              SizedBox(height: 6.h),
+              Icon(item.$3, size: AppSize.iconSm.sp, color: item.$4),
+              SizedBox(height: AppSpacing.xxs.h),
               Text(
                 item.$2,
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : const Color(0xFF2E3A59),
-                ),
+                style: t.titleL,
               ),
-              SizedBox(height: 2.h),
+              SizedBox(height: AppSpacing.xxxs.h),
               Text(
                 item.$1,
-                style: TextStyle(
-                  fontSize: 11.sp,
-                  color: isDark
-                      ? Colors.white38
-                      : const Color(0xFF2E3A59).withAlpha(120),
-                ),
+                style: t.labelS,
               ),
             ],
           ),
@@ -358,19 +321,19 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
     );
   }
 
-  Widget _buildBarChart(AppLocalizations l10n, bool isDark, Color primary,
-      WeeklyNutritionSummary summary) {
+  Widget _buildBarChart(AppLocalizations l10n, AppPalette palette, AppText t,
+      Color primary, WeeklyNutritionSummary summary) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(20.r),
+      padding: EdgeInsets.all(AppSpacing.lg.r),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C2333) : Colors.white,
-        borderRadius: BorderRadius.circular(20.r),
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: palette.shadow.withValues(alpha: AppElevation.opacityLight),
+            blurRadius: AppElevation.blurMd,
+            offset: AppElevation.offsetMd,
           ),
         ],
       ),
@@ -379,35 +342,24 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
         children: [
           Text(
             l10n.translate('analytics.weekly_chart'),
-            style: TextStyle(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF2E3A59),
-            ),
+            style: t.titleL,
           ),
-          SizedBox(height: 4.h),
+          SizedBox(height: AppSpacing.xxs.h),
           Row(
             children: [
               Container(
                 width: 14.w,
                 height: 2.h,
-                color: isDark
-                    ? Colors.white38
-                    : const Color(0xFF2E3A59).withAlpha(80),
-                margin: EdgeInsets.only(right: 6.w),
+                color: palette.textTertiary,
+                margin: EdgeInsets.only(right: AppSpacing.xxs.w),
               ),
               Text(
                 '${l10n.translate('analytics.target_line')}: ${_targetCalories.round()} ${l10n.translate('analytics.kcal')}',
-                style: TextStyle(
-                  fontSize: 11.sp,
-                  color: isDark
-                      ? Colors.white38
-                      : const Color(0xFF2E3A59).withAlpha(100),
-                ),
+                style: t.labelS,
               ),
             ],
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: AppSpacing.md.h),
           AnimatedBuilder(
             animation: _barAnim,
             builder: (_, __) => SizedBox(
@@ -419,7 +371,7 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
                   targetCalories: _targetCalories,
                   progress: _barAnim.value,
                   primaryColor: primary,
-                  isDark: isDark,
+                  palette: palette,
                 ),
               ),
             ),
@@ -474,14 +426,14 @@ class _BarChartPainter extends CustomPainter {
   final double targetCalories;
   final double progress;
   final Color primaryColor;
-  final bool isDark;
+  final AppPalette palette;
 
   const _BarChartPainter({
     required this.days,
     required this.targetCalories,
     required this.progress,
     required this.primaryColor,
-    required this.isDark,
+    required this.palette,
   });
 
   @override
@@ -493,8 +445,10 @@ class _BarChartPainter extends CustomPainter {
     final barWidth = (size.width / days.length) * 0.55;
     final gap = (size.width / days.length) * 0.45;
 
-    final maxCal =
-        days.map((d) => d.calories).fold(0.0, math.max).clamp(1.0, double.infinity);
+    final maxCal = days
+        .map((d) => d.calories)
+        .fold(0.0, math.max)
+        .clamp(1.0, double.infinity);
     final scale = chartHeight / (maxCal * 1.15);
 
     // Target line
@@ -502,8 +456,7 @@ class _BarChartPainter extends CustomPainter {
       final ty = chartHeight - targetCalories * scale;
       if (ty >= 0) {
         final linePaint = Paint()
-          ..color = (isDark ? Colors.white : const Color(0xFF2E3A59))
-              .withAlpha(60)
+          ..color = palette.textTertiary.withValues(alpha: 0.5)
           ..strokeWidth = 1.5
           ..style = PaintingStyle.stroke;
         final path = Path();
@@ -526,9 +479,8 @@ class _BarChartPainter extends CustomPainter {
       final barH = day.hasLogs ? (day.calories * scale * progress) : 0.0;
       final top = chartHeight - barH;
 
-      final barColor = day.hasLogs
-          ? primaryColor
-          : (isDark ? Colors.white12 : const Color(0xFFE5E7EB));
+      final barColor =
+          day.hasLogs ? primaryColor : palette.surfaceVariant;
 
       final rRect = RRect.fromRectAndCorners(
         Rect.fromLTWH(x, top, barWidth, barH),
@@ -549,8 +501,8 @@ class _BarChartPainter extends CustomPainter {
           style: TextStyle(
             fontSize: 10,
             color: day.hasLogs
-                ? (isDark ? Colors.white70 : const Color(0xFF2E3A59))
-                : (isDark ? Colors.white30 : const Color(0xFF2E3A59).withAlpha(80)),
+                ? palette.textSecondary
+                : palette.textTertiary,
           ),
         ),
         textDirection: TextDirection.ltr,

@@ -9,6 +9,9 @@ import '../../core/localization/app_localizations.dart';
 import 'widgets/glass_refresher.dart';
 import 'widgets/draggable_reaction_button.dart';
 import '../../core/providers/theme_provider.dart';
+import '../../core/theme/app_palette.dart';
+import '../../core/theme/app_typography.dart';
+import '../../core/theme/app_dimensions.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final String postId;
@@ -64,10 +67,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   void _openFullScreenImage(int initialIndex) {
     if (_post?.imageUrls.isEmpty ?? true) return;
 
-    // Use a local controller for the full screen view
     final PageController fullScreenController =
         PageController(initialPage: initialIndex);
-    // We need a ValueNotifier to update the counter text in full screen
     final ValueNotifier<int> currentIndexNotifier =
         ValueNotifier<int>(initialIndex + 1);
 
@@ -90,8 +91,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   return InteractiveViewer(
                     child: Center(
                       child: Hero(
-                        tag:
-                            'post_image_carousel_$index', // Use the same tag as in the carousel
+                        tag: 'post_image_carousel_$index',
                         child: Image.network(
                           _post!.imageUrls[index],
                           fit: BoxFit.contain,
@@ -123,10 +123,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     builder: (context, value, child) {
                       return Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                            horizontal: AppSpacing.md, vertical: AppSpacing.xs),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(AppRadius.full),
                         ),
                         child: Text(
                           "$value / ${_post!.imageUrls.length}",
@@ -149,7 +149,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
     final appLoc = AppLocalizations.of(context);
 
     return Scaffold(
@@ -157,11 +158,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // 1. Glowing Glass Background
+          // 1. Background
           Positioned.fill(
-            child: Container(
-              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-            ),
+            child: Container(color: palette.background),
           ),
           Positioned.fill(
             child: BackdropFilter(
@@ -169,7 +168,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               child: Container(color: Colors.transparent),
             ),
           ),
-          // Ambient Glows (Simplified for update)
+          // Ambient Glows
           Positioned(
             top: -100,
             right: -50,
@@ -200,7 +199,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blueAccent.withValues(alpha: 0.08),
+                    color: palette.info.withValues(alpha: 0.08),
                     blurRadius: 100,
                   ),
                 ],
@@ -222,12 +221,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         child: SingleChildScrollView(
                           physics: const BouncingScrollPhysics(
                               parent: AlwaysScrollableScrollPhysics()),
-                          padding: EdgeInsets.fromLTRB(24,
-                              MediaQuery.of(context).padding.top + 20, 24, 0),
+                          padding: EdgeInsets.fromLTRB(AppSpacing.xl,
+                              MediaQuery.of(context).padding.top + AppSpacing.lg, AppSpacing.xl, 0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // HEADER (Moved inside scrollable area per request)
+                              // HEADER
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -235,7 +234,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                   const BackButton(),
                                   Row(
                                     children: [
-                                      // Edit Button for Owner
                                       if (_post != null &&
                                           _post!.author.id ==
                                               _service.currentUserId)
@@ -243,16 +241,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                           onPressed: () =>
                                               _toggleEditMode(_post!),
                                           icon: Icon(Icons.edit_outlined,
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : const Color(0xFF0F172A)),
+                                              color: palette.textPrimary),
                                         ),
                                       // Menu
                                       PopupMenuButton<String>(
                                         icon: Icon(Icons.more_vert,
-                                            color: isDark
-                                                ? Colors.white
-                                                : const Color(0xFF0F172A)),
+                                            color: palette.textPrimary),
                                         onSelected: (value) async {
                                           if (value == 'report') {
                                             _showReportDialog(context);
@@ -275,14 +269,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                         },
                                         shape: RoundedRectangleBorder(
                                             borderRadius:
-                                                BorderRadius.circular(16)),
+                                                BorderRadius.circular(AppRadius.md)),
                                         itemBuilder: (context) => [
                                           PopupMenuItem(
                                               value: 'share',
                                               child: Row(children: [
                                                 const Icon(Icons.share_outlined,
-                                                    size: 20),
-                                                const SizedBox(width: 12),
+                                                    size: AppSize.iconMd),
+                                                const SizedBox(width: AppSpacing.sm),
                                                 Text(appLoc.translate(
                                                     'community.menu.share'))
                                               ])),
@@ -292,29 +286,29 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                             PopupMenuItem(
                                                 value: 'report',
                                                 child: Row(children: [
-                                                  const Icon(
+                                                  Icon(
                                                       Icons.report_gmailerrorred,
-                                                      size: 20,
-                                                      color: Colors.red),
-                                                  const SizedBox(width: 12),
+                                                      size: AppSize.iconMd,
+                                                      color: palette.error),
+                                                  const SizedBox(width: AppSpacing.sm),
                                                   Text(
                                                       appLoc.translate(
                                                           'community.menu.report'),
-                                                      style: const TextStyle(
-                                                          color: Colors.red))
+                                                      style: TextStyle(
+                                                          color: palette.error))
                                                 ])),
                                             PopupMenuItem(
                                                 value: 'block',
                                                 child: Row(children: [
-                                                  const Icon(Icons.block,
-                                                      size: 20,
-                                                      color: Colors.red),
-                                                  const SizedBox(width: 12),
+                                                  Icon(Icons.block,
+                                                      size: AppSize.iconMd,
+                                                      color: palette.error),
+                                                  const SizedBox(width: AppSpacing.sm),
                                                   Text(
                                                       appLoc.translate(
                                                           'community.menu.block'),
-                                                      style: const TextStyle(
-                                                          color: Colors.red))
+                                                      style: TextStyle(
+                                                          color: palette.error))
                                                 ])),
                                           ],
                                           if (_post != null &&
@@ -323,16 +317,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                             PopupMenuItem(
                                                 value: 'delete',
                                                 child: Row(children: [
-                                                  const Icon(
+                                                  Icon(
                                                       Icons.delete_outline,
-                                                      size: 20,
-                                                      color: Colors.red),
-                                                  const SizedBox(width: 12),
+                                                      size: AppSize.iconMd,
+                                                      color: palette.error),
+                                                  const SizedBox(width: AppSpacing.sm),
                                                   Text(
                                                       appLoc.translate(
                                                           'community.menu.delete'),
-                                                      style: const TextStyle(
-                                                          color: Colors.red))
+                                                      style: TextStyle(
+                                                          color: palette.error))
                                                 ])),
                                         ],
                                       ),
@@ -349,50 +343,34 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     CircleAvatar(
                                         backgroundImage: NetworkImage(
                                             _post!.author.avatarUrl)),
-                                    const SizedBox(width: 12),
+                                    const SizedBox(width: AppSpacing.sm),
                                     Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           _post!.author.name,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: isDark
-                                                ? Colors.white
-                                                : const Color(0xFF0F172A),
-                                          ),
+                                          style: textStyles.headlineS,
                                         ),
                                         Text(
                                           _formatTime(_post!.timestamp),
-                                          style: TextStyle(
-                                            color: isDark
-                                                ? Colors.grey[400]
-                                                : const Color(0xFF64748B),
-                                            fontSize: 12,
-                                          ),
+                                          style: textStyles.labelS,
                                         ),
                                       ],
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: AppSpacing.md),
 
                                 // Post Text or Inline Edit
                                 if (_isEditingPost)
                                   Container(
-                                    padding: const EdgeInsets.all(12),
+                                    padding: const EdgeInsets.all(AppSpacing.sm),
                                     decoration: BoxDecoration(
-                                      color: isDark
-                                          ? Colors.white.withValues(alpha: 0.05)
-                                          : Colors.white.withValues(alpha: 0.6),
-                                      borderRadius: BorderRadius.circular(16),
+                                      color: palette.surface.withValues(alpha: 0.8),
+                                      borderRadius: BorderRadius.circular(AppRadius.md),
                                       border: Border.all(
-                                          color: isDark
-                                              ? Colors.white10
-                                              : Colors.blueAccent
-                                                  .withValues(alpha: 0.3)),
+                                          color: palette.info.withValues(alpha: 0.3)),
                                     ),
                                     child: Column(
                                       crossAxisAlignment:
@@ -402,12 +380,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                           controller: _editPostController,
                                           maxLines: null,
                                           autofocus: true,
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            height: 1.5,
-                                            color: isDark
-                                                ? Colors.white
-                                                : const Color(0xFF334155),
+                                          style: textStyles.bodyL.copyWith(
+                                            color: palette.textPrimary,
                                           ),
                                           decoration: InputDecoration(
                                             border: InputBorder.none,
@@ -417,39 +391,32 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                 variables: {'name': 'Chef'}),
                                           ),
                                         ),
-                                        const SizedBox(height: 12),
+                                        const SizedBox(height: AppSpacing.sm),
                                         // Edit Tags
                                         if (_editingTags.isNotEmpty)
                                           Padding(
                                             padding: const EdgeInsets.only(
-                                                bottom: 12),
+                                                bottom: AppSpacing.sm),
                                             child: Wrap(
-                                              spacing: 8,
-                                              runSpacing: 8,
+                                              spacing: AppSpacing.xs,
+                                              runSpacing: AppSpacing.xs,
                                               children: _editingTags
                                                   .map((tag) => Chip(
                                                         label: Text(tag,
-                                                            style:
-                                                                const TextStyle(
-                                                                    fontSize:
-                                                                        12)),
+                                                            style: textStyles.labelS),
                                                         backgroundColor: context
-                                                            .watch<
-                                                                ThemeProvider>()
+                                                            .watch<ThemeProvider>()
                                                             .primaryColor
-                                                            .withValues(
-                                                                alpha: 0.1),
+                                                            .withValues(alpha: 0.1),
                                                         labelStyle: TextStyle(
                                                             color: context
-                                                                .watch<
-                                                                    ThemeProvider>()
+                                                                .watch<ThemeProvider>()
                                                                 .primaryColor),
                                                         deleteIcon: Icon(
                                                             Icons.close,
-                                                            size: 14,
+                                                            size: AppSize.iconXs,
                                                             color: context
-                                                                .watch<
-                                                                    ThemeProvider>()
+                                                                .watch<ThemeProvider>()
                                                                 .primaryColor),
                                                         onDeleted: () {
                                                           setState(() {
@@ -461,7 +428,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                             borderRadius:
                                                                 BorderRadius
                                                                     .circular(
-                                                                        20)),
+                                                                        AppRadius.full)),
                                                         side: BorderSide.none,
                                                       ))
                                                   .toList(),
@@ -489,13 +456,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                   child: Text(
                                                       appLoc.translate(
                                                           'common.cancel'),
-                                                      style: TextStyle(
-                                                          color: isDark
-                                                              ? Colors.grey
-                                                              : Colors
-                                                                  .grey[700])),
+                                                      style: textStyles.labelM),
                                                 ),
-                                                const SizedBox(width: 8),
+                                                const SizedBox(width: AppSpacing.xs),
                                                 ElevatedButton(
                                                   onPressed: _savePostEdit,
                                                   style:
@@ -510,10 +473,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                             borderRadius:
                                                                 BorderRadius
                                                                     .circular(
-                                                                        20)),
+                                                                        AppRadius.full)),
                                                     padding: const EdgeInsets
                                                         .symmetric(
-                                                        horizontal: 16),
+                                                        horizontal: AppSpacing.md),
                                                   ),
                                                   child: Text(appLoc.translate(
                                                       'common.save')),
@@ -532,16 +495,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     children: [
                                       Text(
                                         _post!.content,
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          height: 1.5,
-                                          color: isDark
-                                              ? Colors.white70
-                                              : const Color(0xFF334155),
-                                        ),
+                                        style: textStyles.bodyL,
                                       ),
                                       if (_post!.tags.isNotEmpty) ...[
-                                        const SizedBox(height: 12),
+                                        const SizedBox(height: AppSpacing.sm),
                                         Wrap(
                                           spacing: 6,
                                           runSpacing: 6,
@@ -549,35 +506,20 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                               .map((tag) => Container(
                                                     padding: const EdgeInsets
                                                         .symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 4),
+                                                        horizontal: AppSpacing.xs + 2,
+                                                        vertical: AppSpacing.xxs),
                                                     decoration: BoxDecoration(
-                                                      color: isDark
-                                                          ? Colors.white
-                                                              .withValues(
-                                                                  alpha: 0.1)
-                                                          : Colors.black
-                                                              .withValues(
-                                                                  alpha: 0.05),
+                                                      color: palette.surfaceVariant,
                                                       borderRadius:
                                                           BorderRadius.circular(
-                                                              20),
+                                                              AppRadius.full),
                                                       border: Border.all(
-                                                        color: isDark
-                                                            ? Colors.white10
-                                                            : Colors.black12,
+                                                        color: palette.border,
                                                       ),
                                                     ),
                                                     child: Text(
                                                       tag,
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        color: isDark
-                                                            ? Colors.white70
-                                                            : Colors.black87,
-                                                      ),
+                                                      style: textStyles.labelS,
                                                     ),
                                                   ))
                                               .toList(),
@@ -590,34 +532,30 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     padding: const EdgeInsets.only(top: 4.0),
                                     child: Text(
                                       "(edited)",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: isDark
-                                            ? Colors.white30
-                                            : Colors.black38,
+                                      style: textStyles.labelS.copyWith(
                                         fontStyle: FontStyle.italic,
                                       ),
                                     ),
                                   ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: AppSpacing.md),
 
                                 // Images
                                 if (_post!.imageUrls.isNotEmpty)
                                   Container(
                                     height: 300,
                                     decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(20),
+                                      borderRadius: BorderRadius.circular(AppRadius.card),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black
-                                              .withValues(alpha: 0.1),
-                                          blurRadius: 15,
-                                          offset: const Offset(0, 8),
+                                          color: palette.shadow
+                                              .withValues(alpha: AppElevation.opacityMedium),
+                                          blurRadius: AppElevation.blurLg,
+                                          offset: AppElevation.offsetLg,
                                         ),
                                       ],
                                     ),
                                     child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(20),
+                                      borderRadius: BorderRadius.circular(AppRadius.card),
                                       child: Stack(
                                         children: [
                                           PageView.builder(
@@ -632,8 +570,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                 onTap: () =>
                                                     _openFullScreenImage(index),
                                                 child: Hero(
-                                                  tag:
-                                                      'post_image_carousel_$index', // Unique tag
+                                                  tag: 'post_image_carousel_$index',
                                                   child: Image.network(
                                                     _post!.imageUrls[index],
                                                     fit: BoxFit.cover,
@@ -667,11 +604,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                           _currentImageIndex ==
                                                                   index
                                                               ? Colors.white
-                                                              : Colors
-                                                                  .white
+                                                              : Colors.white
                                                                   .withValues(
-                                                                      alpha:
-                                                                          0.5),
+                                                                      alpha: 0.5),
                                                     ),
                                                   );
                                                 }),
@@ -685,12 +620,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                               child: Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                        horizontal: 10,
+                                                        horizontal: AppSpacing.xs + 2,
                                                         vertical: 6),
                                                 decoration: BoxDecoration(
                                                   color: Colors.black54,
                                                   borderRadius:
-                                                      BorderRadius.circular(20),
+                                                      BorderRadius.circular(AppRadius.full),
                                                 ),
                                                 child: Text(
                                                   "${_currentImageIndex + 1}/${_post!.imageUrls.length}",
@@ -706,14 +641,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                       ),
                                     ),
                                   ),
-                                const SizedBox(height: 20),
+                                const SizedBox(height: AppSpacing.lg),
 
                                 // Reactions Summary (Always Visible)
                                 Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0),
+                                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                                   child: Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
+                                    spacing: AppSpacing.xs,
+                                    runSpacing: AppSpacing.xs,
                                     crossAxisAlignment:
                                         WrapCrossAlignment.center,
                                     children: [
@@ -723,45 +658,40 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                         final isUserReaction = _post!
                                             .userReactions
                                             .contains(entry.key);
+                                        final primaryColor = context
+                                            .watch<ThemeProvider>()
+                                            .primaryColor;
                                         return GestureDetector(
                                           onTap: () => _onReaction(entry.key),
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 4),
+                                                horizontal: AppSpacing.xs,
+                                                vertical: AppSpacing.xxs),
                                             decoration: BoxDecoration(
                                               color: isUserReaction
-                                                  ? context
-                                                      .watch<ThemeProvider>()
-                                                      .primaryColor
+                                                  ? primaryColor
                                                       .withValues(alpha: 0.2)
-                                                  : (isDark
-                                                      ? Colors.white10
-                                                      : Colors.grey.shade100),
+                                                  : palette.surfaceVariant,
                                               borderRadius:
-                                                  BorderRadius.circular(20),
+                                                  BorderRadius.circular(AppRadius.full),
                                               border: Border.all(
                                                   color: isUserReaction
-                                                      ? context
-                                                          .watch<
-                                                              ThemeProvider>()
-                                                          .primaryColor
+                                                      ? primaryColor
                                                       : Colors.transparent),
                                             ),
                                             child: Text(
                                               "${entry.key} ${entry.value}",
-                                              style: TextStyle(
-                                                  fontSize: 13,
-                                                  color: isDark
-                                                      ? Colors.white
-                                                      : Colors.black87,
-                                                  fontWeight: isUserReaction
-                                                      ? FontWeight.bold
-                                                      : FontWeight.normal),
+                                              style: textStyles.bodyM.copyWith(
+                                                color: palette.textPrimary,
+                                                fontWeight: isUserReaction
+                                                    ? FontWeight.bold
+                                                    : FontWeight.normal,
+                                              ),
                                             ),
                                           ),
                                         );
                                       }),
-                                      _buildAddReactionButton(context, isDark,
+                                      _buildAddReactionButton(context,
                                           isSmall: true),
                                     ],
                                   ),
@@ -777,14 +707,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                             ? Icons.favorite
                                             : Icons.favorite_border,
                                         color: _post!.isLiked
-                                            ? Colors.red
-                                            : (isDark
-                                                ? const Color(0xFF94A3B8)
-                                                : const Color(0xFF64748B)),
-                                        size: 28,
+                                            ? palette.error
+                                            : palette.textSecondary,
+                                        size: AppSize.iconLg,
                                       ),
                                     ),
-                                    const SizedBox(width: 12),
+                                    const SizedBox(width: AppSpacing.sm),
                                     // Face Pile & Text
                                     if (_post!.likesCount > 0)
                                       Expanded(
@@ -814,10 +742,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                           shape:
                                                               BoxShape.circle,
                                                           border: Border.all(
-                                                            color: isDark
-                                                                ? const Color(
-                                                                    0xFF0F172A)
-                                                                : Colors.white,
+                                                            color: palette.background,
                                                             width: 2,
                                                           ),
                                                         ),
@@ -833,19 +758,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                   }).toList(),
                                                 ),
                                               ),
-                                            const SizedBox(width: 8),
+                                            const SizedBox(width: AppSpacing.xs),
                                             Expanded(
                                               child: Text(
                                                 _getLikeText(),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: isDark
-                                                      ? Colors.white70
-                                                      : const Color(0xFF64748B),
-                                                ),
+                                                style: textStyles.labelM,
                                               ),
                                             ),
                                           ],
@@ -854,23 +773,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                   ],
                                 ),
 
-                                const SizedBox(height: 32),
+                                const SizedBox(height: AppSpacing.xxl),
                                 Text(
                                   appLoc.translate('community.post.comments',
                                       variables: {
                                         'count': '${_post?.commentsCount ?? 0}'
                                       }),
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark
-                                        ? Colors.white
-                                        : const Color(0xFF0F172A),
-                                  ),
+                                  style: textStyles.headlineS,
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: AppSpacing.md),
                                 ..._comments.map((comment) =>
-                                    _buildCommentItem(comment, isDark)),
+                                    _buildCommentItem(comment)),
 
                                 const SizedBox(height: 100),
                               ],
@@ -879,7 +792,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         ),
                       ),
                     ),
-                    _buildGlassCommentInput(isDark, context),
+                    _buildGlassCommentInput(context),
                   ],
                 ),
         ],
@@ -887,18 +800,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
-  Widget _buildCommentItem(CommunityComment comment, bool isDark) {
+  Widget _buildCommentItem(CommunityComment comment) {
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
     final isEditing = _editingCommentId == comment.id;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.white.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white10 : Colors.white),
+        color: palette.surface.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: palette.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -907,7 +820,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             radius: 16,
             backgroundImage: NetworkImage(comment.author.avatarUrl),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -923,32 +836,21 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         children: [
                           Text(
                             comment.author.name,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF0F172A),
-                            ),
+                            style: textStyles.titleM,
                           ),
                           const SizedBox(height: 2),
                           Row(
                             children: [
                               Text(
                                 _formatTime(comment.timestamp),
-                                style: const TextStyle(
-                                    color: Colors.grey, fontSize: 11),
+                                style: textStyles.labelS,
                               ),
                               if (comment.isEdited)
                                 Padding(
                                   padding: const EdgeInsets.only(left: 4.0),
                                   child: Text(
                                     "(edited)",
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isDark
-                                          ? Colors.white30
-                                          : Colors.black38,
+                                    style: textStyles.labelS.copyWith(
                                       fontStyle: FontStyle.italic,
                                     ),
                                   ),
@@ -962,8 +864,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       icon: Icon(Icons.more_vert,
-                          size: 16,
-                          color: isDark ? Colors.white54 : Colors.grey),
+                          size: AppSize.iconXs + 2,
+                          color: palette.textTertiary),
                       onSelected: (val) async {
                         if (val == 'edit') {
                           setState(() {
@@ -971,7 +873,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             _editCommentController.text = comment.content;
                           });
                         }
-                        if (val == 'delete') _onDeleteComment(comment.id);
+                        if (val == 'delete') unawaited(_onDeleteComment(comment.id));
                         if (val == 'report') {
                           _showReportDialog(context,
                               commentId: comment.id);
@@ -991,7 +893,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                 child: Text(
                                     AppLocalizations.of(context)
                                         .translate('common.delete'),
-                                    style: const TextStyle(color: Colors.red))),
+                                    style: TextStyle(color: palette.error))),
                           ];
                         } else {
                           return [
@@ -999,14 +901,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                 value: 'report',
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.report_gmailerrorred,
-                                        size: 16, color: Colors.red),
-                                    const SizedBox(width: 8),
+                                    Icon(Icons.report_gmailerrorred,
+                                        size: AppSize.iconXs + 2,
+                                        color: palette.error),
+                                    const SizedBox(width: AppSpacing.xs),
                                     Text(
                                         AppLocalizations.of(context)
                                             .translate('community.menu.report'),
-                                        style:
-                                            const TextStyle(color: Colors.red)),
+                                        style: TextStyle(color: palette.error)),
                                   ],
                                 )),
                           ];
@@ -1015,7 +917,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
 
                 // Content or Edit Field
                 if (isEditing)
@@ -1028,15 +930,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         maxLines: null,
                         decoration: const InputDecoration(
                           isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 8),
+                          contentPadding: EdgeInsets.symmetric(vertical: AppSpacing.xs),
                           border: InputBorder.none,
                         ),
-                        style: TextStyle(
-                            fontSize: 13,
-                            height: 1.4,
-                            color: isDark
-                                ? Colors.grey[300]
-                                : const Color(0xFF334155)),
+                        style: textStyles.bodyM.copyWith(
+                            color: palette.textPrimary),
                       ),
                       Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1047,7 +945,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             child: Text(
                                 AppLocalizations.of(context)
                                     .translate('common.cancel'),
-                                style: const TextStyle(fontSize: 12)),
+                                style: textStyles.labelS),
                           ),
                           TextButton(
                             onPressed: () async {
@@ -1057,14 +955,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                   newContent != comment.content) {
                                 await _service.updateComment(
                                     widget.postId, comment.id, newContent);
-                                _loadData();
+                                unawaited(_loadData());
                               }
                               setState(() => _editingCommentId = null);
                             },
                             child: Text(
                                 AppLocalizations.of(context)
                                     .translate('common.save'),
-                                style: const TextStyle(fontSize: 12)),
+                                style: textStyles.labelS),
                           ),
                         ],
                       )
@@ -1073,14 +971,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 else
                   Text(
                     comment.content,
-                    style: TextStyle(
-                        fontSize: 13,
-                        height: 1.4,
-                        color: isDark
-                            ? Colors.grey[300]
-                            : const Color(0xFF334155)),
+                    style: textStyles.bodyM.copyWith(color: palette.textPrimary),
                   ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 // Reactions for Comment
                 Row(
                   children: [
@@ -1091,26 +984,24 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         comment.isLiked
                             ? Icons.favorite
                             : Icons.favorite_border,
-                        size: 16,
+                        size: AppSize.iconXs + 2,
                         color: comment.isLiked
-                            ? Colors.red
-                            : (isDark ? Colors.grey : Colors.grey.shade400),
+                            ? palette.error
+                            : palette.textTertiary,
                       ),
                     ),
                     if (comment.likesCount > 0) ...[
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpacing.xxs),
                       Text(
                         "${comment.likesCount}",
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? Colors.grey : Colors.grey.shade600),
+                        style: textStyles.labelS,
                       ),
                     ],
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.sm),
 
                     Expanded(
                       child: Wrap(
-                        spacing: 4,
+                        spacing: AppSpacing.xxs,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           ...comment.reactions.entries
@@ -1118,6 +1009,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                               .map((entry) {
                             final isUserReact =
                                 comment.userReactions.contains(entry.key);
+                            final primaryColor = context
+                                .watch<ThemeProvider>()
+                                .primaryColor;
                             return GestureDetector(
                               onTap: () =>
                                   _onReaction(entry.key, commentId: comment.id),
@@ -1126,18 +1020,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: isUserReact
-                                      ? context
-                                          .watch<ThemeProvider>()
-                                          .primaryColor
-                                          .withValues(alpha: 0.1)
+                                      ? primaryColor.withValues(alpha: 0.1)
                                       : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(AppRadius.xs),
                                   border: Border.all(
                                       color: isUserReact
-                                          ? context
-                                              .watch<ThemeProvider>()
-                                              .primaryColor
-                                          : Colors.grey.withValues(alpha: 0.3)),
+                                          ? primaryColor
+                                          : palette.border),
                                 ),
                                 child: Text("${entry.key} ${entry.value}",
                                     style: const TextStyle(fontSize: 11)),
@@ -1145,7 +1034,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             );
                           }),
                           // Add Reaction Button for Comment
-                          _buildAddReactionButton(context, isDark,
+                          _buildAddReactionButton(context,
                               isSmall: true, commentId: comment.id),
                         ],
                       ),
@@ -1163,7 +1052,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Future<void> _onToggleLike() async {
     if (_post == null) return;
 
-    // Optimistic Update
     setState(() {
       final isLiked = !_post!.isLiked;
       final likesCount = _post!.likesCount + (isLiked ? 1 : -1);
@@ -1203,10 +1091,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   Future<void> _onReaction(String emoji, {String? commentId}) async {
-    // Optimistic Update
     setState(() {
       if (commentId == null) {
-        // Post Reaction
         if (_post != null) {
           final isAdding = !_post!.userReactions.contains(emoji);
           List<String> userReactions = List.from(_post!.userReactions);
@@ -1230,7 +1116,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           );
         }
       } else {
-        // Comment Reaction
         final index = _comments.indexWhere((c) => c.id == commentId);
         if (index != -1) {
           final comment = _comments[index];
@@ -1257,7 +1142,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             content: comment.content,
             timestamp: comment.timestamp,
             likesCount: comment.likesCount,
-            isLiked: comment.isLiked, // Preserve like state
+            isLiked: comment.isLiked,
             reactions: reactions,
             userReactions: userReactions,
             isEdited: comment.isEdited,
@@ -1266,11 +1151,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       }
     });
 
-    // Async Update
     await _service.toggleReaction(
         postId: widget.postId, commentId: commentId, emoji: emoji);
-  } // Reload silently to sync fully if needed, but optimistic should hold
-  // _loadData();
+  }
 
   Future<void> _onAddComment() async {
     final content = _commentController.text.trim();
@@ -1279,7 +1162,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     await _service.addComment(widget.postId, content);
     _commentController.clear();
     setState(() => _isSendingComment = false);
-    _loadData();
+    unawaited(_loadData());
   }
 
   Future<void> _loadData() async {
@@ -1296,8 +1179,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       debugPrint("Error loading post details: $e");
     }
 
-    // Subscribe to real-time comments stream
-    _commentsSub?.cancel();
+    unawaited(_commentsSub?.cancel());
     _commentsSub = _service.commentsStream(widget.postId).listen((comments) {
       if (mounted) setState(() => _comments = comments);
     });
@@ -1311,7 +1193,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   void _showReportDialog(BuildContext context, {String? commentId}) {
     final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
 
     final reasons = [
       ('spam', l10n.translate('community.report.reason_spam')),
@@ -1332,11 +1215,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         return StatefulBuilder(builder: (context, setModal) {
           return Container(
             padding: EdgeInsets.fromLTRB(
-                24, 12, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+                AppSpacing.xl, AppSpacing.sm, AppSpacing.xl,
+                MediaQuery.of(context).viewInsets.bottom + AppSpacing.xxl),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1C2333) : Colors.white,
+              color: palette.surface,
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
+                  const BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1344,43 +1228,40 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               children: [
                 Center(
                   child: Container(
-                    width: 36,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
+                    width: AppSize.sheetHandleW,
+                    height: AppSize.sheetHandleH,
+                    margin: const EdgeInsets.only(bottom: AppSpacing.lg),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white24 : Colors.black12,
-                      borderRadius: BorderRadius.circular(2),
+                      color: palette.border,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
                   ),
                 ),
                 Text(
                   l10n.translate('community.report.dialog_title'),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  ),
+                  style: textStyles.headlineS,
                 ),
                 const SizedBox(height: 6),
                 Text(
                   l10n.translate('community.report.dialog_subtitle'),
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.white54 : Colors.black54,
+                  style: textStyles.bodyM,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                RadioGroup<String>(
+                  groupValue: selectedReason,
+                  onChanged: (v) => setModal(() => selectedReason = v),
+                  child: Column(
+                    children: reasons
+                        .map((r) => RadioListTile<String>(
+                              value: r.$1,
+                              title: Text(r.$2, style: textStyles.titleM),
+                              activeColor: palette.error,
+                              contentPadding: EdgeInsets.zero,
+                            ))
+                        .toList(),
                   ),
                 ),
-                const SizedBox(height: 16),
-                ...reasons.map((r) => RadioListTile<String>(
-                      value: r.$1,
-                      groupValue: selectedReason,
-                      onChanged: (v) => setModal(() => selectedReason = v),
-                      title: Text(r.$2,
-                          style: TextStyle(
-                              color: isDark ? Colors.white : const Color(0xFF0F172A))),
-                      activeColor: Colors.red,
-                      contentPadding: EdgeInsets.zero,
-                    )),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -1403,11 +1284,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             }
                           },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
+                      backgroundColor: palette.error,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                          borderRadius: BorderRadius.circular(AppRadius.md)),
                     ),
                     child: submitting
                         ? const SizedBox(
@@ -1426,7 +1307,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
-  Widget _buildGlassCommentInput(bool isDark, BuildContext context) {
+  Widget _buildGlassCommentInput(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
     final user = Provider.of<UserProvider>(context, listen: false).user;
     final userImage = user?.photoURL;
     return ClipRect(
@@ -1434,14 +1318,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           padding: EdgeInsets.fromLTRB(
-              16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
+              AppSpacing.md, AppSpacing.sm, AppSpacing.md,
+              MediaQuery.of(context).padding.bottom + AppSpacing.sm),
           decoration: BoxDecoration(
-            color: isDark
-                ? const Color(0xFF0F172A).withValues(alpha: 0.8)
-                : Colors.white.withValues(alpha: 0.8),
+            color: palette.background.withValues(alpha: 0.85),
             border: Border(
-                top: BorderSide(
-                    color: isDark ? Colors.white10 : Colors.grey.shade200)),
+                top: BorderSide(color: palette.divider)),
           ),
           child: Row(
             children: [
@@ -1451,18 +1333,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   backgroundImage: NetworkImage(
                       userImage ?? 'https://i.pravatar.cc/150?u=current'),
                 ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Container(
                   height: 44,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.1)
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                        color: isDark ? Colors.white10 : Colors.transparent),
+                    color: palette.surfaceVariant,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                    border: Border.all(color: palette.border),
                   ),
                   child: Row(
                     children: [
@@ -1470,17 +1349,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         child: TextField(
                           controller: _commentController,
                           focusNode: _commentFocusNode,
-                          style: TextStyle(
-                              color: isDark ? Colors.white : Colors.black),
+                          style: textStyles.bodyM.copyWith(
+                              color: palette.textPrimary),
                           decoration: InputDecoration(
                             hintText: AppLocalizations.of(context)
                                 .translate('post.add_comment_hint'),
-                            hintStyle: TextStyle(
-                              color: isDark
-                                  ? Colors.white54
-                                  : Colors.grey.shade500,
-                              fontSize: 14,
-                            ),
+                            hintStyle: textStyles.bodyM,
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.only(bottom: 2),
                           ),
@@ -1495,15 +1369,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: context
-                                        .watch<ThemeProvider>()
-                                        .primaryColor))
+                                    color: primaryColor))
                             : Icon(Icons.send_rounded,
-                                color: context
-                                    .watch<ThemeProvider>()
-                                    .primaryColor
-                                    .withValues(alpha: 0.8),
-                                size: 20),
+                                color: primaryColor.withValues(alpha: 0.8),
+                                size: AppSize.iconMd),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
@@ -1525,20 +1394,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final appLoc = AppLocalizations.of(context);
     final likers = _post!.likedByUsers;
     final currentUserId = _service.currentUserId;
-    // Check if current user is in the liked list or if isLiked is true
-    // Note: likedByUsers only contains top 3. isLiked is the single source of truth.
     final isLikedByMe = _post!.isLiked;
 
     if (isLikedByMe) {
       if (likes == 1) return appLoc.translate('community.likes.you');
 
-      // Filter out current user from names to show other names
       final otherLikers = likers.where((u) => u.id != currentUserId).toList();
       final otherCount = likes - 1;
 
       if (otherLikers.isEmpty) {
-        // We liked it, but we don't have other names in the top list (should be rare if we just liked it)
-        // But if count > 1, we must have others.
         return appLoc.translate('community.likes.you_many',
             variables: {'name': 'User', 'count': otherCount.toString()});
       }
@@ -1550,9 +1414,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             .translate('community.likes.you_1', variables: {'name': name1});
       }
 
-      // You + One Name + Others
       if (otherLikers.length >= 2 && otherCount > 2) {
-        // You, Name1, Name2 and X others
         final name2 = otherLikers[1].name.split(' ').first;
         return appLoc.translate('community.likes.you_many_2', variables: {
           'name1': name1,
@@ -1563,7 +1425,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
       return appLoc.translate('community.likes.you_many', variables: {
         'name1': name1,
-        'name': name1, // fallback
+        'name': name1,
         'count': (otherCount - 1).toString()
       });
     }
@@ -1615,6 +1477,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   void _showDeleteDialog(BuildContext context) {
     final appLoc = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1627,16 +1490,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(ctx); // Close dialog
+              Navigator.pop(ctx);
               final nav = Navigator.of(context);
               final success = await _service.deletePost(widget.postId);
               if (success && nav.canPop()) {
-                nav.pop(); // Close detail screen
+                nav.pop();
               }
             },
             child: Text(
               appLoc.translate('community.delete_confirm.action'),
-              style: const TextStyle(color: Colors.red),
+              style: TextStyle(color: palette.error),
             ),
           ),
         ],
@@ -1657,7 +1520,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     if (newContent.isNotEmpty &&
         (newContent != _post?.content || _editingTags != _post?.tags)) {
       await _service.updatePost(_post!.id, newContent, newTags: _editingTags);
-      _loadData();
+      unawaited(_loadData());
     }
     setState(() {
       _isEditingPost = false;
@@ -1665,9 +1528,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   Future<void> _onDeleteComment(String commentId) async {
-    // Show confirmation? maybe skip for now for speed or add simple one
     await _service.deleteComment(widget.postId, commentId);
-    _loadData();
+    unawaited(_loadData());
   }
 
   void _openTagPicker() {
@@ -1675,14 +1537,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final palette = AppPalette.of(context);
+        final textStyles = AppText.of(context);
+        final primaryColor = context.watch<ThemeProvider>().primaryColor;
         return StatefulBuilder(builder: (context, setStateSheet) {
           return Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0F172A) : Colors.white,
+              color: palette.surface,
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(20)),
+                  const BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1690,16 +1554,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               children: [
                 Text(
                   "Add Tags",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
+                  style: textStyles.headlineS,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
                   children: _suggestedTags.map((tag) {
                     final isSelected = _editingTags.contains(tag);
                     return FilterChip(
@@ -1715,34 +1575,27 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             _editingTags.remove(tag);
                           }
                         });
-                        // Also update parent state to reflect immediately if visible behind sheet
                         setState(() {});
                       },
-                      selectedColor: context
-                          .watch<ThemeProvider>()
-                          .primaryColor
-                          .withValues(alpha: 0.2),
-                      checkmarkColor:
-                          context.watch<ThemeProvider>().primaryColor,
+                      selectedColor:
+                          primaryColor.withValues(alpha: 0.2),
+                      checkmarkColor: primaryColor,
                       labelStyle: TextStyle(
                         color: isSelected
-                            ? context.watch<ThemeProvider>().primaryColor
-                            : (isDark ? Colors.white70 : Colors.black54),
+                            ? primaryColor
+                            : palette.textSecondary,
                       ),
-                      backgroundColor:
-                          isDark ? Colors.white10 : Colors.grey.shade100,
+                      backgroundColor: palette.surfaceVariant,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(AppRadius.full),
                         side: BorderSide(
-                          color: isSelected
-                              ? context.watch<ThemeProvider>().primaryColor
-                              : Colors.transparent,
+                          color: isSelected ? primaryColor : Colors.transparent,
                         ),
                       ),
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.lg),
               ],
             ),
           );
@@ -1751,8 +1604,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     ).then((_) => setState(() {}));
   }
 
-  Widget _buildAddReactionButton(BuildContext context, bool isDark,
+  Widget _buildAddReactionButton(BuildContext context,
       {bool isSmall = false, String? commentId}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return DraggableReactionButton(
       isDark: isDark,
       isSmall: isSmall,

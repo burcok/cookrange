@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +16,9 @@ import 'post_detail_screen.dart';
 import 'package:provider/provider.dart';
 import '../../core/widgets/main_header.dart';
 import '../../core/providers/theme_provider.dart';
+import '../../core/theme/app_palette.dart';
+import '../../core/theme/app_typography.dart';
+import '../../core/theme/app_dimensions.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -60,7 +64,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
     setState(() => _isLoadingMore = true);
     try {
       final result = await _service.fetchPostsPage(
-        limit: 20,
         startAfter: _lastDoc,
         authorIds: _selectedFilter == 'Friends Only' ? _cachedFriendIds : null,
         gymOnly: _selectedFilter == 'Gym',
@@ -89,7 +92,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Future<void> _refreshData() async {
-    _loadGroups();
+    unawaited(_loadGroups());
     setState(() {
       _postsStream = _service.getPostsStream();
       _additionalPosts = [];
@@ -143,7 +146,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
   void _showFilterSheet(BuildContext context, List<String> filters,
       Map<String, String> filterKeys) {
     final appLoc = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
     final primaryColor = context.read<ThemeProvider>().primaryColor;
 
     showModalBottomSheet(
@@ -157,63 +161,44 @@ class _CommunityScreenState extends State<CommunityScreen> {
           builder: (context, setModalState) {
             return ClipRRect(
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
+                  const BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF1E293B).withValues(alpha: 0.9)
-                        : Colors.white.withValues(alpha: 0.9),
+                    color: palette.surface.withValues(alpha: 0.9),
                     border: Border(
-                      top: BorderSide(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : Colors.black.withValues(alpha: 0.05),
-                      ),
+                      top: BorderSide(color: palette.border),
                     ),
                   ),
                   child: SafeArea(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.xs),
                         // Handle bar
                         Container(
-                          width: 40,
-                          height: 4,
+                          width: AppSize.sheetHandleW,
+                          height: AppSize.sheetHandleH,
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.2)
-                                : Colors.black.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(2),
+                            color: palette.border,
+                            borderRadius: BorderRadius.circular(AppRadius.full),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.md),
 
                         // Title
                         Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 8),
+                              horizontal: AppSpacing.xl, vertical: AppSpacing.xs),
                           child: Text(
                             appLoc.translate("community.filter_title"),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF0F172A),
-                            ),
+                            style: textStyles.headlineS,
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Divider(
-                          height: 1,
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.black.withValues(alpha: 0.05),
-                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Divider(height: 1, color: palette.divider),
 
                         Flexible(
                           child: SingleChildScrollView(
@@ -229,60 +214,47 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 24, vertical: 16),
+                                        horizontal: AppSpacing.xl, vertical: AppSpacing.md),
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? primaryColor.withValues(
-                                              alpha: isDark ? 0.2 : 0.1)
+                                          ? primaryColor.withValues(alpha: 0.12)
                                           : Colors.transparent,
                                     ),
                                     child: Row(
                                       children: [
                                         Container(
-                                          padding: const EdgeInsets.all(8),
+                                          padding: const EdgeInsets.all(AppSpacing.xs),
                                           decoration: BoxDecoration(
                                             color: isSelected
-                                                ? primaryColor.withValues(
-                                                    alpha: 0.2)
-                                                : (isDark
-                                                    ? Colors.white
-                                                        .withValues(alpha: 0.05)
-                                                    : Colors.black.withValues(
-                                                        alpha: 0.05)),
+                                                ? primaryColor.withValues(alpha: 0.2)
+                                                : palette.surfaceVariant,
                                             shape: BoxShape.circle,
                                           ),
                                           child: Icon(
                                             _getFilterIcon(filter),
-                                            size: 20,
+                                            size: AppSize.iconMd,
                                             color: isSelected
                                                 ? primaryColor
-                                                : (isDark
-                                                    ? Colors.white
-                                                    : const Color(0xFF0F172A)),
+                                                : palette.textPrimary,
                                           ),
                                         ),
-                                        const SizedBox(width: 16),
+                                        const SizedBox(width: AppSpacing.md),
                                         Expanded(
                                           child: Text(
-                                            appLoc
-                                                .translate(filterKeys[filter]!),
-                                            style: TextStyle(
-                                              fontSize: 16,
+                                            appLoc.translate(filterKeys[filter]!),
+                                            style: textStyles.titleL.copyWith(
                                               fontWeight: isSelected
                                                   ? FontWeight.w600
                                                   : FontWeight.w500,
                                               color: isSelected
                                                   ? primaryColor
-                                                  : (isDark
-                                                      ? Colors.white
-                                                      : const Color(
-                                                          0xFF0F172A)),
+                                                  : palette.textPrimary,
                                             ),
                                           ),
                                         ),
                                         if (isSelected)
                                           Icon(Icons.check,
-                                              color: primaryColor, size: 20),
+                                              color: primaryColor, size: AppSize.iconMd),
                                       ],
                                     ),
                                   ),
@@ -292,13 +264,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           ),
                         ),
 
-                        // Spacer
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.xs),
 
                         // Save Button
                         Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                              horizontal: AppSpacing.md, vertical: AppSpacing.xs),
                           child: SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
@@ -307,26 +278,23 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                 Navigator.pop(context);
                               },
                               style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                                 backgroundColor: primaryColor,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(AppRadius.button),
                                 ),
                               ),
                               child: Text(
                                 appLoc.translate("common.save"),
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                                style: textStyles.labelL.copyWith(
                                   color: Colors.white,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        // Safe Area padding for bottom
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.xs),
                       ],
                     ),
                   ),
@@ -363,7 +331,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
   @override
   Widget build(BuildContext context) {
     final appLoc = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
 
     final Map<String, String> filterKeys = {
       "Latest Updates": "community.filters.latest",
@@ -386,7 +355,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               // Standard Header with Menu and Notifications (like Home)
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
-                    24, MediaQuery.of(context).padding.top + 24, 24, 24),
+                    AppSpacing.xl, MediaQuery.of(context).padding.top + AppSpacing.xl, AppSpacing.xl, AppSpacing.xl),
                 sliver: const SliverToBoxAdapter(
                   child: MainHeader(),
                 ),
@@ -394,30 +363,27 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
               // "Community" Title
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                 sliver: SliverToBoxAdapter(
                   child: Text(
                     appLoc.translate("community.title"),
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      letterSpacing: -1,
-                    ),
+                    style: textStyles.displayM.copyWith(letterSpacing: -1),
                   ),
                 ),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
 
               // Horizontal Groups List
               SliverToBoxAdapter(
                 child: SizedBox(
                   height: 100,
                   child: _isLoadingGroups
-                      ? const Center(child: CircularProgressIndicator())
+                      ? Center(
+                          child: CircularProgressIndicator(
+                              color: context.watch<ThemeProvider>().primaryColor))
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                           scrollDirection: Axis.horizontal,
                           physics: const BouncingScrollPhysics(),
                           itemCount: _groups.length + 1, // +1 for "New Group"
@@ -432,54 +398,38 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 ),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 32)),
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
 
               // Feed Header (Filters)
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                 sliver: SliverToBoxAdapter(
                   child: Row(
                     children: [
                       Expanded(
                         child: Text(
-                          // Using "feed" or "title" or "latest"?
-                          // The user asked to translate "whats cooking" and "community" and "your feed"
-                          // "community.feed" key was added
                           appLoc.translate("community.feed"),
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color:
-                                isDark ? Colors.white : const Color(0xFF0F172A),
-                          ),
+                          style: textStyles.headlineM,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: AppSpacing.md),
                       GestureDetector(
                         onTap: () =>
                             _showFilterSheet(context, _filters, filterKeys),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
+                              horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
                           child: Row(
                             children: [
                               Text(
                                 appLoc.translate(filterKeys[_selectedFilter]!),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark
-                                      ? Colors.white
-                                      : const Color(0xFF0F172A),
-                                ),
+                                style: textStyles.titleM,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: AppSpacing.xxs),
                               Icon(Icons.keyboard_arrow_down,
-                                  size: 20,
-                                  color: isDark
-                                      ? Colors.white
-                                      : const Color(0xFF0F172A)),
+                                  size: AppSize.iconMd,
+                                  color: palette.textPrimary),
                             ],
                           ),
                         ),
@@ -489,23 +439,22 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 ),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
 
               // Create Post Widget
               SliverToBoxAdapter(
                 child: CreatePostCard(
                   onPostCreated: () {
-                    // Stream updates automatically, but we could scroll to top
                     if (_scrollController.hasClients) {
                       _scrollController.animateTo(0,
-                          duration: const Duration(milliseconds: 500),
+                          duration: AppMotion.slow,
                           curve: Curves.easeOut);
                     }
                   },
                 ),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
               // Posts Feed (StreamBuilder)
               StreamBuilder<List<CommunityPost>>(
                 stream: _postsStream,
@@ -514,12 +463,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     return const SliverToBoxAdapter(
                         child: Center(
                             child: Padding(
-                                padding: EdgeInsets.all(20),
+                                padding: EdgeInsets.all(AppSpacing.lg),
                                 child: CircularProgressIndicator())));
                   }
 
                   if (snapshot.hasError) {
-                    // In development/mock or if Firestore rules fail, show error
                     return SliverToBoxAdapter(
                         child: Center(
                             child: Text(appLoc.translate(
@@ -539,7 +487,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             : 'community.no_posts';
                     return SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.all(40),
+                        padding: const EdgeInsets.all(AppSpacing.xxxl),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -550,21 +498,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                       ? Icons.fitness_center
                                       : Icons.article_outlined,
                               size: 48,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.3),
+                              color: palette.textTertiary,
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.md),
                             Text(
                               appLoc.translate(emptyKey),
                               textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withValues(alpha: 0.5),
-                              ),
+                              style: textStyles.bodyM,
                             ),
                           ],
                         ),
@@ -578,7 +518,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         final post = posts[index];
                         return Padding(
                           padding: const EdgeInsets.only(
-                              bottom: 20, left: 24, right: 24),
+                              bottom: AppSpacing.lg, left: AppSpacing.xl, right: AppSpacing.xl),
                           child: RepaintBoundary(
                             child: GlassPostCard(
                               post: post,
@@ -593,7 +533,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               },
                               onLike: () async {
                                 await _service.likePost(post.id);
-                                // The stream will update the UI automatically
                               },
                               onComment: () {
                                 Navigator.push(
@@ -605,7 +544,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                 );
                               },
                               onShare: () {
-                                // Implement share logic
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                       content: Text(AppLocalizations.of(context)
@@ -615,7 +553,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               onReaction: (emoji) async {
                                 await _service.toggleReaction(
                                     postId: post.id, emoji: emoji);
-                                // Stream updates automatically
                               },
                             ),
                           ),
@@ -635,7 +572,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       final post = _additionalPosts[index];
                       return Padding(
                         padding: const EdgeInsets.only(
-                            bottom: 20, left: 24, right: 24),
+                            bottom: AppSpacing.lg, left: AppSpacing.xl, right: AppSpacing.xl),
                         child: GlassPostCard(
                           post: post,
                           onTap: () => Navigator.push(
@@ -664,8 +601,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
               // Load More button
               SliverToBoxAdapter(
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xl, vertical: AppSpacing.xs),
                   child: _hasMorePosts
                       ? OutlinedButton(
                           onPressed: _isLoadingMore ? null : _loadMorePosts,
@@ -680,11 +617,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       : Center(
                           child: Text(
                             appLoc.translate('community.all_posts_loaded'),
-                            style: TextStyle(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withValues(alpha: 0.4)),
+                            style: textStyles.labelM,
                           ),
                         ),
                 ),
@@ -699,37 +632,33 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Widget _buildNewGroupItem(AppLocalizations appLoc) {
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
+    final textStyles = AppText.of(context);
     return Container(
       width: 70,
-      margin: const EdgeInsets.only(right: 16),
+      margin: const EdgeInsets.only(right: AppSpacing.md),
       child: GestureDetector(
         onTap: () => ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(
                   appLoc.translate('community.group_feature_unavailable'))),
         ),
-        // Navigator.of(context).push(
-        //   MaterialPageRoute(builder: (_) => const GroupScreen()),
-        // ),
         child: Column(
           children: [
             Container(
-              width: 60,
-              height: 60,
+              width: AppSize.avatarLg,
+              height: AppSize.avatarLg,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                    color: context.watch<ThemeProvider>().primaryColor,
-                    width: 2),
+                border: Border.all(color: primaryColor, width: 2),
                 color: Colors.transparent,
               ),
-              child: Icon(Icons.add,
-                  color: context.watch<ThemeProvider>().primaryColor),
+              child: Icon(Icons.add, color: primaryColor),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xxs),
             Text(
-              appLoc.translate('community.groups.new'), // Keep short
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              appLoc.translate('community.groups.new'),
+              style: textStyles.labelS,
               textAlign: TextAlign.center,
             ),
           ],
@@ -740,9 +669,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   Widget _buildGroupItem(CommunityGroup group) {
     final appLoc = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
+    final textStyles = AppText.of(context);
     return Container(
       width: 70,
-      margin: const EdgeInsets.only(right: 16),
+      margin: const EdgeInsets.only(right: AppSpacing.md),
       child: GestureDetector(
         onTap: () => ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -754,19 +686,19 @@ class _CommunityScreenState extends State<CommunityScreen> {
             Stack(
               children: [
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: AppSize.avatarLg,
+                  height: AppSize.avatarLg,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.grey[300],
+                    color: palette.surfaceVariant,
                   ),
                   child: ClipOval(
                     child: group.imageUrl.isNotEmpty
                         ? (group.imageUrl.startsWith('http')
                             ? AppImage(
                                 imageUrl: group.imageUrl,
-                                width: 60,
-                                height: 60,
+                                width: AppSize.avatarLg,
+                                height: AppSize.avatarLg,
                               )
                             : Image.asset(group.imageUrl, fit: BoxFit.cover))
                         : const Icon(Icons.group),
@@ -780,17 +712,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           width: 12,
                           height: 12,
                           decoration: BoxDecoration(
-                              color:
-                                  context.watch<ThemeProvider>().primaryColor,
+                              color: primaryColor,
                               shape: BoxShape.circle,
-                              border:
-                                  Border.all(color: Colors.white, width: 2)))),
+                              border: Border.all(
+                                  color: palette.surface, width: 2)))),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xxs),
             Text(
               group.name,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              style: textStyles.labelS,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
             ),

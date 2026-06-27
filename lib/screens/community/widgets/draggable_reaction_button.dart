@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/theme/app_palette.dart';
+import '../../../core/theme/app_dimensions.dart';
 
 class DraggableReactionButton extends StatefulWidget {
   final Function(String emoji) onReactionSelected;
   final bool isDark;
   final bool isSmall;
-  final String?
-      commentId; // For uniqueness if needed in keys, though distinct instances suffice
+  final String? commentId;
 
   const DraggableReactionButton({
     super.key,
@@ -26,39 +27,28 @@ class _DraggableReactionButtonState extends State<DraggableReactionButton> {
   final LayerLink _layerLink = LayerLink();
   final List<String> _emojis = ['👍', '👎', '😂', '😮', '😢', '🔥'];
 
-  // State for drag tracking
   int? _focusedIndex;
 
   void _showOverlay({bool isTapMode = false}) {
     if (_overlayEntry != null) return;
 
-    // Calculate safe offset
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
-    Offset safeOffset = const Offset(-150.0, -60.0); // Default
+    Offset safeOffset = const Offset(-150.0, -60.0);
 
     if (renderBox != null) {
       final buttonPosition = renderBox.localToGlobal(Offset.zero);
       final screenSize = MediaQuery.of(context).size;
 
-      // Estimated Tooltip Width: 6 emojis * ~45px + 24px padding = ~294px. Safe bet 300.
       const tooltipWidth = 300.0;
       const screenPadding = 12.0;
 
-      double targetXOffset =
-          -150.0; // Centered relative to button if button is small
-
-      // Calculate where the tooltip would start globally
+      double targetXOffset = -150.0;
       double globalTooltipLeft = buttonPosition.dx + targetXOffset;
 
-      // 1. Check Left Overflow
       if (globalTooltipLeft < screenPadding) {
-        // Shift right by the amount of overflow + padding
         targetXOffset += (screenPadding - globalTooltipLeft);
-      }
-      // 2. Check Right Overflow
-      else if (globalTooltipLeft + tooltipWidth >
+      } else if (globalTooltipLeft + tooltipWidth >
           screenSize.width - screenPadding) {
-        // Shift left
         targetXOffset -= ((globalTooltipLeft + tooltipWidth) -
             (screenSize.width - screenPadding));
       }
@@ -76,15 +66,11 @@ class _DraggableReactionButtonState extends State<DraggableReactionButton> {
     if (mounted) setState(() => _focusedIndex = null);
   }
 
-  // _updateFocus logic remains mostly same but relativeX needs to know the NEW offset?
-  // Current _updateFocus assumes -150.0. We should store the active offset or recalculate?
-  // Easier: Store _activeOffset in state when showing overlay.
   Offset _activeOffset = const Offset(-150.0, -60.0);
 
   void _updateFocus(Offset localPosition) {
     const itemWidth = 45.0;
 
-    // Use the actual active offset for calculation
     final overlayStartX = _activeOffset.dx;
     final relativeX = localPosition.dx - overlayStartX;
 
@@ -92,17 +78,8 @@ class _DraggableReactionButtonState extends State<DraggableReactionButton> {
     if (index < 0) index = 0;
     if (index >= _emojis.length) index = _emojis.length - 1;
 
-    // Optional: Check Y bounds
     final relativeY = localPosition.dy - _activeOffset.dy;
-    // Overlay is above, so _activeOffset.dy is usually -60.
-    // If dy is 0 (on button), relativeY = 0 - (-60) = 60.
-    // Allow roughly -50 to +100 range from overlay top?
-    // Actually relativeY logic was: localPosition.dy - (-60).
-    // Now: localPosition.dy is relative to button.
-    // Overlay Top is at _activeOffset.dy relative to button.
-    // So touch Y relative to Overlay Top is: localPosition.dy - _activeOffset.dy.
 
-    // Bounds check
     bool outOfBounds = relativeY < -50 || relativeY > 100;
     if (relativeX < -50 || relativeX > (_emojis.length * itemWidth) + 50) {
       outOfBounds = true;
@@ -124,7 +101,7 @@ class _DraggableReactionButtonState extends State<DraggableReactionButton> {
   }
 
   OverlayEntry _createOverlayEntry(bool isTapMode, Offset offset) {
-    _activeOffset = offset; // Store for drag calc
+    _activeOffset = offset;
     return OverlayEntry(
       builder: (context) => Stack(
         children: [
@@ -144,7 +121,7 @@ class _DraggableReactionButtonState extends State<DraggableReactionButton> {
               elevation: 8,
               color: Colors.transparent,
               child: StatefulBuilder(builder: (context, setStateOverlay) {
-                return _buildEmojiRow();
+                return _buildEmojiRow(context);
               }),
             ),
           ),
@@ -153,27 +130,30 @@ class _DraggableReactionButtonState extends State<DraggableReactionButton> {
     );
   }
 
-  Widget _buildEmojiRow() {
+  Widget _buildEmojiRow(BuildContext context) {
+    final palette = AppPalette.of(context);
     return Container(
       decoration: BoxDecoration(
-          color: widget.isDark ? const Color(0xFF334155) : Colors.white,
-          borderRadius: BorderRadius.circular(30)),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      height: 55, // Fixed height
+          color: palette.surfaceElevated,
+          borderRadius: BorderRadius.circular(AppRadius.full)),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+      height: 55,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: List.generate(_emojis.length, (index) {
           final isFocused = _focusedIndex == index;
           return GestureDetector(
-            // Allow direct tap on items in Tap Mode
             onTap: () {
               widget.onReactionSelected(_emojis[index]);
               _removeOverlay();
             },
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
+              duration: AppMotion.fast,
               curve: Curves.easeOutBack,
-              transform: Matrix4.identity()..scale(isFocused ? 1.5 : 1.0),
+              transform: (isFocused
+                  ? (Matrix4.identity()..scaleByDouble(1.5, 1.5, 1.0, 1.0))
+                  : Matrix4.identity()),
               transformAlignment: Alignment.center,
               margin: EdgeInsets.symmetric(horizontal: isFocused ? 10 : 4),
               child: Text(
@@ -189,13 +169,14 @@ class _DraggableReactionButtonState extends State<DraggableReactionButton> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return CompositedTransformTarget(
       link: _layerLink,
       child: GestureDetector(
         onLongPressStart: (details) {
           HapticFeedback.mediumImpact();
           _showOverlay();
-          _updateFocus(details.localPosition); // Init focus
+          _updateFocus(details.localPosition);
         },
         onLongPressMoveUpdate: (details) {
           _updateFocus(details.localPosition);
@@ -209,14 +190,6 @@ class _DraggableReactionButtonState extends State<DraggableReactionButton> {
           }
           _removeOverlay();
         },
-        // Tap behavior: Use legacy/simple popup or simple toggle?
-        // User asked: "Add Reaction + button to be usable by hold".
-        // Tap could just open specific "Add" menu or same overlay but persistent?
-        // Let's make TAP open the overlay in a "Persistent" mode (dismiss on tap outside),
-        // duplicating popup menu behavior but with our custom UI.
-        // For simplicity and matching the request to allow "pressing and holding directly",
-        // we'll keep tap = legacy popup or this same overlay but requiring a second tap.
-        // Let's implement Tap = Toggle Visibility.
         onTap: () {
           if (_overlayEntry != null) {
             _removeOverlay();
@@ -224,18 +197,16 @@ class _DraggableReactionButtonState extends State<DraggableReactionButton> {
             _showOverlay(isTapMode: true);
           }
         },
-        // We will wrap the child with Listener to catch Up events if GestureDetector fails? No.
-
         child: Container(
-          padding: const EdgeInsets.all(4),
+          padding: const EdgeInsets.all(AppSpacing.xxs),
           decoration: widget.isSmall
               ? BoxDecoration(
-                  color: widget.isDark ? Colors.white10 : Colors.grey.shade200,
+                  color: palette.surfaceVariant,
                   shape: BoxShape.circle)
               : null,
           child: Icon(Icons.add_reaction_outlined,
-              size: widget.isSmall ? 16 : 20,
-              color: widget.isDark ? Colors.white70 : Colors.grey.shade600),
+              size: widget.isSmall ? AppSize.iconXs : AppSize.iconMd,
+              color: palette.textSecondary),
         ),
       ),
     );

@@ -269,6 +269,53 @@ These exist and work in code today. Evidence in `file:line` form.
 
 ---
 
+## PHASE 3.5 — DESIGN SYSTEM & FULL UI OVERHAUL (🔥 ACTIVE) · target v0.9.0
+
+> Goal: elevate the entire app to a **billion-dollar, flagship-grade** design language — modern,
+> innovative, cohesive, and unique. Build a real design system once, then re-skin every screen on top
+> of it. Every state (loading / empty / error / success / modal / selector / transition) gets the
+> first-class treatment. Full Dark/Light + EN/TR + iOS/Android + 60fps animation coverage throughout.
+> See **Global Engineering Rules R7** in `CLAUDE.md`.
+
+**Foundation — Design Tokens & Theme Engine**
+- [x] ✅ **Design tokens** — `AppSpacing` / `AppRadius` / `AppSize` / `AppElevation` / `AppMotion` (durations + curves). — Done (`lib/core/theme/app_dimensions.dart`)
+- [x] ✅ **Typography scale** — `AppText` semantic styles (display/headline/title/body/label/overline), theme-aware Poppins. — Done (`lib/core/theme/app_typography.dart`)
+- [x] ✅ **Color system refactor** — `AppPalette` semantic roles (surface/surfaceVariant/text*/border/status/macro accents/shadow/scrim/shimmer), light+dark, `context.palette`. — Done (`lib/core/theme/app_palette.dart`). Migration of legacy hardcoded hex per-screen is tracked under "Screen Re-skin".
+- [x] ✅ **Gradient & glassmorphism kit** — `AppGradients` "Sunset Energy" kit (brand/brandSoft/energy/ring/meshGlow) + `AppGlassCard` frosted-glass + electric `energy` accent added to `AppPalette`. — Done (`app_gradients.dart`, `app_palette.dart`)
+
+**Foundation — Reusable Component Library** (`lib/core/widgets/ds/`, barrel: `ds.dart`)
+- [x] ✅ **Buttons** — `AppButton` primary/secondary/tonal/ghost/destructive, sizes, loading, disabled, haptics, press-scale. — Done (`app_button.dart`)
+- [x] ✅ **Cards & surfaces** — `AppCard` + `AppGlassCard` with press feedback. — Done (`app_card.dart`)
+- [x] ✅ **Loading states** — `AppShimmer` + `AppSkeletonBox` / `AppSkeletonList` branded skeletons (no package dep). — Done (`app_shimmer.dart`)
+- [x] ✅ **Empty states** — `AppEmptyState` illustrated, animated, CTA. — Done (`app_state_views.dart`)
+- [x] ✅ **Error states** — `AppErrorState` friendly + retry (inline/full-screen). — Done (`app_state_views.dart`)
+- [x] ✅ **Modals & bottom sheets** — `AppSheet.show()` handle + blur scrim + title + safe-area. — Done (`app_sheet.dart`)
+- [x] ✅ **Calorie ring (hero)** — `AppCalorieRing` animated sweep-gradient progress ring + count-up readout + glow. — Done (`app_calorie_ring.dart`)
+- [ ] **Selectors / pickers** — segmented control, chip picker, date/number/wheel pickers, toggles. — High
+- [ ] **Inputs** — text field, search field, with focus/error/animation states. — High
+- [ ] **Snackbars / toasts / banners** — success/error/info variants, branded. — Medium
+- [ ] **Navigation transitions** — shared page-route builders (fade-through, shared-axis, bottom-sheet). — Medium
+
+**Bold direction (locked):** "Sunset Energy" — warm sunset gradient brand (`#FF8A3D→#F97300→#FF4E50`)
++ cool electric `energy` accent (teal/mint), premium dark, ambient mesh-glow backgrounds, animated
+gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen`.
+
+**Screen Re-skin** (apply the system, screen by screen)
+- [x] ✅ **Splash / loading sequence** — `Colors.red` offline banner → `AppPalette.of(context).error` (DS import added). 0 analyze errors.
+- [x] ✅ **Onboarding (6 steps + priority)** — All hardcoded `Color(0xFF...)`, `Colors.*`, raw `TextStyle`, `colorScheme.*` custom roles → DS (AppPalette, AppText, ThemeProvider.primaryColor). `isDark` branches removed. DS imports added to all 9 files. 0 analyze errors.
+- [x] ✅ **Auth (login / register / verify / forgot)** — DS tokens throughout (AppPalette, AppText, AppButton, AppRadius, AppSpacing). Unified `_buildTextField` helper with proper border/fill/error states. Removed all hardcoded colors + `constants.dart` + `app_theme.dart` dependencies. 0 analyze errors.
+- [x] ✅ **Home dashboard** — 🔥 Critical (flagship). **Fully complete.** Bold nutrition hero (`AppCalorieRing` + animated macro bars, brand-washed card, glow), mesh-glow background, DS scan button, DS section titles, welcome header (AppText/AppPalette), streak & goal-met banners (DS + i18n), day selector (DS palette), meal cards (DS colors/AppText/AppSkeletonBox, glassmorphism), swap sheet (DS), TrackingCard (AppCard, DS tokens, palette.info for hydration), all loading states → AppSkeletonList, empty state → AppEmptyState. 0 analyze errors.
+- [x] ✅ **Meal plan + recipe detail + cooking mode** — Full DS migration: `recipe_detail_screen.dart` + `cooking_mode_screen.dart`. Macro colors → palette.protein/carbs/fat/calories, all TextStyles → AppText, AppSpacing/AppRadius throughout. 0 analyze errors.
+- [x] ✅ **Food scan / nutrition analytics** — `food_scan_screen.dart` (was already clean), `nutrition_analytics_screen.dart` full migration: isDark branches removed, BarChartPainter refactored to accept AppPalette, score/stat/bg colors → DS. 0 analyze errors.
+- [x] ✅ **Community feed + post detail + create post** — All 7 files (community_screen, post_detail, community_widgets, create_post_card, draggable_reaction_button, glass_post_card, glass_refresher) fully migrated. isDark branches removed, all Color/TextStyle → DS. 0 analyze errors.
+- [x] ✅ **Chat list + chat detail + group create** — All 6 files (ai_chat, chat_detail, chat_list, create_group_sheet, select_friend_sheet, signal_dialog) migrated. Bubble colors semantic (sent→primary, received→surfaceVariant), isDark removed, AppText throughout. 0 analyze errors.
+- [x] ✅ **Profile + settings + legal** — All 3 files fully migrated. isDark branches removed, streak/tier/reputation badge colors → palette semantic, icon bg colors mapped to palette roles, color picker swatches intentionally kept. 0 analyze errors.
+- [x] ✅ **Shopping list** — DS migration: swipe-delete→palette.error, checked→textTertiary, surfaces/borders all semantic. 0 analyze errors.
+- [x] ✅ **Challenges + leaderboard** — 4 files (challenges_screen, challenge_detail, create_challenge_sheet, leaderboard_screen) migrated. Rank colors semantic (1st→calories, 2nd→textSecondary, 3rd→warning), progress bars→energy. 0 analyze errors.
+- [x] ✅ **Notifications + explore** — notification_screen types mapped to semantic palette roles (like→error, comment→info, friend→fat/success, system→warning), explore_screen primaryColor→ThemeProvider. 0 analyze errors.
+
+---
+
 ## PHASE 4 — GYM ECOSYSTEM (Core differentiator — greenfield) · target v1.1.0–v1.4.0
 
 > Status: ❌ ~0% built (only `SignalType.gym_help` + a mock gym chat + a filter tab exist). This is the strategic moat — but it's a from-scratch build. **Do not start before the consumer MVP is validated.**

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
+import 'package:cookrange/core/widgets/ds/ds.dart';
 import '../steps/onboarding_page1.dart';
 import '../steps/onboarding_page2.dart';
 import '../steps/onboarding_page3.dart';
@@ -88,15 +89,19 @@ class OnboardingStep extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              Icon(Icons.error_outline, color: AppPalette.of(context).error, size: 48),
               const SizedBox(height: 16),
               Text(
                   AppLocalizations.of(context)
                       .translate('auth.login_errors.unexpected_error'),
-                  style: const TextStyle(color: Colors.red, fontSize: 16)),
+                  style: AppText.of(context).titleM.copyWith(
+                    color: AppPalette.of(context).error,
+                  )),
               const SizedBox(height: 8),
               Text(e.toString(),
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  style: AppText.of(context).labelS.copyWith(
+                    color: AppPalette.of(context).textSecondary,
+                  )),
             ],
           ),
         ),

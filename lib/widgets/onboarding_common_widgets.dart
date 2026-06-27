@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/localization/app_localizations.dart';
-import '../core/theme/app_theme.dart';
-import '../constants.dart';
+import '../core/providers/theme_provider.dart';
+import '../core/widgets/ds/ds.dart';
 
 class OnboardingBackButton extends StatelessWidget {
   final VoidCallback onTap;
@@ -10,8 +11,7 @@ class OnboardingBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appColors = Theme.of(context).extension<AppColors>();
-    if (appColors == null) return const SizedBox.shrink();
+    final palette = AppPalette.of(context);
 
     return GestureDetector(
       onTap: onTap,
@@ -20,7 +20,7 @@ class OnboardingBackButton extends StatelessWidget {
         height: 48,
         child: Icon(
           Icons.arrow_back,
-          color: appColors.onboardingTitleColor,
+          color: palette.textPrimary,
           size: 24,
         ),
       ),
@@ -98,27 +98,24 @@ class _AnimatedStepIndicatorState extends State<AnimatedStepIndicator>
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
+    final primary = context.read<ThemeProvider>().primaryColor;
     final localizations = AppLocalizations.of(context);
+    final t = AppText.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           '${localizations.translate('onboarding.step')} ${widget.currentStep}/${widget.totalSteps}',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: colorScheme.onboardingTitleColor,
-            fontFamily: 'Poppins',
-          ),
+          style: t.titleM.copyWith(color: palette.textPrimary),
         ),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
           height: 8,
           decoration: BoxDecoration(
-            color: const Color.fromRGBO(242, 237, 232, 1),
+            color: primary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(99),
           ),
           child: AnimatedBuilder(
@@ -129,7 +126,7 @@ class _AnimatedStepIndicatorState extends State<AnimatedStepIndicator>
                 widthFactor: _progressAnimation.value.clamp(0.0, 1.0),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: primaryColor,
+                    color: primary,
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
@@ -168,29 +165,20 @@ class OnboardingSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: colorScheme.onboardingTitleColor,
-            fontFamily: 'Poppins',
-          ),
+          style: t.headlineS.copyWith(color: palette.textPrimary),
         ),
         const SizedBox(height: 6),
         Text(
           subtitle,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: colorScheme.onboardingTitleColor,
-            fontFamily: 'Poppins',
-          ),
+          style: t.bodyM.copyWith(color: palette.textPrimary),
         ),
         const SizedBox(height: 16),
         Wrap(
@@ -229,29 +217,20 @@ class OnboardingMultiSelectSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
     final localizations = AppLocalizations.of(context);
+    final t = AppText.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: colorScheme.onboardingTitleColor,
-            fontFamily: 'Poppins',
-          ),
+          style: t.headlineS.copyWith(color: palette.textPrimary),
         ),
         const SizedBox(height: 6),
         Text(
           subtitle,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: colorScheme.onboardingSubtitleColor,
-            fontFamily: 'Poppins',
-          ),
+          style: t.bodyM.copyWith(color: palette.textSecondary),
         ),
         const SizedBox(height: 16),
         Text(
@@ -259,12 +238,7 @@ class OnboardingMultiSelectSection extends StatelessWidget {
             'onboarding.page2.primary_goal.selected_count',
             variables: {'count': selectedValues.length.toString()},
           ),
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w400,
-            color: colorScheme.onboardingSubtitleColor,
-            fontFamily: 'Poppins',
-          ),
+          style: t.labelS.copyWith(color: palette.textSecondary),
         ),
         const SizedBox(height: 8),
         Wrap(
@@ -299,7 +273,9 @@ class OnboardingOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
+    final primary = context.read<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
 
     return GestureDetector(
       onTap: onTap,
@@ -307,12 +283,12 @@ class OnboardingOption extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? primaryColor : Colors.transparent,
+          color: isSelected ? primary : Colors.transparent,
           borderRadius: BorderRadius.circular(99),
           border: Border.all(
             color: isSelected
-                ? primaryColor.withValues(alpha: 0.2)
-                : Colors.grey.withValues(alpha: 0.5),
+                ? primary.withValues(alpha: 0.2)
+                : palette.border,
           ),
         ),
         child: Row(
@@ -322,21 +298,15 @@ class OnboardingOption extends StatelessWidget {
               Icon(
                 option.icon!,
                 size: 20,
-                color: isSelected
-                    ? Colors.white
-                    : colorScheme.onboardingTitleColor,
+                color: isSelected ? Colors.white : palette.textPrimary,
               ),
               const SizedBox(width: 8),
             ],
             Text(
               option.label,
-              style: TextStyle(
-                fontSize: 14,
+              style: t.bodyM.copyWith(
                 fontWeight: FontWeight.w500,
-                color: isSelected
-                    ? Colors.white
-                    : colorScheme.onboardingTitleColor,
-                fontFamily: 'Poppins',
+                color: isSelected ? Colors.white : palette.textPrimary,
               ),
             ),
           ],
@@ -360,8 +330,8 @@ class OnboardingContinueButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final primary = context.read<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
@@ -371,16 +341,15 @@ class OnboardingContinueButton extends StatelessWidget {
           return ElevatedButton(
             onPressed: onPressed != null && !isLoading ? onPressed : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              foregroundColor: colorScheme.onPrimary,
+              backgroundColor: primary,
+              foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 56),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(99),
               ),
               elevation: 0,
               shadowColor: Colors.transparent,
-              disabledBackgroundColor:
-                  colorScheme.primaryColorCustom.withValues(alpha: 0.5),
+              disabledBackgroundColor: primary.withValues(alpha: 0.5),
             ),
             child: isLoading
                 ? const SizedBox(
@@ -393,10 +362,8 @@ class OnboardingContinueButton extends StatelessWidget {
                   )
                 : Text(
                     text,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: t.titleM.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontFamily: 'Poppins',
                       color: Colors.white,
                     ),
                   ),
@@ -425,9 +392,10 @@ class OnboardingHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final palette = AppPalette.of(context);
+    final primary = context.read<ThemeProvider>().primaryColor;
     final localizations = AppLocalizations.of(context);
+    final t = AppText.of(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -439,17 +407,15 @@ class OnboardingHeader extends StatelessWidget {
               if (onBackButtonPressed != null)
                 GestureDetector(
                   onTap: onBackButtonPressed,
-                  child: const Icon(Icons.arrow_back, size: 24),
+                  child: Icon(Icons.arrow_back, size: 24, color: palette.textPrimary),
                 ),
               Expanded(
                 child: Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20,
+                  style: t.titleM.copyWith(
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'Lexend',
-                    color: colorScheme.titleColor,
+                    color: palette.textPrimary,
                   ),
                 ),
               ),
@@ -459,11 +425,9 @@ class OnboardingHeader extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             '${localizations.translate('onboarding.step')} $currentStep/$totalSteps',
-            style: TextStyle(
-              fontSize: 14,
+            style: t.bodyM.copyWith(
               fontWeight: FontWeight.w600,
-              fontFamily: 'Poppins',
-              color: colorScheme.titleColor,
+              color: palette.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
@@ -479,7 +443,7 @@ class OnboardingHeader extends StatelessWidget {
                     width: double.infinity,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: primaryColor.withValues(alpha: 0.2),
+                      color: primary.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
@@ -488,7 +452,7 @@ class OnboardingHeader extends StatelessWidget {
                     width: constraints.maxWidth * progress,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: primaryColor,
+                      color: primary,
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
@@ -520,30 +484,20 @@ class OnboardingTextInputSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: colorScheme.onboardingTitleColor,
-            fontFamily: 'Poppins',
-          ),
+          style: t.headlineS.copyWith(color: palette.textPrimary),
         ),
         const SizedBox(height: 6),
         Text(
           subtitle,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: colorScheme.onboardingSubtitleColor,
-            fontFamily: 'Poppins',
-          ),
+          style: t.bodyM.copyWith(color: palette.textSecondary),
         ),
         const SizedBox(height: 16),
         TextField(
@@ -554,13 +508,13 @@ class OnboardingTextInputSection extends StatelessWidget {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: colorScheme.onboardingTitleColor.withValues(alpha: 0.1),
+                color: palette.border,
               ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: colorScheme.onboardingTitleColor.withValues(alpha: 0.1),
+                color: palette.border,
               ),
             ),
           ),

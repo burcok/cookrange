@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/localization/app_localizations.dart';
@@ -5,6 +6,8 @@ import '../../../core/models/user_model.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/friend_service.dart';
 import '../../../core/services/chat_service.dart';
+import '../../../core/theme/app_palette.dart';
+import '../../../core/theme/app_typography.dart';
 import '../chat_detail_screen.dart';
 
 class CreateGroupChatSheet extends StatefulWidget {
@@ -76,10 +79,10 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
       );
       if (mounted) {
         Navigator.pop(context);
-        Navigator.push(
+        unawaited(Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => ChatDetailScreen(chat: chat)),
-        );
+        ));
       }
     } catch (e) {
       if (mounted) {
@@ -94,7 +97,8 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
+    final appText = AppText.of(context);
     final primary = context.read<ThemeProvider>().primaryColor;
 
     final canCreate = _nameController.text.trim().isNotEmpty &&
@@ -104,7 +108,7 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF111827) : Colors.white,
+        color: palette.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -115,7 +119,7 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
             height: 4,
             margin: const EdgeInsets.only(top: 12, bottom: 20),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white24 : Colors.black12,
+              color: palette.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -128,10 +132,9 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
                 Expanded(
                   child: Text(
                     l10n.translate('chat.group.create_title'),
-                    style: TextStyle(
+                    style: appText.headlineS.copyWith(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
                     ),
                   ),
                 ),
@@ -163,17 +166,13 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
             child: TextField(
               controller: _nameController,
               onChanged: (_) => setState(() {}),
-              style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A)),
+              style: TextStyle(color: palette.textPrimary),
               decoration: InputDecoration(
                 hintText: l10n.translate('chat.group.name_hint'),
-                hintStyle: TextStyle(
-                    color: isDark ? Colors.white38 : Colors.black38),
-                prefixIcon: Icon(Icons.group,
-                    color: isDark ? Colors.white38 : Colors.black38),
+                hintStyle: TextStyle(color: palette.textTertiary),
+                prefixIcon: Icon(Icons.group, color: palette.textTertiary),
                 filled: true,
-                fillColor:
-                    isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
+                fillColor: palette.surfaceVariant,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide.none,
@@ -192,10 +191,9 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
               alignment: Alignment.centerLeft,
               child: Text(
                 l10n.translate('chat.group.select_members'),
-                style: TextStyle(
+                style: appText.labelM.copyWith(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white60 : Colors.black54,
                 ),
               ),
             ),
@@ -207,17 +205,13 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: TextField(
               controller: _searchController,
-              style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A)),
+              style: TextStyle(color: palette.textPrimary),
               decoration: InputDecoration(
                 hintText: l10n.translate('chat.search_friend_hint'),
-                hintStyle: TextStyle(
-                    color: isDark ? Colors.white38 : Colors.black38),
-                prefixIcon: Icon(Icons.search,
-                    color: isDark ? Colors.white38 : Colors.black38),
+                hintStyle: TextStyle(color: palette.textTertiary),
+                prefixIcon: Icon(Icons.search, color: palette.textTertiary),
                 filled: true,
-                fillColor:
-                    isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
+                fillColor: palette.surfaceVariant,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -240,10 +234,7 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
                           child: Text(
                             l10n.translate('chat.group.no_friends'),
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: isDark
-                                    ? Colors.white54
-                                    : Colors.black54),
+                            style: TextStyle(color: palette.textSecondary),
                           ),
                         ),
                       )
@@ -282,12 +273,11 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
                                   : null,
                             ),
                             title: Text(
-                              friend.displayName ?? l10n.translate('chat.unnamed_user'),
+                              friend.displayName ??
+                                  l10n.translate('chat.unnamed_user'),
                               style: TextStyle(
                                 fontWeight: FontWeight.w500,
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF0F172A),
+                                color: palette.textPrimary,
                               ),
                             ),
                             shape: RoundedRectangleBorder(
@@ -307,8 +297,7 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
                 onPressed: canCreate ? _createGroup : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primary,
-                  disabledBackgroundColor:
-                      isDark ? Colors.white12 : Colors.black12,
+                  disabledBackgroundColor: palette.border,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(

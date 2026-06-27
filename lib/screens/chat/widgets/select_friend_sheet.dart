@@ -1,9 +1,12 @@
+import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/friend_service.dart';
 import '../../../core/services/chat_service.dart';
 import '../../../core/models/chat_model.dart';
+import '../../../core/theme/app_palette.dart';
+import '../../../core/theme/app_typography.dart';
 import '../chat_detail_screen.dart';
 
 class SelectFriendSheet extends StatefulWidget {
@@ -15,7 +18,7 @@ class SelectFriendSheet extends StatefulWidget {
 
 class _SelectFriendSheetState extends State<SelectFriendSheet> {
   final FriendService _friendService = FriendService();
-  final ChatService _chatService = ChatService(); // Assuming it's available
+  final ChatService _chatService = ChatService();
   final TextEditingController _searchController = TextEditingController();
 
   String _searchQuery = "";
@@ -28,12 +31,15 @@ class _SelectFriendSheetState extends State<SelectFriendSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final appText = AppText.of(context);
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.7,
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         children: [
@@ -41,12 +47,14 @@ class _SelectFriendSheetState extends State<SelectFriendSheet> {
             children: [
               Text(
                 AppLocalizations.of(context).translate('chat.new_chat'),
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: appText.headlineS.copyWith(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: Icon(Icons.close, color: palette.textPrimary),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -54,12 +62,17 @@ class _SelectFriendSheetState extends State<SelectFriendSheet> {
           const SizedBox(height: 16),
           TextField(
             controller: _searchController,
+            style: TextStyle(color: palette.textPrimary),
             decoration: InputDecoration(
               hintText: AppLocalizations.of(context)
                   .translate('chat.search_friend_hint'),
-              prefixIcon: const Icon(Icons.search),
+              hintStyle: TextStyle(color: palette.textTertiary),
+              prefixIcon: Icon(Icons.search, color: palette.textTertiary),
+              filled: true,
+              fillColor: palette.surfaceVariant,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
               ),
             ),
             onChanged: (val) =>
@@ -78,8 +91,10 @@ class _SelectFriendSheetState extends State<SelectFriendSheet> {
 
                 if (friends.isEmpty) {
                   return Center(
-                      child: Text(AppLocalizations.of(context)
-                          .translate('chat.no_friends')));
+                      child: Text(
+                          AppLocalizations.of(context)
+                              .translate('chat.no_friends'),
+                          style: TextStyle(color: palette.textSecondary)));
                 }
 
                 final filteredFriends = friends.where((friend) {
@@ -89,8 +104,10 @@ class _SelectFriendSheetState extends State<SelectFriendSheet> {
 
                 if (filteredFriends.isEmpty) {
                   return Center(
-                      child: Text(AppLocalizations.of(context)
-                          .translate('chat.no_results')));
+                      child: Text(
+                          AppLocalizations.of(context)
+                              .translate('chat.no_results'),
+                          style: TextStyle(color: palette.textSecondary)));
                 }
 
                 return ListView.builder(
@@ -104,51 +121,57 @@ class _SelectFriendSheetState extends State<SelectFriendSheet> {
                           backgroundImage: friend.photoURL != null
                               ? NetworkImage(friend.photoURL!)
                               : null,
+                          backgroundColor: palette.surfaceVariant,
                           child: friend.photoURL == null
-                              ? const Icon(Icons.person)
+                              ? Icon(Icons.person, color: palette.textTertiary)
                               : null,
                         ),
-                        title: Text(friend.displayName ??
-                            AppLocalizations.of(context)
-                                .translate('chat.unnamed_user')),
-                        subtitle: Text(friend.isOnline
-                            ? AppLocalizations.of(context)
-                                .translate('chat.online')
-                            : AppLocalizations.of(context)
-                                .translate('chat.offline')),
-                        trailing: const Icon(Icons.chat_bubble_outline,
-                            color: Colors.blue),
+                        title: Text(
+                          friend.displayName ??
+                              AppLocalizations.of(context)
+                                  .translate('chat.unnamed_user'),
+                          style: TextStyle(color: palette.textPrimary),
+                        ),
+                        subtitle: Text(
+                          friend.isOnline
+                              ? AppLocalizations.of(context)
+                                  .translate('chat.online')
+                              : AppLocalizations.of(context)
+                                  .translate('chat.offline'),
+                          style: TextStyle(
+                            color: friend.isOnline
+                                ? palette.success
+                                : palette.textTertiary,
+                          ),
+                        ),
+                        trailing:
+                            Icon(Icons.chat_bubble_outline, color: palette.info),
                         onTap: () async {
-                          // Create 1:1 chat logic here
-                          // We need current user ID, assuming FriendService access it or we pass it
                           final currentUserId = _friendService.currentUserId;
                           if (currentUserId != null) {
-                            // Navigate to chat
-                            // We need to create/get chat ID first
+                            final nav = Navigator.of(context);
                             final chatId =
                                 await _chatService.createOrGetPrivateChat(
                                     currentUserId, friend.uid);
-  
+
                             if (mounted) {
-                              Navigator.pop(context); // Close sheet
-  
-                              // Construct a ChatModel to pass
+                              nav.pop();
+
                               final chat = ChatModel(
                                 id: chatId,
                                 participants: [currentUserId, friend.uid],
                                 type: ChatType.private,
-                                unreadCounts: {}, // Empty initially
+                                unreadCounts: {},
                                 updatedAt: DateTime.now(),
                                 name: friend.displayName,
                                 image: friend.photoURL,
                               );
-  
-                              Navigator.push(
-                                context,
+
+                              unawaited(nav.push(
                                 MaterialPageRoute(
                                   builder: (_) => ChatDetailScreen(chat: chat),
                                 ),
-                              );
+                              ));
                             }
                           }
                         },

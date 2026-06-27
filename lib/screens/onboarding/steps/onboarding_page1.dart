@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../constants.dart';
-import '../../../core/theme/app_theme.dart';
+import 'package:provider/provider.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../../core/widgets/ds/ds.dart';
 import '../../../widgets/onboarding_common_widgets.dart';
 
 class OnboardingPage1 extends StatefulWidget {
@@ -61,17 +62,17 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
   }
 
   List<TextSpan> _buildStyledDescription(
-      AppLocalizations localizations, ColorScheme colorScheme) {
+      AppLocalizations localizations, AppPalette palette, Color primary) {
     final description = localizations.translate('onboarding.page1.description');
     final parts = description.split('{x}');
 
     if (parts.length == 2) {
       return [
         TextSpan(text: parts[0]),
-        const TextSpan(
+        TextSpan(
           text: 'cookrange',
           style: TextStyle(
-            color: Color.fromRGBO(237, 122, 41, 1),
+            color: primary,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -85,12 +86,13 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final palette = AppPalette.of(context);
+    final primary = context.watch<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
     final localizations = AppLocalizations.of(context);
 
     return Scaffold(
-      backgroundColor: colorScheme.backgroundColor2,
+      backgroundColor: palette.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -131,7 +133,7 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                           return Icon(
                             Icons.emoji_food_beverage,
                             size: 80,
-                            color: colorScheme.primaryColorCustom,
+                            color: primary,
                           );
                         },
                       ),
@@ -150,26 +152,20 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                   Text(
                     localizations.translate('onboarding.page1.title'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      color: colorScheme.onboardingTitleColor,
-                      fontFamily: 'Poppins',
+                    style: t.displayM.copyWith(
+                      color: palette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 12),
                   RichText(
                     textAlign: TextAlign.center,
                     text: TextSpan(
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                        color: colorScheme.onboardingSubtitleColor,
-                        fontFamily: 'Poppins',
+                      style: t.bodyL.copyWith(
+                        color: palette.textSecondary,
                         height: 1.5,
                       ),
                       children:
-                          _buildStyledDescription(localizations, colorScheme),
+                          _buildStyledDescription(localizations, palette, primary),
                     ),
                   ),
                   const SizedBox(height: 42),
@@ -195,7 +191,7 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                         });
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
+                        backgroundColor: primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(99),
@@ -204,11 +200,9 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                       ),
                       child: Text(
                         localizations.translate('onboarding.page1.get_started'),
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: t.titleM.copyWith(
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
-                          fontFamily: 'Poppins',
                         ),
                       ),
                     ),

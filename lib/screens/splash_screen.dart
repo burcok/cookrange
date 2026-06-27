@@ -1,6 +1,7 @@
 import 'package:cookrange/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import '../core/widgets/ds/ds.dart';
 // shared_preferences not used in this file
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
@@ -267,9 +268,9 @@ class _SplashScreenState extends State<SplashScreen>
             child: Material(
               color: Colors.transparent,
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  color: AppPalette.of(context).error,
+                  borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(20),
                     bottomRight: Radius.circular(20),
                   ),

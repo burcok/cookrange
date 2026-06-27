@@ -9,6 +9,7 @@ import '../../core/services/friend_service.dart';
 import '../../screens/community/widgets/glass_refresher.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/theme_provider.dart';
+import '../../core/widgets/ds/ds.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -132,7 +133,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final primaryColor = context.watch<ThemeProvider>().primaryColor;
 
     return Scaffold(
@@ -148,8 +149,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               width: 380,
               height: 380,
               decoration: BoxDecoration(
-                  color:
-                      primaryColor.withValues(alpha: isDark ? 0.2 : 0.1),
+                  color: primaryColor.withValues(alpha: palette.isDark ? 0.2 : 0.1),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -168,8 +168,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    Colors.blue
-                        .withValues(alpha: isDark ? 0.15 : 0.25),
+                    palette.info.withValues(alpha: palette.isDark ? 0.15 : 0.25),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.7],
@@ -184,12 +183,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
               width: 250,
               height: 250,
               decoration: BoxDecoration(
-                  color: Colors.purple
-                      .withValues(alpha: isDark ? 0.1 : 0.2),
+                  color: palette.fat.withValues(alpha: palette.isDark ? 0.1 : 0.2),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.purple.withValues(alpha: 0.2),
+                        color: palette.fat.withValues(alpha: 0.2),
                         blurRadius: 150)
                   ]),
             ),
@@ -197,9 +195,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
           Container(
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF0F172A).withValues(alpha: 0.8)
-                  : const Color(0xFFF8FAFC).withValues(alpha: 0.8),
+              color: palette.background.withValues(alpha: 0.8),
             ),
             child: Column(
               children: [
@@ -212,9 +208,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       margin: const EdgeInsets.only(left: 24),
                       child: IconButton(
                         icon: Icon(Icons.arrow_back,
-                            color: isDark
-                                ? Colors.grey[300]
-                                : Colors.grey[600]),
+                            color: palette.textSecondary),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ),
@@ -225,18 +219,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.2,
-                        color: isDark
-                            ? Colors.grey[200]
-                            : Colors.grey[800],
+                        color: palette.textPrimary,
                       ),
                     ),
                     Container(
                       margin: const EdgeInsets.only(right: 24),
                       child: IconButton(
                         icon: Icon(Icons.done_all,
-                            color: isDark
-                                ? Colors.grey[300]
-                                : Colors.grey[600]),
+                            color: palette.textSecondary),
                         onPressed: _markAllRead,
                         tooltip: AppLocalizations.of(context)
                             .translate('community.mark_all_read'),
@@ -256,28 +246,28 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     children: [
                       _buildFilterChip('all',
                           AppLocalizations.of(context).translate('community.all'),
-                          primaryColor, isDark),
+                          primaryColor, palette),
                       const SizedBox(width: 12),
                       _buildFilterChip(
                           'unread',
                           AppLocalizations.of(context)
                               .translate('community.unread'),
                           primaryColor,
-                          isDark),
+                          palette),
                       const SizedBox(width: 12),
                       _buildFilterChip(
                           'friends',
                           AppLocalizations.of(context)
                               .translate('community.friends'),
                           primaryColor,
-                          isDark),
+                          palette),
                       const SizedBox(width: 12),
                       _buildFilterChip(
                           'system',
                           AppLocalizations.of(context)
                               .translate('community.system'),
                           primaryColor,
-                          isDark),
+                          palette),
                     ],
                   ),
                 ),
@@ -291,7 +281,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           child: CircularProgressIndicator(
                               color: primaryColor))
                       : _filteredNotifications.isEmpty
-                          ? _buildEmptyState(context)
+                          ? _buildEmptyState(context, palette)
                           : GlassRefresher(
                               onRefresh: () async {
                                 // Stream keeps data live; nothing to do
@@ -313,7 +303,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                   final n =
                                       _filteredNotifications[index];
                                   return _buildNotificationCard(
-                                      n, isDark, primaryColor);
+                                      n, palette, primaryColor);
                                 },
                               ),
                             ),
@@ -327,7 +317,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   Widget _buildFilterChip(
-      String filterId, String label, Color primaryColor, bool isDark) {
+      String filterId, String label, Color primaryColor, AppPalette palette) {
     final isSelected = _selectedFilter == filterId;
     return GestureDetector(
       onTap: () => setState(() => _selectedFilter = filterId),
@@ -337,16 +327,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? primaryColor
-              : (isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.white.withValues(alpha: 0.4)),
+              : palette.surface.withValues(alpha: palette.isDark ? 0.05 : 0.4),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
                 ? primaryColor
-                : (isDark
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : Colors.white.withValues(alpha: 0.6)),
+                : palette.border,
           ),
           boxShadow: isSelected
               ? [
@@ -365,7 +351,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               fontWeight: FontWeight.w600,
               color: isSelected
                   ? Colors.white
-                  : (isDark ? Colors.grey[300] : Colors.grey[600]),
+                  : palette.textSecondary,
             ),
           ),
         ),
@@ -373,20 +359,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, AppPalette palette) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.notifications_off_outlined,
-              size: 64, color: Colors.grey[400]),
+              size: 64, color: palette.textTertiary),
           const SizedBox(height: 16),
           Text(
             AppLocalizations.of(context)
                 .translate('community.no_notifications'),
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey[500],
+              color: palette.textSecondary,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -396,7 +382,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   Widget _buildNotificationCard(
-      NotificationModel notification, bool isDark, Color primaryColor) {
+      NotificationModel notification, AppPalette palette, Color primaryColor) {
     Color iconBgColor;
     Color iconColor;
     IconData iconData;
@@ -404,54 +390,42 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     switch (notification.type) {
       case NotificationType.like:
-        iconBgColor = isDark
-            ? Colors.red.withValues(alpha: 0.2)
-            : Colors.red.shade50;
-        iconColor = Colors.red;
+        iconBgColor = palette.error.withValues(alpha: 0.15);
+        iconColor = palette.error;
         iconData = Icons.favorite;
         headerText = AppLocalizations.of(context)
             .translate('community.friends');
         break;
       case NotificationType.comment:
-        iconBgColor = isDark
-            ? Colors.blue.withValues(alpha: 0.2)
-            : Colors.blue.shade50;
-        iconColor = Colors.blue;
+        iconBgColor = palette.info.withValues(alpha: 0.15);
+        iconColor = palette.info;
         iconData = Icons.chat_bubble;
         headerText = AppLocalizations.of(context)
             .translate('community.friends');
         break;
       case NotificationType.friend_request:
-        iconBgColor = isDark
-            ? Colors.purple.withValues(alpha: 0.2)
-            : Colors.purple.shade50;
-        iconColor = Colors.purple;
+        iconBgColor = palette.fat.withValues(alpha: 0.15);
+        iconColor = palette.fat;
         iconData = Icons.person_add;
         headerText = AppLocalizations.of(context)
             .translate('community.friends');
         break;
       case NotificationType.friend_accepted:
-        iconBgColor = isDark
-            ? Colors.green.withValues(alpha: 0.2)
-            : Colors.green.shade50;
-        iconColor = Colors.green;
+        iconBgColor = palette.success.withValues(alpha: 0.15);
+        iconColor = palette.success;
         iconData = Icons.person_add;
         headerText = AppLocalizations.of(context)
             .translate('community.friends');
         break;
       case NotificationType.system:
-        iconBgColor = isDark
-            ? Colors.amber.withValues(alpha: 0.2)
-            : Colors.amber.shade50;
-        iconColor = Colors.amber.shade800;
+        iconBgColor = palette.warning.withValues(alpha: 0.15);
+        iconColor = palette.warning;
         iconData = Icons.system_update;
         headerText = AppLocalizations.of(context)
             .translate('community.system');
         break;
       default:
-        iconBgColor = isDark
-            ? primaryColor.withValues(alpha: 0.2)
-            : primaryColor.withValues(alpha: 0.1);
+        iconBgColor = primaryColor.withValues(alpha: 0.15);
         iconColor = primaryColor;
         iconData = Icons.notifications;
         headerText = AppLocalizations.of(context)
@@ -460,19 +434,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     if (notification.title.contains("Plan") ||
         notification.title.contains("Yemek")) {
-      iconBgColor = isDark
-          ? Colors.green.withValues(alpha: 0.2)
-          : Colors.green.shade50;
-      iconColor = Colors.green;
+      iconBgColor = palette.success.withValues(alpha: 0.15);
+      iconColor = palette.success;
       iconData = Icons.restaurant;
       headerText = "Meal Plan";
     }
     if (notification.title.contains("Water") ||
         notification.title.contains("Su")) {
-      iconBgColor = isDark
-          ? Colors.blue.withValues(alpha: 0.2)
-          : Colors.blue.shade50;
-      iconColor = Colors.blue;
+      iconBgColor = palette.info.withValues(alpha: 0.15);
+      iconColor = palette.info;
       iconData = Icons.water_drop;
       headerText = "Goal";
     }
@@ -485,7 +455,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: Colors.red[400],
+          color: palette.error,
           borderRadius: BorderRadius.circular(20),
         ),
         child: const Icon(Icons.delete_outline, color: Colors.white),
@@ -494,8 +464,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
         enableBlur: false,
         borderRadius: BorderRadius.circular(20),
         padding: const EdgeInsets.all(16),
-        opacity: isDark ? 0.6 : 0.9,
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        opacity: palette.isDark ? 0.6 : 0.9,
+        color: palette.surface,
         child: Stack(
           children: [
             if (!notification.isRead)
@@ -547,9 +517,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: isDark
-                              ? Colors.white
-                              : Colors.grey[900],
+                          color: palette.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -560,9 +528,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           height: 1.4,
-                          color: isDark
-                              ? Colors.grey[400]
-                              : Colors.grey[600],
+                          color: palette.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -571,7 +537,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
-                          color: Colors.grey[500],
+                          color: palette.textTertiary,
                         ),
                       ),
                       if (notification.type ==
@@ -617,21 +583,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: isDark
-                                      ? Colors.white
-                                          .withValues(alpha: 0.05)
-                                      : Colors.white,
+                                  color: palette.surface,
                                   borderRadius:
                                       BorderRadius.circular(10),
                                   border: Border.all(
-                                      color: Colors.red
-                                          .withValues(alpha: 0.5)),
+                                      color: palette.error.withValues(alpha: 0.5)),
                                 ),
                                 child: Text(
                                     AppLocalizations.of(context)
                                         .translate('friend_actions.reject'),
-                                    style: const TextStyle(
-                                        color: Colors.red,
+                                    style: TextStyle(
+                                        color: palette.error,
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold)),
                               ),

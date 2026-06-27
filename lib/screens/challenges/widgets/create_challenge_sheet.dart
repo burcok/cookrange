@@ -5,6 +5,7 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/challenge_model.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/challenge_service.dart';
+import '../../../core/widgets/ds/ds.dart';
 
 class CreateChallengeSheet extends StatefulWidget {
   const CreateChallengeSheet({super.key});
@@ -140,13 +141,13 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final primary = context.read<ThemeProvider>().primaryColor;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.88,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF111827) : Colors.white,
+        color: palette.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -156,7 +157,7 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
             height: 4,
             margin: const EdgeInsets.only(top: 12, bottom: 20),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white24 : Colors.black12,
+              color: palette.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -172,32 +173,32 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      color: palette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 24),
 
-                  _label(l10n.translate('challenge.create.name_label'), isDark),
+                  _label(l10n.translate('challenge.create.name_label'), palette),
                   const SizedBox(height: 6),
                   _textField(
                     controller: _titleCtrl,
                     hint: l10n.translate('challenge.create.name_hint'),
-                    isDark: isDark,
+                    palette: palette,
                     onChanged: (_) => setState(() {}),
                   ),
                   const SizedBox(height: 16),
 
-                  _label(l10n.translate('challenge.create.desc_label'), isDark),
+                  _label(l10n.translate('challenge.create.desc_label'), palette),
                   const SizedBox(height: 6),
                   _textField(
                     controller: _descCtrl,
                     hint: l10n.translate('challenge.create.desc_hint'),
-                    isDark: isDark,
+                    palette: palette,
                     maxLines: 3,
                   ),
                   const SizedBox(height: 20),
 
-                  _label(l10n.translate('challenge.create.type_label'), isDark),
+                  _label(l10n.translate('challenge.create.type_label'), palette),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
@@ -218,9 +219,7 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? primary
-                                : (isDark
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : Colors.grey.shade100),
+                                : palette.surfaceVariant,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isSelected ? primary : Colors.transparent,
@@ -233,9 +232,7 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                                   size: 16,
                                   color: isSelected
                                       ? Colors.white
-                                      : (isDark
-                                          ? Colors.white60
-                                          : Colors.black54)),
+                                      : palette.textSecondary),
                               const SizedBox(width: 6),
                               Text(
                                 l10n.translate(_typeLabelKey(t)),
@@ -244,9 +241,7 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                                   fontWeight: FontWeight.w600,
                                   color: isSelected
                                       ? Colors.white
-                                      : (isDark
-                                          ? Colors.white70
-                                          : Colors.black87),
+                                      : palette.textPrimary,
                                 ),
                               ),
                             ],
@@ -257,12 +252,12 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                   ),
                   const SizedBox(height: 20),
 
-                  _label(l10n.translate('challenge.create.goal_label'), isDark),
+                  _label(l10n.translate('challenge.create.goal_label'), palette),
                   const SizedBox(height: 6),
                   _textField(
                     controller: _goalCtrl,
                     hint: l10n.translate('challenge.create.goal_hint'),
-                    isDark: isDark,
+                    palette: palette,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     onChanged: (_) => setState(() {}),
@@ -270,7 +265,7 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                   const SizedBox(height: 20),
 
                   _label(l10n.translate('challenge.create.end_date_label'),
-                      isDark),
+                      palette),
                   const SizedBox(height: 6),
                   GestureDetector(
                     onTap: _pickEndDate,
@@ -278,24 +273,20 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.06)
-                            : Colors.grey.shade100,
+                        color: palette.surfaceVariant,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Row(
                         children: [
                           Icon(Icons.calendar_today,
                               size: 18,
-                              color: isDark ? Colors.white54 : Colors.black45),
+                              color: palette.textSecondary),
                           const SizedBox(width: 10),
                           Text(
                             '${_endDate.day.toString().padLeft(2, '0')}.${_endDate.month.toString().padLeft(2, '0')}.${_endDate.year}',
                             style: TextStyle(
                               fontSize: 15,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF0F172A),
+                              color: palette.textPrimary,
                             ),
                           ),
                         ],
@@ -315,9 +306,7 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                                   'challenge.create.public_label'),
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF0F172A),
+                                color: palette.textPrimary,
                               ),
                             ),
                             Text(
@@ -325,8 +314,7 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                                   'challenge.create.public_subtitle'),
                               style: TextStyle(
                                 fontSize: 12,
-                                color:
-                                    isDark ? Colors.white54 : Colors.black45,
+                                color: palette.textSecondary,
                               ),
                             ),
                           ],
@@ -335,7 +323,7 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                       Switch(
                         value: _isPublic,
                         onChanged: (v) => setState(() => _isPublic = v),
-                        activeColor: primary,
+                        activeThumbColor: primary,
                       ),
                     ],
                   ),
@@ -354,8 +342,7 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                 onPressed: _canCreate ? _create : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primary,
-                  disabledBackgroundColor:
-                      isDark ? Colors.white12 : Colors.black12,
+                  disabledBackgroundColor: palette.border,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -380,19 +367,19 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
     );
   }
 
-  Widget _label(String text, bool isDark) => Text(
+  Widget _label(String text, AppPalette palette) => Text(
         text,
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: isDark ? Colors.white60 : Colors.black54,
+          color: palette.textSecondary,
         ),
       );
 
   Widget _textField({
     required TextEditingController controller,
     required String hint,
-    required bool isDark,
+    required AppPalette palette,
     int maxLines = 1,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
@@ -404,16 +391,12 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       onChanged: onChanged,
-      style: TextStyle(
-          color: isDark ? Colors.white : const Color(0xFF0F172A)),
+      style: TextStyle(color: palette.textPrimary),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle:
-            TextStyle(color: isDark ? Colors.white38 : Colors.black38),
+        hintStyle: TextStyle(color: palette.textTertiary),
         filled: true,
-        fillColor: isDark
-            ? Colors.white.withValues(alpha: 0.06)
-            : Colors.grey.shade100,
+        fillColor: palette.surfaceVariant,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,

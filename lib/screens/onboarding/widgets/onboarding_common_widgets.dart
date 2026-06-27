@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../constants.dart';
-import '../../../core/theme/app_theme.dart';
+import 'package:provider/provider.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/providers/theme_provider.dart';
+import '../../../core/widgets/ds/ds.dart';
 
 class OnboardingNextButton extends StatefulWidget {
   final int step;
@@ -82,12 +83,10 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
   Future<void> _handleTap() async {
     if (!_isButtonEnabled) return;
 
-    // Call onNext immediately without disabling the button
     if (widget.onNext != null) {
       widget.onNext!();
     }
 
-    // Run animations in background without blocking the button
     try {
       await _tapController.forward();
       await _tapController.reverse();
@@ -105,8 +104,10 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
+    final primary = context.read<ThemeProvider>().primaryColor;
     final localizations = AppLocalizations.of(context);
+    final t = AppText.of(context);
     final isLastStep = widget.step == 5;
 
     return Center(
@@ -125,29 +126,27 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
                     height: 124,
                     child: CustomPaint(
                       painter: _ProgressCirclePainterV2(
-                          _progressAnimation.value, colorScheme),
+                          _progressAnimation.value, primary),
                     ),
                   ),
                   Container(
                     width: 86,
                     height: 86,
                     decoration: BoxDecoration(
-                      color: colorScheme.onboardingNextButtonColor,
+                      color: primary,
                       shape: BoxShape.circle,
                     ),
                     child: isLastStep
                         ? Text(
                             localizations.translate('onboarding.get_started'),
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: colorScheme.backgroundColor2,
-                              fontSize: 14,
+                            style: t.labelL.copyWith(
                               fontWeight: FontWeight.w600,
-                              fontFamily: 'Poppins',
+                              color: palette.textInverse,
                             ),
                           )
                         : Icon(Icons.arrow_forward,
-                            color: colorScheme.backgroundColor2, size: 28),
+                            color: palette.textInverse, size: 28),
                   ),
                 ],
               ),
@@ -161,18 +160,17 @@ class _OnboardingNextButtonState extends State<OnboardingNextButton>
 
 class _ProgressCirclePainterV2 extends CustomPainter {
   final double progress;
-  final ColorScheme colorScheme;
-  _ProgressCirclePainterV2(this.progress, this.colorScheme);
+  final Color primary;
+  _ProgressCirclePainterV2(this.progress, this.primary);
 
   @override
   void paint(Canvas canvas, Size size) {
     final Paint bgPaint = Paint()
-      ..color =
-          colorScheme.onboardingNextButtonBorderColor.withValues(alpha: 0.2)
+      ..color = primary.withValues(alpha: 0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
     final Paint fgPaint = Paint()
-      ..color = colorScheme.onboardingNextButtonColor
+      ..color = primary
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round;
@@ -180,10 +178,8 @@ class _ProgressCirclePainterV2 extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - 6) / 2;
 
-    // Draw background circle
     canvas.drawCircle(center, radius, bgPaint);
 
-    // Draw progress arc
     if (progress > 0) {
       final rect = Rect.fromCircle(center: center, radius: radius);
       canvas.drawArc(
@@ -197,10 +193,7 @@ class _ProgressCirclePainterV2 extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ProgressCirclePainterV2 oldDelegate) {
-    // Always repaint to ensure smooth animation
-    return true;
-  }
+  bool shouldRepaint(covariant _ProgressCirclePainterV2 oldDelegate) => true;
 }
 
 class ProfileInput extends StatelessWidget {
@@ -218,33 +211,29 @@ class ProfileInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final primary = context.read<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: palette.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: primaryColor, width: 1.2),
+          border: Border.all(color: primary, width: 1.2),
         ),
         child: Row(
           children: [
             Text(label,
-                style: const TextStyle(
-                    fontSize: 16,
-                    color: secondaryColor,
-                    fontFamily: 'Poppins')),
+                style: t.bodyL.copyWith(color: palette.textPrimary)),
             const Spacer(),
             Text(value,
-                style: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFFB0B0B0),
-                    fontFamily: 'Poppins')),
+                style: t.bodyL.copyWith(color: palette.textTertiary)),
             if (isDate)
-              const Padding(
-                padding: EdgeInsets.only(left: 8),
-                child:
-                    Icon(Icons.calendar_today, size: 18, color: primaryColor),
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: Icon(Icons.calendar_today, size: 18, color: primary),
               ),
           ],
         ),
@@ -264,17 +253,17 @@ class OnboardingCardInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
     return Container(
       margin: const EdgeInsets.symmetric(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: colorScheme.onboardingOptionBgColor,
+        color: palette.surfaceVariant,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
-          Icon(icon, color: colorScheme.onboardingOptionTextColor, size: 24),
+          Icon(icon, color: palette.textSecondary, size: 24),
           const SizedBox(width: 16),
           Expanded(child: child),
         ],
@@ -294,15 +283,15 @@ class OnboardingSkipButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     return TextButton(
       onPressed: onSkip,
       child: Text(
         localizations.translate('onboarding.skip'),
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onboardingOptionTextColor,
-          fontSize: 16,
+        style: t.titleM.copyWith(
           fontWeight: FontWeight.w500,
-          fontFamily: 'Poppins',
+          color: palette.textSecondary,
         ),
       ),
     );
@@ -333,8 +322,9 @@ class OnboardingHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final palette = AppPalette.of(context);
+    final primary = context.read<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
 
     return Container(
       padding:
@@ -355,7 +345,7 @@ class OnboardingHeader extends StatelessWidget {
                       height: 48,
                       child: Icon(
                         Icons.arrow_back,
-                        color: colorScheme.onboardingTitleColor,
+                        color: palette.textPrimary,
                         size: 24,
                       ),
                     ),
@@ -370,17 +360,11 @@ class OnboardingHeader extends StatelessWidget {
                 child: Center(
                   child: Text(
                     headerText,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: colorScheme.onboardingTitleColor,
-                      fontFamily: 'Poppins',
-                    ),
+                    style: t.headlineS.copyWith(color: palette.textPrimary),
                   ),
                 ),
               ),
 
-              // Balance the layout
               if (showBackButton)
                 const SizedBox(width: 48)
               else
@@ -389,7 +373,6 @@ class OnboardingHeader extends StatelessWidget {
           ),
           if (showProgress) ...[
             const SizedBox(height: 16),
-            // Progress section - simplified for now
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
@@ -405,12 +388,10 @@ class OnboardingHeader extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: isActive
-                          ? colorScheme.primaryColorCustom
-                          : colorScheme.onboardingTitleColor
-                              .withValues(alpha: 0.3),
+                          ? primary
+                          : palette.textPrimary.withValues(alpha: 0.3),
                       border: isCurrent
-                          ? Border.all(
-                              color: colorScheme.primaryColorCustom, width: 2)
+                          ? Border.all(color: primary, width: 2)
                           : null,
                     ),
                   );

@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/onboarding_provider.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/ds/ds.dart';
 import '../../../widgets/date_picker_modal.dart';
 import '../../../widgets/number_picker_modal.dart';
 import '../../../widgets/onboarding_common_widgets.dart';
@@ -28,10 +28,10 @@ class OnboardingPageProfile extends StatelessWidget {
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
     final onboarding = Provider.of<OnboardingProvider>(context);
-    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.backgroundColor2,
+      backgroundColor: palette.background,
       body: Column(
         children: [
           OnboardingHeader(
@@ -83,7 +83,7 @@ class OnboardingPageProfile extends StatelessWidget {
                       subtitle: localizations
                           .translate('onboarding.profile.birthdaySubtitle')),
                   const SizedBox(height: 16),
-                  _buildBirthDateSelector(context, onboarding, theme),
+                  _buildBirthDateSelector(context, onboarding),
                   const SizedBox(height: 32),
                   _buildSectionHeader(context,
                       title:
@@ -95,11 +95,11 @@ class OnboardingPageProfile extends StatelessWidget {
                     children: [
                       Expanded(
                           child:
-                              _buildWeightSelector(context, onboarding, theme)),
+                              _buildWeightSelector(context, onboarding)),
                       const SizedBox(width: 16),
                       Expanded(
                           child:
-                              _buildHeightSelector(context, onboarding, theme)),
+                              _buildHeightSelector(context, onboarding)),
                     ],
                   ),
                   const SizedBox(height: 100),
@@ -119,38 +119,31 @@ class OnboardingPageProfile extends StatelessWidget {
 
   Widget _buildSectionHeader(BuildContext context,
       {required String title, required String subtitle}) {
-    final theme = Theme.of(context);
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(title,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onboardingTitleColor,
-              fontFamily: 'Poppins',
-            )),
+            style: t.headlineS.copyWith(color: palette.textPrimary)),
         const SizedBox(height: 4),
         Text(subtitle,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-              color: theme.colorScheme.onboardingSubtitleColor,
-              fontFamily: 'Poppins',
-            )),
+            style: t.bodyM.copyWith(color: palette.textSecondary)),
       ],
     );
   }
 
   Widget _buildBirthDateSelector(
-      BuildContext context, OnboardingProvider onboarding, ThemeData theme) {
+      BuildContext context, OnboardingProvider onboarding) {
     final localizations = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     return InkWell(
       onTap: () => _showDatePicker(context, onboarding),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
+          border: Border.all(color: palette.border),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -160,11 +153,10 @@ class OnboardingPageProfile extends StatelessWidget {
               onboarding.birthDate != null
                   ? DateFormat('dd.MM.yyyy').format(onboarding.birthDate!)
                   : localizations.translate('onboarding.profile.selectDate'),
-              style: theme.textTheme.bodyLarge
-                  ?.copyWith(color: theme.colorScheme.onboardingTitleColor),
+              style: t.bodyL.copyWith(color: palette.textPrimary),
             ),
             Icon(Icons.calendar_today_outlined,
-                color: theme.colorScheme.onboardingTitleColor),
+                color: palette.textPrimary),
           ],
         ),
       ),
@@ -172,7 +164,7 @@ class OnboardingPageProfile extends StatelessWidget {
   }
 
   Widget _buildHeightSelector(
-      BuildContext context, OnboardingProvider onboarding, ThemeData theme) {
+      BuildContext context, OnboardingProvider onboarding) {
     return _buildNumberSelector(
       context: context,
       value: onboarding.height,
@@ -188,12 +180,11 @@ class OnboardingPageProfile extends StatelessWidget {
         title: AppLocalizations.of(context)
             .translate('onboarding.profile.heightTitle'),
       ),
-      theme: theme,
     );
   }
 
   Widget _buildWeightSelector(
-      BuildContext context, OnboardingProvider onboarding, ThemeData theme) {
+      BuildContext context, OnboardingProvider onboarding) {
     return _buildNumberSelector(
       context: context,
       value: onboarding.weight,
@@ -209,7 +200,6 @@ class OnboardingPageProfile extends StatelessWidget {
         title: AppLocalizations.of(context)
             .translate('onboarding.profile.weightTitle'),
       ),
-      theme: theme,
     );
   }
 
@@ -218,15 +208,16 @@ class OnboardingPageProfile extends StatelessWidget {
     required int? value,
     required String unit,
     required VoidCallback onTap,
-    required ThemeData theme,
   }) {
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
           color: Colors.transparent,
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
+          border: Border.all(color: palette.border),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -236,11 +227,9 @@ class OnboardingPageProfile extends StatelessWidget {
               value != null
                   ? '$value$unit'
                   : AppLocalizations.of(context).translate('common.select'),
-              style: theme.textTheme.bodyLarge
-                  ?.copyWith(color: theme.colorScheme.onboardingTitleColor),
+              style: t.bodyL.copyWith(color: palette.textPrimary),
             ),
-            Icon(Icons.unfold_more,
-                color: theme.colorScheme.onboardingTitleColor),
+            Icon(Icons.unfold_more, color: palette.textPrimary),
           ],
         ),
       ),

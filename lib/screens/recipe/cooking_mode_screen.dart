@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../core/models/recipe_model.dart';
 import '../../core/services/food_log_service.dart';
 import '../../core/localization/app_localizations.dart';
-import '../../constants.dart';
+import '../../core/providers/theme_provider.dart';
+import '../../core/widgets/ds/ds.dart';
 
 class CookingModeScreen extends StatefulWidget {
   final Recipe recipe;
@@ -81,6 +83,7 @@ class _CookingModeScreenState extends State<CookingModeScreen>
 
   Future<void> _showFinishSheet() async {
     final l10n = AppLocalizations.of(context);
+    final primaryColor = context.read<ThemeProvider>().primaryColor;
     String selectedMealType = 'dinner';
     bool isLogging = false;
 
@@ -88,6 +91,9 @@ class _CookingModeScreenState extends State<CookingModeScreen>
     final protein = (widget.recipe.macros['protein'] ?? 0).round();
     final carbs = (widget.recipe.macros['carbs'] ?? 0).round();
     final fat = (widget.recipe.macros['fat'] ?? 0).round();
+
+    // Capture palette before async gap
+    final palette = AppPalette.of(context);
 
     await showModalBottomSheet(
       context: context,
@@ -97,28 +103,29 @@ class _CookingModeScreenState extends State<CookingModeScreen>
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
             return Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1C2330),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              decoration: BoxDecoration(
+                color: palette.surfaceVariant,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
               ),
               padding: EdgeInsets.fromLTRB(
-                24,
-                20,
-                24,
-                24 + MediaQuery.of(ctx).viewInsets.bottom,
+                AppSpacing.xl,
+                AppSpacing.lg,
+                AppSpacing.xl,
+                AppSpacing.xl + MediaQuery.of(ctx).viewInsets.bottom,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 40,
-                    height: 4,
+                    width: AppSize.sheetHandleW,
+                    height: AppSize.sheetHandleH,
                     decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
+                      color: palette.border,
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.xl),
                   // Celebration icon
                   Container(
                     width: 72,
@@ -130,168 +137,182 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                     child: const Icon(Icons.emoji_events,
                         color: Color(0xFFFFD700), size: 40),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    l10n.translate('cooking.finish.title'),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.recipe.title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // Macro row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _macroChip(l10n.translate('cooking.finish.calories'),
-                          '$calories', const Color(0xFFFF6B6B)),
-                      _macroChip(l10n.translate('cooking.finish.protein'),
-                          '${protein}g', const Color(0xFF4ECDC4)),
-                      _macroChip(l10n.translate('cooking.finish.carbs'),
-                          '${carbs}g', const Color(0xFFFFBE0B)),
-                      _macroChip(l10n.translate('cooking.finish.fat'),
-                          '${fat}g', const Color(0xFFA8DADC)),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // Meal type selector
-                  Text(
-                    l10n.translate('cooking.finish.meal_type'),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    children: ['breakfast', 'lunch', 'dinner', 'snack']
-                        .map((type) {
-                      final isSelected = selectedMealType == type;
-                      return GestureDetector(
-                        onTap: () =>
-                            setSheetState(() => selectedMealType = type),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? primaryColor
-                                : Colors.white.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected
-                                  ? primaryColor
-                                  : Colors.white24,
-                            ),
-                          ),
-                          child: Text(
-                            l10n.translate('cooking.finish.meal.$type'),
-                            style: TextStyle(
-                              color:
-                                  isSelected ? Colors.white : Colors.white60,
-                              fontSize: 13,
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w400,
-                            ),
-                          ),
+                  const SizedBox(height: AppSpacing.md),
+                  Builder(builder: (ctx2) {
+                    final t = AppText.of(ctx2);
+                    return Column(
+                      children: [
+                        Text(
+                          l10n.translate('cooking.finish.title'),
+                          style: t.headlineS,
                         ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      // Skip button
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: isLogging
-                              ? null
-                              : () {
-                                  Navigator.of(sheetCtx).pop();
-                                  Navigator.of(context).pop();
-                                },
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.white24),
-                            foregroundColor: Colors.white70,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: Text(l10n.translate('cooking.finish.skip')),
+                        const SizedBox(height: AppSpacing.xxs),
+                        Text(
+                          widget.recipe.title,
+                          textAlign: TextAlign.center,
+                          style: t.bodyM,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Log & Finish button
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          onPressed: isLogging
-                              ? null
-                              : () async {
-                                  setSheetState(() => isLogging = true);
-                                  final nav = Navigator.of(context);
-                                  final sheetNav = Navigator.of(sheetCtx);
-                                  try {
-                                    final uid = FirebaseAuth
-                                        .instance.currentUser?.uid;
-                                    if (uid != null) {
-                                      await FoodLogService().logRecipe(
-                                        userId: uid,
-                                        mealType: selectedMealType,
-                                        recipe: widget.recipe,
-                                      );
-                                    }
-                                    if (mounted && ctx.mounted) {
-                                      sheetNav.pop();
-                                      nav.pop();
-                                    }
-                                  } catch (_) {
-                                    if (ctx.mounted) {
-                                      setSheetState(() => isLogging = false);
-                                    }
-                                  }
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 14),
-                            elevation: 0,
-                          ),
-                          child: isLogging
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
-                                )
-                              : Text(
-                                  l10n.translate('cooking.finish.log'),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15),
+                        const SizedBox(height: AppSpacing.lg),
+                        // Macro row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _macroChip(
+                                l10n.translate('cooking.finish.calories'),
+                                '$calories',
+                                palette.calories,
+                                t),
+                            _macroChip(
+                                l10n.translate('cooking.finish.protein'),
+                                '${protein}g',
+                                palette.protein,
+                                t),
+                            _macroChip(
+                                l10n.translate('cooking.finish.carbs'),
+                                '${carbs}g',
+                                palette.carbs,
+                                t),
+                            _macroChip(l10n.translate('cooking.finish.fat'),
+                                '${fat}g', palette.fat, t),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        // Meal type selector
+                        Text(
+                          l10n.translate('cooking.finish.meal_type'),
+                          style: t.labelM,
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Wrap(
+                          spacing: AppSpacing.xs,
+                          children: ['breakfast', 'lunch', 'dinner', 'snack']
+                              .map((type) {
+                            final isSelected = selectedMealType == type;
+                            return GestureDetector(
+                              onTap: () => setSheetState(
+                                  () => selectedMealType = type),
+                              child: AnimatedContainer(
+                                duration: AppMotion.fast,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.md,
+                                    vertical: AppSpacing.xs),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? primaryColor
+                                      : palette.surface,
+                                  borderRadius: BorderRadius.circular(
+                                      AppRadius.full),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? primaryColor
+                                        : palette.border,
+                                  ),
                                 ),
+                                child: Text(
+                                  l10n.translate(
+                                      'cooking.finish.meal.$type'),
+                                  style: t.labelM.copyWith(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : palette.textSecondary,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w400,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(height: AppSpacing.xl),
+                        Row(
+                          children: [
+                            // Skip button
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: isLogging
+                                    ? null
+                                    : () {
+                                        Navigator.of(sheetCtx).pop();
+                                        Navigator.of(context).pop();
+                                      },
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: palette.border),
+                                  foregroundColor: palette.textSecondary,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                          AppRadius.button)),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: AppSpacing.sm),
+                                ),
+                                child: Text(
+                                    l10n.translate('cooking.finish.skip')),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            // Log & Finish button
+                            Expanded(
+                              flex: 2,
+                              child: ElevatedButton(
+                                onPressed: isLogging
+                                    ? null
+                                    : () async {
+                                        setSheetState(() => isLogging = true);
+                                        final nav = Navigator.of(context);
+                                        final sheetNav =
+                                            Navigator.of(sheetCtx);
+                                        try {
+                                          final uid = FirebaseAuth
+                                              .instance.currentUser?.uid;
+                                          if (uid != null) {
+                                            await FoodLogService().logRecipe(
+                                              userId: uid,
+                                              mealType: selectedMealType,
+                                              recipe: widget.recipe,
+                                            );
+                                          }
+                                          if (mounted && ctx.mounted) {
+                                            sheetNav.pop();
+                                            nav.pop();
+                                          }
+                                        } catch (_) {
+                                          if (ctx.mounted) {
+                                            setSheetState(
+                                                () => isLogging = false);
+                                          }
+                                        }
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryColor,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                          AppRadius.button)),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: AppSpacing.sm),
+                                  elevation: 0,
+                                ),
+                                child: isLogging
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white),
+                                      )
+                                    : Text(
+                                        l10n.translate('cooking.finish.log'),
+                                        style: t.labelL.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700),
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  }),
                 ],
               ),
             );
@@ -301,23 +322,25 @@ class _CookingModeScreenState extends State<CookingModeScreen>
     );
   }
 
-  Widget _macroChip(String label, String value, Color color) {
+  Widget _macroChip(String label, String value, Color color, AppText t) {
     return Column(
       children: [
         Text(
           value,
-          style: TextStyle(
-              color: color, fontSize: 16, fontWeight: FontWeight.bold),
+          style: t.titleL.copyWith(color: color, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 2),
-        Text(label,
-            style: const TextStyle(color: Colors.white54, fontSize: 11)),
+        const SizedBox(height: AppSpacing.xxxs),
+        Text(label, style: t.labelS),
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -325,7 +348,8 @@ class _CookingModeScreenState extends State<CookingModeScreen>
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md, vertical: AppSpacing.xs),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -335,15 +359,13 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                   ),
                   Text(
                     'Step ${_currentStep + 1} of ${widget.recipe.instructions.length}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: t.titleL.copyWith(color: Colors.white),
                   ),
                   IconButton(
                     icon: Icon(
-                      _isTimerRunning ? Icons.pause_circle : Icons.play_circle,
+                      _isTimerRunning
+                          ? Icons.pause_circle
+                          : Icons.play_circle,
                       color: primaryColor,
                     ),
                     onPressed: _toggleTimer,
@@ -355,28 +377,29 @@ class _CookingModeScreenState extends State<CookingModeScreen>
             // Timer Display
             if (_secondsElapsed > 0 || _isTimerRunning)
               Padding(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: GestureDetector(
                   onTap: _toggleTimer,
                   onLongPress: _resetTimer,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 8),
+                        horizontal: AppSpacing.xl, vertical: AppSpacing.xs),
                     decoration: BoxDecoration(
-                      color: Colors.grey[900],
-                      borderRadius: BorderRadius.circular(20),
+                      color: palette.surfaceVariant,
+                      borderRadius:
+                          BorderRadius.circular(AppRadius.full),
                       border: Border.all(
-                          color:
-                              _isTimerRunning ? primaryColor : Colors.grey),
+                          color: _isTimerRunning
+                              ? primaryColor
+                              : palette.border),
                     ),
                     child: Text(
                       _formatTime(_secondsElapsed),
-                      style: TextStyle(
-                        color:
-                            _isTimerRunning ? primaryColor : Colors.white,
-                        fontSize: 24,
+                      style: t.displayM.copyWith(
+                        color: _isTimerRunning
+                            ? primaryColor
+                            : Colors.white,
                         fontFamily: 'Courier',
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
@@ -393,15 +416,14 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                 },
                 itemBuilder: (context, index) {
                   return Padding(
-                    padding: const EdgeInsets.all(24.0),
+                    padding: const EdgeInsets.all(AppSpacing.xl),
                     child: Center(
                       child: SingleChildScrollView(
                         child: Text(
                           widget.recipe.instructions[index],
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: t.headlineM.copyWith(
                             color: Colors.white,
-                            fontSize: 28,
                             height: 1.4,
                             fontWeight: FontWeight.w500,
                           ),
@@ -415,22 +437,21 @@ class _CookingModeScreenState extends State<CookingModeScreen>
 
             // Bottom Controls
             Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(AppSpacing.xl),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   if (_currentStep > 0)
                     FloatingActionButton(
                       heroTag: 'prev',
-                      backgroundColor: Colors.grey[800],
+                      backgroundColor: palette.surfaceVariant,
                       onPressed: () {
                         _pageController.previousPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
+                          duration: AppMotion.normal,
+                          curve: AppMotion.standard,
                         );
                       },
-                      child:
-                          const Icon(Icons.arrow_back, color: Colors.white),
+                      child: const Icon(Icons.arrow_back, color: Colors.white),
                     )
                   else
                     const SizedBox(width: 56),
@@ -442,23 +463,23 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                       value: (_currentStep + 1) /
                           widget.recipe.instructions.length,
                       strokeWidth: 4,
-                      backgroundColor: Colors.grey[800],
+                      backgroundColor: palette.surfaceVariant,
                       color: primaryColor,
                     ),
                   ),
 
                   FloatingActionButton(
                     heroTag: 'next',
-                    backgroundColor: _currentStep <
-                            widget.recipe.instructions.length - 1
-                        ? primaryColor
-                        : Colors.green,
+                    backgroundColor:
+                        _currentStep < widget.recipe.instructions.length - 1
+                            ? primaryColor
+                            : palette.success,
                     onPressed: () {
                       if (_currentStep <
                           widget.recipe.instructions.length - 1) {
                         _pageController.nextPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
+                          duration: AppMotion.normal,
+                          curve: AppMotion.standard,
                         );
                       } else {
                         _onFinish();

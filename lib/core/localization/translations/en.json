@@ -828,7 +828,14 @@
     "analytics_btn": "Weekly Stats",
     "streak_days": "{count} days",
     "goal_met": "Daily Goal Achieved! 🎉",
-    "goal_met_sub": "You've hit your calorie target today."
+    "goal_met_sub": "You've hit your calorie target today.",
+    "streak_milestone_title": "{count}-Day Streak Milestone!",
+    "streak_milestone_subtitle": "You've logged in {count} days in a row. Keep the fire going!",
+    "no_alternatives": "No alternatives available for this meal.",
+    "meal_type_breakfast": "Breakfast",
+    "meal_type_lunch": "Lunch",
+    "meal_type_dinner": "Dinner",
+    "meal_type_snack": "Snack"
   },
   "ai_chat": {
     "title": "AI Nutritionist",

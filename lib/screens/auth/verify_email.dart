@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'package:cookrange/core/localization/app_localizations.dart';
-import 'package:cookrange/constants.dart';
-import 'package:cookrange/core/services/auth_service.dart';
-import 'package:cookrange/core/theme/app_theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../core/localization/app_localizations.dart';
+import '../../core/services/auth_service.dart';
 import '../../core/utils/app_routes.dart';
+import '../../core/widgets/ds/ds.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   const VerifyEmailScreen({super.key});
@@ -27,18 +27,12 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   void initState() {
     super.initState();
     if (_auth.currentUser == null) {
-      // If no user is signed in, we shouldn't be on this screen.
-      // Navigate to login screen. Using a post-frame callback to ensure
-      // context is available.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, AppRoutes.login);
-        }
+        if (mounted) Navigator.pushReplacementNamed(context, AppRoutes.login);
       });
       return;
     }
     _startCountdown();
-
     _timer = Timer.periodic(
         const Duration(seconds: 5), (_) => _checkEmailVerified());
   }
@@ -55,41 +49,28 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       _canResend = false;
       _remainingSeconds = 180;
     });
-
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
+      if (!mounted) { timer.cancel(); return; }
       if (_remainingSeconds > 0) {
-        setState(() {
-          _remainingSeconds--;
-        });
+        setState(() => _remainingSeconds--);
       } else {
-        setState(() {
-          _canResend = true;
-        });
+        setState(() => _canResend = true);
         timer.cancel();
       }
     });
   }
 
   Future<void> _sendVerificationEmail() async {
-    setState(() {
-      _isSending = true;
-    });
-
+    setState(() => _isSending = true);
+    final l10n = AppLocalizations.of(context);
     try {
       final user = _auth.currentUser;
       if (user != null) {
         await user.sendEmailVerification();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(AppLocalizations.of(context).translate(
-                    'auth.verify_email_sent',
-                    variables: {'email': user.email ?? ''}))),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(l10n.translate('auth.verify_email_sent',
+                  variables: {'email': user.email ?? ''}))));
         }
         _startCountdown();
       }
@@ -97,35 +78,24 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       if (mounted) {
         String errorMsg = e.message ?? e.toString();
         if (e.code == 'too-many-requests') {
-          errorMsg = AppLocalizations.of(context).translate('auth.error.too_many_requests') ??
-              'Çok fazla istek yapıldı. Doğrulama e-postası zaten gönderilmiş olabilir, lütfen gelen kutunuzu kontrol edin.';
+          errorMsg = l10n.translate('auth.error.too_many_requests');
           _startCountdown();
         } else {
           _canResend = true;
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(AppLocalizations.of(context).translate(
-                  'auth.verify_email_failed',
-                  variables: {'error': errorMsg}))),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(l10n.translate('auth.verify_email_failed',
+                variables: {'error': errorMsg}))));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(AppLocalizations.of(context).translate(
-                  'auth.verify_email_failed',
-                  variables: {'error': e.toString()}))),
-        );
-        _canResend = true;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(l10n.translate('auth.verify_email_failed',
+                variables: {'error': e.toString()}))));
+        setState(() => _canResend = true);
       }
-    }
-
-    if (mounted) {
-      setState(() {
-        _isSending = false;
-      });
+    } finally {
+      if (mounted) setState(() => _isSending = false);
     }
   }
 
@@ -139,16 +109,14 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           _timer?.cancel();
           _countdownTimer?.cancel();
           await _authService.verifyUserEmail();
-          final userModel = await _authService.getUserData(reloadedUser.uid);
-          final bool onboardingCompleted =
-              userModel?.onboardingCompleted ?? false;
-
+          final userModel =
+              await _authService.getUserData(reloadedUser.uid);
+          final onboardingCompleted = userModel?.onboardingCompleted ?? false;
           if (mounted) {
-            if (onboardingCompleted) {
-              Navigator.pushReplacementNamed(context, AppRoutes.home);
-            } else {
-              Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
-            }
+            unawaited(Navigator.pushReplacementNamed(
+              context,
+              onboardingCompleted ? AppRoutes.home : AppRoutes.onboarding,
+            ));
           }
         }
       }
@@ -159,101 +127,71 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    String minutes = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
-    String seconds = (_remainingSeconds % 60).toString().padLeft(2, '0');
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+    final minutes = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (_remainingSeconds % 60).toString().padLeft(2, '0');
 
     return Scaffold(
+      backgroundColor: palette.background,
       body: SafeArea(
-          child: Container(
-        color: colorScheme.backgroundColor2,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl.w, vertical: AppSpacing.md.h),
           child: Column(
             children: [
               Align(
                 alignment: Alignment.topRight,
                 child: IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: Icon(Icons.close_rounded,
+                      color: palette.textSecondary),
                   onPressed: () async {
                     final navigator = Navigator.of(context);
                     await _authService.signOut();
                     if (mounted) {
-                      navigator.pushNamedAndRemoveUntil(
-                          AppRoutes.login, (route) => false);
+                      unawaited(navigator.pushNamedAndRemoveUntil(
+                          AppRoutes.login, (route) => false));
                     }
                   },
                 ),
               ),
               Image.asset('assets/images/onboarding/verify-email.png'),
-              const SizedBox(height: 48),
+              SizedBox(height: AppSpacing.xxxl.h),
               Text(
-                AppLocalizations.of(context).translate('auth.verify_title'),
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Poppins',
-                  color: colorScheme.onSurface,
-                ),
+                l10n.translate('auth.verify_title'),
+                style: t.headlineL.copyWith(
+                    fontWeight: FontWeight.bold, color: palette.textPrimary),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: AppSpacing.md.h),
               Text(
-                AppLocalizations.of(context).translate('auth.verify_desc'),
+                l10n.translate('auth.verify_desc'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 16,
-                    color: colorScheme.titleColor,
-                    fontFamily: 'Poppins'),
+                style: t.bodyL.copyWith(color: palette.textSecondary),
               ),
               const Spacer(),
               if (!_canResend)
                 Text(
-                  AppLocalizations.of(context).translate('auth.resend_wait',
+                  l10n.translate('auth.resend_wait',
                       variables: {'time': '$minutes:$seconds'}),
-                  style: TextStyle(
-                      fontSize: 14,
-                      color: colorScheme.titleColor,
-                      fontFamily: 'Poppins'),
+                  style: t.labelM.copyWith(color: palette.textTertiary),
                 ),
-              const SizedBox(height: 16),
+              SizedBox(height: AppSpacing.md.h),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        _canResend ? primaryColor : primaryColor.withAlpha(20),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  onPressed:
-                      _canResend && !_isSending ? _sendVerificationEmail : null,
-                  child: _isSending
-                      ? SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: colorScheme.onPrimary,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          AppLocalizations.of(context)
-                              .translate('auth.resend_btn'),
-                          style: TextStyle(
-                              fontSize: 16,
-                              color: _canResend
-                                  ? Colors.white
-                                  : Colors.white.withAlpha(20)),
-                        ),
+                child: AppButton(
+                  label: l10n.translate('auth.resend_btn'),
+                  loading: _isSending,
+                  onPressed: _canResend && !_isSending
+                      ? _sendVerificationEmail
+                      : null,
                 ),
               ),
+              SizedBox(height: AppSpacing.md.h),
             ],
           ),
         ),
-      )),
+      ),
     );
   }
 }

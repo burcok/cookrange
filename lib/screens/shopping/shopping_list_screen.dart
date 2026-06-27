@@ -10,6 +10,7 @@ import '../../core/services/analytics_service.dart';
 import '../../core/services/dish_service.dart';
 import '../../core/services/shopping_list_sync_service.dart';
 import '../../core/services/weekly_meal_plan_service.dart';
+import '../../core/widgets/ds/ds.dart';
 
 class ShoppingListScreen extends StatefulWidget {
   const ShoppingListScreen({super.key});
@@ -93,6 +94,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
 
   Future<void> _clearList() async {
     final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -107,7 +109,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
               l10n.translate('common.clear'),
-              style: const TextStyle(color: Colors.red),
+              style: TextStyle(color: palette.error),
             ),
           ),
         ],
@@ -206,10 +208,11 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
       }
     } catch (e) {
       if (mounted) {
+        final palette = AppPalette.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${l10n.translate('common.error')}: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: palette.error,
           ),
         );
       }
@@ -257,10 +260,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final primary = theme.colorScheme.primary;
-    final bg = isDark ? const Color(0xFF0D1117) : const Color(0xFFFCFBF9);
-    final cardBg = isDark ? const Color(0xFF1C2330) : Colors.white;
 
     final unchecked =
         _shoppingList.where((i) => !_checkedItems.contains(i.name)).toList();
@@ -268,19 +269,19 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         _shoppingList.where((i) => _checkedItems.contains(i.name)).toList();
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: palette.background,
       appBar: AppBar(
-        backgroundColor: bg,
+        backgroundColor: palette.background,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         title: Text(
           l10n.translate('shopping.title'),
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black87,
+            color: palette.textPrimary,
           ),
         ),
-        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black87),
+        iconTheme: IconThemeData(color: palette.textPrimary),
         actions: [
           if (_isGenerating)
             const Padding(
@@ -312,8 +313,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         ],
       ),
       body: _shoppingList.isEmpty
-          ? _buildEmptyState(l10n, isDark, primary)
-          : _buildList(l10n, isDark, primary, cardBg, unchecked, checked),
+          ? _buildEmptyState(l10n, palette, primary)
+          : _buildList(l10n, palette, primary, unchecked, checked),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddItemDialog,
         backgroundColor: primary,
@@ -325,19 +326,19 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
     );
   }
 
-  Widget _buildEmptyState(AppLocalizations l10n, bool isDark, Color primary) {
+  Widget _buildEmptyState(AppLocalizations l10n, AppPalette palette, Color primary) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.shopping_basket_outlined,
               size: 72,
-              color: isDark ? Colors.grey[600] : Colors.grey[400]),
+              color: palette.textTertiary),
           const SizedBox(height: 16),
           Text(
             l10n.translate('shopping.empty'),
             style: TextStyle(
-              color: isDark ? Colors.grey[400] : Colors.grey[600],
+              color: palette.textSecondary,
               fontSize: 16,
             ),
           ),
@@ -366,9 +367,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
 
   Widget _buildList(
     AppLocalizations l10n,
-    bool isDark,
+    AppPalette palette,
     Color primary,
-    Color cardBg,
     List<Ingredient> unchecked,
     List<Ingredient> checked,
   ) {
@@ -378,38 +378,37 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         if (unchecked.isNotEmpty) ...[
           _buildSectionHeader(
             '${l10n.translate('shopping.to_buy')} (${unchecked.length})',
-            isDark,
+            palette,
           ),
           const SizedBox(height: 8),
-          ...unchecked.map((item) => _buildItem(item, isDark, primary, cardBg)),
+          ...unchecked.map((item) => _buildItem(item, palette, primary)),
         ],
         if (checked.isNotEmpty) ...[
           const SizedBox(height: 16),
           _buildSectionHeader(
             '${l10n.translate('shopping.in_cart')} (${checked.length})',
-            isDark,
+            palette,
           ),
           const SizedBox(height: 8),
-          ...checked.map((item) => _buildItem(item, isDark, primary, cardBg)),
+          ...checked.map((item) => _buildItem(item, palette, primary)),
         ],
       ],
     );
   }
 
-  Widget _buildSectionHeader(String title, bool isDark) {
+  Widget _buildSectionHeader(String title, AppPalette palette) {
     return Text(
       title,
       style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.8,
-        color: isDark ? Colors.grey[500] : Colors.grey[600],
+        color: palette.textTertiary,
       ),
     );
   }
 
-  Widget _buildItem(
-      Ingredient item, bool isDark, Color primary, Color cardBg) {
+  Widget _buildItem(Ingredient item, AppPalette palette, Color primary) {
     final isChecked = _checkedItems.contains(item.name);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -418,7 +417,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         direction: DismissDirection.endToStart,
         background: Container(
           decoration: BoxDecoration(
-            color: Colors.red.shade400,
+            color: palette.error,
             borderRadius: BorderRadius.circular(12),
           ),
           alignment: Alignment.centerRight,
@@ -430,24 +429,16 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
           decoration: BoxDecoration(
-            color: isChecked
-                ? (isDark
-                    ? Colors.grey[850]
-                    : Colors.grey[100])
-                : cardBg,
+            color: isChecked ? palette.surfaceVariant : palette.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isChecked
-                  ? Colors.transparent
-                  : isDark
-                      ? Colors.white10
-                      : Colors.grey.shade200,
+              color: isChecked ? Colors.transparent : palette.border,
             ),
             boxShadow: isChecked
                 ? []
                 : [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+                      color: palette.shadow.withValues(alpha: 0.06),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -470,11 +461,7 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                     color: isChecked ? primary : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: isChecked
-                          ? primary
-                          : isDark
-                              ? Colors.grey[500]!
-                              : Colors.grey[400]!,
+                      color: isChecked ? primary : palette.textTertiary,
                       width: 2,
                     ),
                   ),
@@ -492,20 +479,15 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                   decoration: isChecked
                       ? TextDecoration.lineThrough
                       : TextDecoration.none,
-                  decorationColor:
-                      isDark ? Colors.grey[500] : Colors.grey[400],
-                  color: isChecked
-                      ? (isDark ? Colors.grey[500] : Colors.grey[400])
-                      : (isDark ? Colors.white : Colors.black87),
+                  decorationColor: palette.textTertiary,
+                  color: isChecked ? palette.textTertiary : palette.textPrimary,
                 ),
                 child: Text(item.name),
               ),
               trailing: Text(
                 '${item.amount % 1 == 0 ? item.amount.toInt() : item.amount} ${item.unit}',
                 style: TextStyle(
-                  color: isChecked
-                      ? (isDark ? Colors.grey[600] : Colors.grey[400])
-                      : primary,
+                  color: isChecked ? palette.textTertiary : primary,
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),
@@ -615,8 +597,10 @@ class _AddItemDialogState extends State<_AddItemDialog> {
                   final unit = _unitController.text.trim().isEmpty
                       ? 'pcs'
                       : _unitController.text.trim();
+                  final nav = Navigator.of(context);
                   await widget.onAdd(name, amount, unit);
-                  if (mounted) Navigator.pop(context);
+                  if (!mounted) return;
+                  nav.pop();
                 },
           child: _isAdding
               ? const SizedBox(

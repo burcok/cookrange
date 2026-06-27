@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/widgets/ds/ds.dart';
 
 /// Combined hydration + weight tracking card for the home screen.
 /// Uses local Hive storage (StorageService) — no Firestore dependency.
@@ -55,7 +59,6 @@ class _TrackingCardState extends State<TrackingCard> {
 
   Future<void> _showWeightDialog() async {
     final l10n = AppLocalizations.of(context);
-
     await showDialog<void>(
       context: context,
       builder: (ctx) => _WeightInputDialog(
@@ -73,174 +76,151 @@ class _TrackingCardState extends State<TrackingCard> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primary = theme.colorScheme.primary;
-    final cardBg =
-        isDark ? const Color(0xFF1C2330) : Colors.white;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+    final primary = context.watch<ThemeProvider>().primaryColor;
     final fraction = (_todayMl / _goalMl).clamp(0.0, 1.0);
     final glasses = (_todayMl / 250).round();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+    return AppCard(
+      padding: EdgeInsets.all(AppSpacing.xl.r),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Hydration section
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(AppSpacing.xs.r),
+                decoration: BoxDecoration(
+                  color: palette.info.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                ),
+                child: Icon(Icons.water_drop_rounded,
+                    color: palette.info, size: AppSize.iconSm),
+              ),
+              SizedBox(width: AppSpacing.sm.w),
+              Text(
+                l10n.translate('tracking.hydration.title'),
+                style:
+                    t.labelL.copyWith(fontWeight: FontWeight.bold, color: palette.textPrimary),
+              ),
+              const Spacer(),
+              Text(
+                '$glasses ${l10n.translate('tracking.hydration.glasses')} · ${_todayMl.round()} ml',
+                style: t.labelS.copyWith(color: palette.textSecondary),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- Hydration ---
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.water_drop,
-                      color: Colors.blue, size: 20),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  l10n.translate('tracking.hydration.title'),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '$glasses ${l10n.translate('tracking.hydration.glasses')} • ${_todayMl.round()} ml',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // Progress bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: fraction,
+          SizedBox(height: AppSpacing.sm.h),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.full.r),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: fraction),
+              duration: AppMotion.normal,
+              curve: AppMotion.standard,
+              builder: (_, v, __) => LinearProgressIndicator(
+                value: v,
                 minHeight: 8,
-                backgroundColor: isDark
-                    ? Colors.white10
-                    : Colors.blue.withValues(alpha: 0.1),
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(Colors.blue),
+                backgroundColor: palette.surfaceVariant,
+                valueColor: AlwaysStoppedAnimation<Color>(palette.info),
               ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${(_goalMl - _todayMl).clamp(0, _goalMl).round()} ml ${l10n.translate('tracking.hydration.remaining')}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark ? Colors.grey[500] : Colors.grey[500],
+          ),
+          SizedBox(height: AppSpacing.xs.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${(_goalMl - _todayMl).clamp(0, _goalMl).round()} ml ${l10n.translate('tracking.hydration.remaining')}',
+                style: t.labelS.copyWith(color: palette.textTertiary),
+              ),
+              Row(
+                children: [
+                  _iconBtn(
+                    context: context,
+                    icon: Icons.remove_rounded,
+                    color: palette.info,
+                    palette: palette,
+                    onTap: _todayMl > 0 ? _removeWater : null,
                   ),
-                ),
-                Row(
-                  children: [
-                    _iconBtn(
-                      icon: Icons.remove,
-                      color: Colors.blue,
-                      onTap: _todayMl > 0 ? _removeWater : null,
-                    ),
-                    const SizedBox(width: 8),
-                    _iconBtn(
-                      icon: Icons.add,
-                      color: Colors.blue,
-                      onTap: _todayMl < _goalMl ? _addWater : null,
-                      label: '+250ml',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 14),
-              child: Divider(height: 1),
-            ),
-
-            // --- Weight ---
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
+                  SizedBox(width: AppSpacing.xs.w),
+                  _iconBtn(
+                    context: context,
+                    icon: Icons.add_rounded,
+                    color: palette.info,
+                    palette: palette,
+                    onTap: _todayMl < _goalMl ? _addWater : null,
+                    label: '+250ml',
                   ),
-                  child:
-                      Icon(Icons.monitor_weight, color: primary, size: 20),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  l10n.translate('tracking.weight.title'),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: _showWeightDialog,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _todayWeight != null
-                          ? primary.withValues(alpha: 0.1)
-                          : primary,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _todayWeight != null
-                          ? '${_todayWeight!.toStringAsFixed(1)} kg'
-                          : l10n.translate('tracking.weight.log'),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: _todayWeight != null ? primary : Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (_weightHistory.length > 1) ...[
-              const SizedBox(height: 12),
-              _buildWeightMiniChart(isDark, primary),
+                ],
+              ),
             ],
+          ),
+
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+            child: Divider(height: 1, color: palette.divider),
+          ),
+
+          // Weight section
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(AppSpacing.xs.r),
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                ),
+                child: Icon(Icons.monitor_weight_rounded,
+                    color: primary, size: AppSize.iconSm),
+              ),
+              SizedBox(width: AppSpacing.sm.w),
+              Text(
+                l10n.translate('tracking.weight.title'),
+                style:
+                    t.labelL.copyWith(fontWeight: FontWeight.bold, color: palette.textPrimary),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: _showWeightDialog,
+                child: AnimatedContainer(
+                  duration: AppMotion.fast,
+                  padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm.w, vertical: AppSpacing.xxs.h),
+                  decoration: BoxDecoration(
+                    color: _todayWeight != null
+                        ? primary.withValues(alpha: 0.1)
+                        : primary,
+                    borderRadius: BorderRadius.circular(AppRadius.full.r),
+                  ),
+                  child: Text(
+                    _todayWeight != null
+                        ? '${_todayWeight!.toStringAsFixed(1)} kg'
+                        : l10n.translate('tracking.weight.log'),
+                    style: t.labelM.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: _todayWeight != null ? primary : Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_weightHistory.length > 1) ...[
+            SizedBox(height: AppSpacing.sm.h),
+            _buildWeightMiniChart(primary, palette),
           ],
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildWeightMiniChart(bool isDark, Color primary) {
+  Widget _buildWeightMiniChart(Color primary, AppPalette palette) {
     final entries = _weightHistory.reversed.toList();
     if (entries.length < 2) return const SizedBox.shrink();
 
-    final weights =
-        entries.map((e) => (e['weight'] as double)).toList();
+    final weights = entries.map((e) => (e['weight'] as double)).toList();
     final minW = weights.reduce((a, b) => a < b ? a : b);
     final maxW = weights.reduce((a, b) => a > b ? a : b);
     final range = (maxW - minW).clamp(0.5, double.infinity);
@@ -250,7 +230,7 @@ class _TrackingCardState extends State<TrackingCard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: weights.map((w) {
-          final fraction = (maxW - minW) < 0.1
+          final frac = (maxW - minW) < 0.1
               ? 0.5
               : ((w - minW) / range).clamp(0.1, 1.0);
           return Expanded(
@@ -259,12 +239,12 @@ class _TrackingCardState extends State<TrackingCard> {
               child: Tooltip(
                 message: '${w.toStringAsFixed(1)} kg',
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  height: 36 * fraction,
+                  duration: AppMotion.fast,
+                  height: 36 * frac,
                   decoration: BoxDecoration(
-                    color: primary.withValues(alpha: 0.6),
+                    color: primary.withValues(alpha: 0.55),
                     borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(4)),
+                        top: Radius.circular(AppRadius.xs)),
                   ),
                 ),
               ),
@@ -276,43 +256,47 @@ class _TrackingCardState extends State<TrackingCard> {
   }
 
   Widget _iconBtn({
+    required BuildContext context,
     required IconData icon,
     required Color color,
+    required AppPalette palette,
     VoidCallback? onTap,
     String? label,
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
         padding: label != null
-            ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6)
-            : const EdgeInsets.all(6),
+            ? EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm.w, vertical: AppSpacing.xxs.h)
+            : EdgeInsets.all(AppSpacing.xxs.r),
         decoration: BoxDecoration(
           color: onTap != null
               ? color.withValues(alpha: 0.12)
-              : Colors.grey.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
+              : palette.surfaceVariant,
+          borderRadius: BorderRadius.circular(AppRadius.sm.r),
         ),
         child: label != null
             ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(icon,
-                      color: onTap != null ? color : Colors.grey,
-                      size: 14),
-                  const SizedBox(width: 4),
+                      color: onTap != null ? color : palette.textTertiary,
+                      size: AppSize.iconXs),
+                  SizedBox(width: AppSpacing.xxs.w),
                   Text(
                     label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: onTap != null ? color : Colors.grey,
-                    ),
+                    style: AppText.of(context).labelS.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: onTap != null ? color : palette.textTertiary,
+                        ),
                   ),
                 ],
               )
             : Icon(icon,
-                color: onTap != null ? color : Colors.grey, size: 16),
+                color: onTap != null ? color : palette.textTertiary,
+                size: AppSize.iconSm),
       ),
     );
   }
@@ -355,15 +339,21 @@ class _WeightInputDialogState extends State<_WeightInputDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     return AlertDialog(
-      title: Text(widget.l10n.translate('tracking.weight.log_title')),
+      backgroundColor: palette.surface,
+      title: Text(widget.l10n.translate('tracking.weight.log_title'),
+          style: t.headlineS.copyWith(color: palette.textPrimary)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: _controller,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
             autofocus: true,
+            style: t.bodyL.copyWith(color: palette.textPrimary),
             decoration: InputDecoration(
               labelText: widget.l10n.translate('tracking.weight.field_label'),
               suffix: const Text('kg'),
@@ -371,29 +361,30 @@ class _WeightInputDialogState extends State<_WeightInputDialog> {
             ),
           ),
           if (widget.weightHistory.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             Text(
               widget.l10n.translate('tracking.weight.recent'),
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600),
+              style: t.labelM
+                  .copyWith(fontWeight: FontWeight.w600, color: palette.textSecondary),
             ),
-            const SizedBox(height: 8),
-            ...(widget.weightHistory.take(5).map(
+            const SizedBox(height: AppSpacing.xs),
+            ...widget.weightHistory.take(5).map(
                   (e) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(e['date'] as String,
-                            style: const TextStyle(fontSize: 12)),
+                            style: t.labelS
+                                .copyWith(color: palette.textSecondary)),
                         Text('${e['weight']} kg',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600)),
+                            style: t.labelS.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: palette.textPrimary)),
                       ],
                     ),
                   ),
-                )),
+                ),
           ],
         ],
       ),
@@ -408,15 +399,18 @@ class _WeightInputDialogState extends State<_WeightInputDialog> {
               : () async {
                   final val = double.tryParse(_controller.text.trim());
                   if (val == null || val <= 0) return;
+                  final nav = Navigator.of(context);
                   setState(() => _isSaving = true);
                   await widget.onSave(val);
-                  if (mounted) Navigator.pop(context);
+                  if (!mounted) return;
+                  nav.pop();
                 },
           child: _isSaving
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2))
+                  child:
+                      CircularProgressIndicator(strokeWidth: 2))
               : Text(widget.l10n.translate('common.save')),
         ),
       ],

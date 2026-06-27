@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../core/providers/theme_provider.dart';
 import '../../core/services/recipe_generation_service.dart';
+import '../../core/widgets/ds/ds.dart';
 import '../recipe/recipe_detail_screen.dart';
-import '../../constants.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -35,12 +38,12 @@ class _ExploreScreenState extends State<ExploreScreen>
 
       if (recipe != null) {
         if (mounted) {
-          Navigator.push(
+          unawaited(Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => RecipeDetailScreen(recipe: recipe),
             ),
-          );
+          ));
         }
       } else {
         setState(() => _error = "Could not generate recipe. Please try again.");
@@ -55,6 +58,9 @@ class _ExploreScreenState extends State<ExploreScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final palette = AppPalette.of(context);
+    final primary = context.watch<ThemeProvider>().primaryColor;
+
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -66,14 +72,14 @@ class _ExploreScreenState extends State<ExploreScreen>
                 "Explore Recipes",
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: title,
+                      color: palette.textPrimary,
                     ),
               ),
               const SizedBox(height: 8),
               Text(
                 "Search for any ingredient or dish, and our AI will create a personalized recipe for you.",
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: subtitle,
+                      color: palette.textSecondary,
                     ),
               ),
               const SizedBox(height: 24),
@@ -81,18 +87,18 @@ class _ExploreScreenState extends State<ExploreScreen>
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: "e.g., Salmon with asparagus...",
-                  prefixIcon: const Icon(Icons.search, color: primaryColor),
+                  prefixIcon: Icon(Icons.search, color: primary),
                   suffixIcon: IconButton(
                     icon: _isLoading
                         ? const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.arrow_forward, color: primaryColor),
+                        : Icon(Icons.arrow_forward, color: primary),
                     onPressed: _isLoading ? null : _handleSearch,
                   ),
                   filled: true,
-                  fillColor: inputBackgroundColor,
+                  fillColor: palette.surfaceVariant,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide.none,
@@ -103,8 +109,8 @@ class _ExploreScreenState extends State<ExploreScreen>
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child:
-                      Text(_error!, style: const TextStyle(color: Colors.red)),
+                  child: Text(_error!,
+                      style: TextStyle(color: palette.error)),
                 ),
               const SizedBox(height: 32),
               Text(
@@ -118,10 +124,10 @@ class _ExploreScreenState extends State<ExploreScreen>
               Wrap(
                 spacing: 8,
                 children: [
-                  _suggestionChip("Quick Pasta"),
-                  _suggestionChip("Low Carb Chicken"),
-                  _suggestionChip("Vegan Burger"),
-                  _suggestionChip("Healthy Breakfast"),
+                  _suggestionChip("Quick Pasta", palette, primary),
+                  _suggestionChip("Low Carb Chicken", palette, primary),
+                  _suggestionChip("Vegan Burger", palette, primary),
+                  _suggestionChip("Healthy Breakfast", palette, primary),
                 ],
               ),
             ],
@@ -131,16 +137,16 @@ class _ExploreScreenState extends State<ExploreScreen>
     );
   }
 
-  Widget _suggestionChip(String label) {
+  Widget _suggestionChip(String label, AppPalette palette, Color primary) {
     return ActionChip(
       label: Text(label),
       onPressed: () {
         _searchController.text = label;
         _handleSearch();
       },
-      backgroundColor: primaryColor.withValues(alpha: 0.1),
+      backgroundColor: primary.withValues(alpha: 0.1),
       labelStyle:
-          const TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+          TextStyle(color: primary, fontWeight: FontWeight.bold),
       side: BorderSide.none,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );

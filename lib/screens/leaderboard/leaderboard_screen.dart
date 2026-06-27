@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/services/leaderboard_service.dart';
+import '../../core/widgets/ds/ds.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -55,32 +56,30 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final primary = context.read<ThemeProvider>().primaryColor;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF0D1117) : const Color(0xFFFCFBF9),
+      backgroundColor: palette.background,
       appBar: AppBar(
         title: Text(
           l10n.translate('leaderboard.screen_title'),
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : const Color(0xFF0F172A),
+            color: palette.textPrimary,
           ),
         ),
-        backgroundColor:
-            isDark ? const Color(0xFF111827) : Colors.white,
+        backgroundColor: palette.surface,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18),
           onPressed: () => Navigator.pop(context),
-          color: isDark ? Colors.white : const Color(0xFF0F172A),
+          color: palette.textPrimary,
         ),
         bottom: TabBar(
           controller: _tabController,
           labelColor: primary,
-          unselectedLabelColor: isDark ? Colors.white54 : Colors.black45,
+          unselectedLabelColor: palette.textSecondary,
           indicatorColor: primary,
           tabs: [
             Tab(text: l10n.translate('leaderboard.tab_global')),
@@ -102,7 +101,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
               if (!snap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-              return _buildList(snap.data!, isDark, primary, l10n);
+              return _buildList(snap.data!, palette, primary, l10n);
             },
           ),
 
@@ -113,7 +112,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                   ? Center(
                       child: Text(l10n.translate('leaderboard.tab_friends')))
                   : _buildList(
-                      _friendsEntries!, isDark, primary, l10n,
+                      _friendsEntries!, palette, primary, l10n,
                       emptyKey: 'leaderboard.empty_friends')),
         ],
       ),
@@ -122,7 +121,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
 
   Widget _buildList(
     List<LeaderboardEntry> entries,
-    bool isDark,
+    AppPalette palette,
     Color primary,
     AppLocalizations l10n, {
     String? emptyKey,
@@ -136,13 +135,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
             children: [
               Icon(Icons.leaderboard_outlined,
                   size: 64,
-                  color: isDark ? Colors.white24 : Colors.black12),
+                  color: palette.border),
               const SizedBox(height: 16),
               Text(
                 l10n.translate(emptyKey ?? 'leaderboard.empty'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: isDark ? Colors.white54 : Colors.black45,
+                    color: palette.textSecondary,
                     fontSize: 15),
               ),
             ],
@@ -161,7 +160,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           entry: entry,
           isMe: isMe,
           primary: primary,
-          isDark: isDark,
+          palette: palette,
         );
       },
     );
@@ -172,13 +171,13 @@ class _LeaderboardRow extends StatelessWidget {
   final LeaderboardEntry entry;
   final bool isMe;
   final Color primary;
-  final bool isDark;
+  final AppPalette palette;
 
   const _LeaderboardRow({
     required this.entry,
     required this.isMe,
     required this.primary,
-    required this.isDark,
+    required this.palette,
   });
 
   String get _rankEmoji {
@@ -194,6 +193,19 @@ class _LeaderboardRow extends StatelessWidget {
     }
   }
 
+  Color _rankColor() {
+    switch (entry.rank) {
+      case 1:
+        return palette.calories; // gold
+      case 2:
+        return palette.textSecondary; // silver
+      case 3:
+        return palette.warning; // bronze
+      default:
+        return palette.textTertiary;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -202,16 +214,14 @@ class _LeaderboardRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: isMe
             ? primary.withValues(alpha: 0.1)
-            : (isDark
-                ? const Color(0xFF1F2937)
-                : Colors.white),
+            : palette.surface,
         borderRadius: BorderRadius.circular(14),
         border: isMe
             ? Border.all(color: primary.withValues(alpha: 0.35))
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: palette.shadow.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -227,9 +237,7 @@ class _LeaderboardRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: entry.rank <= 3 ? 22 : 14,
                 fontWeight: FontWeight.bold,
-                color: entry.rank <= 3
-                    ? null
-                    : (isDark ? Colors.white54 : Colors.black45),
+                color: entry.rank <= 3 ? _rankColor() : palette.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -242,8 +250,7 @@ class _LeaderboardRow extends StatelessWidget {
             backgroundImage: entry.photoURL != null
                 ? NetworkImage(entry.photoURL!)
                 : null,
-            backgroundColor:
-                isDark ? Colors.white12 : Colors.grey.shade200,
+            backgroundColor: palette.surfaceVariant,
             child: entry.photoURL == null
                 ? Text(
                     entry.displayName.isNotEmpty
@@ -262,9 +269,7 @@ class _LeaderboardRow extends StatelessWidget {
               style: TextStyle(
                 fontWeight: isMe ? FontWeight.bold : FontWeight.w500,
                 fontSize: 14,
-                color: isMe
-                    ? primary
-                    : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                color: isMe ? primary : palette.textPrimary,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -282,9 +287,7 @@ class _LeaderboardRow extends StatelessWidget {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
-                  color: isMe
-                      ? primary
-                      : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                  color: isMe ? primary : palette.textPrimary,
                 ),
               ),
             ],

@@ -23,6 +23,7 @@ import '../common/generic_error_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
 import 'widgets/tracking_card.dart';
 import 'food_scan_screen.dart';
+import '../../core/widgets/ds/ds.dart';
 
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/test_mode_provider.dart';
@@ -298,10 +299,10 @@ class _HomeScreenState extends State<HomeScreen>
       }
     });
 
+    final userProvider = context.read<UserProvider>();
     try {
-      final userId = context.read<UserProvider>().user?.uid;
+      final userId = userProvider.user?.uid;
       if (userId != null) {
-        // Check ban status on refresh
         await AdminStatusService()
             .checkStatus(userId)
             .then((status) {
@@ -313,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen>
 
       await Future.wait([
         _loadWeeklyPlan(),
-        context.read<UserProvider>().refreshUser(),
+        userProvider.refreshUser(),
       ]);
     } finally {
       if (!timedOut) {
@@ -395,6 +396,10 @@ class _HomeScreenState extends State<HomeScreen>
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
+          ...AppGradients.meshGlow(
+            AppPalette.of(context),
+            context.watch<ThemeProvider>().primaryColor,
+          ),
           _buildMinimalGlassRefresh(context),
           NotificationListener<ScrollNotification>(
             onNotification: (notification) {
@@ -413,10 +418,7 @@ class _HomeScreenState extends State<HomeScreen>
                   const MainHeader(),
                   SizedBox(height: 32.h),
                   if (userProvider.isLoading && userProvider.user == null)
-                    SizedBox(
-                      height: 0.7.sh,
-                      child: const Center(child: CircularProgressIndicator()),
-                    )
+                    const AppSkeletonList()
                   else if (userProvider.user != null)
                     _buildHomeContent(context, userProvider.user!, l10n),
                 ],
@@ -459,7 +461,8 @@ class _HomeScreenState extends State<HomeScreen>
                   return Container(
                     width: 48.w,
                     height: 48.w,
-                    transform: Matrix4.identity()..scale(currentScale),
+                    transform: Matrix4.diagonal3Values(
+                        currentScale, currentScale, 1.0),
                     transformAlignment: Alignment.center,
                     child: Stack(
                       alignment: Alignment.center,
@@ -548,19 +551,15 @@ class _HomeScreenState extends State<HomeScreen>
         if (!_streakMilestoneDismissed &&
             const [7, 14, 30, 60, 100, 365].contains(streak)) ...[
           SizedBox(height: 12.h),
-          _buildStreakMilestoneBanner(context, streak),
+          _buildStreakMilestoneBanner(context, streak, l10n),
         ],
         SizedBox(height: 32.h),
         Text(
           l10n.translate('home.nutrition_title'),
-          style: TextStyle(
-            fontSize: 22.sp,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF2E3A59),
-          ),
+          style: AppText.of(context).headlineM,
         ),
         SizedBox(height: 16.h),
-        _buildNutritionCard(context, adjustedTDEE, macros, l10n),
+        _buildNutritionHero(context, adjustedTDEE, macros, l10n),
         SizedBox(height: 10.h),
         _buildScanFoodButton(context, l10n),
         if (goalMet) ...[
@@ -579,17 +578,18 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildWelcomeHeader(
       BuildContext context, UserModel userModel, AppLocalizations l10n,
       {int streak = 0}) {
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+    final primary = context.watch<ThemeProvider>().primaryColor;
     final displayName = userModel.displayName?.split(' ').first ??
         (userModel.email?.split('@').first) ??
         'User';
-    final currentTime = DateTime.now();
-    final hour = currentTime.hour;
+    final hour = DateTime.now().hour;
     final greeting = hour < 12
         ? l10n.translate('home.good_morning')
         : hour < 18
             ? l10n.translate('home.good_afternoon')
             : l10n.translate('home.good_evening');
-    final primary = context.watch<ThemeProvider>().primaryColor;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -597,31 +597,18 @@ class _HomeScreenState extends State<HomeScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text(
-                    greeting,
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text("☀️", style: TextStyle(fontSize: 18.sp)),
-                ],
+              Text(
+                greeting,
+                style: t.titleM.copyWith(color: palette.textSecondary),
               ),
-              SizedBox(height: 8.h),
+              SizedBox(height: AppSpacing.xs.h),
               RichText(
                 text: TextSpan(
-                  style: TextStyle(
-                    fontSize: 36.sp,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF2E3A59),
-                  ),
+                  style: t.displayM.copyWith(color: palette.textPrimary),
                   children: [
                     TextSpan(text: l10n.translate('home.hello')),
                     TextSpan(
-                      text: "$displayName!",
+                      text: '$displayName!',
                       style: TextStyle(color: primary),
                     ),
                   ],
@@ -632,29 +619,25 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         if (streak > 0)
           AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            margin: EdgeInsets.only(top: 4.h),
-            padding:
-                EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+            duration: AppMotion.fast,
+            margin: EdgeInsets.only(top: AppSpacing.xxs.h),
+            padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm.w, vertical: AppSpacing.xs.h),
             decoration: BoxDecoration(
-              color: const Color(0xFFF97316).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20.r),
-              border: Border.all(
-                  color: const Color(0xFFF97316).withValues(alpha: 0.3)),
+              color: primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.full.r),
+              border: Border.all(color: primary.withValues(alpha: 0.3)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('🔥', style: TextStyle(fontSize: 16)),
-                SizedBox(width: 4.w),
+                const Text('🔥', style: TextStyle(fontSize: 15)),
+                SizedBox(width: AppSpacing.xxs.w),
                 Text(
                   l10n.translate('home.streak_days',
                       variables: {'count': '$streak'}),
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFFF97316),
-                  ),
+                  style: t.labelM
+                      .copyWith(fontWeight: FontWeight.bold, color: primary),
                 ),
               ],
             ),
@@ -664,38 +647,35 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildGoalMetBanner(BuildContext context, AppLocalizations l10n) {
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
+      duration: AppMotion.normal,
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
       decoration: BoxDecoration(
-        color: const Color(0xFF22C55E).withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(
-            color: const Color(0xFF22C55E).withValues(alpha: 0.35)),
+        color: palette.success.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+        border: Border.all(color: palette.success.withValues(alpha: 0.35)),
       ),
       child: Row(
         children: [
           const Text('🎉', style: TextStyle(fontSize: 20)),
-          SizedBox(width: 10.w),
+          SizedBox(width: AppSpacing.sm.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   l10n.translate('home.goal_met'),
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF15803D),
-                  ),
+                  style: t.labelL.copyWith(
+                      fontWeight: FontWeight.bold, color: palette.success),
                 ),
                 Text(
                   l10n.translate('home.goal_met_sub'),
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: const Color(0xFF15803D).withValues(alpha: 0.8),
-                  ),
+                  style: t.labelS.copyWith(
+                      color: palette.success.withValues(alpha: 0.8)),
                 ),
               ],
             ),
@@ -705,56 +685,46 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildStreakMilestoneBanner(BuildContext context, int streak) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildStreakMilestoneBanner(BuildContext context, int streak,
+      AppLocalizations l10n) {
+    final primary = context.watch<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
+      duration: AppMotion.normal,
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
       decoration: BoxDecoration(
-        color: const Color(0xFFF97316).withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(
-            color: const Color(0xFFF97316).withValues(alpha: 0.35)),
+        color: primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+        border: Border.all(color: primary.withValues(alpha: 0.35)),
       ),
       child: Row(
         children: [
           const Text('🔥', style: TextStyle(fontSize: 22)),
-          SizedBox(width: 10.w),
+          SizedBox(width: AppSpacing.sm.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$streak-Day Streak Milestone!',
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.bold,
-                    color: isDark
-                        ? const Color(0xFFFB923C)
-                        : const Color(0xFFC2410C),
-                  ),
+                  l10n.translate('home.streak_milestone_title',
+                      variables: {'count': '$streak'}),
+                  style: t.labelL
+                      .copyWith(fontWeight: FontWeight.bold, color: primary),
                 ),
                 Text(
-                  'You\'ve logged in $streak days in a row. Keep the fire going!',
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: (isDark
-                            ? const Color(0xFFFB923C)
-                            : const Color(0xFFC2410C))
-                        .withValues(alpha: 0.8),
-                  ),
+                  l10n.translate('home.streak_milestone_subtitle',
+                      variables: {'count': '$streak'}),
+                  style: t.labelS
+                      .copyWith(color: primary.withValues(alpha: 0.8)),
                 ),
               ],
             ),
           ),
           GestureDetector(
             onTap: () => setState(() => _streakMilestoneDismissed = true),
-            child: Icon(Icons.close,
-                size: 18,
-                color: isDark
-                    ? const Color(0xFFFB923C)
-                    : const Color(0xFFC2410C)),
+            child: Icon(Icons.close_rounded, size: 18, color: primary),
           ),
         ],
       ),
@@ -762,10 +732,13 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildScanFoodButton(BuildContext context, AppLocalizations l10n) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final primary = context.watch<ThemeProvider>().primaryColor;
-    return GestureDetector(
-      onTap: () async {
+    return AppButton(
+      label: l10n.translate('food_scan.scan_btn'),
+      icon: Icons.auto_awesome,
+      variant: AppButtonVariant.tonal,
+      size: AppButtonSize.medium,
+      onPressed: () async {
         final messenger = ScaffoldMessenger.of(context);
         final successText = l10n.translate('food_scan.log_success');
         final logged = await Navigator.of(context).push<bool>(
@@ -773,191 +746,114 @@ class _HomeScreenState extends State<HomeScreen>
         );
         if (logged == true && mounted) {
           messenger.showSnackBar(
-            SnackBar(
-              content: Text(successText),
-              backgroundColor: primary,
-            ),
+            SnackBar(content: Text(successText), backgroundColor: primary),
           );
         }
       },
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
-        decoration: BoxDecoration(
-          color: isDark
-              ? primary.withValues(alpha: 0.15)
-              : primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14.r),
-          border: Border.all(color: primary.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.auto_awesome, color: primary, size: 18),
-            SizedBox(width: 8.w),
-            Text(
-              l10n.translate('food_scan.scan_btn'),
-              style: TextStyle(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
-                color: primary,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget _buildNutritionCard(BuildContext context, double targetCalories,
+  /// Bold "Sunset Energy" nutrition hero — animated gradient calorie ring +
+  /// animated macro bars on a brand-washed surface. Design-system centerpiece.
+  Widget _buildNutritionHero(BuildContext context, double targetCalories,
       Map<String, double> macros, AppLocalizations l10n) {
-    final currentCalories = _consumed.calories.toInt();
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+    final primary = context.watch<ThemeProvider>().primaryColor;
     final targetCalInt = targetCalories.toInt();
-    final progress = targetCalInt > 0
-        ? (_consumed.calories / targetCalInt).clamp(0.0, 1.0)
-        : 0.0;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3), // Optimized sigma
-        child: Container(
-          padding: EdgeInsets.all(24.r),
-          decoration: BoxDecoration(
-            color: Colors.white.withAlpha(170),
-            borderRadius: BorderRadius.circular(24.r),
-            border: Border.all(color: Colors.white.withAlpha(120)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 20.r,
-                offset: Offset(0, 10.h),
-              ),
-            ],
+    return Container(
+      padding: EdgeInsets.all(AppSpacing.xl.r),
+      decoration: BoxDecoration(
+        gradient: AppGradients.brandSoft(primary, dark: palette.isDark),
+        borderRadius: BorderRadius.circular(AppRadius.card.r),
+        border: Border.all(color: primary.withValues(alpha: 0.25)),
+        boxShadow: [
+          BoxShadow(
+            color: primary.withValues(alpha: palette.isDark ? 0.18 : 0.12),
+            blurRadius: AppElevation.blurLg.r,
+            offset: AppElevation.offsetLg,
           ),
-          child: Column(
+        ],
+      ),
+      child: Column(
+        children: [
+          AppCalorieRing(
+            consumed: _consumed.calories,
+            target: targetCalories,
+            size: 188,
+            caption: l10n.translate('home.kcal',
+                variables: {'target': targetCalInt.toString()}),
+          ),
+          SizedBox(height: AppSpacing.xl.h),
+          Row(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    l10n.translate('home.calories'),
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF2E3A59),
-                    ),
-                  ),
-                  RichText(
-                    text: TextSpan(
-                      style: TextStyle(fontSize: 18.sp, color: Colors.grey),
-                      children: [
-                        TextSpan(
-                          text: "$currentCalories",
-                          style: TextStyle(
-                            color: context.watch<ThemeProvider>().primaryColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        TextSpan(
-                          text: l10n.translate('home.kcal',
-                              variables: {'target': targetCalInt.toString()}),
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              Expanded(
+                child: _macroBar(
+                    l10n.translate('home.macros.protein'),
+                    _consumed.protein,
+                    macros['protein'] ?? 0.0,
+                    palette.protein,
+                    t,
+                    palette),
               ),
-              SizedBox(height: 20.h),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10.r),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 10.h,
-                  backgroundColor: Colors.black.withAlpha(10),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                      context.watch<ThemeProvider>().primaryColor),
-                ),
+              SizedBox(width: AppSpacing.sm.w),
+              Expanded(
+                child: _macroBar(
+                    l10n.translate('home.macros.carbs'),
+                    _consumed.carbs,
+                    macros['carbs'] ?? 0.0,
+                    palette.carbs,
+                    t,
+                    palette),
               ),
-              SizedBox(height: 24.h),
-              Row(
-                children: [
-                  Expanded(
-                    child: _macroInfoMini(
-                      context,
-                      l10n.translate('home.macros.protein'),
-                      _consumed.protein,
-                      macros['protein'] ?? 0.0,
-                    ),
-                  ),
-                  Expanded(
-                    child: _macroInfoMini(
-                      context,
-                      l10n.translate('home.macros.carbs'),
-                      _consumed.carbs,
-                      macros['carbs'] ?? 0.0,
-                    ),
-                  ),
-                  Expanded(
-                    child: _macroInfoMini(
-                      context,
-                      l10n.translate('home.macros.fat'),
-                      _consumed.fat,
-                      macros['fat'] ?? 0.0,
-                    ),
-                  ),
-                ],
+              SizedBox(width: AppSpacing.sm.w),
+              Expanded(
+                child: _macroBar(
+                    l10n.translate('home.macros.fat'),
+                    _consumed.fat,
+                    macros['fat'] ?? 0.0,
+                    palette.fat,
+                    t,
+                    palette),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _macroInfoMini(
-      BuildContext context, String label, double consumed, double target) {
+  Widget _macroBar(String label, double consumed, double target, Color color,
+      AppText t, AppPalette palette) {
+    final progress = target > 0 ? (consumed / target).clamp(0.0, 1.0) : 0.0;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w600,
+        Text(
+          label,
+          style: t.labelS.copyWith(color: color, fontWeight: FontWeight.w700),
+        ),
+        SizedBox(height: AppSpacing.xs.h),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: progress),
+            duration: AppMotion.slow,
+            curve: AppMotion.standard,
+            builder: (context, value, _) => LinearProgressIndicator(
+              value: value,
+              minHeight: 6.h,
+              backgroundColor: palette.surfaceVariant,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
         ),
-        SizedBox(height: 6.h),
+        SizedBox(height: AppSpacing.xs.h),
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: RichText(
-            text: TextSpan(
-              style: TextStyle(
-                fontSize: 15.sp,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF2E3A59),
-                fontFamily: 'Poppins',
-              ),
-              children: [
-                TextSpan(text: "${consumed.toInt()}g"),
-                TextSpan(
-                  text: " / ${target.toInt()}g",
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12.sp,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-              ],
-            ),
-          ),
+          child: Text('${consumed.toInt()} / ${target.toInt()}g',
+              style: t.labelS),
         ),
       ],
     );
@@ -966,11 +862,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildMealPlanSection(
       BuildContext context, UserModel user, AppLocalizations l10n) {
     if (_isLoadingPlan) {
-      return const Center(
-          child: Padding(
-        padding: EdgeInsets.all(32.0),
-        child: CircularProgressIndicator(),
-      ));
+      return const AppSkeletonList(itemCount: 5);
     }
 
     if (_weeklyPlan == null) {
@@ -1005,29 +897,26 @@ class _HomeScreenState extends State<HomeScreen>
               final dayNameShort = DateFormat('E').format(day.date);
               final dayNum = DateFormat('d').format(day.date);
 
+              final palette = AppPalette.of(context);
+              final t = AppText.of(context);
+              final primary = context.watch<ThemeProvider>().primaryColor;
               return GestureDetector(
-                onTap: () {
-                  setState(() => _selectedDayIndex = index);
-                  // Optionally scroll to selected day if list is long
-                },
+                onTap: () => setState(() => _selectedDayIndex = index),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                  duration: AppMotion.fast,
                   width: 60.w,
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? context.watch<ThemeProvider>().primaryColor
-                        : Colors.white.withAlpha(200),
-                    borderRadius: BorderRadius.circular(16.r),
-                    border: isSelected ? null : Border.all(color: Colors.white),
+                    color: isSelected ? primary : palette.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.lg.r),
+                    border: isSelected
+                        ? null
+                        : Border.all(color: palette.border),
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: context
-                                  .watch<ThemeProvider>()
-                                  .primaryColor
-                                  .withValues(alpha: 0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                              color: primary.withValues(alpha: 0.3),
+                              blurRadius: AppElevation.blurMd.r,
+                              offset: AppElevation.offsetMd,
                             )
                           ]
                         : null,
@@ -1037,23 +926,18 @@ class _HomeScreenState extends State<HomeScreen>
                     children: [
                       Text(
                         dayNameShort,
-                        style: TextStyle(
-                          fontSize: 14.sp,
+                        style: t.labelM.copyWith(
                           color: isSelected
                               ? Colors.white
-                              : const Color(0xFF2E3A59).withValues(alpha: 0.6),
-                          fontWeight: FontWeight.w500,
+                              : palette.textSecondary,
                         ),
                       ),
-                      SizedBox(height: 4.h),
+                      SizedBox(height: AppSpacing.xxs.h),
                       Text(
                         dayNum,
-                        style: TextStyle(
-                          fontSize: 18.sp,
-                          color: isSelected
-                              ? Colors.white
-                              : const Color(0xFF2E3A59),
+                        style: t.titleL.copyWith(
                           fontWeight: FontWeight.bold,
+                          color: isSelected ? Colors.white : palette.textPrimary,
                         ),
                       ),
                     ],
@@ -1072,17 +956,15 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildSectionHeader(BuildContext context, AppLocalizations l10n,
       {bool showRegenerate = false, UserModel? user}) {
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     final primary = context.watch<ThemeProvider>().primaryColor;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           l10n.translate('home.meal_plan_title'),
-          style: TextStyle(
-            fontSize: 22.sp,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF2E3A59),
-          ),
+          style: t.headlineL.copyWith(color: palette.textPrimary),
         ),
         Row(
           mainAxisSize: MainAxisSize.min,
@@ -1091,40 +973,36 @@ class _HomeScreenState extends State<HomeScreen>
               onTap: () =>
                   Navigator.pushNamed(context, AppRoutes.nutritionAnalytics),
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm.w, vertical: AppSpacing.xxs.h),
                 decoration: BoxDecoration(
                   color: primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20.r),
+                  borderRadius: BorderRadius.circular(AppRadius.full.r),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.bar_chart, size: 15.sp, color: primary),
-                    SizedBox(width: 4.w),
+                    Icon(Icons.bar_chart_rounded, size: AppSize.iconSm, color: primary),
+                    SizedBox(width: AppSpacing.xxs.w),
                     Text(
                       l10n.translate('home.analytics_btn'),
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                        color: primary,
-                      ),
+                      style: t.labelM.copyWith(
+                          fontWeight: FontWeight.w600, color: primary),
                     ),
                   ],
                 ),
               ),
             ),
             if (showRegenerate && user != null) ...[
-              SizedBox(width: 6.w),
+              SizedBox(width: AppSpacing.xxs.w),
               TextButton.icon(
                 onPressed: () => _generateWeeklyPlan(user),
-                icon: Icon(Icons.refresh, size: 16.sp, color: primary),
+                icon: Icon(Icons.refresh_rounded,
+                    size: AppSize.iconSm, color: primary),
                 label: Text(
                   l10n.translate('home.regenerate'),
-                  style: TextStyle(
-                    color: primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14.sp,
-                  ),
+                  style: t.labelL
+                      .copyWith(fontWeight: FontWeight.bold, color: primary),
                 ),
               ),
             ],
@@ -1136,54 +1014,11 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildEmptyPlanState(
       BuildContext context, UserModel user, AppLocalizations l10n) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-        child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(24.r),
-          decoration: BoxDecoration(
-            color: Colors.white.withAlpha(170),
-            borderRadius: BorderRadius.circular(24.r),
-            border: Border.all(color: Colors.white.withAlpha(120)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 20.r,
-                offset: Offset(0, 10.h),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Icon(Icons.restaurant_outlined,
-                  size: 48.w, color: const Color(0xFF2E3A59).withAlpha(150)),
-              SizedBox(height: 16.h),
-              Text(
-                l10n.translate('home.no_meal_plan'),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: const Color(0xFF2E3A59),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.sp),
-              ),
-              SizedBox(height: 12.h),
-              ElevatedButton(
-                onPressed: () => _generateWeeklyPlan(user),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: context.watch<ThemeProvider>().primaryColor,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r)),
-                ),
-                child: Text(l10n.translate('home.generate_plan'),
-                    style: TextStyle(fontSize: 14.sp)),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return AppEmptyState(
+      icon: Icons.restaurant_outlined,
+      title: l10n.translate('home.no_meal_plan'),
+      actionLabel: l10n.translate('home.generate_plan'),
+      onAction: () => _generateWeeklyPlan(user),
     );
   }
 
@@ -1202,10 +1037,9 @@ class _HomeScreenState extends State<HomeScreen>
       final dish = _dishCache[dishId];
 
       if (dish == null) {
-        return Container(
-          height: 80.h,
-          margin: EdgeInsets.only(bottom: 16.h),
-          child: const Center(child: CircularProgressIndicator()),
+        return Padding(
+          padding: EdgeInsets.only(bottom: AppSpacing.md.h),
+          child: AppSkeletonBox(height: 90.h),
         );
       }
 
@@ -1214,6 +1048,10 @@ class _HomeScreenState extends State<HomeScreen>
       final swapKey = '${_selectedDayIndex}_$mealType';
       final isSwapping = _swapInProgress[swapKey] == true;
 
+      final palette = AppPalette.of(context);
+      final t = AppText.of(context);
+      final primary = context.watch<ThemeProvider>().primaryColor;
+      final mealLabel = l10n.translate('home.meal_type_$mealType');
       return GestureDetector(
         onTap: () {
           Navigator.push(
@@ -1224,23 +1062,25 @@ class _HomeScreenState extends State<HomeScreen>
           );
         },
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20.r),
+          borderRadius: BorderRadius.circular(AppRadius.card.r),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
             child: Container(
-              margin: EdgeInsets.only(bottom: 16.h),
-              padding: EdgeInsets.all(16.r),
+              margin: EdgeInsets.only(bottom: AppSpacing.md.h),
+              padding: EdgeInsets.all(AppSpacing.md.r),
               decoration: BoxDecoration(
-                color: Colors.white.withAlpha(180),
-                borderRadius: BorderRadius.circular(20.r),
+                color: palette.surface.withValues(
+                    alpha: palette.isDark ? 0.65 : 0.82),
+                borderRadius: BorderRadius.circular(AppRadius.card.r),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 10.r,
-                    offset: Offset(0, 4.h),
+                    color: palette.shadow,
+                    blurRadius: AppElevation.blurMd.r,
+                    offset: AppElevation.offsetSm,
                   ),
                 ],
-                border: Border.all(color: Colors.white.withAlpha(100)),
+                border: Border.all(
+                    color: palette.border.withValues(alpha: 0.5)),
               ),
               child: Row(
                 children: [
@@ -1250,37 +1090,36 @@ class _HomeScreenState extends State<HomeScreen>
                     child: Stack(
                       children: [
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(16.r),
-                          child: Container(
+                          borderRadius: BorderRadius.circular(AppRadius.lg.r),
+                          child: SizedBox(
                             width: 90.w,
                             height: 90.w,
-                            color: Colors.white.withAlpha(150),
                             child: dish.imageUrl != null
                                 ? CachedNetworkImage(
                                     imageUrl: dish.imageUrl!,
                                     fit: BoxFit.cover,
                                     memCacheWidth: 200,
                                     memCacheHeight: 200,
-                                    placeholder: (context, url) => const Center(
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2)),
-                                    errorWidget: (context, url, error) => Icon(
-                                        Icons.restaurant,
-                                        color: context
-                                            .watch<ThemeProvider>()
-                                            .primaryColor
-                                            .withValues(alpha: 0.5),
-                                        size: 30.w),
+                                    placeholder: (context, url) =>
+                                        AppSkeletonBox(
+                                            height: 90.w, width: 90.w),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                          color: palette.surfaceVariant,
+                                          child: Icon(Icons.restaurant_rounded,
+                                              color: primary
+                                                  .withValues(alpha: 0.5),
+                                              size: AppSize.iconLg.w),
+                                        ),
                                   )
-                                : Icon(Icons.restaurant,
-                                    color: context
-                                        .watch<ThemeProvider>()
-                                        .primaryColor
-                                        .withValues(alpha: 0.3),
-                                    size: 30.w),
+                                : Container(
+                                    color: palette.surfaceVariant,
+                                    child: Icon(Icons.restaurant_rounded,
+                                        color: primary.withValues(alpha: 0.35),
+                                        size: AppSize.iconLg.w),
+                                  ),
                           ),
                         ),
-                        // ── Swap button ──────────────────────────────
                         Positioned(
                           bottom: 4.h,
                           right: 4.w,
@@ -1290,11 +1129,11 @@ class _HomeScreenState extends State<HomeScreen>
                                 : () => _showSwapSheet(
                                     l10n, mealType, _selectedDayIndex),
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
+                              duration: AppMotion.fast,
                               width: 26.w,
                               height: 26.w,
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.55),
+                                color: palette.scrim,
                                 shape: BoxShape.circle,
                               ),
                               child: isSwapping
@@ -1304,39 +1143,36 @@ class _HomeScreenState extends State<HomeScreen>
                                           strokeWidth: 2,
                                           color: Colors.white),
                                     )
-                                  : Icon(Icons.swap_horiz,
-                                      color: Colors.white, size: 16.sp),
+                                  : Icon(Icons.swap_horiz_rounded,
+                                      color: Colors.white,
+                                      size: AppSize.iconXs.sp),
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(width: 20.w),
+                  SizedBox(width: AppSpacing.lg.w),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          toBeginningOfSentenceCase(mealType) ?? mealType,
-                          style: TextStyle(
-                            fontSize: 15.sp,
-                            color: Colors.grey[500],
-                            fontWeight: FontWeight.w600,
-                          ),
+                          mealLabel.isEmpty ? mealType : mealLabel,
+                          style: t.labelM.copyWith(
+                              color: palette.textSecondary,
+                              fontWeight: FontWeight.w600),
                         ),
-                        SizedBox(height: 6.h),
+                        SizedBox(height: AppSpacing.xs.h),
                         Text(
                           dish.name,
-                          style: TextStyle(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF2E3A59),
-                          ),
+                          style: t.titleL.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: palette.textPrimary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        SizedBox(height: 6.h),
+                        SizedBox(height: AppSpacing.xs.h),
                         Row(
                           children: [
                             Text(
@@ -1344,30 +1180,24 @@ class _HomeScreenState extends State<HomeScreen>
                                   variables: {
                                     'count': dish.calories.toInt().toString()
                                   }),
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
+                              style: t.bodyM.copyWith(
+                                  color: palette.textSecondary,
+                                  fontWeight: FontWeight.w500),
                             ),
-                            SizedBox(width: 12.w),
+                            SizedBox(width: AppSpacing.sm.w),
                             Container(
                               padding: EdgeInsets.symmetric(
-                                  horizontal: 8.w, vertical: 2.h),
+                                  horizontal: AppSpacing.xs.w,
+                                  vertical: 2.h),
                               decoration: BoxDecoration(
-                                color: context
-                                    .watch<ThemeProvider>()
-                                    .primaryColor
-                                    .withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8.r),
+                                color: primary.withValues(alpha: 0.1),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.xs.r),
                               ),
                               child: Text(
-                                "${dish.protein.toInt()}g P",
-                                style: TextStyle(
-                                    fontSize: 12.sp,
-                                    color: context
-                                        .watch<ThemeProvider>()
-                                        .primaryColor,
+                                '${dish.protein.toInt()}g P',
+                                style: t.labelS.copyWith(
+                                    color: primary,
                                     fontWeight: FontWeight.bold),
                               ),
                             )
@@ -1376,10 +1206,9 @@ class _HomeScreenState extends State<HomeScreen>
                       ],
                     ),
                   ),
-                  // ── Mark as eaten (today only) ──
                   if (userId != null && isToday)
                     Padding(
-                      padding: EdgeInsets.only(left: 8.w),
+                      padding: EdgeInsets.only(left: AppSpacing.xs.w),
                       child: isLoggingNow
                           ? SizedBox(
                               width: 24.w,
@@ -1392,25 +1221,23 @@ class _HomeScreenState extends State<HomeScreen>
                                   ? null
                                   : () => _logMeal(userId, mealType, dish),
                               child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
+                                duration: AppMotion.fast,
                                 width: 32.w,
                                 height: 32.w,
                                 decoration: BoxDecoration(
                                   color: isLogged
-                                      ? context
-                                          .watch<ThemeProvider>()
-                                          .primaryColor
-                                      : Colors.grey.shade200,
+                                      ? primary
+                                      : palette.surfaceVariant,
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
                                   isLogged
-                                      ? Icons.check
-                                      : Icons.check_outlined,
-                                  size: 18.sp,
+                                      ? Icons.check_rounded
+                                      : Icons.check_circle_outline_rounded,
+                                  size: AppSize.iconSm.sp,
                                   color: isLogged
                                       ? Colors.white
-                                      : Colors.grey.shade500,
+                                      : palette.textTertiary,
                                 ),
                               ),
                             ),
@@ -1442,61 +1269,58 @@ class _SwapSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF1C2533) : Colors.white;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     final primary = context.read<ThemeProvider>().primaryColor;
 
     return Container(
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        color: palette.surface,
+        borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.sheet.r)),
       ),
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Handle ──────────────────────────────────────────────────
+          // Handle
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
             child: Container(
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.dividerColor,
-                borderRadius: BorderRadius.circular(2),
+                color: palette.border,
+                borderRadius: BorderRadius.circular(AppRadius.full.r),
               ),
             ),
           ),
-          // ── Title ───────────────────────────────────────────────────
+          // Title row
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding:
+                EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
             child: Row(
               children: [
-                Icon(Icons.swap_horiz, color: primary, size: 22),
-                const SizedBox(width: 10),
+                Icon(Icons.swap_horiz_rounded,
+                    color: primary, size: AppSize.iconMd),
+                SizedBox(width: AppSpacing.sm.w),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         l10n.translate('home.swap_meal_title'),
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onSurface,
-                          fontFamily: 'Poppins',
-                        ),
+                        style: t.titleL.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: palette.textPrimary),
                       ),
                       Text(
                         l10n.translate('home.swap_meal_subtitle'),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                          fontFamily: 'Poppins',
-                        ),
+                        style: t.labelS
+                            .copyWith(color: palette.textSecondary),
                       ),
                     ],
                   ),
@@ -1504,111 +1328,104 @@ class _SwapSheet extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          Divider(indent: 20, endIndent: 20, color: theme.dividerColor),
-          // ── Dish list ────────────────────────────────────────────────
+          SizedBox(height: AppSpacing.xs.h),
+          Divider(
+              indent: AppSpacing.xl.w,
+              endIndent: AppSpacing.xl.w,
+              color: palette.divider),
+          // Dish list
           dishes.isEmpty
               ? Padding(
-                  padding: const EdgeInsets.all(32),
+                  padding: EdgeInsets.all(AppSpacing.xxl.r),
                   child: Text(
-                    'No alternatives available for $mealType.',
-                    style: TextStyle(
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                    l10n.translate('home.no_alternatives'),
+                    style: t.bodyM
+                        .copyWith(color: palette.textTertiary),
                     textAlign: TextAlign.center,
                   ),
                 )
               : ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.55,
+                    maxHeight:
+                        MediaQuery.of(context).size.height * 0.55,
                   ),
                   child: ListView.separated(
                     shrinkWrap: true,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md.w,
+                        vertical: AppSpacing.xs.h),
                     itemCount: dishes.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, __) =>
+                        SizedBox(height: AppSpacing.xs.h),
                     itemBuilder: (context, i) {
                       final dish = dishes[i];
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: () => onSelect(dish),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                  color: theme.dividerColor, width: 1),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
-                              children: [
-                                // Thumbnail
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: SizedBox(
-                                    width: 56,
-                                    height: 56,
-                                    child: dish.imageUrl != null
-                                        ? CachedNetworkImage(
-                                            imageUrl: dish.imageUrl!,
-                                            fit: BoxFit.cover,
-                                            memCacheWidth: 120,
-                                            errorWidget: (_, __, ___) => Icon(
-                                                Icons.restaurant,
-                                                color: primary
-                                                    .withValues(alpha: 0.4)),
-                                          )
-                                        : Icon(Icons.restaurant,
-                                            color:
-                                                primary.withValues(alpha: 0.4)),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                // Name + calories
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        dish.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                          color: theme.colorScheme.onSurface,
-                                          fontFamily: 'Poppins',
-                                        ),
+                      return AppCard(
+                        onTap: () => onSelect(dish),
+                        padding: EdgeInsets.all(AppSpacing.sm.r),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.sm.r),
+                              child: SizedBox(
+                                width: 56,
+                                height: 56,
+                                child: dish.imageUrl != null
+                                    ? CachedNetworkImage(
+                                        imageUrl: dish.imageUrl!,
+                                        fit: BoxFit.cover,
+                                        memCacheWidth: 120,
+                                        errorWidget: (_, __, ___) =>
+                                            Container(
+                                              color: palette.surfaceVariant,
+                                              child: Icon(
+                                                  Icons.restaurant_rounded,
+                                                  color: primary.withValues(
+                                                      alpha: 0.4)),
+                                            ),
+                                      )
+                                    : Container(
+                                        color: palette.surfaceVariant,
+                                        child: Icon(
+                                            Icons.restaurant_rounded,
+                                            color: primary
+                                                .withValues(alpha: 0.4)),
                                       ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        '${dish.calories.toInt()} kcal · ${dish.protein.toInt()}g P',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.55),
-                                          fontFamily: 'Poppins',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Select arrow
-                                Icon(Icons.arrow_forward_ios,
-                                    size: 14,
-                                    color: primary.withValues(alpha: 0.7)),
-                              ],
+                              ),
                             ),
-                          ),
+                            SizedBox(width: AppSpacing.sm.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    dish.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: t.titleM.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: palette.textPrimary),
+                                  ),
+                                  SizedBox(height: 2.h),
+                                  Text(
+                                    '${dish.calories.toInt()} kcal · ${dish.protein.toInt()}g P',
+                                    style: t.labelS.copyWith(
+                                        color: palette.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.arrow_forward_ios_rounded,
+                                size: 13,
+                                color: primary.withValues(alpha: 0.7)),
+                          ],
                         ),
                       );
                     },
                   ),
                 ),
-          const SizedBox(height: 16),
+          SizedBox(height: AppSpacing.md.h),
         ],
       ),
     );

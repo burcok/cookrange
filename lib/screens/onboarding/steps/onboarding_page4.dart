@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:cookrange/constants.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/providers/onboarding_provider.dart';
+import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/constants/onboarding_options.dart';
+import '../../../core/widgets/ds/ds.dart';
 import '../../../widgets/onboarding_common_widgets.dart';
-import '../../../core/providers/onboarding_provider.dart';
 
 class OnboardingPage4 extends StatefulWidget {
   final int step;
@@ -91,13 +91,12 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final palette = AppPalette.of(context);
     final localizations = AppLocalizations.of(context);
     final onboarding = context.watch<OnboardingProvider>();
 
     return Scaffold(
-      backgroundColor: colorScheme.backgroundColor2,
+      backgroundColor: palette.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -159,7 +158,7 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
                       const SizedBox(height: 32),
 
                       // Kitchen Equipment Section
-                      _buildKitchenEquipmentSection(localizations, colorScheme),
+                      _buildKitchenEquipmentSection(localizations),
 
                       const SizedBox(height: 100), // Space for fixed button
                     ],
@@ -201,7 +200,9 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
   }
 
   Widget _buildKitchenEquipmentSection(
-      AppLocalizations localizations, ColorScheme colorScheme) {
+      AppLocalizations localizations) {
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     final onboarding = context.watch<OnboardingProvider>();
     final selectedEquipmentIds =
         onboarding.kitchenEquipment.map((e) => e['value']).toList();
@@ -211,19 +212,14 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
       children: [
         Text(
           localizations.translate('onboarding.page4.kitchen_equipment.title'),
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: colorScheme.onboardingTitleColor,
-            fontFamily: 'Poppins',
-          ),
+          style: t.headlineS.copyWith(color: palette.textPrimary),
         ),
         const SizedBox(height: 16),
         ...OnboardingOptions.kitchenEquipment.entries.map(
           (entry) => _buildEquipmentItem(
             entry.key,
             localizations.translate(entry.value),
-            colorScheme,
+            palette,
             selectedEquipmentIds.contains(entry.key),
           ),
         ),
@@ -232,7 +228,9 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
   }
 
   Widget _buildEquipmentItem(
-      String key, String label, ColorScheme colorScheme, bool isSelected) {
+      String key, String label, AppPalette palette, bool isSelected) {
+    final primary = context.read<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -240,11 +238,9 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
           Expanded(
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 16,
+              style: t.titleM.copyWith(
                 fontWeight: FontWeight.w500,
-                color: colorScheme.onboardingTitleColor,
-                fontFamily: 'Poppins',
+                color: palette.textPrimary,
               ),
             ),
           ),
@@ -257,10 +253,10 @@ class _OnboardingPage4State extends State<OnboardingPage4> {
               width: 24,
               height: 24,
               decoration: BoxDecoration(
-                color: isSelected ? primaryColor : Colors.white,
+                color: isSelected ? primary : palette.surface,
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(
-                  color: Colors.black26,
+                  color: palette.border,
                   width: 2,
                 ),
               ),

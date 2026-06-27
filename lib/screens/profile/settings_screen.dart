@@ -8,6 +8,7 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/feature_gate_service.dart';
 import '../../core/utils/app_routes.dart';
+import '../../core/widgets/ds/ds.dart';
 import '../legal/legal_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -77,19 +78,16 @@ class SettingsScreen extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final testModeProvider = Provider.of<TestModeProvider>(context);
     final appLoc = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
     // Design specific colors
     final primaryColor = themeProvider.primaryColor;
-    final backgroundColor =
-        isDark ? const Color(0xFF111827) : const Color(0xFFFDFDFD);
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: palette.background,
       body: Stack(
         children: [
-          // Background Glows
           // Background Glows
           Positioned(
             top: -100,
@@ -101,9 +99,7 @@ class SettingsScreen extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    isDark
-                        ? primaryColor.withValues(alpha: 0.2)
-                        : const Color(0xFFFFEDD5).withValues(alpha: 0.6),
+                    primaryColor.withValues(alpha: palette.isDark ? 0.2 : 0.15),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.7],
@@ -121,9 +117,7 @@ class SettingsScreen extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    isDark
-                        ? Colors.blue[900]!.withValues(alpha: 0.2)
-                        : const Color(0xFFEFF6FF).withValues(alpha: 0.6),
+                    palette.info.withValues(alpha: 0.15),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.7],
@@ -143,15 +137,14 @@ class SettingsScreen extends StatelessWidget {
                       children: [
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: Icon(Icons.arrow_back,
-                              color: isDark ? Colors.white : Colors.black),
+                          icon: Icon(Icons.arrow_back, color: palette.textPrimary),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
 
                     // Premium Section
-                    _buildPremiumCard(context, primaryColor, appLoc),
+                    _buildPremiumCard(context, primaryColor, appLoc, palette),
 
                     const SizedBox(height: 24),
 
@@ -159,18 +152,18 @@ class SettingsScreen extends StatelessWidget {
                     _buildGlassSection(
                       context: context,
                       title: appLoc.translate('settings.appearance.title'),
-                      isDark: isDark,
+                      palette: palette,
                       children: [
                         // Dark Mode
                         _buildSettingsRow(
                           context,
                           icon: Icons.dark_mode,
-                          iconColor: Colors.indigo,
-                          iconBgColor: isDark
-                              ? Colors.indigo.withValues(alpha: 0.3)
-                              : const Color(0xFFEEF2FF), // indigo-50
+                          iconColor: palette.info,
+                          iconBgColor: palette.isDark
+                              ? palette.info.withValues(alpha: 0.3)
+                              : palette.info.withValues(alpha: 0.15),
                           title: appLoc.translate('settings.appearance.dark'),
-                          isDark: isDark,
+                          palette: palette,
                           trailing: Switch(
                             value: themeProvider.themeMode == ThemeMode.dark,
                             onChanged: (val) {
@@ -185,28 +178,28 @@ class SettingsScreen extends StatelessWidget {
                           context,
                           icon: Icons.palette,
                           iconColor: primaryColor,
-                          iconBgColor: isDark
+                          iconBgColor: palette.isDark
                               ? primaryColor.withValues(alpha: 0.3)
-                              : const Color(0xFFFCE7F3), // pink-50
+                              : palette.error.withValues(alpha: 0.12),
                           title: appLoc
                               .translate('settings.appearance.theme_color'),
-                          isDark: isDark,
+                          palette: palette,
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               _buildColorOption(themeProvider,
-                                  const Color(0xFFF97300), isDark),
+                                  const Color(0xFFF97300), palette),
                               const SizedBox(width: 8),
                               _buildColorOption(
-                                  themeProvider, Colors.blue, isDark),
+                                  themeProvider, Colors.blue, palette),
                               const SizedBox(width: 8),
                               _buildColorOption(
-                                  themeProvider, Colors.green, isDark),
+                                  themeProvider, Colors.green, palette),
                               const SizedBox(width: 8),
                               _buildColorOption(
                                   themeProvider,
                                   const Color.fromARGB(255, 255, 77, 193),
-                                  isDark),
+                                  palette),
                             ],
                           ),
                         ),
@@ -214,12 +207,12 @@ class SettingsScreen extends StatelessWidget {
                         _buildSettingsRow(
                           context,
                           icon: Icons.language,
-                          iconColor: Colors.black54,
-                          iconBgColor: isDark
-                              ? Colors.black.withValues(alpha: 0.3)
-                              : const Color(0xFFFFF7ED), // orange-50
+                          iconColor: palette.textSecondary,
+                          iconBgColor: palette.isDark
+                              ? palette.shadow.withValues(alpha: 0.3)
+                              : palette.calories.withValues(alpha: 0.15),
                           title: appLoc.translate('settings.language'),
-                          isDark: isDark,
+                          palette: palette,
                           onTap: () {
                             // Simple language toggle for now, or could show dialog
                             if (languageProvider.currentLocale.languageCode ==
@@ -239,16 +232,12 @@ class SettingsScreen extends StatelessWidget {
                                     : 'English',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[500],
+                                  color: palette.textSecondary,
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Icon(Icons.chevron_right,
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[500]),
+                                  color: palette.textSecondary),
                             ],
                           ),
                         ),
@@ -261,20 +250,20 @@ class SettingsScreen extends StatelessWidget {
                     _buildGlassSection(
                       context: context,
                       title: appLoc.translate('settings.privacy.title'),
-                      isDark: isDark,
+                      palette: palette,
                       children: [
                         _buildSettingsRow(
                           context,
                           icon: Icons.lock,
-                          iconColor: Colors.blue,
-                          iconBgColor: isDark
-                              ? Colors.blue.withValues(alpha: 0.3)
-                              : const Color(0xFFEFF6FF), // blue-50
+                          iconColor: palette.info,
+                          iconBgColor: palette.isDark
+                              ? palette.info.withValues(alpha: 0.3)
+                              : palette.info.withValues(alpha: 0.15),
                           title: appLoc
                               .translate('settings.privacy.account_privacy'),
                           subtitle: appLoc.translate(
                               'settings.privacy.account_privacy_subtitle'),
-                          isDark: isDark,
+                          palette: palette,
                           trailing: Switch(
                             value: true, // Mock value
                             onChanged: (val) {},
@@ -284,13 +273,13 @@ class SettingsScreen extends StatelessWidget {
                         _buildSettingsRow(
                           context,
                           icon: Icons.group_add,
-                          iconColor: Colors.green,
-                          iconBgColor: isDark
-                              ? Colors.green.withValues(alpha: 0.3)
-                              : const Color(0xFFF0FDF4), // green-50
+                          iconColor: palette.success,
+                          iconBgColor: palette.isDark
+                              ? palette.success.withValues(alpha: 0.3)
+                              : palette.success.withValues(alpha: 0.15),
                           title: appLoc
                               .translate('settings.privacy.friend_requests'),
-                          isDark: isDark,
+                          palette: palette,
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -300,16 +289,12 @@ class SettingsScreen extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[500],
+                                  color: palette.textSecondary,
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Icon(Icons.chevron_right,
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[500]),
+                                  color: palette.textSecondary),
                             ],
                           ),
                         ),
@@ -322,34 +307,32 @@ class SettingsScreen extends StatelessWidget {
                     _buildGlassSection(
                       context: context,
                       title: appLoc.translate('settings.permissions.title'),
-                      isDark: isDark,
+                      palette: palette,
                       children: [
                         _buildSettingsRow(
                           context,
                           icon: Icons.notifications,
-                          iconColor: Colors.red,
-                          iconBgColor: isDark
-                              ? Colors.red.withValues(alpha: 0.3)
-                              : const Color(0xFFFEF2F2), // red-50
+                          iconColor: palette.error,
+                          iconBgColor: palette.isDark
+                              ? palette.error.withValues(alpha: 0.3)
+                              : palette.error.withValues(alpha: 0.12),
                           title: appLoc.translate('settings.notifications'),
-                          isDark: isDark,
+                          palette: palette,
                           trailing: Icon(Icons.chevron_right,
-                              color:
-                                  isDark ? Colors.grey[400] : Colors.grey[400]),
+                              color: palette.textSecondary),
                         ),
                         _buildSettingsRow(
                           context,
                           icon: Icons.smartphone,
-                          iconColor: Colors.teal,
-                          iconBgColor: isDark
-                              ? Colors.teal.withValues(alpha: 0.3)
-                              : const Color(0xFFF0FDFA), // teal-50
+                          iconColor: palette.energy,
+                          iconBgColor: palette.isDark
+                              ? palette.energy.withValues(alpha: 0.3)
+                              : palette.energy.withValues(alpha: 0.15),
                           title: appLoc.translate(
                               'settings.permissions.device_permissions'),
-                          isDark: isDark,
+                          palette: palette,
                           trailing: Icon(Icons.chevron_right,
-                              color:
-                                  isDark ? Colors.grey[400] : Colors.grey[400]),
+                              color: palette.textSecondary),
                         ),
                       ],
                     ),
@@ -360,36 +343,34 @@ class SettingsScreen extends StatelessWidget {
                     _buildGlassSection(
                       context: context,
                       title: appLoc.translate('settings.app_info.title'),
-                      isDark: isDark,
+                      palette: palette,
                       children: [
                         _buildSettingsRow(
                           context,
                           title: appLoc.translate('settings.app_info.about'),
-                          isDark: isDark,
+                          palette: palette,
                           paddingLeft: 0,
                           trailing: Icon(Icons.chevron_right,
-                              color:
-                                  isDark ? Colors.grey[400] : Colors.grey[400]),
+                              color: palette.textSecondary),
                         ),
                         _buildSettingsRow(
                           context,
                           title: appLoc.translate('settings.app_info.help'),
-                          isDark: isDark,
+                          palette: palette,
                           paddingLeft: 0,
                           trailing: Icon(Icons.open_in_new,
                               size: 20,
-                              color:
-                                  isDark ? Colors.grey[400] : Colors.grey[400]),
+                              color: palette.textSecondary),
                         ),
                         _buildSettingsRow(
                           context,
                           icon: Icons.privacy_tip_outlined,
-                          iconColor: Colors.teal,
-                          iconBgColor: isDark
-                              ? Colors.teal.withValues(alpha: 0.2)
-                              : const Color(0xFFF0FDFA),
+                          iconColor: palette.energy,
+                          iconBgColor: palette.isDark
+                              ? palette.energy.withValues(alpha: 0.2)
+                              : palette.energy.withValues(alpha: 0.15),
                           title: appLoc.translate('settings.privacy_policy'),
-                          isDark: isDark,
+                          palette: palette,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -398,19 +379,17 @@ class SettingsScreen extends StatelessWidget {
                             ),
                           ),
                           trailing: Icon(Icons.chevron_right,
-                              color: isDark
-                                  ? Colors.grey[400]
-                                  : Colors.grey[400]),
+                              color: palette.textSecondary),
                         ),
                         _buildSettingsRow(
                           context,
                           icon: Icons.description_outlined,
-                          iconColor: Colors.blue,
-                          iconBgColor: isDark
-                              ? Colors.blue.withValues(alpha: 0.2)
-                              : const Color(0xFFEFF6FF),
+                          iconColor: palette.info,
+                          iconBgColor: palette.isDark
+                              ? palette.info.withValues(alpha: 0.2)
+                              : palette.info.withValues(alpha: 0.15),
                           title: appLoc.translate('settings.terms_of_service'),
-                          isDark: isDark,
+                          palette: palette,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -419,9 +398,7 @@ class SettingsScreen extends StatelessWidget {
                             ),
                           ),
                           trailing: Icon(Icons.chevron_right,
-                              color: isDark
-                                  ? Colors.grey[400]
-                                  : Colors.grey[400]),
+                              color: palette.textSecondary),
                         ),
                       ],
                     ),
@@ -432,22 +409,22 @@ class SettingsScreen extends StatelessWidget {
                     _buildGlassSection(
                       context: context,
                       title: appLoc.translate('settings.developer.title'),
-                      isDark: isDark,
+                      palette: palette,
                       children: [
                         _buildSettingsRow(
                           context,
                           icon: Icons.bug_report_outlined,
-                          iconColor: Colors.purple,
-                          iconBgColor: isDark
-                              ? Colors.purple.withValues(alpha: 0.3)
-                              : const Color(0xFFF5F3FF),
+                          iconColor: palette.fat,
+                          iconBgColor: palette.isDark
+                              ? palette.fat.withValues(alpha: 0.3)
+                              : palette.fat.withValues(alpha: 0.15),
                           title: appLoc.translate('settings.developer.test_mode'),
                           subtitle: appLoc.translate('settings.developer.test_mode_subtitle'),
-                          isDark: isDark,
+                          palette: palette,
                           trailing: Switch(
                             value: testModeProvider.isActive,
                             onChanged: (_) => testModeProvider.toggle(),
-                            activeThumbColor: Colors.purple,
+                            activeThumbColor: palette.fat,
                           ),
                         ),
                       ],
@@ -459,48 +436,47 @@ class SettingsScreen extends StatelessWidget {
                     _buildGlassSection(
                       context: context,
                       title: appLoc.translate('settings.account.title'),
-                      isDark: isDark,
+                      palette: palette,
                       children: [
                         _buildSettingsRow(
                           context,
                           icon: Icons.email_outlined,
-                          iconColor: Colors.blue,
-                          iconBgColor: isDark
-                              ? Colors.blue.withValues(alpha: 0.2)
-                              : const Color(0xFFEFF6FF),
+                          iconColor: palette.info,
+                          iconBgColor: palette.isDark
+                              ? palette.info.withValues(alpha: 0.2)
+                              : palette.info.withValues(alpha: 0.15),
                           title: appLoc.translate('settings.account.change_email'),
-                          isDark: isDark,
+                          palette: palette,
                           onTap: () => _showChangeEmailDialog(context),
                           trailing: Icon(Icons.chevron_right,
-                              color: isDark ? Colors.grey[400] : Colors.grey[400]),
+                              color: palette.textSecondary),
                         ),
                         _buildSettingsRow(
                           context,
                           icon: Icons.lock_outline,
-                          iconColor: Colors.orange,
-                          iconBgColor: isDark
-                              ? Colors.orange.withValues(alpha: 0.2)
-                              : const Color(0xFFFFF7ED),
+                          iconColor: palette.warning,
+                          iconBgColor: palette.isDark
+                              ? palette.warning.withValues(alpha: 0.2)
+                              : palette.calories.withValues(alpha: 0.15),
                           title: appLoc.translate('settings.account.change_password'),
-                          isDark: isDark,
+                          palette: palette,
                           onTap: () => _showChangePasswordDialog(context),
                           trailing: Icon(Icons.chevron_right,
-                              color: isDark ? Colors.grey[400] : Colors.grey[400]),
+                              color: palette.textSecondary),
                         ),
                         _buildSettingsRow(
                           context,
                           icon: Icons.delete_forever,
-                          iconColor: Colors.red,
-                          iconBgColor: isDark
-                              ? Colors.red.withValues(alpha: 0.2)
-                              : const Color(0xFFFEF2F2),
+                          iconColor: palette.error,
+                          iconBgColor: palette.isDark
+                              ? palette.error.withValues(alpha: 0.2)
+                              : palette.error.withValues(alpha: 0.12),
                           title: appLoc
                               .translate('settings.account.delete_account'),
-                          isDark: isDark,
+                          palette: palette,
                           onTap: () => _showDeleteAccountDialog(context),
                           trailing: Icon(Icons.chevron_right,
-                              color:
-                                  isDark ? Colors.grey[400] : Colors.grey[400]),
+                              color: palette.textSecondary),
                         ),
                       ],
                     ),
@@ -516,8 +492,7 @@ class SettingsScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color:
-                                  isDark ? Colors.grey[600] : Colors.grey[500],
+                              color: palette.textTertiary,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -525,8 +500,7 @@ class SettingsScreen extends StatelessWidget {
                             "${appLoc.translate('settings.app_info.user_id')}: $uid",
                             style: TextStyle(
                               fontSize: 10,
-                              color:
-                                  isDark ? Colors.grey[600] : Colors.grey[500],
+                              color: palette.textTertiary,
                             ),
                           ),
                         ],
@@ -543,7 +517,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildPremiumCard(
-      BuildContext context, Color primaryColor, AppLocalizations appLoc) {
+      BuildContext context, Color primaryColor, AppLocalizations appLoc, AppPalette palette) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(36),
@@ -584,8 +558,8 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.workspace_premium,
-                        color: Color(0xFFFDE047)), // yellow-300
+                    Icon(Icons.workspace_premium,
+                        color: palette.warning),
                     const SizedBox(width: 8),
                     Text(
                       appLoc.translate('settings.premium.badge').toUpperCase(),
@@ -654,22 +628,19 @@ class SettingsScreen extends StatelessWidget {
   Widget _buildGlassSection({
     required BuildContext context,
     required String title,
-    required bool isDark,
+    required AppPalette palette,
     required List<Widget> children,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF1F2937)
-                .withValues(alpha: 0.9) // Higher opacity since no blur
-            : Colors.white.withValues(alpha: 0.95),
+        color: palette.surface.withValues(alpha: palette.isDark ? 0.9 : 0.95),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+          color: palette.border,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: palette.shadow.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -683,12 +654,10 @@ class SettingsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.grey[800]!.withValues(alpha: 0.5)
-                    : Colors.grey[50]!.withValues(alpha: 0.5),
+                color: palette.surfaceVariant.withValues(alpha: 0.5),
                 border: Border(
                   bottom: BorderSide(
-                    color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
+                    color: palette.divider,
                   ),
                 ),
               ),
@@ -698,7 +667,7 @@ class SettingsScreen extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.2,
-                  color: isDark ? Colors.grey[300] : Colors.grey[800],
+                  color: palette.textPrimary,
                 ),
               ),
             ),
@@ -716,7 +685,7 @@ class SettingsScreen extends StatelessWidget {
     Color? iconBgColor,
     required String title,
     String? subtitle,
-    required bool isDark,
+    required AppPalette palette,
     Widget? trailing,
     VoidCallback? onTap,
     double paddingLeft = 16,
@@ -757,7 +726,7 @@ class SettingsScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.grey[200] : Colors.grey[800],
+                      color: palette.textPrimary,
                     ),
                   ),
                   if (subtitle != null)
@@ -765,7 +734,7 @@ class SettingsScreen extends StatelessWidget {
                       subtitle,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[500],
+                        color: palette.textSecondary,
                       ),
                     ),
                 ],
@@ -778,7 +747,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildColorOption(ThemeProvider provider, Color color, bool isDark) {
+  Widget _buildColorOption(ThemeProvider provider, Color color, AppPalette palette) {
     bool isSelected = provider.primaryColor == color;
     return GestureDetector(
       onTap: () => provider.setPrimaryColor(color),
@@ -790,7 +759,7 @@ class SettingsScreen extends StatelessWidget {
           shape: BoxShape.circle,
           border: isSelected
               ? Border.all(
-                  color: isDark ? Colors.grey[800]! : Colors.white,
+                  color: palette.surface,
                   width: 2,
                 )
               : null,
@@ -851,6 +820,7 @@ class _ChangeEmailDialogState extends State<_ChangeEmailDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return AlertDialog(
       title: Text(widget.appLoc.translate('settings.account.change_email_title')),
       content: Column(
@@ -897,7 +867,7 @@ class _ChangeEmailDialogState extends State<_ChangeEmailDialog> {
                     setState(() => _isLoading = false);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                        SnackBar(content: Text(e.toString()), backgroundColor: palette.error),
                       );
                     }
                   }
@@ -945,6 +915,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return AlertDialog(
       title: Text(widget.appLoc.translate('settings.account.change_password_title')),
       content: Column(
@@ -992,7 +963,7 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                     setState(() => _isLoading = false);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                        SnackBar(content: Text(e.toString()), backgroundColor: palette.error),
                       );
                     }
                   }
@@ -1037,6 +1008,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
     return AlertDialog(
       title: Text(widget.appLoc.translate('settings.account.delete_title')),
       content: Column(
@@ -1073,13 +1045,13 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                     setState(() => _isLoading = false);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                        SnackBar(content: Text(e.toString()), backgroundColor: palette.error),
                       );
                     }
                   }
                 },
           style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: palette.error,
               foregroundColor: Colors.white),
           child: _isLoading
               ? const SizedBox(

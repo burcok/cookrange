@@ -1,9 +1,13 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
-import '../../constants.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/providers/theme_provider.dart';
 import '../../core/services/auth_service.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/utils/auth_error_handler.dart';
+import '../../core/widgets/ds/ds.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -25,196 +29,146 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _resetPassword() async {
     if (_isLoading) return;
-
+    final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
     final email = _emailController.text.trim();
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)
-              .translate('auth.login_errors.empty_fields')),
-          backgroundColor: Colors.red,
+          content: Text(l10n.translate('auth.login_errors.empty_fields')),
+          backgroundColor: palette.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.sm.r)),
         ),
       );
       return;
     }
 
     setState(() => _isLoading = true);
-
     try {
       await AuthService().sendPasswordResetEmail(email);
-      if (mounted) {
-        setState(() => _isSuccess = true);
-      }
+      if (mounted) setState(() => _isSuccess = true);
     } on AuthException catch (e) {
-      if (mounted) {
-        AuthErrorHandler.showSnackBar(context, e);
-      }
+      if (mounted) AuthErrorHandler.showSnackBar(context, e);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString()),
-            backgroundColor: Colors.red,
+            backgroundColor: palette.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm.r)),
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+    final primary = context.watch<ThemeProvider>().primaryColor;
 
     return Scaffold(
-      backgroundColor: colorScheme.backgroundColor2,
+      backgroundColor: palette.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: colorScheme.onSurface),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: palette.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 20),
-                const Text(
-                  'cookrange',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: primaryColor,
-                  ),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(height: AppSpacing.lg.h),
+              Text(
+                'cookrange',
+                textAlign: TextAlign.center,
+                style: t.displayM.copyWith(
+                  fontFamily: 'Lexend',
+                  color: primary,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 40),
+              ),
+              SizedBox(height: AppSpacing.xxxl.h),
+              Text(
+                l10n.translate('auth.forgot_password'),
+                textAlign: TextAlign.center,
+                style: t.headlineL.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: palette.textPrimary),
+              ),
+              SizedBox(height: AppSpacing.md.h),
+              if (!_isSuccess) ...[
                 Text(
-                  localizations.translate('auth.forgot_password'),
+                  l10n.translate('auth.forgot_password_desc'),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
+                  style: t.bodyL.copyWith(color: palette.textSecondary),
+                ),
+                SizedBox(height: AppSpacing.xxxl.h),
+                Text(l10n.translate('auth.email'),
+                    style: t.labelL.copyWith(color: palette.textPrimary)),
+                SizedBox(height: AppSpacing.xs.h),
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  cursorColor: primary,
+                  style: t.bodyL.copyWith(color: palette.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: l10n.translate('auth.email_hint'),
+                    hintStyle: TextStyle(color: palette.textTertiary),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.input.r),
+                      borderSide: BorderSide(color: palette.border, width: 1.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.input.r),
+                      borderSide: BorderSide(color: primary, width: 2.0),
+                    ),
+                    filled: true,
+                    fillColor: palette.surfaceVariant.withValues(alpha: 0.5),
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xl.w,
+                        vertical: AppSpacing.md.h),
                   ),
                 ),
-                const SizedBox(height: 16),
-                if (!_isSuccess) ...[
-                  Text(
-                    localizations.translate('auth.forgot_password_desc'),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 16,
-                      color: colorScheme.onboardingSubtitleColor,
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-                  Text(
-                    localizations.translate('auth.email'),
-                    style: TextStyle(
-                      color: colorScheme.onboardingTitleColor,
-                      fontSize: 16,
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    cursorColor: primaryColor,
-                    decoration: InputDecoration(
-                      hintText: localizations.translate('auth.email_hint'),
-                      hintStyle: const TextStyle(color: authSecondaryTextColor),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: Colors.grey.withValues(alpha: 0.5),
-                          width: 2.0,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            const BorderSide(color: primaryColor, width: 2.0),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 16),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _resetPassword,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(
-                            localizations.translate('common.send'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
-                ] else ...[
-                  const Icon(
-                    Icons.check_circle_outline,
-                    size: 80,
-                    color: Colors.green,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    localizations.translate('auth.reset_link_sent'),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 18,
+                SizedBox(height: AppSpacing.xxl.h),
+                AppButton(
+                  label: l10n.translate('common.send'),
+                  loading: _isLoading,
+                  onPressed: _isLoading ? null : _resetPassword,
+                ),
+              ] else ...[
+                SizedBox(height: AppSpacing.xxl.h),
+                Icon(Icons.mark_email_read_rounded,
+                    size: 80.r, color: palette.success),
+                SizedBox(height: AppSpacing.xl.h),
+                Text(
+                  l10n.translate('auth.reset_link_sent'),
+                  textAlign: TextAlign.center,
+                  style: t.titleL.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      localizations.translate('auth.back_to_login'),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
+                      color: palette.textPrimary),
+                ),
+                SizedBox(height: AppSpacing.xxxl.h),
+                AppButton(
+                  label: l10n.translate('auth.back_to_login'),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),

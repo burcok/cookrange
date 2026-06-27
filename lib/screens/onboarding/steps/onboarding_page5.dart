@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:provider/provider.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 import 'package:cookrange/core/providers/onboarding_provider.dart';
-import 'package:cookrange/core/theme/app_theme.dart';
-import 'package:cookrange/widgets/onboarding_common_widgets.dart';
+import 'package:cookrange/core/providers/theme_provider.dart';
 import 'package:cookrange/core/services/analytics_service.dart';
-import 'package:cookrange/constants.dart';
-import 'package:flutter/foundation.dart' show mapEquals;
+import 'package:cookrange/core/widgets/ds/ds.dart';
+import 'package:cookrange/widgets/onboarding_common_widgets.dart';
 
 class OnboardingPage5 extends StatefulWidget {
   final int step;
@@ -223,18 +223,18 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
 
     if (_profiles.isEmpty) {
       return Scaffold(
-        backgroundColor: colorScheme.backgroundColor2,
+        backgroundColor: palette.background,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor: colorScheme.backgroundColor2,
+      backgroundColor: palette.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -268,22 +268,12 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                     // Main Title
                     Text(
                       localizations.translate('onboarding.page5.title'),
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: colorScheme.onboardingTitleColor,
-                        fontFamily: 'Poppins',
-                      ),
+                      style: t.headlineS.copyWith(color: palette.textPrimary),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       localizations.translate('onboarding.page5.description'),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: colorScheme.onboardingSubtitleColor,
-                        fontFamily: 'Poppins',
-                      ),
+                      style: t.bodyM.copyWith(color: palette.textSecondary),
                     ),
                     const SizedBox(height: 24),
                     ..._profiles.map((profile) => _buildProfileCard(profile)),
@@ -321,7 +311,9 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
 
   Widget _buildProfileCard(_LifestyleProfile profile) {
     final isSelected = _selectedProfile?.key == profile.key;
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
+    final primary = context.read<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
 
     return GestureDetector(
       onTap: () => _onProfileSelected(profile),
@@ -331,12 +323,11 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? primaryColor.withValues(alpha: 0.2)
+              ? primary.withValues(alpha: 0.2)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color:
-                isSelected ? primaryColor : Colors.grey.withValues(alpha: 0.5),
+            color: isSelected ? primary : palette.border,
             width: 2,
           ),
         ),
@@ -348,27 +339,20 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                 children: [
                   Text(
                     profile.name,
-                    style: TextStyle(
-                      fontSize: 16,
+                    style: t.titleM.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: colorScheme.onboardingTitleColor,
+                      color: palette.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     profile.description,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: colorScheme.onboardingSubtitleColor,
-                    ),
+                    style: t.bodyM.copyWith(color: palette.textSecondary),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     profile.times,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: colorScheme.onboardingSubtitleColor,
-                    ),
+                    style: t.labelS.copyWith(color: palette.textSecondary),
                   ),
                 ],
               ),
@@ -406,10 +390,8 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
         Text(
           localizations
               .translate('onboarding.page5.schedule_editor.irregular.title'),
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.onboardingTitleColor,
+          style: AppText.of(context).headlineS.copyWith(
+            color: AppPalette.of(context).textPrimary,
           ),
         ),
         const SizedBox(height: 16),
@@ -448,15 +430,16 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
             provider.mealSchedule?['rotation_weeks'] ?? 2,
         builder: (context, rotationWeeks, _) {
           final localizations = AppLocalizations.of(context);
-          final colorScheme = Theme.of(context).colorScheme;
+          final rotPalette = AppPalette.of(context);
+          final rotT = AppText.of(context);
 
           return Container(
             padding:
                 const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
             decoration: BoxDecoration(
-              color: Colors.transparent, // White card background
+              color: Colors.transparent,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
+              border: Border.all(color: rotPalette.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -464,16 +447,12 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                 Text(
                   localizations.translate(
                       'onboarding.page5.profiles.rotating_shifts.name'),
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onboardingTitleColor,
-                  ),
+                  style: rotT.headlineS.copyWith(color: rotPalette.textPrimary),
                 ),
                 const SizedBox(height: 24),
                 _buildWeekSelector(rotationWeeks),
                 const SizedBox(height: 24),
-                Divider(color: Colors.grey.withValues(alpha: 0.5)),
+                Divider(color: rotPalette.divider),
                 for (int i = 0; i < rotationWeeks; i++)
                   _buildWeekScheduleEditor(i + 1,
                       isLast: i == rotationWeeks - 1),
@@ -485,12 +464,14 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
 
   Widget _buildWeekSelector(int selectedWeeks) {
     final localizations = AppLocalizations.of(context);
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
+    final primary = context.read<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
 
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
+        border: Border.all(color: palette.border),
       ),
       child: Row(
         children: List.generate(3, (index) {
@@ -504,18 +485,15 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: isSelected ? primaryColor : Colors.transparent,
+                  color: isSelected ? primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(99),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   '$week ${localizations.translate('onboarding.page5.schedule_editor.rotating.week_short')}',
-                  style: TextStyle(
+                  style: t.labelL.copyWith(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: isSelected
-                        ? Colors.white
-                        : colorScheme.onboardingSubtitleColor,
+                    color: isSelected ? Colors.white : palette.textSecondary,
                   ),
                 ),
               ),
@@ -528,7 +506,8 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
 
   Widget _buildWeekScheduleEditor(int week, {bool isLast = false}) {
     final localizations = AppLocalizations.of(context);
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     final Map<String, IconData> mealIcons = {
       'breakfast': Icons.restaurant_outlined,
       'lunch': Icons.local_cafe_outlined,
@@ -557,11 +536,7 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                   top: 24.0, bottom: 12.0), // Adjusted padding
               child: Text(
                 '${localizations.translate('onboarding.page5.schedule_editor.rotating.week')} $week',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onboardingTitleColor,
-                ),
+                style: t.headlineS.copyWith(color: palette.textPrimary),
               ),
             ),
             _buildTimePickerRow(
@@ -605,26 +580,27 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
 
   Widget _buildTimePickerRow(String mealKey, String label, String currentTime,
       IconData icon, Function(String) onTimeChanged) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.5))),
+          border: Border.all(color: palette.border)),
       child: Row(
         children: [
           Icon(
             icon,
-            color: colorScheme.onboardingSubtitleColor,
+            color: palette.textSecondary,
           ),
           const SizedBox(width: 12),
           Text(
             label,
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: colorScheme.onboardingTitleColor),
+            style: t.titleM.copyWith(
+              fontWeight: FontWeight.w500,
+              color: palette.textPrimary,
+            ),
           ),
           const Spacer(),
           GestureDetector(
@@ -649,14 +625,11 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
               decoration: BoxDecoration(
                 color: Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
+                border: Border.all(color: palette.border),
               ),
               child: Text(
                 currentTime,
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'Poppins'),
+                style: t.titleM.copyWith(fontWeight: FontWeight.w500),
               ),
             ),
           ),
@@ -667,8 +640,8 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
 
   Widget _buildPreview() {
     final localizations = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     final onboarding = context.watch<OnboardingProvider>();
     final mealSchedule = onboarding.mealSchedule;
     final scheduleType = onboarding.mealSchedule?['schedule_type'];
@@ -692,12 +665,7 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
       children: [
         Text(
           localizations.translate('onboarding.page5.preview.title'),
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'Poppins',
-            color: colorScheme.onboardingTitleColor,
-          ),
+          style: t.headlineM.copyWith(color: palette.textPrimary),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -737,7 +705,8 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
     bool isFirst = false,
     bool isLast = false,
   }) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
     return SizedBox(
       height: 80,
       child: Row(
@@ -752,23 +721,21 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
                     width: 2,
                     color: isFirst
                         ? Colors.transparent
-                        : colorScheme.onboardingSubtitleColor
-                            .withValues(alpha: 0.3),
+                        : palette.divider,
                   ),
                 ),
                 Image.asset(
                   iconPath,
                   width: 32,
                   height: 32,
-                  color: colorScheme.onboardingTitleColor,
+                  color: palette.textPrimary,
                 ),
                 Expanded(
                   child: Container(
                     width: 2,
                     color: isLast
                         ? Colors.transparent
-                        : colorScheme.onboardingSubtitleColor
-                            .withValues(alpha: 0.3),
+                        : palette.divider,
                   ),
                 ),
               ],
@@ -781,19 +748,15 @@ class _OnboardingPage5State extends State<OnboardingPage5> {
             children: [
               Text(
                 mealName,
-                style: TextStyle(
-                  fontSize: 16,
+                style: t.titleM.copyWith(
                   fontWeight: FontWeight.w500,
-                  color: colorScheme.onboardingTitleColor,
+                  color: palette.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 time,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: colorScheme.onboardingSubtitleColor,
-                ),
+                style: t.bodyM.copyWith(color: palette.textSecondary),
               ),
             ],
           ),
