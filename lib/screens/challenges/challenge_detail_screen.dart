@@ -8,6 +8,7 @@ import '../../core/providers/theme_provider.dart';
 import '../../core/services/challenge_service.dart';
 import '../../core/services/firestore_service.dart';
 import '../../core/services/sharing_service.dart';
+import '../../core/utils/profile_navigation.dart';
 import '../../core/widgets/ds/ds.dart';
 
 class ChallengeDetailScreen extends StatefulWidget {
@@ -465,7 +466,9 @@ class _ParticipantRow extends StatelessWidget {
         final name = snapshot.data?.displayName ?? '...';
         final photo = snapshot.data?.photoURL;
 
-        return Container(
+        return GestureDetector(
+          onTap: () => openUserProfile(context, userId: uid),
+          child: Container(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -525,6 +528,7 @@ class _ParticipantRow extends StatelessWidget {
                 ),
               ),
             ],
+          ),
           ),
         );
       },

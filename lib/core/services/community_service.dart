@@ -356,20 +356,20 @@ class CommunityService {
     final aid = authorId;
     if (aid != null && aid != userId) {
       final ns = NotificationService();
-      final senderName = _auth.currentUser?.displayName ?? 'Someone';
       if (liked) {
         unawaited(ns.sendNotification(
           targetUserId: aid,
-          title: 'New like',
-          body: '$senderName liked your post.',
-          type: NotificationType.like,
+          type: NotificationType.likePost,
+          actorUid: userId,
+          actorName: _auth.currentUser?.displayName,
+          actorPhotoUrl: _auth.currentUser?.photoURL,
           relatedId: postId,
         ));
       } else {
         unawaited(ns.deleteNotificationByRelatedId(
           targetUserId: aid,
           relatedId: postId,
-          type: NotificationType.like,
+          type: NotificationType.likePost,
         ));
       }
     }
@@ -429,21 +429,22 @@ class CommunityService {
     final aid = commentAuthorId;
     if (aid != null && aid != userId) {
       final ns = NotificationService();
-      final senderName = _auth.currentUser?.displayName ?? 'Someone';
       final relatedId = '${commentId}_like';
       if (liked) {
         unawaited(ns.sendNotification(
           targetUserId: aid,
-          title: 'New like',
-          body: '$senderName liked your comment.',
-          type: NotificationType.like,
+          type: NotificationType.likeComment,
+          actorUid: userId,
+          actorName: _auth.currentUser?.displayName,
+          actorPhotoUrl: _auth.currentUser?.photoURL,
           relatedId: relatedId,
+          metadata: {'postId': postId, 'commentId': commentId},
         ));
       } else {
         unawaited(ns.deleteNotificationByRelatedId(
           targetUserId: aid,
           relatedId: relatedId,
-          type: NotificationType.like,
+          type: NotificationType.likeComment,
         ));
       }
     }
@@ -478,13 +479,13 @@ class CommunityService {
     });
 
     // Notify post author (fire-and-forget)
-    unawaited(_sendCommentNotification(postId, user.name));
+    unawaited(_sendCommentNotification(postId, user));
 
     return newComment;
   }
 
   Future<void> _sendCommentNotification(
-      String postId, String commenterName) async {
+      String postId, CommunityUser commenter) async {
     try {
       final postSnap =
           await _firestore.collection('posts').doc(postId).get();
@@ -495,9 +496,10 @@ class CommunityService {
       if (authorId == null || authorId == myId) return;
       await NotificationService().sendNotification(
         targetUserId: authorId,
-        title: 'New comment',
-        body: '$commenterName commented on your post.',
         type: NotificationType.comment,
+        actorUid: commenter.id,
+        actorName: commenter.name,
+        actorPhotoUrl: commenter.avatarUrl,
         relatedId: postId,
       );
     } catch (e) {
@@ -741,25 +743,27 @@ class CommunityService {
     final aid = authorId;
     if (aid != null && aid != userId) {
       final ns = NotificationService();
-      final senderName = _auth.currentUser?.displayName ?? 'Someone';
       final target = commentId ?? postId;
       final relatedId = '${target}_rx_$emoji';
       if (reactionAdded) {
-        final body = commentId == null
-            ? '$senderName reacted $emoji to your post.'
-            : '$senderName reacted $emoji to your comment.';
         unawaited(ns.sendNotification(
           targetUserId: aid,
-          title: 'New reaction',
-          body: body,
-          type: NotificationType.like,
+          type: NotificationType.reaction,
+          actorUid: userId,
+          actorName: _auth.currentUser?.displayName,
+          actorPhotoUrl: _auth.currentUser?.photoURL,
           relatedId: relatedId,
+          metadata: {
+            'emoji': emoji,
+            'postId': postId,
+            if (commentId != null) 'commentId': commentId,
+          },
         ));
       } else {
         unawaited(ns.deleteNotificationByRelatedId(
           targetUserId: aid,
           relatedId: relatedId,
-          type: NotificationType.like,
+          type: NotificationType.reaction,
         ));
       }
     }

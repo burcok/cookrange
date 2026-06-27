@@ -42,6 +42,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isUploadingAvatar = false;
   UserModel? _fetchedUser;
   bool _isFetchingUser = false;
+  // True once a server-fresh copy of the viewed user is loaded (public mode).
+  // Used to avoid deciding privacy on a stale passed-in UserModel.
+  bool _freshUserLoaded = false;
 
   // Controllers
   final TextEditingController _genderController = TextEditingController();
@@ -68,7 +71,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else if (!_isPublicMode) {
       _initializePrivateData();
     } else {
+      // Public mode with a passed-in UserModel: resolve friendship and refresh
+      // the user doc so isPrivate reflects current Firestore state (not a stale
+      // copy from a friends/search list).
       _checkFriendshipStatus();
+      _refreshViewedUser();
     }
     unawaited(_loadPostCount());
   }
@@ -113,6 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _fetchedUser = user;
           _isFetchingUser = false;
+          _freshUserLoaded = user != null;
         });
         if (user != null) {
           _checkFriendshipStatus();
@@ -123,6 +131,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _isFetchingUser = false);
       }
     }
+  }
+
+  /// Re-fetches the viewed user (viewUser mode) so privacy decisions use the
+  /// freshest isPrivate value rather than a possibly-stale list snapshot.
+  Future<void> _refreshViewedUser() async {
+    final uid = widget.viewUser?.uid;
+    if (uid == null) return;
+    try {
+      final fresh = await FirestoreService().getUserData(uid);
+      if (mounted) {
+        setState(() {
+          if (fresh != null) _fetchedUser = fresh;
+          _freshUserLoaded = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _freshUserLoaded = true);
+    }
+  }
+
+  /// In public mode, privacy is only decided once we have a fresh user copy AND
+  /// the friendship status has resolved — prevents protected data from flashing.
+  bool get _privacyResolved {
+    if (!_isPublicMode) return true;
+    return _freshUserLoaded && !_isCheckingFriendship;
   }
 
   @override
@@ -331,7 +364,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     if (_isPublicMode) {
-      final user = widget.viewUser ?? _fetchedUser;
+      // Prefer the server-fresh copy so privacy reflects current state.
+      final user = _fetchedUser ?? widget.viewUser;
       if (user == null) {
         return Scaffold(
           appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
@@ -360,6 +394,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).primaryColor;
     final palette = AppPalette.of(context);
+    final isFriend = _friendshipStatus == FriendshipStatus.friends;
+    final isPrivateRestricted = isPublic && user.isPrivate && !isFriend;
+    // While we don't yet know the fresh privacy state + relationship, show a
+    // skeleton instead of risking a flash of protected data.
+    final showPrivacyLoading = isPublic && !_privacyResolved;
 
     return Scaffold(
       backgroundColor: palette.background,
@@ -427,31 +466,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 20),
                       _buildAvatarSection(user, isDark, isPublic),
                       const SizedBox(height: 24),
-                      _buildStatsRow(isDark),
-                      _buildStreakTierBadge(isDark),
-                      if (_reputationData != null)
-                        _buildReputationBadge(isDark),
-                      const SizedBox(height: 24),
+                      if (showPrivacyLoading) ...[
+                        _buildProfilePrivacySkeleton(),
+                      ] else if (isPrivateRestricted) ...[
+                        _buildPrivateAccountRestricted(
+                            context, user, isDark, primaryColor, palette),
+                      ] else ...[
+                        _buildStatsRow(isDark),
+                        _buildStreakTierBadge(isDark),
+                        if (_reputationData != null)
+                          _buildReputationBadge(isDark),
+                        const SizedBox(height: 24),
 
-                      // Friends Section (Moved Above Goals)
-                      _buildFriendsSection(context, isDark, isPublic),
-                      const SizedBox(height: 20),
+                        // Friends Section (Moved Above Goals)
+                        _buildFriendsSection(context, isDark, isPublic),
+                        const SizedBox(height: 20),
 
-                      // Personal Info
-                      _buildPersonalInfoGrid(context, user, isDark, isPublic),
-                      const SizedBox(height: 20),
+                        // Personal Info
+                        _buildPersonalInfoGrid(context, user, isDark, isPublic),
+                        const SizedBox(height: 20),
 
-                      // Goals Section
-                      _buildGoalsPanel(context, user, isDark, isPublic),
-                      const SizedBox(height: 20),
+                        // Goals Section
+                        _buildGoalsPanel(context, user, isDark, isPublic),
+                        const SizedBox(height: 20),
 
-                      // Lifestyle
-                      _buildLifestylePanel(context, user, isDark, isPublic),
+                        // Lifestyle
+                        _buildLifestylePanel(context, user, isDark, isPublic),
 
-                      const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                      if (!isPublic) ...[
-                        _buildLogoutButton(context, isDark),
+                        if (!isPublic) ...[
+                          _buildLogoutButton(context, isDark),
+                        ],
                       ]
                     ]),
                   ),
@@ -461,6 +507,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProfilePrivacySkeleton() {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSkeletonBox(height: 64, width: double.infinity),
+        SizedBox(height: 16),
+        AppSkeletonList(itemCount: 3, itemHeight: 72),
+      ],
+    );
+  }
+
+  Widget _buildPrivateAccountRestricted(BuildContext context, UserModel user,
+      bool isDark, Color primaryColor, AppPalette palette) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: palette.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: palette.border),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: primaryColor.withValues(alpha: 0.12),
+                ),
+                child: Icon(Icons.lock, color: primaryColor, size: 28),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.translate('profile.private_account.title'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: palette.textPrimary,
+                    fontFamily: 'Poppins'),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.translate('profile.private_account.subtitle'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 14,
+                    color: palette.textSecondary,
+                    fontFamily: 'Poppins'),
+              ),
+              const SizedBox(height: 20),
+              _buildFriendActionButton(isDark, primaryColor),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -937,8 +1046,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // If friends exist, show list in modal on click
 
     return StreamBuilder<List<UserModel>>(
+        key: const ValueKey('friends_stream_builder'),
         stream: _friendsStream,
         builder: (context, snapshot) {
+          // Show skeleton while initial load is in progress
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
+            return _buildGlassPanel(
+              isDark: isDark,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionTitle(
+                      localizations.translate('profile.friends'),
+                      Icons.group,
+                      isDark),
+                  const SizedBox(height: 16),
+                  const AppSkeletonList(itemCount: 1, itemHeight: 56),
+                ],
+              ),
+            );
+          }
+
           final friends = snapshot.data ?? [];
 
           return GestureDetector(
@@ -1006,7 +1136,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                             ...friends.take(5).map((f) => Padding(
                                   padding: const EdgeInsets.only(right: 16),
-                                  child: Column(children: [
+                                  child: GestureDetector(
+                                    onTap: () => Navigator.push(
+                                        context,
+                                        AppTransitions.slideUp(
+                                            ProfileScreen(viewUser: f))),
+                                    child: Column(children: [
                                     Container(
                                       decoration: BoxDecoration(
                                           shape: BoxShape.circle,
@@ -1041,6 +1176,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                               color: palette.textSecondary)),
                                     ),
                                   ]),
+                                  ),
                                 )),
                             if (friends.length > 5)
                               // "... and more" indicator

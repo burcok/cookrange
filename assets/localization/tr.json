@@ -416,6 +416,11 @@
     "title": "Profil",
     "options_title": "Profil Seçenekleri",
     "block_user": "Kullanıcıyı Engelle",
+    "private_account": {
+      "title": "Bu hesap gizlidir",
+      "subtitle": "Profilini görmek için bu kullanıcıyı arkadaş olarak ekle.",
+      "add_friend": "Arkadaş Ekle"
+    },
     "edit_profile": "Profili Düzenle",
     "personal_info": "Merhaba Cookrange!",
     "name": "Ad",
@@ -712,7 +717,31 @@
     "success": "Başarılı",
     "error": "Hata",
     "warning": "Uyarı",
-    "info": "Bilgi"
+    "info": "Bilgi",
+    "feed": {
+      "someone": "Biri",
+      "cat_activity": "Etkinlik",
+      "cat_friends": "Arkadaşlar",
+      "cat_reward": "Ödül",
+      "cat_streak": "Seri",
+      "cat_meal": "Yemek Planı",
+      "cat_system": "Sistem",
+      "like_post": "{actor} gönderini beğendi",
+      "like_comment": "{actor} yorumunu beğendi",
+      "reaction_post": "{actor} gönderine {emoji} tepkisi verdi",
+      "reaction_comment": "{actor} yorumuna {emoji} tepkisi verdi",
+      "comment_post": "{actor} gönderine yorum yaptı",
+      "friend_request": "{actor} sana arkadaşlık isteği gönderdi",
+      "friend_accepted": "{actor} arkadaşlık isteğini kabul etti",
+      "referral_title": "Davet ödülü 🎉",
+      "referral_body": "Biri kodunu kullandı — ikiniz de {days} günlük Premium kazandınız!",
+      "streak_title": "{days} günlük seri! 🔥",
+      "streak_body": "{days} gündür üst üste giriş yaptın. Böyle devam et!",
+      "meal_plan_title": "Yemek planın hazır",
+      "meal_plan_body": "Hedeflerine uygun yeni bir haftalık beslenme planı hazırlandı.",
+      "system_title": "Bildirim",
+      "system_body": "Yeni bir güncellemen var."
+    }
   },
   "common": {
     "save": "Kaydet",
@@ -1039,7 +1068,17 @@
     "help": "Yardım",
     "chats": "Sohbetler",
     "logout": "Çıkış Yap",
-    "community": "Topluluk"
+    "community": "Topluluk",
+    "section_main": "MENÜ",
+    "section_social": "Sosyal",
+    "section_account": "HESAP & DİĞER",
+    "home": "Ana Sayfa",
+    "meal_plan": "Yemek Planı",
+    "challenges": "Meydan Okumalar",
+    "leaderboard": "Sıralama",
+    "profile": "Hesabım",
+    "settings": "Ayarlar",
+    "about": "Uygulama Hakkında"
   },
   "account_suspended": {
     "title_header": "HESAP DURUMU",

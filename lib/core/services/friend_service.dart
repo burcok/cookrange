@@ -4,7 +4,6 @@ import '../models/user_model.dart';
 import '../models/notification_model.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
-import '../localization/app_localizations.dart';
 
 enum FriendshipStatus {
   none,
@@ -99,22 +98,27 @@ class FriendService {
         .snapshots()
         .asyncMap((snapshot) async {
       final friendIds = snapshot.docs.map((doc) => doc.id).toList();
-      if (friendIds.isEmpty) return [];
+      if (friendIds.isEmpty) return <UserModel>[];
 
-      // Batch fetch in chunks of 30 (Firestore whereIn limit)
-      final friends = <UserModel>[];
-      for (var i = 0; i < friendIds.length; i += 30) {
-        final chunk = friendIds.sublist(
-            i, i + 30 > friendIds.length ? friendIds.length : i + 30);
-        final snap = await _firestore
-            .collection('users')
-            .where(FieldPath.documentId, whereIn: chunk)
-            .get();
-        for (final doc in snap.docs) {
-          friends.add(UserModel.fromFirestore(doc));
+      try {
+        // Batch fetch in chunks of 30 (Firestore whereIn limit)
+        final friends = <UserModel>[];
+        for (var i = 0; i < friendIds.length; i += 30) {
+          final chunk = friendIds.sublist(
+              i, i + 30 > friendIds.length ? friendIds.length : i + 30);
+          final snap = await _firestore
+              .collection('users')
+              .where(FieldPath.documentId, whereIn: chunk)
+              .get();
+          for (final doc in snap.docs) {
+            friends.add(UserModel.fromFirestore(doc));
+          }
         }
+        return friends;
+      } catch (e) {
+        debugPrint('getFriendsStream fetch error: $e');
+        return <UserModel>[];
       }
-      return friends;
     });
   }
 
@@ -144,22 +148,15 @@ class FriendService {
         .doc(uid)
         .set({'type': 'incoming', 'timestamp': FieldValue.serverTimestamp()});
 
-    // 3. Send Notification
+    // 3. Send Notification (structured — rendered on the recipient's device)
     final currentUserData = await _auth.getUserData(uid);
-    final userName = currentUserData?.displayName ?? "Someone";
-
-    final title = AppLocalizations.of(context)
-        .translate('community.friend_request_title');
-    final body = AppLocalizations.of(context)
-        .translate('community.friend_request_body')
-        .replaceAll('{name}', userName);
-
     await _notificationService.sendNotification(
       targetUserId: targetUserId,
-      title: title,
-      body: body,
       type: NotificationType.friend_request,
-      relatedId: uid, // Sender ID
+      actorUid: uid,
+      actorName: currentUserData?.displayName,
+      actorPhotoUrl: currentUserData?.photoURL,
+      relatedId: uid, // Sender ID (used by accept/reject actions)
     );
   }
 
@@ -188,21 +185,14 @@ class FriendService {
     // 3. Delete request docs
     await _deleteRequestDocs(uid, senderUserId);
 
-    // 4. Notify sender
+    // 4. Notify sender (structured — rendered on the recipient's device)
     final currentUserData = await _auth.getUserData(uid);
-    final userName = currentUserData?.displayName ?? "Someone";
-
-    final title = AppLocalizations.of(context)
-        .translate('community.friend_accepted_title');
-    final body = AppLocalizations.of(context)
-        .translate('community.friend_accepted_body')
-        .replaceAll('{name}', userName);
-
     await _notificationService.sendNotification(
       targetUserId: senderUserId,
-      title: title,
-      body: body,
       type: NotificationType.friend_accepted,
+      actorUid: uid,
+      actorName: currentUserData?.displayName,
+      actorPhotoUrl: currentUserData?.photoURL,
       relatedId: uid,
     );
 

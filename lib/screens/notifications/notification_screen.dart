@@ -4,6 +4,8 @@ import 'package:cookrange/core/localization/app_localizations.dart';
 
 import '../../core/models/notification_model.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/utils/notification_presenter.dart';
+import '../../core/utils/profile_navigation.dart';
 import '../community/widgets/community_widgets.dart';
 import '../../core/services/friend_service.dart';
 import '../../screens/community/widgets/glass_refresher.dart';
@@ -383,69 +385,18 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   Widget _buildNotificationCard(
       NotificationModel notification, AppPalette palette, Color primaryColor) {
-    Color iconBgColor;
-    Color iconColor;
-    IconData iconData;
-    String headerText;
-
-    switch (notification.type) {
-      case NotificationType.like:
-        iconBgColor = palette.error.withValues(alpha: 0.15);
-        iconColor = palette.error;
-        iconData = Icons.favorite;
-        headerText = AppLocalizations.of(context)
-            .translate('community.friends');
-        break;
-      case NotificationType.comment:
-        iconBgColor = palette.info.withValues(alpha: 0.15);
-        iconColor = palette.info;
-        iconData = Icons.chat_bubble;
-        headerText = AppLocalizations.of(context)
-            .translate('community.friends');
-        break;
-      case NotificationType.friend_request:
-        iconBgColor = palette.fat.withValues(alpha: 0.15);
-        iconColor = palette.fat;
-        iconData = Icons.person_add;
-        headerText = AppLocalizations.of(context)
-            .translate('community.friends');
-        break;
-      case NotificationType.friend_accepted:
-        iconBgColor = palette.success.withValues(alpha: 0.15);
-        iconColor = palette.success;
-        iconData = Icons.person_add;
-        headerText = AppLocalizations.of(context)
-            .translate('community.friends');
-        break;
-      case NotificationType.system:
-        iconBgColor = palette.warning.withValues(alpha: 0.15);
-        iconColor = palette.warning;
-        iconData = Icons.system_update;
-        headerText = AppLocalizations.of(context)
-            .translate('community.system');
-        break;
-      default:
-        iconBgColor = primaryColor.withValues(alpha: 0.15);
-        iconColor = primaryColor;
-        iconData = Icons.notifications;
-        headerText = AppLocalizations.of(context)
-            .translate('community.system');
-    }
-
-    if (notification.title.contains("Plan") ||
-        notification.title.contains("Yemek")) {
-      iconBgColor = palette.success.withValues(alpha: 0.15);
-      iconColor = palette.success;
-      iconData = Icons.restaurant;
-      headerText = "Meal Plan";
-    }
-    if (notification.title.contains("Water") ||
-        notification.title.contains("Su")) {
-      iconBgColor = palette.info.withValues(alpha: 0.15);
-      iconColor = palette.info;
-      iconData = Icons.water_drop;
-      headerText = "Goal";
-    }
+    // Text, icon and color are derived from the structured data dynamically,
+    // so they always render in the current language (see NotificationPresenter).
+    final iconColor =
+        NotificationPresenter.colorFor(notification.type, palette, primaryColor);
+    final iconBgColor = iconColor.withValues(alpha: 0.15);
+    final iconData = NotificationPresenter.iconFor(notification.type);
+    final headerText =
+        NotificationPresenter.categoryFor(context, notification.type);
+    final titleText = NotificationPresenter.titleFor(context, notification);
+    final bodyText = NotificationPresenter.bodyFor(context, notification);
+    final hasActor = (notification.actorUid != null &&
+        notification.actorUid!.isNotEmpty);
 
     return Dismissible(
       key: Key(notification.id),
@@ -488,14 +439,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: iconBgColor,
-                    borderRadius: BorderRadius.circular(12),
+                GestureDetector(
+                  onTap: hasActor
+                      ? () => openUserProfile(context,
+                          userId: notification.actorUid)
+                      : null,
+                  child: _buildLeadingAvatar(
+                    notification: notification,
+                    iconBgColor: iconBgColor,
+                    iconColor: iconColor,
+                    iconData: iconData,
                   ),
-                  child: Icon(iconData, color: iconColor, size: 24),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -512,25 +466,33 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        notification.title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: palette.textPrimary,
+                      GestureDetector(
+                        onTap: hasActor
+                            ? () => openUserProfile(context,
+                                userId: notification.actorUid)
+                            : null,
+                        child: Text(
+                          titleText,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: palette.textPrimary,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        notification.body,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          height: 1.4,
-                          color: palette.textSecondary,
+                      if (bodyText != null && bodyText.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          bodyText,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.4,
+                            color: palette.textSecondary,
+                          ),
                         ),
-                      ),
+                      ],
                       const SizedBox(height: 8),
                       Text(
                         _formatRelativeTime(notification.timestamp),
@@ -609,6 +571,38 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLeadingAvatar({
+    required NotificationModel notification,
+    required Color iconBgColor,
+    required Color iconColor,
+    required IconData iconData,
+  }) {
+    final photo = notification.actorPhotoUrl;
+    if (photo != null && photo.isNotEmpty) {
+      return Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: iconBgColor,
+          image: DecorationImage(
+            image: NetworkImage(photo),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    }
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: iconBgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(iconData, color: iconColor, size: 24),
     );
   }
 

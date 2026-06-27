@@ -9,6 +9,7 @@ import 'package:cookrange/core/services/chat_service.dart';
 import 'package:cookrange/core/services/firestore_service.dart';
 import 'package:cookrange/core/models/user_model.dart';
 import 'package:cookrange/core/services/storage_upload_service.dart';
+import 'package:cookrange/core/utils/profile_navigation.dart';
 import 'package:cookrange/core/theme/app_palette.dart';
 import 'package:cookrange/core/theme/app_typography.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -201,7 +202,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       // Group/gym titles stay as passed in widget.chat
                     }
 
-                    return Row(
+                    return GestureDetector(
+                      onTap: (widget.chat.type == ChatType.private &&
+                              _otherUserId.isNotEmpty)
+                          ? () => openUserProfile(context, userId: _otherUserId)
+                          : null,
+                      child: Row(
                       children: [
                         if (chatImage != null)
                           CircleAvatar(
@@ -260,6 +266,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           ),
                         ),
                       ],
+                    ),
                     );
                   }),
               actions: [

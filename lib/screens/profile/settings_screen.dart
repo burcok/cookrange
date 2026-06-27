@@ -3,10 +3,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/providers/language_provider.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/test_mode_provider.dart';
+import '../../core/providers/user_provider.dart';
+import '../../core/services/firestore_service.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/data_export_service.dart';
@@ -18,6 +23,96 @@ import '../legal/legal_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  Future<void> _openNotificationSettings() async {
+    await openAppSettings();
+  }
+
+  Future<void> _openHelp() async {
+    final uri = Uri.parse('mailto:support@cookrange.app?subject=Cookrange%20Help');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  Future<void> _togglePrivacy(BuildContext context, bool val) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    // Optimistic update so the switch flips immediately
+    final userProvider = context.read<UserProvider>();
+    final previousUser = userProvider.user;
+    if (previousUser != null) {
+      userProvider.setUser(previousUser.copyWith(isPrivate: val));
+    }
+
+    try {
+      await FirestoreService().updateUserData(uid, {'is_private': val});
+      // Optimistic update already applied; no server re-read to avoid race
+    } catch (e) {
+      debugPrint('SettingsScreen._togglePrivacy error: $e');
+      if (context.mounted && previousUser != null) {
+        context.read<UserProvider>().setUser(previousUser);
+      }
+    }
+  }
+
+  Future<void> _showAboutSheet(BuildContext context) async {
+    final info = await PackageInfo.fromPlatform();
+    if (!context.mounted) return;
+    final palette = AppPalette.of(context);
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '—';
+    final l10n = AppLocalizations.of(context);
+
+    await AppSheet.show(
+      context: context,
+      title: l10n.translate('settings.app_info.about'),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF97300).withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text('🍳', style: TextStyle(fontSize: 36)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('Cookrange',
+                style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: palette.textPrimary,
+                    fontFamily: 'Poppins')),
+            const SizedBox(height: 4),
+            Text('AI-Powered Nutrition',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: palette.textSecondary,
+                    fontFamily: 'Poppins')),
+            const SizedBox(height: 24),
+            _AboutRow(
+              label: l10n.translate('settings.app_info.version'),
+              value: '${info.version} (${info.buildNumber})',
+              palette: palette,
+            ),
+            _AboutRow(
+              label: l10n.translate('settings.app_info.user_id'),
+              value: uid.length > 16 ? '${uid.substring(0, 16)}…' : uid,
+              palette: palette,
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<void> _showChangeEmailDialog(BuildContext context) async {
     final appLoc = AppLocalizations.of(context);
@@ -105,6 +200,7 @@ class SettingsScreen extends StatelessWidget {
     final languageProvider = Provider.of<LanguageProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
     final testModeProvider = Provider.of<TestModeProvider>(context);
+    final userProvider = Provider.of<UserProvider>(context);
     final appLoc = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
     final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -293,8 +389,8 @@ class SettingsScreen extends StatelessWidget {
                               'settings.privacy.account_privacy_subtitle'),
                           palette: palette,
                           trailing: Switch(
-                            value: true, // Mock value
-                            onChanged: (val) {},
+                            value: userProvider.user?.isPrivate ?? false,
+                            onChanged: (val) => unawaited(_togglePrivacy(context, val)),
                             activeThumbColor: primaryColor,
                           ),
                         ),
@@ -346,6 +442,7 @@ class SettingsScreen extends StatelessWidget {
                               : palette.error.withValues(alpha: 0.12),
                           title: appLoc.translate('settings.notifications'),
                           palette: palette,
+                          onTap: _openNotificationSettings,
                           trailing: Icon(Icons.chevron_right,
                               color: palette.textSecondary),
                         ),
@@ -359,6 +456,7 @@ class SettingsScreen extends StatelessWidget {
                           title: appLoc.translate(
                               'settings.permissions.device_permissions'),
                           palette: palette,
+                          onTap: _openNotificationSettings,
                           trailing: Icon(Icons.chevron_right,
                               color: palette.textSecondary),
                         ),
@@ -378,6 +476,7 @@ class SettingsScreen extends StatelessWidget {
                           title: appLoc.translate('settings.app_info.about'),
                           palette: palette,
                           paddingLeft: 0,
+                          onTap: () => _showAboutSheet(context),
                           trailing: Icon(Icons.chevron_right,
                               color: palette.textSecondary),
                         ),
@@ -386,6 +485,7 @@ class SettingsScreen extends StatelessWidget {
                           title: appLoc.translate('settings.app_info.help'),
                           palette: palette,
                           paddingLeft: 0,
+                          onTap: _openHelp,
                           trailing: Icon(Icons.open_in_new,
                               size: 20,
                               color: palette.textSecondary),
@@ -1336,6 +1436,37 @@ class _ApplyCodeSheetState extends State<_ApplyCodeSheet> {
         ),
         SizedBox(height: AppSpacing.xl.h),
       ],
+    );
+  }
+}
+
+class _AboutRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final AppPalette palette;
+
+  const _AboutRow({
+    required this.label,
+    required this.value,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: TextStyle(fontSize: 13, color: palette.textSecondary)),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: palette.textPrimary)),
+        ],
+      ),
     );
   }
 }

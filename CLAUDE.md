@@ -153,11 +153,22 @@ lib/
 | `SharingService` | `sharing_service.dart` | Native share-sheet wrapper for recipes, progress, posts, challenges, referrals |
 | `DataExportService` | `data_export_service.dart` | GDPR data export — downloads user Firestore data as JSON |
 | `ShareableFitnessCard` | `widgets/shareable_fitness_card.dart` | Capture-to-PNG progress card; `capture(key)` → share_plus |
+| `NotificationService` | `notification_service.dart` | In-app notifications. **Stores STRUCTURED data only** (`type`, `actorUid/Name/PhotoUrl`, `relatedId`, `metadata`) — never pre-rendered text |
+| `NotificationPresenter` | `utils/notification_presenter.dart` | Renders notification title/body/icon/color dynamically from `notifications.feed.*` keys; legacy docs fall back to stored title/body |
+| `openUserProfile` / `ProfileLink` | `utils/profile_navigation.dart` | Standard way to open a user's profile from any avatar/name (`{userId}` or `{user}`); self → own profile |
+
+### Notifications (architecture)
+- **Never store display text.** Call `NotificationService.sendNotification(type:, actorUid:, actorName:, actorPhotoUrl:, relatedId:, metadata:)`. Text is rendered on the reader's device by `NotificationPresenter` so it's always in their language with the real actor name.
+- Add new notification copy as `notifications.feed.*` keys (EN+TR) with `{actor}`/`{emoji}`/`{days}` vars.
+- `NotificationType` is backward-compatible: old names (`like`, `friend_request`…) still parse; prefer granular values (`likePost`, `likeComment`, `reaction`, `referral`, `streakMilestone`).
+
+### Profile privacy
+- `UserModel.isPrivate` (`is_private`). Non-friends viewing a private profile see only the lock card; owner + accepted friends see full. Enforced in `profile_screen.dart` (`_privacyResolved` gate + fresh re-fetch). Profile detail is UI-gated (lives on the readable user doc); `food_logs`/`meal_plans` are server-side owner-only.
 
 ## AI Integration
 
 - Provider: OpenRouter (`https://openrouter.ai/api/v1/chat/completions`)
-- Model: `deepseek/deepseek-r1t-chimera:free` (configurable)
+- Model: `google/gemma-4-26b-a4b-it:free` (configurable)
 - Key stored in `.env` (client-side for MVP; move server-side before GA)
 - `AIService.isConfigured` guards all AI calls — returns empty results if key is placeholder
 - JSON responses: use `AIService.generateJson()` which returns `Map<String, dynamic>`

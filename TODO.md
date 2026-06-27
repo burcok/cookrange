@@ -87,11 +87,11 @@ These exist and work in code today. Evidence in `file:line` form.
 | 🚧 Home dashboard | Real calculated targets + real weekly meal plan + real consumed calories stream + mark-as-eaten | Streak not surfaced prominently; hydration unwired; |
 | 🚧 AI integration | Real OpenRouter client + 3 working features + robust response parsing | **Committed `.env` key is a placeholder** → all AI dead until real key added; fragile unguarded JSON casts; failures swallowed → `null`; single free model, no retry |
 | ✅ Cooking mode | Step-by-step PageView + wakelock + progress ring + finish celebration sheet + food log | Timer is a generic stopwatch (not step-aware) |
-| 🚧 Shopping list | Local Hive persistence, add/remove/clear, swipe-delete | **Not auto-generated from meal plan**; share button stub; check-state not persisted; local-only (no Firestore sync) |
-| 🚧 Profile screen | Rich display + real avatar upload + real post count stat | Edit fields have no persistence path for non-photo data; fake report/block |
-| 🚧 Settings screen | Dark mode + color picker + EN/TR + change email/password + account deletion + Privacy/Terms links | Privacy toggle stub; notifications/about/help dead rows; premium card dead button |
-| 🚧 Community feed | All CRUD real + real image upload + load-more pagination | Filters cosmetic; report stub; groups stub |
-| 🚧 Chat | 1:1 fully real | Group chat is model-only (no creation path); image messages model-only; mock "gym" chat in dead code |
+| ✅ Shopping list | Local Hive persistence, add/remove/clear, swipe-delete + auto-gen from plan + clipboard share + Firestore sync | Check-state not persisted across cold start |
+| ✅ Profile screen | Rich display + real avatar upload + real post count stat + reputation badge + streak tier + private-account restricted view (lock card shown when isPrivate=true and viewer is not a friend) | — |
+| ✅ Settings screen | Dark mode + color picker + EN/TR + change email/password + account deletion + Privacy/Terms links + notifications/about/help wired + privacy toggle wired (writes `is_private` to Firestore via UserProvider) | — |
+| ✅ Community feed | All CRUD real + real image upload + load-more pagination + real filters + real report/block | Groups: greenfield (Phase 4 gym ecosystem) |
+| ✅ Chat | 1:1 fully real + group chat + image messages | — |
 | ✅ Notifications screen | In-app DB notifications render + live stream + auto mark-read | No pagination; no push/FCM at all |
 | 🚧 Account suspended screen | Polished 889-LOC UI + mailto support | Shows **no real ban data** (static strings); appeal modal is informational-only |
 | 🚧 Dark mode | Both themes fully defined | `main_scaffold.dart:113` hardcodes light bg; default is light; effectively **light-only in practice** |
@@ -416,6 +416,68 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 - [x] ✅ **GDPR/CCPA**: account deletion (B6 ✅), **data export** (`DataExportService` — collects profile + food_logs + meal_plans + lists + community_posts as JSON, shared via OS share sheet using share_plus XFile; "Download My Data" row added to Settings with loading dialog + error handling; EN+TR `settings.account.export_*` keys). Consent records + retention policy: console/legal steps, no code required. — 0 analyze errors.
 - [x] ✅ **App Store readiness — ATT consent**: `ATTConsentService` singleton using `permission_handler`; `NSUserTrackingUsageDescription` added to `Info.plist`; ATT dialog requested in `_navigateAfterSplash()` just before routing to main screen (fires once per install, `att_prompted` key in SharedPreferences); `analyticsEnabled` getter gates analytics; debug/Android no-op. Apple Sign-In (B7 ✅), legal docs (B12 ✅), privacy nutrition labels + store assets = console/asset steps. 0 analyze errors.
 - [x] ✅ **Tech debt cleanup (v0.9.5)** — All bare `print()` calls in `lib/` replaced with `debugPrint()` (12 files: `language_provider`, `device_info_provider`, `onboarding_provider`, `community_service`, `dish_image_service`, `app_initialization_service`, `dish_service`, `dish_seeder_service`, `device_info_service`, `notification_service`, `weekly_meal_plan_service`, `onboarding_screen`). Dead legacy widgets deleted (`custom_back_button.dart`, `gender_picker_modal.dart`, `language_selector.dart` — 0 external refs). Translations moved from `lib/core/localization/translations/` to `assets/localization/` (standard Flutter asset convention); `pubspec.yaml` and `app_localizations.dart` updated. `flutter analyze lib/` → 127 issues (↓ from 142), 0 errors. Signal dialog presets confirmed already localized via `translate(preset)` key pattern.
+
+---
+
+## PHASE 9.6 — PRIVACY, NOTIFICATIONS & NAVIGATION FIXES (v0.9.6)
+
+> Three user-reported fixes shipped in order, then a project scan (Phase 9.7 below).
+
+- [x] ✅ **Private-account enforcement** — `profile_screen.dart` now refreshes the viewed user's
+  doc on open (so `isPrivate` is never stale) and gates the data sections behind a
+  privacy-resolution check (`_privacyResolved` = fresh user loaded **and** friendship resolved),
+  showing a skeleton until known. Non-friends viewing a private account see only the lock card
+  (`_buildPrivateAccountRestricted`); accepted friends and the owner see the full profile.
+  **Known limitation:** profile detail (`onboarding_data`) lives on the readable `users/{uid}` doc,
+  so privacy is UI-enforced; truly sensitive `food_logs`/`meal_plans` are already server-side
+  owner-only in `firestore.rules`. See Phase 9.7 backlog for hard server-side enforcement.
+- [x] ✅ **Structured notifications (i18n-correct)** — Rebuilt `NotificationModel` to store
+  STRUCTURED data (`type`, `actorUid/Name/PhotoUrl`, `relatedId`, `metadata`) instead of a frozen
+  pre-rendered `title`/`body`. New `NotificationPresenter` (`lib/core/utils/`) renders title/body/
+  icon/color dynamically from `notifications.feed.*` localization keys, so notifications display in
+  the reader's current language with the real actor name. Legacy docs fall back to stored text.
+  All 8 call sites updated (`community_service` likes/comment/reaction, `friend_service`
+  request/accepted, `referral_service`, `firestore_service` streak). Notification rows now show the
+  actor avatar and are tappable → profile. Removed brittle `title.contains("Su")` string-matching.
+- [x] ✅ **Universal tap-to-profile** — New `openUserProfile(context, {userId, user})` +
+  `ProfileLink` (`lib/core/utils/profile_navigation.dart`). Wired so any user avatar/name opens
+  their profile: post-detail author + comment authors, leaderboard rows, challenge participants,
+  private chat header, profile friend-strip, notification actor. (Post-card author already
+  navigated; tiny overlapping like-face-piles left as a visual summary.)
+- [x] ✅ **Side-menu polish** — Localized all hardcoded Turkish labels via `menu.*` keys (EN/TR);
+  removed three dead/redundant items (Meal Plan snackbar stub, Help & About — the latter two live
+  in Settings).
+
+---
+
+## PHASE 9.7 — CONSUMER POLISH & NEW FEATURES (🆕 proposed — prune freely) · v1.0.x–v1.1
+
+> Discovered in a full project scan. Every item is tagged 🆕 NEW — these are suggestions; delete any
+> you don't want. On-brand for an AI nutrition/fitness consumer app (no gym/coach scope here).
+
+**High value**
+- [ ] 🆕 Recipe favorites / bookmarks — `users/{uid}/favorites`, heart button in recipe detail, favorites view
+- [ ] 🆕 Meal-plan history — browse/reuse past weeks (date picker on Home; query `meal_plans` by range)
+- [ ] 🆕 Barcode scan to log packaged foods — extends the existing food-scan/logging loop
+- [ ] 🆕 Quick-add / recent & frequent foods — faster daily logging
+- [ ] 🆕 Global user search & discovery — find people beyond the friends list
+- [ ] 🆕 In-app notification preferences — mute per type (likes / comments / friends / system); pairs with the 9.6 redesign
+
+**Medium**
+- [ ] 🆕 Activity / exercise log + calorie-burn estimate feeding TDEE
+- [ ] 🆕 Streak freeze / pause day — one-time skip without losing the streak (retention)
+- [ ] 🆕 Recipe filters in Explore — cook time & difficulty
+- [ ] 🆕 Nutrition breakdown by meal type — breakfast/lunch/dinner macro split
+- [ ] 🆕 Dietary-restriction refinement — granular avoid-list separate from allergies
+- [ ] 🆕 Profile as a real bottom tab — nav consistency (currently a pushed route)
+
+**Lower / nice-to-have**
+- [ ] 🆕 Meal-plan comparison — generate 2–3 "what-if" alternates and compare macros
+- [ ] 🆕 Recipe personal notes / annotations
+- [ ] 🆕 Challenge difficulty tiers (easy / medium / hard)
+- [ ] 🆕 Meal-plan calendar export (Apple/Google Calendar)
+- [ ] 🆕 (Backlog) Hard server-side private-profile enforcement — move private nutrition profile fields
+  into an owner-only subcollection so they can't be read directly via Firestore by non-friends
 
 ---
 

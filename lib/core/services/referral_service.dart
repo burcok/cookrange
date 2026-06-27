@@ -130,14 +130,13 @@ class ReferralService {
 
       await batch.commit();
 
-      // Notify the referrer.
+      // Notify the referrer (structured — rendered in the referrer's language).
       unawaited(
         NotificationService().sendNotification(
           targetUserId: ownerUid,
-          title: 'Someone used your referral! 🎉',
-          body:
-              'Your referral code was used. You both received $_rewardDays days of Cookrange Premium!',
-          type: NotificationType.system,
+          type: NotificationType.referral,
+          relatedId: code,
+          metadata: {'rewardDays': _rewardDays},
         ),
       );
 

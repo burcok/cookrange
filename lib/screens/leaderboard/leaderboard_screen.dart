@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/services/leaderboard_service.dart';
+import '../../core/utils/profile_navigation.dart';
 import '../../core/widgets/ds/ds.dart';
 
 class LeaderboardScreen extends StatefulWidget {
@@ -208,7 +209,9 @@ class _LeaderboardRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return GestureDetector(
+      onTap: () => openUserProfile(context, userId: entry.uid),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -293,6 +296,7 @@ class _LeaderboardRow extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }

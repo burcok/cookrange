@@ -23,19 +23,9 @@ class NotificationService {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return NotificationModel(
-          id: doc.id,
-          title: data['title'] ?? '',
-          body: data['body'] ?? '',
-          timestamp:
-              (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          isRead: data['isRead'] ?? false,
-          type: _parseType(data['type']),
-          relatedId: data['relatedId'],
-        );
-      }).toList();
+      return snapshot.docs
+          .map((doc) => NotificationModel.fromMap(doc.id, doc.data()))
+          .toList();
     });
   }
 
@@ -76,37 +66,32 @@ class NotificationService {
         .limit(50)
         .get();
 
-    return snapshot.docs.map((doc) {
-      final data = doc.data();
-      return NotificationModel(
-        id: doc.id,
-        title: data['title'] ?? '',
-        body: data['body'] ?? '',
-        timestamp:
-            (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        isRead: data['isRead'] ?? false,
-        type: _parseType(data['type']),
-        relatedId: data['relatedId'],
-      );
-    }).toList();
+    return snapshot.docs
+        .map((doc) => NotificationModel.fromMap(doc.id, doc.data()))
+        .toList();
   }
 
-  // Create a notification
+  /// Create a structured notification. The display text is rendered on the
+  /// client (see `NotificationPresenter`) — only structured data is persisted.
   Future<void> sendNotification({
     required String targetUserId,
-    required String title,
-    required String body,
     required NotificationType type,
+    String? actorUid,
+    String? actorName,
+    String? actorPhotoUrl,
     String? relatedId,
+    Map<String, dynamic>? metadata,
   }) async {
     try {
       await _userNotifications(targetUserId).add({
-        'title': title,
-        'body': body,
+        'type': type.name,
         'timestamp': FieldValue.serverTimestamp(),
         'isRead': false,
-        'type': type.name,
-        'relatedId': relatedId,
+        if (actorUid != null) 'actorUid': actorUid,
+        if (actorName != null) 'actorName': actorName,
+        if (actorPhotoUrl != null) 'actorPhotoUrl': actorPhotoUrl,
+        if (relatedId != null) 'relatedId': relatedId,
+        if (metadata != null) 'metadata': metadata,
       });
     } catch (e) {
       debugPrint('Error sending notification: $e');
@@ -152,14 +137,7 @@ class NotificationService {
     await batch.commit();
   }
 
-  NotificationType _parseType(String? type) {
-    return NotificationType.values.firstWhere(
-      (e) => e.name == type,
-      orElse: () => NotificationType.system,
-    );
-  }
-
-  // Delete notification by relatedId and type
+  // Delete notification by relatedId and type (used to undo like/reaction fan-out)
   Future<void> deleteNotificationByRelatedId({
     required String targetUserId,
     required String relatedId,

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/models/community_post.dart';
 import '../../core/services/community_service.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/utils/profile_navigation.dart';
 import 'widgets/glass_refresher.dart';
 import 'widgets/draggable_reaction_button.dart';
 import '../../core/providers/theme_provider.dart';
@@ -340,23 +341,31 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                 // Author Info
                                 Row(
                                   children: [
-                                    CircleAvatar(
-                                        backgroundImage: NetworkImage(
-                                            _post!.author.avatarUrl)),
-                                    const SizedBox(width: AppSpacing.sm),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _post!.author.name,
-                                          style: textStyles.headlineS,
-                                        ),
-                                        Text(
-                                          _formatTime(_post!.timestamp),
-                                          style: textStyles.labelS,
-                                        ),
-                                      ],
+                                    GestureDetector(
+                                      onTap: () => openUserProfile(context,
+                                          userId: _post!.author.id),
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                              backgroundImage: NetworkImage(
+                                                  _post!.author.avatarUrl)),
+                                          const SizedBox(width: AppSpacing.sm),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                _post!.author.name,
+                                                style: textStyles.headlineS,
+                                              ),
+                                              Text(
+                                                _formatTime(_post!.timestamp),
+                                                style: textStyles.labelS,
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -816,9 +825,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundImage: NetworkImage(comment.author.avatarUrl),
+          GestureDetector(
+            onTap: () =>
+                openUserProfile(context, userId: comment.author.id),
+            child: CircleAvatar(
+              radius: 16,
+              backgroundImage: NetworkImage(comment.author.avatarUrl),
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -834,9 +847,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            comment.author.name,
-                            style: textStyles.titleM,
+                          GestureDetector(
+                            onTap: () => openUserProfile(context,
+                                userId: comment.author.id),
+                            child: Text(
+                              comment.author.name,
+                              style: textStyles.titleM,
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Row(

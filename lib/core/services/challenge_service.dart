@@ -15,13 +15,20 @@ class ChallengeService {
   CollectionReference<Map<String, dynamic>> get _col => _db.collection('challenges');
 
   Stream<List<ChallengeModel>> getActiveChallengesStream() {
+    // Filter endDate client-side to avoid requiring a composite index
+    // (isPublic single-field index is auto-created by Firestore)
     return _col
         .where('isPublic', isEqualTo: true)
-        .where('endDate', isGreaterThan: Timestamp.now())
-        .orderBy('endDate')
         .snapshots()
-        .map((s) =>
-            s.docs.map((d) => ChallengeModel.fromJson(d.data(), d.id)).toList());
+        .map((s) {
+          final now = DateTime.now();
+          final list = s.docs
+              .map((d) => ChallengeModel.fromJson(d.data(), d.id))
+              .where((c) => c.endDate.isAfter(now))
+              .toList()
+            ..sort((a, b) => a.endDate.compareTo(b.endDate));
+          return list;
+        });
   }
 
   Stream<List<ChallengeModel>> getMyChallengesStream() {

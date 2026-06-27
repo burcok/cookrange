@@ -19,6 +19,7 @@ class UserModel {
   final String? buildNumber;
   final Timestamp? userVerified;
   final Map<String, bool>? profileVisibility; // Field: isVisible
+  final bool isPrivate;
   final int? primaryColor;
   final SubscriptionTier subscriptionTier;
 
@@ -38,6 +39,7 @@ class UserModel {
     this.buildNumber,
     this.userVerified,
     this.profileVisibility,
+    this.isPrivate = false,
     this.primaryColor,
     this.subscriptionTier = SubscriptionTier.free,
   });
@@ -66,6 +68,7 @@ class UserModel {
           (data['profile_visibility'] as Map<String, dynamic>?)?.map(
         (key, value) => MapEntry(key, value as bool),
       ),
+      isPrivate: data['is_private'] as bool? ?? false,
       primaryColor: data['primary_color'] as int?,
       subscriptionTier:
           SubscriptionTier.fromString(data['subscription_tier'] as String?),
@@ -95,6 +98,7 @@ class UserModel {
     String? buildNumber,
     Timestamp? userVerified,
     Map<String, bool>? profileVisibility,
+    bool? isPrivate,
     int? primaryColor,
     SubscriptionTier? subscriptionTier,
   }) {
@@ -115,6 +119,7 @@ class UserModel {
       buildNumber: buildNumber ?? this.buildNumber,
       userVerified: userVerified ?? this.userVerified,
       profileVisibility: profileVisibility ?? this.profileVisibility,
+      isPrivate: isPrivate ?? this.isPrivate,
       primaryColor: primaryColor ?? this.primaryColor,
       subscriptionTier: subscriptionTier ?? this.subscriptionTier,
     );

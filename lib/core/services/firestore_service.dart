@@ -235,10 +235,9 @@ class FirestoreService {
     final ns = NotificationService();
     ns.sendNotification(
       targetUserId: uid,
-      title: '🔥 $streak-Day Streak!',
-      body: 'Amazing! You\'ve logged in $streak days in a row. Keep it up!',
-      type: NotificationType.system,
+      type: NotificationType.streakMilestone,
       relatedId: 'streak_$streak',
+      metadata: {'streakDays': streak},
     );
   }
 

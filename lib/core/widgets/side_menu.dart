@@ -81,6 +81,7 @@ class _SideMenuState extends State<SideMenu> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final user = context.watch<UserProvider>().user;
 
@@ -126,37 +127,23 @@ class _SideMenuState extends State<SideMenu> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader("MENÜ"),
+                    _buildSectionHeader(
+                        l10n.translate('menu.section_main')),
                     _buildMenuItem(
                       context,
                       icon: Icons.home_rounded,
-                      label: "Ana Sayfa",
+                      label: l10n.translate('menu.home'),
                       isDark: isDark,
                       primaryColor: primaryColor,
                       onTap: () => _navigateToMainTab(0),
                     ),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.restaurant_menu_rounded,
-                      label: "Yemek Planı",
-                      isDark: isDark,
-                      primaryColor: primaryColor,
-                      onTap: () {
-                        _handleNavigation(context, () {
-                          // TODO: Implement Meal Plan Screen
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text("Yemek Planı yakında gelecek!")),
-                          );
-                        });
-                      },
-                    ),
                     const SizedBox(height: 32),
-                    _buildSectionHeader("Sosyal"),
+                    _buildSectionHeader(
+                        l10n.translate('menu.section_social')),
                     _buildMenuItem(
                       context,
                       icon: Icons.chat_bubble_rounded,
-                      label: "Sohbet",
+                      label: l10n.translate('menu.chats'),
                       isDark: isDark,
                       primaryColor: primaryColor,
                       onTap: () => _handleNavigation(context, () {
@@ -169,7 +156,7 @@ class _SideMenuState extends State<SideMenu> {
                     _buildMenuItem(
                       context,
                       icon: Icons.groups_rounded,
-                      label: "Topluluk",
+                      label: l10n.translate('menu.community'),
                       isDark: isDark,
                       primaryColor: primaryColor,
                       onTap: () => _navigateToMainTab(1),
@@ -177,7 +164,7 @@ class _SideMenuState extends State<SideMenu> {
                     _buildMenuItem(
                       context,
                       icon: Icons.emoji_events_rounded,
-                      label: "Meydan Okumalar",
+                      label: l10n.translate('menu.challenges'),
                       isDark: isDark,
                       primaryColor: primaryColor,
                       onTap: () => _handleNavigation(context, () {
@@ -191,7 +178,7 @@ class _SideMenuState extends State<SideMenu> {
                     _buildMenuItem(
                       context,
                       icon: Icons.leaderboard_rounded,
-                      label: "Sıralama",
+                      label: l10n.translate('menu.leaderboard'),
                       isDark: isDark,
                       primaryColor: primaryColor,
                       onTap: () => _handleNavigation(context, () {
@@ -203,11 +190,12 @@ class _SideMenuState extends State<SideMenu> {
                       }),
                     ),
                     const SizedBox(height: 32),
-                    _buildSectionHeader("HESAP & DİĞER"),
+                    _buildSectionHeader(
+                        l10n.translate('menu.section_account')),
                     _buildSimpleMenuItem(
                       context,
                       icon: Icons.person_rounded,
-                      label: "Hesabım",
+                      label: l10n.translate('menu.profile'),
                       isDark: isDark,
                       onTap: () => _handleNavigation(context, () {
                         Navigator.push(
@@ -219,7 +207,7 @@ class _SideMenuState extends State<SideMenu> {
                     _buildSimpleMenuItem(
                       context,
                       icon: Icons.settings_rounded,
-                      label: "Ayarlar",
+                      label: l10n.translate('menu.settings'),
                       isDark: isDark,
                       onTap: () => _handleNavigation(context, () {
                         Navigator.push(
@@ -227,24 +215,6 @@ class _SideMenuState extends State<SideMenu> {
                             MaterialPageRoute(
                                 builder: (_) => const SettingsScreen()));
                       }),
-                    ),
-                    _buildSimpleMenuItem(
-                      context,
-                      icon: Icons.help_outline_rounded,
-                      label: "Yardım",
-                      isDark: isDark,
-                      onTap: () {
-                        // TODO: Help
-                      },
-                    ),
-                    _buildSimpleMenuItem(
-                      context,
-                      icon: Icons.info_outline_rounded,
-                      label: "Uygulama Hakkında",
-                      isDark: isDark,
-                      onTap: () {
-                        // TODO: About
-                      },
                     ),
                   ],
                 ),

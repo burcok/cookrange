@@ -416,6 +416,11 @@
     "title": "Profile",
     "options_title": "Profile Options",
     "block_user": "Block User",
+    "private_account": {
+      "title": "This account is private",
+      "subtitle": "Add this user as a friend to see their profile.",
+      "add_friend": "Add Friend"
+    },
     "edit_profile": "Edit Profile",
     "personal_info": "Welcome to Cookrange",
     "name": "Name",
@@ -712,7 +717,31 @@
     "success": "Success",
     "error": "Error",
     "warning": "Warning",
-    "info": "Information"
+    "info": "Information",
+    "feed": {
+      "someone": "Someone",
+      "cat_activity": "Activity",
+      "cat_friends": "Friends",
+      "cat_reward": "Reward",
+      "cat_streak": "Streak",
+      "cat_meal": "Meal Plan",
+      "cat_system": "System",
+      "like_post": "{actor} liked your post",
+      "like_comment": "{actor} liked your comment",
+      "reaction_post": "{actor} reacted {emoji} to your post",
+      "reaction_comment": "{actor} reacted {emoji} to your comment",
+      "comment_post": "{actor} commented on your post",
+      "friend_request": "{actor} sent you a friend request",
+      "friend_accepted": "{actor} accepted your friend request",
+      "referral_title": "Referral reward 🎉",
+      "referral_body": "Someone used your code — you both earned {days} days of Premium!",
+      "streak_title": "{days}-day streak! 🔥",
+      "streak_body": "You've logged in {days} days in a row. Keep it up!",
+      "meal_plan_title": "Your meal plan is ready",
+      "meal_plan_body": "A fresh weekly nutrition plan has been prepared for your goals.",
+      "system_title": "Notification",
+      "system_body": "You have a new update."
+    }
   },
   "common": {
     "save": "Save",
@@ -1039,7 +1068,17 @@
     "help": "Help",
     "chats": "Chats",
     "logout": "Logout",
-    "community": "Community"
+    "community": "Community",
+    "section_main": "MENU",
+    "section_social": "Social",
+    "section_account": "ACCOUNT & MORE",
+    "home": "Home",
+    "meal_plan": "Meal Plan",
+    "challenges": "Challenges",
+    "leaderboard": "Leaderboard",
+    "profile": "My Account",
+    "settings": "Settings",
+    "about": "About"
   },
   "account_suspended": {
     "title_header": "ACCOUNT STATUS",
