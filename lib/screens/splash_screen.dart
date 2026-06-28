@@ -3,7 +3,7 @@ import 'package:cookrange/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../core/widgets/ds/ds.dart';
-// shared_preferences not used in this file
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
 import 'dart:math';
@@ -451,7 +451,15 @@ class _SplashScreenState extends State<SplashScreen>
         Provider.of<OnboardingProvider>(context, listen: false)
             .initializeFromFirestore(combined);
       }
-      unawaited(Navigator.pushReplacementNamed(context, AppRoutes.onboarding));
+      // Check if intro was already seen
+      final prefs = await SharedPreferences.getInstance();
+      final introSeen = prefs.getBool('intro_seen') ?? false;
+      if (!mounted) return;
+      if (introSeen) {
+        unawaited(Navigator.pushReplacementNamed(context, AppRoutes.onboarding));
+      } else {
+        unawaited(Navigator.pushReplacementNamed(context, AppRoutes.intro));
+      }
     }
   }
 

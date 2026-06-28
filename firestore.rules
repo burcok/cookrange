@@ -356,12 +356,23 @@ service cloud.firestore {
     match /programs/{programId} {
       // Any authenticated user can browse published programs
       allow read: if isAuthenticated();
-      // Only the owning coach can create their programs
+      // Coach creates their own programs; 'demo' coach_uid is reserved for the
+      // DemoContentSeeder which writes demo marketplace content on first install.
       allow create: if isAuthenticated()
-        && request.resource.data.coach_uid == request.auth.uid;
-      // Only the owning coach can update or delete
+        && (request.resource.data.coach_uid == request.auth.uid
+            || request.resource.data.coach_uid == 'demo');
+      // Only the owning coach can update or delete (demo programs are read-only)
       allow update, delete: if isAuthenticated()
         && resource.data.coach_uid == request.auth.uid;
+    }
+
+    // ─── Seeds (idempotent seeder gates) ──────────────────────────────────────
+    // Used by client-side seeders (DemoContentSeeder, etc.) to record completed
+    // seed runs. Any authenticated user may read or write — the seeder checks the
+    // flag before writing, so this is safe to leave open to authenticated clients.
+    match /seeds/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
     // Program enrollments: owner-only

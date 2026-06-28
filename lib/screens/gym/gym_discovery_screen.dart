@@ -8,6 +8,7 @@ import '../../core/models/gym_model.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/gym_service.dart';
 import '../../core/widgets/ds/ds.dart';
+import 'gym_dashboard_screen.dart';
 import 'gym_member_home_screen.dart';
 
 /// Gym discovery screen — search and join public gyms.
@@ -174,6 +175,10 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
         icon: Icons.fitness_center_rounded,
         title: l10n.translate('gym.discovery_empty_title'),
         message: l10n.translate('gym.discovery_empty_sub'),
+        actionLabel: l10n.translate('gym.discovery_cta'),
+        onAction: () => Navigator.of(context).push(
+          AppTransitions.slideRight(const GymDashboardScreen()),
+        ),
       );
     }
 

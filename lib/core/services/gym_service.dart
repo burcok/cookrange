@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../models/gym_model.dart';
 import '../models/gym_member_model.dart';
 import '../models/checkin_model.dart';
+import 'analytics_service.dart';
 import 'firestore_service.dart';
 
 class GymService {
@@ -208,6 +209,7 @@ class GymService {
     );
 
     await batch.commit();
+    unawaited(AnalyticsService().logEvent(name: 'gym_joined', parameters: {'gym_id': gymId}));
     debugPrint('[GymService] User $uid joined gym $gymId');
   }
 

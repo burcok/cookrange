@@ -1302,7 +1302,8 @@
       "share_meal": "Öğün Paylaş",
       "send_signal": "Sinyal Gönder",
       "placeholder_message_input": "Mesaj yazın..."
-    }
+    },
+    "find_friends_cta": "Arkadaş Bul"
   },
   "signal": {
     "title": "Sinyal Gönder",
@@ -1788,7 +1789,8 @@
     "app_reapply": "Yeniden Başvur",
     "description": "Açıklama",
     "address": "Adres",
-    "contact": "İletişim Telefonu"
+    "contact": "İletişim Telefonu",
+    "discovery_cta": "Salonunuzu Kaydedin"
   },
   "coach": {
     "setup_title": "Antrenör Profili Kurulumu",
@@ -1870,7 +1872,8 @@
     "request_coaching": "Koçluk İste",
     "request_pending": "İstek Bekliyor",
     "request_accepted": "Artık Müşteri",
-    "request_self": "Bu sizsiniz"
+    "request_self": "Bu sizsiniz",
+    "discovery_cta": "Koç Ol"
   },
   "ai": {
     "twin_title": "Yapay Zeka Vücut Projeksiyonu",
@@ -1969,7 +1972,8 @@
     "enrollment_count": "{n} kişi katıldı",
     "all_categories": "Tümü",
     "read_more": "Devamını oku",
-    "read_less": "Daha az göster"
+    "read_less": "Daha az göster",
+    "empty_cta": "Koç Ol ve Yayınla"
   },
   "permission": {
     "camera": {
@@ -2048,6 +2052,42 @@
     "dashboard_total_users": "Toplam Kullanıcı",
     "dashboard_open_reports": "Açık Raporlar",
     "dashboard_all_clear": "Temiz — bekleyen öğe yok",
-    "dashboard_view_all": "Tümünü Gör"
+    "dashboard_view_all": "Tümünü Gör",
+    "reports_title": "Moderasyon Kuyruğu",
+    "reports_pending_tab": "Bekleyen",
+    "reports_reviewed_tab": "İncelenen",
+    "reports_empty": "Bekleyen rapor yok",
+    "reports_empty_msg": "Tüm raporlar incelendi. Topluluk temiz!",
+    "reports_reviewed_empty": "Henüz incelenen rapor yok",
+    "reports_type_post": "Gönderi Raporu",
+    "reports_type_comment": "Yorum Raporu",
+    "reports_dismiss": "Reddet",
+    "reports_remove": "İçeriği Kaldır",
+    "reports_remove_confirm": "Bu içerik kaldırılsın mı?",
+    "reports_remove_msg": "Bu {type} kalıcı olarak silinecek ve geri alınamaz.",
+    "reports_remove_yes": "Kaldır",
+    "reports_remove_no": "İptal",
+    "reports_reported_by": "Raporlayan",
+    "reports_reason": "Sebep",
+    "reports_author": "Yazar",
+    "reports_status_dismissed": "Reddedildi",
+    "reports_status_removed": "Kaldırıldı"
+  },
+  "intro": {
+    "skip": "Atla",
+    "next": "İleri",
+    "get_started": "Başla",
+    "page1_title": "AI Yemek Planı",
+    "page1_subtitle": "Hedeflerinize, alerjenlerinize ve yiyecek tercihlerinize göre AI tarafından oluşturulan kişisel haftalık yemek planınızı alın.",
+    "page2_title": "Her Öğünü Takip Et",
+    "page2_subtitle": "Günlük kalori, makro ve kilonuzu kaydedin. Beslenme ilerlemenizi gerçek zamanlı izleyin.",
+    "page3_title": "Topluluk ve Meydan Okumalar",
+    "page3_subtitle": "Diğerleriyle bağlantı kurun, ilerlemenizi paylaşın, meydan okumalara katılın ve sıralamada yükselIn.",
+    "page4_title": "Salon ve Koçlar",
+    "page4_subtitle": "Yakınındaki salonları bulun, sertifikalı bir koçla eşleşin ve tam potansiyelinizi açığa çıkarın.",
+    "page5_title": "AI Fitness İkiziniz",
+    "page5_subtitle": "AI destekli 30, 60 ve 90 günlük dönüşüm tahminlerinizi görün. Hedefe ulaşma tarihinizi önceden öğrenin.",
+    "replay_title": "Nasıl Çalışır",
+    "replay_subtitle": "Uygulama tanıtımını tekrar izle"
   }
 }

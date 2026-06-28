@@ -609,17 +609,10 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 > Today `route_guard`/`splash` drop a brand-new user straight into the 6-step nutrition form. They never
 > learn what Cookrange *is*. Add a short, beautiful, skippable walkthrough that sells the product first.
 
-- [ ] **`IntroOnboardingScreen`** — 4–5 page horizontal `PageView` with parallax, page-dots, Skip + Next /
-  "Get Started", smooth `AppMotion` transitions. Shown once (SharedPrefs `intro_seen`), *before*
-  `AppRoutes.onboarding`. Wire into `route_guard`/`splash` so new users see Intro → data form. 🆕
-- [ ] **Illustration assets** — no external CDN allowed; use custom `CustomPainter`/SVG (`flutter_svg`) or
-  on-brand gradient compositions per page. Decide asset pipeline + add to `assets/`. Must look flagship in
-  light & dark. 🆕
-- [ ] **Tour content** (each page = one pillar): ① AI meal planning & recipes · ② Real food/calorie &
-  weight logging · ③ Community, challenges & leaderboards · ④ Gym & coach ecosystem (sets up 10.2
-  discovery) · ⑤ AI Fitness Twin & progress. Copy in EN+TR (`intro.*` keys), light/dark, reduced-motion
-  fallback. 🆕
-- [ ] **Re-entry** — "Replay intro / How it works" item in Settings so users can revisit. 🆕
+- [x] **`IntroOnboardingScreen`** — 5-page horizontal `PageView`, animated gradient background per page, `_IllustrationBox` icon compositions, pill `_Dots`, `_NavRow` white-pill button, Skip button. `SharedPrefs intro_seen` gate: new users → `/intro` → `/onboarding`; returning users skip straight to `/onboarding`. `isReplay` flag for Settings re-entry. EN+TR `intro.*` keys (14). `AppRoutes.intro` registered. — Done
+- [x] **Illustration assets** — per-page gradient backgrounds (5 color pairs) + centered icon in frosted rounded container + outer ring. No external CDN. Works in light+dark. — Done (part of IntroOnboardingScreen)
+- [x] **Tour content** — ① AI Meal Planning · ② Track Every Meal · ③ Community & Challenges · ④ Gyms & Coaches · ⑤ AI Fitness Twin. EN+TR `intro.*` keys added. — Done
+- [x] **Re-entry** — "How It Works" row in Settings > App Info section → `IntroOnboardingScreen(isReplay: true)` via `AppTransitions.slideRight`. — Done
 
 ### 10.5 — Additional Activation Improvements (🆕 recommended — prune freely)
 
@@ -627,19 +620,14 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
   button, and the quick-actions bar; dismiss-on-tap, SharedPrefs-guarded, reduced-motion aware. · Medium
 - [ ] **"What's New" changelog modal** — show a DS sheet on first launch after a version bump
   (compare stored vs current `package_info` version); highlights new features (great for surfacing 10.2). · Low
-- [ ] **Empty-state CTAs that route into features** — e.g. empty Program Marketplace → "Become a coach &
-  publish"; no gym → "Find a gym near you"; no friends → "Invite / discover users". Turns dead ends into
-  on-ramps. · Medium
+- [x] **Empty-state CTAs that route into features** — Program Marketplace empty → "Become a Coach & Publish" (CoachDashboardScreen); Gym Discovery empty → "Register Your Gym" (GymDashboardScreen); Coach Discovery empty → "Become a Coach"; Chat list empty → "Find Friends" (UserSearchScreen). EN+TR keys added to existing objects. — Done
 - [ ] **Deep-link: gym QR for non-members** — scanning a gym check-in QR while not a member opens a
   "Join {gym}?" prompt instead of failing. Ties `DeepLinkService` + `GymService.joinGym`. · Medium
 - [ ] **Profile completeness meter** — gentle nudges (add photo, set goal weight, log first meal) with a
   progress ring; drives activation. Note: target weight currently lives only in `OnboardingProvider`
   memory — persist it to Firestore as part of this. · Medium
-- [ ] **Demo / seed content** so ecosystems aren't empty shells at launch — a few seeded public programs &
-  discoverable demo gyms (idempotent `seedIfEmpty()` per R2), clearly flagged, so first users see life. · Medium
-- [ ] **Activation analytics funnel** — instrument `intro_completed`, `permission_primed/granted/denied`,
-  `role_upgrade_started/completed`, `gym_joined`, `coach_requested`. Lets data decide what to invest in
-  next (existing `AnalyticsService`). · Low
+- [x] **Demo / seed content** — `DemoContentSeeder` singleton seeds 3 demo programs ("30-Day Fat Burn", "Lean Muscle Builder 8-Week", "Healthy Habits 21-Day Reset") to `programs` collection on first install (idempotent gate: `seeds/demo.demo_programs_v1`). Called from `AppInitializationService`. `firestore.rules` updated for `seeds` collection + `programs` write by `coach_uid == 'demo'`. — Done
+- [x] **Activation analytics funnel** — `intro_completed` (intro screen `_finish()`), `gym_joined` (`GymService.joinGym`), `coach_requested` (`CoachService.requestCoaching`). All use `AnalyticsService().logEvent(name:, parameters:)` with `unawaited`. — Done
 - [ ] **Accessibility & motion** across all of Phase 10 — every tour/primer/coachmark skippable, respects
   `MediaQuery.disableAnimations` (reduced motion), full semantic labels, large-text safe. · Medium
 
@@ -815,7 +803,7 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
 - [x] **Audit log** — append-only `admin_audit/{id}` for every admin action (who/what/when/target); `AdminService.logAuditAction` + `auditLogStream`.
 - [x] **Admin Reports stub screen** — `admin_reports_screen.dart` (placeholder, ready for moderation queue). Wired in side menu.
 - [x] **Admin home dashboard** — Overview tab (tab 0) in `AdminPanelScreen`; 2×2 grid of real-time `_StatCard` widgets (pending coaches, pending gyms, total users, open reports); animated "all-clear" banner; tapping cards routes into respective tabs or `AdminReportsScreen`. `AdminService.userCountStream()` + `openReportCountStream()` added. EN+TR `admin.dashboard_*` keys (7). — Done
-- [ ] **Moderation / reports queue** — review reported community posts & comments; approve/remove with reason; notify author. (Phase 13)
+- [x] **Moderation / reports queue** — `ReportModel` + `AdminService.pendingReportsStream/reviewedReportsStream/dismissReport/removeReportedContent()`; `AdminReportsScreen` rewritten with 2-tab (Pending/Reviewed) moderation queue, `_ReportCard` with Dismiss+Remove actions, confirmation dialog, `_timeAgo` relative timestamps; 2 new Firestore `reports` indexes. EN+TR `admin.reports_*` keys (19). — Done
 - [ ] **Definition:** an admin can run the marketplace end-to-end (review, approve, moderate, manage
   users) from in-app, with every action logged.
 

@@ -7,6 +7,7 @@ import '../../core/providers/theme_provider.dart';
 import '../../core/services/program_service.dart';
 import '../../core/widgets/ds/ds.dart';
 import 'program_detail_screen.dart';
+import '../coach/coach_dashboard_screen.dart';
 
 class ProgramMarketplaceScreen extends StatefulWidget {
   const ProgramMarketplaceScreen({super.key});
@@ -76,6 +77,10 @@ class _ProgramMarketplaceScreenState extends State<ProgramMarketplaceScreen> {
                     icon: Icons.store_rounded,
                     title: l10n.translate('program.no_programs'),
                     message: l10n.translate('program.no_programs_msg'),
+                    actionLabel: l10n.translate('program.empty_cta'),
+                    onAction: () => Navigator.of(context).push(
+                      AppTransitions.slideRight(const CoachDashboardScreen()),
+                    ),
                   );
                 }
                 return GridView.builder(

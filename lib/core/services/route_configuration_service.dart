@@ -22,6 +22,7 @@ import '../../screens/home/meal_plan_history_screen.dart';
 import '../../screens/chat/ai_chat_screen.dart';
 import '../../screens/recipe/favorites_screen.dart';
 import '../../screens/community/user_search_screen.dart';
+import '../../screens/onboarding/intro_onboarding_screen.dart';
 import '../models/chat_model.dart';
 import '../widgets/error_fallback_widget.dart';
 
@@ -67,6 +68,7 @@ class RouteConfigurationService {
           const RouteGuard(child: MealPlanHistoryScreen()),
       AppRoutes.userSearch: (context) =>
           const RouteGuard(child: UserSearchScreen()),
+      AppRoutes.intro: (context) => const IntroOnboardingScreen(),
     };
   }
 

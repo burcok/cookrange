@@ -19,6 +19,7 @@ import 'ai/ai_service.dart';
 import 'push_notification_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dish_seeder_service.dart';
+import 'demo_content_seeder.dart';
 import 'test_mode_service.dart';
 import 'remote_config_service.dart';
 import 'performance_service.dart';
@@ -285,6 +286,8 @@ class AppInitializationService {
 
       // Auto-seed dish DB in background on first install (non-blocking)
       unawaited(DishSeederService().seedIfEmpty());
+      // Auto-seed demo programs on first install (non-blocking)
+      unawaited(DemoContentSeeder().seedIfEmpty());
     } catch (e) {
       _log.error('Service initialization failed',
           service: _serviceName, error: e);

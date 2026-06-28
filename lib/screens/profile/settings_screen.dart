@@ -22,6 +22,7 @@ import '../../core/services/referral_service.dart';
 import '../../core/utils/app_routes.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../admin/admin_panel_screen.dart';
+import '../onboarding/intro_onboarding_screen.dart';
 import '../ai/widgets/ai_credits_sheet.dart';
 import '../coach/coach_dashboard_screen.dart';
 import '../gym/gym_dashboard_screen.dart';
@@ -585,6 +586,23 @@ class SettingsScreen extends StatelessWidget {
                           palette: palette,
                           paddingLeft: 0,
                           onTap: () => _showAboutSheet(context),
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.play_circle_outline_rounded,
+                          iconColor: palette.info,
+                          iconBgColor: palette.isDark
+                              ? palette.info.withValues(alpha: 0.2)
+                              : palette.info.withValues(alpha: 0.15),
+                          title: appLoc.translate('intro.replay_title'),
+                          subtitle: appLoc.translate('intro.replay_subtitle'),
+                          palette: palette,
+                          onTap: () => Navigator.of(context).push(
+                            AppTransitions.slideRight(
+                                const IntroOnboardingScreen(isReplay: true)),
+                          ),
                           trailing: Icon(Icons.chevron_right,
                               color: palette.textSecondary),
                         ),

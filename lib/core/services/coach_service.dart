@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/coach_profile_model.dart';
 import '../models/coach_client_model.dart';
+import 'analytics_service.dart';
 import 'firestore_service.dart';
 
 class CoachService {
@@ -157,6 +158,7 @@ class CoachService {
       'requestedAt': FieldValue.serverTimestamp(),
       'clientUid': clientUid,
     });
+    unawaited(AnalyticsService().logEvent(name: 'coach_requested', parameters: {'coach_uid': coachUid}));
     debugPrint('CoachService: coaching request written');
   }
 

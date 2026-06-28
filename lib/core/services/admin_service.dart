@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/coach_application_model.dart';
+import '../models/report_model.dart';
 import 'analytics_service.dart';
 import '../models/coach_profile_model.dart';
 import '../models/gym_application_model.dart';
@@ -70,6 +71,80 @@ class AdminService {
         .where('status', isEqualTo: 'pending')
         .snapshots()
         .map((s) => s.size);
+  }
+
+  // ── Reports ────────────────────────────────────────────────────────────────
+
+  Stream<List<ReportModel>> pendingReportsStream() {
+    return _db
+        .collection('reports')
+        .where('status', isEqualTo: 'pending')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((s) => s.docs.map(ReportModel.fromFirestore).toList());
+  }
+
+  Stream<List<ReportModel>> reviewedReportsStream() {
+    return _db
+        .collection('reports')
+        .where('status', whereIn: ['dismissed', 'removed'])
+        .orderBy('timestamp', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((s) => s.docs.map(ReportModel.fromFirestore).toList());
+  }
+
+  Future<void> dismissReport(ReportModel report) async {
+    final adminUid = _auth.currentUser?.uid;
+    if (adminUid == null) return;
+    debugPrint('AdminService: dismissReport id=${report.id}');
+    await _db.collection('reports').doc(report.id).update({
+      'status': 'dismissed',
+      'reviewedBy': adminUid,
+      'reviewedAt': FieldValue.serverTimestamp(),
+    });
+    unawaited(logAuditAction(
+      action: 'dismiss_report',
+      targetUid: report.reporterId,
+      metadata: {'reportId': report.id},
+    ));
+  }
+
+  Future<void> removeReportedContent(ReportModel report) async {
+    final adminUid = _auth.currentUser?.uid;
+    if (adminUid == null) return;
+
+    debugPrint(
+        'AdminService: removeReportedContent type=${report.targetType} id=${report.targetId}');
+
+    final batch = _db.batch();
+
+    if (report.targetType == 'post') {
+      batch.delete(_db.collection('posts').doc(report.targetId));
+    } else {
+      batch.delete(
+        _db
+            .collection('posts')
+            .doc(report.postId)
+            .collection('comments')
+            .doc(report.targetId),
+      );
+    }
+
+    batch.update(_db.collection('reports').doc(report.id), {
+      'status': 'removed',
+      'reviewedBy': adminUid,
+      'reviewedAt': FieldValue.serverTimestamp(),
+    });
+
+    await batch.commit();
+    unawaited(logAuditAction(
+      action: 'remove_content_${report.targetType}',
+      targetUid: report.authorId ?? '',
+      metadata: {'reportId': report.id, 'targetId': report.targetId},
+    ));
+    debugPrint(
+        'AdminService: removed ${report.targetType} ${report.targetId}');
   }
 
   // ── Approve Coach ──────────────────────────────────────────────────────────

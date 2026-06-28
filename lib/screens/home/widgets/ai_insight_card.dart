@@ -55,55 +55,56 @@ class _AiInsightCardState extends State<AiInsightCard>
   Future<void> _checkDismissedAndLoad() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (!context.mounted) return;
       final dismissedDate = prefs.getString(_kDismissedDate);
       final today =
           '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}';
 
       if (dismissedDate == today) {
-        if (mounted) setState(() { _isDismissed = true; _isLoading = false; });
+        setState(() { _isDismissed = true; _isLoading = false; });
         return;
       }
     } catch (e) {
       // ignore prefs error
     }
 
+    if (!context.mounted) return;
     await _loadInsight();
   }
 
   Future<void> _loadInsight() async {
-    if (!mounted) return;
+    if (!context.mounted) return;
+    final locale =
+        context.read<LanguageProvider>().currentLocale.languageCode;
     setState(() { _isLoading = true; _hasError = false; });
 
     try {
       final riskLevel =
           await AiInsightService().detectRiskLevel(widget.user.uid);
 
-      if (!mounted) return;
+      if (!context.mounted) return;
       setState(() => _riskLevel = riskLevel);
 
       if (riskLevel == AiRiskLevel.high || riskLevel == AiRiskLevel.medium) {
         // Build risk insight without AI call
-        if (!mounted) return;
+        if (!context.mounted) return;
         setState(() => _isLoading = false);
         unawaited(_fadeController.forward());
         return;
       }
 
       // Low or none — load accountability insight
-      // Capture locale synchronously before the await
-      final locale =
-          context.read<LanguageProvider>().currentLocale.languageCode;
       final insight = await AiInsightService()
           .generateAccountabilityInsight(widget.user, locale: locale);
 
-      if (!mounted) return;
+      if (!context.mounted) return;
       setState(() {
         _insight = insight;
         _isLoading = false;
       });
       unawaited(_fadeController.forward());
     } catch (e) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       setState(() { _isLoading = false; _hasError = true; });
     }
   }
@@ -117,7 +118,7 @@ class _AiInsightCardState extends State<AiInsightCard>
     } catch (e) {
       // ignore
     }
-    if (mounted) setState(() => _isDismissed = true);
+    if (context.mounted) setState(() => _isDismissed = true);
   }
 
   void _openProjection() {

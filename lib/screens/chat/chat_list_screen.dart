@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/models/chat_model.dart';
 import '../../core/providers/user_provider.dart';
-import '../../core/theme/app_palette.dart';
 import 'widgets/signal_dialog.dart';
 import 'widgets/select_friend_sheet.dart';
 import 'widgets/create_group_chat_sheet.dart';
@@ -18,6 +17,8 @@ import '../community/widgets/glass_refresher.dart';
 import '../../core/widgets/unified_action_sheet.dart';
 import '../../core/providers/theme_provider.dart';
 import 'ai_chat_screen.dart';
+import '../../core/widgets/ds/ds.dart';
+import '../community/user_search_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -184,18 +185,17 @@ class _ChatListScreenState extends State<ChatListScreen>
                                   if (_searchQuery.isEmpty)
                                     _buildSupportToast(context, palette),
                                   const SizedBox(height: 32),
-                                  Center(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(t('chat.no_chats_found'),
-                                            style: TextStyle(
-                                                color: palette.textSecondary)),
-                                        if (snapshot.hasError)
-                                          Text(snapshot.error.toString())
-                                      ],
+                                  AppEmptyState(
+                                    icon: Icons.chat_bubble_outline_rounded,
+                                    title: t('chat.no_chats_found'),
+                                    message: '',
+                                    actionLabel: t('chat.find_friends_cta'),
+                                    onAction: () => Navigator.of(context).push(
+                                      AppTransitions.slideRight(
+                                        const UserSearchScreen(),
+                                      ),
                                     ),
-                                  )
+                                  ),
                                 ],
                               );
                             }

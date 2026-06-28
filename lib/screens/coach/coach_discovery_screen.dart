@@ -136,34 +136,12 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
     }
 
     if (_coaches.isEmpty) {
-      return Center(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppEmptyState(
-                icon: Icons.search_off_rounded,
-                title: t.translate('coach.discovery_empty_title'),
-                message: t.translate('coach.discovery_empty_msg'),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.xl,
-                  0,
-                  AppSpacing.xl,
-                  AppSpacing.xl,
-                ),
-                child: AppButton(
-                  label: t.translate('coach.become_coach'),
-                  onPressed: _becomeCoach,
-                  size: AppButtonSize.medium,
-                  expand: false,
-                  icon: Icons.add_rounded,
-                ),
-              ),
-            ],
-          ),
-        ),
+      return AppEmptyState(
+        icon: Icons.search_off_rounded,
+        title: t.translate('coach.discovery_empty_title'),
+        message: t.translate('coach.discovery_empty_msg'),
+        actionLabel: t.translate('coach.discovery_cta'),
+        onAction: _becomeCoach,
       );
     }
 
