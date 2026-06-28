@@ -10,6 +10,7 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/services/barcode_lookup_service.dart';
 import '../../core/services/food_log_service.dart';
+import '../../core/services/permission_service.dart';
 import '../../core/widgets/ds/ds.dart';
 
 class BarcodeScanScreen extends StatefulWidget {
@@ -34,6 +35,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   String _selectedMealType = 'snack';
   double _servingG = 100;
   bool _isLogging = false;
+  bool _cameraReady = false;
 
   // Scanning animation
   late final AnimationController _lineAnim;
@@ -47,6 +49,17 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
       duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
     _linePos = CurvedAnimation(parent: _lineAnim, curve: Curves.easeInOut);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _requestCamera());
+  }
+
+  Future<void> _requestCamera() async {
+    final granted = await PermissionService().requestCamera(context);
+    if (!mounted) return;
+    if (granted) {
+      setState(() => _cameraReady = true);
+    } else {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -186,12 +199,14 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Camera view
-          if (!_hasResult)
+          // Camera view — only mounted after permission granted
+          if (!_hasResult && _cameraReady)
             MobileScanner(
               controller: _cameraCtrl,
               onDetect: _onBarcodeDetected,
             ),
+          if (!_hasResult && !_cameraReady)
+            const Center(child: SizedBox.shrink()),
           if (_hasResult)
             Container(color: palette.background),
 

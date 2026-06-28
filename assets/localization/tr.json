@@ -1888,5 +1888,30 @@
     "all_categories": "Tümü",
     "read_more": "Devamını oku",
     "read_less": "Daha az göster"
+  },
+  "permission": {
+    "camera": {
+      "title": "Kamera Erişimi",
+      "rationale": "Cookrange, besin takibi için yiyecek ve barkod taramak amacıyla kamera erişimine ihtiyaç duyar."
+    },
+    "photos": {
+      "title": "Fotoğraf Kitaplığı",
+      "rationale": "Cookrange, profil fotoğrafı ve gönderi resmi yüklemek için fotoğraflarınıza erişmesi gerekiyor."
+    },
+    "location": {
+      "title": "Konum Erişimi",
+      "rationale": "Cookrange, GPS check-in sırasında spor salonunda olduğunuzu doğrulamak için konumunuza ihtiyaç duyar."
+    },
+    "notifications": {
+      "title": "Motivasyonu Koru",
+      "rationale": "Seri hatırlatıcıları, arkadaş aktiviteleri ve kişiselleştirilmiş koçluk ipuçları almak için bildirimleri etkinleştir."
+    },
+    "allow": "İzin Ver",
+    "not_now": "Şimdi Değil",
+    "denied": {
+      "title": "İzin Gerekli",
+      "message": "Bu özelliği kullanmak için lütfen Ayarlar'dan bu izni etkinleştirin."
+    },
+    "open_settings": "Ayarları Aç"
   }
 }

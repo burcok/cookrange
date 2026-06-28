@@ -13,6 +13,7 @@ import '../../core/models/food_log_model.dart';
 import '../../core/models/weekly_meal_plan_model.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/admin_status_service.dart';
+import '../../core/services/permission_service.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/repositories/meal_plan_repository.dart';
 import '../../core/repositories/food_log_repository.dart';
@@ -95,6 +96,9 @@ class _HomeScreenState extends State<HomeScreen>
       _testModeProvider!.addListener(_onTestModeChanged);
       _loadWeeklyPlan();
       _subscribeToFoodLogs();
+      // Notification primer — shown once, 3s after home loads so it doesn't
+      // compete with the initial loading experience.
+      Future.delayed(const Duration(seconds: 3), _maybeRequestNotifications);
     });
     _refreshController = AnimationController(
       vsync: this,
@@ -106,6 +110,11 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) return;
     _subscribeToFoodLogs();
     _loadWeeklyPlan();
+  }
+
+  Future<void> _maybeRequestNotifications() async {
+    if (!mounted) return;
+    await PermissionService().requestNotifications(context);
   }
 
   void _subscribeToFoodLogs() {

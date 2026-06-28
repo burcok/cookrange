@@ -35,10 +35,8 @@ class PushNotificationService {
     // Register background handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-    // Request permission (iOS + Android 13+)
-    final settings = await _fcm.requestPermission();
-    debugPrint(
-        'PushNotificationService: permission status: ${settings.authorizationStatus}');
+    // Permission is requested via PermissionService.requestNotifications() after
+    // a branded rationale primer — NOT here during silent app startup.
 
     // Set up local notifications (for foreground display)
     const androidInit =
@@ -67,6 +65,15 @@ class PushNotificationService {
     // Store token and listen for refresh
     await _saveToken();
     _fcm.onTokenRefresh.listen(_saveTokenString);
+  }
+
+  /// Request FCM notification permission. Called by [PermissionService] after
+  /// the branded rationale primer has been shown to the user.
+  Future<void> requestPermission() async {
+    final settings = await _fcm.requestPermission();
+    debugPrint(
+        'PushNotificationService: permission status: ${settings.authorizationStatus}');
+    await _saveToken();
   }
 
   void _handleForegroundMessage(RemoteMessage message) {

@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/gym_service.dart';
+import '../../core/services/permission_service.dart';
 import '../../core/widgets/ds/ds.dart';
 
 class GymCheckInScreen extends StatefulWidget {
@@ -35,6 +36,8 @@ class _GymCheckInScreenState extends State<GymCheckInScreen> {
   bool get _hasGpsSetup => widget.gymLat != null && widget.gymLng != null;
 
   Future<void> _handleQrTap() async {
+    final granted = await PermissionService().requestCamera(context);
+    if (!mounted || !granted) return;
     final result = await Navigator.of(context).push<bool>(
       AppTransitions.slideUp(
         _QrScannerPage(gymId: widget.gymId),
@@ -50,6 +53,14 @@ class _GymCheckInScreenState extends State<GymCheckInScreen> {
 
   Future<void> _handleGpsTap() async {
     if (!_hasGpsSetup) return;
+    // Show branded location primer before the OS dialog
+    final currentPerm = await Geolocator.checkPermission();
+    if (!mounted) return;
+    if (currentPerm == LocationPermission.denied ||
+        currentPerm == LocationPermission.unableToDetermine) {
+      final proceed = await PermissionService().showLocationPrimer(context);
+      if (!mounted || !proceed) return;
+    }
     setState(() => _gpsLoading = true);
     try {
       var perm = await Geolocator.checkPermission();

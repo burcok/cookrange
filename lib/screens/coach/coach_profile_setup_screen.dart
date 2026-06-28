@@ -304,6 +304,7 @@ class _CoachProfileSetupScreenState extends State<CoachProfileSetupScreen>
                   label: l10n.translate('coach.field_cert_add'),
                   onPressed: _addCertification,
                   size: AppButtonSize.small,
+                  expand: false,
                 ),
               ),
             ],

@@ -1888,5 +1888,30 @@
     "all_categories": "All",
     "read_more": "Read more",
     "read_less": "Read less"
+  },
+  "permission": {
+    "camera": {
+      "title": "Camera Access",
+      "rationale": "Cookrange needs camera access to scan food and barcodes for nutrition logging."
+    },
+    "photos": {
+      "title": "Photo Library",
+      "rationale": "Cookrange needs access to your photos to upload profile pictures and post images."
+    },
+    "location": {
+      "title": "Location Access",
+      "rationale": "Cookrange needs your location to verify you're at the gym for GPS check-in."
+    },
+    "notifications": {
+      "title": "Stay on Track",
+      "rationale": "Enable notifications to get streak reminders, friend activity updates, and personalized coaching tips."
+    },
+    "allow": "Allow",
+    "not_now": "Not Now",
+    "denied": {
+      "title": "Permission Required",
+      "message": "Please enable this permission in Settings to use this feature."
+    },
+    "open_settings": "Open Settings"
   }
 }

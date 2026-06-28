@@ -23,6 +23,7 @@ import '../../core/models/chat_model.dart';
 import '../../screens/community/widgets/glass_refresher.dart';
 import '../../core/widgets/unified_action_sheet.dart';
 import '../../core/widgets/ds/ds.dart';
+import '../../core/services/permission_service.dart';
 import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -252,6 +253,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickAndUploadAvatar() async {
+    final granted = await PermissionService().requestPhotos(context);
+    if (!mounted || !granted) return;
     final image = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 85,

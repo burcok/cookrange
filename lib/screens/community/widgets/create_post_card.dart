@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/services/community_service.dart';
+import '../../../../core/services/permission_service.dart';
 import '../../../../core/services/storage_upload_service.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/providers/theme_provider.dart';
@@ -166,6 +167,9 @@ class _CreatePostCardState extends State<CreatePostCard> {
   Future<void> _pickImage() async {
     final userId = context.read<UserProvider>().user?.uid;
     if (userId == null) return;
+
+    final granted = await PermissionService().requestPhotos(context);
+    if (!mounted || !granted) return;
 
     final XFile? image = await _picker.pickImage(
       source: ImageSource.gallery,

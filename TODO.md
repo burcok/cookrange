@@ -555,7 +555,7 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 | **Coach: become a coach** | ✅ | ❌ **chicken-and-egg dead end** | 10.2 — needs "Apply to coach" on-ramp |
 | **Coach: find / hire a coach** | ✅ (`searchCoaches`, `CoachProfileScreen`) | ❌ **nothing links to it** | 10.2 — needs coach directory entry |
 | **Feature-tour onboarding** | ❌ | — | 10.4 — does not exist |
-| **Permission priming** (camera/location/notif) | ❌ | — | 10.3 — OS dialogs pop cold |
+| **Permission priming** (camera/location/notif/photos) | ✅ | `PermissionService` + `PermissionPrimer` | 10.3 shipped ✅ |
 
 ### 10.2 — Role-Upgrade & Discovery Flows (🔴 Critical — fixes the dead ends) · High · Medium · 3–4 d
 
@@ -585,21 +585,24 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 > explains *why* and *what for* immediately before the system prompt — the single biggest lever on grant
 > rates. Handle `denied` and `permanentlyDenied` gracefully with an "Open Settings" path.
 
-- [ ] **Reusable `PermissionPrimer`** (`lib/core/widgets/ds/` or `lib/core/services/permission_service.dart`)
-  — DS-styled `AppSheet` with icon, title, rationale, "Allow" / "Not now"; on Allow → trigger the real
-  request; centralizes `permission_handler` logic + status mapping. 🆕
-- [ ] **Camera priming** before `FoodScanScreen`, `BarcodeScanScreen`, `gym_checkin_screen` QR scanner —
-  rationale "Scan barcodes & food / check in at your gym" *before* `MobileScanner` mounts (today it mounts
-  cold at `barcode_scan_screen.dart:191` / `gym_checkin_screen.dart:376`). 🆕
-- [ ] **Location priming** before gym GPS check-in — rationale "Confirm you're at the gym" before
-  `Geolocator.requestPermission()` (today reactive at `gym_checkin_screen.dart:55`). 🆕
-- [ ] **Notification permission priming** — ask after the *first meaningful action* (e.g. first food log
-  or first friend), NOT at launch; explain the re-engagement value. (FCM already wired — B5.) 🆕
-- [ ] **Photo-library priming** before avatar/post image pick (`image_picker`) where a rationale helps. 🆕
-- [ ] **Denied / permanentlyDenied states** — friendly `AppErrorState` with "Open Settings"
-  (`openAppSettings()`); never dead-end the user at a black camera. 🆕
+- [x] **Reusable `PermissionPrimer`** (`lib/core/widgets/ds/permission_primer.dart`) + **`PermissionService`**
+  (`lib/core/services/permission_service.dart`) — DS-styled `AppSheet` with icon, title, rationale,
+  "Allow" / "Not now"; on Allow → trigger the real request; handles `denied` / `permanentlyDenied` with
+  "Open Settings" sheet; `PermissionService` singleton for camera / photos / location / notifications. ✅
+- [x] **Camera priming** before `BarcodeScanScreen` (`_requestCamera()` in `initState`) and
+  `GymCheckInScreen` QR scanner (`_handleQrTap` guard). `MobileScanner` only mounts after grant. ✅
+- [x] **Location priming** before gym GPS check-in — `showLocationPrimer(context)` called before
+  `Geolocator.requestPermission()` in `_handleGpsTap`. ✅
+- [x] **Notification permission priming** — `PermissionService().requestNotifications()` called from
+  `home.dart._maybeRequestNotifications()` with a 3-second delay post-frame (once, gated by
+  SharedPrefs `permission_notification_primed`). `_fcm.requestPermission()` moved out of
+  `PushNotificationService.initialize()` into a new `requestPermission()` method. ✅
+- [x] **Photo-library priming** before avatar pick (`profile_screen._pickAndUploadAvatar`) and post image
+  pick (`create_post_card._pickImage`). ✅
+- [x] **Denied / permanentlyDenied states** — branded `_SettingsContent` sheet with "Open Settings"
+  (`openAppSettings()`); barcode scanner pops the route if camera denied. ✅
 - [ ] **Platform parity** — iOS purpose strings already present in `Info.plist` (camera, location, ATT);
-  verify Android runtime requests + rationale on both. ATT priming already shipped (Phase 9). 🆕
+  verify Android runtime requests + rationale on both. ATT priming already shipped (Phase 9).
 
 ### 10.4 — Feature-Tour Onboarding (illustrated intro *before* data collection) · High · Medium · 3–5 d
 
