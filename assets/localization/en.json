@@ -1879,7 +1879,19 @@
     "twin_history_empty": "No past projections yet. Your first projection will appear here.",
     "twin_history_date": "Generated on {date}",
     "twin_history_motivation": "Motivation",
-    "twin_history_goal_date": "Goal date: {date}"
+    "twin_history_goal_date": "Goal date: {date}",
+    "twin_generate": "Generate My Projection",
+    "twin_regenerate": "Regenerate",
+    "twin_last_generated": "Generated {date}",
+    "twin_projection_title": "Projection",
+    "twin_calorie_below": "You're eating {n} kcal/day below your target",
+    "twin_calorie_above": "You're eating {n} kcal/day above your target",
+    "twin_generating": "Generating your projection...",
+    "credits_exhausted_title": "Daily Limit Reached",
+    "credits_exhausted_body": "You've used all your AI generations for today. Come back tomorrow or upgrade for more.",
+    "credits_daily_free": "{used}/{limit} daily AI credits used",
+    "credits_daily_premium": "{used}/{limit} daily AI credits used",
+    "credits_reset_in": "Resets in {h}h {m}m"
   },
   "ai_credits": {
     "unlimited": "Unlimited",

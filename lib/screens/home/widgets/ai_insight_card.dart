@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/ai_insight_model.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/providers/language_provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/ai_insight_service.dart';
 import '../../../core/widgets/ds/ds.dart';
@@ -88,8 +89,11 @@ class _AiInsightCardState extends State<AiInsightCard>
       }
 
       // Low or none — load accountability insight
-      final insight =
-          await AiInsightService().generateAccountabilityInsight(widget.user);
+      // Capture locale synchronously before the await
+      final locale =
+          context.read<LanguageProvider>().currentLocale.languageCode;
+      final insight = await AiInsightService()
+          .generateAccountabilityInsight(widget.user, locale: locale);
 
       if (!mounted) return;
       setState(() {

@@ -1879,7 +1879,19 @@
     "twin_history_empty": "Henüz geçmiş projeksiyon yok. İlk projeksiyonunuz burada görünecek.",
     "twin_history_date": "{date} tarihinde oluşturuldu",
     "twin_history_motivation": "Motivasyon",
-    "twin_history_goal_date": "Hedef tarihi: {date}"
+    "twin_history_goal_date": "Hedef tarihi: {date}",
+    "twin_generate": "Projeksiyonumu Oluştur",
+    "twin_regenerate": "Yenile",
+    "twin_last_generated": "{date} tarihinde oluşturuldu",
+    "twin_projection_title": "Projeksiyon",
+    "twin_calorie_below": "Günde {n} kcal daha az yiyorsun",
+    "twin_calorie_above": "Günde {n} kcal fazla yiyorsun",
+    "twin_generating": "Projeksiyonun oluşturuluyor...",
+    "credits_exhausted_title": "Günlük Limit Doldu",
+    "credits_exhausted_body": "Bugünkü tüm AI kredin kullanıldı. Yarın tekrar dene veya daha fazlası için yükselt.",
+    "credits_daily_free": "Bugün {used}/{limit} AI hakkı kullanıldı",
+    "credits_daily_premium": "Bugün {used}/{limit} AI hakkı kullanıldı",
+    "credits_reset_in": "{h} saat {m} dakika sonra sıfırlanır"
   },
   "ai_credits": {
     "unlimited": "Sınırsız",

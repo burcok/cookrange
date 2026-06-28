@@ -3,8 +3,20 @@ class PromptService {
   factory PromptService() => _instance;
   PromptService._internal();
 
-  /// Generates a prompt for ingredient validation
-  String validateIngredientPrompt(String query) {
+  // ─── Language directive ────────────────────────────────────────────────────
+
+  /// Returns a language instruction appended to every prompt so the model
+  /// always responds in the user's active app locale. Never omit this.
+  String localeInstruction(String locale) {
+    if (locale == 'tr') {
+      return '\n\nÖNEMLİ: Tüm yanıtları, tüm metin alanları dahil, yalnızca Türkçe olarak yaz. İngilizce kullanma.';
+    }
+    return '\n\nIMPORTANT: Respond entirely in English. Do not use any other language.';
+  }
+
+  // ─── Prompts ───────────────────────────────────────────────────────────────
+
+  String validateIngredientPrompt(String query, {String locale = 'en'}) {
     return '''
 Analyze the food item: "$query".
 Return a JSON object with:
@@ -14,10 +26,9 @@ Return a JSON object with:
   "icon": "category_icon_name" (one of: vegetable, fruit, protein, dairy, grain, nut, other),
   "calories": approx_calories_per_100g (number)
 }
-''';
+${localeInstruction(locale)}''';
   }
 
-  /// Generates a prompt for recipe suggestions
   String generateRecipePrompt({
     required List<String> ingredients,
     required double targetCalories,
@@ -25,6 +36,7 @@ Return a JSON object with:
     List<String> avoidIngredients = const [],
     int? maxTotalMinutes,
     String? difficulty,
+    String locale = 'en',
   }) {
     final constraints = <String>[];
     if (maxTotalMinutes != null) {
@@ -65,22 +77,19 @@ Return fully structured JSON matching this schema:
   },
   "tags": ["Tag1", "Tag2"]
 }
-''';
+${localeInstruction(locale)}''';
   }
 
-  /// Generates a comprehensive weekly meal plan prompt
   String generateWeeklyMealPlanPrompt({
-    required Map<String, dynamic> userProfile, // extracted from UserModel
-    required List<dynamic>
-        availableDishes, // List of DishModel (passed as dry objects or stringified)
+    required Map<String, dynamic> userProfile,
+    required List<dynamic> availableDishes,
     required double dailyCalorieTarget,
+    String locale = 'en',
   }) {
-    // 1. Format available dishes for the prompt
     final dishesContext = availableDishes.map((d) {
       if (d is Map) {
         return "- [${d['id']}] ${d['name']} (${d['category']}): ${d['calories']}kcal (P:${d['protein']} C:${d['carbs']} F:${d['fat']})";
       }
-      // Assuming DishModel has toJson or similar
       return "- [${d.id}] ${d.name} (${d.category}): ${d.calories}kcal (P:${d.protein} C:${d.carbs} F:${d.fat})";
     }).join('\n');
 
@@ -97,7 +106,7 @@ Return fully structured JSON matching this schema:
         "breakfast": "dish_id_1",
         "lunch": "dish_id_2",
         "dinner": "dish_id_3",
-        "snack": "dish_id_4" 
+        "snack": "dish_id_4"
       },
       "total_calories": 2000,
       "macros": { "protein": 150, "carbs": 200, "fat": 70 }
@@ -132,15 +141,15 @@ $dishesContext
 
 Return strictly valid JSON matching this structure:
 $jsonSchema
-''';
+${localeInstruction(locale)}''';
   }
 
-  /// Generates 2 lightweight "what-if" alternate plan macro profiles.
   String generatePlanAlternatesPrompt({
     required double dailyCalorieTarget,
     required String goal,
     required String activityLevel,
     required String restrictions,
+    String locale = 'en',
   }) {
     return '''
 You are a professional nutritionist. A user wants to compare 2 different weekly meal plan approaches.
@@ -173,6 +182,6 @@ Return ONLY valid JSON:
 }
 
 Ensure macros × kcal conversion ≈ avg_daily_calories (protein×4 + carbs×4 + fat×9 ≈ calories).
-''';
+${localeInstruction(locale)}''';
   }
 }
