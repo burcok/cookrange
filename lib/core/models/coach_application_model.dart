@@ -33,6 +33,9 @@ class CoachApplicationModel {
   final List<String> evidenceUrls;
   final List<String> evidenceLabels;
   final List<Map<String, String>> references;
+  final String contactPhone;
+  final String? certDocUrl;
+  final String? idDocUrl;
   final DateTime submittedAt;
   final DateTime? reviewedAt;
   final String? reviewerNotes;
@@ -50,6 +53,9 @@ class CoachApplicationModel {
     required this.evidenceUrls,
     required this.evidenceLabels,
     required this.references,
+    this.contactPhone = '',
+    this.certDocUrl,
+    this.idDocUrl,
     required this.submittedAt,
     this.reviewedAt,
     this.reviewerNotes,
@@ -77,6 +83,9 @@ class CoachApplicationModel {
       references: (d['references'] as List? ?? [])
           .map((e) => Map<String, String>.from(e as Map))
           .toList(),
+      contactPhone: d['contactPhone'] as String? ?? '',
+      certDocUrl: d['certDocUrl'] as String?,
+      idDocUrl: d['idDocUrl'] as String?,
       submittedAt: (d['submittedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       reviewedAt: (d['reviewedAt'] as Timestamp?)?.toDate(),
       reviewerNotes: d['reviewerNotes'] as String?,
@@ -95,6 +104,9 @@ class CoachApplicationModel {
         'evidenceUrls': evidenceUrls,
         'evidenceLabels': evidenceLabels,
         'references': references,
+        'contactPhone': contactPhone,
+        'certDocUrl': certDocUrl,
+        'idDocUrl': idDocUrl,
         'submittedAt': FieldValue.serverTimestamp(),
         'reviewedAt': reviewedAt != null ? Timestamp.fromDate(reviewedAt!) : null,
         'reviewerNotes': reviewerNotes,

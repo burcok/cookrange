@@ -11,6 +11,7 @@ import '../../core/models/user_model.dart';
 import '../../core/models/dish_model.dart';
 import '../../core/models/food_log_model.dart';
 import '../../core/models/weekly_meal_plan_model.dart';
+import '../../core/providers/language_provider.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/admin_status_service.dart';
 import '../../core/services/permission_service.dart';
@@ -33,6 +34,7 @@ import '../../core/models/exercise_log_model.dart';
 import '../../core/services/exercise_log_service.dart';
 import '../../core/services/meal_plan_calendar_service.dart';
 import '../../core/widgets/ds/ds.dart';
+import '../../core/widgets/coachmark_tip.dart';
 
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/test_mode_provider.dart';
@@ -290,11 +292,13 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _loadWeeklyPlan() async {
     final user = context.read<UserProvider>().user;
     if (user == null) return;
+    final locale =
+        context.read<LanguageProvider>().currentLocale.languageCode;
 
     setState(() => _isLoadingPlan = true);
 
     try {
-      final plan = await _mealPlanRepo.getWeeklyPlan(user);
+      final plan = await _mealPlanRepo.getWeeklyPlan(user, locale: locale);
       if (plan != null) {
         final allDishIds = plan.days.expand((d) => d.meals.values).toSet();
         await _fetchDishes(allDishIds.toList());
@@ -348,10 +352,13 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _generateWeeklyPlan(UserModel user, {bool forceRefresh = true}) async {
+    final locale =
+        context.read<LanguageProvider>().currentLocale.languageCode;
     setState(() => _isLoadingPlan = true);
     unawaited(AnalyticsService().logEvent(name: 'ai_meal_plan_started'));
     try {
-      final plan = await _mealPlanRepo.getWeeklyPlan(user, forceRefresh: forceRefresh);
+      final plan = await _mealPlanRepo.getWeeklyPlan(user,
+          forceRefresh: forceRefresh, locale: locale);
       if (plan != null) {
         unawaited(AnalyticsService().logEvent(
           name: 'ai_meal_plan_generated',
@@ -686,7 +693,7 @@ class _HomeScreenState extends State<HomeScreen>
         ],
         SizedBox(height: 24.h),
         const TrackingCard(),
-        if (userModel.userRole != UserRole.consumer) ...[
+        if (userModel.userRoles.isNotEmpty) ...[
           SizedBox(height: 16.h),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -954,6 +961,11 @@ class _HomeScreenState extends State<HomeScreen>
               caption: l10n.translate('home.kcal',
                   variables: {'target': targetCalInt.toString()}),
             ),
+          ),
+          CoachmarkTip(
+            prefKey: 'coachmark_ring',
+            title: l10n.translate('coachmarks.ring_title'),
+            body: l10n.translate('coachmarks.ring_body'),
           ),
           SizedBox(height: AppSpacing.xl.h),
           Row(

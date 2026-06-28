@@ -4,11 +4,19 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
+import 'ai_credit_service.dart';
+
 /// Product IDs — must match what you register in App Store Connect + Google Play.
 class BillingProducts {
   static const String monthly = 'com.cookrange.premium.monthly';
   static const String yearly = 'com.cookrange.premium.yearly';
-  static const Set<String> ids = {monthly, yearly};
+
+  /// Consumable: +10 AI credits one-time top-up.
+  /// TODO: register this product in App Store Connect + Google Play Console
+  /// before releasing (set as Consumable type in both stores).
+  static const String aiCreditsTopUp10 = 'cookrange_ai_credits_10';
+
+  static const Set<String> ids = {monthly, yearly, aiCreditsTopUp10};
 }
 
 enum BillingStatus { idle, loading, purchasing, error, notAvailable }
@@ -87,6 +95,41 @@ class BillingService {
   /// Convenience: buy the yearly subscription.
   Future<bool> buyYearly() => purchase(BillingProducts.yearly);
 
+  /// Purchase the +10 AI credits consumable top-up for [uid].
+  ///
+  /// Returns `true` when the purchase flow was successfully initiated (the
+  /// actual credit grant happens in [_handlePurchase] upon confirmed delivery).
+  /// Returns `false` when the store is unavailable or the product isn't loaded.
+  ///
+  /// NOTE: The product ID [BillingProducts.aiCreditsTopUp10] must be registered
+  /// as a Consumable in App Store Connect and Google Play Console before this
+  /// can complete successfully in production.
+  Future<bool> buyAiCreditsTopUp(String uid) async {
+    final product = _products.firstWhere(
+      (p) => p.id == BillingProducts.aiCreditsTopUp10,
+      orElse: () {
+        debugPrint(
+            'BillingService.buyAiCreditsTopUp: product '
+            '${BillingProducts.aiCreditsTopUp10} not found — '
+            'ensure it is registered in App Store Connect / Play Console');
+        throw StateError(
+            'Product ${BillingProducts.aiCreditsTopUp10} not found');
+      },
+    );
+
+    statusNotifier.value = BillingStatus.purchasing;
+    try {
+      final param = PurchaseParam(productDetails: product);
+      // Consumable products must use buyConsumable so they can be purchased
+      // multiple times on the same account.
+      return await _iap.buyConsumable(purchaseParam: param);
+    } catch (e) {
+      debugPrint('BillingService.buyAiCreditsTopUp error: $e');
+      statusNotifier.value = BillingStatus.error;
+      return false;
+    }
+  }
+
   /// Ask the store to restore previously completed purchases.
   Future<void> restorePurchases() async {
     statusNotifier.value = BillingStatus.loading;
@@ -121,7 +164,11 @@ class BillingService {
 
     if (purchase.status == PurchaseStatus.purchased ||
         purchase.status == PurchaseStatus.restored) {
-      await _grantPremium(purchase);
+      if (purchase.productID == BillingProducts.aiCreditsTopUp10) {
+        await _grantAiCreditsTopUp(purchase);
+      } else {
+        await _grantPremium(purchase);
+      }
     }
 
     if (purchase.pendingCompletePurchase) {
@@ -129,6 +176,20 @@ class BillingService {
     }
 
     statusNotifier.value = BillingStatus.idle;
+  }
+
+  Future<void> _grantAiCreditsTopUp(PurchaseDetails purchase) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      debugPrint(
+          'BillingService._grantAiCreditsTopUp: no authenticated user');
+      return;
+    }
+    // In production: verify the receipt server-side before granting credits.
+    await AiCreditService().addBonusCredits(uid, 10);
+    debugPrint(
+        'BillingService: granted +10 AI credits to uid=$uid '
+        '(productID=${purchase.productID})');
   }
 
   Future<void> _grantPremium(PurchaseDetails purchase) async {

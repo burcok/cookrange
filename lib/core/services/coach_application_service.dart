@@ -30,6 +30,9 @@ class CoachApplicationService {
     required List<File> evidenceFiles,
     required List<String> evidenceLabels,
     required List<Map<String, String>> references,
+    String contactPhone = '',
+    String? certDocUrl,
+    String? idDocUrl,
   }) async {
     // Upload evidence files first
     final evidenceUrls = <String>[];
@@ -52,6 +55,9 @@ class CoachApplicationService {
       evidenceUrls: evidenceUrls,
       evidenceLabels: evidenceLabels,
       references: references,
+      contactPhone: contactPhone,
+      certDocUrl: certDocUrl,
+      idDocUrl: idDocUrl,
       submittedAt: DateTime.now(),
     );
     await ref.set(model.toFirestore());

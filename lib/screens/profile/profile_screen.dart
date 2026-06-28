@@ -6,6 +6,7 @@ import 'package:cookrange/core/constants/onboarding_options.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 import 'package:cookrange/core/providers/theme_provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'widgets/profile_completeness_card.dart';
 import 'package:intl/intl.dart';
 import '../../core/services/firestore_service.dart';
 import '../../core/services/storage_upload_service.dart';
@@ -479,6 +480,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             context, user, isDark, primaryColor, palette),
                       ] else ...[
                         _buildStatsRow(isDark),
+                        if (!isPublic) ...[
+                          const SizedBox(height: 16),
+                          ProfileCompletenessCard(user: user),
+                        ],
                         _buildStreakTierBadge(isDark),
                         if (_reputationData != null)
                           _buildReputationBadge(isDark),

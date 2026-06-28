@@ -41,7 +41,8 @@ class UserModel {
   final int? primaryColor;
   final SubscriptionTier subscriptionTier;
   final int streakFreezeCount;
-  final UserRole userRole;
+  // Multi-role: non-consumer roles held by this user. Consumer is the default base.
+  final List<UserRole> userRoles;
   final List<String> gymMemberships;
 
   UserModel({
@@ -64,9 +65,23 @@ class UserModel {
     this.primaryColor,
     this.subscriptionTier = SubscriptionTier.free,
     this.streakFreezeCount = 0,
-    this.userRole = UserRole.consumer,
+    this.userRoles = const [],
     this.gymMemberships = const [],
   });
+
+  /// Primary role for display — highest priority in the hierarchy.
+  UserRole get userRole {
+    if (userRoles.contains(UserRole.admin)) return UserRole.admin;
+    if (userRoles.contains(UserRole.gymOwner)) return UserRole.gymOwner;
+    if (userRoles.contains(UserRole.coach)) return UserRole.coach;
+    return UserRole.consumer;
+  }
+
+  /// Returns true if this user holds [role]. Consumer is always true.
+  bool hasRole(UserRole role) {
+    if (role == UserRole.consumer) return true;
+    return userRoles.contains(role);
+  }
 
   /// Creates a UserModel from a Firestore document snapshot.
   factory UserModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -97,7 +112,18 @@ class UserModel {
       subscriptionTier:
           SubscriptionTier.fromString(data['subscription_tier'] as String?),
       streakFreezeCount: data['streak_freeze_count'] as int? ?? 0,
-      userRole: UserRoleX.fromString(data['user_role'] as String?),
+      userRoles: () {
+        final roleArray = (data['user_roles'] as List<dynamic>?) ?? [];
+        List<UserRole> parsed = roleArray
+            .map((r) => UserRoleX.fromString(r as String?))
+            .where((r) => r != UserRole.consumer)
+            .toList();
+        if (parsed.isEmpty) {
+          final legacy = UserRoleX.fromString(data['user_role'] as String?);
+          if (legacy != UserRole.consumer) parsed = [legacy];
+        }
+        return parsed;
+      }(),
       gymMemberships: List<String>.from(data['gym_memberships'] as List? ?? []),
     );
   }
@@ -142,7 +168,7 @@ class UserModel {
     int? primaryColor,
     SubscriptionTier? subscriptionTier,
     int? streakFreezeCount,
-    UserRole? userRole,
+    List<UserRole>? userRoles,
     List<String>? gymMemberships,
   }) {
     return UserModel(
@@ -166,7 +192,7 @@ class UserModel {
       primaryColor: primaryColor ?? this.primaryColor,
       subscriptionTier: subscriptionTier ?? this.subscriptionTier,
       streakFreezeCount: streakFreezeCount ?? this.streakFreezeCount,
-      userRole: userRole ?? this.userRole,
+      userRoles: userRoles ?? this.userRoles,
       gymMemberships: gymMemberships ?? this.gymMemberships,
     );
   }

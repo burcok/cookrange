@@ -732,20 +732,18 @@ class SettingsScreen extends StatelessWidget {
                       children: [
                         _buildSettingsRow(
                           context,
-                          icon: userProvider.user?.userRole == UserRole.gymOwner
+                          icon: userProvider.user?.hasRole(UserRole.gymOwner) == true
                               ? Icons.dashboard_rounded
                               : Icons.add_business_rounded,
                           iconColor: palette.info,
                           iconBgColor: palette.isDark
                               ? palette.info.withValues(alpha: 0.2)
                               : palette.info.withValues(alpha: 0.15),
-                          title: userProvider.user?.userRole ==
-                                  UserRole.gymOwner
+                          title: userProvider.user?.hasRole(UserRole.gymOwner) == true
                               ? appLoc.translate('settings.business.my_gym')
                               : appLoc
                                   .translate('settings.business.register_gym'),
-                          subtitle: userProvider.user?.userRole ==
-                                  UserRole.gymOwner
+                          subtitle: userProvider.user?.hasRole(UserRole.gymOwner) == true
                               ? appLoc.translate('settings.business.my_gym_sub')
                               : appLoc.translate(
                                   'settings.business.register_gym_sub'),
@@ -764,13 +762,13 @@ class SettingsScreen extends StatelessWidget {
                           iconBgColor: palette.isDark
                               ? const Color(0xFF6366F1).withValues(alpha: 0.2)
                               : const Color(0xFF6366F1).withValues(alpha: 0.15),
-                          title: userProvider.user?.userRole == UserRole.coach
+                          title: userProvider.user?.hasRole(UserRole.coach) == true
                               ? appLoc
                                   .translate('settings.business.my_coaching')
                               : appLoc
                                   .translate('settings.business.become_coach'),
                           subtitle:
-                              userProvider.user?.userRole == UserRole.coach
+                              userProvider.user?.hasRole(UserRole.coach) == true
                                   ? appLoc.translate(
                                       'settings.business.my_coaching_sub')
                                   : appLoc.translate(
@@ -790,7 +788,7 @@ class SettingsScreen extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     // Admin panel (admin-only)
-                    if (userProvider.user?.userRole == UserRole.admin) ...[
+                    if (userProvider.user?.hasRole(UserRole.admin) == true) ...[
                       _buildGlassSection(
                         context: context,
                         title: appLoc.translate('admin.panel_title'),

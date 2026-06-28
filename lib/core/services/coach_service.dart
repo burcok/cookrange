@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/coach_profile_model.dart';
 import '../models/coach_client_model.dart';
+import '../models/user_model.dart';
 import 'analytics_service.dart';
 import 'firestore_service.dart';
 
@@ -84,9 +85,9 @@ class CoachService {
 
     unawaited(
       FirestoreService()
-          .updateUserData(user.uid, {'user_role': 'coach'})
+          .addUserRole(user.uid, UserRole.coach)
           .catchError((e) {
-        debugPrint('CoachService: failed to update user_role: $e');
+        debugPrint('CoachService: failed to add coach role: $e');
       }),
     );
 

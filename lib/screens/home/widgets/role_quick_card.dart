@@ -9,9 +9,9 @@ import '../../admin/admin_panel_screen.dart';
 import '../../coach/coach_dashboard_screen.dart';
 import '../../gym/gym_dashboard_screen.dart';
 
-/// Shows a role-specific quick-access card on the home screen.
-/// Only renders for coach / gymOwner / admin roles.
-/// Consumer users → returns SizedBox.shrink().
+/// Shows role-specific quick-access cards on the home screen.
+/// Renders a card for every non-consumer role the user holds.
+/// Pure consumer → returns SizedBox.shrink().
 class RoleQuickCard extends StatelessWidget {
   final UserModel user;
 
@@ -19,16 +19,21 @@ class RoleQuickCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    switch (user.userRole) {
-      case UserRole.admin:
-        return _AdminCard(user: user);
-      case UserRole.coach:
-        return _CoachCard(user: user);
-      case UserRole.gymOwner:
-        return _GymCard(user: user);
-      case UserRole.consumer:
-        return const SizedBox.shrink();
-    }
+    final cards = <Widget>[];
+
+    if (user.hasRole(UserRole.admin)) cards.add(_AdminCard(user: user));
+    if (user.hasRole(UserRole.gymOwner)) cards.add(_GymCard(user: user));
+    if (user.hasRole(UserRole.coach)) cards.add(_CoachCard(user: user));
+
+    if (cards.isEmpty) return const SizedBox.shrink();
+    if (cards.length == 1) return cards.first;
+
+    return Column(
+      children: cards
+          .expand((c) => [c, SizedBox(height: 12.h)])
+          .take(cards.length * 2 - 1)
+          .toList(),
+    );
   }
 }
 

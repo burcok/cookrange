@@ -80,6 +80,32 @@ class StorageUploadService {
     return _upload(ref, imageFile, onProgress);
   }
 
+  /// Uploads a gym registration document (PDF or image) to Firebase Storage.
+  Future<String> uploadGymDocument({
+    required String uid,
+    required String fileName,
+    required File file,
+  }) async {
+    final ref = _storage.ref('gym_applications/$uid/documents/$fileName');
+    await ref.putFile(file);
+    final url = await ref.getDownloadURL();
+    debugPrint('StorageUploadService: gym document uploaded to $url');
+    return url;
+  }
+
+  /// Uploads a coach registration document (PDF or image) to Firebase Storage.
+  Future<String> uploadCoachDocument({
+    required String uid,
+    required String fileName,
+    required File file,
+  }) async {
+    final ref = _storage.ref('coach_applications/$uid/documents/$fileName');
+    await ref.putFile(file);
+    final url = await ref.getDownloadURL();
+    debugPrint('StorageUploadService: coach document uploaded to $url');
+    return url;
+  }
+
   /// Delete a file by its download URL.
   Future<void> deleteByUrl(String downloadUrl) async {
     try {

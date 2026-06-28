@@ -17,4 +17,5 @@ class AppRoutes {
   static const String mealPlanHistory = '/meal_plan_history';
   static const String userSearch = '/user_search';
   static const String intro = '/intro';
+  static const String discover = '/discover';
 }

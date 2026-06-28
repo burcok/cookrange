@@ -82,6 +82,9 @@ class _MealPlanComparisonBodyState extends State<_MealPlanComparisonBody> {
     try {
       final alts = await WeeklyMealPlanService()
           .generatePlanAlternates(widget.user, locale: widget.locale);
+      if (alts.isEmpty) {
+        unawaited(AiCreditService().rollbackCredit(widget.user.uid));
+      }
       if (mounted) {
         setState(() {
           _alternates = alts;
@@ -89,6 +92,7 @@ class _MealPlanComparisonBodyState extends State<_MealPlanComparisonBody> {
         });
       }
     } catch (_) {
+      unawaited(AiCreditService().rollbackCredit(widget.user.uid));
       if (mounted) {
         setState(() {
           _hasError = true;

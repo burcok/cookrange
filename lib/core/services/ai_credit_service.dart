@@ -52,47 +52,84 @@ class AiCreditService {
   /// Checks whether [uid] can make a new AI generation and, if so, consumes
   /// one credit atomically. Returns `true` when permitted.
   ///
-  /// Premium users are always permitted; their count is still tracked for analytics.
-  /// Only call this for genuine NEW AI generations — never for cache reads.
+  /// Bonus credits (from consumable IAP top-ups) are consumed first before the
+  /// daily quota. Premium users still check the daily limit but have a higher
+  /// cap. Only call this for genuine NEW AI generations — never for cache reads.
   Future<bool> checkAndConsume(String uid, bool isPremium) async {
-    if (isPremium) {
-      final credits = await getCredits(uid, isPremium: true);
-      if (credits.isExhausted) {
-        debugPrint(
-            '[AiCreditService] uid=$uid — premium daily limit reached '
-            '(${credits.used}/${AiCreditModel.premiumDailyLimit})');
-        unawaited(AnalyticsService().logEvent(
-          name: 'credit_exhausted',
-          parameters: {'uid': uid, 'is_premium': true},
-        ));
-        return false;
-      }
-      unawaited(consumeCredit(uid));
-      unawaited(AnalyticsService().logEvent(
-        name: 'credit_consumed',
-        parameters: {'uid': uid, 'is_premium': true},
-      ));
-      return true;
-    }
+    final credits = await getCredits(uid, isPremium: isPremium);
 
-    final credits = await getCredits(uid);
     if (credits.isExhausted) {
       debugPrint(
-          '[AiCreditService] uid=$uid — free daily limit reached '
-          '(${credits.used}/${AiCreditModel.freeDailyLimit})');
+          '[AiCreditService] uid=$uid — limit reached '
+          '(used=${credits.used}, bonus=${credits.bonus}, '
+          'isPremium=$isPremium)');
       unawaited(AnalyticsService().logEvent(
         name: 'credit_exhausted',
-        parameters: {'uid': uid, 'is_premium': false},
+        parameters: {'uid': uid, 'is_premium': isPremium},
       ));
       return false;
     }
 
-    await consumeCredit(uid);
+    // Consume bonus credit first, then daily quota.
+    if (credits.bonus > 0) {
+      await _consumeBonusCredit(uid);
+    } else {
+      await consumeCredit(uid);
+    }
+
     unawaited(AnalyticsService().logEvent(
       name: 'credit_consumed',
-      parameters: {'uid': uid, 'is_premium': false},
+      parameters: {
+        'uid': uid,
+        'is_premium': isPremium,
+        'from_bonus': credits.bonus > 0,
+      },
     ));
     return true;
+  }
+
+  /// Rolls back a previously consumed daily credit (call when the AI request
+  /// that consumed the credit fails or returns empty). Floors at 0.
+  Future<void> rollbackCredit(String uid) async {
+    try {
+      await _users.doc(uid).update({
+        'ai_credits_used': FieldValue.increment(-1),
+      });
+      debugPrint('[AiCreditService] rolled back 1 daily credit for uid=$uid');
+    } catch (e) {
+      debugPrint('[AiCreditService] rollbackCredit error: $e');
+    }
+  }
+
+  /// Rolls back a previously consumed bonus credit (call when the AI request
+  /// fails and the credit came from the bonus pool). Floors at 0.
+  Future<void> rollbackBonusCredit(String uid) async {
+    try {
+      await _users.doc(uid).update({
+        'ai_credits_bonus': FieldValue.increment(1),
+      });
+      debugPrint('[AiCreditService] rolled back 1 bonus credit for uid=$uid');
+    } catch (e) {
+      debugPrint('[AiCreditService] rollbackBonusCredit error: $e');
+    }
+  }
+
+  /// Grants [count] bonus credits to [uid] from a consumable IAP top-up.
+  /// Bonus credits stack on top of the daily limit and never reset at midnight.
+  Future<void> addBonusCredits(String uid, int count) async {
+    try {
+      await _users.doc(uid).set(
+        {'ai_credits_bonus': FieldValue.increment(count)},
+        SetOptions(merge: true),
+      );
+      debugPrint('[AiCreditService] added $count bonus credits to uid=$uid');
+      unawaited(AnalyticsService().logEvent(
+        name: 'ai_credits_purchased',
+        parameters: {'count': count, 'uid': uid},
+      ));
+    } catch (e) {
+      debugPrint('[AiCreditService] addBonusCredits error: $e');
+    }
   }
 
   /// Increments `ai_credits_used` by 1. Fire-and-forget safe.
@@ -100,6 +137,15 @@ class AiCreditService {
     debugPrint('[AiCreditService] consuming daily credit for uid=$uid');
     await _users.doc(uid).set(
       {'ai_credits_used': FieldValue.increment(1)},
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Decrements `ai_credits_bonus` by 1. Internal use only.
+  Future<void> _consumeBonusCredit(String uid) async {
+    debugPrint('[AiCreditService] consuming bonus credit for uid=$uid');
+    await _users.doc(uid).set(
+      {'ai_credits_bonus': FieldValue.increment(-1)},
       SetOptions(merge: true),
     );
   }

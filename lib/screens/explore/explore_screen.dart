@@ -94,12 +94,14 @@ class _ExploreScreenState extends State<ExploreScreen>
           ));
         }
       } else {
+        if (uid != null) unawaited(AiCreditService().rollbackCredit(uid));
         if (mounted) {
           setState(() => _error =
               AppLocalizations.of(context).translate('explore.generate_error'));
         }
       }
     } catch (e) {
+      if (uid != null) unawaited(AiCreditService().rollbackCredit(uid));
       if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _isLoading = false);

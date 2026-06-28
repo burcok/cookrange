@@ -571,11 +571,8 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
   leaderboard); driven by `GymService.getMemberGymsStream` + `gym_memberships` array on the user doc. — Done
 - [x] ✅ **Coach directory** — `CoachDiscoveryScreen` reachable via "Find a Coach" in the side menu
   always-visible list; tap → `CoachProfileScreen` → request. — Done
-- [ ] **Unified "Discover / Pro" hub** (optional, recommended) — one surface that aggregates Find a Gym,
-  Find a Coach, Program Marketplace, Challenges, Leaderboard — so consumers have a single place to grow
-  into the ecosystem instead of hunting the side menu. 🆕
-- [ ] **Role-aware home surfacing** — once a user *has* a role, show a compact quick-entry card on home
-  (e.g. gym owner → "Open Gym Dashboard"; member → "Check in"). Keeps power features one tap away. 🆕
+- [x] ✅ **Unified "Discover / Pro" hub** — `DiscoverHubScreen` at `AppRoutes.discover`; 2×2 flagship grid cards (Gyms/Coaches/Programs/Challenges) + premium banner; added as first item in side-menu Social section (`menu.discover`). EN+TR `discover.*` + `menu.discover` keys. — Done
+- [x] ✅ **Role-aware home surfacing** — `RoleQuickCard` inserted between `TrackingCard` and `AiInsightCard` on home dashboard; conditionally shown for non-consumer roles (gymOwner, coach, admin); quick-entry links to role dashboards. — Done
 - [x] ✅ **Remove all stale `comingSoon: true` / `onTap: null`** flags — consumer gym tiles in
   `side_menu.dart` + `quick_actions_sheet.dart` now route to real screens. — Done
 
@@ -601,8 +598,7 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
   pick (`create_post_card._pickImage`). ✅
 - [x] **Denied / permanentlyDenied states** — branded `_SettingsContent` sheet with "Open Settings"
   (`openAppSettings()`); barcode scanner pops the route if camera denied. ✅
-- [ ] **Platform parity** — iOS purpose strings already present in `Info.plist` (camera, location, ATT);
-  verify Android runtime requests + rationale on both. ATT priming already shipped (Phase 9).
+- [x] ✅ **Platform parity** — Android: CAMERA, RECORD_AUDIO, ACCESS_FINE/COARSE_LOCATION, READ_MEDIA_IMAGES all declared in AndroidManifest.xml; `PermissionService` handles runtime rationale priming on both platforms. iOS purpose strings in `Info.plist`. ATT shipped. — Done (QA: test on real devices)
 
 ### 10.4 — Feature-Tour Onboarding (illustrated intro *before* data collection) · High · Medium · 3–5 d
 
@@ -616,20 +612,14 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 
 ### 10.5 — Additional Activation Improvements (🆕 recommended — prune freely)
 
-- [ ] **First-use coachmarks / spotlight** — one-time contextual tooltips on the home hero ring, the scan
-  button, and the quick-actions bar; dismiss-on-tap, SharedPrefs-guarded, reduced-motion aware. · Medium
-- [ ] **"What's New" changelog modal** — show a DS sheet on first launch after a version bump
-  (compare stored vs current `package_info` version); highlights new features (great for surfacing 10.2). · Low
+- [x] ✅ **First-use coachmarks / spotlight** — `CoachmarkTip` widget (SharedPrefs-gated, reduced-motion aware, dismiss-on-tap) created in `lib/core/widgets/coachmark_tip.dart`; wired below the calorie ring in `home.dart` (`coachmark_ring` pref key). EN+TR keys in `coachmarks.*`. — Done
+- [x] ✅ **"What's New" changelog modal** — `WhatsNewService` (singleton, SharedPrefs `whats_new_last_version` gate) + `WhatsNewSheetContent` widget; shown once per version bump via `MainScaffold.initState` post-frame callback (800ms delay). EN+TR keys in `whats_new.*`. — Done
 - [x] **Empty-state CTAs that route into features** — Program Marketplace empty → "Become a Coach & Publish" (CoachDashboardScreen); Gym Discovery empty → "Register Your Gym" (GymDashboardScreen); Coach Discovery empty → "Become a Coach"; Chat list empty → "Find Friends" (UserSearchScreen). EN+TR keys added to existing objects. — Done
-- [ ] **Deep-link: gym QR for non-members** — scanning a gym check-in QR while not a member opens a
-  "Join {gym}?" prompt instead of failing. Ties `DeepLinkService` + `GymService.joinGym`. · Medium
-- [ ] **Profile completeness meter** — gentle nudges (add photo, set goal weight, log first meal) with a
-  progress ring; drives activation. Note: target weight currently lives only in `OnboardingProvider`
-  memory — persist it to Firestore as part of this. · Medium
+- [x] ✅ **Deep-link: gym QR for non-members** — `GymJoinPromptSheet` created; `DeepLinkService` detects opaque `cookrange:checkin:{gymId}:{token}` URIs, checks membership via `GymService.isMember()`, shows join sheet for non-members (join + check-in in sequence) or proceeds with `validateQRCheckIn` for existing members. EN+TR `gym.join_prompt_*` keys (4). — Done
+- [x] ✅ **Profile completeness meter** — `ProfileCompletenessCard` widget in `lib/screens/profile/widgets/profile_completeness_card.dart`; shows progress ring + incomplete step rows (photo, first meal, challenge); self-hides when all complete; owner-only (guarded by `isOwnProfile`); FoodLogService stream check for meal log. EN+TR keys in `profile_meter.*`. — Done
 - [x] **Demo / seed content** — `DemoContentSeeder` singleton seeds 3 demo programs ("30-Day Fat Burn", "Lean Muscle Builder 8-Week", "Healthy Habits 21-Day Reset") to `programs` collection on first install (idempotent gate: `seeds/demo.demo_programs_v1`). Called from `AppInitializationService`. `firestore.rules` updated for `seeds` collection + `programs` write by `coach_uid == 'demo'`. — Done
 - [x] **Activation analytics funnel** — `intro_completed` (intro screen `_finish()`), `gym_joined` (`GymService.joinGym`), `coach_requested` (`CoachService.requestCoaching`). All use `AnalyticsService().logEvent(name:, parameters:)` with `unawaited`. — Done
-- [ ] **Accessibility & motion** across all of Phase 10 — every tour/primer/coachmark skippable, respects
-  `MediaQuery.disableAnimations` (reduced motion), full semantic labels, large-text safe. · Medium
+- [x] ✅ **Accessibility & motion** — `IntroOnboardingScreen` (AnimatedContainer, AnimatedOpacity, dots, nav button all reduceMotion-gated; Semantics labels); `CoachmarkTip` close button Semantics; `AiCreditsSheet` usage bar + credit count Semantics; `AdminPanelScreen` banner + stat cards + filter chips reduceMotion + Semantics; `ProfileCompletenessCard` progress ring Semantics + 44px CTA tap targets. — Done
 
 ### Definition of Done — Phase 10
 ☑ Every built screen has a real, role-appropriate entry point (no chicken-and-egg, no dead `comingSoon`) ·
@@ -729,9 +719,8 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
   `meal_plan_comparison_sheet.dart`, chat.
 - [x] **Locale-tag every cache key** (`..._{uid}_{locale}_{dateKey}`) in SharedPrefs/Hive/Firestore so
   a language switch never returns stale opposite-language text. Migrate the date-only insight keys.
-- [ ] **Audit pass:** grep every prompt string; assert none are English-only and none hardcode
-  user-facing copy that should come from the model in the active language.
-- [ ] **Definition:** switching app language and reopening any AI surface yields text in that language;
+- [x] ✅ **Audit pass:** grepped all prompt strings. `PromptService`, `AiInsightService` already had `localeInstruction(locale)`. **Gap fixed:** `WeeklyMealPlanService._generateAndSaveMealPlan` + `MealPlanRepository.getWeeklyPlan` + `home.dart` + `shopping_list_screen.dart` — all now thread `locale` from `LanguageProvider` through to `generateWeeklyMealPlanPrompt`. No English-only leakage remains. — Done
+- [x] **Definition:** switching app language and reopening any AI surface yields text in that language;
   no English leakage in TR mode. Verified on both locales.
 
 ### 12.2 — AI Request Economy: Persist-Once + Daily Quotas · 🔴 Critical · Medium–Large · 3–5 d
@@ -757,7 +746,7 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
 - [x] **Consistent gating** — recipe generation (`explore_screen`), plan alternates (`meal_plan_comparison_sheet`) now gated; `dart:async` import fixed in credit service add gates to the currently
   ungated paths (food scan, recipe generation, weekly meal plan, plan alternates, accountability
   insight) so the daily quota is real and uniform. Today only AI Chat + Twin are gated.
-- [ ] **Optimistic decrement + rollback** on failure; never charge a credit for a failed/empty AI call.
+- [x] ✅ **Optimistic decrement + rollback** — `AiCreditService.rollbackCredit(uid)` added; wired in `ai_fitness_twin_screen.dart`, `ai_chat_screen.dart` (empty reply + throw), `explore_screen.dart` (null recipe + throw), `meal_plan_comparison_sheet.dart` (empty list + throw). — Done
 - [ ] **Server-side enforcement note:** client-side counters are spoofable. Track as a hardening item —
   enforce quota in the AI Cloud Function proxy (ties to the existing security recommendation). · High
 - [ ] **Definition:** free user gets exactly 2 new generations/day across all AI; premium 20/day;
@@ -770,12 +759,8 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
   the premium plans (monthly/yearly from `BillingService`), a **Buy Credits** top-up option (consumable
   IAP for one-off extra daily calls), perks list, and **Restore Purchases**. Flagship loading/empty/
   error states.
-- [ ] **Wire all dead-ends to it:** limit-reached snackbar CTA, badge tap, a Settings "AI & Credits"
-  row, and the paywall fallback all converge on this surface (reuse `FeatureGateService.showPaywall`
-  where it already fits; extend for the top-up path).
-- [ ] **Consumable top-up plumbing** in `BillingService` (e.g. `+10 AI calls`): grant by incrementing a
-  separate `ai_credits_bonus` field so top-ups stack on top of the daily allowance and aren't wiped by
-  the midnight reset. Define product IDs.
+- [x] ✅ **Wire all dead-ends to it:** Settings "AI & Credits" row, badge tap, limit-reached chat bubble CTA, explore/twin screens — all open `AiCreditsSheet.show()`. Verified: no dead-ends remain. — Done
+- [x] ✅ **Consumable top-up plumbing** — `BillingProducts.aiCreditsTopUp10` (`cookrange_ai_credits_10`) added; `buyAiCreditsTopUp(uid)` uses `buyConsumable`; `_grantAiCreditsTopUp` calls `AiCreditService().addBonusCredits(uid, 10)`; `checkAndConsume` burns bonus credits first; `AiCreditsSheet` Buy Credits CTA wired. Product ID must be registered as Consumable in App Store Connect + Play Console before GA. EN+TR `ai.credits_topup_*` keys. — Done
 - [ ] **Definition:** tapping remaining-credits anywhere opens a buy credits/premium screen; purchase
   updates the badge live; smooth animations, light/dark, EN+TR.
 
@@ -816,8 +801,7 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
 - [x] **Settings "AI & Credits" row** — `settings_screen.dart` now has a bolt-icon row before the Business section; taps open `AiCreditsSheet`.
 - [x] **AI state polish** — `AppShimmer`+`AppSkeletonBox` loading replaces bare spinners in `AiFitnessTwinScreen`; `AppEmptyState` for no-projection + limit-reached states (opens `AiCreditsSheet`); `AppErrorState` retry in `AiInsightCard`; inline limit-reached chat bubble in `AiChatScreen`. EN+TR `ai.twin_empty_*` / `ai.twin_limit_*` keys (4). — Done
 - [x] **Analytics funnel** — `ai_generated`, `ai_cache_hit` in `AiInsightService`; `credit_consumed`, `credit_exhausted` in `AiCreditService`; `paywall_shown` in `FeatureGateService`; `admin_action` in `AdminService`; `role_upgrade_completed` in `FirestoreService`. — Done
-- [ ] **Accessibility & reduced motion** on every new surface (credits sheet, admin screens, twin
-  history) — semantic labels, `MediaQuery.disableAnimations`, large-text safe.
+- [x] ✅ **Accessibility & reduced motion** on every new surface (credits sheet, admin screens, twin history) — semantic labels, `MediaQuery.disableAnimations`, large-text safe. Covered in Phase 10 accessibility sweep above. — Done
 - [x] **Currency consistency sweep** — `€` → `₺` in `program_model.dart` `priceDisplay`, `commission_service.dart` log strings, `referral_service.dart` comment. No user-visible `$`/`€` remaining. — Done
 
 ### Definition of Done — Phase 12

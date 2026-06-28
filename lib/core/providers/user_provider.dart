@@ -140,14 +140,16 @@ class UserProvider extends ChangeNotifier {
         final data = snap.data();
         if (data == null) return;
 
-        // Only reload when role or subscription tier actually changed —
+        // Only reload when role/roles or subscription tier actually changed —
         // avoids noisy rebuilds on every field touch.
         final newRole = data['user_role'] as String?;
+        final newRoles = (data['user_roles'] as List<dynamic>?)?.join(',') ?? '';
         final newTier = data['subscription_tier'] as String?;
-        final oldRole = _user?.onboardingData?['user_role'] as String?;
+        final oldRole = _user?.userRole.firestoreValue;
+        final oldRoles = _user?.userRoles.map((r) => r.firestoreValue).join(',') ?? '';
         final oldTier = _user?.subscriptionTier.name;
 
-        if (newRole != oldRole || newTier != oldTier) {
+        if (newRole != oldRole || newRoles != oldRoles || newTier != oldTier) {
           debugPrint(
               'UserProvider: role/tier changed ($oldRole→$newRole, $oldTier→$newTier) — refreshing');
           await _fetchAndMerge(uid);

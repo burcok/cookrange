@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/coach_application_model.dart';
 import '../../core/models/gym_application_model.dart';
@@ -214,8 +215,9 @@ class _AdminOverviewTab extends StatelessWidget {
             builder: (context, snap) {
               final count = snap.data ?? 1; // default 1 so banner is hidden
               final allClear = count == 0;
+              final reduceMotion = MediaQuery.of(context).disableAnimations;
               return AnimatedContainer(
-                duration: AppMotion.normal,
+                duration: reduceMotion ? Duration.zero : AppMotion.normal,
                 curve: AppMotion.standard,
                 height: allClear ? null : 0,
                 clipBehavior: Clip.hardEdge,
@@ -309,12 +311,15 @@ class _StatCard extends StatelessWidget {
                     if (!showBadgeWhenNonZero || count == 0) {
                       return const SizedBox.shrink();
                     }
-                    return Container(
-                      width: 10.r,
-                      height: 10.r,
-                      decoration: BoxDecoration(
-                        color: accentColor,
-                        shape: BoxShape.circle,
+                    return Semantics(
+                      label: '$count pending',
+                      child: Container(
+                        width: 10.r,
+                        height: 10.r,
+                        decoration: BoxDecoration(
+                          color: accentColor,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     );
                   },
@@ -389,13 +394,8 @@ class _CoachApplicationsList extends StatelessWidget {
           separatorBuilder: (_, __) => SizedBox(height: 8.h),
           itemBuilder: (ctx, i) {
             final app = apps[i];
-            return _ApplicationCard(
-              name: app.displayName,
-              subtitle:
-                  '${app.specializations.take(3).join(', ')} · ${app.experienceYears} yrs',
-              submittedAt: app.submittedAt,
-              evidenceCount: app.evidenceUrls.length,
-              refsCount: app.references.length,
+            return _CoachAppCard(
+              app: app,
               palette: palette,
               t: t,
               l10n: l10n,
@@ -446,12 +446,8 @@ class _GymApplicationsList extends StatelessWidget {
           separatorBuilder: (_, __) => SizedBox(height: 8.h),
           itemBuilder: (ctx, i) {
             final app = apps[i];
-            return _ApplicationCard(
-              name: app.gymName,
-              subtitle: '${app.city} · ${app.tags.take(3).join(', ')}',
-              submittedAt: app.submittedAt,
-              evidenceCount:
-                  (app.businessDocUrl != null ? 1 : 0) + app.photoUrls.length,
+            return _GymAppCard(
+              app: app,
               palette: palette,
               t: t,
               l10n: l10n,
@@ -900,22 +896,28 @@ class _ToggleChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        curve: AppMotion.standard,
-        padding: EdgeInsets.symmetric(vertical: 9.h),
-        decoration: BoxDecoration(
-          color: selected ? primary : palette.surfaceVariant,
-          borderRadius: BorderRadius.circular(10.r),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: t.labelM.copyWith(
-            color: selected ? Colors.white : palette.textSecondary,
-            fontWeight: FontWeight.w600,
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: reduceMotion ? Duration.zero : AppMotion.fast,
+          curve: AppMotion.standard,
+          padding: EdgeInsets.symmetric(vertical: 9.h),
+          decoration: BoxDecoration(
+            color: selected ? primary : palette.surfaceVariant,
+            borderRadius: BorderRadius.circular(10.r),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: t.labelM.copyWith(
+              color: selected ? Colors.white : palette.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
@@ -944,24 +946,30 @@ class _FilterChipButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        curve: AppMotion.standard,
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-        decoration: BoxDecoration(
-          color: selected ? primary.withValues(alpha: 0.12) : palette.surfaceVariant,
-          borderRadius: BorderRadius.circular(20.r),
-          border: selected
-              ? Border.all(color: primary.withValues(alpha: 0.4))
-              : null,
-        ),
-        child: Text(
-          label,
-          style: t.labelS.copyWith(
-            color: selected ? primary : palette.textSecondary,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: reduceMotion ? Duration.zero : AppMotion.fast,
+          curve: AppMotion.standard,
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+          decoration: BoxDecoration(
+            color: selected ? primary.withValues(alpha: 0.12) : palette.surfaceVariant,
+            borderRadius: BorderRadius.circular(20.r),
+            border: selected
+                ? Border.all(color: primary.withValues(alpha: 0.4))
+                : null,
+          ),
+          child: Text(
+            label,
+            style: t.labelS.copyWith(
+              color: selected ? primary : palette.textSecondary,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
           ),
         ),
       ),
@@ -969,25 +977,17 @@ class _FilterChipButton extends StatelessWidget {
   }
 }
 
-// ── Application Card ───────────────────────────────────────────────────────
+// ── Coach App Card ─────────────────────────────────────────────────────────
 
-class _ApplicationCard extends StatelessWidget {
-  final String name;
-  final String subtitle;
-  final DateTime submittedAt;
-  final int evidenceCount;
-  final int? refsCount;
+class _CoachAppCard extends StatelessWidget {
+  final CoachApplicationModel app;
   final AppPalette palette;
   final AppText t;
   final AppLocalizations l10n;
   final VoidCallback onTap;
 
-  const _ApplicationCard({
-    required this.name,
-    required this.subtitle,
-    required this.submittedAt,
-    required this.evidenceCount,
-    this.refsCount,
+  const _CoachAppCard({
+    required this.app,
     required this.palette,
     required this.t,
     required this.l10n,
@@ -997,55 +997,380 @@ class _ApplicationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).primaryColor;
+    final hasCertDoc = app.certDocUrl != null;
+    final hasIdDoc = app.idDocUrl != null;
+    final hasAnyDoc = hasCertDoc || hasIdDoc;
+
     return AppCard(
       onTap: onTap,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 44.r,
-            height: 44.r,
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.person_outline, color: primary, size: 22.r),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
-                    style: t.titleM.copyWith(fontWeight: FontWeight.w700)),
-                SizedBox(height: 2.h),
-                Text(subtitle,
-                    style: t.bodyM.copyWith(color: palette.textSecondary),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                SizedBox(height: 4.h),
-                Row(
+          // ── Header row ──────────────────────────────────────────
+          Row(
+            children: [
+              Container(
+                width: 44.r,
+                height: 44.r,
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.person_outline, color: primary, size: 22.r),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Chip(
-                        icon: Icons.attach_file,
-                        label: '$evidenceCount docs',
-                        palette: palette,
-                        t: t),
-                    if (refsCount != null) ...[
-                      SizedBox(width: 6.w),
-                      _Chip(
-                          icon: Icons.people_outline,
-                          label: '$refsCount refs',
-                          palette: palette,
-                          t: t),
-                    ],
+                    Text(
+                      app.displayName,
+                      style: t.titleM.copyWith(fontWeight: FontWeight.w700),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      '${app.specializations.take(3).join(', ')} · ${app.experienceYears} yrs',
+                      style: t.bodyM.copyWith(color: palette.textSecondary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              SizedBox(width: 8.w),
+              Icon(Icons.chevron_right_rounded,
+                  color: palette.textSecondary, size: 20.r),
+            ],
           ),
-          Icon(Icons.chevron_right_rounded,
-              color: palette.textSecondary, size: 20.r),
+          // ── Chips row ────────────────────────────────────────────
+          SizedBox(height: 8.h),
+          Wrap(
+            spacing: 6.w,
+            runSpacing: 6.h,
+            children: [
+              _Chip(
+                icon: Icons.calendar_today_outlined,
+                label: DateFormat('MMM d, y').format(app.submittedAt),
+                palette: palette,
+                t: t,
+              ),
+              if (app.contactPhone.isNotEmpty)
+                _Chip(
+                  icon: Icons.phone_outlined,
+                  label: app.contactPhone,
+                  palette: palette,
+                  t: t,
+                ),
+              _Chip(
+                icon: Icons.attach_file,
+                label: '${app.evidenceUrls.length} evidence',
+                palette: palette,
+                t: t,
+              ),
+              _Chip(
+                icon: Icons.people_outline,
+                label: '${app.references.length} refs',
+                palette: palette,
+                t: t,
+              ),
+            ],
+          ),
+          // ── Documents row ─────────────────────────────────────────
+          SizedBox(height: 8.h),
+          Wrap(
+            spacing: 6.w,
+            runSpacing: 6.h,
+            children: hasAnyDoc
+                ? [
+                    if (hasCertDoc)
+                      _DocChip(
+                        label: 'Antrenörlük Sertifikası',
+                        url: app.certDocUrl!,
+                        palette: palette,
+                      ),
+                    if (hasIdDoc)
+                      _DocChip(
+                        label: 'Kimlik Belgesi',
+                        url: app.idDocUrl!,
+                        palette: palette,
+                      ),
+                  ]
+                : [
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 10.w, vertical: 5.h),
+                      decoration: BoxDecoration(
+                        color: palette.warning.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20.r),
+                        border: Border.all(
+                            color: palette.warning.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              size: 12.r, color: palette.warning),
+                          SizedBox(width: 4.w),
+                          Text(
+                            'Belge yok',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: palette.warning,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Gym Application Card ───────────────────────────────────────────────────
+
+class _GymAppCard extends StatelessWidget {
+  final GymApplicationModel app;
+  final AppPalette palette;
+  final AppText t;
+  final AppLocalizations l10n;
+  final VoidCallback onTap;
+
+  const _GymAppCard({
+    required this.app,
+    required this.palette,
+    required this.t,
+    required this.l10n,
+    required this.onTap,
+  });
+
+  Color? _parseBrandColor() {
+    final hex = app.brandColor;
+    if (hex == null || hex.isEmpty) return null;
+    final cleaned = hex.replaceFirst('#', '');
+    final value = int.tryParse(
+      cleaned.length == 6 ? 'FF$cleaned' : cleaned,
+      radix: 16,
+    );
+    if (value == null) return null;
+    return Color(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+    final brandColor = _parseBrandColor();
+    final hasLocation = app.latitude != null && app.longitude != null;
+    final hasBusinessDoc = app.businessDocUrl != null;
+    final hasIdDoc = app.idDocUrl != null;
+    final hasAnyDoc = hasBusinessDoc || hasIdDoc;
+
+    return AppCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header row ──────────────────────────────────────────
+          Row(
+            children: [
+              Container(
+                width: 44.r,
+                height: 44.r,
+                decoration: BoxDecoration(
+                  color: (brandColor ?? primary).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.business_rounded,
+                    color: brandColor ?? primary, size: 22.r),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            app.gymName,
+                            style:
+                                t.titleM.copyWith(fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Brand color swatch
+                        if (brandColor != null) ...[
+                          SizedBox(width: 6.w),
+                          Container(
+                            width: 16.r,
+                            height: 16.r,
+                            decoration: BoxDecoration(
+                              color: brandColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: palette.border,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    SizedBox(height: 2.h),
+                    // Location line
+                    Text(
+                      hasLocation
+                          ? '📍 ${app.city} (${app.latitude!.toStringAsFixed(4)}, ${app.longitude!.toStringAsFixed(4)})'
+                          : '📍 ${app.city}',
+                      style: t.bodyM.copyWith(color: palette.textSecondary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Icon(Icons.chevron_right_rounded,
+                  color: palette.textSecondary, size: 20.r),
+            ],
+          ),
+          // ── Chips row ────────────────────────────────────────────
+          SizedBox(height: 8.h),
+          Wrap(
+            spacing: 6.w,
+            runSpacing: 6.h,
+            children: [
+              // Submitted date
+              _Chip(
+                icon: Icons.calendar_today_outlined,
+                label: DateFormat('MMM d, y').format(app.submittedAt),
+                palette: palette,
+                t: t,
+              ),
+              // Phone
+              if (app.contactPhone.isNotEmpty)
+                _Chip(
+                  icon: Icons.phone_outlined,
+                  label: app.contactPhone,
+                  palette: palette,
+                  t: t,
+                ),
+              // Tags (up to 3)
+              ...app.tags.take(3).map((tag) => _Chip(
+                    icon: Icons.label_outline_rounded,
+                    label: tag,
+                    palette: palette,
+                    t: t,
+                  )),
+            ],
+          ),
+          // ── Documents row ─────────────────────────────────────────
+          SizedBox(height: 8.h),
+          Wrap(
+            spacing: 6.w,
+            runSpacing: 6.h,
+            children: hasAnyDoc
+                ? [
+                    if (hasBusinessDoc)
+                      _DocChip(
+                        label: 'İşletme Ruhsatı',
+                        url: app.businessDocUrl!,
+                        palette: palette,
+                      ),
+                    if (hasIdDoc)
+                      _DocChip(
+                        label: 'Kimlik Belgesi',
+                        url: app.idDocUrl!,
+                        palette: palette,
+                      ),
+                  ]
+                : [
+                    // No docs warning chip
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 10.w, vertical: 5.h),
+                      decoration: BoxDecoration(
+                        color: palette.warning.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20.r),
+                        border: Border.all(
+                            color: palette.warning.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              size: 12.r, color: palette.warning),
+                          SizedBox(width: 4.w),
+                          Text(
+                            'Belge yok',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: palette.warning,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Doc Chip (tappable document link) ──────────────────────────────────────
+
+class _DocChip extends StatelessWidget {
+  final String label;
+  final String url;
+  final AppPalette palette;
+
+  const _DocChip({
+    required this.label,
+    required this.url,
+    required this.palette,
+  });
+
+  Future<void> _open() async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _open,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+        decoration: BoxDecoration(
+          color: palette.info.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(color: palette.info.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.attach_file_rounded, size: 12.r, color: palette.info),
+            SizedBox(width: 4.w),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: palette.info,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

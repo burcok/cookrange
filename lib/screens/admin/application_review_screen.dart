@@ -319,6 +319,23 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen> {
         _SectionTitle(l10n.translate('gym.contact'), t: t),
         _InfoBox(app.contactPhone, palette: palette, t: t),
         const SizedBox(height: 16),
+        // Location (lat/lng) ─────────────────────────────────────────────
+        if (app.latitude != null && app.longitude != null) ...[
+          _SectionTitle(l10n.translate('gym.location'), t: t),
+          _InfoBox(
+            '📍 ${app.city}  (${app.latitude!.toStringAsFixed(6)}, ${app.longitude!.toStringAsFixed(6)})',
+            palette: palette,
+            t: t,
+          ),
+          const SizedBox(height: 16),
+        ],
+        // Brand color swatch ─────────────────────────────────────────────
+        if (app.brandColor != null && app.brandColor!.isNotEmpty) ...[
+          _SectionTitle(l10n.translate('gym.brand_color'), t: t),
+          _BrandColorSwatch(hex: app.brandColor!, palette: palette, t: t),
+          const SizedBox(height: 16),
+        ],
+        // Documents ──────────────────────────────────────────────────────
         _SectionTitle(l10n.translate('admin.evidence_docs'), t: t),
         if (app.businessDocUrl != null)
           Padding(
@@ -328,6 +345,41 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen> {
               url: app.businessDocUrl!,
               palette: palette,
               t: t,
+            ),
+          ),
+        if (app.idDocUrl != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _DocTile(
+              label: l10n.translate('admin.id_doc'),
+              url: app.idDocUrl!,
+              palette: palette,
+              t: t,
+            ),
+          ),
+        if (app.businessDocUrl == null && app.idDocUrl == null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: palette.warning.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(10),
+                border:
+                    Border.all(color: palette.warning.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      color: palette.warning, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.translate('admin.no_docs_warning'),
+                    style: t.bodyM
+                        .copyWith(color: palette.warning, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
             ),
           ),
         ...app.photoUrls.asMap().entries.map((e) => Padding(
@@ -340,6 +392,51 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen> {
                 isImage: true,
               ),
             )),
+      ],
+    );
+  }
+}
+
+class _BrandColorSwatch extends StatelessWidget {
+  final String hex;
+  final AppPalette palette;
+  final AppText t;
+
+  const _BrandColorSwatch({
+    required this.hex,
+    required this.palette,
+    required this.t,
+  });
+
+  Color? _parse() {
+    final cleaned = hex.replaceFirst('#', '');
+    final value = int.tryParse(
+      cleaned.length == 6 ? 'FF$cleaned' : cleaned,
+      radix: 16,
+    );
+    return value != null ? Color(value) : null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _parse();
+    if (color == null) return _InfoBox(hex, palette: palette, t: t);
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: palette.border, width: 1.5),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          hex.toUpperCase(),
+          style: t.bodyM.copyWith(fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }

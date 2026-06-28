@@ -24,13 +24,15 @@ class MealPlanRepository {
   Future<WeeklyMealPlanModel?> getWeeklyPlan(
     UserModel user, {
     bool forceRefresh = false,
+    String locale = 'en',
   }) async {
     if (TestModeService().isActive) {
       return TestDataLibrary.weeklyPlan(user.uid);
     }
     return PerformanceService().trace(
       forceRefresh ? 'meal_plan_generate' : 'meal_plan_fetch',
-      () => _service.getWeeklyMealPlan(user, forceRefresh: forceRefresh),
+      () => _service.getWeeklyMealPlan(user,
+          forceRefresh: forceRefresh, locale: locale),
     );
   }
 

@@ -26,9 +26,13 @@ class GymApplicationModel {
   final String city;
   final String description;
   final String? businessDocUrl;
+  final String? idDocUrl;
   final List<String> photoUrls;
   final String contactPhone;
   final List<String> tags;
+  final double? latitude;
+  final double? longitude;
+  final String? brandColor;
   final GymApplicationStatus status;
   final DateTime submittedAt;
   final DateTime? reviewedAt;
@@ -43,9 +47,13 @@ class GymApplicationModel {
     required this.city,
     required this.description,
     this.businessDocUrl,
+    this.idDocUrl,
     required this.photoUrls,
     required this.contactPhone,
     required this.tags,
+    this.latitude,
+    this.longitude,
+    this.brandColor,
     required this.status,
     required this.submittedAt,
     this.reviewedAt,
@@ -67,9 +75,13 @@ class GymApplicationModel {
       city: d['city'] as String? ?? '',
       description: d['description'] as String? ?? '',
       businessDocUrl: d['businessDocUrl'] as String?,
+      idDocUrl: d['idDocUrl'] as String?,
       photoUrls: List<String>.from(d['photoUrls'] as List? ?? []),
       contactPhone: d['contactPhone'] as String? ?? '',
       tags: List<String>.from(d['tags'] as List? ?? []),
+      latitude: (d['latitude'] as num?)?.toDouble(),
+      longitude: (d['longitude'] as num?)?.toDouble(),
+      brandColor: d['brandColor'] as String?,
       status: GymApplicationStatus.fromString(d['status'] as String?),
       submittedAt: (d['submittedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       reviewedAt: (d['reviewedAt'] as Timestamp?)?.toDate(),
@@ -85,9 +97,13 @@ class GymApplicationModel {
         'city': city,
         'description': description,
         'businessDocUrl': businessDocUrl,
+        'idDocUrl': idDocUrl,
         'photoUrls': photoUrls,
         'contactPhone': contactPhone,
         'tags': tags,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        'brandColor': brandColor,
         'status': status.value,
         'submittedAt': FieldValue.serverTimestamp(),
         'reviewedAt': reviewedAt != null ? Timestamp.fromDate(reviewedAt!) : null,

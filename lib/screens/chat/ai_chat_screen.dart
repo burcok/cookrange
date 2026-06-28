@@ -103,9 +103,18 @@ class _AIChatScreenState extends State<AIChatScreen> {
         userMessage: trimmed,
       );
       if (!mounted) return;
-      _history.add(AIChatMessage(role: 'assistant', content: reply));
+      if (reply.isEmpty) {
+        unawaited(AiCreditService().rollbackCredit(uid));
+        _history.add(const AIChatMessage(
+          role: 'assistant',
+          content: 'Sorry, something went wrong. Please try again.',
+        ));
+      } else {
+        _history.add(AIChatMessage(role: 'assistant', content: reply));
+      }
       setState(() => _isTyping = false);
     } catch (e) {
+      unawaited(AiCreditService().rollbackCredit(uid));
       if (!mounted) return;
       _history.add(const AIChatMessage(
         role: 'assistant',

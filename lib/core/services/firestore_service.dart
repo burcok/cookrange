@@ -383,24 +383,46 @@ class FirestoreService {
   }
 
   /// Updates the user's role field (`user_role`) in Firestore.
+  /// Delegates to [addUserRole] so the roles array stays in sync.
   Future<void> updateUserRole(String uid, String roleValue) async {
-    _log.info('Updating user role for uid: $uid to $roleValue',
+    final role = UserRoleX.fromString(roleValue);
+    await addUserRole(uid, role);
+  }
+
+  /// Adds [role] to the user's `user_roles` array (idempotent).
+  Future<void> addUserRole(String uid, UserRole role) async {
+    if (role == UserRole.consumer) return;
+    _log.info('FirestoreService: adding role ${role.firestoreValue} to $uid',
         service: _serviceName);
     try {
-      final snap = await _firestore.collection('users').doc(uid).get();
-      final oldRole = (snap.data()?['user_role'] as String?) ?? 'user';
-      await _firestore
-          .collection('users')
-          .doc(uid)
-          .update({'user_role': roleValue});
+      await _firestore.collection('users').doc(uid).update({
+        'user_roles': FieldValue.arrayUnion([role.firestoreValue]),
+        'user_role': role.firestoreValue,
+      });
       unawaited(AnalyticsService().logEvent(
         name: 'role_upgrade_completed',
-        parameters: {'old_role': oldRole, 'new_role': roleValue},
+        parameters: {'new_role': role.firestoreValue},
       ));
-      _log.info('Successfully updated user role for uid: $uid',
+      _log.info('Successfully added role ${role.firestoreValue} to $uid',
           service: _serviceName);
     } catch (e, s) {
-      _log.error('Error updating user role for $uid',
+      _log.error('Error adding role ${role.firestoreValue} for $uid',
+          service: _serviceName, error: e, stackTrace: s);
+    }
+  }
+
+  /// Removes [role] from the user's `user_roles` array.
+  Future<void> removeUserRole(String uid, UserRole role) async {
+    _log.info('FirestoreService: removing role ${role.firestoreValue} from $uid',
+        service: _serviceName);
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'user_roles': FieldValue.arrayRemove([role.firestoreValue]),
+      });
+      _log.info('Successfully removed role ${role.firestoreValue} from $uid',
+          service: _serviceName);
+    } catch (e, s) {
+      _log.error('Error removing role ${role.firestoreValue} for $uid',
           service: _serviceName, error: e, stackTrace: s);
     }
   }

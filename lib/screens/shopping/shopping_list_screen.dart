@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/ingredient_model.dart';
+import '../../core/providers/language_provider.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/repositories/shopping_repository.dart';
 import '../../core/services/analytics_service.dart';
@@ -132,10 +133,13 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
     final l10n = AppLocalizations.of(context);
     final user = context.read<UserProvider>().user;
     if (user == null) return;
+    final locale =
+        context.read<LanguageProvider>().currentLocale.languageCode;
 
     setState(() => _isGenerating = true);
     try {
-      final plan = await WeeklyMealPlanService().getWeeklyMealPlan(user);
+      final plan =
+          await WeeklyMealPlanService().getWeeklyMealPlan(user, locale: locale);
       if (plan == null || plan.days.isEmpty) {
         if (mounted) AppSnackBar.warning(context, l10n.translate('shopping.no_plan'));
         return;

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:cookrange/screens/chat/ai_chat_screen.dart';
 import 'package:cookrange/screens/chat/chat_list_screen.dart';
 import 'package:cookrange/screens/challenges/challenges_screen.dart';
+import 'package:cookrange/screens/discover/discover_hub_screen.dart';
 import 'package:cookrange/screens/admin/admin_panel_screen.dart';
 import 'package:cookrange/screens/admin/admin_reports_screen.dart';
 import '../../core/services/admin_service.dart';
@@ -250,6 +251,7 @@ class _SidePanel extends StatelessWidget {
 
                     // ── SOCIAL ──────────────────────────────────────────
                     _SectionLabel(l10n.translate('menu.section_social')),
+                    _NavTile(icon: Icons.explore_rounded, label: l10n.translate('menu.discover'), onTap: () => onPush(const DiscoverHubScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.chat_bubble_rounded, label: l10n.translate('menu.chats'), onTap: () => onPush(const ChatListScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.auto_awesome_rounded, label: l10n.translate('menu.ai_chat'), onTap: () => onPush(const AIChatScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.emoji_events_rounded, label: l10n.translate('menu.challenges'), onTap: () => onPush(const ChallengesScreen()), palette: palette, isDark: isDark, primary: primary),
@@ -284,16 +286,29 @@ class _SidePanel extends StatelessWidget {
   }
 
   Widget _buildRoleCard(BuildContext context, UserModel user, AppLocalizations l10n) {
-    switch (user.userRole) {
-      case UserRole.admin:
-        return _AdminCard(l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush);
-      case UserRole.coach:
-        return _CoachCard(l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush);
-      case UserRole.gymOwner:
-        return _GymCard(l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush);
-      case UserRole.consumer:
-        return _ConsumerCard(uid: user.uid, l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush);
+    final cards = <Widget>[];
+
+    if (user.hasRole(UserRole.admin)) {
+      cards.add(_AdminCard(l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush));
     }
+    if (user.hasRole(UserRole.gymOwner)) {
+      cards.add(_GymCard(l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush));
+    }
+    if (user.hasRole(UserRole.coach)) {
+      cards.add(_CoachCard(l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush));
+    }
+
+    if (cards.isEmpty) {
+      return _ConsumerCard(uid: user.uid, l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush);
+    }
+    if (cards.length == 1) return cards.first;
+
+    return Column(
+      children: cards
+          .expand((c) => [c, const SizedBox(height: 12)])
+          .take(cards.length * 2 - 1)
+          .toList(),
+    );
   }
 }
 

@@ -9,6 +9,8 @@ import 'analytics_service.dart';
 import '../models/coach_profile_model.dart';
 import '../models/gym_application_model.dart';
 import '../models/gym_model.dart';
+import '../models/user_model.dart';
+import 'firestore_service.dart';
 
 /// Admin-only service for reviewing and actioning coach/gym applications.
 /// All write methods require the caller to be admin — enforced in Firestore rules.
@@ -183,8 +185,9 @@ class AdminService {
         _db.collection('coach_profiles').doc(app.applicantUid),
         profile.toFirestore());
 
-    // 3. Update user role
+    // 3. Update user roles (additive — preserves existing roles)
     batch.update(_db.collection('users').doc(app.applicantUid), {
+      'user_roles': FieldValue.arrayUnion(['coach']),
       'user_role': 'coach',
     });
 
@@ -240,15 +243,29 @@ class AdminService {
       logoUrl: app.photoUrls.isNotEmpty ? app.photoUrls.first : null,
       tags: app.tags,
       isPublic: true,
-      memberCount: 0,
+      memberCount: 1,
       subscriptionTier: GymSubscriptionTier.free,
       createdAt: gymNow,
       updatedAt: gymNow,
+      latitude: app.latitude,
+      longitude: app.longitude,
+      brandColor: app.brandColor,
     );
     batch.set(_db.collection('gyms').doc(gymId), gym.toFirestore());
 
-    // 3. Update user role
+    // 2a. Add owner as first member
+    batch.set(
+      _db.collection('gyms').doc(gymId).collection('members').doc(app.applicantUid),
+      {
+        'uid': app.applicantUid,
+        'joined_at': FieldValue.serverTimestamp(),
+        'tier': 'premium',
+      },
+    );
+
+    // 3. Update user roles (additive — preserves existing roles)
     batch.update(_db.collection('users').doc(app.applicantUid), {
+      'user_roles': FieldValue.arrayUnion(['gym_owner']),
       'user_role': 'gym_owner',
     });
 
@@ -428,7 +445,18 @@ class AdminService {
 
     debugPrint('AdminService: setUserRole uid=$uid role=$role');
 
-    await _db.collection('users').doc(uid).update({'user_role': role});
+    final parsed = UserRoleX.fromString(role);
+    if (parsed == UserRole.consumer) {
+      // Demote to consumer — clear all non-consumer roles
+      const nonConsumerRoles = ['gym_owner', 'coach', 'admin'];
+      await _db.collection('users').doc(uid).update({
+        'user_roles': FieldValue.arrayRemove(nonConsumerRoles),
+        'user_role': 'consumer',
+      });
+    } else {
+      await FirestoreService().addUserRole(uid, parsed);
+    }
+
     await logAuditAction(
       action: 'set_user_role',
       targetUid: uid,

@@ -419,10 +419,9 @@ class _QuickActionsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
-    final userRole =
-        context.watch<UserProvider>().user?.userRole ?? UserRole.consumer;
-    final isGymOwner = userRole == UserRole.gymOwner;
-    final isCoach = userRole == UserRole.coach;
+    final currentUser = context.watch<UserProvider>().user;
+    final isGymOwner = currentUser?.hasRole(UserRole.gymOwner) ?? false;
+    final isCoach = currentUser?.hasRole(UserRole.coach) ?? false;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 36),

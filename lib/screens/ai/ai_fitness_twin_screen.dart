@@ -82,6 +82,7 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
       setState(() { _isGenerating = false; });
       unawaited(_fadeController.forward(from: 0));
     } catch (e) {
+      unawaited(AiCreditService().rollbackCredit(uid));
       if (!mounted) return;
       setState(() {
         _isGenerating = false;

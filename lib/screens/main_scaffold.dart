@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,9 +9,11 @@ import 'community/community_screen.dart';
 import 'profile/profile_screen.dart';
 import '../core/providers/navigation_provider.dart';
 import '../core/providers/user_provider.dart';
+import '../core/services/whats_new_service.dart';
 import '../core/widgets/quick_actions_sheet.dart';
 import '../core/widgets/voice_assistant_overlay.dart';
 import '../core/widgets/side_menu.dart';
+import '../core/widgets/whats_new_sheet.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -39,7 +42,18 @@ class _MainScaffoldState extends State<MainScaffold>
       Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) context.read<UserProvider>().refreshUser();
       });
+      _maybeShowWhatsNew();
     });
+  }
+
+  Future<void> _maybeShowWhatsNew() async {
+    if (!mounted) return;
+    final should = await WhatsNewService().shouldShow();
+    if (!mounted || !should) return;
+    // Small delay so the scaffold renders fully before the sheet appears.
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
+    unawaited(WhatsNewSheetContent.show(context));
   }
 
   void _handleNavChange() {

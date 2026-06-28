@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../models/gym_model.dart';
 import '../models/gym_member_model.dart';
 import '../models/checkin_model.dart';
+import '../models/user_model.dart';
 import 'analytics_service.dart';
 import 'firestore_service.dart';
 
@@ -37,6 +38,8 @@ class GymService {
     String? country,
     bool isPublic = true,
     List<String> tags = const [],
+    double? latitude,
+    double? longitude,
   }) async {
     final uid = _uid;
     if (uid == null) throw Exception('Not authenticated');
@@ -58,6 +61,8 @@ class GymService {
       tags: tags,
       createdAt: now,
       updatedAt: now,
+      latitude: latitude,
+      longitude: longitude,
     );
 
     final batch = _db.batch();
@@ -74,8 +79,8 @@ class GymService {
     );
     await batch.commit();
 
-    // Promote user role to gym_owner
-    await FirestoreService().updateUserData(uid, {'user_role': 'gym_owner'});
+    // Promote user role to gym_owner (additive — preserves existing roles)
+    await FirestoreService().addUserRole(uid, UserRole.gymOwner);
 
     debugPrint('[GymService] Created gym ${doc.id} for owner $uid');
     return gym;

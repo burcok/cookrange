@@ -25,23 +25,14 @@ class GymApplicationService {
     required String address,
     required String city,
     required String description,
-    required File? businessDocFile,
-    required List<File> photoFiles,
     required String contactPhone,
     required List<String> tags,
+    String? businessDocUrl,
+    String? idDocUrl,
+    double? latitude,
+    double? longitude,
+    String? brandColor,
   }) async {
-    String? businessDocUrl;
-    if (businessDocFile != null) {
-      businessDocUrl = await _uploadFile(
-          applicantUid, businessDocFile, 'business_doc');
-    }
-
-    final photoUrls = <String>[];
-    for (var i = 0; i < photoFiles.length; i++) {
-      final url = await _uploadFile(applicantUid, photoFiles[i], 'photo_$i');
-      photoUrls.add(url);
-    }
-
     final ref = _db.collection(_col).doc();
     final model = GymApplicationModel(
       id: ref.id,
@@ -51,17 +42,25 @@ class GymApplicationService {
       city: city,
       description: description,
       businessDocUrl: businessDocUrl,
-      photoUrls: photoUrls,
+      idDocUrl: idDocUrl,
+      photoUrls: [
+        if (businessDocUrl != null) businessDocUrl,
+        if (idDocUrl != null) idDocUrl,
+      ],
       contactPhone: contactPhone,
       tags: tags,
+      latitude: latitude,
+      longitude: longitude,
+      brandColor: brandColor,
       status: GymApplicationStatus.pending,
       submittedAt: DateTime.now(),
     );
     await ref.set(model.toFirestore());
-    debugPrint('GymApplicationService: submitted application ${ref.id}');
+    debugPrint('GymApplicationService: submitted application ${ref.id} for $applicantUid');
     return ref.id;
   }
 
+  // ignore: unused_element
   Future<String> _uploadFile(String uid, File file, String name) async {
     final ext = file.path.endsWith('.pdf') ? 'pdf' : 'jpg';
     final ref = _storage.ref('gym_applications/$uid/$name.$ext');

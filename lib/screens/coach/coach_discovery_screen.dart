@@ -215,7 +215,7 @@ class _CoachCardState extends State<_CoachCard>
     final coach = widget.coach;
     final specs = coach.specializations.take(3).toList();
     final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    final currentUserRole = context.read<UserProvider>().user?.userRole;
+    final currentUser = context.read<UserProvider>().user;
     final isSelf = coach.uid == currentUid;
 
     return FadeTransition(
@@ -296,7 +296,7 @@ class _CoachCardState extends State<_CoachCard>
                 ],
               ),
               // ── Request button ─────────────────────────────────────────
-              if (!isSelf && currentUserRole != UserRole.coach) ...[
+              if (!isSelf && currentUser?.hasRole(UserRole.coach) != true) ...[
                 const SizedBox(height: AppSpacing.sm),
                 StreamBuilder<String?>(
                   stream: CoachService()

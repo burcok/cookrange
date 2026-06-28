@@ -174,7 +174,14 @@ lib/
 | `RecentFoodService` | `recent_food_service.dart` | `users/{uid}/recent_foods`; auto-upserted by `FoodLogService`; max 20 entries; `getRecentFoods`, `getFrequentFoods` |
 | `NotificationPreferencesService` | `notification_preferences_service.dart` | Per-group mute prefs in `users/{uid}.notification_muted`; groups: likes/comments/friends/system/referral |
 | `WeeklyMealPlanService` (extended) | `weekly_meal_plan_service.dart` | Added `getMealPlanHistory`, `restorePlan`, auto-archive to `meal_plan_history/{key}` on every save |
-| `AiCreditService` | `ai_credit_service.dart` | Daily AI credit quotas (free=2/day, premium=20/day); `checkAndConsume(uid, isPremium)`; `resetAt` = next local midnight; `getCreditsStream(uid)` |
+| `AiCreditService` | `ai_credit_service.dart` | Daily AI credit quotas (free=2/day, premium=20/day); `checkAndConsume(uid, isPremium)` burns bonus credits first; `rollbackCredit(uid)` / `rollbackBonusCredit(uid)` for failed AI calls; `addBonusCredits(uid, count)` for IAP top-ups; `getCreditsStream(uid)` |
+| `WhatsNewService` | `whats_new_service.dart` | Singleton; `shouldShow()` → true once per version bump (SharedPrefs `whats_new_last_version`); skips first install |
+| `WhatsNewSheetContent` | `core/widgets/whats_new_sheet.dart` | DS bottom sheet for version changelogs; `WhatsNewSheetContent.show(context)` static method |
+| `CoachmarkTip` | `core/widgets/coachmark_tip.dart` | One-time contextual tooltip (SharedPrefs-gated); `prefKey` param; dismiss-on-tap; reduced-motion aware |
+| `ProfileCompletenessCard` | `screens/profile/widgets/profile_completeness_card.dart` | Owner-only card (3 steps: photo/meal/challenge); progress ring; self-hides when complete |
+| `DiscoverHubScreen` | `screens/discover/discover_hub_screen.dart` | Unified 2×2 discovery grid (Gyms/Coaches/Programs/Challenges) + premium banner; `AppRoutes.discover` |
+| `GymJoinPromptSheet` | `screens/gym/gym_join_prompt_sheet.dart` | Shown when non-member scans gym QR; join + check-in flow; `GymJoinPromptSheet.show(context, gymId:, gymName:, uid:)` |
+| `RoleQuickCard` | `screens/home/widgets/role_quick_card.dart` | Role-aware home dashboard card (gymOwner/coach/admin); quick-entry to role dashboards; hidden for consumers |
 | `AiInsightService` (extended) | `ai_insight_service.dart` | `generateFitnessTwin(user, locale:)` → persists to `users/{uid}/ai_twin_projections`; `getLatestProjectionStream(uid, locale)` / `getProjectionHistoryStream(uid)`; locale-tagged SharedPrefs cache |
 | `AdminService` (extended) | `admin_service.dart` | Added `searchUsers`, `getUsersStream`, `banUser`, `unbanUser`, `setUserRole`, `coachApplicationHistoryStream`, `gymApplicationHistoryStream`, `logAuditAction`, `auditLogStream`, `pendingCountStream` |
 | `AiCreditsSheet` | `screens/ai/widgets/ai_credits_sheet.dart` | Bottom sheet: usage bar, reset countdown, plan chip, upgrade CTA; `AiCreditsSheet.show(context, uid:, isPremium:)` |
@@ -185,6 +192,9 @@ lib/
 |---|---|
 | `users/{uid}/ai_twin_projections/{id}` | Persisted AI fitness projections; fields: `locale`, `generatedAt`, payload, `inputsHash` |
 | `admin_audit/{id}` | Append-only audit log for every admin action (who/what/when/target); admin-only rules |
+| `ai_credits/{uid}` | Daily AI quota: `used_today`, `reset_at`, `is_premium`, `bonus_credits` (IAP top-ups, not reset at midnight) |
+| `reports/{id}` | Moderation reports; `status` (pending/reviewed), `targetType`, `reason`; indexes on `status+timestamp` |
+| `seeds/{docId}` | Idempotent seed gates (e.g. `demo.demo_programs_v1`); authenticated read/write |
 
 ### Notifications (architecture)
 - **Never store display text.** Call `NotificationService.sendNotification(type:, actorUid:, actorName:, actorPhotoUrl:, relatedId:, metadata:)`. Text is rendered on the reader's device by `NotificationPresenter` so it's always in their language with the real actor name.

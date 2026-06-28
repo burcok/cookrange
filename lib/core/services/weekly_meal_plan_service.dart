@@ -25,7 +25,7 @@ class WeeklyMealPlanService {
 
   /// Main method: Get existing valid plan or generate new one
   Future<WeeklyMealPlanModel?> getWeeklyMealPlan(UserModel user,
-      {bool forceRefresh = false}) async {
+      {bool forceRefresh = false, String locale = 'en'}) async {
     // 1. Check existing plan
     if (!forceRefresh) {
       final existingPlan = await _fetchUserMealPlan(user.uid);
@@ -42,7 +42,7 @@ class WeeklyMealPlanService {
     }
 
     // 2. Generate new plan
-    return _generateAndSaveMealPlan(user);
+    return _generateAndSaveMealPlan(user, locale: locale);
   }
 
   Future<WeeklyMealPlanModel?> _fetchUserMealPlan(String userId) async {
@@ -62,7 +62,8 @@ class WeeklyMealPlanService {
     return null;
   }
 
-  Future<WeeklyMealPlanModel?> _generateAndSaveMealPlan(UserModel user) async {
+  Future<WeeklyMealPlanModel?> _generateAndSaveMealPlan(UserModel user,
+      {String locale = 'en'}) async {
     try {
       debugPrint('Generating new AI meal plan for user ${user.uid}...');
 
@@ -85,6 +86,7 @@ class WeeklyMealPlanService {
         userProfile: userProfile,
         dailyCalorieTarget: tdee,
         availableDishes: dishes,
+        locale: locale,
       );
 
       // 3. Call AI

@@ -8,6 +8,7 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/ai_credit_model.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/ai_credit_service.dart';
+import '../../../core/services/billing_service.dart';
 import '../../../core/widgets/ds/ds.dart';
 
 /// Modal bottom sheet showing the user's daily AI credit status, reset
@@ -47,6 +48,7 @@ class AiCreditsSheet extends StatelessWidget {
         }
         final credits = snapshot.data!;
         return _SheetContent(
+          uid: uid,
           credits: credits,
           isPremium: isPremium,
           l10n: l10n,
@@ -57,11 +59,13 @@ class AiCreditsSheet extends StatelessWidget {
 }
 
 class _SheetContent extends StatefulWidget {
+  final String uid;
   final AiCreditModel credits;
   final bool isPremium;
   final AppLocalizations l10n;
 
   const _SheetContent({
+    required this.uid,
     required this.credits,
     required this.isPremium,
     required this.l10n,
@@ -74,6 +78,7 @@ class _SheetContent extends StatefulWidget {
 class _SheetContentState extends State<_SheetContent> {
   late Timer _ticker;
   late int _minutesLeft;
+  bool _buyingCredits = false;
 
   @override
   void initState() {
@@ -88,6 +93,49 @@ class _SheetContentState extends State<_SheetContent> {
   void dispose() {
     _ticker.cancel();
     super.dispose();
+  }
+
+  Future<void> _handleBuyCredits(BuildContext context) async {
+    if (_buyingCredits) return;
+
+    // Capture context-dependent values before the async gap.
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final palette = AppPalette.of(context);
+    final successMsg = widget.l10n.translate('ai.credits_topup_success');
+    final failedMsg = widget.l10n.translate('ai.credits_topup_failed');
+
+    setState(() => _buyingCredits = true);
+    try {
+      final ok = await BillingService().buyAiCreditsTopUp(widget.uid);
+      if (!mounted) return;
+      if (ok) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(successMsg),
+            backgroundColor: palette.success,
+          ),
+        );
+        navigator.pop();
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(failedMsg),
+            backgroundColor: palette.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(failedMsg),
+          backgroundColor: palette.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _buyingCredits = false);
+    }
   }
 
   @override
@@ -164,12 +212,15 @@ class _SheetContentState extends State<_SheetContent> {
             style: textTheme.labelS.copyWith(color: palette.textTertiary),
           ),
           SizedBox(height: 8.h),
-          _UsageBar(
-            used: used,
-            limit: limit + credits.bonus,
-            exhausted: exhausted,
-            primaryColor: primaryColor,
-            palette: palette,
+          Semantics(
+            label: '$used of ${limit + credits.bonus} AI credits used today',
+            child: _UsageBar(
+              used: used,
+              limit: limit + credits.bonus,
+              exhausted: exhausted,
+              primaryColor: primaryColor,
+              palette: palette,
+            ),
           ),
           SizedBox(height: 6.h),
           Row(
@@ -204,30 +255,35 @@ class _SheetContentState extends State<_SheetContent> {
           SizedBox(height: 20.h),
 
           // ── Remaining display ────────────────────────────────────────────────
-          Center(
-            child: Column(
-              children: [
-                Text(
-                  exhausted ? '0' : '$remaining',
-                  style: textTheme.displayL.copyWith(
-                    color: exhausted
-                        ? palette.error
-                        : remaining <= 1
-                            ? palette.warning
-                            : primaryColor,
-                    fontWeight: FontWeight.bold,
+          Semantics(
+            label: exhausted
+                ? l10n.translate('ai.credits_exhausted_title')
+                : '$remaining ${l10n.translate('ai.credits_sheet_title')} remaining',
+            child: Center(
+              child: Column(
+                children: [
+                  Text(
+                    exhausted ? '0' : '$remaining',
+                    style: textTheme.displayL.copyWith(
+                      color: exhausted
+                          ? palette.error
+                          : remaining <= 1
+                              ? palette.warning
+                              : primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                Text(
-                  exhausted
-                      ? l10n.translate('ai.credits_exhausted_title')
-                      : (remaining == 1
-                          ? '1 ${l10n.translate('ai.credits_sheet_title')}'
-                          : '$remaining ${l10n.translate('ai.credits_sheet_title')}'),
-                  style:
-                      textTheme.bodyM.copyWith(color: palette.textSecondary),
-                ),
-              ],
+                  Text(
+                    exhausted
+                        ? l10n.translate('ai.credits_exhausted_title')
+                        : (remaining == 1
+                            ? '1 ${l10n.translate('ai.credits_sheet_title')}'
+                            : '$remaining ${l10n.translate('ai.credits_sheet_title')}'),
+                    style:
+                        textTheme.bodyM.copyWith(color: palette.textSecondary),
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -284,11 +340,27 @@ class _SheetContentState extends State<_SheetContent> {
           ],
 
           // ── Buy more button (always shown) ───────────────────────────────────
-          AppButton(
-            label: l10n.translate('ai.credits_buy_more'),
-            onPressed: () => Navigator.pop(context),
-            variant: AppButtonVariant.tonal,
-            icon: Icons.add_rounded,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppButton(
+                label: l10n.translate('ai.credits_topup_title'),
+                onPressed: _buyingCredits
+                    ? null
+                    : () => _handleBuyCredits(context),
+                variant: AppButtonVariant.tonal,
+                icon: Icons.add_rounded,
+                loading: _buyingCredits,
+              ),
+              SizedBox(height: 4.h),
+              Center(
+                child: Text(
+                  l10n.translate('ai.credits_topup_price'),
+                  style: textTheme.labelS
+                      .copyWith(color: palette.textTertiary),
+                ),
+              ),
+            ],
           ),
         ],
       ),

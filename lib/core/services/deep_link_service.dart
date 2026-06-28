@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:app_links/app_links.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../screens/gym/gym_join_prompt_sheet.dart';
 import 'crashlytics_service.dart';
+import 'gym_service.dart';
 
 /// Handles App Links (Android) and Universal Links (iOS) as well as the
 /// custom `cookrange://` scheme.
@@ -12,6 +15,9 @@ import 'crashlytics_service.dart';
 ///   https://cookrangeapp.com/user/{uid}
 ///   https://cookrangeapp.com/challenge/{id}
 ///   cookrange://recipe/{id}  (custom scheme, dev/testing)
+///
+/// QR check-in scheme (opaque URI emitted by GymQrScreen):
+///   cookrange:checkin:{gymId}:{qrToken}
 ///
 /// Usage:
 ///   1. Call [init] once from splash/main after auth is stable.
@@ -62,6 +68,13 @@ class DeepLinkService {
     final nav = _navigatorKey?.currentState;
     if (nav == null) return;
 
+    // Opaque cookrange: URIs (e.g. cookrange:checkin:gymId:token) have no
+    // path segments — their payload is in uri.path as colon-delimited parts.
+    if (uri.scheme == 'cookrange' && !uri.hasAuthority) {
+      _routeOpaque(uri, nav);
+      return;
+    }
+
     final segments = uri.pathSegments;
     if (segments.isEmpty) return;
 
@@ -82,6 +95,66 @@ class DeepLinkService {
         nav.pushNamed('/settings', arguments: {'referral_code': id});
       default:
         debugPrint('DeepLink: unrecognised path segment "$type"');
+    }
+  }
+
+  /// Routes opaque `cookrange:` URIs.
+  /// Currently handles: `cookrange:checkin:{gymId}:{qrToken}`
+  void _routeOpaque(Uri uri, NavigatorState nav) {
+    final parts = uri.path.split(':');
+    if (parts.isEmpty) return;
+
+    switch (parts[0]) {
+      case 'checkin':
+        if (parts.length < 3) {
+          debugPrint('DeepLink: malformed checkin URI – expected gymId:token');
+          return;
+        }
+        final gymId = parts[1];
+        final token = parts[2];
+        if (gymId.isEmpty || token.isEmpty) return;
+        unawaited(_handleGymCheckin(gymId, token, nav));
+      default:
+        debugPrint('DeepLink: unrecognised opaque type "${parts[0]}"');
+    }
+  }
+
+  Future<void> _handleGymCheckin(
+      String gymId, String token, NavigatorState nav) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      debugPrint('DeepLink: gym checkin ignored — user not signed in');
+      return;
+    }
+
+    try {
+      final member = await GymService().isMember(gymId, uid);
+
+      final ctx = nav.context;
+      if (!ctx.mounted) return;
+
+      if (member) {
+        await GymService().validateQRCheckIn(gymId, token);
+        debugPrint('[DeepLink] QR check-in success gym=$gymId uid=$uid');
+      } else {
+        final gym = await GymService().getGym(gymId);
+        if (gym == null) {
+          debugPrint('[DeepLink] Gym $gymId not found');
+          return;
+        }
+        if (!ctx.mounted) return;
+        await GymJoinPromptSheet.show(
+          ctx,
+          gymId: gymId,
+          gymName: gym.name,
+          uid: uid,
+          qrToken: token,
+        );
+      }
+    } catch (e, stack) {
+      debugPrint('[DeepLink] gym checkin error: $e');
+      unawaited(CrashlyticsService()
+          .recordError(e, stack, reason: 'DeepLinkService._handleGymCheckin'));
     }
   }
 }

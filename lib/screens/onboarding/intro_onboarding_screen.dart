@@ -61,9 +61,10 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen> {
   }
 
   void _next() {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
     if (_page < _total - 1) {
       _pageCtrl.nextPage(
-        duration: AppMotion.normal,
+        duration: reduceMotion ? Duration.zero : AppMotion.normal,
         curve: AppMotion.standard,
       );
     } else {
@@ -75,6 +76,7 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen> {
   Widget build(BuildContext context) {
     final gradStart = _gradients[_page][0];
     final gradEnd = _gradients[_page][1];
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -82,7 +84,7 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen> {
         children: [
           // 1. Animated gradient background
           AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
+            duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 400),
             curve: AppMotion.standard,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -116,19 +118,23 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen> {
               alignment: Alignment.topRight,
               child: AnimatedOpacity(
                 opacity: _page < _total - 1 ? 1.0 : 0.0,
-                duration: AppMotion.fast,
+                duration: reduceMotion ? Duration.zero : AppMotion.fast,
                 child: Padding(
                   padding: EdgeInsets.only(
                     top: AppSpacing.xs.h,
                     right: AppSpacing.md.w,
                   ),
-                  child: TextButton(
-                    onPressed: _page < _total - 1 ? _skip : null,
-                    child: Text(
-                      AppLocalizations.of(context).translate('intro.skip'),
-                      style: AppText.of(context).labelM.copyWith(
-                            color: Colors.white,
-                          ),
+                  child: Semantics(
+                    label: AppLocalizations.of(context).translate('intro.skip'),
+                    button: true,
+                    child: TextButton(
+                      onPressed: _page < _total - 1 ? _skip : null,
+                      child: Text(
+                        AppLocalizations.of(context).translate('intro.skip'),
+                        style: AppText.of(context).labelM.copyWith(
+                              color: Colors.white,
+                            ),
+                      ),
                     ),
                   ),
                 ),
@@ -151,13 +157,14 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _Dots(current: _page, total: _total),
+                    _Dots(current: _page, total: _total, reduceMotion: reduceMotion),
                     SizedBox(height: 24.h),
                     _NavRow(
                       page: _page,
                       total: _total,
                       gradientStartColor: gradStart,
                       onNext: _next,
+                      reduceMotion: reduceMotion,
                     ),
                   ],
                 ),
@@ -266,18 +273,21 @@ class _IllustrationBox extends StatelessWidget {
 class _Dots extends StatelessWidget {
   final int current;
   final int total;
-  const _Dots({required this.current, required this.total});
+  final bool reduceMotion;
+  const _Dots({required this.current, required this.total, required this.reduceMotion});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Semantics(
+      label: 'Page ${current + 1} of $total',
+      child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(total, (i) {
         final isActive = i == current;
         return Padding(
           padding: EdgeInsets.symmetric(horizontal: 4.w),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
+            duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 300),
             curve: AppMotion.standard,
             width: isActive ? 24.w : 8.w,
             height: 8.h,
@@ -290,6 +300,7 @@ class _Dots extends StatelessWidget {
           ),
         );
       }),
+      ),
     );
   }
 }
@@ -301,12 +312,14 @@ class _NavRow extends StatelessWidget {
   final int total;
   final Color gradientStartColor;
   final VoidCallback onNext;
+  final bool reduceMotion;
 
   const _NavRow({
     required this.page,
     required this.total,
     required this.gradientStartColor,
     required this.onNext,
+    required this.reduceMotion,
   });
 
   @override
@@ -319,10 +332,13 @@ class _NavRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        GestureDetector(
+        Semantics(
+          button: true,
+          label: label,
+          child: GestureDetector(
           onTap: onNext,
           child: AnimatedContainer(
-            duration: AppMotion.fast,
+            duration: reduceMotion ? Duration.zero : AppMotion.fast,
             padding: EdgeInsets.symmetric(horizontal: 28.w, vertical: 14.h),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -342,6 +358,7 @@ class _NavRow extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
             ),
+          ),
           ),
         ),
       ],
