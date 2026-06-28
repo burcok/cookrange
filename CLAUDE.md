@@ -80,6 +80,16 @@ Use the shared design system (tokens + reusable components in `lib/core/theme/` 
 After every meaningful change: update the relevant section here, tick/append `TODO.md`, and keep the
 "Key Services / Files" tables accurate. Rules and status must never drift from the code.
 
+### R9 — Shared-file parallel-write guard (MANDATORY)
+**Never let two agents or two tool calls write the same shared JSON/rules file at the same time.**
+This caused a silent key-loss collision in Phase 12. The rule:
+- `en.json` / `tr.json`: all localization key additions must be **sequential** — use a Python
+  `json.load → mutate → json.dump` script one key group at a time, never a raw `sed` patch.
+- `firestore.indexes.json` / `firestore.rules` / `storage.rules`: one agent owns a file per turn.
+- When spawning parallel sub-agents, assign each a **disjoint file set**. If two agents need the same
+  file, serialize them or have one collect both changes and write once.
+- `test/i18n_parity_test.dart` is the CI gate — it must pass after every localization change.
+
 ### Definition of Done (every task must pass)
 ☑ Multi-role reasoning applied · ☑ Optimized (R1) · ☑ Data tier + indexes + rules + seed correct
 (R2/R3) · ☑ Logged (R4) · ☑ Smooth + iOS/Android (R5) · ☑ Dark/Light + EN/TR (R6) ·
@@ -164,6 +174,17 @@ lib/
 | `RecentFoodService` | `recent_food_service.dart` | `users/{uid}/recent_foods`; auto-upserted by `FoodLogService`; max 20 entries; `getRecentFoods`, `getFrequentFoods` |
 | `NotificationPreferencesService` | `notification_preferences_service.dart` | Per-group mute prefs in `users/{uid}.notification_muted`; groups: likes/comments/friends/system/referral |
 | `WeeklyMealPlanService` (extended) | `weekly_meal_plan_service.dart` | Added `getMealPlanHistory`, `restorePlan`, auto-archive to `meal_plan_history/{key}` on every save |
+| `AiCreditService` | `ai_credit_service.dart` | Daily AI credit quotas (free=2/day, premium=20/day); `checkAndConsume(uid, isPremium)`; `resetAt` = next local midnight; `getCreditsStream(uid)` |
+| `AiInsightService` (extended) | `ai_insight_service.dart` | `generateFitnessTwin(user, locale:)` → persists to `users/{uid}/ai_twin_projections`; `getLatestProjectionStream(uid, locale)` / `getProjectionHistoryStream(uid)`; locale-tagged SharedPrefs cache |
+| `AdminService` (extended) | `admin_service.dart` | Added `searchUsers`, `getUsersStream`, `banUser`, `unbanUser`, `setUserRole`, `coachApplicationHistoryStream`, `gymApplicationHistoryStream`, `logAuditAction`, `auditLogStream`, `pendingCountStream` |
+| `AiCreditsSheet` | `screens/ai/widgets/ai_credits_sheet.dart` | Bottom sheet: usage bar, reset countdown, plan chip, upgrade CTA; `AiCreditsSheet.show(context, uid:, isPremium:)` |
+| `AiCreditBadge` | `screens/ai/widgets/ai_credit_badge.dart` | Tappable badge → opens `AiCreditsSheet`; live credit stream |
+
+### Firestore collections (Phase 12 additions)
+| Collection | Purpose |
+|---|---|
+| `users/{uid}/ai_twin_projections/{id}` | Persisted AI fitness projections; fields: `locale`, `generatedAt`, payload, `inputsHash` |
+| `admin_audit/{id}` | Append-only audit log for every admin action (who/what/when/target); admin-only rules |
 
 ### Notifications (architecture)
 - **Never store display text.** Call `NotificationService.sendNotification(type:, actorUid:, actorName:, actorPhotoUrl:, relatedId:, metadata:)`. Text is rendered on the reader's device by `NotificationPresenter` so it's always in their language with the real actor name.

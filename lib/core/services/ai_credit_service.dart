@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/ai_credit_model.dart';
+import 'analytics_service.dart';
 
 /// Singleton service that tracks and gates **daily** AI usage per user.
 ///
@@ -60,9 +61,17 @@ class AiCreditService {
         debugPrint(
             '[AiCreditService] uid=$uid — premium daily limit reached '
             '(${credits.used}/${AiCreditModel.premiumDailyLimit})');
+        unawaited(AnalyticsService().logEvent(
+          name: 'credit_exhausted',
+          parameters: {'uid': uid, 'is_premium': true},
+        ));
         return false;
       }
       unawaited(consumeCredit(uid));
+      unawaited(AnalyticsService().logEvent(
+        name: 'credit_consumed',
+        parameters: {'uid': uid, 'is_premium': true},
+      ));
       return true;
     }
 
@@ -71,10 +80,18 @@ class AiCreditService {
       debugPrint(
           '[AiCreditService] uid=$uid — free daily limit reached '
           '(${credits.used}/${AiCreditModel.freeDailyLimit})');
+      unawaited(AnalyticsService().logEvent(
+        name: 'credit_exhausted',
+        parameters: {'uid': uid, 'is_premium': false},
+      ));
       return false;
     }
 
     await consumeCredit(uid);
+    unawaited(AnalyticsService().logEvent(
+      name: 'credit_consumed',
+      parameters: {'uid': uid, 'is_premium': false},
+    ));
     return true;
   }
 

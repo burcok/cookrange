@@ -12,6 +12,10 @@ import '../../theme/app_typography.dart';
 class AppSheet {
   AppSheet._();
 
+  // Smooth enter (350ms) / exit (260ms) — no bounce, no lag.
+  static const _enterCurve = Cubic(0.2, 0.0, 0.0, 1.0);
+  static const _exitCurve = Cubic(0.5, 0.0, 1.0, 1.0);
+
   static Future<T?> show<T>({
     required BuildContext context,
     required Widget child,
@@ -26,6 +30,12 @@ class AppSheet {
       isScrollControlled: isScrollControlled,
       backgroundColor: Colors.transparent,
       barrierColor: palette.scrim,
+      sheetAnimationStyle: const AnimationStyle(
+        curve: _enterCurve,
+        duration: Duration(milliseconds: 350),
+        reverseCurve: _exitCurve,
+        reverseDuration: Duration(milliseconds: 260),
+      ),
       builder: (ctx) => _SheetShell(
         title: title,
         showHandle: showHandle,
@@ -58,7 +68,8 @@ class _SheetShell extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.transparent,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet.r)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.sheet.r)),
         boxShadow: [
           BoxShadow(
             color: palette.shadow.withValues(alpha: 0.2),
@@ -69,7 +80,8 @@ class _SheetShell extends StatelessWidget {
       ),
       child: Material(
         color: palette.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet.r)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.sheet.r)),
         clipBehavior: Clip.antiAlias,
         child: SafeArea(
           top: false,
@@ -91,15 +103,16 @@ class _SheetShell extends StatelessWidget {
                   ),
                 if (title != null)
                   Padding(
-                    padding: EdgeInsets.fromLTRB(
-                        AppSpacing.xl.w, AppSpacing.sm.h, AppSpacing.xl.w, 0),
+                    padding: EdgeInsets.fromLTRB(AppSpacing.xl.w,
+                        AppSpacing.sm.h, AppSpacing.xl.w, 0),
                     child: Row(
                       children: [
                         Expanded(child: Text(title!, style: t.headlineS)),
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
                           icon: Icon(Icons.close_rounded,
-                              color: palette.textSecondary, size: AppSize.iconMd.r),
+                              color: palette.textSecondary,
+                              size: AppSize.iconMd.r),
                           visualDensity: VisualDensity.compact,
                         ),
                       ],

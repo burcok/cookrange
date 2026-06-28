@@ -206,16 +206,17 @@ class _CoachCard extends StatefulWidget {
 
 class _CoachCardState extends State<_CoachCard>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: AppMotion.normal,
-  );
-  late final Animation<double> _fade =
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+  late final AnimationController _controller;
+  late final Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: AppMotion.normal,
+    );
+    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     final delay = Duration(milliseconds: (widget.index * 60).clamp(0, 400));
     Future<void>.delayed(delay, () {
       if (mounted) _controller.forward();

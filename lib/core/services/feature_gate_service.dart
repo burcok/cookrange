@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +7,7 @@ import '../localization/app_localizations.dart';
 import '../models/subscription_model.dart';
 import '../providers/theme_provider.dart';
 import '../providers/user_provider.dart';
+import 'analytics_service.dart';
 import 'billing_service.dart';
 
 /// Checks whether the current user has access to a feature and shows a
@@ -47,6 +49,10 @@ class FeatureGateService {
     String? featureName,
     String? featureDescription,
   }) {
+    unawaited(AnalyticsService().logEvent(
+      name: 'paywall_shown',
+      parameters: {'feature': featureName ?? 'unknown'},
+    ));
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,

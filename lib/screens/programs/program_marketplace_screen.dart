@@ -230,20 +230,23 @@ class _ProgramCard extends StatefulWidget {
 
 class _ProgramCardState extends State<_ProgramCard>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: AppMotion.normal,
-  );
-  late final Animation<double> _fade =
-      CurvedAnimation(parent: _c, curve: AppMotion.decelerate);
-  late final Animation<Offset> _slide = Tween<Offset>(
-    begin: const Offset(0, 0.12),
-    end: Offset.zero,
-  ).animate(CurvedAnimation(parent: _c, curve: AppMotion.emphasized));
+  late final AnimationController _c;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
 
   @override
   void initState() {
     super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: AppMotion.normal,
+    );
+    _fade = CurvedAnimation(parent: _c, curve: AppMotion.decelerate);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.12),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _c, curve: AppMotion.emphasized));
+
     Future.delayed(widget.animationDelay, () {
       if (mounted) _c.forward();
     });

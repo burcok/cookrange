@@ -317,7 +317,8 @@ class WeeklyMealPlanService {
 
   /// Generates 2 lightweight "what-if" macro alternatives for comparison.
   /// Does NOT write to Firestore — purely ephemeral.
-  Future<List<PlanAlternate>> generatePlanAlternates(UserModel user) async {
+  Future<List<PlanAlternate>> generatePlanAlternates(UserModel user,
+      {String locale = 'en'}) async {
     final p = user.profile;
     final calories = _calculateUserCalories(p);
     final restrictions = [...p.dietaryRestrictionIds, ...p.allergyIds];
@@ -326,6 +327,7 @@ class WeeklyMealPlanService {
       goal: p.primaryGoals.isNotEmpty ? p.primaryGoals.first : 'maintain_weight',
       activityLevel: p.activityLevel,
       restrictions: restrictions.isNotEmpty ? restrictions.join(', ') : 'None',
+      locale: locale,
     );
 
     try {

@@ -4,16 +4,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/models/ai_credit_model.dart';
 import '../../../core/services/ai_credit_service.dart';
 import '../../../core/widgets/ds/ds.dart';
+import 'ai_credits_sheet.dart';
 
-/// Compact pill that shows the user's remaining AI credits.
+/// Compact pill that shows the user's remaining daily AI credits.
+/// Tapping it opens [AiCreditsSheet] with usage details + upgrade CTA.
 ///
-/// - Premium: lock-free ∞ badge in primary color.
-/// - Free > 5 remaining: bolt icon, info color.
-/// - Free 1–5 remaining: warning icon, warning color.
-/// - Free 0 remaining: block icon, error color.
-///
-/// Wrap in a [RepaintBoundary] (already applied internally) so this
-/// stream-driven widget never triggers parent repaints.
+/// Wrap in a [RepaintBoundary] (applied internally) so this stream-driven
+/// widget never triggers parent repaints.
 class AiCreditBadge extends StatelessWidget {
   final String uid;
   final bool isPremium;
@@ -24,33 +21,55 @@ class AiCreditBadge extends StatelessWidget {
     required this.isPremium,
   });
 
+  void _onTap(BuildContext context) {
+    AiCreditsSheet.show(context, uid: uid, isPremium: isPremium);
+  }
+
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
-      child: isPremium ? _UnlimitedBadge() : _FreeBadge(uid: uid),
+      child: GestureDetector(
+        onTap: () => _onTap(context),
+        behavior: HitTestBehavior.opaque,
+        child: isPremium
+            ? _UnlimitedBadge(uid: uid, isPremium: isPremium)
+            : _FreeBadge(uid: uid),
+      ),
     );
   }
 }
 
-// ─── Premium variant ─────────────────────────────────────────────────────────
+// ─── Premium variant ──────────────────────────────────────────────────────────
 
 class _UnlimitedBadge extends StatelessWidget {
+  final String uid;
+  final bool isPremium;
+  const _UnlimitedBadge({required this.uid, required this.isPremium});
+
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final textTheme = AppText.of(context);
-    final color = palette.info;
 
-    return _Pill(
-      color: color,
-      icon: Icons.all_inclusive_rounded,
-      label: 'Unlimited',
-      textTheme: textTheme,
+    return StreamBuilder<AiCreditModel>(
+      stream: AiCreditService()
+          .getCreditsStream(uid, isPremium: isPremium),
+      builder: (context, snapshot) {
+        final credits = snapshot.data;
+        final remaining = credits?.remaining ?? AiCreditModel.premiumDailyLimit;
+
+        return _Pill(
+          color: palette.success,
+          icon: Icons.workspace_premium_rounded,
+          label: '$remaining',
+          textTheme: textTheme,
+        );
+      },
     );
   }
 }
 
-// ─── Free variant (stream-driven) ────────────────────────────────────────────
+// ─── Free variant (stream-driven) ─────────────────────────────────────────────
 
 class _FreeBadge extends StatelessWidget {
   final String uid;
@@ -65,17 +84,16 @@ class _FreeBadge extends StatelessWidget {
       stream: AiCreditService().getCreditsStream(uid),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return AppSkeletonBox(width: 80.w, height: 24.h);
+          return AppSkeletonBox(width: 70.w, height: 24.h);
         }
 
         final credits = snapshot.data!;
         final remaining = credits.remaining;
 
         final (Color color, IconData icon, String label) = switch (remaining) {
-          0 => (palette.error, Icons.block_rounded, 'Limit reached'),
-          <= 5 => (palette.warning, Icons.warning_amber_rounded,
-              '$remaining left'),
-          _ => (palette.info, Icons.bolt_rounded, '$remaining AI calls left'),
+          0 => (palette.error, Icons.block_rounded, '0'),
+          1 => (palette.warning, Icons.warning_amber_rounded, '1'),
+          _ => (palette.info, Icons.bolt_rounded, '$remaining'),
         };
 
         return _Pill(

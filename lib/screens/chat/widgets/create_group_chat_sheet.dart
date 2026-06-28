@@ -1,4 +1,4 @@
-import 'dart:async' show unawaited;
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/localization/app_localizations.dart';
@@ -22,6 +22,7 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
   final ChatService _chatService = ChatService();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
+  StreamSubscription? _friendsSubscription;
 
   List<UserModel> _friends = [];
   List<UserModel> _filteredFriends = [];
@@ -49,11 +50,12 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
   void dispose() {
     _nameController.dispose();
     _searchController.dispose();
+    _friendsSubscription?.cancel();
     super.dispose();
   }
 
   Future<void> _loadFriends() async {
-    _friendService.getFriendsStream().listen((friends) {
+    _friendsSubscription = _friendService.getFriendsStream().listen((friends) {
       if (mounted) {
         setState(() {
           _friends = friends;

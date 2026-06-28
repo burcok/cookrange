@@ -709,7 +709,9 @@
       "title": "Geliştirici",
       "test_mode": "Test Modu",
       "test_mode_subtitle": "Arayüz stres testi için uygulamayı maksimum hacimli sahte verilerle doldur"
-    }
+    },
+    "ai_credits_title": "AI ve Krediler",
+    "ai_credits_sub": "Günlük AI kullanımı ve yükseltme seçenekleri"
   },
   "sharing": {
     "recipe_title": "🍽️ {name}\n🔥 {calories} kcal\nProtein: {protein}g · Karb: {carbs}g · Yağ: {fat}g\n\nYapay zeka destekli Cookrange ile öğünlerini planla! {appTag}{link}",
@@ -718,7 +720,7 @@
     "progress_subject": "Cookrange İlerlemem",
     "streak_line": "\n🔥 {days} günlük seri!",
     "post_author_line": "{author} tarafından, ",
-    "post_on_line": "",
+    "post_on_line": "üzerinde ",
     "post_text": "\"{caption}\"\n\n— {authorLine}Cookrange Topluluğu {appTag}{link}",
     "post_subject": "Cookrange Topluluk Gönderisi",
     "shopping_list_prefix": "🛒 {title}\n\n",
@@ -778,7 +780,11 @@
       "meal_plan_title": "Yemek planın hazır",
       "meal_plan_body": "Hedeflerine uygun yeni bir haftalık beslenme planı hazırlandı.",
       "system_title": "Bildirim",
-      "system_body": "Yeni bir güncellemen var."
+      "system_body": "Yeni bir güncellemen var.",
+      "coach_application_approved": "Antrenör başvurun onaylandı! 🎉",
+      "coach_application_rejected": "Antrenör başvurun incelendi",
+      "gym_application_approved": "Salon başvurun onaylandı! 🎉",
+      "gym_application_rejected": "Salon başvurun incelendi"
     }
   },
   "common": {
@@ -938,6 +944,15 @@
     "meal_type_snack": "Atıştırmalık",
     "meal_breakdown": {
       "title": "Bugünün Öğün Dağılımı"
+    },
+    "role_card": {
+      "admin_title": "Yönetici Paneli",
+      "admin_pending": "{n} bekleyen inceleme",
+      "admin_all_clear": "Tüm başvurular incelendi",
+      "coach_title": "Antrenörlük Panelim",
+      "coach_clients": "{n} aktif danışan",
+      "gym_title": "Spor Salonum",
+      "gym_members": "{n} aktif üye"
     }
   },
   "ai_chat": {
@@ -1008,7 +1023,8 @@
     "coming_soon": "Yakında",
     "voice_assistant": "Sesli Asistan",
     "ai_assistant": "AI Asistan",
-    "gym_dashboard": "Salonum"
+    "gym_dashboard": "Salonum",
+    "my_coaching": "Antrenörlüğüm"
   },
   "community": {
     "title": "Topluluk",
@@ -1163,7 +1179,11 @@
     "section_grow": "Cookrange ile Büyü",
     "register_gym": "Salonunu Kaydet",
     "become_coach": "Antrenör Ol",
-    "my_coaching": "Antrenörlüğüm"
+    "my_coaching": "Antrenörlüğüm",
+    "coach_app_pending": "Antrenör Başvurusu Beklemede",
+    "gym_app_pending": "Salon Başvurusu Beklemede",
+    "coach_app_rejected": "Antrenör Başvurusu Reddedildi",
+    "gym_app_rejected": "Salon Başvurusu Reddedildi"
   },
   "account_suspended": {
     "title_header": "HESAP DURUMU",
@@ -1891,7 +1911,20 @@
     "credits_exhausted_body": "Bugünkü tüm AI kredin kullanıldı. Yarın tekrar dene veya daha fazlası için yükselt.",
     "credits_daily_free": "Bugün {used}/{limit} AI hakkı kullanıldı",
     "credits_daily_premium": "Bugün {used}/{limit} AI hakkı kullanıldı",
-    "credits_reset_in": "{h} saat {m} dakika sonra sıfırlanır"
+    "credits_reset_in": "{h} saat {m} dakika sonra sıfırlanır",
+    "credits_sheet_title": "AI Krediler",
+    "credits_free_plan": "Ücretsiz Plan",
+    "credits_premium_plan": "Premium Plan",
+    "credits_daily_usage": "Bugünkü Kullanım",
+    "credits_buy_more": "Kredi Satın Al",
+    "credits_upgrade_cta": "Premium'a Yükselt",
+    "credits_bonus_pool": "+{n} bonus kredi",
+    "credits_premium_perks": "Günde 20 AI üretim · Öncelikli sıra · Tüm özellikler",
+    "credits_unlimited_label": "Günlük {limit}",
+    "twin_empty_title": "Henüz Projeksiyon Yok",
+    "twin_empty_msg": "AI fitness projeksiyonunuzu oluşturarak dönüşüm yol haritanızı görün.",
+    "twin_limit_title": "Günlük Limit Doldu",
+    "twin_limit_msg": "Bugünkü AI kredinizi kullandınız. Premium'a geçerek günlük 20 kredi kazanın."
   },
   "ai_credits": {
     "unlimited": "Sınırsız",
@@ -1981,6 +2014,40 @@
     "evidence_docs": "Kanıt Belgeleri",
     "references": "Referanslar",
     "business_doc": "İşletme Lisansı",
-    "gym_photo": "Salon Fotoğrafı"
+    "gym_photo": "Salon Fotoğrafı",
+    "users_title": "Kullanıcı Yönetimi",
+    "search_placeholder": "İsim veya e-posta ara...",
+    "user_role": "Rol",
+    "user_since": "{date} tarihinden beri üye",
+    "ban_user": "Kullanıcıyı Engelle",
+    "unban_user": "Engeli Kaldır",
+    "ban_reason_hint": "Engelleme nedeni...",
+    "ban_confirm": "Bu kullanıcıyı engellemek istiyor musun?",
+    "unban_confirm": "Bu kullanıcının engelini kaldırmak istiyor musun?",
+    "promote_role": "Rolü Değiştir",
+    "role_consumer": "Tüketici",
+    "role_coach": "Antrenör",
+    "role_gym_owner": "Salon Sahibi",
+    "role_admin": "Admin",
+    "action_ban": "Engelle",
+    "action_unban": "Engeli Kaldır",
+    "action_change_role": "Rolü Değiştir",
+    "no_users": "Kullanıcı bulunamadı",
+    "history_title": "Başvuru Geçmişi",
+    "filter_all": "Tümü",
+    "filter_approved": "Onaylananlar",
+    "filter_rejected": "Reddedilenler",
+    "audit_log_title": "Denetim Günlüğü",
+    "audit_no_entries": "Henüz denetim kaydı yok.",
+    "pending_badge": "{n} beklemede",
+    "tab_users": "Kullanıcılar",
+    "tab_history": "Geçmiş",
+    "dashboard_title": "Genel Bakış",
+    "dashboard_pending_coaches": "Bekleyen Koçlar",
+    "dashboard_pending_gyms": "Bekleyen Salonlar",
+    "dashboard_total_users": "Toplam Kullanıcı",
+    "dashboard_open_reports": "Açık Raporlar",
+    "dashboard_all_clear": "Temiz — bekleyen öğe yok",
+    "dashboard_view_all": "Tümünü Gör"
   }
 }

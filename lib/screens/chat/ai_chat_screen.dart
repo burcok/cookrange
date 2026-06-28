@@ -11,11 +11,10 @@ import '../../core/providers/user_provider.dart';
 import '../../core/services/ai/ai_chat_history_service.dart';
 import '../../core/services/ai/ai_chat_service.dart';
 import '../../core/services/ai_credit_service.dart';
-import '../../core/services/feature_gate_service.dart';
 import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_typography.dart';
-import '../../core/widgets/ds/app_snackbar.dart';
 import '../ai/widgets/ai_credit_badge.dart';
+import '../ai/widgets/ai_credits_sheet.dart';
 
 class AIChatScreen extends StatefulWidget {
   /// Optional message auto-sent when the screen opens (from voice transcript).
@@ -80,11 +79,13 @@ class _AIChatScreenState extends State<AIChatScreen> {
     final canUse = await AiCreditService().checkAndConsume(uid, isPremium);
     if (!canUse) {
       if (!mounted) return;
-      AppSnackBar.warning(
-        context,
-        'AI limit reached. Upgrade to Premium for unlimited access.',
-      );
-      unawaited(FeatureGateService().showPaywall(context));
+      setState(() {
+        _history.add(const AIChatMessage(
+          role: '_limit',
+          content: '__limit__',
+        ));
+      });
+      _scrollToBottom();
       return;
     }
 
@@ -314,14 +315,113 @@ class _AIChatScreenState extends State<AIChatScreen> {
   }
 
   Widget _buildMessageList(AppPalette palette, Color primary) {
+    final l10n = AppLocalizations.of(context);
     return ListView.builder(
       controller: _scrollController,
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
       itemCount: _messages.length,
       itemBuilder: (context, i) {
         final msg = _messages[i];
+        if (msg.role == '_limit') {
+          return _buildLimitBubble(context, l10n, palette, primary);
+        }
         return _buildBubble(msg, palette, primary);
       },
+    );
+  }
+
+  Widget _buildLimitBubble(
+    BuildContext context,
+    AppLocalizations l10n,
+    AppPalette palette,
+    Color primary,
+  ) {
+    final appText = AppText.of(context);
+    final user = context.read<UserProvider>().user;
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          CircleAvatar(
+            radius: 14.r,
+            backgroundColor: palette.warning.withValues(alpha: 0.15),
+            child: Icon(Icons.bolt_rounded, size: 15.sp, color: palette.warning),
+          ),
+          SizedBox(width: 8.w),
+          Flexible(
+            child: Container(
+              constraints: BoxConstraints(maxWidth: 0.80.sw),
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+              decoration: BoxDecoration(
+                color: palette.warning.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16.r),
+                  topRight: Radius.circular(16.r),
+                  bottomLeft: Radius.circular(4.r),
+                  bottomRight: Radius.circular(16.r),
+                ),
+                border: Border.all(
+                  color: palette.warning.withValues(alpha: 0.30),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: palette.shadow.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.translate('ai.twin_limit_title'),
+                    style: appText.labelL.copyWith(
+                      color: palette.warning,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    l10n.translate('ai.twin_limit_msg'),
+                    style: appText.bodyM.copyWith(
+                      fontSize: 13.sp,
+                      color: palette.textPrimary,
+                      height: 1.45,
+                    ),
+                  ),
+                  if (user != null) ...[
+                    SizedBox(height: 10.h),
+                    GestureDetector(
+                      onTap: () => AiCreditsSheet.show(
+                        context,
+                        uid: user.uid,
+                        isPremium: user.subscriptionTier.isPremiumOrAbove,
+                      ),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 12.w, vertical: 6.h),
+                        decoration: BoxDecoration(
+                          color: primary,
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: Text(
+                          l10n.translate('settings.premium.upgrade_btn'),
+                          style: appText.labelM.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

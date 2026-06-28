@@ -24,6 +24,7 @@ import '../common/generic_error_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
 import 'widgets/tracking_card.dart';
 import 'widgets/ai_insight_card.dart';
+import 'widgets/role_quick_card.dart';
 import 'widgets/meal_breakdown_card.dart';
 import 'widgets/exercise_log_sheet.dart';
 import 'widgets/meal_plan_comparison_sheet.dart';
@@ -685,6 +686,13 @@ class _HomeScreenState extends State<HomeScreen>
         ],
         SizedBox(height: 24.h),
         const TrackingCard(),
+        if (userModel.userRole != UserRole.consumer) ...[
+          SizedBox(height: 16.h),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            child: RoleQuickCard(user: userModel),
+          ),
+        ],
         SizedBox(height: 20.h),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w),

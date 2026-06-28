@@ -22,6 +22,11 @@ enum NotificationType {
   referral,
   streakMilestone,
   mealPlan,
+  // Application lifecycle
+  coachApplicationApproved,
+  coachApplicationRejected,
+  gymApplicationApproved,
+  gymApplicationRejected,
 }
 
 extension NotificationTypeX on NotificationType {

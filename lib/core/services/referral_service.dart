@@ -141,7 +141,7 @@ class ReferralService {
         ),
       );
 
-      // Record a €5 commission for the referral code owner.
+      // Record a ₺5 commission for the referral code owner.
       unawaited(CommissionService().recordReferralCommission(
         ownerUid: ownerUid,
         refereeUid: uid,

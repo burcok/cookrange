@@ -8,6 +8,7 @@ import '../providers/user_provider.dart';
 import '../localization/app_localizations.dart';
 import '../providers/theme_provider.dart';
 import '../theme/app_palette.dart';
+import '../../screens/coach/coach_dashboard_screen.dart';
 import '../../screens/gym/gym_dashboard_screen.dart';
 import '../../screens/gym/gym_discovery_screen.dart';
 import '../../screens/home/food_scan_screen.dart';
@@ -421,6 +422,7 @@ class _QuickActionsGrid extends StatelessWidget {
     final userRole =
         context.watch<UserProvider>().user?.userRole ?? UserRole.consumer;
     final isGymOwner = userRole == UserRole.gymOwner;
+    final isCoach = userRole == UserRole.coach;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 36),
@@ -489,7 +491,8 @@ class _QuickActionsGrid extends StatelessWidget {
                 palette: palette,
                 onTap: () => onInner(const FavoritesScreen()),
               ),
-              // Role-aware gym tile: real for gym owners, coming-soon for others
+              // Role-aware 6th tile: gym owner → My Gym, coach → My Coaching,
+              // everyone else → Find a Gym
               if (isGymOwner)
                 _ActionTile(
                   icon: Icons.fitness_center_rounded,
@@ -498,6 +501,15 @@ class _QuickActionsGrid extends StatelessWidget {
                   isDark: isDark,
                   palette: palette,
                   onTap: () => onInner(const GymDashboardScreen()),
+                )
+              else if (isCoach)
+                _ActionTile(
+                  icon: Icons.sports_rounded,
+                  color: const Color(0xFF6366F1),
+                  label: l10n.translate('quick_actions.my_coaching'),
+                  isDark: isDark,
+                  palette: palette,
+                  onTap: () => onInner(const CoachDashboardScreen()),
                 )
               else
                 _ActionTile(

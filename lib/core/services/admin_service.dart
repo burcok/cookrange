@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/coach_application_model.dart';
+import 'analytics_service.dart';
 import '../models/coach_profile_model.dart';
 import '../models/gym_application_model.dart';
 import '../models/gym_model.dart';
@@ -52,6 +53,23 @@ class AdminService {
           .get();
       return coachSnap.size + gymSnap.size;
     });
+  }
+
+  /// Total registered user count (approximate — reads first page of users stream).
+  Stream<int> userCountStream() {
+    return _db
+        .collection('users')
+        .snapshots()
+        .map((s) => s.size);
+  }
+
+  /// Count of open/pending reports in the `reports` collection.
+  Stream<int> openReportCountStream() {
+    return _db
+        .collection('reports')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((s) => s.size);
   }
 
   // ── Approve Coach ──────────────────────────────────────────────────────────
@@ -263,5 +281,138 @@ class AdminService {
       'reviewerUid': adminUid,
       'reviewerNotes': message,
     });
+  }
+
+  // ── User Management ────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    debugPrint('AdminService: searchUsers query="$query"');
+    final end = query.isEmpty ? query : '\$query\uf8ff';
+    final snap = await _db
+        .collection('users')
+        .where('display_name', isGreaterThanOrEqualTo: query)
+        .where('display_name', isLessThan: end)
+        .limit(20)
+        .get();
+    return snap.docs.map((d) => {'uid': d.id, ...d.data()}).toList();
+  }
+
+  Stream<List<Map<String, dynamic>>> getUsersStream() {
+    return _db
+        .collection('users')
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((s) => s.docs.map((d) => {'uid': d.id, ...d.data()}).toList());
+  }
+
+  Future<void> banUser(String uid, String reason) async {
+    final adminUid = _auth.currentUser?.uid;
+    if (adminUid == null) throw Exception('AdminService: not authenticated');
+
+    debugPrint('AdminService: banUser uid=$uid reason="$reason"');
+
+    final batch = _db.batch();
+    batch.set(_db.collection('admin').doc('status').collection(uid).doc('flags'), {
+      'is_banned': true,
+      'ban_reason': reason,
+      'banned_at': FieldValue.serverTimestamp(),
+      'banned_by': adminUid,
+    }, SetOptions(merge: true));
+    batch.update(_db.collection('users').doc(uid), {'is_banned': true});
+    await batch.commit();
+
+    await logAuditAction(
+      action: 'ban_user',
+      targetUid: uid,
+      metadata: {'reason': reason},
+    );
+    debugPrint('AdminService: banUser done uid=$uid');
+  }
+
+  Future<void> unbanUser(String uid) async {
+    final adminUid = _auth.currentUser?.uid;
+    if (adminUid == null) throw Exception('AdminService: not authenticated');
+
+    debugPrint('AdminService: unbanUser uid=$uid');
+
+    final batch = _db.batch();
+    batch.set(_db.collection('admin').doc('status').collection(uid).doc('flags'), {
+      'is_banned': false,
+    }, SetOptions(merge: true));
+    batch.update(_db.collection('users').doc(uid), {'is_banned': false});
+    await batch.commit();
+
+    await logAuditAction(action: 'unban_user', targetUid: uid);
+    debugPrint('AdminService: unbanUser done uid=$uid');
+  }
+
+  Future<void> setUserRole(String uid, String role) async {
+    final adminUid = _auth.currentUser?.uid;
+    if (adminUid == null) throw Exception('AdminService: not authenticated');
+
+    debugPrint('AdminService: setUserRole uid=$uid role=$role');
+
+    await _db.collection('users').doc(uid).update({'user_role': role});
+    await logAuditAction(
+      action: 'set_user_role',
+      targetUid: uid,
+      metadata: {'role': role},
+    );
+  }
+
+  // ── Application History ────────────────────────────────────────────────────
+
+  Stream<List<CoachApplicationModel>> coachApplicationHistoryStream(
+      {String? status}) {
+    Query<Map<String, dynamic>> q = _db.collection('coach_applications');
+    if (status != null) q = q.where('status', isEqualTo: status);
+    return q
+        .orderBy('reviewedAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((s) => s.docs.map(CoachApplicationModel.fromFirestore).toList());
+  }
+
+  Stream<List<GymApplicationModel>> gymApplicationHistoryStream(
+      {String? status}) {
+    Query<Map<String, dynamic>> q = _db.collection('gym_applications');
+    if (status != null) q = q.where('status', isEqualTo: status);
+    return q
+        .orderBy('reviewedAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((s) => s.docs.map(GymApplicationModel.fromFirestore).toList());
+  }
+
+  // ── Audit Log ──────────────────────────────────────────────────────────────
+
+  Future<void> logAuditAction({
+    required String action,
+    required String targetUid,
+    Map<String, dynamic>? metadata,
+  }) async {
+    final adminUid = _auth.currentUser?.uid;
+    debugPrint('AdminService: audit action=$action targetUid=$targetUid');
+    await _db.collection('admin_audit').add({
+      'action': action,
+      'targetUid': targetUid,
+      'adminUid': adminUid,
+      'createdAt': FieldValue.serverTimestamp(),
+      if (metadata != null) 'metadata': metadata,
+    });
+    unawaited(AnalyticsService().logEvent(
+      name: 'admin_action',
+      parameters: {'action': action, 'target_uid': targetUid},
+    ));
+  }
+
+  Stream<List<Map<String, dynamic>>> auditLogStream() {
+    return _db
+        .collection('admin_audit')
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList());
   }
 }

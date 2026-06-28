@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../models/user_nutrition_profile.dart';
@@ -12,10 +14,15 @@ import '../services/firestore_service.dart';
 /// `user` — which already has the private nutrition data merged into
 /// `onboardingData` via [UserModel.withPrivateNutrition] — so existing call
 /// sites require no changes.
+///
+/// A live Firestore stream watches the user document and auto-refreshes when
+/// role/subscription fields change (e.g., admin approves a coach application).
 class UserProvider extends ChangeNotifier {
   UserModel? _user;
   UserNutritionProfile _nutritionProfile = UserNutritionProfile.empty;
   bool _isLoading = false;
+
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userDocSub;
 
   UserModel? get user => _user;
 
@@ -25,9 +32,12 @@ class UserProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
 
+  // ─── Public API ─────────────────────────────────────────────────────────────
+
   Future<void> loadUser({bool silent = false}) async {
     final authUser = AuthService().currentUser;
     if (authUser == null) {
+      await _stopLiveListener();
       _user = null;
       _nutritionProfile = UserNutritionProfile.empty;
       notifyListeners();
@@ -40,24 +50,9 @@ class UserProvider extends ChangeNotifier {
     }
 
     try {
-      final base = await AuthService().getUserData(authUser.uid);
-      if (base != null) {
-        // Load owner-only PII and merge into the model so user.profile is full.
-        final privateData = await FirestoreService()
-            .getPrivateNutritionData(authUser.uid);
-        if (privateData != null && privateData.isNotEmpty) {
-          _user = base.withPrivateNutrition(privateData);
-        } else {
-          _user = base;
-        }
-        _nutritionProfile =
-            UserNutritionProfile.fromOnboardingData(_user!.onboardingData);
-      } else {
-        _user = null;
-        _nutritionProfile = UserNutritionProfile.empty;
-      }
+      await _fetchAndMerge(authUser.uid);
     } catch (e) {
-      debugPrint('Error loading user in UserProvider: $e');
+      debugPrint('UserProvider.loadUser error: $e');
     } finally {
       if (!silent) {
         _isLoading = false;
@@ -66,6 +61,10 @@ class UserProvider extends ChangeNotifier {
         notifyListeners();
       }
     }
+
+    // Start live listener after the first full load so role/subscription
+    // changes (e.g. admin approval) update the app without a restart.
+    _startLiveListener(authUser.uid);
   }
 
   void setUser(UserModel? user) {
@@ -118,11 +117,74 @@ class UserProvider extends ChangeNotifier {
       await Future.wait(futures);
       await refreshUser();
     } catch (e) {
-      debugPrint('Error updating user profile: $e');
+      debugPrint('UserProvider.updateUserProfile error: $e');
       rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  // ─── Live Firestore listener ────────────────────────────────────────────────
+
+  void _startLiveListener(String uid) {
+    if (_userDocSub != null) return; // already listening
+
+    _userDocSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .listen(
+      (snap) async {
+        if (!snap.exists) return;
+        final data = snap.data();
+        if (data == null) return;
+
+        // Only reload when role or subscription tier actually changed —
+        // avoids noisy rebuilds on every field touch.
+        final newRole = data['user_role'] as String?;
+        final newTier = data['subscription_tier'] as String?;
+        final oldRole = _user?.onboardingData?['user_role'] as String?;
+        final oldTier = _user?.subscriptionTier.name;
+
+        if (newRole != oldRole || newTier != oldTier) {
+          debugPrint(
+              'UserProvider: role/tier changed ($oldRole→$newRole, $oldTier→$newTier) — refreshing');
+          await _fetchAndMerge(uid);
+          notifyListeners();
+        }
+      },
+      onError: (e) =>
+          debugPrint('UserProvider live listener error: $e'),
+    );
+  }
+
+  Future<void> _stopLiveListener() async {
+    await _userDocSub?.cancel();
+    _userDocSub = null;
+  }
+
+  Future<void> _fetchAndMerge(String uid) async {
+    final base = await AuthService().getUserData(uid);
+    if (base != null) {
+      final privateData =
+          await FirestoreService().getPrivateNutritionData(uid);
+      if (privateData != null && privateData.isNotEmpty) {
+        _user = base.withPrivateNutrition(privateData);
+      } else {
+        _user = base;
+      }
+      _nutritionProfile =
+          UserNutritionProfile.fromOnboardingData(_user!.onboardingData);
+    } else {
+      _user = null;
+      _nutritionProfile = UserNutritionProfile.empty;
+    }
+  }
+
+  @override
+  void dispose() {
+    _userDocSub?.cancel();
+    super.dispose();
   }
 }

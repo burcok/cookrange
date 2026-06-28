@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/providers/language_provider.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/services/ai_credit_service.dart';
 import '../../core/services/recipe_generation_service.dart';
 import '../../core/widgets/ds/ds.dart';
+import '../ai/widgets/ai_credits_sheet.dart';
 import '../recipe/recipe_detail_screen.dart';
 import '../recipe/favorites_screen.dart' show FavoritesBody;
 
@@ -47,6 +50,22 @@ class _ExploreScreenState extends State<ExploreScreen>
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
 
+    // Credit gate — capture user/locale synchronously before any await
+    final userProv = context.read<UserProvider>();
+    final locale =
+        context.read<LanguageProvider>().currentLocale.languageCode;
+    final uid = userProv.user?.uid;
+    final isPremium = userProv.user?.subscriptionTier.isPremiumOrAbove ?? false;
+    if (uid != null) {
+      final canUse = await AiCreditService().checkAndConsume(uid, isPremium);
+      if (!canUse) {
+        if (!mounted) return;
+        unawaited(AiCreditsSheet.show(context, uid: uid, isPremium: isPremium));
+        return;
+      }
+    }
+
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -64,6 +83,7 @@ class _ExploreScreenState extends State<ExploreScreen>
         avoidIngredients: profile?.avoidIngredients ?? [],
         maxTotalMinutes: _cookTimeMinutes(_selectedFilter),
         difficulty: _filterDifficulty(_selectedFilter),
+        locale: locale,
       );
 
       if (recipe != null) {

@@ -119,6 +119,7 @@ class _DietaryPreferencesScreenState extends State<DietaryPreferencesScreen> {
                 onPressed: _save,
                 loading: _isSaving,
                 size: AppButtonSize.small,
+                expand: false,
               ),
             ),
         ],

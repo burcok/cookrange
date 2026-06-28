@@ -83,7 +83,7 @@ class ProgramModel {
 
   bool get isFree => price == 0.0;
   bool get isPaid => price > 0.0;
-  String get priceDisplay => isFree ? 'Free' : '€${price.toStringAsFixed(0)}';
+  String get priceDisplay => isFree ? 'Free' : '₺${price.toStringAsFixed(0)}';
 
   factory ProgramModel.fromFirestore(
       DocumentSnapshot<Map<String, dynamic>> doc) {

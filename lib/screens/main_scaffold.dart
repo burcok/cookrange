@@ -22,6 +22,7 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold>
     with SingleTickerProviderStateMixin {
   late AnimationController _menuController;
+  NavigationProvider? _navigationProvider;
 
   @override
   void initState() {
@@ -32,7 +33,9 @@ class _MainScaffoldState extends State<MainScaffold>
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NavigationProvider>().addListener(_handleNavChange);
+      if (!mounted) return;
+      _navigationProvider = context.read<NavigationProvider>();
+      _navigationProvider?.addListener(_handleNavChange);
       Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) context.read<UserProvider>().refreshUser();
       });
@@ -56,6 +59,7 @@ class _MainScaffoldState extends State<MainScaffold>
 
   @override
   void dispose() {
+    _navigationProvider?.removeListener(_handleNavChange);
     _menuController.dispose();
     super.dispose();
   }

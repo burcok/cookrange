@@ -19,6 +19,7 @@ class RecipeGenerationService {
     List<String> avoidIngredients = const [],
     int? maxTotalMinutes,
     String? difficulty,
+    String locale = 'en',
   }) async {
     try {
       final prompt = _promptService.generateRecipePrompt(
@@ -28,6 +29,7 @@ class RecipeGenerationService {
         avoidIngredients: avoidIngredients,
         maxTotalMinutes: maxTotalMinutes,
         difficulty: difficulty,
+        locale: locale,
       );
 
       final jsonResponse = await _aiService.generateJson(

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'analytics_service.dart';
 import 'log_service.dart';
 import 'notification_service.dart';
 import '../models/notification_model.dart';
@@ -386,10 +387,16 @@ class FirestoreService {
     _log.info('Updating user role for uid: $uid to $roleValue',
         service: _serviceName);
     try {
+      final snap = await _firestore.collection('users').doc(uid).get();
+      final oldRole = (snap.data()?['user_role'] as String?) ?? 'user';
       await _firestore
           .collection('users')
           .doc(uid)
           .update({'user_role': roleValue});
+      unawaited(AnalyticsService().logEvent(
+        name: 'role_upgrade_completed',
+        parameters: {'old_role': oldRole, 'new_role': roleValue},
+      ));
       _log.info('Successfully updated user role for uid: $uid',
           service: _serviceName);
     } catch (e, s) {

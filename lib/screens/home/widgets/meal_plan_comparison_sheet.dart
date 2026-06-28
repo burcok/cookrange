@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/models/weekly_meal_plan_model.dart';
+import '../../../core/providers/language_provider.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/services/ai_credit_service.dart';
 import '../../../core/services/weekly_meal_plan_service.dart';
 import '../../../core/widgets/ds/ds.dart';
+import '../../ai/widgets/ai_credits_sheet.dart';
 
 class MealPlanComparisonSheet {
   static Future<void> show(
@@ -14,16 +18,33 @@ class MealPlanComparisonSheet {
     required UserModel user,
     required WeeklyMealPlanModel currentPlan,
     required VoidCallback onApplyAlternate,
-  }) {
-    return AppSheet.show(
+  }) async {
+    // Credit gate — check before opening sheet
+    final isPremium = user.subscriptionTier.isPremiumOrAbove;
+    final canUse =
+        await AiCreditService().checkAndConsume(user.uid, isPremium);
+    if (!canUse) {
+      if (context.mounted) {
+        unawaited(
+            AiCreditsSheet.show(context, uid: user.uid, isPremium: isPremium));
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+    final locale =
+        context.read<LanguageProvider>().currentLocale.languageCode;
+
+    unawaited(AppSheet.show(
       context: context,
       title: AppLocalizations.of(context).translate('meal_compare.title'),
       child: _MealPlanComparisonBody(
         user: user,
         currentPlan: currentPlan,
         onApplyAlternate: onApplyAlternate,
+        locale: locale,
       ),
-    );
+    ));
   }
 }
 
@@ -31,11 +52,13 @@ class _MealPlanComparisonBody extends StatefulWidget {
   final UserModel user;
   final WeeklyMealPlanModel currentPlan;
   final VoidCallback onApplyAlternate;
+  final String locale;
 
   const _MealPlanComparisonBody({
     required this.user,
     required this.currentPlan,
     required this.onApplyAlternate,
+    required this.locale,
   });
 
   @override
@@ -57,8 +80,8 @@ class _MealPlanComparisonBodyState extends State<_MealPlanComparisonBody> {
 
   Future<void> _loadAlternates() async {
     try {
-      final alts =
-          await WeeklyMealPlanService().generatePlanAlternates(widget.user);
+      final alts = await WeeklyMealPlanService()
+          .generatePlanAlternates(widget.user, locale: widget.locale);
       if (mounted) {
         setState(() {
           _alternates = alts;

@@ -15,7 +15,7 @@ class CommissionService {
 
   // ── Write ──────────────────────────────────────────────────────────────────
 
-  /// Records a €5 referral commission for the code owner when their code is used.
+  /// Records a ₺5 referral commission for the code owner when their code is used.
   Future<void> recordReferralCommission({
     required String ownerUid,
     required String refereeUid,
@@ -36,7 +36,7 @@ class CommissionService {
       );
       await _commissions(ownerUid).add(model.toFirestore());
       debugPrint(
-          '[CommissionService] Referral commission €$amount recorded for $ownerUid (referee: $refereeUid)');
+          '[CommissionService] Referral commission ₺$amount recorded for $ownerUid (referee: $refereeUid)');
     } catch (e) {
       debugPrint('[CommissionService] Failed to record referral commission: $e');
     }
@@ -63,7 +63,7 @@ class CommissionService {
       );
       await _commissions(coachUid).add(model.toFirestore());
       debugPrint(
-          '[CommissionService] Coach session commission €$amount recorded for $coachUid (client: $clientUid)');
+          '[CommissionService] Coach session commission ₺$amount recorded for $coachUid (client: $clientUid)');
     } catch (e) {
       debugPrint(
           '[CommissionService] Failed to record coach session commission: $e');
@@ -111,7 +111,7 @@ class CommissionService {
       }
 
       debugPrint(
-          '[CommissionService] Summary for $uid: total=€$totalEarned pending=€$pendingAmount paid=€$paidAmount');
+          '[CommissionService] Summary for $uid: total=₺$totalEarned pending=₺$pendingAmount paid=₺$paidAmount');
       return EarningsSummaryModel(
         totalEarned: totalEarned,
         pendingAmount: pendingAmount,
@@ -141,7 +141,7 @@ class CommissionService {
         'total': summary.pendingAmount,
       });
       debugPrint('[CommissionService] Payout requested for $uid '
-          '(amount: €${summary.pendingAmount})');
+          '(amount: ₺${summary.pendingAmount})');
     } catch (e) {
       debugPrint('[CommissionService] Failed to record payout request: $e');
     }

@@ -61,6 +61,14 @@ class NotificationPresenter {
         return l10n.translate('notifications.feed.meal_plan_title');
       case NotificationType.system:
         return l10n.translate('notifications.feed.system_title');
+      case NotificationType.coachApplicationApproved:
+        return l10n.translate('notifications.feed.coach_application_approved');
+      case NotificationType.coachApplicationRejected:
+        return l10n.translate('notifications.feed.coach_application_rejected');
+      case NotificationType.gymApplicationApproved:
+        return l10n.translate('notifications.feed.gym_application_approved');
+      case NotificationType.gymApplicationRejected:
+        return l10n.translate('notifications.feed.gym_application_rejected');
     }
   }
 
@@ -113,6 +121,11 @@ class NotificationPresenter {
         return l10n.translate('notifications.feed.cat_meal');
       case NotificationType.system:
         return l10n.translate('notifications.feed.cat_system');
+      case NotificationType.coachApplicationApproved:
+      case NotificationType.coachApplicationRejected:
+      case NotificationType.gymApplicationApproved:
+      case NotificationType.gymApplicationRejected:
+        return l10n.translate('notifications.feed.cat_system');
     }
   }
 
@@ -139,6 +152,12 @@ class NotificationPresenter {
         return Icons.restaurant;
       case NotificationType.system:
         return Icons.system_update;
+      case NotificationType.coachApplicationApproved:
+      case NotificationType.gymApplicationApproved:
+        return Icons.check_circle_rounded;
+      case NotificationType.coachApplicationRejected:
+      case NotificationType.gymApplicationRejected:
+        return Icons.cancel_rounded;
     }
   }
 
@@ -166,6 +185,12 @@ class NotificationPresenter {
         return palette.success;
       case NotificationType.system:
         return palette.warning;
+      case NotificationType.coachApplicationApproved:
+      case NotificationType.gymApplicationApproved:
+        return palette.success;
+      case NotificationType.coachApplicationRejected:
+      case NotificationType.gymApplicationRejected:
+        return palette.error;
     }
   }
 }

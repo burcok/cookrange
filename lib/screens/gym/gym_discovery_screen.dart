@@ -482,6 +482,7 @@ class _GymCard extends StatelessWidget {
               onPressed: onJoin,
               loading: isJoining,
               size: AppButtonSize.small,
+              expand: false,
             ),
           ],
         ),

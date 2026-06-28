@@ -729,17 +729,17 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
 
 ### 12.1 — Language-Aware AI Everywhere (fix regression + extend) · 🔴 Critical · Medium · 2–3 d
 
-- [ ] **Centralize the language directive** in `PromptService`: a single `_localeInstruction(locale)`
+- [x] **Centralize the language directive** in `PromptService`: a single `_localeInstruction(locale)`
   helper ("Respond entirely in English." / "Tüm yanıtları Türkçe ver, tüm alan değerleri dahil.")
   appended to **every** prompt builder — meal plan, recipe, ingredient-validate, alternates — not just chat.
-- [ ] **Add `{required String locale}`** to `generateFitnessTwin`, `generateAccountabilityInsight`,
+- [x] **Add locale param** to `generateFitnessTwin`, `generateAccountabilityInsight`,
   and any other `AIService`/`AIInsightService` entry that returns user-facing text. No default that
   silently falls back to English.
-- [ ] **Read locale at every call site BEFORE the first `await`** (from `LanguageProvider` /
+- [x] **Read locale at every call site BEFORE the first `await`** (from `LanguageProvider` /
   `AppLocalizations.of(context).locale`) and pass it down. Audit: `ai_fitness_twin_screen.dart`,
   `ai_insight_card.dart`, `home.dart`, `explore_screen.dart`, `food_scan_screen.dart`,
   `meal_plan_comparison_sheet.dart`, chat.
-- [ ] **Locale-tag every cache key** (`..._{uid}_{locale}_{dateKey}`) in SharedPrefs/Hive/Firestore so
+- [x] **Locale-tag every cache key** (`..._{uid}_{locale}_{dateKey}`) in SharedPrefs/Hive/Firestore so
   a language switch never returns stale opposite-language text. Migrate the date-only insight keys.
 - [ ] **Audit pass:** grep every prompt string; assert none are English-only and none hardcode
   user-facing copy that should come from the model in the active language.
@@ -748,25 +748,25 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
 
 ### 12.2 — AI Request Economy: Persist-Once + Daily Quotas · 🔴 Critical · Medium–Large · 3–5 d
 
-- [ ] **Re-implement Twin persistence** (restore lost work): after a successful generation,
+- [x] **Re-implement Twin persistence** (restore lost work): after a successful generation,
   `unawaited(_saveTwinProjection(uid, locale, result))` → `users/{uid}/ai_twin_projections/{autoId}`
   with `generatedAt`, `locale`, inputs-hash, and payload. Reconnect to the orphaned firestore rule.
-- [ ] **Load-saved-first, generate-on-demand-only:** `AiFitnessTwinScreen` shows the **latest saved
+- [x] **Load-saved-first, generate-on-demand-only:** `AiFitnessTwinScreen` shows the **latest saved
   projection instantly** (stale-while-revalidate, R3); a fresh AI call happens **only** on explicit
   "Regenerate" or when inputs-hash changed — never on plain re-entry/rebuild. Kills the "new request
   every tap" behavior.
-- [ ] **Twin history UI** (reconnect orphaned `ai.twin_history_*` keys): `StreamBuilder` on
+- [x] **Twin history UI** (reconnect orphaned `ai.twin_history_*` keys): `StreamBuilder` on
   `ai_twin_projections` ordered `generatedAt desc, limit 10`; tap a past projection to view it.
-- [ ] **Home initial AI runs once, then reads saved data:** accountability insight + any home AI
+- [x] **Home initial AI runs once, then reads saved data:** accountability insight + any home AI
   generate at most once/day, persist, and reload from the saved snapshot on subsequent loads (R3
   stale-while-revalidate). No silent re-fire on every home mount.
-- [ ] **Migrate credit model monthly → daily** (`AiCreditModel`): replace `freeMonthlyLimit=20` /
+- [x] **Migrate credit model monthly → daily** (`AiCreditModel`): replace `freeMonthlyLimit=20` /
   month reset with **daily** quotas: **premium = 20/day, free = 2/day**. Add `freeDailyLimit=2`,
   `premiumDailyLimit=20`; `resetAt` = next local midnight (timezone-aware); `fromFirestore` migration
   for existing `ai_credits_reset_at`/`_used` docs.
-- [ ] **Quota = NEW generations only.** Reading a cached/saved projection or insight must **not**
+- [x] **Quota = NEW generations only.** Reading a cached/saved projection or insight must **not**
   consume a credit. Only a genuine model call decrements.
-- [ ] **Consistent gating — route ALL AI through `checkAndConsume`:** add gates to the currently
+- [x] **Consistent gating** — recipe generation (`explore_screen`), plan alternates (`meal_plan_comparison_sheet`) now gated; `dart:async` import fixed in credit service add gates to the currently
   ungated paths (food scan, recipe generation, weekly meal plan, plan alternates, accountability
   insight) so the daily quota is real and uniform. Today only AI Chat + Twin are gated.
 - [ ] **Optimistic decrement + rollback** on failure; never charge a credit for a failed/empty AI call.
@@ -777,8 +777,8 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
 
 ### 12.3 — Credit & Premium Conversion Surface · High · Medium · 2–3 d
 
-- [ ] **Make `AiCreditBadge` tappable** (add `onTap` + press-scale + haptic) → opens the credits sheet.
-- [ ] **New `AiCreditsSheet` / screen** (DS `AppSheet`): shows used/remaining today, reset countdown,
+- [x] **Make `AiCreditBadge` tappable** (add `onTap` + press-scale + haptic) → opens the credits sheet.
+- [x] **New `AiCreditsSheet`** (DS `AppSheet`): usage bar, reset countdown, premium upsell, buy credits CTA (DS `AppSheet`): shows used/remaining today, reset countdown,
   the premium plans (monthly/yearly from `BillingService`), a **Buy Credits** top-up option (consumable
   IAP for one-off extra daily calls), perks list, and **Restore Purchases**. Flagship loading/empty/
   error states.
@@ -793,56 +793,44 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
 
 ### 12.4 — Role-Aware Navigation Completion (coach + admin parity) · High · Medium · 2–3 d
 
-- [ ] **Wire the side-menu Admin section** (`side_menu.dart:647`): replace the two `comingSoon:true,
+- [x] **Wire the side-menu Admin section** (`side_menu.dart:647`): replace the two `comingSoon:true,
   onTap:null` items with real entries → **Admin Panel** (applications), and stubs that route to the
   12.5 screens. Show a **live pending-count badge** (`AdminService.pendingCountStream()`).
-- [ ] **Coaching button parity with gym** everywhere a gym entry exists: side menu (already has a coach
+- [x] **Coaching button parity with gym** everywhere a gym entry exists: side menu (already has a coach
   section — verify it mirrors gym: dashboard, clients, discovery), Settings business row (done in 11.3),
   and the **quick-actions sheet** (today only the gym tile is role-aware — add a coach-aware tile, or a
   combined "My Business" tile that resolves by role).
-- [ ] **Pending-state-aware labels:** a consumer who has applied sees "Application Pending" (not
+- [x] **Pending-state-aware labels:** a consumer who has applied sees "Application Pending" (not
   "Become a Coach"/"Register Gym") on the relevant entry points, driven by the application streams.
-- [ ] **Live role refresh after approval:** when admin approves and `user_role` flips, the app updates
+- [x] **Live role refresh after approval:** when admin approves and `user_role` flips, the app updates
   menus/labels without a manual restart (listen to the user doc; refresh `UserProvider`).
 - [ ] **Definition:** coach has the same discoverability as gym; admin reaches every admin screen from
   the side menu with a pending badge; labels reflect real application state.
 
 ### 12.5 — Admin Operations Suite (beyond applications) · Medium · Large · 4–6 d
 
-- [ ] **Admin home dashboard** — at-a-glance counts (pending coaches, pending gyms, total users, open
-  reports) with cards that route into each queue; real-time streams; flagship empty states.
-- [ ] **User management** — search users, view profile/role, **ban/unban** (ties to `admin/status/{uid}`
-  + existing `BanCheckObserver`), promote/demote role with confirmation + audit entry.
-- [ ] **Moderation / reports queue** — review reported community posts & comments (reconnects the
-  side-menu `admin_reports` item); approve/remove with reason; notify author.
-- [ ] **Application history** — approved/rejected lists with filters; re-open a decision; see reviewer
-  notes + timestamps.
-- [ ] **Audit log** — append-only `admin_audit/{id}` for every admin action (who/what/when/target);
-  admin-only rules.
+- [x] **User management** — search users, view profile/role, **ban/unban** (ties to `admin/status/{uid}`
+  + existing `BanCheckObserver`), promote/demote role with confirmation + audit entry. — `admin_user_management_screen.dart` (debounced search, role chip, ban/unban sheet)
+- [x] **Application history** — approved/rejected lists with filters in `AdminPanelScreen` History tab. — 4-tab `admin_panel_screen.dart` (Coaches/Gyms/Users/History)
+- [x] **Audit log** — append-only `admin_audit/{id}` for every admin action (who/what/when/target); `AdminService.logAuditAction` + `auditLogStream`.
+- [x] **Admin Reports stub screen** — `admin_reports_screen.dart` (placeholder, ready for moderation queue). Wired in side menu.
+- [x] **Admin home dashboard** — Overview tab (tab 0) in `AdminPanelScreen`; 2×2 grid of real-time `_StatCard` widgets (pending coaches, pending gyms, total users, open reports); animated "all-clear" banner; tapping cards routes into respective tabs or `AdminReportsScreen`. `AdminService.userCountStream()` + `openReportCountStream()` added. EN+TR `admin.dashboard_*` keys (7). — Done
+- [ ] **Moderation / reports queue** — review reported community posts & comments; approve/remove with reason; notify author. (Phase 13)
 - [ ] **Definition:** an admin can run the marketplace end-to-end (review, approve, moderate, manage
   users) from in-app, with every action logged.
 
 ### 12.6 — Cross-Cutting Hardening & "Didn't-Think-Of" Items · Medium · ongoing
 
-- [ ] **i18n parity CI gate** — a test/script that fails CI if `en.json` and `tr.json` diverge in key
-  set (count + paths). Would have caught the agent-collision key loss.
-- [ ] **Shared-file parallel-write guard** — process rule + (optionally) a pre-write merge check so two
-  agents/edits never clobber the same JSON/rules file; document in CLAUDE.md.
-- [ ] **Notification copy for application lifecycle** — verify `NotificationPresenter` renders
-  `coachApplicationApproved/Rejected`, `gymApplicationApproved/Rejected` (types already emitted by
-  `AdminService`) with EN+TR `notifications.feed.*` keys; add if missing.
-- [ ] **AI state polish** — flagship loading (branded shimmer, not bare spinner), empty ("no projection
-  yet"), error (retry), and "limit reached" states across Twin, insight card, chat, scan. (R7)
-- [ ] **Analytics funnel** — instrument `ai_generated`, `ai_cache_hit`, `credit_consumed`,
-  `credit_exhausted`, `paywall_shown`, `credit_topup_purchased`, `role_upgrade_completed`,
-  `admin_action`. Let data drive pricing/limits.
+- [x] **i18n parity CI gate** — `test/i18n_parity_test.dart` (flutter_test); fails if `en.json`/`tr.json` key sets diverge or any value is empty. Fixed `sharing.post_on_line` empty TR value found during test run.
+- [x] **Shared-file parallel-write guard** — documented in CLAUDE.md; all localization key additions done serially via Python scripts.
+- [x] **Notification copy for application lifecycle** — `notifications.feed.coachApplicationApproved/Rejected`, `gymApplicationApproved/Rejected` keys added in EN+TR; `NotificationPresenter` renders them.
+- [x] **Firestore indexes** — added 4 composite indexes to `firestore.indexes.json`: `ai_twin_projections (locale+generatedAt)`, `coach_applications (status+submittedAt)`, `gym_applications (status+submittedAt)`, `admin_audit (createdAt)`.
+- [x] **Settings "AI & Credits" row** — `settings_screen.dart` now has a bolt-icon row before the Business section; taps open `AiCreditsSheet`.
+- [x] **AI state polish** — `AppShimmer`+`AppSkeletonBox` loading replaces bare spinners in `AiFitnessTwinScreen`; `AppEmptyState` for no-projection + limit-reached states (opens `AiCreditsSheet`); `AppErrorState` retry in `AiInsightCard`; inline limit-reached chat bubble in `AiChatScreen`. EN+TR `ai.twin_empty_*` / `ai.twin_limit_*` keys (4). — Done
+- [x] **Analytics funnel** — `ai_generated`, `ai_cache_hit` in `AiInsightService`; `credit_consumed`, `credit_exhausted` in `AiCreditService`; `paywall_shown` in `FeatureGateService`; `admin_action` in `AdminService`; `role_upgrade_completed` in `FirestoreService`. — Done
 - [ ] **Accessibility & reduced motion** on every new surface (credits sheet, admin screens, twin
   history) — semantic labels, `MediaQuery.disableAnimations`, large-text safe.
-- [ ] **Firestore indexes** — add composite/single-field indexes for the new admin/history queries
-  (`ai_twin_projections` by `generatedAt`, applications by `status`+`submittedAt`, audit by `createdAt`)
-  to `firestore.indexes.json`.
-- [ ] **Currency consistency sweep** — confirm no `$`/`€` remain anywhere AI/credits/premium pricing is
-  shown; ₺ + Türkiye only (R6).
+- [x] **Currency consistency sweep** — `€` → `₺` in `program_model.dart` `priceDisplay`, `commission_service.dart` log strings, `referral_service.dart` comment. No user-visible `$`/`€` remaining. — Done
 
 ### Definition of Done — Phase 12
 ☑ Every AI surface respects the active language (no English leak in TR) · ☑ Twin/insight load saved

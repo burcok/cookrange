@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ai_insight_model.dart';
 import '../models/user_model.dart';
+import 'analytics_service.dart';
 import 'food_log_service.dart';
 import 'storage_service.dart';
 import 'ai/ai_service.dart';
@@ -71,6 +72,10 @@ class AiInsightService {
         if (msg.isNotEmpty) {
           debugPrint(
               'AiInsightService: returning cached insight for $todayStr ($locale)');
+          unawaited(AnalyticsService().logEvent(
+            name: 'ai_cache_hit',
+            parameters: {'type': 'accountability_insight'},
+          ));
           return AiInsightModel.fromJson({'message': msg, 'tips': tips});
         }
       }
@@ -115,6 +120,10 @@ ${PromptService().localeInstruction(locale)}''';
         debugPrint('AiInsightService: cache write error: $e');
       }
 
+      unawaited(AnalyticsService().logEvent(
+        name: 'ai_generated',
+        parameters: {'type': 'accountability_insight'},
+      ));
       debugPrint(
           'AiInsightService: generated fresh accountability insight ($locale)');
       return insight;
@@ -217,6 +226,10 @@ ${PromptService().localeInstruction(locale)}''';
       final result = await AIService()
           .generateJson(prompt: prompt, jsonStructure: jsonStructure);
 
+      unawaited(AnalyticsService().logEvent(
+        name: 'ai_generated',
+        parameters: {'type': 'fitness_twin'},
+      ));
       debugPrint('AiInsightService: generated fitness twin projection ($locale)');
       // Persist to Firestore — fire-and-forget, does not block UI
       unawaited(_saveTwinProjection(user.uid, locale, result));

@@ -31,6 +31,7 @@ class _AiInsightCardState extends State<AiInsightCard>
   AiInsightModel? _insight;
   bool _isLoading = true;
   bool _isDismissed = false;
+  bool _hasError = false;
 
   late final AnimationController _fadeController = AnimationController(
     vsync: this,
@@ -71,7 +72,7 @@ class _AiInsightCardState extends State<AiInsightCard>
 
   Future<void> _loadInsight() async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _hasError = false; });
 
     try {
       final riskLevel =
@@ -103,7 +104,7 @@ class _AiInsightCardState extends State<AiInsightCard>
       unawaited(_fadeController.forward());
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() { _isLoading = false; _hasError = true; });
     }
   }
 
@@ -130,10 +131,32 @@ class _AiInsightCardState extends State<AiInsightCard>
   Widget build(BuildContext context) {
     if (_isDismissed) return const SizedBox.shrink();
 
+    if (_isLoading) {
+      return RepaintBoundary(child: _buildSkeleton());
+    }
+
+    if (_hasError) {
+      return RepaintBoundary(
+        child: _buildErrorState(context),
+      );
+    }
+
     return RepaintBoundary(
       child: FadeTransition(
         opacity: _fadeAnim,
-        child: _isLoading ? _buildSkeleton() : _buildCard(context),
+        child: _buildCard(context),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AppCard(
+      child: AppErrorState(
+        title: l10n.translate('ai.twin_error'),
+        retryLabel: l10n.translate('common.retry'),
+        onRetry: _loadInsight,
+        compact: true,
       ),
     );
   }

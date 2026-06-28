@@ -709,7 +709,9 @@
       "title": "Developer",
       "test_mode": "Test Mode",
       "test_mode_subtitle": "Fill app with maximum-volume dummy data for UI stress testing"
-    }
+    },
+    "ai_credits_title": "AI & Credits",
+    "ai_credits_sub": "Daily AI usage and upgrade options"
   },
   "sharing": {
     "recipe_title": "🍽️ {name}\n🔥 {calories} kcal\nProtein: {protein}g · Carbs: {carbs}g · Fat: {fat}g\n\nDiscover AI-powered meal plans on Cookrange! {appTag}{link}",
@@ -778,7 +780,11 @@
       "meal_plan_title": "Your meal plan is ready",
       "meal_plan_body": "A fresh weekly nutrition plan has been prepared for your goals.",
       "system_title": "Notification",
-      "system_body": "You have a new update."
+      "system_body": "You have a new update.",
+      "coach_application_approved": "Your coach application was approved! 🎉",
+      "coach_application_rejected": "Your coach application was reviewed",
+      "gym_application_approved": "Your gym application was approved! 🎉",
+      "gym_application_rejected": "Your gym application was reviewed"
     }
   },
   "common": {
@@ -938,6 +944,15 @@
     "meal_type_snack": "Snack",
     "meal_breakdown": {
       "title": "Today's Meal Breakdown"
+    },
+    "role_card": {
+      "admin_title": "Admin Panel",
+      "admin_pending": "{n} pending reviews",
+      "admin_all_clear": "All applications reviewed",
+      "coach_title": "My Coaching",
+      "coach_clients": "{n} active clients",
+      "gym_title": "My Gym",
+      "gym_members": "{n} active members"
     }
   },
   "ai_chat": {
@@ -1008,7 +1023,8 @@
     "coming_soon": "Coming Soon",
     "voice_assistant": "Voice Assistant",
     "ai_assistant": "AI Assistant",
-    "gym_dashboard": "My Gym"
+    "gym_dashboard": "My Gym",
+    "my_coaching": "My Coaching"
   },
   "community": {
     "title": "Community",
@@ -1163,7 +1179,11 @@
     "section_grow": "Grow With Cookrange",
     "register_gym": "Register Your Gym",
     "become_coach": "Become a Coach",
-    "my_coaching": "My Coaching"
+    "my_coaching": "My Coaching",
+    "coach_app_pending": "Coach Application Pending",
+    "gym_app_pending": "Gym Application Pending",
+    "coach_app_rejected": "Coach Application Rejected",
+    "gym_app_rejected": "Gym Application Rejected"
   },
   "account_suspended": {
     "title_header": "ACCOUNT STATUS",
@@ -1891,7 +1911,20 @@
     "credits_exhausted_body": "You've used all your AI generations for today. Come back tomorrow or upgrade for more.",
     "credits_daily_free": "{used}/{limit} daily AI credits used",
     "credits_daily_premium": "{used}/{limit} daily AI credits used",
-    "credits_reset_in": "Resets in {h}h {m}m"
+    "credits_reset_in": "Resets in {h}h {m}m",
+    "credits_sheet_title": "AI Credits",
+    "credits_free_plan": "Free Plan",
+    "credits_premium_plan": "Premium Plan",
+    "credits_daily_usage": "Today's Usage",
+    "credits_buy_more": "Buy Credits",
+    "credits_upgrade_cta": "Upgrade to Premium",
+    "credits_bonus_pool": "+{n} bonus credits",
+    "credits_premium_perks": "20 AI generations/day · Priority queue · All features",
+    "credits_unlimited_label": "{limit} daily",
+    "twin_empty_title": "No Projection Yet",
+    "twin_empty_msg": "Generate your first AI fitness projection to see your transformation roadmap.",
+    "twin_limit_title": "Daily Limit Reached",
+    "twin_limit_msg": "You've used all your AI credits for today. Upgrade to Premium for 20 daily credits."
   },
   "ai_credits": {
     "unlimited": "Unlimited",
@@ -1981,6 +2014,40 @@
     "evidence_docs": "Evidence Documents",
     "references": "References",
     "business_doc": "Business License",
-    "gym_photo": "Gym Photo"
+    "gym_photo": "Gym Photo",
+    "users_title": "User Management",
+    "search_placeholder": "Search by name or email...",
+    "user_role": "Role",
+    "user_since": "Member since {date}",
+    "ban_user": "Ban User",
+    "unban_user": "Unban User",
+    "ban_reason_hint": "Reason for ban...",
+    "ban_confirm": "Ban this user?",
+    "unban_confirm": "Remove ban from this user?",
+    "promote_role": "Change Role",
+    "role_consumer": "Consumer",
+    "role_coach": "Coach",
+    "role_gym_owner": "Gym Owner",
+    "role_admin": "Admin",
+    "action_ban": "Ban",
+    "action_unban": "Unban",
+    "action_change_role": "Change Role",
+    "no_users": "No users found",
+    "history_title": "App. History",
+    "filter_all": "All",
+    "filter_approved": "Approved",
+    "filter_rejected": "Rejected",
+    "audit_log_title": "Audit Log",
+    "audit_no_entries": "No audit entries yet.",
+    "pending_badge": "{n} pending",
+    "tab_users": "Users",
+    "tab_history": "History",
+    "dashboard_title": "Overview",
+    "dashboard_pending_coaches": "Pending Coaches",
+    "dashboard_pending_gyms": "Pending Gyms",
+    "dashboard_total_users": "Total Users",
+    "dashboard_open_reports": "Open Reports",
+    "dashboard_all_clear": "All clear — no pending items",
+    "dashboard_view_all": "View All"
   }
 }

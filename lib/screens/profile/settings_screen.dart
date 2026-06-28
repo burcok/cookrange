@@ -22,6 +22,7 @@ import '../../core/services/referral_service.dart';
 import '../../core/utils/app_routes.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../admin/admin_panel_screen.dart';
+import '../ai/widgets/ai_credits_sheet.dart';
 import '../coach/coach_dashboard_screen.dart';
 import '../gym/gym_dashboard_screen.dart';
 import '../legal/legal_screen.dart';
@@ -672,6 +673,38 @@ class SettingsScreen extends StatelessWidget {
                     _ReferralCard(palette: palette, appLoc: appLoc),
 
                     const SizedBox(height: 16),
+
+                    // AI & Credits
+                    if (userProvider.user != null) ...[
+                      _buildGlassSection(
+                        context: context,
+                        title: appLoc.translate('settings.ai_credits_title'),
+                        palette: palette,
+                        children: [
+                          _buildSettingsRow(
+                            context,
+                            icon: Icons.bolt_rounded,
+                            iconColor: palette.warning,
+                            iconBgColor: palette.isDark
+                                ? palette.warning.withValues(alpha: 0.2)
+                                : palette.warning.withValues(alpha: 0.15),
+                            title: appLoc.translate('settings.ai_credits_title'),
+                            subtitle:
+                                appLoc.translate('settings.ai_credits_sub'),
+                            palette: palette,
+                            onTap: () => unawaited(AiCreditsSheet.show(
+                              context,
+                              uid: userProvider.user!.uid,
+                              isPremium: userProvider.user!.subscriptionTier
+                                  .isPremiumOrAbove,
+                            )),
+                            trailing: Icon(Icons.chevron_right_rounded,
+                                color: palette.textSecondary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                    ],
 
                     // Go Pro / Business on-ramp
                     _buildGlassSection(

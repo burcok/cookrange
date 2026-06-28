@@ -302,6 +302,7 @@ class _UserTile extends StatelessWidget {
         return AppButton(
           label: l10n.translate('user_search.add_friend'),
           size: AppButtonSize.small,
+          expand: false,
           loading: isPending,
           onPressed: onAddFriend,
         );

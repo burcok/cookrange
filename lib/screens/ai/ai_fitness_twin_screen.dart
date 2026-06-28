@@ -15,6 +15,7 @@ import '../../core/services/ai_credit_service.dart';
 import '../../core/services/ai_insight_service.dart';
 import '../../core/widgets/ds/ds.dart';
 import 'widgets/ai_credit_badge.dart';
+import 'widgets/ai_credits_sheet.dart';
 
 class AiFitnessTwinScreen extends StatefulWidget {
   const AiFitnessTwinScreen({super.key});
@@ -28,13 +29,21 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
   String _locale = 'en';
   bool _isGenerating = false;
   String? _generateError;
+  bool _limitReached = false;
 
-  late final AnimationController _fadeController = AnimationController(
-    vsync: this,
-    duration: AppMotion.slow,
-  );
-  late final Animation<double> _fadeAnim =
-      CurvedAnimation(parent: _fadeController, curve: AppMotion.decelerate);
+  late final AnimationController _fadeController;
+  late final Animation<double> _fadeAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: AppMotion.slow,
+    );
+    _fadeAnim =
+        CurvedAnimation(parent: _fadeController, curve: AppMotion.decelerate);
+  }
 
   @override
   void didChangeDependencies() {
@@ -58,40 +67,12 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
     final uid = user.uid;
     final isPremium = user.subscriptionTier.isPremiumOrAbove;
 
-    if (mounted) setState(() { _isGenerating = true; _generateError = null; });
+    if (mounted) setState(() { _isGenerating = true; _generateError = null; _limitReached = false; });
 
     final canUse = await AiCreditService().checkAndConsume(uid, isPremium);
     if (!canUse) {
       if (!mounted) return;
-      setState(() { _isGenerating = false; });
-      final l10n = AppLocalizations.of(context);
-      unawaited(AppSheet.show(
-        context: context,
-        title: l10n.translate('ai.credits_exhausted_title'),
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.bolt_rounded,
-                  color: AppPalette.of(context).warning, size: 48.r),
-              SizedBox(height: 16.h),
-              Text(
-                l10n.translate('ai.credits_exhausted_body'),
-                textAlign: TextAlign.center,
-                style: AppText.of(context)
-                    .bodyM
-                    .copyWith(color: AppPalette.of(context).textPrimary),
-              ),
-              SizedBox(height: 24.h),
-              AppButton(
-                label: l10n.translate('settings.premium.upgrade_btn'),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-        ),
-      ));
+      setState(() { _isGenerating = false; _limitReached = true; });
       return;
     }
 
@@ -183,7 +164,11 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
         final data = hasProjection ? doc.data() as Map<String, dynamic>? : null;
 
         if (_isGenerating) {
-          return _buildGeneratingOverlay(l10n, palette, textTheme, data);
+          return _buildGeneratingShimmer(palette, data, l10n, textTheme);
+        }
+
+        if (_limitReached) {
+          return _buildLimitReached(context, l10n, palette, textTheme);
         }
 
         if (_generateError != null && !hasProjection) {
@@ -205,39 +190,46 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
     );
   }
 
-  Widget _buildGeneratingOverlay(
-    AppLocalizations l10n,
+  /// Shimmer skeleton shown while the projection is being generated.
+  /// If stale data exists it is shown at reduced opacity underneath.
+  Widget _buildGeneratingShimmer(
     AppPalette palette,
-    AppText textTheme,
     Map<String, dynamic>? existingData,
+    AppLocalizations l10n,
+    AppText textTheme,
   ) {
-    // If there's stale data, keep it visible under a translucent loading banner
     return Stack(
       children: [
         if (existingData != null)
           Opacity(
-            opacity: 0.4,
+            opacity: 0.35,
             child: _buildScrollContent(
                 l10n, palette, textTheme, existingData, null),
           ),
+        SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: AppShimmer(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const AppSkeletonBox(height: 120, radius: AppRadius.card),
+                  SizedBox(height: 12.h),
+                  const AppSkeletonBox(height: 100, radius: AppRadius.card),
+                  SizedBox(height: 12.h),
+                  const AppSkeletonBox(height: 80, radius: AppRadius.card),
+                  SizedBox(height: 12.h),
+                  const AppSkeletonBox(height: 80, radius: AppRadius.card),
+                ],
+              ),
+            ),
+          ),
+        ),
         Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 48.r,
-                height: 48.r,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: context.watch<ThemeProvider>().primaryColor,
-                ),
-              ),
-              SizedBox(height: 16.h),
-              Text(
-                l10n.translate('ai.twin_generating'),
-                style: textTheme.bodyM.copyWith(color: palette.textSecondary),
-              ),
-            ],
+          child: Text(
+            l10n.translate('ai.twin_generating'),
+            style: textTheme.labelM.copyWith(color: palette.textSecondary),
           ),
         ),
       ],
@@ -250,63 +242,34 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
     AppPalette palette,
     AppText textTheme,
   ) {
-    final primaryColor = context.watch<ThemeProvider>().primaryColor;
+    return AppEmptyState(
+      icon: Icons.self_improvement_rounded,
+      title: l10n.translate('ai.twin_empty_title'),
+      message: _generateError ?? l10n.translate('ai.twin_empty_msg'),
+      actionLabel: l10n.translate('ai.twin_generate'),
+      onAction: _generate,
+    );
+  }
 
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 32.w),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 96.r,
-              height: 96.r,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    primaryColor.withValues(alpha: 0.3),
-                    primaryColor.withValues(alpha: 0.1),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+  Widget _buildLimitReached(
+    BuildContext context,
+    AppLocalizations l10n,
+    AppPalette palette,
+    AppText textTheme,
+  ) {
+    final user = context.read<UserProvider>().user;
+    return AppEmptyState(
+      icon: Icons.bolt_rounded,
+      title: l10n.translate('ai.twin_limit_title'),
+      message: l10n.translate('ai.twin_limit_msg'),
+      actionLabel: l10n.translate('settings.premium.upgrade_btn'),
+      onAction: user == null
+          ? null
+          : () => AiCreditsSheet.show(
+                context,
+                uid: user.uid,
+                isPremium: user.subscriptionTier.isPremiumOrAbove,
               ),
-              child: Icon(
-                Icons.psychology_rounded,
-                color: primaryColor,
-                size: 52.r,
-              ),
-            ),
-            SizedBox(height: 24.h),
-            Text(
-              l10n.translate('ai.twin_subtitle'),
-              style: textTheme.headlineS.copyWith(color: palette.textPrimary),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 8.h),
-            Text(
-              l10n.translate('ai.twin_no_data'),
-              style: textTheme.bodyM.copyWith(color: palette.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 32.h),
-            AppButton(
-              label: l10n.translate('ai.twin_generate'),
-              onPressed: _generate,
-              icon: Icons.auto_awesome_rounded,
-            ),
-            if (_generateError != null) ...[
-              SizedBox(height: 12.h),
-              Text(
-                _generateError!,
-                style: textTheme.labelS.copyWith(color: palette.error),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 
