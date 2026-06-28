@@ -912,7 +912,12 @@ class _ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayName = user?.displayName ?? 'User';
     final photoUrl = user?.photoURL;
-    final (roleName, roleColor) = _roleInfo(user?.userRole);
+    final l10n = AppLocalizations.of(context);
+
+    // Show all roles; fall back to consumer chip when no non-consumer roles exist.
+    final roles = (user?.userRoles.isNotEmpty == true)
+        ? user!.userRoles
+        : [UserRole.consumer];
 
     return GestureDetector(
       onTap: onTap,
@@ -989,23 +994,30 @@ class _ProfileHeader extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 5),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: roleColor.withValues(alpha: isDark ? 0.15 : 0.10),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: roleColor.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: Text(
-                      roleName,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: roleColor,
-                      ),
-                    ),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: roles.map((role) {
+                      final (roleName, roleColor) = _roleInfo(role, l10n);
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: roleColor.withValues(alpha: isDark ? 0.15 : 0.10),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: roleColor.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Text(
+                          roleName,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: roleColor,
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ],
               ),
@@ -1023,16 +1035,16 @@ class _ProfileHeader extends StatelessWidget {
         child: Icon(Icons.person_rounded, size: 26, color: primary.withValues(alpha: 0.7)),
       );
 
-  (String, Color) _roleInfo(UserRole? role) {
+  (String, Color) _roleInfo(UserRole role, AppLocalizations l10n) {
     switch (role) {
       case UserRole.admin:
-        return ('Admin', const Color(0xFFEC4899));
+        return (l10n.translate('role.admin'), const Color(0xFFEC4899));
       case UserRole.coach:
-        return ('Coach', const Color(0xFF6366F1));
+        return (l10n.translate('role.coach'), const Color(0xFF6366F1));
       case UserRole.gymOwner:
-        return ('Gym Owner', primary);
-      default:
-        return ('Member', palette.textSecondary);
+        return (l10n.translate('role.gym_owner'), primary);
+      case UserRole.consumer:
+        return (l10n.translate('role.consumer'), palette.textSecondary);
     }
   }
 }

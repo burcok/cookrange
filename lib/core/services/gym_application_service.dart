@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/gym_application_model.dart';
@@ -13,7 +11,6 @@ class GymApplicationService {
   GymApplicationService._internal();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   static const _col = 'gym_applications';
 
@@ -58,14 +55,6 @@ class GymApplicationService {
     await ref.set(model.toFirestore());
     debugPrint('GymApplicationService: submitted application ${ref.id} for $applicantUid');
     return ref.id;
-  }
-
-  // ignore: unused_element
-  Future<String> _uploadFile(String uid, File file, String name) async {
-    final ext = file.path.endsWith('.pdf') ? 'pdf' : 'jpg';
-    final ref = _storage.ref('gym_applications/$uid/$name.$ext');
-    await ref.putFile(file);
-    return ref.getDownloadURL();
   }
 
   // ── Read ───────────────────────────────────────────────────────────────────

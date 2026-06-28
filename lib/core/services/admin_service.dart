@@ -220,7 +220,8 @@ class AdminService {
 
     debugPrint('AdminService: approving gym application ${app.id}');
 
-    final gymId = 'gym_${app.applicantUid}';
+    // Use application ID as gymId — unique per application, avoids collision on reapply
+    final gymId = app.id;
     final batch = _db.batch();
 
     // 1. Update application status

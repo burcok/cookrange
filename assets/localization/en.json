@@ -2216,5 +2216,11 @@
     "challenge_tagline": "Compete & earn rewards",
     "premium_title": "Unlock All Features",
     "premium_subtitle": "Go Premium to access the full ecosystem"
+  },
+  "role": {
+    "consumer": "Member",
+    "coach": "Coach",
+    "gym_owner": "Gym Owner",
+    "admin": "Admin"
   }
 }

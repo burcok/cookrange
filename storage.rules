@@ -40,6 +40,42 @@ service firebase.storage {
       allow delete: if isOwner(uid);
     }
 
+    // ─── Gym application documents ───────────────────────────────────────────
+    // Path: gym_applications/{uid}/documents/{filename}
+    // Applicant uploads business license, ID docs etc. (PDFs up to 10 MB).
+    // Readable only by the applicant (owner); write/delete by owner only.
+    // Note: storage rules cannot perform Firestore lookups, so admin access
+    // to these files must go through the Firebase Admin SDK server-side.
+    match /gym_applications/{uid}/documents/{fileName} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid)
+        && request.resource.size < 10 * 1024 * 1024;
+      allow delete: if isOwner(uid);
+    }
+
+    // ─── Coach application documents ─────────────────────────────────────────
+    // Path: coach_applications/{uid}/documents/{filename}
+    // Coaching cert, ID docs etc. Same size/access policy as gym docs.
+    match /coach_applications/{uid}/documents/{fileName} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid)
+        && request.resource.size < 10 * 1024 * 1024;
+      allow delete: if isOwner(uid);
+    }
+
+    // ─── Gym Logos ────────────────────────────────────────────────────────────
+    // Path: gym_logos/{gymId}/{filename}
+    // Any authenticated user can view gym logos (public discovery).
+    // Any authenticated user can upload — gym owner enforced app-side for MVP;
+    // tighten to owner-only once gymId→ownerUid is resolvable in storage rules.
+    match /gym_logos/{gymId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated()
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isAuthenticated();
+    }
+
     // ─── Deny all other paths ─────────────────────────────────────────────────
     match /{allPaths=**} {
       allow read, write: if false;

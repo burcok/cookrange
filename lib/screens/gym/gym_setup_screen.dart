@@ -70,6 +70,8 @@ class _GymSetupScreenState extends State<GymSetupScreen>
   ];
 
   bool get _isEditMode => widget.existingGym != null;
+  // Edit mode skips phone + document steps: Basic Info → Location → Settings
+  int get _totalSteps => _isEditMode ? 3 : 5;
 
   @override
   void initState() {
@@ -104,50 +106,44 @@ class _GymSetupScreenState extends State<GymSetupScreen>
 
   void _nextStep() {
     final l10n = AppLocalizations.of(context);
+
     switch (_currentStep) {
-      case 0:
+      case 0: // Basic info — both modes
         if (_nameCtrl.text.trim().isEmpty) {
-          AppSnackBar.warning(
-            context,
-            l10n.translate('gym.setup_name_required'),
-          );
+          AppSnackBar.warning(context, l10n.translate('gym.setup_name_required'));
           return;
         }
-      case 1:
+      case 1: // Location — both modes
         if (_selectedCity == null) {
-          AppSnackBar.warning(
-            context,
-            l10n.translate('gym.location_city_required'),
-          );
+          AppSnackBar.warning(context, l10n.translate('gym.location_city_required'));
           return;
         }
-        if (_selectedLat == null) {
-          AppSnackBar.warning(
-            context,
-            l10n.translate('gym.location_pin_required'),
-          );
+        // New gyms must pin a location; edit mode already has coords from existing gym
+        if (!_isEditMode && _selectedLat == null) {
+          AppSnackBar.warning(context, l10n.translate('gym.location_pin_required'));
           return;
         }
       case 2:
+        if (_isEditMode) {
+          // Edit mode: step 2 = Settings → save directly
+          _save();
+          return;
+        }
+        // Create mode: step 2 = Phone verification
         if (!_phoneVerified) {
-          AppSnackBar.warning(
-            context,
-            l10n.translate('gym.step_phone_subtitle'),
-          );
+          AppSnackBar.warning(context, l10n.translate('gym.step_phone_subtitle'));
           return;
         }
-      case 3:
+      case 3: // Documents — create mode only
         if (_businessLicenseFile == null || _idDocFile == null) {
-          AppSnackBar.warning(
-            context,
-            l10n.translate('gym.docs_required_warning'),
-          );
+          AppSnackBar.warning(context, l10n.translate('gym.docs_required_warning'));
           return;
         }
-      case 4:
+      case 4: // Settings — create mode only → save
         _save();
         return;
     }
+
     setState(() => _currentStep++);
     _pageController.animateToPage(
       _currentStep,
@@ -418,7 +414,7 @@ class _GymSetupScreenState extends State<GymSetupScreen>
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Text(
-              '${_currentStep + 1}/5',
+              '${_currentStep + 1}/$_totalSteps',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -432,7 +428,7 @@ class _GymSetupScreenState extends State<GymSetupScreen>
         children: [
           _StepIndicator(
             currentStep: _currentStep,
-            totalSteps: 5,
+            totalSteps: _totalSteps,
             primary: primary,
             palette: palette,
           ),
@@ -441,7 +437,7 @@ class _GymSetupScreenState extends State<GymSetupScreen>
               controller: _pageController,
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                // Step 1: Basic info
+                // Step 1: Basic info (both modes)
                 _Step1BasicInfo(
                   nameCtrl: _nameCtrl,
                   descCtrl: _descCtrl,
@@ -455,7 +451,7 @@ class _GymSetupScreenState extends State<GymSetupScreen>
                   existingLogoUrl: widget.existingGym?.logoUrl,
                   onLogoChanged: (f) => setState(() => _logoFile = f),
                 ),
-                // Step 2: Location
+                // Step 2: Location (both modes)
                 _Step2Location(
                   selectedCity: _selectedCity,
                   selectedLat: _selectedLat,
@@ -476,54 +472,77 @@ class _GymSetupScreenState extends State<GymSetupScreen>
                   primary: primary,
                   l10n: l10n,
                 ),
-                // Step 3: Phone verification
-                _Step3Phone(
-                  phoneCtrl: _phoneCtrl,
-                  phoneVerified: _phoneVerified,
-                  sendingOtp: _sendingOtp,
-                  verifyingOtp: _verifyingOtp,
-                  otpCtrl: _otpCtrl,
-                  verificationId: _verificationId,
-                  onSendOtp: _sendOtp,
-                  onVerifyOtp: _verifyOtp,
-                  palette: palette,
-                  isDark: isDark,
-                  primary: primary,
-                  l10n: l10n,
-                ),
-                // Step 4: Documents
-                _Step4Documents(
-                  businessLicenseFile: _businessLicenseFile,
-                  idDocFile: _idDocFile,
-                  taxDocFile: _taxDocFile,
-                  onBusinessLicensePicked: (f) => setState(() => _businessLicenseFile = f),
-                  onIdDocPicked: (f) => setState(() => _idDocFile = f),
-                  onTaxDocPicked: (f) => setState(() => _taxDocFile = f),
-                  palette: palette,
-                  isDark: isDark,
-                  primary: primary,
-                  l10n: l10n,
-                ),
-                // Step 5: Settings
-                _Step5Settings(
-                  isPublic: _isPublic,
-                  selectedTags: _selectedTags,
-                  allTags: _gymTags,
-                  palette: palette,
-                  isDark: isDark,
-                  primary: primary,
-                  l10n: l10n,
-                  onPublicChanged: (v) => setState(() => _isPublic = v),
-                  onTagToggled: (tag) {
-                    setState(() {
-                      if (_selectedTags.contains(tag)) {
-                        _selectedTags.remove(tag);
-                      } else {
-                        _selectedTags.add(tag);
-                      }
-                    });
-                  },
-                ),
+                // Edit mode: Step 3 = Settings; Create mode: Step 3 = Phone verification
+                if (_isEditMode)
+                  _Step5Settings(
+                    isPublic: _isPublic,
+                    selectedTags: _selectedTags,
+                    allTags: _gymTags,
+                    palette: palette,
+                    isDark: isDark,
+                    primary: primary,
+                    l10n: l10n,
+                    onPublicChanged: (v) => setState(() => _isPublic = v),
+                    onTagToggled: (tag) {
+                      setState(() {
+                        if (_selectedTags.contains(tag)) {
+                          _selectedTags.remove(tag);
+                        } else {
+                          _selectedTags.add(tag);
+                        }
+                      });
+                    },
+                  )
+                else ...[
+                  // Step 3: Phone verification (create only)
+                  _Step3Phone(
+                    phoneCtrl: _phoneCtrl,
+                    phoneVerified: _phoneVerified,
+                    sendingOtp: _sendingOtp,
+                    verifyingOtp: _verifyingOtp,
+                    otpCtrl: _otpCtrl,
+                    verificationId: _verificationId,
+                    onSendOtp: _sendOtp,
+                    onVerifyOtp: _verifyOtp,
+                    palette: palette,
+                    isDark: isDark,
+                    primary: primary,
+                    l10n: l10n,
+                  ),
+                  // Step 4: Documents (create only)
+                  _Step4Documents(
+                    businessLicenseFile: _businessLicenseFile,
+                    idDocFile: _idDocFile,
+                    taxDocFile: _taxDocFile,
+                    onBusinessLicensePicked: (f) => setState(() => _businessLicenseFile = f),
+                    onIdDocPicked: (f) => setState(() => _idDocFile = f),
+                    onTaxDocPicked: (f) => setState(() => _taxDocFile = f),
+                    palette: palette,
+                    isDark: isDark,
+                    primary: primary,
+                    l10n: l10n,
+                  ),
+                  // Step 5: Settings (create only)
+                  _Step5Settings(
+                    isPublic: _isPublic,
+                    selectedTags: _selectedTags,
+                    allTags: _gymTags,
+                    palette: palette,
+                    isDark: isDark,
+                    primary: primary,
+                    l10n: l10n,
+                    onPublicChanged: (v) => setState(() => _isPublic = v),
+                    onTagToggled: (tag) {
+                      setState(() {
+                        if (_selectedTags.contains(tag)) {
+                          _selectedTags.remove(tag);
+                        } else {
+                          _selectedTags.add(tag);
+                        }
+                      });
+                    },
+                  ),
+                ],
               ],
             ),
           ),
@@ -540,7 +559,7 @@ class _GymSetupScreenState extends State<GymSetupScreen>
     bool isDark,
     AppLocalizations l10n,
   ) {
-    final isLast = _currentStep == 4;
+    final isLast = _currentStep == _totalSteps - 1;
     return Container(
       padding: EdgeInsets.fromLTRB(
         20,

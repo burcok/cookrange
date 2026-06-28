@@ -735,6 +735,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   fontSize: 14,
                   color: palette.textSecondary)),
         ),
+        const SizedBox(height: 10),
+        _buildRoleChips(user),
         if (isPublic) ...[
           const SizedBox(height: 24),
           Row(
@@ -749,6 +751,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 12),
         ]
       ],
+    );
+  }
+
+  Widget _buildRoleChips(UserModel user) {
+    final roles = user.userRoles.isNotEmpty ? user.userRoles : [UserRole.consumer];
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 6,
+      runSpacing: 6,
+      children: roles.map((role) => _RoleChip(role: role)).toList(),
     );
   }
 
@@ -1754,6 +1766,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // _showFriendSearchDialog is removed as it's now internal to _FriendsManagerSheet
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Role chip — shown in the avatar section for each role the user holds
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RoleChip extends StatelessWidget {
+  final UserRole role;
+
+  const _RoleChip({required this.role});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    final (icon, color, labelKey) = switch (role) {
+      UserRole.admin => (Icons.admin_panel_settings_rounded, palette.error, 'role.admin'),
+      UserRole.gymOwner => (Icons.fitness_center_rounded, palette.info, 'role.gym_owner'),
+      UserRole.coach => (Icons.person_rounded, palette.success, 'role.coach'),
+      UserRole.consumer => (Icons.person_outline_rounded, palette.textSecondary, 'role.consumer'),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            l10n.translate(labelKey),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // Unified Friends Manager Modal

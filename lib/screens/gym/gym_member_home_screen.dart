@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/gym_model.dart';
 import '../../core/widgets/ds/ds.dart';
@@ -79,6 +81,10 @@ class GymMemberHomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              if (gym.latitude != null && gym.longitude != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                _LocationCard(gym: gym, primary: primary),
+              ],
               const SizedBox(height: AppSpacing.md),
               _ActionCard(
                 icon: Icons.leaderboard_rounded,
@@ -215,6 +221,99 @@ class _HeaderCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _LocationCard extends StatelessWidget {
+  final GymModel gym;
+  final Color primary;
+
+  const _LocationCard({required this.gym, required this.primary});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final text = AppText.of(context);
+    final t = AppLocalizations.of(context);
+    final center = LatLng(gym.latitude!, gym.longitude!);
+
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 160,
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: center,
+                  initialZoom: 15.0,
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.none,
+                  ),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.cookrange.app',
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: center,
+                        width: 40,
+                        height: 40,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: primary,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: primary.withValues(alpha: 0.4),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.fitness_center_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on_rounded, size: 16, color: primary),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      gym.locationDisplay.isNotEmpty
+                          ? gym.locationDisplay
+                          : t.translate('gym.location_title'),
+                      style: text.bodyM.copyWith(
+                        color: palette.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

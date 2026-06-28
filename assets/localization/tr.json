@@ -2216,5 +2216,11 @@
     "challenge_tagline": "Yarış ve ödül kazan",
     "premium_title": "Tüm Özelliklerin Kilidini Aç",
     "premium_subtitle": "Ekosisteme tam erişim için Premium'a geç"
+  },
+  "role": {
+    "consumer": "Üye",
+    "coach": "Antrenör",
+    "gym_owner": "Salon Sahibi",
+    "admin": "Admin"
   }
 }

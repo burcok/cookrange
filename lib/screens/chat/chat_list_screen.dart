@@ -127,7 +127,6 @@ class _ChatListScreenState extends State<ChatListScreen>
             children: [
               _buildHeader(context, palette, filters),
               const SizedBox(height: 12),
-
               Expanded(
                 child: GlassRefresher(
                   onRefresh: _refreshChats,
@@ -251,7 +250,6 @@ class _ChatListScreenState extends State<ChatListScreen>
             right: 24,
             child: _buildFab(context, palette),
           ),
-
         ],
       ),
     );
@@ -335,10 +333,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                     ),
                     // Search toggle
                     IconButton(
-                      icon: Icon(
-                          _isSearchOpen ? Icons.close : Icons.search,
-                          size: 24,
-                          color: palette.textPrimary),
+                      icon: Icon(_isSearchOpen ? Icons.close : Icons.search,
+                          size: 24, color: palette.textPrimary),
                       onPressed: () {
                         setState(() {
                           if (_isSearchOpen) {
@@ -546,8 +542,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                   child: Text(
                       AppLocalizations.of(context)
                           .translate('chat.signal_send'),
-                      style: TextStyle(
-                          color: palette.textInverse, fontSize: 12)),
+                      style:
+                          TextStyle(color: palette.textInverse, fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(
@@ -580,10 +576,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                      AppLocalizations.of(context)
-                          .translate('chat.meal_share'),
-                      style: TextStyle(
-                          color: palette.textInverse, fontSize: 12)),
+                      AppLocalizations.of(context).translate('chat.meal_share'),
+                      style:
+                          TextStyle(color: palette.textInverse, fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(
@@ -616,10 +611,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                      AppLocalizations.of(context)
-                          .translate('chat.new_group'),
-                      style: TextStyle(
-                          color: palette.textInverse, fontSize: 12)),
+                      AppLocalizations.of(context).translate('chat.new_group'),
+                      style:
+                          TextStyle(color: palette.textInverse, fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(
@@ -653,10 +647,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                      AppLocalizations.of(context)
-                          .translate('chat.new_chat'),
-                      style: TextStyle(
-                          color: palette.textInverse, fontSize: 12)),
+                      AppLocalizations.of(context).translate('chat.new_chat'),
+                      style:
+                          TextStyle(color: palette.textInverse, fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(
@@ -851,12 +844,11 @@ class _ChatListScreenState extends State<ChatListScreen>
                           decoration: BoxDecoration(
                             color: palette.warning.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
-                            border: Border.all(
-                                color: palette.surface, width: 2),
+                            border:
+                                Border.all(color: palette.surface, width: 2),
                           ),
                           child: Center(
-                            child: Icon(Icons.person,
-                                color: palette.warning),
+                            child: Icon(Icons.person, color: palette.warning),
                           ),
                         ),
                         Positioned(
@@ -868,8 +860,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                             decoration: BoxDecoration(
                               color: palette.error,
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: palette.surface, width: 2),
+                              border:
+                                  Border.all(color: palette.surface, width: 2),
                             ),
                             child: Center(
                               child: Text(
@@ -1219,8 +1211,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                 color: palette.success.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(Icons.ramen_dining,
-                  color: palette.success, size: 28),
+              child: Icon(Icons.ramen_dining, color: palette.success, size: 28),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -1263,8 +1254,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                         ),
                         child: Row(
                           children: [
-                            const Text("🥕",
-                                style: TextStyle(fontSize: 10)),
+                            const Text("🥕", style: TextStyle(fontSize: 10)),
                             const SizedBox(width: 4),
                             Text(
                               "${chat.metadata?['new_recipes_count']} Yeni Tarif",
@@ -1306,8 +1296,8 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildChatCard(BuildContext context, ChatModel chat, AppPalette palette,
-      String currentUserId) {
+  Widget _buildChatCard(BuildContext context, ChatModel chat,
+      AppPalette palette, String currentUserId) {
     if (chat.metadata?['subtype'] == 'recipe') {
       return _buildRecipeChatCard(context, chat, palette);
     }

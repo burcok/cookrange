@@ -815,6 +815,238 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 
 ---
 
+## Phase 13 — Consumer Polish, Glassmorphism Overhaul, Marketplace Discovery & Challenge Sunset
+
+> **Scope (user-directed, 2026-06-28).** Six reported defects + one feature removal + two large feature
+> tracks (glassmorphism design language v2, marketplace discovery 2.0) + a curated set of innovative,
+> on-brand additions. Every item is **root-caused from a full source audit** (file:line evidence inline)
+> rather than guessed. Flagship-grade throughout: optimized (R1), correct data tier + indexes + rules
+> (R2/R3), logged (R4), 60fps iOS+Android (R5), light+dark + EN/TR parity (R6), flagship UI incl.
+> loading/empty/error/modal states (R7). **R0–R9 apply to every item.** Build order is dependency-first:
+> bug fixes (13.1) and challenge sunset (13.2) unblock the design + discovery tracks.
+
+> ### 🔴 Root-Caused Defects (audit 2026-06-28 — fix these first)
+> Each defect below has a confirmed root cause. Do **not** re-investigate from scratch.
+> - **Intro tour never shows** — `route_guard.dart:185` force-redirects any user with
+>   `!onboardingCompleted` to `/onboarding` and does **not** exclude `/intro`. The splash *does* route
+>   new users to `/intro` (`splash_screen.dart:454–462`) and the screen *does* set `intro_seen`
+>   (`intro_onboarding_screen.dart:57`), but the guard intercepts and skips it every time. **Fix:** add
+>   `&& routeName != AppRoutes.intro` to the onboarding-redirect condition (`route_guard.dart:185`).
+> - **Profile completeness never reaches 100%** — the "challenge" step is **hardcoded `done: false`**
+>   (`profile_completeness_card.dart:81`) and also deep-links into the soon-removed Challenges feature
+>   (`:8, :82–87`). The card can never self-hide. **Fix:** replace that step (see 13.2 + 13.1).
+> - **Meal-plan action buttons "gone"** — Compare / History / Calendar / Regenerate were collapsed into a
+>   single `more_horiz` overflow `PopupMenuButton` in commit `3000ba7` (`home.dart:1205–1232`). All four
+>   underlying services are **intact** (`meal_plan_comparison_sheet.dart`, `meal_plan_history_screen.dart`,
+>   `meal_plan_calendar_service.dart`); they are merely buried. **Fix:** re-surface as discoverable
+>   icon buttons (13.1).
+> - **Discover hub has no back affordance** — `discover_hub_screen.dart:26–133` Scaffold has **no AppBar**;
+>   it's a pushed route so only the system/edge-swipe back works, with no visible control. **Fix:** add a
+>   DS AppBar / back button (13.1).
+> - **Profile photo intermittently blank** — write/read field names are consistent (`photoURL`:
+>   `profile_screen.dart:275` write, `user_model.dart:93` read, `firestore_service.dart:135` provider
+>   seed). Suspected cause is a **stale `UserProvider` model** after upload / on first paint (the view
+>   reads the cached model, not a fresh doc). **Fix + verify on device** (13.1).
+
+### 13.1 — Critical Bug Fixes (🔴 Critical · Small–Medium · 2–3 d)
+
+- [ ] **Intro tour reachability** — `route_guard.dart:185`: exclude `/intro` from the onboarding-incomplete
+  force-redirect so a brand-new user sees `IntroOnboardingScreen` → completes → `intro_seen=true` →
+  `/onboarding`. Verify returning users (intro already seen) still skip straight to onboarding/home.
+  Add a guard test if feasible. · 🔴
+- [ ] **Profile photo always renders** — confirm the avatar reads from a **freshly-merged** `UserProvider`
+  model after `_pickAndUploadAvatar` (`profile_screen.dart:275`) and on cold open; if Google/Apple
+  `photoURL` is only on the Auth user, persist it to the Firestore doc on first sign-in
+  (`firestore_service.dart:135` already does — verify it isn't overwritten by a later `set` with merge).
+  Use `CachedNetworkImageProvider` with an error/placeholder fallback (DS avatar). QA on real iOS+Android. · 🔴
+- [ ] **Profile completeness correctness** — remove the hardcoded `done: false`
+  (`profile_completeness_card.dart:81`); after challenge sunset (13.2) re-base the 3 steps on **live,
+  meaningful signals**: ① profile photo set, ② first meal logged (existing stream), ③ a goal-oriented
+  action that survives (e.g. *log your weight* via Hive/`WeightLog`, or *set your goal* from the nutrition
+  profile). Card must reach 100% and self-hide. Locale-safe, owner-only gating preserved. · 🔴
+- [ ] **Re-surface meal-plan actions** — `home.dart:1175–1234`: present Compare / History / Calendar /
+  Regenerate as **discoverable DS icon buttons** (compact row that doesn't overflow — the original
+  overflow was an "overflow-fix" side effect). Keep Analytics. Respect AI-credit gating on Compare /
+  Regenerate (already wired). 60fps, no 172px overflow regression. · 🔴
+- [ ] **Discover hub back button** — `discover_hub_screen.dart`: add a DS `AppBar`/`SliverAppBar` with a
+  back `leading` (or a glass back chip in the header) so the pushed route is exitable on both platforms;
+  keep edge-swipe working. · 🟠
+
+### 13.2 — Sunset the Challenges Feature (🟠 High · Medium · 2 d · clean removal)
+
+> Full removal inventory (audited). Remove cleanly — no dangling imports, dead routes, or orphaned keys.
+> Serialize all `en.json`/`tr.json` edits (R9). Run `flutter analyze lib/` + `i18n_parity_test` after.
+
+- [ ] **Delete screens** — `lib/screens/challenges/challenges_screen.dart`,
+  `challenge_detail_screen.dart`, `widgets/create_challenge_sheet.dart`.
+- [ ] **Delete domain** — `lib/core/models/challenge_model.dart` (`ChallengeModel`/`ChallengeType`/
+  `ChallengeDifficulty`), `lib/core/services/challenge_service.dart`,
+  `lib/core/widgets/sponsor_badge.dart` (used only by challenges — verify no other refs).
+- [ ] **Unwire navigation** — remove the `ChallengesScreen` tile from `side_menu.dart:257`; remove the
+  challenges `_DiscoverCard` from `discover_hub_screen.dart:100–108` (re-balance the 2×2 grid → see 13.5
+  replacement card); remove the challenge step + import from `profile_completeness_card.dart:8, 82–87`
+  (handled by 13.1).
+- [ ] **Deep links & sharing** — remove the `challenge/{id}` route in `deep_link_service.dart:92–93`
+  and `SharingService.shareChallenge()` (`sharing_service.dart:136–159`); update the documented growth
+  loop (Phase 8) to drop the challenge hop.
+- [ ] **Backend** — remove `challenges` rules block (`firestore.rules:233–244`) and the two challenge
+  composite indexes (`firestore.indexes.json:50–64`). Existing challenge docs become inert; note a manual
+  console cleanup of the `challenges` collection as a deploy step (no destructive migration in-app).
+- [ ] **Localization** — remove `challenge.*`, `menu.challenges`, `discover.challenges` /
+  `discover.challenge_tagline`, `profile_meter.step_challenge` / `cta_challenge`, `sharing.challenge_*`
+  keys from **both** `en.json` and `tr.json` (sequential, R9). CI parity gate must stay green.
+- [ ] **Sponsored-challenge monetization** — mark Phase 7 "Sponsored challenges" as **retired** (was
+  `ChallengeModel.sponsor*`); preserve the learning, drop the code.
+- [ ] **Definition:** zero references to challenges remain (`grep -ri challenge lib/` clean except history
+  notes); analyze 0 errors; parity test green; Discover grid + profile meter both still look intentional.
+
+### 13.3 — Glassmorphism Design Language v2 (🟠 High · Large · 5–7 d · whole-app)
+
+> User directive: *"make everything's design glassmorphism."* We already have `AppGlassCard` +
+> `AppGradients` (Phase 3.5). This track **formalizes** a cohesive frosted-glass system and re-skins every
+> surface on top of it — without sacrificing contrast/legibility or 60fps (blur is expensive: budget it).
+
+- [ ] **Glass tokens & guardrails** — extend `app_palette.dart` with semantic glass roles
+  (`glassFill`, `glassStroke`, `glassHighlight`, blur sigma + opacity per elevation, light+dark). Define a
+  single `AppGlass` spec so glass is consistent, not ad-hoc `BackdropFilter` scattered around. Document
+  *when not* to glass (long scrolling lists → cheaper tinted surface to protect frame budget; wrap heavy
+  blurs in `RepaintBoundary`).
+- [ ] **Component upgrades** — `AppCard` gains a `glass` variant (or promote `AppGlassCard` as default for
+  hero/section surfaces); glass treatment for `AppSheet` header, `AppButton` tonal/ghost on glass,
+  bottom nav (already glass — align to tokens), app bars, dialogs, chips, badges.
+- [ ] **Screen re-skin sweep** (apply, screen-by-screen, verifying contrast + perf each): home hero &
+  cards, meal plan / recipe / cooking, food scan / analytics, community feed & post detail, chat, profile
+  & settings, shopping, notifications, discover hub, gym & coach screens, admin panel (ties to 13.6),
+  AI twin / credits sheet, onboarding & intro.
+- [ ] **Accessibility** — maintain WCAG-AA text contrast over glass (tinted scrim behind text where blur
+  alone is insufficient); honor `MediaQuery.disableAnimations` / reduce-transparency by degrading to solid
+  tinted surfaces. Test dark + light.
+- [ ] **Performance** — measure with Firebase Performance + DevTools; cap simultaneous `BackdropFilter`
+  layers per screen; `RepaintBoundary` isolation; no jank on mid-tier Android. · R1/R5
+- [ ] **Definition:** every primary surface shares one cohesive frosted-glass language; 60fps on a mid
+  Android device; AA contrast verified; reduce-transparency path correct; analyze 0 errors.
+
+### 13.4 — Context-Aware Loading Skeletons (🟡 Medium · Small · 1–2 d)
+
+> Today the meal plan and every user list render the **same** default `AppSkeletonList`
+> (avatar + 2 text lines) — `home.dart:524` vs coach/gym discovery, clients, admin. The placeholder
+> should preview the *real* content shape.
+
+- [ ] **Skeleton variant API** — extend `app_shimmer.dart`: add purpose-built skeletons —
+  `AppSkeletonMealCard` (image panel + macro-chip row + title, matching `_MealCard`),
+  `AppSkeletonUserTile` (the current avatar+name+subtitle — correct for people lists),
+  `AppSkeletonStatGrid` (admin/dashboard cards), `AppSkeletonChart` (analytics). Keep a generic fallback.
+- [ ] **Wire by context** — meal plan loading (`home.dart:524`) → meal-card skeleton; gym/coach/user
+  lists keep the user-tile skeleton; admin dashboard → stat-grid; analytics → chart. Each skeleton
+  inherits the glass language (13.3). · R7
+- [ ] **Definition:** loading states visually foreshadow their content; no two unrelated surfaces share an
+  identical skeleton; reduced-motion shows a static shimmer-off placeholder.
+
+### 13.5 — Marketplace Discovery 2.0: Gym & Coach Filtering, Sorting & Coach Competition (🟠 High · Large · 6–9 d)
+
+> User directive: city **and district (ilçe)** filtering for gyms & coaches, and a **competitive coach
+> screen** (rating, active students, etc.). Today both discovery screens do only a name substring + `orderBy
+> name` (`gym_service.dart:163–187`, `coach_service.dart:120–144`); the models **lack district, rating, and
+> active-student fields entirely**, and there is **no district dataset** (81 cities hardcoded, zero ilçe).
+> This is the heaviest track — architect the data model first (R0/R2).
+
+**Data foundation (architect first)**
+- [ ] **Turkish location dataset** — add `lib/core/data/turkish_locations.dart` (or seed a read-only
+  `geo/provinces` Firestore ref): 81 il → 973 ilçe, with the existing city lat/lng reused. Single source
+  of truth for the gym setup picker (replace the bare 81-city tuple list at `gym_setup_screen.dart:1006`),
+  discovery filters, and reverse-geocode reconciliation.
+- [ ] **GymModel fields** — add `district` (ilçe), and derive sortable `memberCount` (exists). Persist
+  `district` in `GymSetupScreen`/application + admin approval; backfill optional. Add `latitude/longitude`
+  already present → enables distance sort.
+- [ ] **CoachProfileModel fields** — add `city`, `district`, `avgRating` (double), `ratingCount` (int),
+  `activeStudentCount` (distinct from lifetime `clientCount`). Recompute `activeStudentCount` from accepted
+  clients with a recent log; keep denormalized for cheap sorting (R1, no N+1).
+
+**Coach ratings & reviews (new subsystem — prerequisite for "competitive")**
+- [ ] **Reviews collection** — `coach_profiles/{coachUid}/reviews/{clientUid}` (rating 1–5, text,
+  createdAt); **only a linked/past client can review** (rules-enforced). On write, transactionally update
+  the coach's `avgRating`/`ratingCount` (or a Cloud Function aggregate). Rules + composite index.
+- [ ] **Review UI** — leave-a-review sheet from `CoachClientDetailScreen` / after a session; star display
+  + review list on `CoachProfileScreen`. Loading/empty/error states. EN+TR.
+
+**Filtering, sorting & the competitive screen**
+- [ ] **Gym discovery filters** — DS filter bar: **city dropdown → district dropdown** (cascading from the
+  dataset), tag chips, and sort (Nearest via stored GPS, Most members, A–Z). Push `city`/`district`
+  equality into the Firestore query (not client substring); composite indexes for each sort. Glass filter
+  sheet (13.3). "Near me" uses `PermissionService` location priming (Phase 10.3).
+- [ ] **Coach discovery → competitive directory** — redesign `CoachDiscoveryScreen` into a ranked,
+  "leaderboard-feel" screen: sort by **Top rated**, **Most active students**, **Trending**
+  (rating × recent activity); city/district + specialization filters; rank badges, rating stars, active-
+  student count, price chip, accepting-clients status. Make it feel competitive and aspirational (R7).
+- [ ] **Backend** — composite indexes in `firestore.indexes.json` for every new query
+  (`is_public+city+district+display_name`, `is_public+is_accepting_clients+avgRating DESC`,
+  `is_public+is_accepting_clients+activeStudentCount DESC`, gym `is_public+city+district+name`,
+  gym `is_public+city+memberCount DESC`); rules for reviews. One agent owns each shared file (R9).
+- [ ] **Discover grid replacement** — fill the slot vacated by Challenges (13.2) with a high-value card,
+  e.g. **"Top Coaches"** or **"Gyms Near You"**, routing into the new ranked screens.
+- [ ] **Definition:** a user filters gyms/coaches by city + district and sorts by rating/active-students/
+  distance with server-side queries (no full-collection client filter); coaches can be rated by real
+  clients; the coach directory feels competitive; all states glass-styled, EN+TR, 60fps, analyze 0 errors.
+
+### 13.6 — Admin Panel: Make It Work & Look Premium (🟠 High · Medium · 3–4 d)
+
+> Audit nuance: the wiring is largely **present** (`admin_service.dart` exposes 24 working methods; all 5
+> tabs stream real data). The user's "most things don't work and look bad" most likely stems from
+> **(a) permission/index failures at runtime**, **(b) un-localized hardcoded Turkish strings**, **(c)
+> non-glass, utilitarian visuals**, and **(d) the audit log having no viewer**. Treat as polish +
+> verification, not a rebuild.
+
+- [ ] **Runtime verification pass** — with a real admin account, exercise every tab; confirm
+  `firestore.rules` lets an admin read `users` (search/ban/role) and `reports`, and that every admin query
+  has its composite index (`getUsersStream`, `searchUsers` range query, history streams, report streams).
+  Fix any silent stream errors → show `AppErrorState`, never a blank tab. · 🔴 (this is the likely "doesn't work")
+- [ ] **Audit-log viewer** — `auditLogStream()` exists but no UI consumes it; add an **Audit Log** view
+  (who/what/when/target, relative time) reachable from the dashboard/History.
+- [ ] **Localize hardcoded strings** — `admin_panel_screen.dart` ("Belge yok", "Antrenörlük Sertifikası",
+  etc. ~:1089/1095/1117/1122) → `admin.*` keys (EN+TR, R9).
+- [ ] **Glassmorphism + flagship polish** — re-skin to the 13.3 language: glass stat cards with count-up,
+  glass review/application cards, replace raw `Container` warning boxes
+  (`application_review_screen.dart:363–383`) with DS, consistent empty/loading/error states across tabs.
+- [ ] **Definition:** every admin tab loads real data or a real error (never blank); audit log viewable;
+  no hardcoded strings; panel matches the app's premium glass language; analyze 0 errors.
+
+### 13.7 — Innovative, On-Brand Additions (🆕 recommended — prune freely)
+
+> "Even better than expected" (R0) ideas that leverage assets we *already* built (stored gym GPS, the new
+> ratings system, AI pipeline, role graph). Each is optional; delete any you don't want.
+
+- [ ] **🆕 "Gyms near me" map discovery** — we now store gym `latitude/longitude`; add a map/distance-sorted
+  discovery mode (flutter_map + Haversine) reusing the member-home map card. Distance chip on gym cards.
+- [ ] **🆕 Coach "Rising Stars" + trust signals** — surface trending coaches (rating × recent activity),
+  verified-coach badge (admin-approved), response-time and retention stats — turns the directory into a
+  credible marketplace, not a list.
+- [ ] **🆕 Verified reviews loop** — only clients with logged sessions can review (anti-fraud); a post-goal
+  "rate your coach" prompt closes the quality loop and feeds 13.5 ranking.
+- [ ] **🆕 Replace Challenges' social hook with "Streak Squads"** — lightweight friend groups that share a
+  streak goal (reuses leaderboard + notifications), filling the engagement gap Challenges leaves without its
+  heavy create/join/track machinery.
+- [ ] **🆕 Glassmorphic "Today" widget / home summary** — a single frosted hero summarizing calories,
+  streak, water, next meal — the flagship surface for the 13.3 language.
+- [ ] **🆕 Onboarding intro → personalized** — now that the intro is reachable (13.1), tailor its final
+  slide CTA to route power users straight to Discover (find a gym/coach) vs consumers to meal planning.
+- [ ] **🆕 Coach/gym profile share cards** — extend `ShareableFitnessCard` pattern to shareable coach/gym
+  cards (rating, specialties) for organic marketplace growth.
+- [ ] **🆕 Server-side AI quota enforcement** (carried from 12.2) — bundle with the marketplace work since
+  both touch the proxy/security surface.
+
+### Definition of Done — Phase 13
+☑ All six root-caused defects fixed + device-verified (intro shows, photo renders, completeness hits 100%
+& self-hides, meal-plan actions discoverable, discover has back) · ☑ Challenges fully removed — no dead
+refs/routes/keys, parity test green · ☑ One cohesive glassmorphism language across every surface, AA
+contrast + reduce-transparency path, 60fps on mid Android · ☑ Context-appropriate skeletons everywhere ·
+☑ Gym & coach city+district filtering + sorting are server-side; coach ratings live; competitive coach
+directory shipped · ☑ Admin panel loads real data or real errors, audit log viewable, fully localized &
+glass-polished · ☑ All new copy EN+TR (sequential writes, R9), light+dark, iOS+Android · ☑ New indexes &
+rules deployed for every new query · ☑ `flutter analyze lib/` 0 errors · ☑ CLAUDE.md + this roadmap
+updated (R8).
+
+---
+
 ## Recommended MVP Scope (ship first — public beta)
 
 **Theme: "The AI nutrition app that actually tracks you."** Drop the OS vision for v1.0.
