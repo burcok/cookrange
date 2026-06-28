@@ -36,11 +36,7 @@ class PushNotificationService {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     // Request permission (iOS + Android 13+)
-    final settings = await _fcm.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    final settings = await _fcm.requestPermission();
     debugPrint(
         'PushNotificationService: permission status: ${settings.authorizationStatus}');
 

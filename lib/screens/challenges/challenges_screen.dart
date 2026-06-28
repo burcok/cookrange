@@ -7,6 +7,7 @@ import '../../core/models/challenge_model.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/services/challenge_service.dart';
 import '../../core/widgets/ds/ds.dart';
+import '../../core/widgets/sponsor_badge.dart';
 import 'challenge_detail_screen.dart';
 import 'widgets/create_challenge_sheet.dart';
 
@@ -335,6 +336,8 @@ class _ChallengeCard extends StatelessWidget {
     final typeColor = _typeColor(palette);
     final isExpired = challenge.isExpired;
 
+    final isSponsored = challenge.isSponsored;
+
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -345,12 +348,18 @@ class _ChallengeCard extends StatelessWidget {
           color: palette.surface,
           borderRadius: BorderRadius.circular(AppRadius.card.r),
           border: Border.all(
-              color: isExpired
-                  ? palette.border.withValues(alpha: 0.4)
-                  : typeColor.withValues(alpha: 0.25)),
+            color: isSponsored && !isExpired
+                ? palette.warning.withValues(alpha: 0.45)
+                : isExpired
+                    ? palette.border.withValues(alpha: 0.4)
+                    : typeColor.withValues(alpha: 0.25),
+            width: isSponsored && !isExpired ? 1.5 : 1.0,
+          ),
           boxShadow: [
             BoxShadow(
-              color: palette.shadow.withValues(alpha: 0.07),
+              color: isSponsored && !isExpired
+                  ? palette.warning.withValues(alpha: 0.08)
+                  : palette.shadow.withValues(alpha: 0.07),
               blurRadius: 12.r,
               offset: const Offset(0, 4),
             ),
@@ -374,7 +383,7 @@ class _ChallengeCard extends StatelessWidget {
                     child: Icon(_icon, size: 24.r, color: typeColor),
                   ),
                   SizedBox(width: AppSpacing.md.w),
-                  // Title + type
+                  // Title + type + sponsor badge
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,12 +399,19 @@ class _ChallengeCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         SizedBox(height: 2.h),
-                        Text(
-                          l10n.translate(
-                              'challenge.type.${challenge.type.name}'),
-                          style: t.labelS
-                              .copyWith(color: palette.textSecondary),
-                        ),
+                        if (isSponsored) ...[
+                          SponsorBadge(
+                            sponsorName: challenge.sponsorName!,
+                            sponsorLogoUrl: challenge.sponsorLogoUrl,
+                          ),
+                          SizedBox(height: 2.h),
+                        ] else
+                          Text(
+                            l10n.translate(
+                                'challenge.type.${challenge.type.name}'),
+                            style: t.labelS
+                                .copyWith(color: palette.textSecondary),
+                          ),
                       ],
                     ),
                   ),
@@ -437,6 +453,41 @@ class _ChallengeCard extends StatelessWidget {
                       t.bodyM.copyWith(color: palette.textSecondary, height: 1.4),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            // Reward chip (sponsored only)
+            if (isSponsored && challenge.sponsorReward != null)
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                    AppSpacing.lg.w, 0, AppSpacing.lg.w, AppSpacing.sm.h),
+                child: Container(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                  decoration: BoxDecoration(
+                    color: palette.warning.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(AppRadius.md.r),
+                    border: Border.all(
+                        color: palette.warning.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.emoji_events_rounded,
+                          size: 14.r, color: palette.warning),
+                      SizedBox(width: 5.w),
+                      Flexible(
+                        child: Text(
+                          '${l10n.translate('challenge.sponsor.reward_badge')}: ${challenge.sponsorReward!}',
+                          style: t.labelS.copyWith(
+                            color: palette.warning,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             // Footer row

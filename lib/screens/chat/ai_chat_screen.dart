@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
@@ -8,8 +10,12 @@ import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/ai/ai_chat_history_service.dart';
 import '../../core/services/ai/ai_chat_service.dart';
+import '../../core/services/ai_credit_service.dart';
+import '../../core/services/feature_gate_service.dart';
 import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/widgets/ds/app_snackbar.dart';
+import '../ai/widgets/ai_credit_badge.dart';
 
 class AIChatScreen extends StatefulWidget {
   /// Optional message auto-sent when the screen opens (from voice transcript).
@@ -67,6 +73,20 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
     final user = context.read<UserProvider>().user;
     if (user == null) return;
+
+    final uid = user.uid;
+    final isPremium = user.subscriptionTier.isPremiumOrAbove;
+
+    final canUse = await AiCreditService().checkAndConsume(uid, isPremium);
+    if (!canUse) {
+      if (!mounted) return;
+      AppSnackBar.warning(
+        context,
+        'AI limit reached. Upgrade to Premium for unlimited access.',
+      );
+      unawaited(FeatureGateService().showPaywall(context));
+      return;
+    }
 
     _inputController.clear();
 
@@ -149,6 +169,22 @@ class _AIChatScreenState extends State<AIChatScreen> {
           ],
         ),
         actions: [
+          // AI credit usage indicator
+          Builder(
+            builder: (context) {
+              final user = context.read<UserProvider>().user;
+              if (user == null) return const SizedBox.shrink();
+              return Padding(
+                padding: EdgeInsets.only(right: 4.w),
+                child: Center(
+                  child: AiCreditBadge(
+                    uid: user.uid,
+                    isPremium: user.subscriptionTier.isPremiumOrAbove,
+                  ),
+                ),
+              );
+            },
+          ),
           // Switch to voice mode
           GestureDetector(
             onTap: () {

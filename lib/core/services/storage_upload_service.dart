@@ -32,7 +32,7 @@ class StorageUploadService {
     void Function(double progress)? onProgress,
   }) async {
     final ts = DateTime.now().millisecondsSinceEpoch;
-    final ref = _storage.ref().child('post_images/$userId/${ts}.jpg');
+    final ref = _storage.ref().child('post_images/$userId/$ts.jpg');
     return _upload(ref, imageFile, onProgress);
   }
 
@@ -43,7 +43,7 @@ class StorageUploadService {
     void Function(double progress)? onProgress,
   }) async {
     final ts = DateTime.now().millisecondsSinceEpoch;
-    final ref = _storage.ref().child('chat_images/$userId/${ts}.jpg');
+    final ref = _storage.ref().child('chat_images/$userId/$ts.jpg');
     return _upload(ref, imageFile, onProgress);
   }
 
@@ -67,6 +67,17 @@ class StorageUploadService {
     final url = await snapshot.ref.getDownloadURL();
     debugPrint('StorageUploadService: uploaded to $url');
     return url;
+  }
+
+  /// Upload a gym logo. Returns the public download URL.
+  /// Overwrites any existing logo for the gym (single file per gymId).
+  Future<String> uploadGymLogo({
+    required String gymId,
+    required File imageFile,
+    void Function(double progress)? onProgress,
+  }) async {
+    final ref = _storage.ref().child('gyms/$gymId/logo.jpg');
+    return _upload(ref, imageFile, onProgress);
   }
 
   /// Delete a file by its download URL.

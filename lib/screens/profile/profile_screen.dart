@@ -94,7 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .get();
       final count = snap.count ?? 0;
       if (mounted) setState(() => _postCount = count);
-      _loadReputation(uid, count);
+      unawaited(_loadReputation(uid, count));
     } catch (_) {}
   }
 
@@ -124,7 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _freshUserLoaded = user != null;
         });
         if (user != null) {
-          _checkFriendshipStatus();
+          unawaited(_checkFriendshipStatus());
         }
       }
     } catch (e) {
@@ -218,9 +218,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       if (_friendshipStatus == FriendshipStatus.none) {
         await service.sendFriendRequest(context, targetUid);
-      } else if (_friendshipStatus == FriendshipStatus.pending_sent) {
+      } else if (_friendshipStatus == FriendshipStatus.pendingSent) {
         await service.cancelFriendRequest(targetUid);
-      } else if (_friendshipStatus == FriendshipStatus.pending_received) {
+      } else if (_friendshipStatus == FriendshipStatus.pendingReceived) {
         await service.acceptFriendRequest(context, targetUid);
       } else if (_friendshipStatus == FriendshipStatus.friends) {
         // Maybe show unfriend dialog? For now just remove
@@ -258,6 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       maxWidth: 512,
     );
     if (image == null) return;
+    if (!mounted) return;
 
     final uid = context.read<UserProvider>().user?.uid;
     if (uid == null) return;
@@ -286,8 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showPrivateOptions(BuildContext context) {
     showUnifiedActionSheet(
       context: context,
-      title: AppLocalizations.of(context).translate('profile.options_title') ??
-          "Profile Options",
+      title: AppLocalizations.of(context).translate('profile.options_title'),
       actions: [
         ActionSheetItem(
           label: AppLocalizations.of(context).translate('settings.title'),
@@ -315,8 +315,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showPublicOptions(BuildContext context) {
     showUnifiedActionSheet(
       context: context,
-      title: AppLocalizations.of(context).translate('profile.options_title') ??
-          "Profile Options",
+      title: AppLocalizations.of(context).translate('profile.options_title'),
       actions: [
         /*
         ActionSheetItem(
@@ -767,11 +766,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       label = localizations.translate('profile.friend_actions.already_friends');
       icon = Icons.check;
       color = palette.success;
-    } else if (_friendshipStatus == FriendshipStatus.pending_sent) {
+    } else if (_friendshipStatus == FriendshipStatus.pendingSent) {
       label = localizations.translate('profile.friend_actions.sent');
       icon = Icons.access_time;
       color = palette.textSecondary;
-    } else if (_friendshipStatus == FriendshipStatus.pending_received) {
+    } else if (_friendshipStatus == FriendshipStatus.pendingReceived) {
       return Column(
         children: [
           Text(
@@ -866,11 +865,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // if ChatDetailScreen logic expects it or specific user data.
           );
 
-          Navigator.pushNamed(
+          unawaited(Navigator.pushNamed(
             context,
             '/chat_detail',
             arguments: chat,
-          );
+          ));
         } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1296,11 +1295,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } else {
         if (key == 'height') {
           val = _heightController.text;
-        } else if (key == 'weight')
+        } else if (key == 'weight') {
           val = _weightController.text;
-        else if (key == 'gender')
+        } else if (key == 'gender') {
           val = _genderController.text;
-        else if (key == 'age') val = _ageController.text;
+        } else if (key == 'age') {
+          val = _ageController.text;
+        }
       }
       return val?.toString() ?? "--";
     }
@@ -1825,6 +1826,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
     setState(() => _searching = true);
     try {
       final results = await _friendService.searchUsers(query);
+      if (!mounted) return;
       final myUid = context.read<UserProvider>().user?.uid;
 
       // Update friend IDs to be sure we have latest status

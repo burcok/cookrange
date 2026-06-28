@@ -277,13 +277,13 @@ class AuthService {
       }
 
       final time = DateTime.now();
-      _analyticsService.logEvent(
+      unawaited(_analyticsService.logEvent(
         name: 'password_reset_request',
         parameters: {
           'email': email,
           'time': time.toIso8601String(),
         },
-      );
+      ));
     } catch (e, s) {
       _log.error('Error sending password reset email to $email',
           service: _serviceName, error: e, stackTrace: s);
@@ -301,13 +301,13 @@ class AuthService {
         await user.sendEmailVerification();
 
         final time = DateTime.now();
-        _analyticsService.logEvent(
+        unawaited(_analyticsService.logEvent(
           name: 'send_email_verification',
           parameters: {
             'email': user.email ?? 'unknown',
             'time': time.toIso8601String(),
           },
-        );
+        ));
         _log.info('Email verification sent to: ${user.email}',
             service: _serviceName);
       } catch (e, s) {
@@ -687,7 +687,7 @@ class AuthService {
 
       _log.info('Account deleted successfully for uid: $uid',
           service: _serviceName);
-      _analyticsService.logEvent(name: 'account_deleted');
+      unawaited(_analyticsService.logEvent(name: 'account_deleted'));
     } on FirebaseAuthException catch (e) {
       _log.error('FirebaseAuthException during account deletion',
           service: _serviceName, error: e);

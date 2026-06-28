@@ -2,6 +2,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_nutrition_profile.dart';
 import 'subscription_model.dart';
 
+enum UserRole { consumer, gymOwner, coach, admin }
+
+extension UserRoleX on UserRole {
+  String get firestoreValue => switch (this) {
+        UserRole.consumer => 'consumer',
+        UserRole.gymOwner => 'gym_owner',
+        UserRole.coach => 'coach',
+        UserRole.admin => 'admin',
+      };
+
+  static UserRole fromString(String? value) => switch (value) {
+        'gym_owner' => UserRole.gymOwner,
+        'coach' => UserRole.coach,
+        'admin' => UserRole.admin,
+        _ => UserRole.consumer,
+      };
+}
+
 /// Represents the main user document in Firestore.
 class UserModel {
   final String uid;
@@ -23,6 +41,8 @@ class UserModel {
   final int? primaryColor;
   final SubscriptionTier subscriptionTier;
   final int streakFreezeCount;
+  final UserRole userRole;
+  final List<String> gymMemberships;
 
   UserModel({
     required this.uid,
@@ -44,6 +64,8 @@ class UserModel {
     this.primaryColor,
     this.subscriptionTier = SubscriptionTier.free,
     this.streakFreezeCount = 0,
+    this.userRole = UserRole.consumer,
+    this.gymMemberships = const [],
   });
 
   /// Creates a UserModel from a Firestore document snapshot.
@@ -75,6 +97,8 @@ class UserModel {
       subscriptionTier:
           SubscriptionTier.fromString(data['subscription_tier'] as String?),
       streakFreezeCount: data['streak_freeze_count'] as int? ?? 0,
+      userRole: UserRoleX.fromString(data['user_role'] as String?),
+      gymMemberships: List<String>.from(data['gym_memberships'] as List? ?? []),
     );
   }
 
@@ -118,6 +142,8 @@ class UserModel {
     int? primaryColor,
     SubscriptionTier? subscriptionTier,
     int? streakFreezeCount,
+    UserRole? userRole,
+    List<String>? gymMemberships,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -140,6 +166,8 @@ class UserModel {
       primaryColor: primaryColor ?? this.primaryColor,
       subscriptionTier: subscriptionTier ?? this.subscriptionTier,
       streakFreezeCount: streakFreezeCount ?? this.streakFreezeCount,
+      userRole: userRole ?? this.userRole,
+      gymMemberships: gymMemberships ?? this.gymMemberships,
     );
   }
 }

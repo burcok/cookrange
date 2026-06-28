@@ -3,8 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Notification categories. Stored in Firestore as the enum `name`.
 ///
 /// Backward-compatibility: older documents wrote a smaller set of names
-/// (`like`, `comment`, `system`, `follow`, `friend_request`,
-/// `friend_accepted`). [NotificationTypeX.fromName] still parses those, so
+/// (`like`, `comment`, `system`, `follow`, `friendRequest`,
+/// `friendAccepted`). [NotificationTypeX.fromName] still parses those, so
 /// existing notifications keep rendering. New code should prefer the granular
 /// values below.
 enum NotificationType {
@@ -13,8 +13,8 @@ enum NotificationType {
   comment,
   system,
   follow,
-  friend_request,
-  friend_accepted,
+  friendRequest,
+  friendAccepted,
   // Granular (new)
   likePost,
   likeComment,

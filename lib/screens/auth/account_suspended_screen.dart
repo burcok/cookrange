@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -60,9 +61,9 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
   }
 
   Future<void> _handleLogout() async {
-    await AuthService().signOut();
+    unawaited(AuthService().signOut());
     if (mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      unawaited(Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false));
     }
   }
 
@@ -157,7 +158,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
                 Expanded(
                     child: SingleChildScrollView(
                   padding: const EdgeInsets.all(24.0),
-                  child: FadeTransition(
+                  child: fadeTransitionAnim(
                     opacity: _opacity,
                     slideTransition: _slide,
                     child: Column(
@@ -708,7 +709,7 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
     );
   }
 
-  Widget FadeTransition(
+  Widget fadeTransitionAnim(
       {required Animation<double> opacity,
       required Animation<Offset> slideTransition,
       required Widget child}) {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cookrange/core/widgets/ds/ds.dart';
@@ -316,11 +317,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       if (authService.currentUser != null) {
         if (!authService.currentUser!.emailVerified) {
           // If email is not verified, navigate to verification screen
-          Navigator.pushNamedAndRemoveUntil(
+          unawaited(Navigator.pushNamedAndRemoveUntil(
             context,
             AppRoutes.verifyEmail,
             (route) => false,
-          );
+          ));
           return;
         }
 
@@ -346,8 +347,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             // due to race conditions or latency, causing a loop.
             if (mounted) {
               // If all info is complete, go home
-              Navigator.pushNamedAndRemoveUntil(
-                  context, AppRoutes.main, (route) => false);
+              unawaited(Navigator.pushNamedAndRemoveUntil(
+                  context, AppRoutes.main, (route) => false));
             }
           }
         } else {
@@ -359,7 +360,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       } else {
         // If user is not logged in, navigate to register screen
         if (mounted) {
-          Navigator.pushNamed(context, AppRoutes.register);
+          unawaited(Navigator.pushNamed(context, AppRoutes.register));
         }
       }
     } catch (e) {

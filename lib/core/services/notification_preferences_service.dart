@@ -27,8 +27,8 @@ class NotificationPreferencesService {
     ],
     'comments': [NotificationType.comment],
     'friends': [
-      NotificationType.friend_request,
-      NotificationType.friend_accepted,
+      NotificationType.friendRequest,
+      NotificationType.friendAccepted,
       NotificationType.follow,
     ],
     'system': [

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../firebase_options.dart';
@@ -16,7 +17,7 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
   } catch (e) {
-    print('Init error: $e');
+    debugPrint('Init error: $e');
   }
 
   runApp(const SeederApp());
@@ -110,18 +111,22 @@ class _SeederScreenState extends State<SeederScreen> {
     setState(() => _isLoading = true);
     try {
       await _seederService.seedSingleDish(_dishes[_currentIndex], finalUrl);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Successfully seeded!'),
-            duration: Duration(milliseconds: 500)),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Successfully seeded!'),
+              duration: Duration(milliseconds: 500)),
+        );
+      }
       if (_currentIndex < _dishes.length - 1) {
-        _loadDish(_currentIndex + 1);
+        unawaited(_loadDish(_currentIndex + 1));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     } finally {
       setState(() => _isLoading = false);
     }

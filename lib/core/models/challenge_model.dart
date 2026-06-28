@@ -24,6 +24,12 @@ class ChallengeModel {
   final bool isPublic;
   final DateTime createdAt;
 
+  // Sponsor fields (all optional — existing challenges without these work fine)
+  final String? sponsorName;
+  final String? sponsorLogoUrl;
+  final String? sponsorReward;
+  final String? sponsorWebUrl;
+
   const ChallengeModel({
     required this.id,
     required this.title,
@@ -39,7 +45,13 @@ class ChallengeModel {
     required this.participantProgress,
     required this.isPublic,
     required this.createdAt,
+    this.sponsorName,
+    this.sponsorLogoUrl,
+    this.sponsorReward,
+    this.sponsorWebUrl,
   });
+
+  bool get isSponsored => sponsorName != null && sponsorName!.isNotEmpty;
 
   factory ChallengeModel.fromJson(Map<String, dynamic> json, String id) {
     DateTime ts(dynamic v) {
@@ -77,6 +89,10 @@ class ChallengeModel {
       participantProgress: progress,
       isPublic: json['isPublic'] as bool? ?? true,
       createdAt: ts(json['createdAt']),
+      sponsorName: json['sponsor_name'] as String?,
+      sponsorLogoUrl: json['sponsor_logo_url'] as String?,
+      sponsorReward: json['sponsor_reward'] as String?,
+      sponsorWebUrl: json['sponsor_web_url'] as String?,
     );
   }
 
@@ -94,6 +110,10 @@ class ChallengeModel {
         'participantProgress': participantProgress,
         'isPublic': isPublic,
         'createdAt': Timestamp.fromDate(createdAt),
+        if (sponsorName != null) 'sponsor_name': sponsorName,
+        if (sponsorLogoUrl != null) 'sponsor_logo_url': sponsorLogoUrl,
+        if (sponsorReward != null) 'sponsor_reward': sponsorReward,
+        if (sponsorWebUrl != null) 'sponsor_web_url': sponsorWebUrl,
       };
 
   bool get isExpired => DateTime.now().isAfter(endDate);
@@ -108,6 +128,10 @@ class ChallengeModel {
   ChallengeModel copyWith({
     List<String>? participantIds,
     Map<String, int>? participantProgress,
+    String? sponsorName,
+    String? sponsorLogoUrl,
+    String? sponsorReward,
+    String? sponsorWebUrl,
   }) {
     return ChallengeModel(
       id: id,
@@ -124,6 +148,10 @@ class ChallengeModel {
       participantProgress: participantProgress ?? this.participantProgress,
       isPublic: isPublic,
       createdAt: createdAt,
+      sponsorName: sponsorName ?? this.sponsorName,
+      sponsorLogoUrl: sponsorLogoUrl ?? this.sponsorLogoUrl,
+      sponsorReward: sponsorReward ?? this.sponsorReward,
+      sponsorWebUrl: sponsorWebUrl ?? this.sponsorWebUrl,
     );
   }
 }

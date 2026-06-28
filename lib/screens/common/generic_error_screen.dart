@@ -295,9 +295,9 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
 
   @override
   Widget build(BuildContext context) {
-    final _loc = AppLocalizations.maybeOf(context);
+    final loc = AppLocalizations.maybeOf(context);
     String tl(String key, {Map<String, String>? variables}) =>
-        _loc?.translate(key, variables: variables) ?? key;
+        loc?.translate(key, variables: variables) ?? key;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).primaryColor;
     const bgLight = Color(0xFFF8FAFC);
@@ -378,7 +378,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24.0),
-                    child: FadeTransition(
+                    child: fadeTransitionAnim(
                       opacity: _opacity,
                       slideTransition: _slide,
                       child: Column(
@@ -582,7 +582,7 @@ class _GenericErrorScreenState extends State<GenericErrorScreen>
     );
   }
 
-  Widget FadeTransition(
+  Widget fadeTransitionAnim(
       {required Animation<double> opacity,
       required Animation<Offset> slideTransition,
       required Widget child}) {

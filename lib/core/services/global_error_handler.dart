@@ -203,7 +203,7 @@ class ErrorBoundary extends StatefulWidget {
 }
 
 class _ErrorBoundaryState extends State<ErrorBoundary> {
-  bool _hasError = false;
+  final bool _hasError = false;
   Object? _error;
 
   @override

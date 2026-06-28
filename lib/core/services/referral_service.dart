@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import '../models/notification_model.dart';
+import 'commission_service.dart';
 import 'crashlytics_service.dart';
 import 'notification_service.dart';
 import 'sharing_service.dart';
@@ -139,6 +138,13 @@ class ReferralService {
           metadata: {'rewardDays': _rewardDays},
         ),
       );
+
+      // Record a €5 commission for the referral code owner.
+      unawaited(CommissionService().recordReferralCommission(
+        ownerUid: ownerUid,
+        refereeUid: uid,
+        refereeName: FirebaseAuth.instance.currentUser?.displayName ?? 'New User',
+      ));
 
       debugPrint('ReferralService: code $code applied by $uid → rewarded $ownerUid');
       return null; // success

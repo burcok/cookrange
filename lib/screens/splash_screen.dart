@@ -115,7 +115,7 @@ class _SplashScreenState extends State<SplashScreen>
       if (!result.isSuccess) {
         debugPrint('SplashScreen: Core initialization failed: ${result.error}');
         if (mounted) {
-          Navigator.pushReplacement(
+          unawaited(Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => ErrorFallbackWidget(
@@ -125,7 +125,7 @@ class _SplashScreenState extends State<SplashScreen>
                 },
               ),
             ),
-          );
+          ));
         }
         return;
       }
@@ -203,11 +203,11 @@ class _SplashScreenState extends State<SplashScreen>
   /// Fire-and-forget device info initialization
   void _initializeDeviceInfo() {
     if (!mounted) return;
+    final deviceInfoProvider =
+        Provider.of<DeviceInfoProvider>(context, listen: false);
 
     Future(() async {
       try {
-        final deviceInfoProvider =
-            Provider.of<DeviceInfoProvider>(context, listen: false);
         await deviceInfoProvider.initialize();
 
         // Send to Firebase (non-blocking)
@@ -399,16 +399,16 @@ class _SplashScreenState extends State<SplashScreen>
     final user = AuthService().currentUser;
     debugPrint('SplashScreen: Navigating. User: $user');
     if (user == null) {
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
+      unawaited(Navigator.pushReplacementNamed(context, AppRoutes.login));
       return;
     }
 
     if (!user.emailVerified) {
-      Navigator.pushNamedAndRemoveUntil(
+      unawaited(Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.verifyEmail,
         (route) => false,
-      );
+      ));
       return;
     }
 
@@ -417,11 +417,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (userModel?.userVerified == null) {
       if (!mounted) return;
-      Navigator.pushNamedAndRemoveUntil(
+      unawaited(Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.verifyEmail,
         (route) => false,
-      );
+      ));
       return;
     }
 
@@ -444,14 +444,14 @@ class _SplashScreenState extends State<SplashScreen>
       // Request ATT before navigating — only prompts once per install.
       await ATTConsentService().requestIfNeeded();
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoutes.main);
+      unawaited(Navigator.pushReplacementNamed(context, AppRoutes.main));
     } else {
       final combined = mergedModel?.onboardingData;
       if (combined != null) {
         Provider.of<OnboardingProvider>(context, listen: false)
             .initializeFromFirestore(combined);
       }
-      Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
+      unawaited(Navigator.pushReplacementNamed(context, AppRoutes.onboarding));
     }
   }
 
@@ -655,7 +655,7 @@ class _SplashScreenState extends State<SplashScreen>
     await _colorTransitionController.forward();
     if (!mounted) return;
 
-    _mainController.forward();
+    unawaited(_mainController.forward());
     debugPrint('SplashScreen: Animations complete.');
   }
 
@@ -680,7 +680,7 @@ class _SplashScreenState extends State<SplashScreen>
         _currentMessageIndex = (_remainingMessageIndices..shuffle()).first;
       }
     });
-    _startGreetingTextAnimation();
+    unawaited(_startGreetingTextAnimation());
   }
 
   @override

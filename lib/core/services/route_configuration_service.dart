@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -98,28 +99,28 @@ class RouteConfigurationService {
   }) async {
     try {
       if (clearStack) {
-        Navigator.pushNamedAndRemoveUntil(
+        unawaited(Navigator.pushNamedAndRemoveUntil(
           context,
           routeName,
           (route) => false,
           arguments: arguments,
-        );
+        ));
       } else {
-        Navigator.pushNamed(
+        unawaited(Navigator.pushNamed(
           context,
           routeName,
           arguments: arguments,
-        );
+        ));
       }
     } catch (e) {
       // Log navigation error
       debugPrint('Navigation error: $e');
       // Fallback to home route
-      Navigator.pushNamedAndRemoveUntil(
+      unawaited(Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.home,
         (route) => false,
-      );
+      ));
     }
   }
 
@@ -130,19 +131,19 @@ class RouteConfigurationService {
     Object? arguments,
   }) async {
     try {
-      Navigator.pushReplacementNamed(
+      unawaited(Navigator.pushReplacementNamed(
         context,
         routeName,
         arguments: arguments,
-      );
+      ));
     } catch (e) {
       debugPrint('Route replacement error: $e');
       // Fallback to home route
-      Navigator.pushNamedAndRemoveUntil(
+      unawaited(Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.home,
         (route) => false,
-      );
+      ));
     }
   }
 

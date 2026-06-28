@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -66,7 +67,7 @@ class _QuickAddSheetState extends State<QuickAddSheet>
   Future<void> _log(RecentFoodEntry entry) async {
     if (_logging.contains(entry.dishId)) return;
     setState(() => _logging.add(entry.dishId));
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
 
     try {
       final uid = context.read<UserProvider>().user?.uid;
@@ -84,7 +85,7 @@ class _QuickAddSheetState extends State<QuickAddSheet>
       );
 
       if (mounted) {
-        HapticFeedback.mediumImpact();
+        unawaited(HapticFeedback.mediumImpact());
         AppSnackBar.success(
           context,
           AppLocalizations.of(context)

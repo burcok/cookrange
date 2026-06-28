@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -148,7 +149,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                         ),
                       ),
                       onPressed: () async {
-                        HapticFeedback.lightImpact();
+                        unawaited(HapticFeedback.lightImpact());
                         await FavoriteService().toggleFavorite(widget.recipe);
                       },
                     ),
@@ -611,8 +612,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
   Future<void> _showNotesSheet(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
     final existing = await RecipeNoteService().getNote(widget.recipe.id);
-    if (!mounted) return;
+    if (!context.mounted) return;
 
+    final textStyle = AppText.of(context).bodyM;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final controller = TextEditingController(text: existing ?? '');
     await AppSheet.show(
       context: context,
@@ -624,7 +627,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(l10n.translate('recipe.notes.hint'),
-                style: AppText.of(context).bodyM),
+                style: textStyle),
             SizedBox(height: 12.h),
             AppTextField(
               controller: controller,
@@ -634,7 +637,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
             SizedBox(height: 20.h),
             AppButton(
               label: l10n.translate('recipe.notes.save'),
-              variant: AppButtonVariant.primary,
               onPressed: () async {
                 await RecipeNoteService()
                     .saveNote(widget.recipe.id, controller.text);
@@ -647,8 +649,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                 }
               },
             ),
-            SizedBox(
-                height: MediaQuery.of(context).viewInsets.bottom + 8.h),
+            SizedBox(height: bottomInset + 8.h),
           ],
         ),
       ),

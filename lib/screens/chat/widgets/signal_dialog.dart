@@ -15,16 +15,16 @@ class SignalDialog extends StatefulWidget {
 class _SignalDialogState extends State<SignalDialog> {
   final SignalService _signalService = SignalService();
   final TextEditingController _messageController = TextEditingController();
-  SignalType _selectedType = SignalType.gym_help;
+  SignalType _selectedType = SignalType.gymHelp;
   bool _isLoading = false;
 
   final Map<SignalType, List<String>> _presets = {
-    SignalType.gym_help: [
+    SignalType.gymHelp: [
       "signal.presets.gym_1",
       "signal.presets.gym_2",
       "signal.presets.gym_3",
     ],
-    SignalType.meal_share: [
+    SignalType.mealShare: [
       "signal.presets.meal_1",
       "signal.presets.meal_2",
       "signal.presets.meal_3",
@@ -96,11 +96,11 @@ class _SignalDialogState extends State<SignalDialog> {
               items: SignalType.values.map((type) {
                 String label;
                 switch (type) {
-                  case SignalType.gym_help:
+                  case SignalType.gymHelp:
                     label = AppLocalizations.of(context)
                         .translate('signal.type.gym');
                     break;
-                  case SignalType.meal_share:
+                  case SignalType.mealShare:
                     label = AppLocalizations.of(context)
                         .translate('signal.type.meal');
                     break;

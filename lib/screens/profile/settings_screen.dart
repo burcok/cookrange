@@ -20,7 +20,10 @@ import '../../core/services/notification_preferences_service.dart';
 import '../../core/services/referral_service.dart';
 import '../../core/utils/app_routes.dart';
 import '../../core/widgets/ds/ds.dart';
+import '../coach/coach_dashboard_screen.dart';
+import '../gym/gym_dashboard_screen.dart';
 import '../legal/legal_screen.dart';
+import 'affiliate_earnings_screen.dart';
 import 'dietary_preferences_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -657,6 +660,87 @@ class SettingsScreen extends StatelessWidget {
                     // Refer a Friend
                     _ReferralCard(palette: palette, appLoc: appLoc),
 
+                    const SizedBox(height: 16),
+
+                    // Go Pro / Business on-ramp
+                    _buildGlassSection(
+                      context: context,
+                      title: appLoc.translate('settings.business.title'),
+                      palette: palette,
+                      children: [
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.add_business_rounded,
+                          iconColor: palette.info,
+                          iconBgColor: palette.isDark
+                              ? palette.info.withValues(alpha: 0.2)
+                              : palette.info.withValues(alpha: 0.15),
+                          title: appLoc
+                              .translate('settings.business.register_gym'),
+                          subtitle: appLoc.translate(
+                              'settings.business.register_gym_sub'),
+                          palette: palette,
+                          onTap: () => Navigator.push(
+                            context,
+                            AppTransitions.slideUp(const GymDashboardScreen()),
+                          ),
+                          trailing: Icon(Icons.chevron_right_rounded,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.sports_rounded,
+                          iconColor: const Color(0xFF6366F1),
+                          iconBgColor: palette.isDark
+                              ? const Color(0xFF6366F1)
+                                  .withValues(alpha: 0.2)
+                              : const Color(0xFF6366F1)
+                                  .withValues(alpha: 0.15),
+                          title: appLoc
+                              .translate('settings.business.become_coach'),
+                          subtitle: appLoc.translate(
+                              'settings.business.become_coach_sub'),
+                          palette: palette,
+                          onTap: () => Navigator.push(
+                            context,
+                            AppTransitions.slideUp(
+                                const CoachDashboardScreen()),
+                          ),
+                          trailing: Icon(Icons.chevron_right_rounded,
+                              color: palette.textSecondary),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // My Earnings
+                    _buildGlassSection(
+                      context: context,
+                      title: appLoc.translate('settings.earnings.title'),
+                      palette: palette,
+                      children: [
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.account_balance_wallet_rounded,
+                          iconColor: palette.success,
+                          iconBgColor: palette.isDark
+                              ? palette.success.withValues(alpha: 0.2)
+                              : palette.success.withValues(alpha: 0.15),
+                          title: appLoc.translate('settings.earnings.title'),
+                          subtitle: appLoc.translate('settings.earnings.coming_soon_short'),
+                          palette: palette,
+                          onTap: () => Navigator.push(
+                            context,
+                            AppTransitions.slideUp(
+                                const AffiliateEarningsScreen()),
+                          ),
+                          trailing: Icon(Icons.chevron_right_rounded,
+                              color: palette.textSecondary),
+                        ),
+                      ],
+                    ),
+
                     const SizedBox(height: 24),
 
                     // Account / Danger Zone
@@ -1122,10 +1206,10 @@ class _ChangeEmailSheetState extends State<_ChangeEmailSheet> {
                   setState(() => _isLoading = true);
                   try {
                     await widget.onSave(email, _passCtrl.text);
-                    if (mounted) Navigator.pop(context);
+                    if (context.mounted) Navigator.pop(context);
                   } catch (e) {
                     setState(() => _isLoading = false);
-                    if (mounted) {
+                    if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text(e.toString()),
                           backgroundColor: palette.error));
@@ -1197,10 +1281,10 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                   setState(() => _isLoading = true);
                   try {
                     await widget.onSave(cur, n);
-                    if (mounted) Navigator.pop(context);
+                    if (context.mounted) Navigator.pop(context);
                   } catch (e) {
                     setState(() => _isLoading = false);
-                    if (mounted) {
+                    if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text(e.toString()),
                           backgroundColor: palette.error));
@@ -1284,10 +1368,10 @@ class _DeleteAccountSheetState extends State<_DeleteAccountSheet> {
                   setState(() => _isLoading = true);
                   try {
                     await widget.onDelete(pass);
-                    if (mounted) Navigator.pop(context);
+                    if (context.mounted) Navigator.pop(context);
                   } catch (e) {
                     setState(() => _isLoading = false);
-                    if (mounted) {
+                    if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text(e.toString()),
                           backgroundColor: palette.error));

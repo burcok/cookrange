@@ -6,8 +6,6 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../providers/navigation_provider.dart';
 import '../localization/app_localizations.dart';
 import '../providers/theme_provider.dart';
-import '../services/ai/ai_chat_history_service.dart';
-import '../services/ai/ai_chat_service.dart';
 import '../../screens/chat/ai_chat_screen.dart';
 
 class VoiceAssistantOverlay extends StatefulWidget {
@@ -86,6 +84,9 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
       });
     }
 
+    // Capture locale before any async gap to avoid use_build_context_synchronously
+    final localeId = mounted ? Localizations.localeOf(context).toString() : '';
+
     try {
       await _speech.listen(
         onResult: (result) {
@@ -109,9 +110,8 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
             setState(() => _soundLevel = level);
           }
         },
-        localeId: Localizations.localeOf(context).toString(),
         listenOptions: stt.SpeechListenOptions(
-          partialResults: true,
+          localeId: localeId,
           listenMode: stt.ListenMode.dictation,
         ),
       );

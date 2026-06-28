@@ -38,10 +38,11 @@ class ThemeProvider extends ChangeNotifier {
     if (themeString != null) {
       if (themeString == 'light') {
         _themeMode = ThemeMode.light;
-      } else if (themeString == 'dark')
+      } else if (themeString == 'dark') {
         _themeMode = ThemeMode.dark;
-      else
+      } else {
         _themeMode = ThemeMode.system;
+      }
     }
 
     final colorInt = prefs.getInt('primary_color');

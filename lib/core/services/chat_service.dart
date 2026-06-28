@@ -112,6 +112,7 @@ class ChatService {
     controller.onCancel = () {
       chatsSub?.cancel();
       usersSub?.cancel();
+      controller.close();
     };
 
     return controller.stream;
@@ -292,7 +293,7 @@ class ChatService {
   Stream<int> getUnreadMessageCountStream(String userId) {
     return getUserChats(userId).map((chats) {
       return chats.fold<int>(
-          0, (sum, chat) => sum + (chat.unreadCounts[userId] ?? 0));
+          0, (total, chat) => total + (chat.unreadCounts[userId] ?? 0));
     });
   }
 

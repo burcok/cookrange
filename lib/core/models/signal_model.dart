@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum SignalType {
-  gym_help, // "Spotter needed", etc.
-  meal_share, // "I made too much food"
+  gymHelp, // "Spotter needed", etc.
+  mealShare, // "I made too much food"
   general, // General shoutout
 }
 

@@ -347,9 +347,9 @@ class CommunityService {
     });
 
     if (liked) {
-      _logger.logActivity('post_like', {'post_id': postId});
+      unawaited(_logger.logActivity('post_like', {'post_id': postId}));
     } else {
-      _logger.logActivity('post_unlike', {'post_id': postId});
+      unawaited(_logger.logActivity('post_unlike', {'post_id': postId}));
     }
 
     // Notification fan-out (skip self-like)
@@ -420,9 +420,9 @@ class CommunityService {
     });
 
     if (liked) {
-      _logger.logActivity('comment_like', {'post_id': postId, 'comment_id': commentId});
+      unawaited(_logger.logActivity('comment_like', {'post_id': postId, 'comment_id': commentId}));
     } else {
-      _logger.logActivity('comment_unlike', {'post_id': postId, 'comment_id': commentId});
+      unawaited(_logger.logActivity('comment_unlike', {'post_id': postId, 'comment_id': commentId}));
     }
 
     // Notification fan-out (skip self-like)

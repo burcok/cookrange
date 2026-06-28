@@ -7,8 +7,8 @@ import '../services/notification_service.dart';
 
 enum FriendshipStatus {
   none,
-  pending_sent,
-  pending_received,
+  pendingSent,
+  pendingReceived,
   friends,
 }
 
@@ -152,7 +152,7 @@ class FriendService {
     final currentUserData = await _auth.getUserData(uid);
     await _notificationService.sendNotification(
       targetUserId: targetUserId,
-      type: NotificationType.friend_request,
+      type: NotificationType.friendRequest,
       actorUid: uid,
       actorName: currentUserData?.displayName,
       actorPhotoUrl: currentUserData?.photoURL,
@@ -189,7 +189,7 @@ class FriendService {
     final currentUserData = await _auth.getUserData(uid);
     await _notificationService.sendNotification(
       targetUserId: senderUserId,
-      type: NotificationType.friend_accepted,
+      type: NotificationType.friendAccepted,
       actorUid: uid,
       actorName: currentUserData?.displayName,
       actorPhotoUrl: currentUserData?.photoURL,
@@ -200,7 +200,7 @@ class FriendService {
     await _notificationService.deleteNotificationByRelatedId(
       targetUserId: uid,
       relatedId: senderUserId,
-      type: NotificationType.friend_request,
+      type: NotificationType.friendRequest,
     );
   }
 
@@ -261,8 +261,8 @@ class FriendService {
 
     if (reqDoc.exists) {
       final type = reqDoc.data()?['type'];
-      if (type == 'outgoing') return FriendshipStatus.pending_sent;
-      if (type == 'incoming') return FriendshipStatus.pending_received;
+      if (type == 'outgoing') return FriendshipStatus.pendingSent;
+      if (type == 'incoming') return FriendshipStatus.pendingReceived;
     }
 
     return FriendshipStatus.none;

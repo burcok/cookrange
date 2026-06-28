@@ -82,7 +82,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
     try {
       await _friendService.sendFriendRequest(context, user.uid);
       if (mounted) {
-        setState(() => _statusCache[user.uid] = FriendshipStatus.pending_sent);
+        setState(() => _statusCache[user.uid] = FriendshipStatus.pendingSent);
       }
     } catch (e) {
       if (mounted) AppSnackBar.error(context, e.toString());
@@ -286,7 +286,7 @@ class _UserTile extends StatelessWidget {
                 color: palette.success, fontWeight: FontWeight.w600),
           ),
         );
-      case FriendshipStatus.pending_sent:
+      case FriendshipStatus.pendingSent:
         return Container(
           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
           decoration: BoxDecoration(
@@ -301,7 +301,6 @@ class _UserTile extends StatelessWidget {
       default:
         return AppButton(
           label: l10n.translate('user_search.add_friend'),
-          variant: AppButtonVariant.primary,
           size: AppButtonSize.small,
           loading: isPending,
           onPressed: onAddFriend,

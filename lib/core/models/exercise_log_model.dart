@@ -57,5 +57,5 @@ class ExerciseLog {
   }
 
   static double totalBurned(List<ExerciseLog> logs) =>
-      logs.fold(0, (sum, l) => sum + l.caloriesBurned);
+      logs.fold(0, (total, l) => total + l.caloriesBurned);
 }

@@ -2,10 +2,14 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../models/user_model.dart';
 import '../providers/navigation_provider.dart';
+import '../providers/user_provider.dart';
 import '../localization/app_localizations.dart';
 import '../providers/theme_provider.dart';
 import '../theme/app_palette.dart';
+import '../../screens/gym/gym_dashboard_screen.dart';
+import '../../screens/gym/gym_discovery_screen.dart';
 import '../../screens/home/food_scan_screen.dart';
 import '../../screens/home/barcode_scan_screen.dart';
 import '../../screens/home/nutrition_analytics_screen.dart';
@@ -414,6 +418,9 @@ class _QuickActionsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
+    final userRole =
+        context.watch<UserProvider>().user?.userRole ?? UserRole.consumer;
+    final isGymOwner = userRole == UserRole.gymOwner;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 36),
@@ -482,16 +489,25 @@ class _QuickActionsGrid extends StatelessWidget {
                 palette: palette,
                 onTap: () => onInner(const FavoritesScreen()),
               ),
-              _ActionTile(
-                icon: Icons.fitness_center_rounded,
-                color: const Color(0xFF9CA3AF),
-                label: l10n.translate('quick_actions.my_gym'),
-                isDark: isDark,
-                palette: palette,
-                comingSoon: true,
-                comingSoonLabel: l10n.translate('quick_actions.coming_soon'),
-                onTap: null,
-              ),
+              // Role-aware gym tile: real for gym owners, coming-soon for others
+              if (isGymOwner)
+                _ActionTile(
+                  icon: Icons.fitness_center_rounded,
+                  color: const Color(0xFF3B82F6),
+                  label: l10n.translate('quick_actions.gym_dashboard'),
+                  isDark: isDark,
+                  palette: palette,
+                  onTap: () => onInner(const GymDashboardScreen()),
+                )
+              else
+                _ActionTile(
+                  icon: Icons.fitness_center_rounded,
+                  color: const Color(0xFF10B981),
+                  label: l10n.translate('quick_actions.find_gym'),
+                  isDark: isDark,
+                  palette: palette,
+                  onTap: () => onInner(const GymDiscoveryScreen()),
+                ),
             ],
           ),
         ],
@@ -509,8 +525,6 @@ class _ActionTile extends StatefulWidget {
   final bool isDark;
   final AppPalette palette;
   final VoidCallback? onTap;
-  final bool comingSoon;
-  final String? comingSoonLabel;
 
   const _ActionTile({
     required this.icon,
@@ -519,8 +533,6 @@ class _ActionTile extends StatefulWidget {
     required this.isDark,
     required this.palette,
     required this.onTap,
-    this.comingSoon = false,
-    this.comingSoonLabel,
   });
 
   @override
@@ -550,7 +562,7 @@ class _ActionTileState extends State<_ActionTile>
 
   @override
   Widget build(BuildContext context) {
-    final disabled = widget.comingSoon;
+    final disabled = widget.onTap == null;
     return GestureDetector(
       onTapDown: disabled ? null : (_) => _press.reverse(),
       onTapUp: disabled
@@ -626,20 +638,6 @@ class _ActionTileState extends State<_ActionTile>
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (disabled && widget.comingSoonLabel != null) ...[
-                const SizedBox(height: 3),
-                Text(
-                  widget.comingSoonLabel!,
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                    color:
-                        widget.palette.textSecondary.withValues(alpha: 0.35),
-                    fontFamily: 'Poppins',
-                    letterSpacing: 0.4,
-                  ),
-                ),
-              ],
             ],
           ),
         ),

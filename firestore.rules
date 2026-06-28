@@ -253,6 +253,134 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ─── Gyms ────────────────────────────────────────────────────────────────
+    match /gyms/{gymId} {
+      // Any authenticated user can read gym profiles (for search/discovery)
+      allow read: if isAuthenticated();
+      // Only the gym owner can create/update their gym
+      allow create: if isAuthenticated()
+        && request.resource.data.owner_uid == request.auth.uid;
+      allow update: if isAuthenticated()
+        && resource.data.owner_uid == request.auth.uid;
+      allow delete: if isAuthenticated()
+        && resource.data.owner_uid == request.auth.uid;
+
+      // Gym members subcollection — owner manages, members can read their own entry
+      match /members/{memberId} {
+        allow read: if isAuthenticated()
+          && (get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
+              || request.auth.uid == memberId);
+        allow write: if isAuthenticated()
+          && get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid;
+      }
+
+      // Gym community posts
+      match /posts/{postId} {
+        // Any authenticated user can read posts
+        allow read: if isAuthenticated();
+        // Any authenticated user can create a post (membership enforced app-side)
+        allow create: if isAuthenticated()
+          && request.resource.data.author_uid == request.auth.uid;
+        // Author can update their own post content; owner can update any field;
+        // any authenticated user can update like fields only
+        allow update: if isAuthenticated()
+          && (resource.data.author_uid == request.auth.uid
+            || get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
+            || !request.resource.data.diff(resource.data).affectedKeys()
+                 .hasAny(['author_uid', 'content', 'is_announcement']));
+        allow delete: if isAuthenticated()
+          && (resource.data.author_uid == request.auth.uid
+            || get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid);
+
+        // Post comments
+        match /comments/{commentId} {
+          allow read: if isAuthenticated();
+          allow create: if isAuthenticated()
+            && request.resource.data.author_uid == request.auth.uid;
+          allow update: if isAuthenticated()
+            && resource.data.author_uid == request.auth.uid;
+          allow delete: if isAuthenticated()
+            && (resource.data.author_uid == request.auth.uid
+              || get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid);
+        }
+      }
+
+      // Check-in records
+      match /checkins/{checkinId} {
+        allow read: if isAuthenticated()
+          && (get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
+              || request.auth.uid == resource.data.uid);
+        allow create: if isAuthenticated()
+          && request.resource.data.uid == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    // ─── Gym Wars ─────────────────────────────────────────────────────────────
+    match /gym_wars/{warId} {
+      // Any authenticated user can read wars (for discovery)
+      allow read: if isAuthenticated();
+      // Only the challenger (gym owner) can create a war
+      allow create: if isAuthenticated()
+        && request.resource.data.challenger_uid == request.auth.uid;
+      // Only the challenger can update (e.g. end the war)
+      allow update: if isAuthenticated()
+        && resource.data.challenger_uid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // ─── Coach Profiles ───────────────────────────────────────────────────────
+    match /coach_profiles/{coachUid} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(coachUid);
+      allow delete: if false;
+
+      match /clients/{clientUid} {
+        // Coach reads all clients; client reads own entry
+        allow read: if isAuthenticated()
+          && (request.auth.uid == coachUid || request.auth.uid == clientUid);
+        // Client creates request for themselves; coach updates status
+        allow create: if isAuthenticated() && request.auth.uid == clientUid;
+        allow update: if isAuthenticated()
+          && (request.auth.uid == coachUid || request.auth.uid == clientUid);
+        allow delete: if false;
+      }
+    }
+
+    // ─── Programs (marketplace) ───────────────────────────────────────────────
+    match /programs/{programId} {
+      // Any authenticated user can browse published programs
+      allow read: if isAuthenticated();
+      // Only the owning coach can create their programs
+      allow create: if isAuthenticated()
+        && request.resource.data.coach_uid == request.auth.uid;
+      // Only the owning coach can update or delete
+      allow update, delete: if isAuthenticated()
+        && resource.data.coach_uid == request.auth.uid;
+    }
+
+    // Program enrollments: owner-only
+    match /users/{uid}/program_enrollments/{programId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ─── Commission earnings (per-user subcollection) ─────────────────────────
+    match /users/{uid}/commissions/{commissionId} {
+      // Only the owner can read their own commissions.
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      // Any authenticated user may create (e.g. service recording a referral commission
+      // for another user when a referral code is applied).
+      allow create: if isAuthenticated();
+      // Only the owner can update (e.g. status changes).
+      allow update: if isAuthenticated() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // ─── Payout requests ──────────────────────────────────────────────────────
+    match /users/{uid}/payout_requests/{requestId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == uid;
+    }
+
     // ─── Deny everything else ─────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

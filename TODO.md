@@ -348,31 +348,37 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 
 ## PHASE 4 — GYM ECOSYSTEM (Core differentiator — greenfield) · target v1.1.0–v1.4.0
 
-> Status: ❌ ~0% built (only `SignalType.gym_help` + a mock gym chat + a filter tab exist). This is the strategic moat — but it's a from-scratch build. **Do not start before the consumer MVP is validated.**
+> Status: ✅ **Screens built (4A + 4B all shipped).** ⚠️ **BUT currently unreachable by normal users — see Phase 10.1.**
 >
-> **Navigation placeholders already in place:** Side menu has a "MY GYM" section with a disabled entry (coming-soon badge). Quick actions sheet has a disabled "My Gym" tile. When Phase 4 starts, remove `comingSoon: true` flags and wire the real gym screens.
+> 🔴 **CRITICAL ACCESS GAP (discovered 2026-06-28):** Every gym screen is built and analyze-clean, but
+> the side-menu entry points are **role-gated** and a default user is `consumer`. Consumers see only a
+> disabled "My Gym (coming soon)" tile. Worse, there is a **chicken-and-egg dead end**: `GymSetupScreen`
+> (which promotes `consumer → gymOwner`) is only reachable *from* `GymDashboardScreen`, which only appears
+> *after* you are already a `gymOwner`. `GymDiscoveryScreen` (join a gym as a member) is shown only to
+> gym owners — backwards. **Net effect: no user can ever create, discover, or join a gym today.** The fix
+> is navigation + role-upgrade flows, NOT more screens. Tracked in **Phase 10.2**.
 
 ### 4A — Role System (prerequisite for everything)
-- [ ] **User role field** (`user_role`: `consumer` | `gym_owner` | `coach` | `admin`) stored on `users/{uid}`. — Critical · Small · 1 d · v1.1.0 · ❌
-- [ ] **Role-aware side menu** — gym owners see extra "Gym Management" section; coaches see "My Clients"; admins see "Admin Panel". The side menu should read `UserProvider.user.role` and show/hide sections accordingly. — Critical · Small · 0.5 d · v1.1.0 · ❌
-- [ ] **Role-aware quick bar** — gym owners get "My Gym Dashboard" quick action (real screen); consumers keep the current "My Gym → coming soon" tile. — High · Small · 0.5 d · v1.1.0 · ❌
+- [x] ✅ **User role field** (`user_role`: `consumer` | `gym_owner` | `coach` | `admin`) stored on `users/{uid}`. — Done (`UserRole` enum + `UserRoleX` extension in `user_model.dart`; `fromFirestore` reads `user_role` field; `FirestoreService.updateUserRole()` added)
+- [x] ✅ **Role-aware side menu** — gym owners see "GYM MANAGEMENT" (Gym Dashboard + Members + Analytics); coaches see "MY CLIENTS" (My Clients + Coach Dashboard); admins see "ADMIN PANEL" (User Management + Reports); consumers see "MY GYM (coming soon)". All sections use DS tokens, colored icon containers, coming-soon badges where applicable. — Done (`side_menu.dart` `_buildRoleSection()`)
+- [x] ✅ **Role-aware quick bar** — gym owners get "My Gym Dashboard" (real `GymDashboardScreen`); consumers/coaches/admins keep "My Gym → coming soon". — Done (`quick_actions_sheet.dart` role check via `UserProvider`)
 
 ### 4B — Gym Owner Screens (planned, not yet built)
 > All screens below are 🆕 greenfield. Entry points: side menu "Gym Management" section + "My Gym" quick action.
-- [ ] **Gym profile setup** — name, logo, address, branch list, subscription tier. `gyms/{gymId}` collection. — Critical · Large · 5–7 d · v1.1.0 · ❌
-- [ ] **Member management** — list/search members, revoke/invite, tier badges (standard/premium). — High · Medium · 3–4 d · v1.1.0 · ❌
-- [ ] **Gym dashboard (owner)** — active members today, check-in chart (7-day), top engaged members, alert cards for low-activity members. — High · Large · 5–7 d · v1.2.0 · ❌
-- [ ] **Gym communities** — per-gym feed + announcements tab (owner can pin). — High · Large · 6–8 d · v1.2.0 · ❌
-- [ ] **Attendance & check-in** — QR code check-in (owner generates, member scans), GPS geofence fallback. Requires `geolocator` + `qr_flutter` packages. — High · Large · 7–10 d · v1.2.0 · ❌
-- [ ] **Gym leaderboards / "Gym Wars"** — inter-gym challenge competitions by streak, calories, steps. — Medium · Large · 6–8 d · v1.3.0 · ❌
-- [ ] **Gym analytics** — retention heatmap, engagement score, drop-off alerts, export CSV. — Medium · Large · 7–10 d · v1.3.0 · ❌
-- [ ] **White-label theming** — gym owner sets brand color/logo; app adopts it for members of that gym. `ThemeProvider` gets `gymOverride` mode. — Medium · Epic · 15–25 d · v1.4.0 · ❌
-- [ ] **Gym data model + profiles** (entity, members, branches). — Critical · Large · 5–7 d · v1.1.0 · ❌
-- [ ] **Gym onboarding** (gym signs up, configures). — High · Large · 5–7 d · v1.1.0 · ❌
-- [ ] **Gym discovery** (search/join a gym). — High · Medium · 3–4 d · v1.1.0 · ❌
-- [ ] **GPS presence / check-in** (needs `geolocator`/geofence SDK — none present). — High · Large · 7–10 d · v1.2.0 · ❌
-- [ ] **Gym analytics dashboard** (retention, engagement). — Medium · Large · 7–10 d · v1.3.0 · ❌
-- [ ] **White-label** (logo/colors/onboarding per gym). — Medium · Epic · 15–25 d · v1.4.0 · ❌
+- [x] ✅ **Gym profile setup** — 3-step PageView form (name/desc/brand-color/logo → address/city/country → public toggle + fitness tags). `gyms/{gymId}` Firestore collection. Edit mode pre-fills from `existingGym`. `GymSetupScreen`. — Implemented (prev session)
+- [x] ✅ **Member management** — real-time stream, search filter, active-today stats row, swipe-to-remove with confirmation dialog, tier badges (Standard/Premium). `GymMembersScreen`. — Implemented (prev session)
+- [x] ✅ **Gym dashboard (owner)** — `getOwnerGymStream` subscription; setup CTA when no gym; stats row (member count, city, visibility); quick actions (Members, Community, Leaderboard, Analytics, Check-in QR, Discover); 7-day attendance `_AttendanceChartSection`; feature preview section. `GymDashboardScreen`. — Implemented (prev session + current session)
+- [x] ✅ **Gym communities** — per-gym feed (all members post) + announcements tab (owner pins); real-time streams; like, comment, pin/unpin; GymCommunityScreen + GymPostService + GymPostModel. — Implemented 2026-06-28
+- [x] ✅ **Attendance & check-in** — QR code generation (owner) + scanning (member, mobile_scanner), GPS geofence check (geolocator/Haversine), 7-day attendance chart, CheckInModel + service methods. — Implemented 2026-06-28
+- [x] ✅ **Gym leaderboards / "Gym Wars"** — weekly per-gym check-in leaderboard with animated podium + rank tiles; Gym Wars (inter-gym challenges by check-in count, dual-query active wars, score via AggregateQuery.count); war creation bottom sheet with gym search + duration selector; `GymWarModel`, `LeaderboardEntryModel`, `GymLeaderboardService`, `GymLeaderboardScreen` (2-tab: Leaderboard / Gym Wars); `gym_wars` Firestore collection with security rules + 2 composite indexes; EN+TR `gym.leaderboard_*` + `gym.war_*` keys; leaderboard quick-action tile in `GymDashboardScreen`. — Implemented 2026-06-28
+- [x] ✅ **Gym analytics** — retention heatmap, engagement score, drop-off alerts, export CSV. `GymAnalyticsModel`, `GymAnalyticsService` (parallel Firestore reads, 60-day window, CSV export via share_plus), `GymAnalyticsScreen` (overview stat grid with count-up animation, 8-week bar chart, 7×4 activity heatmap, at-risk members section, top-5 performers). Analytics quick action added to `GymDashboardScreen`. Full EN+TR localization (`gym.analytics_*`). — Implemented 2026-06-28
+- [x] ✅ **White-label theming (per-screen brand color)** — Gym owner sets a brand color (12 presets) and optional logo in GymSetupScreen step 1. Color stored as hex in `GymModel.brandColor` / Firestore `brand_color`. `GymModelBrandingX.resolvedBrandColor` extension parses and falls back to app orange. GymDashboardScreen derives `primary` from `_gym?.resolvedBrandColor` and passes `brandColor:` to all sub-screens (Community, Leaderboard, Analytics, Members, QR, Check-In) — override is local to gym screens, not a global `ThemeProvider` change. Logo uploaded to `gyms/{gymId}/logo.jpg` via `StorageUploadService.uploadGymLogo`. — Implemented 2026-06-28
+- [x] ✅ **Gym data model + profiles** — `GymModel` (Firestore shape, `fromFirestore/toFirestore/copyWith`, GPS + QR + brand color fields), `GymMemberModel` (tier, lastCheckIn, isActiveToday), `GymSubscriptionTier` enum. — Implemented (prev session)
+- [x] ✅ **Gym onboarding** — `GymSetupScreen` 3-step PageView with validation, edit mode, brand color picker, logo upload. — Implemented (prev session)
+- [x] ✅ **Gym discovery** — `GymDiscoveryScreen` with debounced search (420ms), cursor pagination, `GymService().searchGyms()`, join/leave toggle, gym cards with location + member count + tags. — Implemented (prev session)
+- [x] ✅ **GPS presence / check-in** — Haversine geofence implemented in GymService.gpsCheckIn(); geolocator permission flow in GymCheckInScreen. — Implemented 2026-06-28
+- [x] ✅ **Gym analytics dashboard** (retention, engagement). `GymAnalyticsScreen` with overview KPIs, 8-week trend, activity heatmap, at-risk alerts, top performers. — Implemented 2026-06-28
+- [x] ✅ **White-label** (brand color + logo per gym). — Implemented 2026-06-28 (see above)
 
 **Phase 4 realistic effort: 3–5 months for a dedicated squad.**
 
@@ -380,33 +386,39 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 
 ## PHASE 5 — COACH ECOSYSTEM (greenfield) · target v1.4.0–v1.6.0
 
-> Status: ❌ 0% built (no role/coach fields anywhere; only flavor text in an AI prompt). Depends on premium (Phase 2) and gym (Phase 4) foundations.
+> Status: ✅ Core ecosystem complete (profiles, client management, dashboard, AI reports). ⚠️ **Same access
+> gap as Phase 4 — see Phase 10.1/10.2.** `CoachProfileSetupScreen` (promotes `consumer → coach`) is only
+> reachable from `CoachDashboardScreen`, which only appears *after* you are a coach — a chicken-and-egg dead
+> end. There is **no entry point at all** to browse/hire a coach (`CoachService.searchCoaches` + `CoachProfileScreen`
+> exist but nothing links to them). **No consumer can become a coach or find a coach today.** Fix in Phase 10.2.
 
-- [ ] **Roles model** (user/coach/gym-admin) + permissions. — Critical · Medium · 3–4 d · v1.4.0 · ❌
-- [ ] **Coach profiles**. — High · Medium · 3–4 d · v1.4.0 · ❌
-- [ ] **Referral codes** (`AHMETFIT`-style) + attribution. — High · Medium · 3–5 d · v1.4.0 · ❌
-- [ ] **Revenue sharing / commission** (depends payments). — High · Large · 6–8 d · v1.5.0 · ❌
-- [ ] **Client management** (coach ↔ client linking, consent). — High · Large · 6–8 d · v1.5.0 · ❌
-- [ ] **Coach dashboard** (adherence, consistency, progress). — High · Large · 7–10 d · v1.5.0 · ❌
-- [ ] **AI-generated client reports/insights**. — Medium · Large · 7–10 d · v1.6.0 · ❌
-- [ ] **Program marketplace** (sell plans/programs) — see Phase 7. — Medium · Epic · v1.6.0 · ❌
+- [x] ✅ **Roles model** (user/coach/gym-admin) + permissions. — Satisfied by Phase 4A: `UserRole` enum (`consumer/gymOwner/coach/admin`) in `user_model.dart`, `FirestoreService.updateUserRole()`, role-aware side menu + quick actions.
+- [x] ✅ **Coach profiles**. — `CoachProfileModel` + `CoachService.setupCoachProfile()` + `CoachProfileSetupScreen` (2-step PageView). Firestore: `coach_profiles/{uid}`. Vanity codes stored to `referrals/{code}`. Full DE/TR i18n. — Done.
+- [x] ✅ **Referral codes** (random 6-char codes). — Existing `ReferralService` with `referrals/{code}` Firestore collection, batch reward on apply, deep-link integration. Coach vanity codes (AHMETFIT-style) now in coach profile setup.
+- [ ] **Revenue sharing / commission** (depends payments). — Future · billing system required · v2.0.0 · ❌
+- [x] ✅ **Client management** (coach ↔ client linking). — `CoachClientModel` + `CoachClientsScreen` + pending/accept/reject flow. Firestore: `coach_profiles/{coachUid}/clients/{clientUid}`. At-risk detection (`daysSinceLastLog >= 3`). — Done.
+- [x] ✅ **Coach dashboard** (stats, at-risk, active clients). — `CoachDashboardScreen` with stats row (active/pending/at-risk), at-risk section, active clients list (top-5 + see all), quick actions. — Done.
+- [x] ✅ **AI-generated client reports/insights** (basic). — `CoachClientDetailScreen` generates AI report via `AIService().generateJson()` with graceful `isConfigured` guard. Returns `{summary, motivationLevel, focusAreas, nextSteps}`. — Done.
+- [x] ✅ **Program marketplace** (sell plans/programs) — Phase 7. — Done · v1.0.0
 
-**Phase 5 realistic effort: 3–4 months.**
+**Phase 5 core complete. Revenue share and marketplace deferred to Phase 7 (billing infra required).**
 
 ---
 
-## PHASE 6 — AI INTELLIGENCE (greenfield) · target v1.7.0–v2.0.0
+## PHASE 6 — AI INTELLIGENCE · target v1.7.0–v2.0.0
 
-> Status: ❌ Entirely vapor today (zero code/stubs). Requires a real tracking-data history (Phase 2 food/weight logging) before any of it is meaningful.
+> Status: ✅ Core AI features shipped (v0.9.5). Behavioral analytics pipeline deferred pending real data.
 
-- [ ] **AI Fitness Twin** (predict weight/fat/muscle/goal date). — High · Epic · 15–20 d · v1.7.0 · ❌
-- [ ] **AI Accountability Partner** (proactive nudges). — High · Large · 8–10 d · v1.7.0 · ❌
-- [ ] **AI Risk Detection** (drop-off / adherence decline → alerts). — High · Large · 8–10 d · v1.8.0 · ❌
-- [ ] **AI Transformation Forecasting** (30/60/90-day projections). — Medium · Large · 7–10 d · v1.8.0 · ❌
-- [ ] **AI Coach Assistant** (insights for coaches; depends Phase 5). — Medium · Large · 8–10 d · v1.9.0 · ❌
-- [ ] **Behavioral analytics** pipeline (events → ML features). — Medium · Epic · 20–30 d · v2.0.0 · ❌
+- [x] **AI Fitness Twin** — `AiFitnessTwinScreen` + `AiInsightService.generateFitnessTwin()`. 30/60/90-day projections, goal date estimate, calorie gap, motivation score. `lib/screens/ai/ai_fitness_twin_screen.dart` · ✅
+- [x] **AI Accountability Partner** — Daily insight card on home screen. Cached per-day, EN+TR, personalized to goal/streak. `lib/screens/home/widgets/ai_insight_card.dart` · ✅
+- [x] **AI Risk Detection** — Client-side `AiInsightService.detectRiskLevel()` — no AI call needed. HIGH (0 logs in 3 days) / MEDIUM (no log today after 14:00) / LOW / NONE. Surfaces risk banner on home screen. · ✅
+- [x] **AI Transformation Forecasting** — Part of Fitness Twin (30/60/90 projections, weeklyWeightChange, goalDateEstimate). · ✅
+- [x] **AI Coach Assistant** — Phase 5 coach detail AI report (shipped earlier). · ✅
+- [ ] **Behavioral analytics** pipeline (events → ML features). — Medium · Epic · 20–30 d · v2.0.0 · ❌ Deferred — requires months of real behavioral data.
 
-**Dependency note:** all of Phase 6 is only as good as the behavioral data collected — prioritize logging + analytics taxonomy first.
+**New files:** `lib/core/models/ai_insight_model.dart`, `lib/core/services/ai_insight_service.dart`, `lib/screens/ai/ai_fitness_twin_screen.dart`, `lib/screens/home/widgets/ai_insight_card.dart`
+
+**Dependency note:** AI accuracy improves as users accumulate food-log and weight-log data.
 
 ---
 
@@ -415,12 +427,12 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 > Status: 📋/❌ — premium is a dead button; no billing SDK, no credits, no marketplace.
 
 - [x] ✅ **Premium** subscription — `BillingService` (`in_app_purchase`), `SubscriptionTier` model, `Entitlements`, `FeatureGateService`, `_PaywallSheet` — all done in Phase 2. Product IDs `com.cookrange.premium.{monthly,yearly}` must be registered in App Store Connect + Play Console before live purchases work. Referral program now also awards 7-day premium trial via Firestore `subscription_tier/subscription_expires_at` writes.
-- [ ] **AI credit system** (message limits, top-ups). — High · Large · 6–8 d · v1.2.0 · ❌
-- [ ] **Program/plan marketplace** (coach-sold content, commission). — Medium · Epic · 15–20 d · v1.6.0 · ❌
-- [ ] **Sponsored challenges**. — Low · Large · 6–8 d · v1.7.0 · ❌
-- [ ] **Affiliate / referral commission** payouts. — Medium · Large · 6–8 d · v1.5.0 · ❌
+- [x] ✅ **AI credit system** (message limits, top-ups). — 20 free AI calls/month for free tier (all AI features: chat, scan, meal plan, fitness twin); unlimited for premium. `AiCreditService` singleton tracks usage in `users/{uid}.ai_credits_used` with monthly auto-reset. `AiCreditBadge` widget shows remaining calls in AI chat + fitness twin AppBar. Gate in AI chat send + fitness twin load. Paywall shown on exhaustion. `lib/core/models/ai_credit_model.dart`, `lib/core/services/ai_credit_service.dart`, `lib/screens/ai/widgets/ai_credit_badge.dart`.
+- [x] ✅ **Program/plan marketplace** (coach-sold content, commission). — `ProgramModel` + `ProgramEnrollmentModel` + `ProgramService` (create/publish/enroll/stream). `ProgramMarketplaceScreen` (category filter chips, animated grid). `ProgramDetailScreen` (SliverAppBar, highlights, coach card, enroll/buy CTA). Free enrollment works end-to-end; paid programs show paywall pending payment backend. Entry: Side menu → Program Marketplace. Firestore `programs` collection with 3 composite indexes. EN+TR `program.*` keys. — Done
+- [x] ✅ **Sponsored challenges** — Extended `ChallengeModel` with `sponsorName/logoUrl/reward/webUrl` fields; `ChallengeService.createSponsoredChallenge()`; `SponsorBadge` widget (amber pill); sponsor section in `_ChallengeCard` (badge + reward chip) and `challenge_detail_screen` (sponsor card with logo + reward); optional sponsor form in `create_challenge_sheet`. EN+TR `challenge.sponsor.*` keys. — Done
+- [x] ✅ **Affiliate / referral commission** payouts. — Tracking foundation built: `CommissionModel` + `EarningsSummaryModel` data models; `CommissionService` singleton (Firestore `users/{uid}/commissions`, `users/{uid}/payout_requests`); `recordReferralCommission()` auto-called (fire-and-forget) in `ReferralService.applyCode()` after successful batch commit (€5 per premium referral); `AffiliateEarningsScreen` with summary stat cards, request-payout button, earnings stream list with type/status badges, "how to earn" section; Settings → "My Earnings" entry; `AppSheet` "payout coming soon" confirmation. Firestore rules + index added. EN+TR `settings.earnings.*` keys. Actual payment processing deferred pending billing backend. — Done (tracking layer)
 - [ ] **Partner brands / supplement ecosystem**. — Low · Large · 8–10 d · v1.8.0 · ❌
-- [ ] **Coach revenue sharing** (see Phase 5). — High · Large · v1.5.0 · ❌
+- [x] ✅ **Coach revenue sharing** (see Phase 5). — Tracking foundation built: `CommissionService.recordCoachSessionCommission()` ready to be called when coach sessions are billed; coach commissions appear in `AffiliateEarningsScreen` earnings history alongside referral commissions. Actual payment processing deferred pending billing backend. — Done (tracking layer)
 
 ---
 
@@ -510,6 +522,130 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 - [x] ✅ Challenge difficulty tiers (easy / medium / hard) — `ChallengeDifficulty` enum + `locKey` extension on `ChallengeModel`; difficulty selector in `CreateChallengeSheet` (3-card row: Easy/Medium/Hard with icons + colors); difficulty filter chip row in `ChallengesScreen` (All/Easy/Medium/Hard, `AnimatedContainer` chips, client-side filter on stream results); difficulty badge in `_ChallengeCard` footer (color-coded: success/warning/error); backward-compatible (defaults to medium); EN+TR `challenge.difficulty.*` + `challenge.create.difficulty_label` keys
 - [x] ✅ Meal-plan calendar export (Apple/Google Calendar) — `MealPlanCalendarService` generates a standard `.ics` (iCalendar) file from `WeeklyMealPlanModel` (one VEVENT per meal slot per day, fixed meal times: breakfast 8:00/lunch 12:30/dinner 19:00/snack 15:30, dish names resolved from home dish cache, calorie total in description); shared via existing `share_plus` + `path_provider` (no new package needed); calendar icon button added to home meal-plan section header alongside compare/history/regenerate; EN+TR `calendar.*` keys; 0 analyze errors
 - [x] ✅ Hard server-side private-profile enforcement — PII fields (`personal_info`, `allergies`, `dietary_restrictions`, `disliked_foods`, `avoid_ingredients`) migrated out of the publicly-readable `users/{uid}.onboarding_data` map into the owner-only `users/{uid}/private/nutrition` subcollection. Firestore rule `match /users/{uid}/private/{docId}` enforces read/write only by owner. `FirestoreService.getPrivateNutritionData(uid)` handles first-load migration (batch-moves PII from legacy main doc) + serves cached private doc; `savePrivateNutritionData(uid, data)` writes private doc. `UserModel.withPrivateNutrition(data)` merges private data into the in-memory model so `user.profile` (used by `WeeklyMealPlanService`, home dashboard, etc.) stays populated for the owner without any call-site changes. `UserProvider.loadUser()` fetches both docs and merges. `OnboardingProvider` split into `_toPublicMap()`/`_toPrivateMap()` and both save methods dual-write accordingly. `SplashScreen._navigateAfterSplash()` loads private data before completeness check and sets merged model on `UserProvider`. `updateAvoidIngredients` writes to private subcollection. GDPR `deleteUserData` deletes the `private` subcollection. Existing users are transparently migrated on first login. Non-owners reading another user's doc see only public fields. 0 analyze errors.
+
+---
+
+## PHASE 10 — ACTIVATION, ACCESS & FIRST-RUN EXPERIENCE (🔥 NEXT — highest leverage) · v1.0.x–v1.1
+
+> **Why this phase exists.** Phases 4–7 shipped an enormous amount of *screens* — gym ecosystem,
+> coach ecosystem, program marketplace, AI intelligence, monetization — but a full-app navigation audit
+> (2026-06-28) found that **much of it is unreachable, and the app has no first-run story.** A user
+> installs the app, is dropped straight into a 6-step data form, and is never shown what the product
+> *does*. Power features sit behind role gates with no on-ramp. **This phase makes the product we already
+> built actually discoverable, usable, and permission-respecting.** It is mostly *wiring, flows, and
+> polish* — very little net-new domain logic — which makes it the single highest ROI work remaining.
+>
+> Three user-requested pillars + a fourth of recommended improvements. All work is **iOS+Android,
+> light+dark, EN+TR, 60fps, DS-native** per Global Engineering Rules R0–R8.
+
+### 10.1 — Navigation Truth: reachability audit (📋 reference — keep current)
+
+> The honest map of "can a normal user actually get here today?" Fix targets live in 10.2.
+
+| Screen / Feature | Built? | Reachable by a `consumer` today? | Gap |
+|---|---|---|---|
+| AI Fitness Twin | ✅ | ✅ via home insight card | OK |
+| AI Chat / Challenges / Leaderboard | ✅ | ✅ side menu | OK |
+| Program Marketplace | ✅ | ✅ side menu | OK (but empty until coaches publish — see 10.5 seed) |
+| Affiliate Earnings | ✅ | ✅ Settings | OK |
+| Food / Barcode scan, Nutrition analytics | ✅ | ✅ home + quick actions | OK (permission priming — 10.3) |
+| **Gym: create / set up** | ✅ | ❌ **chicken-and-egg dead end** | 10.2 — needs "Register your gym" on-ramp |
+| **Gym: discover / join as member** | ✅ | ❌ shown only to gym *owners* | 10.2 — backwards; expose to consumers |
+| **Gym: member experience** (community/check-in/leaderboard as a *member*, not owner) | 🟡 owner-only views exist | ❌ | 10.2 — needs member-side gym home |
+| **Coach: become a coach** | ✅ | ❌ **chicken-and-egg dead end** | 10.2 — needs "Apply to coach" on-ramp |
+| **Coach: find / hire a coach** | ✅ (`searchCoaches`, `CoachProfileScreen`) | ❌ **nothing links to it** | 10.2 — needs coach directory entry |
+| **Feature-tour onboarding** | ❌ | — | 10.4 — does not exist |
+| **Permission priming** (camera/location/notif) | ❌ | — | 10.3 — OS dialogs pop cold |
+
+### 10.2 — Role-Upgrade & Discovery Flows (🔴 Critical — fixes the dead ends) · High · Medium · 3–4 d
+
+- [x] ✅ **"Register your gym" on-ramp** — entry in Settings ("Business"/Go Pro group) + the consumer
+  side-menu "Grow" section + quick actions. Routes a `consumer` straight to `GymDashboardScreen`
+  (self-setup CTA); creating a gym promotes role → `gymOwner`. Removes the chicken-and-egg. — Done
+- [x] ✅ **"Become a coach" on-ramp** — entry in Settings (Go Pro) + side menu "Grow" → `CoachDashboardScreen`
+  (self-setup CTA); completing setup promotes role → `coach`. — Done
+- [x] ✅ **Consumer gym discovery** — "Find a Gym" surfaced to *all* roles in the side menu always-visible
+  list + the consumer quick-actions tile (replaces old coming-soon); "My Gyms" strip at top of
+  `GymDiscoveryScreen` lets joined members re-enter. — Done
+- [x] ✅ **Gym member home** — `GymMemberHomeScreen` reachable from the "My Gyms" strip (community/check-in/
+  leaderboard); driven by `GymService.getMemberGymsStream` + `gym_memberships` array on the user doc. — Done
+- [x] ✅ **Coach directory** — `CoachDiscoveryScreen` reachable via "Find a Coach" in the side menu
+  always-visible list; tap → `CoachProfileScreen` → request. — Done
+- [ ] **Unified "Discover / Pro" hub** (optional, recommended) — one surface that aggregates Find a Gym,
+  Find a Coach, Program Marketplace, Challenges, Leaderboard — so consumers have a single place to grow
+  into the ecosystem instead of hunting the side menu. 🆕
+- [ ] **Role-aware home surfacing** — once a user *has* a role, show a compact quick-entry card on home
+  (e.g. gym owner → "Open Gym Dashboard"; member → "Check in"). Keeps power features one tap away. 🆕
+- [x] ✅ **Remove all stale `comingSoon: true` / `onTap: null`** flags — consumer gym tiles in
+  `side_menu.dart` + `quick_actions_sheet.dart` now route to real screens. — Done
+
+### 10.3 — Just-in-Time Permissions (priming + rationale before use) · High · Small–Medium · 2–3 d
+
+> **Principle:** never let the raw OS permission dialog appear cold. Show a branded rationale sheet that
+> explains *why* and *what for* immediately before the system prompt — the single biggest lever on grant
+> rates. Handle `denied` and `permanentlyDenied` gracefully with an "Open Settings" path.
+
+- [ ] **Reusable `PermissionPrimer`** (`lib/core/widgets/ds/` or `lib/core/services/permission_service.dart`)
+  — DS-styled `AppSheet` with icon, title, rationale, "Allow" / "Not now"; on Allow → trigger the real
+  request; centralizes `permission_handler` logic + status mapping. 🆕
+- [ ] **Camera priming** before `FoodScanScreen`, `BarcodeScanScreen`, `gym_checkin_screen` QR scanner —
+  rationale "Scan barcodes & food / check in at your gym" *before* `MobileScanner` mounts (today it mounts
+  cold at `barcode_scan_screen.dart:191` / `gym_checkin_screen.dart:376`). 🆕
+- [ ] **Location priming** before gym GPS check-in — rationale "Confirm you're at the gym" before
+  `Geolocator.requestPermission()` (today reactive at `gym_checkin_screen.dart:55`). 🆕
+- [ ] **Notification permission priming** — ask after the *first meaningful action* (e.g. first food log
+  or first friend), NOT at launch; explain the re-engagement value. (FCM already wired — B5.) 🆕
+- [ ] **Photo-library priming** before avatar/post image pick (`image_picker`) where a rationale helps. 🆕
+- [ ] **Denied / permanentlyDenied states** — friendly `AppErrorState` with "Open Settings"
+  (`openAppSettings()`); never dead-end the user at a black camera. 🆕
+- [ ] **Platform parity** — iOS purpose strings already present in `Info.plist` (camera, location, ATT);
+  verify Android runtime requests + rationale on both. ATT priming already shipped (Phase 9). 🆕
+
+### 10.4 — Feature-Tour Onboarding (illustrated intro *before* data collection) · High · Medium · 3–5 d
+
+> Today `route_guard`/`splash` drop a brand-new user straight into the 6-step nutrition form. They never
+> learn what Cookrange *is*. Add a short, beautiful, skippable walkthrough that sells the product first.
+
+- [ ] **`IntroOnboardingScreen`** — 4–5 page horizontal `PageView` with parallax, page-dots, Skip + Next /
+  "Get Started", smooth `AppMotion` transitions. Shown once (SharedPrefs `intro_seen`), *before*
+  `AppRoutes.onboarding`. Wire into `route_guard`/`splash` so new users see Intro → data form. 🆕
+- [ ] **Illustration assets** — no external CDN allowed; use custom `CustomPainter`/SVG (`flutter_svg`) or
+  on-brand gradient compositions per page. Decide asset pipeline + add to `assets/`. Must look flagship in
+  light & dark. 🆕
+- [ ] **Tour content** (each page = one pillar): ① AI meal planning & recipes · ② Real food/calorie &
+  weight logging · ③ Community, challenges & leaderboards · ④ Gym & coach ecosystem (sets up 10.2
+  discovery) · ⑤ AI Fitness Twin & progress. Copy in EN+TR (`intro.*` keys), light/dark, reduced-motion
+  fallback. 🆕
+- [ ] **Re-entry** — "Replay intro / How it works" item in Settings so users can revisit. 🆕
+
+### 10.5 — Additional Activation Improvements (🆕 recommended — prune freely)
+
+- [ ] **First-use coachmarks / spotlight** — one-time contextual tooltips on the home hero ring, the scan
+  button, and the quick-actions bar; dismiss-on-tap, SharedPrefs-guarded, reduced-motion aware. · Medium
+- [ ] **"What's New" changelog modal** — show a DS sheet on first launch after a version bump
+  (compare stored vs current `package_info` version); highlights new features (great for surfacing 10.2). · Low
+- [ ] **Empty-state CTAs that route into features** — e.g. empty Program Marketplace → "Become a coach &
+  publish"; no gym → "Find a gym near you"; no friends → "Invite / discover users". Turns dead ends into
+  on-ramps. · Medium
+- [ ] **Deep-link: gym QR for non-members** — scanning a gym check-in QR while not a member opens a
+  "Join {gym}?" prompt instead of failing. Ties `DeepLinkService` + `GymService.joinGym`. · Medium
+- [ ] **Profile completeness meter** — gentle nudges (add photo, set goal weight, log first meal) with a
+  progress ring; drives activation. Note: target weight currently lives only in `OnboardingProvider`
+  memory — persist it to Firestore as part of this. · Medium
+- [ ] **Demo / seed content** so ecosystems aren't empty shells at launch — a few seeded public programs &
+  discoverable demo gyms (idempotent `seedIfEmpty()` per R2), clearly flagged, so first users see life. · Medium
+- [ ] **Activation analytics funnel** — instrument `intro_completed`, `permission_primed/granted/denied`,
+  `role_upgrade_started/completed`, `gym_joined`, `coach_requested`. Lets data decide what to invest in
+  next (existing `AnalyticsService`). · Low
+- [ ] **Accessibility & motion** across all of Phase 10 — every tour/primer/coachmark skippable, respects
+  `MediaQuery.disableAnimations` (reduced motion), full semantic labels, large-text safe. · Medium
+
+### Definition of Done — Phase 10
+☑ Every built screen has a real, role-appropriate entry point (no chicken-and-egg, no dead `comingSoon`) ·
+☑ No camera/location/notification dialog appears without a preceding branded rationale · ☑ New users see an
+illustrated feature tour before the data form · ☑ Empty states route forward, not nowhere · ☑ All new
+copy in EN+TR, all new UI correct in light+dark on iOS+Android, 60fps, reduced-motion aware ·
+☑ `flutter analyze lib/` 0 errors · ☑ CLAUDE.md + this roadmap updated (R8).
 
 ---
 

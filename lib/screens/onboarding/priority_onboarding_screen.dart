@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/onboarding_options.dart';
@@ -72,11 +73,11 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
         'onboarding_completed': true,
       });
       if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(
+        unawaited(Navigator.pushNamedAndRemoveUntil(
           context,
           AppRoutes.main,
           (route) => false,
-        );
+        ));
       }
     } catch (e) {
       if (mounted) {

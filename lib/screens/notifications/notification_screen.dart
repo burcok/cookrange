@@ -169,8 +169,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case 'friends':
         return _notifications
             .where((n) =>
-                n.type == NotificationType.friend_request ||
-                n.type == NotificationType.friend_accepted ||
+                n.type == NotificationType.friendRequest ||
+                n.type == NotificationType.friendAccepted ||
                 n.type == NotificationType.follow)
             .toList();
       case 'system':
@@ -565,7 +565,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         ),
                       ),
                       if (notification.type ==
-                              NotificationType.friend_request &&
+                              NotificationType.friendRequest &&
                           notification.relatedId != null) ...[
                         const SizedBox(height: 12),
                         Row(

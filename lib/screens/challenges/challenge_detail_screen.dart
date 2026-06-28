@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/challenge_model.dart';
 import '../../core/providers/theme_provider.dart';
@@ -10,6 +11,7 @@ import '../../core/services/firestore_service.dart';
 import '../../core/services/sharing_service.dart';
 import '../../core/utils/profile_navigation.dart';
 import '../../core/widgets/ds/ds.dart';
+import '../../core/widgets/sponsor_badge.dart';
 
 class ChallengeDetailScreen extends StatefulWidget {
   final String challengeId;
@@ -256,6 +258,12 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                         const SizedBox(height: 20),
                       ],
 
+                      // Sponsor card
+                      if (challenge.isSponsored) ...[
+                        _SponsorCard(challenge: challenge),
+                        const SizedBox(height: 20),
+                      ],
+
                       // My progress (if participant)
                       if (isParticipant) ...[
                         Container(
@@ -436,6 +444,166 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
       case ChallengeType.custom:
         return Icons.emoji_events;
     }
+  }
+}
+
+class _SponsorCard extends StatelessWidget {
+  final ChallengeModel challenge;
+
+  const _SponsorCard({required this.challenge});
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: palette.warning.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: palette.warning.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Sponsor logo or fallback icon
+              if (challenge.sponsorLogoUrl != null &&
+                  challenge.sponsorLogoUrl!.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    challenge.sponsorLogoUrl!,
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: palette.warning.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.business_rounded,
+                          size: 22, color: palette.warning),
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: palette.warning.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.business_rounded,
+                      size: 22, color: palette.warning),
+                ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SponsorBadge(
+                      sponsorName: challenge.sponsorName!,
+                      sponsorLogoUrl: challenge.sponsorLogoUrl,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      challenge.sponsorName!,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: palette.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (challenge.sponsorReward != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: palette.warning.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.emoji_events_rounded,
+                      size: 18, color: palette.warning),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.translate('challenge.sponsor.reward'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: palette.warning.withValues(alpha: 0.8),
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        Text(
+                          challenge.sponsorReward!,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: palette.warning,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (challenge.sponsorWebUrl != null &&
+              challenge.sponsorWebUrl!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _openUrl(challenge.sponsorWebUrl!),
+                icon: Icon(Icons.open_in_new_rounded,
+                    size: 14, color: palette.warning),
+                label: Text(
+                  l10n.translate('challenge.sponsor.learn_more'),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600, color: palette.warning),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: palette.warning,
+                  side: BorderSide(
+                      color: palette.warning.withValues(alpha: 0.5)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

@@ -3,15 +3,21 @@ import 'dart:ui';
 import 'package:cookrange/screens/chat/ai_chat_screen.dart';
 import 'package:cookrange/screens/chat/chat_list_screen.dart';
 import 'package:cookrange/screens/challenges/challenges_screen.dart';
+import 'package:cookrange/screens/coach/coach_clients_screen.dart';
+import 'package:cookrange/screens/coach/coach_dashboard_screen.dart';
+import 'package:cookrange/screens/coach/coach_discovery_screen.dart';
+import 'package:cookrange/screens/gym/gym_dashboard_screen.dart';
+import 'package:cookrange/screens/gym/gym_discovery_screen.dart';
 import 'package:cookrange/screens/leaderboard/leaderboard_screen.dart';
 import 'package:cookrange/screens/profile/dietary_preferences_screen.dart';
+import 'package:cookrange/screens/programs/program_marketplace_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/models/user_model.dart';
 import '../../core/providers/navigation_provider.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/providers/user_provider.dart';
-import '../../core/theme/app_palette.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../../screens/profile/settings_screen.dart';
 
@@ -181,22 +187,40 @@ class _SideMenuState extends State<SideMenu> {
                       palette: palette,
                       onTap: () => _push(const LeaderboardScreen()),
                     ),
-
-
-                    const SizedBox(height: 28),
-
-                    // ── MY GYM (coming soon) ─────────────────────────────
-                    _sectionHeader(
-                        l10n.translate('menu.section_gym'), palette),
                     _menuItem(
-                      icon: Icons.fitness_center_rounded,
-                      label: l10n.translate('menu.my_gym'),
+                      icon: Icons.store_rounded,
+                      iconColor: palette.info,
+                      label: l10n.translate('menu.program_marketplace'),
                       isDark: isDark,
                       primary: primary,
                       palette: palette,
-                      comingSoon: true,
-                      onTap: null,
+                      onTap: () => _push(const ProgramMarketplaceScreen()),
                     ),
+                    _menuItem(
+                      icon: Icons.fitness_center_rounded,
+                      iconColor: const Color(0xFF10B981),
+                      label: l10n.translate('menu.find_gym'),
+                      isDark: isDark,
+                      primary: primary,
+                      palette: palette,
+                      onTap: () => _push(const GymDiscoveryScreen()),
+                    ),
+                    _menuItem(
+                      icon: Icons.sports_rounded,
+                      iconColor: const Color(0xFF6366F1),
+                      label: l10n.translate('menu.find_coach'),
+                      isDark: isDark,
+                      primary: primary,
+                      palette: palette,
+                      onTap: () => _push(const CoachDiscoveryScreen()),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // ── ROLE-BASED SECTION ───────────────────────────────
+                    if (user != null)
+                      _buildRoleSection(
+                          context, user, isDark, primary, palette, l10n),
 
                     const SizedBox(height: 28),
 
@@ -543,6 +567,138 @@ class _SideMenuState extends State<SideMenu> {
         ),
       ),
     );
+  }
+
+  // ── Role-based section ─────────────────────────────────────────────────────
+
+  Widget _buildRoleSection(
+    BuildContext context,
+    UserModel user,
+    bool isDark,
+    Color primary,
+    AppPalette palette,
+    AppLocalizations l10n,
+  ) {
+    switch (user.userRole) {
+      case UserRole.gymOwner:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionHeader(
+                l10n.translate('menu.section_gym_management'), palette),
+            _menuItem(
+              icon: Icons.dashboard_rounded,
+              iconColor: primary,
+              label: l10n.translate('menu.gym_dashboard'),
+              isDark: isDark,
+              primary: primary,
+              palette: palette,
+              onTap: () => _push(const GymDashboardScreen()),
+            ),
+            _menuItem(
+              icon: Icons.search_rounded,
+              iconColor: const Color(0xFF10B981),
+              label: l10n.translate('menu.gym_discover'),
+              isDark: isDark,
+              primary: primary,
+              palette: palette,
+              onTap: () => _push(const GymDiscoveryScreen()),
+            ),
+            _menuItem(
+              icon: Icons.bar_chart_rounded,
+              iconColor: const Color(0xFFF59E0B),
+              label: l10n.translate('menu.gym_analytics'),
+              isDark: isDark,
+              primary: primary,
+              palette: palette,
+              comingSoon: true,
+              onTap: null,
+            ),
+          ],
+        );
+
+      case UserRole.coach:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionHeader(
+                l10n.translate('menu.section_my_clients'), palette),
+            _menuItem(
+              icon: Icons.people_alt_rounded,
+              iconColor: const Color(0xFF6366F1),
+              label: l10n.translate('menu.my_clients'),
+              isDark: isDark,
+              primary: primary,
+              palette: palette,
+              onTap: () => _push(const CoachClientsScreen()),
+            ),
+            _menuItem(
+              icon: Icons.insights_rounded,
+              iconColor: const Color(0xFF10B981),
+              label: l10n.translate('menu.coach_dashboard'),
+              isDark: isDark,
+              primary: primary,
+              palette: palette,
+              onTap: () => _push(const CoachDashboardScreen()),
+            ),
+          ],
+        );
+
+      case UserRole.admin:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionHeader(
+                l10n.translate('menu.section_admin'), palette),
+            _menuItem(
+              icon: Icons.admin_panel_settings_rounded,
+              iconColor: const Color(0xFFEC4899),
+              label: l10n.translate('menu.admin_users'),
+              isDark: isDark,
+              primary: primary,
+              palette: palette,
+              comingSoon: true,
+              onTap: null,
+            ),
+            _menuItem(
+              icon: Icons.flag_rounded,
+              iconColor: palette.error,
+              label: l10n.translate('menu.admin_reports'),
+              isDark: isDark,
+              primary: primary,
+              palette: palette,
+              comingSoon: true,
+              onTap: null,
+            ),
+          ],
+        );
+
+      case UserRole.consumer:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionHeader(l10n.translate('menu.section_grow'), palette),
+            _menuItem(
+              icon: Icons.add_business_rounded,
+              iconColor: primary,
+              label: l10n.translate('menu.register_gym'),
+              isDark: isDark,
+              primary: primary,
+              palette: palette,
+              onTap: () => _push(const GymDashboardScreen()),
+            ),
+            _menuItem(
+              icon: Icons.sports_rounded,
+              iconColor: const Color(0xFF6366F1),
+              label: l10n.translate('menu.become_coach'),
+              isDark: isDark,
+              primary: primary,
+              palette: palette,
+              onTap: () => _push(const CoachDashboardScreen()),
+            ),
+          ],
+        );
+    }
   }
 
   // ── Footer ─────────────────────────────────────────────────────────────────

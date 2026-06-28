@@ -1,13 +1,10 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import '../theme/app_palette.dart';
 import '../theme/app_dimensions.dart';
-import '../theme/app_typography.dart';
 
 /// A card widget that can be captured and shared as a PNG image.
 ///
@@ -120,9 +117,9 @@ class ShareableFitnessCard extends StatelessWidget {
                 fontFamily: 'Poppins',
               ),
             ),
-            Text(
+            const Text(
               "Nutrition Score",
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -270,10 +267,10 @@ class ShareableFitnessCard extends StatelessWidget {
   }
 
   Widget _footer(BuildContext context) {
-    return Row(
+    return const Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
+        Text(
           "🍳 Cookrange",
           style: TextStyle(
             color: Color(0xFFF97300),
@@ -282,7 +279,7 @@ class ShareableFitnessCard extends StatelessWidget {
             fontFamily: 'Poppins',
           ),
         ),
-        const Text(
+        Text(
           "AI-Powered Nutrition",
           style: TextStyle(
             color: Colors.white38,
@@ -303,7 +300,7 @@ class _SimpleRingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
     final radius = (size.width - 8) / 2;
-    final strokeWidth = 8.0;
+    const strokeWidth = 8.0;
     final rect = Rect.fromCircle(center: center, radius: radius);
 
     // Track

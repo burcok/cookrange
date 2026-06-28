@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -54,7 +55,7 @@ class _ExerciseLogSheetState extends State<ExerciseLogSheet> {
     final user = context.read<UserProvider>().user;
     if (user == null) return;
     setState(() => _isLogging = true);
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
 
     try {
       final calories = _estimatedCalories(user);
@@ -66,7 +67,7 @@ class _ExerciseLogSheetState extends State<ExerciseLogSheet> {
       );
 
       if (mounted) {
-        HapticFeedback.heavyImpact();
+        unawaited(HapticFeedback.heavyImpact());
         Navigator.of(context).pop(true);
         AppSnackBar.success(
           context,
@@ -247,7 +248,6 @@ class _ExerciseLogSheetState extends State<ExerciseLogSheet> {
                 20.w, 0, 20.w, MediaQuery.of(context).padding.bottom + 16.h),
             child: AppButton(
               label: l10n.translate('exercise.log_button'),
-              variant: AppButtonVariant.primary,
               loading: _isLogging,
               onPressed: _log,
             ),

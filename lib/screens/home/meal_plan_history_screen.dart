@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -82,7 +83,7 @@ class _MealPlanHistoryScreenState extends State<MealPlanHistoryScreen> {
     );
 
     if (confirmed == true && mounted) {
-      HapticFeedback.mediumImpact();
+      unawaited(HapticFeedback.mediumImpact());
       await _service.restorePlan(uid, plan);
       if (mounted) {
         AppSnackBar.success(
@@ -163,7 +164,7 @@ class _MealPlanHistoryScreenState extends State<MealPlanHistoryScreen> {
       if (uid == null) return;
       // Simple offset-based: fetch from the beginning with larger limit
       // (Firestore needs lastDoc; for now fetch next page)
-      final more = await _service.getMealPlanHistory(uid, limit: 10);
+      final more = await _service.getMealPlanHistory(uid);
       if (mounted) {
         setState(() {
           final existing = _plans.map((p) => p.id).toSet();

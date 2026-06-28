@@ -381,6 +381,23 @@ class FirestoreService {
     }
   }
 
+  /// Updates the user's role field (`user_role`) in Firestore.
+  Future<void> updateUserRole(String uid, String roleValue) async {
+    _log.info('Updating user role for uid: $uid to $roleValue',
+        service: _serviceName);
+    try {
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .update({'user_role': roleValue});
+      _log.info('Successfully updated user role for uid: $uid',
+          service: _serviceName);
+    } catch (e, s) {
+      _log.error('Error updating user role for $uid',
+          service: _serviceName, error: e, stackTrace: s);
+    }
+  }
+
   // ── Private nutrition subcollection ─────────────────────────────────────────
 
   /// Reads the owner-only private nutrition document for [uid].

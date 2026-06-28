@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -69,7 +71,7 @@ class DeviceInfoProvider extends ChangeNotifier {
       _buildNumber = packageInfo.buildNumber;
 
       // Don't await this. Let it run in the background.
-      _getPermissionInfo();
+      unawaited(_getPermissionInfo());
 
       // Notify listeners immediately with the basic info.
       // A second notification will come from _getPermissionInfo when it's done.

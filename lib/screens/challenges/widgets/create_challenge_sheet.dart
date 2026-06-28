@@ -22,6 +22,12 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
   final TextEditingController _descCtrl = TextEditingController();
   final TextEditingController _goalCtrl = TextEditingController();
 
+  // Sponsor fields
+  final TextEditingController _sponsorNameCtrl = TextEditingController();
+  final TextEditingController _sponsorRewardCtrl = TextEditingController();
+  final TextEditingController _sponsorUrlCtrl = TextEditingController();
+  bool _showSponsorSection = false;
+
   ChallengeType _selectedType = ChallengeType.steps;
   ChallengeDifficulty _selectedDifficulty = ChallengeDifficulty.medium;
   DateTime _endDate = DateTime.now().add(const Duration(days: 7));
@@ -113,6 +119,9 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
     _titleCtrl.dispose();
     _descCtrl.dispose();
     _goalCtrl.dispose();
+    _sponsorNameCtrl.dispose();
+    _sponsorRewardCtrl.dispose();
+    _sponsorUrlCtrl.dispose();
     super.dispose();
   }
 
@@ -143,16 +152,38 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
 
     setState(() => _isCreating = true);
     try {
-      final challenge = await _service.createChallenge(
-        title: title,
-        description: _descCtrl.text.trim(),
-        type: _selectedType,
-        difficulty: _selectedDifficulty,
-        goal: goal,
-        unit: unit,
-        endDate: _endDate,
-        isPublic: _isPublic,
-      );
+      final sponsorName = _sponsorNameCtrl.text.trim();
+      final isSponsorFilled = _showSponsorSection && sponsorName.isNotEmpty;
+
+      final challenge = isSponsorFilled
+          ? await _service.createSponsoredChallenge(
+              title: title,
+              description: _descCtrl.text.trim(),
+              type: _selectedType,
+              difficulty: _selectedDifficulty,
+              goal: goal,
+              unit: unit,
+              startDate: DateTime.now(),
+              endDate: _endDate,
+              isPublic: _isPublic,
+              sponsorName: sponsorName,
+              sponsorReward: _sponsorRewardCtrl.text.trim().isEmpty
+                  ? null
+                  : _sponsorRewardCtrl.text.trim(),
+              sponsorWebUrl: _sponsorUrlCtrl.text.trim().isEmpty
+                  ? null
+                  : _sponsorUrlCtrl.text.trim(),
+            )
+          : await _service.createChallenge(
+              title: title,
+              description: _descCtrl.text.trim(),
+              type: _selectedType,
+              difficulty: _selectedDifficulty,
+              goal: goal,
+              unit: unit,
+              endDate: _endDate,
+              isPublic: _isPublic,
+            );
       if (mounted) Navigator.pop(context, challenge);
     } catch (e) {
       if (mounted) {
@@ -355,6 +386,62 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                     label: l10n.translate('challenge.create.public_label'),
                     description: l10n.translate('challenge.create.public_subtitle'),
                   ),
+                  SizedBox(height: AppSpacing.lg.h),
+
+                  // Sponsor section toggle
+                  AppToggle(
+                    value: _showSponsorSection,
+                    onChanged: (v) => setState(() => _showSponsorSection = v),
+                    label: l10n.translate('challenge.sponsor.add_sponsor'),
+                  ),
+
+                  // Sponsor fields (expanded when toggled on)
+                  if (_showSponsorSection) ...[
+                    SizedBox(height: AppSpacing.md.h),
+                    Container(
+                      padding: EdgeInsets.all(AppSpacing.lg.r),
+                      decoration: BoxDecoration(
+                        color: palette.warning.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(AppRadius.card.r),
+                        border: Border.all(
+                            color: palette.warning.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AppTextField(
+                            controller: _sponsorNameCtrl,
+                            labelText: l10n.translate('challenge.sponsor.sponsor_name'),
+                            hintText: 'e.g. MyProtein, Nike',
+                            onChanged: (_) => setState(() {}),
+                            textInputAction: TextInputAction.next,
+                          ),
+                          SizedBox(height: AppSpacing.md.h),
+                          AppTextField(
+                            controller: _sponsorRewardCtrl,
+                            labelText: l10n.translate('challenge.sponsor.sponsor_reward'),
+                            hintText: 'e.g. Win 3 months free premium',
+                            textInputAction: TextInputAction.next,
+                          ),
+                          SizedBox(height: AppSpacing.md.h),
+                          AppTextField(
+                            controller: _sponsorUrlCtrl,
+                            labelText: l10n.translate('challenge.sponsor.sponsor_url'),
+                            hintText: 'https://...',
+                            keyboardType: TextInputType.url,
+                            textInputAction: TextInputAction.done,
+                          ),
+                          SizedBox(height: AppSpacing.sm.h),
+                          Text(
+                            l10n.translate('challenge.sponsor.public_disclaimer'),
+                            style: t.labelS.copyWith(
+                                color: palette.textTertiary,
+                                fontStyle: FontStyle.italic),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   SizedBox(height: AppSpacing.xxl.h),
                 ],
               ),

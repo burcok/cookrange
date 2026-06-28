@@ -45,10 +45,10 @@ class NotificationPresenter {
       case NotificationType.comment:
         return l10n.translate('notifications.feed.comment_post',
             variables: {'actor': actor});
-      case NotificationType.friend_request:
+      case NotificationType.friendRequest:
         return l10n.translate('notifications.feed.friend_request',
             variables: {'actor': actor});
-      case NotificationType.friend_accepted:
+      case NotificationType.friendAccepted:
       case NotificationType.follow:
         return l10n.translate('notifications.feed.friend_accepted',
             variables: {'actor': actor});
@@ -101,8 +101,8 @@ class NotificationPresenter {
       case NotificationType.reaction:
       case NotificationType.comment:
         return l10n.translate('notifications.feed.cat_activity');
-      case NotificationType.friend_request:
-      case NotificationType.friend_accepted:
+      case NotificationType.friendRequest:
+      case NotificationType.friendAccepted:
       case NotificationType.follow:
         return l10n.translate('notifications.feed.cat_friends');
       case NotificationType.referral:
@@ -126,9 +126,9 @@ class NotificationPresenter {
         return Icons.emoji_emotions;
       case NotificationType.comment:
         return Icons.chat_bubble;
-      case NotificationType.friend_request:
+      case NotificationType.friendRequest:
         return Icons.person_add;
-      case NotificationType.friend_accepted:
+      case NotificationType.friendAccepted:
       case NotificationType.follow:
         return Icons.how_to_reg;
       case NotificationType.referral:
@@ -153,9 +153,9 @@ class NotificationPresenter {
         return palette.calories;
       case NotificationType.comment:
         return palette.info;
-      case NotificationType.friend_request:
+      case NotificationType.friendRequest:
         return palette.fat;
-      case NotificationType.friend_accepted:
+      case NotificationType.friendAccepted:
       case NotificationType.follow:
         return palette.success;
       case NotificationType.referral:

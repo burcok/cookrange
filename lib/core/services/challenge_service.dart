@@ -85,6 +85,52 @@ class ChallengeService {
     return model;
   }
 
+  Future<ChallengeModel> createSponsoredChallenge({
+    required String title,
+    required String description,
+    required ChallengeType type,
+    required int goal,
+    required String unit,
+    required DateTime startDate,
+    required DateTime endDate,
+    required ChallengeDifficulty difficulty,
+    required String sponsorName,
+    String? sponsorLogoUrl,
+    String? sponsorReward,
+    String? sponsorWebUrl,
+    bool isPublic = true,
+  }) async {
+    final uid = _uid;
+    if (uid == null) throw Exception('Not authenticated');
+
+    final now = DateTime.now();
+    final doc = _col.doc();
+    final model = ChallengeModel(
+      id: doc.id,
+      title: title,
+      description: description,
+      type: type,
+      difficulty: difficulty,
+      goal: goal,
+      unit: unit,
+      startDate: startDate,
+      endDate: endDate,
+      createdBy: uid,
+      participantIds: [uid],
+      participantProgress: {uid: 0},
+      isPublic: isPublic,
+      createdAt: now,
+      sponsorName: sponsorName,
+      sponsorLogoUrl: sponsorLogoUrl,
+      sponsorReward: sponsorReward,
+      sponsorWebUrl: sponsorWebUrl,
+    );
+
+    debugPrint('ChallengeService.createSponsoredChallenge: creating "$title" sponsored by "$sponsorName"');
+    await doc.set(model.toJson());
+    return model;
+  }
+
   Future<void> joinChallenge(String challengeId) async {
     final uid = _uid;
     if (uid == null) return;

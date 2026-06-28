@@ -308,7 +308,7 @@ class AIService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final choices = data['choices'] as List<dynamic>?;
       if (choices == null || choices.isEmpty) {
-        throw AIFatalException('Empty choices in API response');
+        throw const AIFatalException('Empty choices in API response');
       }
       return choices[0]['message']['content'] as String;
     }
@@ -351,7 +351,7 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
       }
     }
     throw lastError ??
-        AIJsonParseException(
+        const AIJsonParseException(
             'Failed to parse JSON after $_maxRetries attempts');
   }
 
@@ -415,7 +415,7 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final choices = data['choices'] as List<dynamic>?;
       if (choices == null || choices.isEmpty) {
-        throw AIFatalException('Empty choices in API response');
+        throw const AIFatalException('Empty choices in API response');
       }
       return choices[0]['message']['content'] as String;
     }

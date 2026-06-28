@@ -22,6 +22,7 @@ import '../../core/widgets/shareable_fitness_card.dart';
 import '../common/generic_error_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
 import 'widgets/tracking_card.dart';
+import 'widgets/ai_insight_card.dart';
 import 'widgets/meal_breakdown_card.dart';
 import 'widgets/exercise_log_sheet.dart';
 import 'widgets/meal_plan_comparison_sheet.dart';
@@ -675,6 +676,11 @@ class _HomeScreenState extends State<HomeScreen>
         ],
         SizedBox(height: 24.h),
         const TrackingCard(),
+        SizedBox(height: 20.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: AiInsightCard(user: userModel),
+        ),
         SizedBox(height: 32.h),
         _buildMealPlanSection(context, userModel, l10n),
         SizedBox(height: 32.h),
@@ -1184,7 +1190,7 @@ class _HomeScreenState extends State<HomeScreen>
           onCompare: showRegenerate && user != null
               ? () => unawaited(MealPlanComparisonSheet.show(
                     context,
-                    user: user!,
+                    user: user,
                     currentPlan: _weeklyPlan!,
                     onApplyAlternate: () => _generateWeeklyPlan(user),
                   ))
@@ -1193,7 +1199,7 @@ class _HomeScreenState extends State<HomeScreen>
               ? () => unawaited(_exportPlanToCalendar(l10n))
               : null,
           onRegenerate:
-              showRegenerate && user != null ? () => _generateWeeklyPlan(user!) : null,
+              showRegenerate && user != null ? () => _generateWeeklyPlan(user) : null,
         ),
       ],
     );
