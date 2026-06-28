@@ -17,7 +17,10 @@ import '../../screens/main_scaffold.dart';
 import '../../screens/chat/chat_list_screen.dart';
 import '../../screens/chat/chat_detail_screen.dart';
 import '../../screens/home/nutrition_analytics_screen.dart';
+import '../../screens/home/meal_plan_history_screen.dart';
 import '../../screens/chat/ai_chat_screen.dart';
+import '../../screens/recipe/favorites_screen.dart';
+import '../../screens/community/user_search_screen.dart';
 import '../models/chat_model.dart';
 import '../widgets/error_fallback_widget.dart';
 
@@ -57,6 +60,12 @@ class RouteConfigurationService {
         final chat = ModalRoute.of(context)!.settings.arguments as ChatModel;
         return RouteGuard(child: ChatDetailScreen(chat: chat));
       },
+      AppRoutes.favorites: (context) =>
+          const RouteGuard(child: FavoritesScreen()),
+      AppRoutes.mealPlanHistory: (context) =>
+          const RouteGuard(child: MealPlanHistoryScreen()),
+      AppRoutes.userSearch: (context) =>
+          const RouteGuard(child: UserSearchScreen()),
     };
   }
 

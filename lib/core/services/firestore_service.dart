@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'log_service.dart';
@@ -134,6 +135,7 @@ class FirestoreService {
           'created_at': FieldValue.serverTimestamp(),
           'onboarding_completed': false,
           'onboarding_data': onboardingData,
+          'streak_freeze_count': 1, // welcome gift for new users
           ...loginData,
           'login_ips': FieldValue.arrayUnion([systemContext['ip_address']]),
           'login_devices':
@@ -177,8 +179,16 @@ class FirestoreService {
               currentStreak++;
               _maybeSendStreakMilestone(user.uid, currentStreak);
             } else if (difference > 1) {
-              // Missed a day or more
-              currentStreak = 1;
+              // Missed a day — check for streak freeze
+              final freezeCount = data['streak_freeze_count'] as int? ?? 0;
+              if (freezeCount > 0) {
+                loginData['streak_freeze_count'] = freezeCount - 1;
+                loginData['streak_freeze_used_at'] = FieldValue.serverTimestamp();
+                _log.info('Streak freeze consumed for ${user.uid}; remaining: ${freezeCount - 1}',
+                    service: _serviceName);
+              } else {
+                currentStreak = 1;
+              }
             }
             // If difference == 0, same day, do nothing
           }
@@ -198,8 +208,8 @@ class FirestoreService {
       }
 
       // Middleware call to ensure data integrity after login/creation.
-      // This can be run without awaiting to avoid blocking the login flow.
-      verifyAndRepairUserData(user.uid);
+      // Fire-and-forget intentionally to avoid blocking the login flow.
+      unawaited(verifyAndRepairUserData(user.uid));
 
       // Add to login history for both new and existing users using new logs system
       try {
@@ -239,6 +249,14 @@ class FirestoreService {
       relatedId: 'streak_$streak',
       metadata: {'streakDays': streak},
     );
+  }
+
+  /// Grants [count] streak freezes to [userId] (for referrals, rewards, etc.).
+  Future<void> grantStreakFreeze(String userId, {int count = 1}) async {
+    await _firestore.collection('users').doc(userId).update({
+      'streak_freeze_count': FieldValue.increment(count),
+    });
+    _log.info('Granted $count streak freeze(s) to $userId', service: _serviceName);
   }
 
   /// Creates a user document during the initial registration process.
@@ -360,6 +378,106 @@ class FirestoreService {
     } catch (e, s) {
       _log.error('Error updating user data for $uid',
           service: _serviceName, error: e, stackTrace: s);
+    }
+  }
+
+  // ── Private nutrition subcollection ─────────────────────────────────────────
+
+  /// Reads the owner-only private nutrition document for [uid].
+  ///
+  /// On the **first call** for an existing user (migration path): if the private
+  /// doc is absent but the main user doc still contains PII fields inside
+  /// `onboarding_data`, those fields are atomically migrated — written to
+  /// `private/nutrition` and removed from the main doc — so subsequent reads
+  /// are always served from the private subcollection.
+  Future<Map<String, dynamic>?> getPrivateNutritionData(String uid) async {
+    _log.info('getPrivateNutritionData: $uid', service: _serviceName);
+    try {
+      final privateRef = _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('private')
+          .doc('nutrition');
+
+      final snap = await privateRef.get();
+
+      if (snap.exists && snap.data()!.isNotEmpty) {
+        return snap.data();
+      }
+
+      // Migration path: check if PII lives in the main doc and migrate it.
+      final mainSnap = await _firestore.collection('users').doc(uid).get();
+      final mainData = mainSnap.data() ?? {};
+      final legacyOnboarding =
+          mainData['onboarding_data'] as Map<String, dynamic>?;
+
+      if (legacyOnboarding == null) return null;
+
+      final piiFields = ['personal_info', 'allergies', 'dietary_restrictions',
+          'disliked_foods', 'avoid_ingredients'];
+      final privateData = <String, dynamic>{};
+      final removals = <String, dynamic>{};
+
+      for (final key in piiFields) {
+        if (legacyOnboarding.containsKey(key)) {
+          privateData[key] = legacyOnboarding[key];
+          removals['onboarding_data.$key'] = FieldValue.delete();
+        }
+      }
+
+      if (privateData.isEmpty) return null;
+
+      // Batch-write: create private doc + strip PII from main doc.
+      final batch = _firestore.batch();
+      batch.set(privateRef, privateData);
+      batch.update(_firestore.collection('users').doc(uid), removals);
+      await batch.commit();
+
+      _log.info(
+          'getPrivateNutritionData: migrated ${privateData.keys} to private/nutrition for $uid',
+          service: _serviceName);
+      return privateData;
+    } catch (e, s) {
+      _log.error('getPrivateNutritionData error for $uid',
+          service: _serviceName, error: e, stackTrace: s);
+      return null;
+    }
+  }
+
+  /// Saves the private nutrition PII for [uid] to `users/{uid}/private/nutrition`.
+  /// Does NOT write anything to the main user document.
+  Future<void> savePrivateNutritionData(
+      String uid, Map<String, dynamic> data) async {
+    _log.info('savePrivateNutritionData: $uid', service: _serviceName);
+    try {
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('private')
+          .doc('nutrition')
+          .set(data, SetOptions(merge: true));
+    } catch (e, s) {
+      _log.error('savePrivateNutritionData error for $uid',
+          service: _serviceName, error: e, stackTrace: s);
+      rethrow;
+    }
+  }
+
+  /// Overwrites the user's free-form avoid-ingredients list.
+  /// Writes to the owner-only private/nutrition subcollection.
+  Future<void> updateAvoidIngredients(
+      String uid, List<String> ingredients) async {
+    _log.info('Updating avoid_ingredients for uid: $uid', service: _serviceName);
+    try {
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('private')
+          .doc('nutrition')
+          .set({'avoid_ingredients': ingredients}, SetOptions(merge: true));
+    } catch (e) {
+      _log.error('updateAvoidIngredients error: $e', service: _serviceName);
+      rethrow;
     }
   }
 
@@ -731,7 +849,7 @@ class FirestoreService {
 
       // Delete known subcollections
       for (final sub in ['friends', 'friend_requests', 'notifications',
-          'meal_plans', 'food_logs']) {
+          'meal_plans', 'food_logs', 'private']) {
         final snap = await _firestore
             .collection('users')
             .doc(uid)

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -155,7 +156,7 @@ class WeeklyMealPlanService {
         generationPromptHash: _generateProfileHash(user),
       );
 
-      // 5. Save to Firestore
+      // 5. Save to Firestore as current plan
       await _firestore
           .collection('users')
           .doc(user.uid)
@@ -163,7 +164,16 @@ class WeeklyMealPlanService {
           .doc('current')
           .set(plan.toJson());
 
-      // Also save to history? Optional.
+      // 6. Archive to history (keyed by week start date for dedup)
+      final historyKey =
+          '${weekStart.year}-${weekStart.month.toString().padLeft(2, '0')}-${weekStart.day.toString().padLeft(2, '0')}';
+      unawaited(_firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('meal_plan_history')
+          .doc(historyKey)
+          .set({...plan.toJson(), 'id': historyKey, 'archivedAt': FieldValue.serverTimestamp()})
+          .catchError((e) => debugPrint('History archive error: $e')));
 
       return plan;
     } catch (e) {
@@ -239,14 +249,13 @@ class WeeklyMealPlanService {
 
   Map<String, dynamic> _extractUserProfile(UserNutritionProfile p) {
     final restrictions = [...p.dietaryRestrictionIds, ...p.allergyIds];
+    final allDislikes = [...p.dislikedFoodKeys, ...p.avoidIngredients];
     return {
       'goal': p.primaryGoals.isNotEmpty ? p.primaryGoals.first : 'maintain_weight',
       'activity_level': p.activityLevel,
       'restrictions': restrictions.isNotEmpty ? restrictions.join(', ') : 'None',
       'allergies': p.allergyIds.isNotEmpty ? p.allergyIds.join(', ') : 'None',
-      'dislikes': p.dislikedFoodKeys.isNotEmpty
-          ? p.dislikedFoodKeys.join(', ')
-          : 'None',
+      'dislikes': allDislikes.isNotEmpty ? allDislikes.join(', ') : 'None',
     };
   }
 
@@ -268,7 +277,71 @@ class WeeklyMealPlanService {
   String _generateProfileHash(UserModel user) {
     final p = user.profile;
     final rawString =
-        '${p.primaryGoals}-${p.activityLevel}-${p.dislikedFoodKeys}-${p.allergyIds}-${p.dietaryRestrictionIds}';
+        '${p.primaryGoals}-${p.activityLevel}-${p.dislikedFoodKeys}-${p.avoidIngredients}-${p.allergyIds}-${p.dietaryRestrictionIds}';
     return md5.convert(utf8.encode(rawString)).toString();
+  }
+
+  /// Fetch paginated meal plan history (newest first).
+  Future<List<WeeklyMealPlanModel>> getMealPlanHistory(
+    String userId, {
+    int limit = 10,
+    DocumentSnapshot? lastDoc,
+  }) async {
+    try {
+      Query<Map<String, dynamic>> query = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('meal_plan_history')
+          .orderBy('archivedAt', descending: true)
+          .limit(limit);
+
+      if (lastDoc != null) query = query.startAfterDocument(lastDoc);
+
+      final snap = await query.get();
+      return snap.docs.map((d) => WeeklyMealPlanModel.fromFirestore(d)).toList();
+    } catch (e) {
+      debugPrint('WeeklyMealPlanService.getMealPlanHistory error: $e');
+      return [];
+    }
+  }
+
+  /// Restore a historical plan as the current plan.
+  Future<void> restorePlan(String userId, WeeklyMealPlanModel plan) async {
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('meal_plans')
+        .doc('current')
+        .set(plan.toJson());
+  }
+
+  /// Generates 2 lightweight "what-if" macro alternatives for comparison.
+  /// Does NOT write to Firestore — purely ephemeral.
+  Future<List<PlanAlternate>> generatePlanAlternates(UserModel user) async {
+    final p = user.profile;
+    final calories = _calculateUserCalories(p);
+    final restrictions = [...p.dietaryRestrictionIds, ...p.allergyIds];
+    final prompt = _promptService.generatePlanAlternatesPrompt(
+      dailyCalorieTarget: calories,
+      goal: p.primaryGoals.isNotEmpty ? p.primaryGoals.first : 'maintain_weight',
+      activityLevel: p.activityLevel,
+      restrictions: restrictions.isNotEmpty ? restrictions.join(', ') : 'None',
+    );
+
+    try {
+      final json = await _aiService.generateJson(
+        prompt: prompt,
+        jsonStructure: '{"alternates":[{"name":"","description":"","avg_daily_calories":0,"avg_macros":{"protein":0,"carbs":0,"fat":0}}]}',
+      );
+      final list = json['alternates'] as List? ?? [];
+      return list
+          .whereType<Map<String, dynamic>>()
+          .map(PlanAlternate.fromJson)
+          .where((a) => a.name.isNotEmpty)
+          .toList();
+    } catch (e) {
+      debugPrint('WeeklyMealPlanService.generatePlanAlternates error: $e');
+      return [];
+    }
   }
 }

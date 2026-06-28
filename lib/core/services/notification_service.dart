@@ -71,6 +71,35 @@ class NotificationService {
         .toList();
   }
 
+  static const int _pageSize = 20;
+
+  /// Paginated fetch — pass [lastDoc] for subsequent pages.
+  Future<({List<NotificationModel> items, DocumentSnapshot? lastDoc, bool hasMore})>
+      getNotificationsPage({DocumentSnapshot? lastDoc}) async {
+    final uid = currentUserId;
+    if (uid == null) {
+      return (items: <NotificationModel>[], lastDoc: null, hasMore: false);
+    }
+
+    Query<Map<String, dynamic>> query = _userNotifications(uid)
+        .orderBy('timestamp', descending: true)
+        .limit(_pageSize + 1); // fetch one extra to detect hasMore
+
+    if (lastDoc != null) {
+      query = query.startAfterDocument(lastDoc);
+    }
+
+    final snap = await query.get();
+    final hasMore = snap.docs.length > _pageSize;
+    final docs = hasMore ? snap.docs.sublist(0, _pageSize) : snap.docs;
+
+    return (
+      items: docs.map((d) => NotificationModel.fromMap(d.id, d.data())).toList(),
+      lastDoc: docs.isNotEmpty ? docs.last : null,
+      hasMore: hasMore,
+    );
+  }
+
   /// Create a structured notification. The display text is rendered on the
   /// client (see `NotificationPresenter`) — only structured data is persisted.
   Future<void> sendNotification({

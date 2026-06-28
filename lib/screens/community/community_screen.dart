@@ -26,7 +26,8 @@ class CommunityScreen extends StatefulWidget {
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
 
-class _CommunityScreenState extends State<CommunityScreen> {
+class _CommunityScreenState extends State<CommunityScreen>
+    with AutomaticKeepAliveClientMixin {
   final CommunityService _service = CommunityService();
   final FriendService _friendService = FriendService();
   final ScrollController _scrollController = ScrollController();
@@ -328,7 +329,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     final appLoc = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
     final textStyles = AppText.of(context);

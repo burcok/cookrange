@@ -36,17 +36,22 @@ class _SelectFriendSheetState extends State<SelectFriendSheet> {
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.7,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Material(
         color: palette.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        children: [
-          Row(
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
             children: [
-              Text(
-                AppLocalizations.of(context).translate('chat.new_chat'),
+              Row(
+                children: [
+                  Text(
+                    AppLocalizations.of(context).translate('chat.new_chat'),
                 style: appText.headlineS.copyWith(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -184,6 +189,8 @@ class _SelectFriendSheetState extends State<SelectFriendSheet> {
           ),
         ],
       ),
+    ),
+    ),
     );
   }
 }

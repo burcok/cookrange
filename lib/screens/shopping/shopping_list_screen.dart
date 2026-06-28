@@ -422,75 +422,85 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
           child: const Icon(Icons.delete, color: Colors.white),
         ),
         onDismissed: (_) => _deleteItem(item.name),
-        child: AnimatedContainer(
+        child: TweenAnimationBuilder<Color?>(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            color: isChecked ? palette.surfaceVariant : palette.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isChecked ? Colors.transparent : palette.border,
-            ),
-            boxShadow: isChecked
-                ? []
-                : [
-                    BoxShadow(
-                      color: palette.shadow.withValues(alpha: 0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+          tween: ColorTween(
+            begin: isChecked ? palette.surfaceVariant : palette.surface,
+            end: isChecked ? palette.surfaceVariant : palette.surface,
           ),
-          child: Material(
-            color: Colors.transparent,
-            clipBehavior: Clip.antiAlias,
-            borderRadius: BorderRadius.circular(12),
-            child: ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              leading: GestureDetector(
-                onTap: () => _toggleItem(item.name),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: isChecked ? primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: isChecked ? primary : palette.textTertiary,
-                      width: 2,
-                    ),
-                  ),
-                  child: isChecked
-                      ? const Icon(Icons.check, size: 16, color: Colors.white)
-                      : null,
+          builder: (context, color, child) {
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isChecked ? Colors.transparent : palette.border,
                 ),
+                boxShadow: isChecked
+                    ? []
+                    : [
+                        BoxShadow(
+                          color: palette.shadow.withValues(alpha: 0.06),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
               ),
-              title: AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight:
-                      isChecked ? FontWeight.normal : FontWeight.w600,
-                  decoration: isChecked
-                      ? TextDecoration.lineThrough
-                      : TextDecoration.none,
-                  decorationColor: palette.textTertiary,
-                  color: isChecked ? palette.textTertiary : palette.textPrimary,
-                ),
-                child: Text(item.name),
+              child: Material(
+                color: color,
+                clipBehavior: Clip.antiAlias,
+                borderRadius: BorderRadius.circular(12),
+                child: child,
               ),
-              trailing: Text(
-                '${item.amount % 1 == 0 ? item.amount.toInt() : item.amount} ${item.unit}',
-                style: TextStyle(
-                  color: isChecked ? palette.textTertiary : primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
+            );
+          },
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            leading: GestureDetector(
               onTap: () => _toggleItem(item.name),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: isChecked ? primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isChecked ? primary : palette.textTertiary,
+                    width: 2,
+                  ),
+                ),
+                child: isChecked
+                    ? const Icon(Icons.check, size: 16, color: Colors.white)
+                    : null,
+              ),
             ),
+            title: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight:
+                    isChecked ? FontWeight.normal : FontWeight.w600,
+                decoration: isChecked
+                    ? TextDecoration.lineThrough
+                    : TextDecoration.none,
+                decorationColor: palette.textTertiary,
+                color: isChecked ? palette.textTertiary : palette.textPrimary,
+              ),
+              child: Text(item.name),
+            ),
+            trailing: Text(
+              '${item.amount % 1 == 0 ? item.amount.toInt() : item.amount} ${item.unit}',
+              style: TextStyle(
+                color: isChecked ? palette.textTertiary : primary,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+            onTap: () => _toggleItem(item.name),
           ),
         ),
       ),

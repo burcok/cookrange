@@ -2,11 +2,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum ChallengeType { steps, calories, workoutDays, custom }
 
+enum ChallengeDifficulty { easy, medium, hard }
+
+extension ChallengeDifficultyX on ChallengeDifficulty {
+  String get locKey => 'challenge.difficulty.$name';
+}
+
 class ChallengeModel {
   final String id;
   final String title;
   final String description;
   final ChallengeType type;
+  final ChallengeDifficulty difficulty;
   final int goal;
   final String unit;
   final DateTime startDate;
@@ -22,6 +29,7 @@ class ChallengeModel {
     required this.title,
     required this.description,
     required this.type,
+    this.difficulty = ChallengeDifficulty.medium,
     required this.goal,
     required this.unit,
     required this.startDate,
@@ -34,7 +42,7 @@ class ChallengeModel {
   });
 
   factory ChallengeModel.fromJson(Map<String, dynamic> json, String id) {
-    DateTime _ts(dynamic v) {
+    DateTime ts(dynamic v) {
       if (v is Timestamp) return v.toDate();
       return DateTime.now();
     }
@@ -45,6 +53,12 @@ class ChallengeModel {
       orElse: () => ChallengeType.custom,
     );
 
+    final rawDifficulty = json['difficulty'] as String? ?? 'medium';
+    final difficulty = ChallengeDifficulty.values.firstWhere(
+      (d) => d.name == rawDifficulty,
+      orElse: () => ChallengeDifficulty.medium,
+    );
+
     final rawProgress = (json['participantProgress'] as Map?)?.cast<String, dynamic>() ?? {};
     final progress = rawProgress.map((k, v) => MapEntry(k, (v as num).toInt()));
 
@@ -53,15 +67,16 @@ class ChallengeModel {
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
       type: type,
+      difficulty: difficulty,
       goal: (json['goal'] as num?)?.toInt() ?? 1,
       unit: json['unit'] as String? ?? '',
-      startDate: _ts(json['startDate']),
-      endDate: _ts(json['endDate']),
+      startDate: ts(json['startDate']),
+      endDate: ts(json['endDate']),
       createdBy: json['createdBy'] as String? ?? '',
       participantIds: List<String>.from(json['participantIds'] ?? []),
       participantProgress: progress,
       isPublic: json['isPublic'] as bool? ?? true,
-      createdAt: _ts(json['createdAt']),
+      createdAt: ts(json['createdAt']),
     );
   }
 
@@ -69,6 +84,7 @@ class ChallengeModel {
         'title': title,
         'description': description,
         'type': type.name,
+        'difficulty': difficulty.name,
         'goal': goal,
         'unit': unit,
         'startDate': Timestamp.fromDate(startDate),
@@ -98,6 +114,7 @@ class ChallengeModel {
       title: title,
       description: description,
       type: type,
+      difficulty: difficulty,
       goal: goal,
       unit: unit,
       startDate: startDate,

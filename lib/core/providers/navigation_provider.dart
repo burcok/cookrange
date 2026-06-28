@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 class NavigationProvider extends ChangeNotifier {
+  static const int homeTab = 0;
+  static const int communityTab = 1;
+  static const int profileTab = 2;
+
   int _currentIndex = 0;
   bool _isMenuOpen = false;
   bool _isVoiceAssistantOpen = false;

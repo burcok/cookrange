@@ -108,6 +108,21 @@ class NotificationModel {
     };
   }
 
+  /// Returns a copy with [isRead] set to true (for optimistic UI updates).
+  NotificationModel copyWithRead() => NotificationModel(
+        id: id,
+        type: type,
+        timestamp: timestamp,
+        isRead: true,
+        actorUid: actorUid,
+        actorName: actorName,
+        actorPhotoUrl: actorPhotoUrl,
+        relatedId: relatedId,
+        metadata: metadata,
+        legacyTitle: legacyTitle,
+        legacyBody: legacyBody,
+      );
+
   /// True when this is an old document with no structured actor data — the
   /// presenter falls back to [legacyTitle]/[legacyBody].
   bool get isLegacy =>

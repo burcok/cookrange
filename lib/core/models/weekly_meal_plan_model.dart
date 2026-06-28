@@ -127,3 +127,30 @@ class DayMealPlan {
     };
   }
 }
+
+/// Lightweight "what-if" plan summary — not persisted, generated on-demand.
+class PlanAlternate {
+  final String name;
+  final String description;
+  final double avgCalories;
+  final Map<String, double> avgMacros;
+
+  const PlanAlternate({
+    required this.name,
+    required this.description,
+    required this.avgCalories,
+    required this.avgMacros,
+  });
+
+  factory PlanAlternate.fromJson(Map<String, dynamic> json) {
+    return PlanAlternate(
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      avgCalories: (json['avg_daily_calories'] as num?)?.toDouble() ?? 0,
+      avgMacros: (json['avg_macros'] as Map?)?.map(
+            (k, v) => MapEntry(k.toString(), (v as num).toDouble()),
+          ) ??
+          {},
+    );
+  }
+}

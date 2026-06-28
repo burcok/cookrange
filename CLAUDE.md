@@ -121,7 +121,8 @@ lib/
 
 | Collection | Purpose |
 |---|---|
-| `users/{uid}` | User profile, onboarding data, streak |
+| `users/{uid}` | User profile, public onboarding data (streak, activity_level, goals, cooking_level, etc.) |
+| `users/{uid}/private/nutrition` | **Owner-only PII** — personal_info (height/weight/gender/birth_date), allergies, dietary_restrictions, disliked_foods, avoid_ingredients |
 | `users/{uid}/meal_plans/current` | Current weekly meal plan |
 | `users/{uid}/food_logs/{logId}` | Daily food diary entries |
 | `posts/{postId}` | Community posts |
@@ -132,13 +133,16 @@ lib/
 | `signals/{uid}` | Ephemeral social broadcasts |
 | `admin/status/{uid}` | Ban/admin flags |
 | `referrals/{code}` | Referral code docs (owner, usedByUids, maxUses) |
+| `users/{uid}/favorites/{recipeId}` | Saved/bookmarked recipes |
+| `users/{uid}/recent_foods/{dishId}` | Recent & frequent food log entries (max 20) |
+| `users/{uid}/meal_plan_history/{key}` | Archived weekly meal plans (key = `YYYY-MM-DD` week start) |
 
 ## Key Services
 
 | Service | File | Notes |
 |---|---|---|
 | `AuthService` | `auth_service.dart` | Singleton, Firebase Auth wrapper, Google + Apple + email |
-| `FirestoreService` | `firestore_service.dart` | User CRUD, activity logging, streak, notifications |
+| `FirestoreService` | `firestore_service.dart` | User CRUD, activity logging, streak, notifications; `getPrivateNutritionData(uid)` migrates + reads PII subcollection; `savePrivateNutritionData(uid, data)` writes PII |
 | `AIService` | `ai/ai_service.dart` | OpenRouter client, typed exceptions, 3-retry policy |
 | `WeeklyMealPlanService` | `weekly_meal_plan_service.dart` | AI-generated plan, Firestore caching, hash invalidation |
 | `FoodLogService` | `food_log_service.dart` | Real-time food diary stream for home dashboard |
@@ -156,6 +160,10 @@ lib/
 | `NotificationService` | `notification_service.dart` | In-app notifications. **Stores STRUCTURED data only** (`type`, `actorUid/Name/PhotoUrl`, `relatedId`, `metadata`) — never pre-rendered text |
 | `NotificationPresenter` | `utils/notification_presenter.dart` | Renders notification title/body/icon/color dynamically from `notifications.feed.*` keys; legacy docs fall back to stored title/body |
 | `openUserProfile` / `ProfileLink` | `utils/profile_navigation.dart` | Standard way to open a user's profile from any avatar/name (`{userId}` or `{user}`); self → own profile |
+| `FavoriteService` | `favorite_service.dart` | `users/{uid}/favorites/{recipeId}`; `toggleFavorite`, `isFavoriteStream`, `getFavoritesStream` |
+| `RecentFoodService` | `recent_food_service.dart` | `users/{uid}/recent_foods`; auto-upserted by `FoodLogService`; max 20 entries; `getRecentFoods`, `getFrequentFoods` |
+| `NotificationPreferencesService` | `notification_preferences_service.dart` | Per-group mute prefs in `users/{uid}.notification_muted`; groups: likes/comments/friends/system/referral |
+| `WeeklyMealPlanService` (extended) | `weekly_meal_plan_service.dart` | Added `getMealPlanHistory`, `restorePlan`, auto-archive to `meal_plan_history/{key}` on every save |
 
 ### Notifications (architecture)
 - **Never store display text.** Call `NotificationService.sendNotification(type:, actorUid:, actorName:, actorPhotoUrl:, relatedId:, metadata:)`. Text is rendered on the reader's device by `NotificationPresenter` so it's always in their language with the real actor name.

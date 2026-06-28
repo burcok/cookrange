@@ -16,12 +16,18 @@ class RecipeGenerationService {
     required List<String> ingredients,
     required double targetCalories,
     List<String> dietaryRestrictions = const [],
+    List<String> avoidIngredients = const [],
+    int? maxTotalMinutes,
+    String? difficulty,
   }) async {
     try {
       final prompt = _promptService.generateRecipePrompt(
         ingredients: ingredients,
         targetCalories: targetCalories,
         dietaryRestrictions: dietaryRestrictions,
+        avoidIngredients: avoidIngredients,
+        maxTotalMinutes: maxTotalMinutes,
+        difficulty: difficulty,
       );
 
       final jsonResponse = await _aiService.generateJson(

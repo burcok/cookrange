@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/models/user_model.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/providers/navigation_provider.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/friend_service.dart';
 import '../../core/services/chat_service.dart';
@@ -440,11 +441,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           // Back Button
                           _buildGlassCircleButton(
                               context, Icons.arrow_back,
-                              onTap: () async {
-                            if (!isPublic) {
-                              if (context.mounted) Navigator.pop(context);
-                            } else if (isPublic) {
+                              onTap: () {
+                            if (!context.mounted) return;
+                            if (Navigator.canPop(context)) {
                               Navigator.pop(context);
+                            } else {
+                              // Own profile shown as a tab — go home
+                              context
+                                  .read<NavigationProvider>()
+                                  .setIndex(NavigationProvider.homeTab);
                             }
                           }),
 
@@ -1859,24 +1864,31 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
     final palette = AppPalette.of(context);
     return Container(
       height: MediaQuery.of(context).size.height * 0.8,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      child: Material(
         color: palette.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-      ),
-      child: Column(
-        children: [
-          Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: palette.border, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 20),
-          if (_mode == _FriendsSheetMode.list)
-            _buildListView()
-          else
-            _buildSearchView(),
-        ],
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: palette.border, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 20),
+              if (_mode == _FriendsSheetMode.list)
+                _buildListView()
+              else
+                _buildSearchView(),
+            ],
+          ),
+        ),
       ),
     );
   }

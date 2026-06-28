@@ -14,7 +14,7 @@ android:
 # iOS Configuration
 ios:
   bundle-id: com.cookrange_ios.app
-  minimum-ios-version: "12.0"
+  minimum-ios-version: "14.0"
 
 
 dependencies:
@@ -76,6 +76,7 @@ dependencies:
   share_plus: ^10.1.4
   in_app_purchase: ^3.2.0
   app_links: ^6.3.4
+  mobile_scanner: ^7.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

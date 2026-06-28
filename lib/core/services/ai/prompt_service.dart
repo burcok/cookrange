@@ -22,11 +22,28 @@ Return a JSON object with:
     required List<String> ingredients,
     required double targetCalories,
     required List<String> dietaryRestrictions,
+    List<String> avoidIngredients = const [],
+    int? maxTotalMinutes,
+    String? difficulty,
   }) {
+    final constraints = <String>[];
+    if (maxTotalMinutes != null) {
+      constraints.add('Total cook + prep time MUST be under $maxTotalMinutes minutes.');
+    }
+    if (difficulty != null) {
+      constraints.add('Difficulty MUST be "$difficulty".');
+    }
+    if (avoidIngredients.isNotEmpty) {
+      constraints.add('MUST NOT contain these ingredients: ${avoidIngredients.join(', ')}.');
+    }
+    final constraintBlock = constraints.isEmpty
+        ? ''
+        : '\nAdditional constraints:\n${constraints.map((c) => '- $c').join('\n')}';
+
     return '''
 Create a recipe using these ingredients: ${ingredients.join(', ')}.
 Target Calories: $targetCalories.
-Dietary Restrictions: ${dietaryRestrictions.join(', ')}.
+Dietary Restrictions: ${dietaryRestrictions.isEmpty ? 'none' : dietaryRestrictions.join(', ')}.$constraintBlock
 
 Return fully structured JSON matching this schema:
 {
@@ -115,6 +132,47 @@ $dishesContext
 
 Return strictly valid JSON matching this structure:
 $jsonSchema
+''';
+  }
+
+  /// Generates 2 lightweight "what-if" alternate plan macro profiles.
+  String generatePlanAlternatesPrompt({
+    required double dailyCalorieTarget,
+    required String goal,
+    required String activityLevel,
+    required String restrictions,
+  }) {
+    return '''
+You are a professional nutritionist. A user wants to compare 2 different weekly meal plan approaches.
+
+User profile:
+- Daily Calorie Target: $dailyCalorieTarget kcal
+- Goal: $goal
+- Activity Level: $activityLevel
+- Dietary Restrictions: $restrictions
+
+Generate exactly 2 distinct macro distribution approaches that achieve the same calorie target.
+Approaches should have clearly different macro ratios (e.g., High Protein vs Balanced Carbs, or Fat Loss vs Muscle Gain).
+
+Return ONLY valid JSON:
+{
+  "alternates": [
+    {
+      "name": "Short approach name (2-3 words)",
+      "description": "One sentence describing this approach and its benefits",
+      "avg_daily_calories": $dailyCalorieTarget,
+      "avg_macros": { "protein": 0, "carbs": 0, "fat": 0 }
+    },
+    {
+      "name": "Short approach name (2-3 words)",
+      "description": "One sentence describing this approach and its benefits",
+      "avg_daily_calories": $dailyCalorieTarget,
+      "avg_macros": { "protein": 0, "carbs": 0, "fat": 0 }
+    }
+  ]
+}
+
+Ensure macros × kcal conversion ≈ avg_daily_calories (protein×4 + carbs×4 + fat×9 ≈ calories).
 ''';
   }
 }

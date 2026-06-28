@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 
@@ -23,40 +24,84 @@ class NotificationScreen extends StatefulWidget {
 class _NotificationScreenState extends State<NotificationScreen> {
   final NotificationService _service = NotificationService();
   final FriendService _friendService = FriendService();
+  final ScrollController _scrollController = ScrollController();
 
-  late final StreamSubscription<List<NotificationModel>> _sub;
   List<NotificationModel> _notifications = [];
   bool _isLoading = true;
-  bool _hasAutoMarkedRead = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  DocumentSnapshot? _lastDoc;
   String _selectedFilter = 'all';
 
   @override
   void initState() {
     super.initState();
-    _sub = _service.getNotificationsStream().listen(_onData);
+    _scrollController.addListener(_onScroll);
+    unawaited(_loadInitialPage());
   }
 
   @override
   void dispose() {
-    _sub.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  void _onData(List<NotificationModel> notifications) {
-    if (!mounted) return;
-    setState(() {
-      _notifications = notifications;
-      _isLoading = false;
-    });
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMore &&
+        _selectedFilter == 'all') {
+      unawaited(_loadMore());
+    }
+  }
 
-    // Auto-mark unread as read exactly once when screen first loads
-    if (!_hasAutoMarkedRead) {
-      _hasAutoMarkedRead = true;
+  Future<void> _loadInitialPage() async {
+    setState(() {
+      _isLoading = true;
+      _notifications = [];
+      _lastDoc = null;
+      _hasMore = true;
+    });
+    try {
+      final result = await _service.getNotificationsPage();
+      if (!mounted) return;
+      setState(() {
+        _notifications = result.items;
+        _lastDoc = result.lastDoc;
+        _hasMore = result.hasMore;
+        _isLoading = false;
+      });
+      // Auto-mark unread as read on first open
       final unreadIds =
-          notifications.where((n) => !n.isRead).map((n) => n.id).toList();
+          result.items.where((n) => !n.isRead).map((n) => n.id).toList();
       if (unreadIds.isNotEmpty) {
-        _service.markMultipleAsRead(unreadIds);
+        unawaited(_service.markMultipleAsRead(unreadIds));
       }
+    } catch (e) {
+      debugPrint('NotificationScreen._loadInitialPage error: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() => _isLoadingMore = true);
+    try {
+      final result = await _service.getNotificationsPage(lastDoc: _lastDoc);
+      if (!mounted) return;
+      setState(() {
+        final existingIds = _notifications.map((n) => n.id).toSet();
+        final newItems =
+            result.items.where((n) => !existingIds.contains(n.id)).toList();
+        _notifications.addAll(newItems);
+        _lastDoc = result.lastDoc;
+        _hasMore = result.hasMore;
+      });
+    } catch (e) {
+      debugPrint('NotificationScreen._loadMore error: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingMore = false);
     }
   }
 
@@ -64,15 +109,19 @@ class _NotificationScreenState extends State<NotificationScreen> {
     final unread = _notifications.where((n) => !n.isRead).toList();
     if (unread.isEmpty) return;
     await _service.markMultipleAsRead(unread.map((n) => n.id).toList());
-    // Stream will update automatically
+    if (mounted) {
+      setState(() {
+        _notifications = _notifications
+            .map((n) => n.isRead ? n : n.copyWithRead())
+            .toList();
+      });
+    }
   }
 
   Future<void> _delete(String id) async {
+    // Optimistic remove
+    if (mounted) setState(() => _notifications.removeWhere((n) => n.id == id));
     await _service.deleteNotification(id);
-    // Optimistic update — stream will confirm
-    if (mounted) {
-      setState(() => _notifications.removeWhere((n) => n.id == id));
-    }
   }
 
   Future<void> _acceptRequest(
@@ -285,23 +334,36 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       : _filteredNotifications.isEmpty
                           ? _buildEmptyState(context, palette)
                           : GlassRefresher(
-                              onRefresh: () async {
-                                // Stream keeps data live; nothing to do
-                              },
+                              onRefresh: _loadInitialPage,
                               topPadding:
                                   MediaQuery.of(context).padding.top + 24,
                               child: ListView.separated(
+                                controller: _selectedFilter == 'all'
+                                    ? _scrollController
+                                    : null,
                                 physics:
                                     const BouncingScrollPhysics(
                                         parent:
                                             AlwaysScrollableScrollPhysics()),
                                 padding: const EdgeInsets.fromLTRB(
                                     24, 24, 24, 100),
-                                itemCount:
-                                    _filteredNotifications.length,
+                                itemCount: _filteredNotifications.length +
+                                    (_selectedFilter == 'all' && (_isLoadingMore || _hasMore) ? 1 : 0),
                                 separatorBuilder: (c, i) =>
                                     const SizedBox(height: 16),
                                 itemBuilder: (context, index) {
+                                  if (index == _filteredNotifications.length) {
+                                    return _isLoadingMore
+                                        ? Center(
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: CircularProgressIndicator(
+                                                  color: primaryColor,
+                                                  strokeWidth: 2),
+                                            ),
+                                          )
+                                        : const SizedBox.shrink();
+                                  }
                                   final n =
                                       _filteredNotifications[index];
                                   return _buildNotificationCard(

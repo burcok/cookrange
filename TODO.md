@@ -185,6 +185,20 @@ These exist and work in code today. Evidence in `file:line` form.
 - [x] ✅ GitHub Actions: `flutter analyze` + `flutter test` + Android debug build on PR (B13). — Done (`.github/workflows/ci.yml`)
 - [x] ✅ Automated TestFlight / Play internal-track deploys. — `.github/workflows/deploy.yml` (triggered on push to main): iOS job builds IPA with cert/profile injection → uploads via `xcrun altool` to TestFlight; Android job decodes keystore → builds AAB → uploads via `r0adkll/upload-google-play` to internal track. `ios/ExportOptions.plist` created. Required secrets documented in workflow header comments.
 
+**Build system (Flutter 3.44 compatibility — 2026-06-27)**
+- [x] ✅ iOS arm64 simulator fix — removed `arm64` from `EXCLUDED_ARCHS[sdk=iphonesimulator*]` (Podfile + `project.pbxproj`); set `platform :ios, '14.0'`; `IPHONEOS_DEPLOYMENT_TARGET = '14.0'` in post_install. iPhone 17 (iOS 26 simulator) now builds cleanly.
+- [x] ✅ `mobile_scanner ^5.2.3` → `^7.2.0` — v7 uses SPM + XCFramework for MLKit (no more `MLImage.framework` device-only arm64 linker error on simulator builds).
+- [x] ✅ Android Kotlin 1.9.22 → 2.2.20 (Flutter 3.44 minimum is 2.0.0; warns at <2.2.20). Updated in `build.gradle` (`ext.kotlin_version`), `build.gradle.kts`, and `settings.gradle.kts`.
+- [x] ✅ Android AGP 7.4.2/8.2.0 → 8.11.1 (Flutter 3.44 warns below 8.11.1). Updated across all three build files.
+- [x] ✅ Gradle wrapper 8.10.2 → 8.14.1 (Flutter 3.44 warns below 8.14.0).
+- [x] ✅ `compileSdk 35` → `36`, `targetSdk 35` → `36` (plugins including `mobile_scanner`, `app_links`, `google_sign_in_android` require SDK 36).
+- [x] ✅ NDK `27.0.12077973` → `28.2.13676358` (`speech_to_text` and `jni` require NDK 28; already installed locally).
+- [x] ✅ Core library desugaring enabled (`coreLibraryDesugaringEnabled true` + `desugar_jdk_libs:2.1.5`) — required by `flutter_local_notifications` with AGP 8+.
+- [x] ✅ Built-in Kotlin migration: removed `id 'kotlin-android'` from `app/build.gradle` plugins block — `dev.flutter.flutter-gradle-plugin` now applies Kotlin internally (Flutter 3.44 requirement).
+- [x] ✅ `gradle.properties` JDK path fixed: `/opt/homebrew/opt/openjdk@17` (non-existent) → Android Studio bundled JBR (`/Applications/Android Studio.app/Contents/jbr/Contents/Home`).
+- [x] ✅ Firebase BoM `32.7.4` → `33.15.0` in `app/build.gradle` dependencies.
+- ✅ **Result:** `flutter build ios --simulator --no-codesign` ✓ (256s) · `flutter build apk --debug` ✓ (205s) · `flutter analyze lib/` 0 errors.
+
 **Security**
 - [x] ✅ Move AI key off-device behind a proxy/Cloud Function. — `functions/index.js` HTTPS function validates Firebase ID token, keeps `OPENROUTER_API_KEY` in Functions secrets (`firebase functions:secrets:set OPENROUTER_API_KEY`), proxies to OpenRouter. `AIService` now has `setProxyUrl()` + passes ID token as Bearer when proxy is active. Proxy URL lives in Remote Config `ai_proxy_url` (default empty = falls back to local .env for dev). Wired in `_initRemoteConfig()` → `AIService().setProxyUrl(RemoteConfigService().aiProxyUrl)`.
 - [ ] Restrict committed Firebase API keys in console — add HTTP referrer / iOS bundle / Android package restrictions in Firebase Console → Project Settings → API Keys. Console-only step (no code). — High · v0.6.0
@@ -326,19 +340,37 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 - [x] ✅ **AppTransitions wired into key navigation** — `MaterialPageRoute` → `AppTransitions.slideUp` in home→FoodScan, home→RecipeDetail, community→PostDetail, explore→RecipeDetail, challenges→ChallengeDetail.
 - [x] ✅ **CreateChallengeSheet DS upgrade** — `_textField()` helper → `AppTextField`; chip type-picker → `AppChipPicker<ChallengeType>`; switch row → `AppToggle`; bottom button → `AppButton`; `ElevatedButton`/`CircularProgressIndicator` removed. DateFormat for date display. 0 analyze errors.
 
+**Navigation & Quick Actions overhaul (v0.9.5):**
+- [x] ✅ **Side menu full rebuild** — Added **NUTRITION & FITNESS** section: Meal Scanner (`FoodScanScreen`), Barcode Scanner (`BarcodeScanScreen`), Nutrition Analytics (`NutritionAnalyticsScreen`), Shopping List, Favorites, Meal Plan History. Added **MY GYM** section (disabled, "coming soon" badge). Added **AI Assistant** (`AIChatScreen`) to Social section. Added **Dietary Preferences** to Account section. Avatar row now acts as Profile shortcut. All items use colored icon containers + `AppPalette` tokens. EN+TR keys added. 0 analyze errors.
+- [x] ✅ **Quick actions sheet restored & expanded** — `QuickActionsSheet` moved from `Scaffold.body` Stack → outer Stack above the Scaffold, wrapped with `Padding(bottom: bottomNavHeight)` so it renders above `_AppBottomNavBar` (fixes AI voice FAB being hidden behind nav bar). Removed redundant integrated nav bar from sheet. Actions: Meal Scanner, Barcode Scanner, Shopping List, Nutrition Analytics, Favorites, My Gym (coming soon). Each action has a colored icon container + `AppPalette` text. Dark mode glass background fixed (`Color(0xFF0F172A)` instead of `Colors.white`). Coming-soon items shown as disabled with badge. EN+TR `quick_actions.*` keys added. 0 analyze errors.
+
 ---
 
 ## PHASE 4 — GYM ECOSYSTEM (Core differentiator — greenfield) · target v1.1.0–v1.4.0
 
 > Status: ❌ ~0% built (only `SignalType.gym_help` + a mock gym chat + a filter tab exist). This is the strategic moat — but it's a from-scratch build. **Do not start before the consumer MVP is validated.**
+>
+> **Navigation placeholders already in place:** Side menu has a "MY GYM" section with a disabled entry (coming-soon badge). Quick actions sheet has a disabled "My Gym" tile. When Phase 4 starts, remove `comingSoon: true` flags and wire the real gym screens.
 
+### 4A — Role System (prerequisite for everything)
+- [ ] **User role field** (`user_role`: `consumer` | `gym_owner` | `coach` | `admin`) stored on `users/{uid}`. — Critical · Small · 1 d · v1.1.0 · ❌
+- [ ] **Role-aware side menu** — gym owners see extra "Gym Management" section; coaches see "My Clients"; admins see "Admin Panel". The side menu should read `UserProvider.user.role` and show/hide sections accordingly. — Critical · Small · 0.5 d · v1.1.0 · ❌
+- [ ] **Role-aware quick bar** — gym owners get "My Gym Dashboard" quick action (real screen); consumers keep the current "My Gym → coming soon" tile. — High · Small · 0.5 d · v1.1.0 · ❌
+
+### 4B — Gym Owner Screens (planned, not yet built)
+> All screens below are 🆕 greenfield. Entry points: side menu "Gym Management" section + "My Gym" quick action.
+- [ ] **Gym profile setup** — name, logo, address, branch list, subscription tier. `gyms/{gymId}` collection. — Critical · Large · 5–7 d · v1.1.0 · ❌
+- [ ] **Member management** — list/search members, revoke/invite, tier badges (standard/premium). — High · Medium · 3–4 d · v1.1.0 · ❌
+- [ ] **Gym dashboard (owner)** — active members today, check-in chart (7-day), top engaged members, alert cards for low-activity members. — High · Large · 5–7 d · v1.2.0 · ❌
+- [ ] **Gym communities** — per-gym feed + announcements tab (owner can pin). — High · Large · 6–8 d · v1.2.0 · ❌
+- [ ] **Attendance & check-in** — QR code check-in (owner generates, member scans), GPS geofence fallback. Requires `geolocator` + `qr_flutter` packages. — High · Large · 7–10 d · v1.2.0 · ❌
+- [ ] **Gym leaderboards / "Gym Wars"** — inter-gym challenge competitions by streak, calories, steps. — Medium · Large · 6–8 d · v1.3.0 · ❌
+- [ ] **Gym analytics** — retention heatmap, engagement score, drop-off alerts, export CSV. — Medium · Large · 7–10 d · v1.3.0 · ❌
+- [ ] **White-label theming** — gym owner sets brand color/logo; app adopts it for members of that gym. `ThemeProvider` gets `gymOverride` mode. — Medium · Epic · 15–25 d · v1.4.0 · ❌
 - [ ] **Gym data model + profiles** (entity, members, branches). — Critical · Large · 5–7 d · v1.1.0 · ❌
 - [ ] **Gym onboarding** (gym signs up, configures). — High · Large · 5–7 d · v1.1.0 · ❌
 - [ ] **Gym discovery** (search/join a gym). — High · Medium · 3–4 d · v1.1.0 · ❌
-- [ ] **Gym communities** (per-gym feed/chat/announcements). — High · Large · 6–8 d · v1.2.0 · ❌
 - [ ] **GPS presence / check-in** (needs `geolocator`/geofence SDK — none present). — High · Large · 7–10 d · v1.2.0 · ❌
-- [ ] **Attendance tracking**. — Medium · Medium · 3–4 d · v1.2.0 · ❌
-- [ ] **Gym leaderboards / "Gym Wars" competitions**. — Medium · Large · 6–8 d · v1.3.0 · ❌
 - [ ] **Gym analytics dashboard** (retention, engagement). — Medium · Large · 7–10 d · v1.3.0 · ❌
 - [ ] **White-label** (logo/colors/onboarding per gym). — Medium · Epic · 15–25 d · v1.4.0 · ❌
 
@@ -428,9 +460,10 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
   privacy-resolution check (`_privacyResolved` = fresh user loaded **and** friendship resolved),
   showing a skeleton until known. Non-friends viewing a private account see only the lock card
   (`_buildPrivateAccountRestricted`); accepted friends and the owner see the full profile.
-  **Known limitation:** profile detail (`onboarding_data`) lives on the readable `users/{uid}` doc,
-  so privacy is UI-enforced; truly sensitive `food_logs`/`meal_plans` are already server-side
-  owner-only in `firestore.rules`. See Phase 9.7 backlog for hard server-side enforcement.
+  PII fields (`personal_info`, `allergies`, `dietary_restrictions`, `disliked_foods`,
+  `avoid_ingredients`) are now server-side owner-only in `users/{uid}/private/nutrition`;
+  non-PII public fields (`streak`, `activity_level`, etc.) remain on the main doc.
+  `food_logs`/`meal_plans` are separately owner-only. Hard enforcement complete (Phase 9.7 ✅).
 - [x] ✅ **Structured notifications (i18n-correct)** — Rebuilt `NotificationModel` to store
   STRUCTURED data (`type`, `actorUid/Name/PhotoUrl`, `relatedId`, `metadata`) instead of a frozen
   pre-rendered `title`/`body`. New `NotificationPresenter` (`lib/core/utils/`) renders title/body/
@@ -456,28 +489,27 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 > you don't want. On-brand for an AI nutrition/fitness consumer app (no gym/coach scope here).
 
 **High value**
-- [ ] 🆕 Recipe favorites / bookmarks — `users/{uid}/favorites`, heart button in recipe detail, favorites view
-- [ ] 🆕 Meal-plan history — browse/reuse past weeks (date picker on Home; query `meal_plans` by range)
-- [ ] 🆕 Barcode scan to log packaged foods — extends the existing food-scan/logging loop
-- [ ] 🆕 Quick-add / recent & frequent foods — faster daily logging
-- [ ] 🆕 Global user search & discovery — find people beyond the friends list
-- [ ] 🆕 In-app notification preferences — mute per type (likes / comments / friends / system); pairs with the 9.6 redesign
+- [x] ✅ Recipe favorites / bookmarks — `FavoriteService`, `users/{uid}/favorites`, bookmark in recipe detail, `FavoritesScreen` + embedded `FavoritesBody` in Explore tab
+- [x] ✅ Meal-plan history — `WeeklyMealPlanService.getMealPlanHistory/restorePlan`, `MealPlanHistoryScreen`, history button in home meal-plan section header; auto-archive on every plan save
+- [x] ✅ Barcode scan to log packaged foods — `BarcodeLookupService` (Open Food Facts API, per-100g nutritional lookup, in-memory cache); `BarcodeScanScreen` (full-screen camera via `mobile_scanner`, animated reticle with scan line, torch toggle, product lookup overlay, serving-size slider, meal-type selector, log button); `FoodLogService.logBarcodeFood()`; `mobile_scanner: ^5.2.3` added; CAMERA permission added to AndroidManifest + NSCameraUsageDescription to iOS Info.plist; barcode scan icon button added to FoodScanScreen AppBar; EN+TR `barcode.*` keys; 0 analyze errors
+- [x] ✅ Quick-add / recent & frequent foods — `RecentFoodService`, `QuickAddSheet` (recent/frequent tabs, meal-type selector); auto-records on every food log
+- [x] ✅ Global user search & discovery — `UserSearchScreen` (debounced, friendship-status badges), search icon in `MainHeader`
+- [x] ✅ In-app notification preferences — `NotificationPreferencesService`, preferences sheet in Settings (per-group mute toggles, EN+TR)
 
 **Medium**
-- [ ] 🆕 Activity / exercise log + calorie-burn estimate feeding TDEE
-- [ ] 🆕 Streak freeze / pause day — one-time skip without losing the streak (retention)
-- [ ] 🆕 Recipe filters in Explore — cook time & difficulty
-- [ ] 🆕 Nutrition breakdown by meal type — breakfast/lunch/dinner macro split
-- [ ] 🆕 Dietary-restriction refinement — granular avoid-list separate from allergies
-- [ ] 🆕 Profile as a real bottom tab — nav consistency (currently a pushed route)
+- [x] ✅ Activity / exercise log + calorie-burn estimate feeding TDEE — `ExerciseLogService`, `ExerciseType` (12 types + MET-based burn estimate), `ExerciseLogSheet` (type grid + duration slider), burned-today chip in nutrition hero, stream subscription in home.dart
+- [x] ✅ Streak freeze / pause day — `UserModel.streakFreezeCount`, auto-consumed on missed day in `FirestoreService`, new users gifted 1 freeze, `grantStreakFreeze()` API, freeze badge in home streak chip
+- [x] ✅ Recipe filters in Explore — cook-time (≤20 / ≤45 / open) and difficulty filter chips wired to AI prompt via `maxTotalMinutes` + `difficulty` params in `PromptService` / `RecipeGenerationService`
+- [x] ✅ Nutrition breakdown by meal type — `MealBreakdownCard` widget computed from existing `todayLogsStream`; appears on home when any meal is logged (breakfast/lunch/dinner/snack rows with calorie + macro chips)
+- [x] ✅ Dietary-restriction refinement — `UserNutritionProfile.avoidIngredients` (stored as `onboarding_data.avoid_ingredients`); `FirestoreService.updateAvoidIngredients()`; `DietaryPreferencesScreen` (read-only allergy/diet sections + editable avoid-list with chip add/remove); wired into recipe prompt (`PromptService`) and meal plan (`WeeklyMealPlanService`); accessible from Settings → Dietary Preferences
+- [x] ✅ Profile as a real bottom tab — `NavigationProvider` tab constants (homeTab/communityTab/profileTab), `MainScaffold` migrated from PageView+SideMenu to `IndexedStack` (3 tabs: Home/Community/Profile), glassmorphic floating bottom nav bar with animated pill indicator, haptic feedback, press-scale animation; `SideMenu` updated (profile avatar tap + profile item → tab 2, removed redundant Home/Community items)
 
 **Lower / nice-to-have**
-- [ ] 🆕 Meal-plan comparison — generate 2–3 "what-if" alternates and compare macros
-- [ ] 🆕 Recipe personal notes / annotations
-- [ ] 🆕 Challenge difficulty tiers (easy / medium / hard)
-- [ ] 🆕 Meal-plan calendar export (Apple/Google Calendar)
-- [ ] 🆕 (Backlog) Hard server-side private-profile enforcement — move private nutrition profile fields
-  into an owner-only subcollection so they can't be read directly via Firestore by non-friends
+- [x] ✅ Meal-plan comparison — `PlanAlternate` model; `WeeklyMealPlanService.generatePlanAlternates()` (AI generates 2 lightweight macro profiles); `PromptService.generatePlanAlternatesPrompt()`; `MealPlanComparisonSheet` (current plan vs 2 alternates, animated selection, macro bar visualization, "Apply" triggers regeneration); compare button in home meal plan header
+- [x] ✅ Recipe personal notes / annotations — `RecipeNoteService` (`users/{uid}/recipe_notes/{recipeId}`), notes icon button in recipe SliverAppBar, AppSheet text editor with auto-save
+- [x] ✅ Challenge difficulty tiers (easy / medium / hard) — `ChallengeDifficulty` enum + `locKey` extension on `ChallengeModel`; difficulty selector in `CreateChallengeSheet` (3-card row: Easy/Medium/Hard with icons + colors); difficulty filter chip row in `ChallengesScreen` (All/Easy/Medium/Hard, `AnimatedContainer` chips, client-side filter on stream results); difficulty badge in `_ChallengeCard` footer (color-coded: success/warning/error); backward-compatible (defaults to medium); EN+TR `challenge.difficulty.*` + `challenge.create.difficulty_label` keys
+- [x] ✅ Meal-plan calendar export (Apple/Google Calendar) — `MealPlanCalendarService` generates a standard `.ics` (iCalendar) file from `WeeklyMealPlanModel` (one VEVENT per meal slot per day, fixed meal times: breakfast 8:00/lunch 12:30/dinner 19:00/snack 15:30, dish names resolved from home dish cache, calorie total in description); shared via existing `share_plus` + `path_provider` (no new package needed); calendar icon button added to home meal-plan section header alongside compare/history/regenerate; EN+TR `calendar.*` keys; 0 analyze errors
+- [x] ✅ Hard server-side private-profile enforcement — PII fields (`personal_info`, `allergies`, `dietary_restrictions`, `disliked_foods`, `avoid_ingredients`) migrated out of the publicly-readable `users/{uid}.onboarding_data` map into the owner-only `users/{uid}/private/nutrition` subcollection. Firestore rule `match /users/{uid}/private/{docId}` enforces read/write only by owner. `FirestoreService.getPrivateNutritionData(uid)` handles first-load migration (batch-moves PII from legacy main doc) + serves cached private doc; `savePrivateNutritionData(uid, data)` writes private doc. `UserModel.withPrivateNutrition(data)` merges private data into the in-memory model so `user.profile` (used by `WeeklyMealPlanService`, home dashboard, etc.) stays populated for the owner without any call-site changes. `UserProvider.loadUser()` fetches both docs and merges. `OnboardingProvider` split into `_toPublicMap()`/`_toPrivateMap()` and both save methods dual-write accordingly. `SplashScreen._navigateAfterSplash()` loads private data before completeness check and sets merged model on `UserProvider`. `updateAvoidIngredients` writes to private subcollection. GDPR `deleteUserData` deletes the `private` subcollection. Existing users are transparently migrated on first login. Non-owners reading another user's doc see only public fields. 0 analyze errors.
 
 ---
 
@@ -540,7 +572,7 @@ Include:
 | 🟡 Medium | `performance_service.dart` dead code; no real perf backend | ✅ Fixed — Phase 1 monitoring (Firebase Performance) |
 | 🟡 Medium | Translations loaded from `lib/` (non-standard asset path) | ✅ Fixed — moved to `assets/localization/` (v0.9.5) |
 | 🟡 Medium | No pagination on community feed | ✅ Fixed — Phase 3 `startAfter` cursor pagination |
-| 🟡 Medium | No pagination on notifications | ❌ Still outstanding — low business impact |
+| 🟡 Medium | No pagination on notifications | ✅ Fixed — switched to cursor-based pagination (`getNotificationsPage`) with scroll-triggered load-more; removed unbounded stream that overrode paginated state; pull-to-refresh reloads first page; `copyWithRead()` added to `NotificationModel` for optimistic mark-all-read |
 | 🟢 Low | Stray `print()` calls throughout `lib/` | ✅ Fixed — replaced with `debugPrint()` (v0.9.5, 12 files) |
 | 🟢 Low | Dead legacy widgets (`custom_back_button`, `gender_picker_modal`, `language_selector`) | ✅ Fixed — deleted (v0.9.5) |
 | 🟢 Low | Stale `test_output.txt` + misplaced `*_test.dart` in `lib/` | ✅ Fixed — Phase 1 testing |

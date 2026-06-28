@@ -18,18 +18,24 @@ import '../../core/repositories/meal_plan_repository.dart';
 import '../../core/repositories/food_log_repository.dart';
 import '../../core/repositories/dish_repository.dart';
 import '../../core/services/analytics_service.dart';
-import '../../core/services/sharing_service.dart';
 import '../../core/widgets/shareable_fitness_card.dart';
 import '../common/generic_error_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
 import 'widgets/tracking_card.dart';
+import 'widgets/meal_breakdown_card.dart';
+import 'widgets/exercise_log_sheet.dart';
+import 'widgets/meal_plan_comparison_sheet.dart';
 import 'food_scan_screen.dart';
+import '../../core/models/exercise_log_model.dart';
+import '../../core/services/exercise_log_service.dart';
+import '../../core/services/meal_plan_calendar_service.dart';
 import '../../core/widgets/ds/ds.dart';
 
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/test_mode_provider.dart';
-import '../../core/utils/app_routes.dart';
 import '../../core/widgets/main_header.dart';
+import 'nutrition_analytics_screen.dart';
+import 'meal_plan_history_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -55,8 +61,13 @@ class _HomeScreenState extends State<HomeScreen>
   // Food logging state — real-time consumed nutrition
   NutritionTotals _consumed = NutritionTotals.zero;
   Set<String> _loggedMealTypes = {};
+  Map<String, NutritionTotals> _mealBreakdown = {};
   StreamSubscription<List<FoodLog>>? _foodLogSubscription;
   final Map<String, bool> _loggingInProgress = {};
+
+  // Exercise logging state
+  double _burnedCalories = 0;
+  StreamSubscription<List<ExerciseLog>>? _exerciseSubscription;
 
   TestModeProvider? _testModeProvider;
 
@@ -100,14 +111,29 @@ class _HomeScreenState extends State<HomeScreen>
     final uid = context.read<UserProvider>().user?.uid;
     if (uid == null) return;
     _foodLogSubscription?.cancel();
+    _exerciseSubscription?.cancel();
 
     _foodLogSubscription = _foodLogRepo.todayLogsStream(uid).listen((logs) {
       if (!mounted) return;
       setState(() {
         _consumed = FoodLog.sumLogs(logs);
         _loggedMealTypes = logs.map((l) => l.mealType).toSet();
+        _mealBreakdown = _computeBreakdown(logs);
       });
     });
+
+    _exerciseSubscription = ExerciseLogService().todayLogsStream(uid).listen((logs) {
+      if (!mounted) return;
+      setState(() => _burnedCalories = ExerciseLog.totalBurned(logs));
+    });
+  }
+
+  Map<String, NutritionTotals> _computeBreakdown(List<FoodLog> logs) {
+    final grouped = <String, List<FoodLog>>{};
+    for (final l in logs) {
+      grouped.putIfAbsent(l.mealType, () => []).add(l);
+    }
+    return grouped.map((k, v) => MapEntry(k, FoodLog.sumLogs(v)));
   }
 
   Future<void> _logMeal(
@@ -244,6 +270,7 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     _testModeProvider?.removeListener(_onTestModeChanged);
     _foodLogSubscription?.cancel();
+    _exerciseSubscription?.cancel();
     _refreshController.dispose();
     _pullDistanceNotifier.dispose();
     super.dispose();
@@ -286,11 +313,34 @@ class _HomeScreenState extends State<HomeScreen>
     await _dishRepo.prefetch(ids);
   }
 
-  Future<void> _generateWeeklyPlan(UserModel user) async {
+  Future<void> _exportPlanToCalendar(AppLocalizations l10n) async {
+    final plan = _weeklyPlan;
+    if (plan == null) return;
+
+    final dishNameMap = _dishCache.map((id, dish) => MapEntry(id, dish.name));
+    final mealTypeLabels = {
+      'breakfast': l10n.translate('food_scan.meal.breakfast'),
+      'lunch': l10n.translate('food_scan.meal.lunch'),
+      'dinner': l10n.translate('food_scan.meal.dinner'),
+      'snack': l10n.translate('food_scan.meal.snack'),
+    };
+
+    try {
+      await MealPlanCalendarService().exportToCalendar(
+        plan: plan,
+        dishNames: dishNameMap,
+        mealTypeLabels: mealTypeLabels,
+      );
+    } catch (e) {
+      if (mounted) AppSnackBar.error(context, l10n.translate('calendar.export_error'));
+    }
+  }
+
+  Future<void> _generateWeeklyPlan(UserModel user, {bool forceRefresh = true}) async {
     setState(() => _isLoadingPlan = true);
     unawaited(AnalyticsService().logEvent(name: 'ai_meal_plan_started'));
     try {
-      final plan = await _mealPlanRepo.getWeeklyPlan(user, forceRefresh: true);
+      final plan = await _mealPlanRepo.getWeeklyPlan(user, forceRefresh: forceRefresh);
       if (plan != null) {
         unawaited(AnalyticsService().logEvent(
           name: 'ai_meal_plan_generated',
@@ -619,6 +669,10 @@ class _HomeScreenState extends State<HomeScreen>
           SizedBox(height: 12.h),
           _buildGoalMetBanner(context, l10n),
         ],
+        if (_mealBreakdown.isNotEmpty) ...[
+          SizedBox(height: 16.h),
+          MealBreakdownCard(breakdown: _mealBreakdown),
+        ],
         SizedBox(height: 24.h),
         const TrackingCard(),
         SizedBox(height: 32.h),
@@ -692,6 +746,31 @@ class _HomeScreenState extends State<HomeScreen>
                   style: t.labelM
                       .copyWith(fontWeight: FontWeight.bold, color: primary),
                 ),
+                if (userModel.streakFreezeCount > 0) ...[
+                  SizedBox(width: AppSpacing.xs.w),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 5.w, vertical: 2.h),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(AppRadius.xs.r),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.ac_unit_rounded,
+                            size: 10.sp, color: Colors.blue),
+                        SizedBox(width: 2.w),
+                        Text(
+                          '${userModel.streakFreezeCount}',
+                          style: t.labelS.copyWith(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -785,20 +864,37 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildScanFoodButton(BuildContext context, AppLocalizations l10n) {
-    return AppButton(
-      label: l10n.translate('food_scan.scan_btn'),
-      icon: Icons.auto_awesome,
-      variant: AppButtonVariant.tonal,
-      size: AppButtonSize.medium,
-      onPressed: () async {
-        final successText = l10n.translate('food_scan.log_success');
-        final logged = await Navigator.of(context).push<bool>(
-          AppTransitions.slideUp(const FoodScanScreen()),
-        );
-        if (!mounted) return;
-        // ignore: use_build_context_synchronously
-        if (logged == true) AppSnackBar.success(context, successText);
-      },
+    return Row(
+      children: [
+        Expanded(
+          child: AppButton(
+            label: l10n.translate('food_scan.scan_btn'),
+            icon: Icons.auto_awesome,
+            variant: AppButtonVariant.tonal,
+            size: AppButtonSize.medium,
+            onPressed: () async {
+              final successText = l10n.translate('food_scan.log_success');
+              final logged = await Navigator.of(context, rootNavigator: true)
+                  .push<bool>(AppTransitions.slideUp(const FoodScanScreen()));
+              if (!mounted) return;
+              // ignore: use_build_context_synchronously
+              if (logged == true) AppSnackBar.success(context, successText);
+            },
+          ),
+        ),
+        SizedBox(width: 10.w),
+        Expanded(
+          child: AppButton(
+            label: l10n.translate('exercise.log_button_short'),
+            icon: Icons.fitness_center_rounded,
+            variant: AppButtonVariant.secondary,
+            size: AppButtonSize.medium,
+            onPressed: () async {
+              await ExerciseLogSheet.show(context);
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -870,6 +966,36 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ],
           ),
+          if (_burnedCalories > 0) ...[
+            SizedBox(height: AppSpacing.md.h),
+            Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
+              decoration: BoxDecoration(
+                color: palette.success.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.button.r),
+                border: Border.all(
+                    color: palette.success.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.fitness_center_rounded,
+                      size: 14.sp, color: palette.success),
+                  SizedBox(width: 6.w),
+                  Text(
+                    l10n.translate('exercise.burned_today',
+                        variables: {
+                          'kcal': _burnedCalories.toInt().toString()
+                        }),
+                    style: t.labelM.copyWith(
+                        color: palette.success,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1010,6 +1136,7 @@ class _HomeScreenState extends State<HomeScreen>
     final palette = AppPalette.of(context);
     final t = AppText.of(context);
     final primary = context.watch<ThemeProvider>().primaryColor;
+
     return Row(
       children: [
         Expanded(
@@ -1019,43 +1146,55 @@ class _HomeScreenState extends State<HomeScreen>
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        // Analytics icon button
-        Tooltip(
-          message: l10n.translate('home.analytics_btn'),
-          child: GestureDetector(
-            onTap: () =>
-                Navigator.pushNamed(context, AppRoutes.nutritionAnalytics),
-            child: Container(
-              width: 36.w,
-              height: 36.w,
-              decoration: BoxDecoration(
-                color: primary.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.bar_chart_rounded,
-                  size: AppSize.iconSm, color: primary),
+
+        // Analytics — primary action, always visible
+        GestureDetector(
+          onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const NutritionAnalyticsScreen())),
+          child: Container(
+            width: 36.w,
+            height: 36.w,
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
             ),
+            child: Icon(Icons.bar_chart_rounded,
+                size: AppSize.iconSm, color: primary),
           ),
         ),
-        if (showRegenerate && user != null) ...[
-          SizedBox(width: AppSpacing.xs.w),
-          Tooltip(
-            message: l10n.translate('home.regenerate'),
-            child: GestureDetector(
-              onTap: () => _generateWeeklyPlan(user),
-              child: Container(
-                width: 36.w,
-                height: 36.w,
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.refresh_rounded,
-                    size: AppSize.iconSm, color: primary),
-              ),
-            ),
-          ),
-        ],
+
+        SizedBox(width: AppSpacing.xs.w),
+
+        // Overflow menu — keeps the header tidy regardless of plan state
+        _MealHeaderMenu(
+          l10n: l10n,
+          primary: primary,
+          palette: palette,
+          showRegenerate: showRegenerate,
+          user: user,
+          onHistory: () async {
+            final reloaded = await Navigator.of(context).push<Object?>(
+                MaterialPageRoute(
+                    builder: (_) => const MealPlanHistoryScreen()));
+            if (reloaded == true && user != null) {
+              unawaited(_generateWeeklyPlan(user, forceRefresh: false));
+            }
+          },
+          onCompare: showRegenerate && user != null
+              ? () => unawaited(MealPlanComparisonSheet.show(
+                    context,
+                    user: user!,
+                    currentPlan: _weeklyPlan!,
+                    onApplyAlternate: () => _generateWeeklyPlan(user),
+                  ))
+              : null,
+          onCalendar: showRegenerate
+              ? () => unawaited(_exportPlanToCalendar(l10n))
+              : null,
+          onRegenerate:
+              showRegenerate && user != null ? () => _generateWeeklyPlan(user!) : null,
+        ),
       ],
     );
   }
@@ -1125,6 +1264,100 @@ class _HomeScreenState extends State<HomeScreen>
     }).toList();
   }
 }
+
+// ── Meal section overflow menu ───────────────────────────────────────────────
+
+class _MealHeaderMenu extends StatelessWidget {
+  final AppLocalizations l10n;
+  final Color primary;
+  final AppPalette palette;
+  final bool showRegenerate;
+  final UserModel? user;
+  final VoidCallback onHistory;
+  final VoidCallback? onCompare;
+  final VoidCallback? onCalendar;
+  final VoidCallback? onRegenerate;
+
+  const _MealHeaderMenu({
+    required this.l10n,
+    required this.primary,
+    required this.palette,
+    required this.showRegenerate,
+    required this.user,
+    required this.onHistory,
+    this.onCompare,
+    this.onCalendar,
+    this.onRegenerate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<_MealAction>(
+      onSelected: (action) {
+        switch (action) {
+          case _MealAction.history:
+            onHistory();
+          case _MealAction.compare:
+            onCompare?.call();
+          case _MealAction.calendar:
+            onCalendar?.call();
+          case _MealAction.regenerate:
+            onRegenerate?.call();
+        }
+      },
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: palette.surface,
+      elevation: 4,
+      position: PopupMenuPosition.under,
+      offset: const Offset(0, 4),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: primary.withValues(alpha: 0.12),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(Icons.more_horiz_rounded, size: 20, color: primary),
+      ),
+      itemBuilder: (_) => [
+        _menuItem(_MealAction.history, Icons.history_rounded,
+            l10n.translate('meal_history.title')),
+        if (showRegenerate) ...[
+          _menuItem(_MealAction.compare, Icons.compare_arrows_rounded,
+              l10n.translate('meal_compare.title')),
+          _menuItem(_MealAction.calendar, Icons.calendar_month_rounded,
+              l10n.translate('calendar.export_btn')),
+          _menuItem(_MealAction.regenerate, Icons.refresh_rounded,
+              l10n.translate('home.regenerate')),
+        ],
+      ],
+    );
+  }
+
+  PopupMenuItem<_MealAction> _menuItem(
+      _MealAction action, IconData icon, String label) {
+    return PopupMenuItem(
+      value: action,
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: primary),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: palette.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _MealAction { history, compare, calendar, regenerate }
 
 // ── Meal card ───────────────────────────────────────────────────────────────
 

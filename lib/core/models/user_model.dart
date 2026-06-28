@@ -22,6 +22,7 @@ class UserModel {
   final bool isPrivate;
   final int? primaryColor;
   final SubscriptionTier subscriptionTier;
+  final int streakFreezeCount;
 
   UserModel({
     required this.uid,
@@ -42,6 +43,7 @@ class UserModel {
     this.isPrivate = false,
     this.primaryColor,
     this.subscriptionTier = SubscriptionTier.free,
+    this.streakFreezeCount = 0,
   });
 
   /// Creates a UserModel from a Firestore document snapshot.
@@ -72,12 +74,26 @@ class UserModel {
       primaryColor: data['primary_color'] as int?,
       subscriptionTier:
           SubscriptionTier.fromString(data['subscription_tier'] as String?),
+      streakFreezeCount: data['streak_freeze_count'] as int? ?? 0,
     );
   }
 
   /// Typed view over the raw [onboardingData] map.
   UserNutritionProfile get profile =>
       UserNutritionProfile.fromOnboardingData(onboardingData);
+
+  /// Returns a copy of this model with [privateNutritionData] merged into
+  /// [onboardingData]. Used by [UserProvider] after loading the owner-only
+  /// `users/{uid}/private/nutrition` subcollection so all downstream code
+  /// (meal plan service, home dashboard, etc.) can keep reading `user.profile`
+  /// without any changes to call sites.
+  UserModel withPrivateNutrition(Map<String, dynamic> privateNutritionData) {
+    final merged = <String, dynamic>{
+      ...?onboardingData,
+      ...privateNutritionData,
+    };
+    return copyWith(onboardingData: merged);
+  }
 
   /// Typed entitlements for the user's current subscription tier.
   Entitlements get entitlements => Entitlements(subscriptionTier);
@@ -101,6 +117,7 @@ class UserModel {
     bool? isPrivate,
     int? primaryColor,
     SubscriptionTier? subscriptionTier,
+    int? streakFreezeCount,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -122,6 +139,7 @@ class UserModel {
       isPrivate: isPrivate ?? this.isPrivate,
       primaryColor: primaryColor ?? this.primaryColor,
       subscriptionTier: subscriptionTier ?? this.subscriptionTier,
+      streakFreezeCount: streakFreezeCount ?? this.streakFreezeCount,
     );
   }
 }

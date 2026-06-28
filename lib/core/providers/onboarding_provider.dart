@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import '../constants/onboarding_options.dart';
 
 class OnboardingProvider with ChangeNotifier {
@@ -163,7 +164,20 @@ class OnboardingProvider with ChangeNotifier {
     return true;
   }
 
-  Map<String, dynamic> _toMap() {
+  /// Non-PII fields — stored on the public `users/{uid}.onboarding_data` map.
+  Map<String, dynamic> _toPublicMap() {
+    return {
+      'lifestyle_profile': _lifestyleProfileId,
+      'meal_schedule': _mealSchedule,
+      'primary_goals': _primaryGoalIds,
+      'activity_level': _activityLevelId,
+      'cooking_level': _cookingLevelId,
+      'kitchen_equipments': _kitchenEquipmentIds,
+    };
+  }
+
+  /// PII fields — stored in the owner-only `users/{uid}/private/nutrition` doc.
+  Map<String, dynamic> _toPrivateMap() {
     return {
       'personal_info': {
         'gender': _personalInfo['gender'],
@@ -173,10 +187,6 @@ class OnboardingProvider with ChangeNotifier {
         'height': _personalInfo['height'],
         'weight': _personalInfo['weight'],
       },
-      'lifestyle_profile': _lifestyleProfileId,
-      'meal_schedule': _mealSchedule,
-      'primary_goals': _primaryGoalIds,
-      'activity_level': _activityLevelId,
       'disliked_foods': _dislikedFoods.map((f) {
         if (OnboardingOptions.predefinedIngredients.containsKey(f['value'])) {
           return f['value'];
@@ -185,10 +195,16 @@ class OnboardingProvider with ChangeNotifier {
       }).toList(),
       'allergies': _allergyIds,
       'dietary_restrictions': _dietaryRestrictionIds,
-      'cooking_level': _cookingLevelId,
-      'kitchen_equipments': _kitchenEquipmentIds,
     };
   }
+
+  /// Full merged map — used internally by [isDirty] check and
+  /// [initializeFromFirestore] for backward compat when the caller passes
+  /// combined data (public + private merged by [UserProvider]).
+  Map<String, dynamic> _toMap() => {
+        ..._toPublicMap(),
+        ..._toPrivateMap(),
+      };
 
   void _setInitialData() {
     _initialData = _toMap();
@@ -308,35 +324,46 @@ class OnboardingProvider with ChangeNotifier {
     return null;
   }
 
+  /// Saves incremental onboarding changes. PII goes to the private subcollection;
+  /// non-PII updates the public `onboarding_data` map on the main user doc.
   Future<void> updateOnboardingDataInFirestore() async {
     final authService = AuthService();
-    if (authService.currentUser == null) return;
-    final onboardingData = _toMap();
-    if (onboardingData.isNotEmpty) {
-      await authService.updateUserData({'onboarding_data': onboardingData});
-      _setInitialData();
-    }
+    final uid = authService.currentUser?.uid;
+    if (uid == null) return;
+    final publicData = _toPublicMap();
+    final privateData = _toPrivateMap();
+    await Future.wait([
+      if (publicData.isNotEmpty)
+        authService.updateUserData({'onboarding_data': publicData}),
+      if (privateData.isNotEmpty)
+        FirestoreService().savePrivateNutritionData(uid, privateData),
+    ]);
+    _setInitialData();
   }
 
+  /// Called at the end of the onboarding flow. Writes non-PII to the main doc
+  /// (sets `onboarding_completed: true`) and PII to the private subcollection.
   Future<bool> saveFinalOnboardingData() async {
     final authService = AuthService();
-    if (authService.currentUser == null) return false;
+    final uid = authService.currentUser?.uid;
+    if (uid == null) return false;
     if (!isOnboardingComplete) return false;
-    final onboardingData = _toMap();
-    if (onboardingData.isNotEmpty) {
-      try {
-        await authService.updateUserData({
-          'onboarding_data': onboardingData,
+    final publicData = _toPublicMap();
+    final privateData = _toPrivateMap();
+    try {
+      await Future.wait([
+        authService.updateUserData({
+          'onboarding_data': publicData,
           'onboarding_completed': true,
-        });
-        _setInitialData();
-        return true;
-      } catch (e) {
-        if (kDebugMode) debugPrint('Error saving onboarding data: $e');
-        return true;
-      }
+        }),
+        FirestoreService().savePrivateNutritionData(uid, privateData),
+      ]);
+      _setInitialData();
+      return true;
+    } catch (e) {
+      if (kDebugMode) debugPrint('Error saving onboarding data: $e');
+      return true;
     }
-    return false;
   }
 
   void reset() {

@@ -10,6 +10,7 @@ import '../../core/providers/theme_provider.dart';
 import '../../core/services/food_analysis_service.dart';
 import '../../core/services/food_log_service.dart';
 import '../../core/widgets/ds/ds.dart';
+import 'barcode_scan_screen.dart';
 
 /// AI nutrition analysis — describe a food, get an estimate, log it.
 /// Reference implementation of the Cookrange Design System (Rule R7).
@@ -132,6 +133,16 @@ class _FoodScanScreenState extends State<FoodScanScreen>
           icon: Icon(Icons.arrow_back_ios_new, color: palette.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.qr_code_scanner_rounded,
+                color: palette.textPrimary),
+            tooltip: l10n.translate('barcode.scan_btn'),
+            onPressed: () => unawaited(Navigator.of(context).push(
+              AppTransitions.slideUp(const BarcodeScanScreen()),
+            )),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(

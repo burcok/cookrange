@@ -57,7 +57,7 @@ class _SheetShell extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: palette.surface,
+        color: Colors.transparent,
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet.r)),
         boxShadow: [
           BoxShadow(
@@ -67,49 +67,54 @@ class _SheetShell extends StatelessWidget {
           ),
         ],
       ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.only(bottom: bottomInset),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (showHandle)
-                Container(
-                  width: AppSize.sheetHandleW.w,
-                  height: AppSize.sheetHandleH.h,
-                  margin: EdgeInsets.only(
-                      top: AppSpacing.sm.h, bottom: AppSpacing.xs.h),
-                  decoration: BoxDecoration(
-                    color: palette.border,
-                    borderRadius: BorderRadius.circular(AppRadius.full),
+      child: Material(
+        color: palette.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet.r)),
+        clipBehavior: Clip.antiAlias,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: bottomInset),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (showHandle)
+                  Container(
+                    width: AppSize.sheetHandleW.w,
+                    height: AppSize.sheetHandleH.h,
+                    margin: EdgeInsets.only(
+                        top: AppSpacing.sm.h, bottom: AppSpacing.xs.h),
+                    decoration: BoxDecoration(
+                      color: palette.border,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                  ),
+                if (title != null)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                        AppSpacing.xl.w, AppSpacing.sm.h, AppSpacing.xl.w, 0),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(title!, style: t.headlineS)),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: Icon(Icons.close_rounded,
+                              color: palette.textSecondary, size: AppSize.iconMd.r),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                  ),
+                Flexible(
+                  child: Padding(
+                    padding: padding ??
+                        EdgeInsets.fromLTRB(AppSpacing.xl.w, AppSpacing.md.h,
+                            AppSpacing.xl.w, AppSpacing.xl.h),
+                    child: child,
                   ),
                 ),
-              if (title != null)
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                      AppSpacing.xl.w, AppSpacing.sm.h, AppSpacing.xl.w, 0),
-                  child: Row(
-                    children: [
-                      Expanded(child: Text(title!, style: t.headlineS)),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: Icon(Icons.close_rounded,
-                            color: palette.textSecondary, size: AppSize.iconMd.r),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
-                  ),
-                ),
-              Flexible(
-                child: Padding(
-                  padding: padding ??
-                      EdgeInsets.fromLTRB(AppSpacing.xl.w, AppSpacing.md.h,
-                          AppSpacing.xl.w, AppSpacing.xl.h),
-                  child: child,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

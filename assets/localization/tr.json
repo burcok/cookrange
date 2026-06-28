@@ -562,7 +562,14 @@
     "servings": "Kişilik",
     "start_cooking": "Pişirmeye Başla",
     "description": "Açıklama",
-    "items": "Ürün"
+    "items": "Ürün",
+    "notes": {
+      "title": "Kişisel Notlar",
+      "hint": "Bu tarif için kendi notlarınızı, ikame malzemeleri veya ipuçlarını ekleyin.",
+      "placeholder": "Örn. Ekstra biber ekle, badem sütü kullan...",
+      "save": "Notu Kaydet",
+      "saved": "Not kaydedildi"
+    }
   },
   "shopping": {
     "title": "Alışveriş Listesi",
@@ -897,7 +904,10 @@
     "meal_type_breakfast": "Kahvaltı",
     "meal_type_lunch": "Öğle Yemeği",
     "meal_type_dinner": "Akşam Yemeği",
-    "meal_type_snack": "Atıştırmalık"
+    "meal_type_snack": "Atıştırmalık",
+    "meal_breakdown": {
+      "title": "Bugünün Öğün Dağılımı"
+    }
   },
   "ai_chat": {
     "title": "Yapay Zeka Diyetisyen",
@@ -909,6 +919,7 @@
     "not_configured": "Yapay zeka asistanı henüz yapılandırılmadı.",
     "banner_title": "Yapay Zeka Diyetisyen",
     "banner_subtitle": "Kişisel beslenme tavsiyeleri alın",
+    "voice_mode": "Sesli Mod",
     "suggestions": [
       "Kahvaltıda ne yemeliyim?",
       "Protein alımımı nasıl artırabilirim?",
@@ -941,6 +952,7 @@
     "preparing_mic": "Mikrofon hazırlanıyor...",
     "listen_again": "Tekrar Dinle",
     "start": "Başlat",
+    "text_mode": "Metin Sohbeti",
     "input_hint": "Bir şeyler yazın veya konuşun...",
     "suggestions": [
       "Akşam ne pişirmeliyim?",
@@ -955,7 +967,15 @@
     "history": "Geçmiş",
     "home": "Anasayfa",
     "meals": "Öğünler",
-    "community": "Topluluk"
+    "community": "Topluluk",
+    "meal_scanner": "Öğün Tarayıcı",
+    "nutrition_analytics": "Beslenme Analizi",
+    "barcode_scanner": "Barkod Tarayıcı",
+    "favorites": "Favorilerim",
+    "my_gym": "Spor Salonum",
+    "coming_soon": "Yakında",
+    "voice_assistant": "Sesli Asistan",
+    "ai_assistant": "AI Asistan"
   },
   "community": {
     "title": "Topluluk",
@@ -1070,6 +1090,7 @@
     "logout": "Çıkış Yap",
     "community": "Topluluk",
     "section_main": "MENÜ",
+    "section_pages": "SAYFALAR",
     "section_social": "Sosyal",
     "section_account": "HESAP & DİĞER",
     "home": "Ana Sayfa",
@@ -1078,7 +1099,20 @@
     "leaderboard": "Sıralama",
     "profile": "Hesabım",
     "settings": "Ayarlar",
-    "about": "Uygulama Hakkında"
+    "about": "Uygulama Hakkında",
+    "section_nutrition": "BESLENME & FİTNES",
+    "meal_scanner": "Öğün Tarayıcı",
+    "barcode_scanner": "Barkod Tarayıcı",
+    "nutrition_analytics": "Beslenme Analizi",
+    "shopping_list": "Alışveriş Listesi",
+    "meal_plan_history": "Plan Geçmişi",
+    "ai_chat": "AI Asistan",
+    "dietary_preferences": "Beslenme Tercihleri",
+    "section_gym": "SPOR SALONUM",
+    "my_gym": "Spor Salonum",
+    "coming_soon": "Yakında",
+    "explore": "Keşfet",
+    "nav_profile": "Profil"
   },
   "account_suspended": {
     "title_header": "HESAP DURUMU",
@@ -1288,6 +1322,12 @@
       "custom": "Özel",
       "custom_unit": "puan"
     },
+    "difficulty": {
+      "all": "Tümü",
+      "easy": "Kolay",
+      "medium": "Orta",
+      "hard": "Zor"
+    },
     "create": {
       "title": "Yeni Meydan Okuma",
       "name_label": "Meydan Okuma Adı",
@@ -1295,6 +1335,7 @@
       "desc_label": "Açıklama (isteğe bağlı)",
       "desc_hint": "Bu meydan okuma hakkında ne söylemek istersiniz?",
       "type_label": "Meydan Okuma Türü",
+      "difficulty_label": "Zorluk Seviyesi",
       "goal_label": "Hedef",
       "goal_hint": "Hedef değer",
       "end_date_label": "Bitiş Tarihi",
@@ -1342,5 +1383,148 @@
     },
     "log_btn": "Bu öğünü kaydet",
     "log_success": "Öğün başarıyla kaydedildi!"
+  },
+  "barcode": {
+    "scan_btn": "Barkod Tara",
+    "scan_hint": "Kamerayı ürün barkoduna doğrultun",
+    "looking_up": "Ürün aranıyor...",
+    "not_found_title": "Ürün Bulunamadı",
+    "not_found_body": "Bu barkod için besin değerleri bulunamadı. Başka bir ürün deneyin veya yapay zeka metin analizini kullanın.",
+    "scan_again": "Tekrar Tara",
+    "serving_label": "Porsiyon Boyutu",
+    "meal_type_label": "Öğün olarak kaydet",
+    "log_btn": "Besin Kaydet",
+    "macro_cal": "Kal",
+    "macro_protein": "Protein",
+    "macro_carbs": "Karb",
+    "macro_fat": "Yağ"
+  },
+  "calendar": {
+    "export_btn": "Takvime Aktar",
+    "export_error": "Yemek planı aktarılamadı. Lütfen tekrar deneyin."
+  },
+  "favorites": {
+    "title": "Favorilerim",
+    "empty_title": "Henüz Favori Yok",
+    "empty_subtitle": "Tarifi kaydetmek için yer imi simgesine dokunun.",
+    "saved": "Tarif favorilere eklendi",
+    "removed": "Tarif favorilerden kaldırıldı"
+  },
+  "explore": {
+    "title": "Keşfet",
+    "subtitle": "Kişiselleştirilmiş tarifler keşfedin ve oluşturun",
+    "tab_discover": "Keşfet",
+    "tab_favorites": "Kaydedilenler",
+    "search_hint": "ör. Somonlu kuşkonmaz...",
+    "generate_error": "Tarif oluşturulamadı. Lütfen tekrar deneyin.",
+    "try_searching": "Şunları aramayı deneyin:",
+    "suggestion.pasta": "Hızlı Makarna",
+    "suggestion.chicken": "Düşük Karbonhidratlı Tavuk",
+    "suggestion.vegan": "Vegan Burger",
+    "suggestion.breakfast": "Sağlıklı Kahvaltı",
+    "suggestion.salad": "Yunan Salatası",
+    "suggestion.smoothie": "Protein Smoothie",
+    "filter_by_time": "Pişirme Süresine Göre Filtrele",
+    "time_filter.all": "Hepsi",
+    "time_filter.quick": "Hızlı (< 20 dk)",
+    "time_filter.medium": "Orta (20-45 dk)",
+    "time_filter.slow": "Uzun (45+ dk)",
+    "difficulty_label": "Zorluk",
+    "difficulty.all": "Hepsi",
+    "difficulty.easy": "Kolay",
+    "difficulty.medium": "Orta",
+    "difficulty.hard": "Zor"
+  },
+  "meal_compare": {
+    "title": "Planları Karşılaştır",
+    "subtitle": "Alternatif makro yaklaşımların mevcut planınızla karşılaştırmasını görün.",
+    "generating": "AI ile alternatifler oluşturuluyor...",
+    "error": "Alternatifler oluşturulamadı. Lütfen tekrar deneyin.",
+    "current_label": "Mevcut",
+    "current_plan": "Aktif Planım",
+    "current_desc": "Mevcut haftalık yemek planınız",
+    "alternates_label": "ALTERNATİFLER",
+    "alt_label": "Seçenek",
+    "keep_plan": "Mevcut Planı Koru",
+    "apply_alt": "Bu Planı Oluştur"
+  },
+  "meal_history": {
+    "title": "Yemek Planı Geçmişi",
+    "empty_title": "Henüz Geçmiş Yok",
+    "empty_subtitle": "Yeni planlar oluşturduğunuzda geçmiş planlarınız burada görünecek.",
+    "week_label": "Hafta",
+    "load_plan": "Bu Planı Yükle",
+    "load_confirm": "{week} tarihli yemek planını yüklemek istiyor musunuz?",
+    "loaded": "Yemek planı yüklendi",
+    "days": "gün",
+    "meals": "öğün"
+  },
+  "quick_add": {
+    "title": "Hızlı Ekle",
+    "recent_title": "Son Yediklerim",
+    "frequent_title": "Sık Yediklerim",
+    "empty_title": "Son Yemek Yok",
+    "empty_subtitle": "Kaydettiğiniz yiyecekler hızlı erişim için burada görünecek.",
+    "add_btn": "Ekle",
+    "all_btn": "Hepsini Ekle"
+  },
+  "user_search": {
+    "title": "İnsan Bul",
+    "hint": "İsme göre ara...",
+    "empty_title": "Sonuç Bulunamadı",
+    "empty_subtitle": "Farklı bir isim deneyin.",
+    "add_friend": "Arkadaş Ekle",
+    "request_sent": "İstek gönderildi",
+    "already_friends": "Arkadaşlar"
+  },
+  "notification_prefs": {
+    "title": "Bildirim Tercihleri",
+    "subtitle": "Hangi bildirimleri alacağınızı seçin",
+    "likes": "Beğeniler ve Tepkiler",
+    "comments": "Yorumlar",
+    "friends": "Arkadaşlık İstekleri",
+    "system": "Sistem ve Seriler",
+    "challenges": "Meydan Okumalar",
+    "referral": "Referans Ödülleri",
+    "saved": "Tercihler kaydedildi"
+  },
+  "dietary_prefs": {
+    "title": "Beslenme Tercihleri",
+    "save": "Kaydet",
+    "saved": "Tercihler kaydedildi",
+    "none_set": "Belirtilmedi",
+    "allergies_title": "Alerjiler",
+    "allergies_subtitle": "Kayıt sırasında belirlendi — değiştirmek için profilinizi güncelleyin",
+    "diet_title": "Diyet Kısıtlamaları",
+    "diet_subtitle": "Kayıt sırasında belirlendi — değiştirmek için profilinizi güncelleyin",
+    "avoid_title": "Kaçınılacak Listesi",
+    "avoid_subtitle": "Tarif ve yemek planlarından çıkarılacak özel malzemeler",
+    "avoid_hint": "ör. mantar, kişniş...",
+    "avoid_empty": "Henüz kaçınılacak malzeme yok. Yukarıdan ekleyin."
+  },
+  "exercise": {
+    "title": "Egzersiz Ekle",
+    "type_label": "Aktivite Türü",
+    "duration_label": "Süre",
+    "minutes": "dk",
+    "estimated_burn": "Tahmini Yakılan",
+    "log_button": "Aktiviteyi Kaydet",
+    "log_button_short": "Egzersiz Ekle",
+    "logged_success": "Egzersiz kaydedildi! Harika!",
+    "burned_today": "Bugün {kcal} kcal yakıldı",
+    "types": {
+      "running": "Koşu",
+      "walking": "Yürüyüş",
+      "cycling": "Bisiklet",
+      "swimming": "Yüzme",
+      "weight_training": "Ağırlık",
+      "hiit": "HIIT",
+      "yoga": "Yoga",
+      "jump_rope": "İp Atlama",
+      "basketball": "Basketbol",
+      "football": "Futbol",
+      "dancing": "Dans",
+      "other": "Diğer"
+    }
   }
 }

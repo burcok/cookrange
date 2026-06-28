@@ -56,6 +56,7 @@ class ChallengeService {
     required int goal,
     required String unit,
     required DateTime endDate,
+    ChallengeDifficulty difficulty = ChallengeDifficulty.medium,
     bool isPublic = true,
   }) async {
     final uid = _uid;
@@ -68,6 +69,7 @@ class ChallengeService {
       title: title,
       description: description,
       type: type,
+      difficulty: difficulty,
       goal: goal,
       unit: unit,
       startDate: now,

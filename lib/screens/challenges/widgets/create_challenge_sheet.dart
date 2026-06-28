@@ -23,6 +23,7 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
   final TextEditingController _goalCtrl = TextEditingController();
 
   ChallengeType _selectedType = ChallengeType.steps;
+  ChallengeDifficulty _selectedDifficulty = ChallengeDifficulty.medium;
   DateTime _endDate = DateTime.now().add(const Duration(days: 7));
   bool _isPublic = true;
   bool _isCreating = false;
@@ -63,6 +64,28 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
         return 'days';
       case ChallengeType.custom:
         return '';
+    }
+  }
+
+  static Color _difficultyColor(ChallengeDifficulty d, AppPalette palette) {
+    switch (d) {
+      case ChallengeDifficulty.easy:
+        return palette.success;
+      case ChallengeDifficulty.medium:
+        return palette.warning;
+      case ChallengeDifficulty.hard:
+        return palette.error;
+    }
+  }
+
+  static IconData _difficultyIcon(ChallengeDifficulty d) {
+    switch (d) {
+      case ChallengeDifficulty.easy:
+        return Icons.sentiment_satisfied_rounded;
+      case ChallengeDifficulty.medium:
+        return Icons.sentiment_neutral_rounded;
+      case ChallengeDifficulty.hard:
+        return Icons.local_fire_department_rounded;
     }
   }
 
@@ -124,6 +147,7 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
         title: title,
         description: _descCtrl.text.trim(),
         type: _selectedType,
+        difficulty: _selectedDifficulty,
         goal: goal,
         unit: unit,
         endDate: _endDate,
@@ -220,6 +244,63 @@ class _CreateChallengeSheetState extends State<CreateChallengeSheet> {
                       _selectedType = ct;
                       _goalCtrl.text = _typeDefaultGoal(ct);
                     }),
+                  ),
+                  SizedBox(height: AppSpacing.lg.h),
+
+                  // Difficulty picker
+                  Text(
+                    l10n.translate('challenge.create.difficulty_label'),
+                    style: t.labelL.copyWith(
+                        color: palette.textSecondary, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: AppSpacing.sm.h),
+                  Row(
+                    children: ChallengeDifficulty.values.map((diff) {
+                      final isSelected = _selectedDifficulty == diff;
+                      final color = _difficultyColor(diff, palette);
+                      return Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                              right: diff != ChallengeDifficulty.hard ? 8.0 : 0),
+                          child: GestureDetector(
+                            onTap: () =>
+                                setState(() => _selectedDifficulty = diff),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? color.withValues(alpha: 0.15)
+                                    : palette.surfaceVariant,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? color
+                                      : palette.border,
+                                  width: isSelected ? 2 : 1,
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(_difficultyIcon(diff),
+                                      size: 18, color: color),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    l10n.translate(diff.locKey),
+                                    style: t.labelS.copyWith(
+                                      color: color,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                   SizedBox(height: AppSpacing.lg.h),
 

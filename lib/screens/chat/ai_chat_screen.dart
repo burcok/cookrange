@@ -3,8 +3,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/app_localizations.dart';
+import '../../core/providers/navigation_provider.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/services/ai/ai_chat_history_service.dart';
 import '../../core/services/ai/ai_chat_service.dart';
 import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_typography.dart';
@@ -21,14 +23,19 @@ class AIChatScreen extends StatefulWidget {
 
 class _AIChatScreenState extends State<AIChatScreen> {
   final AIChatService _chatService = AIChatService();
+  final AIChatHistoryService _history = AIChatHistoryService();
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<AIChatMessage> _messages = [];
+
+  // Local reference to the singleton list — same object, reactive via setState.
+  late final List<AIChatMessage> _messages;
+
   bool _isTyping = false;
 
   @override
   void initState() {
     super.initState();
+    _messages = _history.messages;
     final initial = widget.initialMessage;
     if (initial != null && initial.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _sendMessage(initial));
@@ -63,10 +70,9 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
     _inputController.clear();
 
-    setState(() {
-      _messages.add(AIChatMessage(role: 'user', content: trimmed));
-      _isTyping = true;
-    });
+    final userMsg = AIChatMessage(role: 'user', content: trimmed);
+    _history.add(userMsg);
+    setState(() => _isTyping = true);
     _scrollToBottom();
 
     try {
@@ -76,19 +82,15 @@ class _AIChatScreenState extends State<AIChatScreen> {
         userMessage: trimmed,
       );
       if (!mounted) return;
-      setState(() {
-        _messages.add(AIChatMessage(role: 'assistant', content: reply));
-        _isTyping = false;
-      });
+      _history.add(AIChatMessage(role: 'assistant', content: reply));
+      setState(() => _isTyping = false);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _messages.add(const AIChatMessage(
-          role: 'assistant',
-          content: 'Sorry, something went wrong. Please try again.',
-        ));
-        _isTyping = false;
-      });
+      _history.add(const AIChatMessage(
+        role: 'assistant',
+        content: 'Sorry, something went wrong. Please try again.',
+      ));
+      setState(() => _isTyping = false);
     }
     _scrollToBottom();
   }
@@ -119,29 +121,66 @@ class _AIChatScreenState extends State<AIChatScreen> {
               child: Icon(Icons.smart_toy_outlined, size: 18.sp, color: primary),
             ),
             SizedBox(width: 10.w),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  l10n.translate('ai_chat.title'),
-                  style: appText.titleM.copyWith(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.bold,
-                    color: palette.textPrimary,
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.translate('ai_chat.title'),
+                    style: appText.titleM.copyWith(
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.bold,
+                      color: palette.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  l10n.translate('ai_chat.subtitle'),
-                  style: appText.labelS.copyWith(
-                    fontSize: 11.sp,
-                    color: palette.textTertiary,
+                  Text(
+                    l10n.translate('ai_chat.subtitle'),
+                    style: appText.labelS.copyWith(
+                      fontSize: 11.sp,
+                      color: palette.textTertiary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
+        actions: [
+          // Switch to voice mode
+          GestureDetector(
+            onTap: () {
+              Navigator.pop(context);
+              context.read<NavigationProvider>().toggleVoiceAssistant(true);
+            },
+            child: Container(
+              margin: EdgeInsets.only(right: 16.w),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20.r),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.mic_rounded, size: 16.sp, color: primary),
+                  SizedBox(width: 4.w),
+                  Text(
+                    l10n.translate('ai_chat.voice_mode'),
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                      color: primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -294,7 +333,6 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 14.sp,
-                  // sent bubble: white for contrast; received: textPrimary
                   color: isUser ? Colors.white : palette.textPrimary,
                   height: 1.45,
                 ),

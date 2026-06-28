@@ -107,217 +107,179 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Material(
         color: palette.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        children: [
-          // Handle
-          Container(
-            width: 36,
-            height: 4,
-            margin: const EdgeInsets.only(top: 12, bottom: 20),
-            decoration: BoxDecoration(
-              color: palette.border,
-              borderRadius: BorderRadius.circular(2),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            // Handle
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 20),
+              decoration: BoxDecoration(
+                color: palette.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
 
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.translate('chat.group.create_title'),
-                    style: appText.headlineS.copyWith(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                if (_selectedIds.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Expanded(
                     child: Text(
-                      l10n.translate('chat.group.selected_count',
-                          variables: {'count': '${_selectedIds.length}'}),
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: primary),
+                      l10n.translate('chat.group.create_title'),
+                      style: appText.headlineS.copyWith(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Group name field
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: TextField(
-              controller: _nameController,
-              onChanged: (_) => setState(() {}),
-              style: TextStyle(color: palette.textPrimary),
-              decoration: InputDecoration(
-                hintText: l10n.translate('chat.group.name_hint'),
-                hintStyle: TextStyle(color: palette.textTertiary),
-                prefixIcon: Icon(Icons.group, color: palette.textTertiary),
-                filled: true,
-                fillColor: palette.surfaceVariant,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                  if (_selectedIds.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        l10n.translate('chat.group.selected_count',
+                            variables: {'count': '${_selectedIds.length}'}),
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: primary),
+                      ),
+                    ),
+                ],
               ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-          // Section label
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                l10n.translate('chat.group.select_members'),
-                style: appText.labelM.copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+            // Input
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: TextField(
+                controller: _nameController,
+                style: TextStyle(color: palette.textPrimary),
+                decoration: InputDecoration(
+                  hintText: l10n.translate('chat.group.name_hint'),
+                  hintStyle: TextStyle(color: palette.textTertiary),
+                  filled: true,
+                  fillColor: palette.surfaceVariant,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 8),
 
-          // Search friends
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: TextField(
-              controller: _searchController,
-              style: TextStyle(color: palette.textPrimary),
-              decoration: InputDecoration(
-                hintText: l10n.translate('chat.search_friend_hint'),
-                hintStyle: TextStyle(color: palette.textTertiary),
-                prefixIcon: Icon(Icons.search, color: palette.textTertiary),
-                filled: true,
-                fillColor: palette.surfaceVariant,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Friend list
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _friends.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Text(
-                            l10n.translate('chat.group.no_friends'),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: palette.textSecondary),
+            // Friend list
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _friends.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Text(
+                              l10n.translate('chat.group.no_friends'),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: palette.textSecondary),
+                            ),
                           ),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        itemCount: _filteredFriends.length,
-                        itemBuilder: (context, i) {
-                          final friend = _filteredFriends[i];
-                          final isSelected =
-                              _selectedIds.contains(friend.uid);
-                          return CheckboxListTile(
-                            value: isSelected,
-                            onChanged: (_) {
-                              setState(() {
-                                if (isSelected) {
-                                  _selectedIds.remove(friend.uid);
-                                } else {
-                                  _selectedIds.add(friend.uid);
-                                }
-                              });
-                            },
-                            activeColor: primary,
-                            secondary: CircleAvatar(
-                              radius: 20,
-                              backgroundImage: friend.photoURL != null
-                                  ? NetworkImage(friend.photoURL!)
-                                  : null,
-                              child: friend.photoURL == null
-                                  ? Text(
-                                      (friend.displayName ?? '?')
-                                          .substring(0, 1)
-                                          .toUpperCase(),
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                    )
-                                  : null,
-                            ),
-                            title: Text(
-                              friend.displayName ??
-                                  l10n.translate('chat.unnamed_user'),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: palette.textPrimary,
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          itemCount: _filteredFriends.length,
+                          itemBuilder: (context, i) {
+                            final friend = _filteredFriends[i];
+                            final isSelected =
+                                _selectedIds.contains(friend.uid);
+                            return CheckboxListTile(
+                              value: isSelected,
+                              onChanged: (_) {
+                                setState(() {
+                                  if (isSelected) {
+                                    _selectedIds.remove(friend.uid);
+                                  } else {
+                                    _selectedIds.add(friend.uid);
+                                  }
+                                });
+                              },
+                              activeColor: primary,
+                              secondary: CircleAvatar(
+                                radius: 20,
+                                backgroundImage: friend.photoURL != null
+                                    ? NetworkImage(friend.photoURL!)
+                                    : null,
+                                child: friend.photoURL == null
+                                    ? Text(
+                                        (friend.displayName ?? '?')
+                                            .substring(0, 1)
+                                            .toUpperCase(),
+                                        style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      )
+                                    : null,
                               ),
-                            ),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          );
-                        },
-                      ),
-          ),
+                              title: Text(
+                                friend.displayName ??
+                                    l10n.translate('chat.unnamed_user'),
+                                style: TextStyle(
+                                  color: palette.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+            ),
 
-          // Create button
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-                24, 8, 24, MediaQuery.of(context).padding.bottom + 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: canCreate ? _createGroup : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primary,
-                  disabledBackgroundColor: palette.border,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+            // Action
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: canCreate ? _createGroup : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                    disabledBackgroundColor: palette.border,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: _isCreating
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : Text(
+                          l10n.translate('chat.group.create_btn'),
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                 ),
-                child: _isCreating
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                    : Text(
-                        l10n.translate('chat.group.create_btn'),
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

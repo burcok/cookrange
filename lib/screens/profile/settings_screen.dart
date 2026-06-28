@@ -16,10 +16,12 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/data_export_service.dart';
 import '../../core/services/feature_gate_service.dart';
+import '../../core/services/notification_preferences_service.dart';
 import '../../core/services/referral_service.dart';
 import '../../core/utils/app_routes.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../legal/legal_screen.dart';
+import 'dietary_preferences_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -54,6 +56,56 @@ class SettingsScreen extends StatelessWidget {
       if (context.mounted && previousUser != null) {
         context.read<UserProvider>().setUser(previousUser);
       }
+    }
+  }
+
+  Future<void> _showNotificationPreferences(BuildContext context) async {
+    final svc = NotificationPreferencesService();
+    final prefs = await svc.getPreferences();
+    if (!context.mounted) return;
+
+    final l10n = AppLocalizations.of(context);
+    final mutable = Map<String, bool>.from(prefs);
+
+    await AppSheet.show(
+      context: context,
+      title: l10n.translate('notification_prefs.title'),
+      child: StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final primary = context.read<ThemeProvider>().primaryColor;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.translate('notification_prefs.subtitle'),
+                    style: AppText.of(ctx).bodyM),
+                const SizedBox(height: 16),
+                ...NotificationPreferencesService.preferencePairs.keys.map(
+                  (key) => SwitchListTile.adaptive(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      l10n.translate('notification_prefs.$key'),
+                      style: AppText.of(ctx).titleM,
+                    ),
+                    value: !(mutable[key] ?? false),
+                    activeTrackColor: primary,
+                    onChanged: (enabled) async {
+                      setSheetState(() => mutable[key] = !enabled);
+                      await svc.setMuted(key, !enabled);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    if (context.mounted) {
+      AppSnackBar.success(context, l10n.translate('notification_prefs.saved'));
     }
   }
 
@@ -427,6 +479,35 @@ class SettingsScreen extends StatelessWidget {
 
                     const SizedBox(height: 24),
 
+                    // Nutrition
+                    _buildGlassSection(
+                      context: context,
+                      title: appLoc.translate('dietary_prefs.title'),
+                      palette: palette,
+                      children: [
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.block_rounded,
+                          iconColor: palette.warning,
+                          iconBgColor: palette.isDark
+                              ? palette.warning.withValues(alpha: 0.3)
+                              : palette.warning.withValues(alpha: 0.12),
+                          title: appLoc.translate('dietary_prefs.avoid_title'),
+                          palette: palette,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const DietaryPreferencesScreen()),
+                          ),
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
                     // Permissions & Notifications
                     _buildGlassSection(
                       context: context,
@@ -443,6 +524,19 @@ class SettingsScreen extends StatelessWidget {
                           title: appLoc.translate('settings.notifications'),
                           palette: palette,
                           onTap: _openNotificationSettings,
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.tune_rounded,
+                          iconColor: palette.info,
+                          iconBgColor: palette.isDark
+                              ? palette.info.withValues(alpha: 0.3)
+                              : palette.info.withValues(alpha: 0.12),
+                          title: appLoc.translate('notification_prefs.title'),
+                          palette: palette,
+                          onTap: () => _showNotificationPreferences(context),
                           trailing: Icon(Icons.chevron_right,
                               color: palette.textSecondary),
                         ),

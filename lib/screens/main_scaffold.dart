@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import 'home/home.dart';
 import 'community/community_screen.dart';
+import 'profile/profile_screen.dart';
 import '../core/providers/navigation_provider.dart';
 import '../core/providers/user_provider.dart';
 import '../core/widgets/quick_actions_sheet.dart';
@@ -18,21 +21,18 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold>
     with SingleTickerProviderStateMixin {
-  late PageController _pageController;
   late AnimationController _menuController;
 
   @override
   void initState() {
     super.initState();
-    final nav = context.read<NavigationProvider>();
-    _pageController = PageController(initialPage: nav.currentIndex);
     _menuController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 260),
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      nav.addListener(_handleNavChange);
+      context.read<NavigationProvider>().addListener(_handleNavChange);
       Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) context.read<UserProvider>().refreshUser();
       });
@@ -52,21 +52,10 @@ class _MainScaffoldState extends State<MainScaffold>
         _menuController.status != AnimationStatus.dismissed) {
       _menuController.reverse();
     }
-
-    if (nav.currentIndex <= 1 && _pageController.hasClients) {
-      if ((_pageController.page! - nav.currentIndex).abs() > 0.1) {
-        _pageController.animateToPage(
-          nav.currentIndex,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      }
-    }
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
     _menuController.dispose();
     super.dispose();
   }
@@ -77,63 +66,94 @@ class _MainScaffoldState extends State<MainScaffold>
     final scaffoldBg =
         isDark ? const Color(0xFF0D1117) : const Color(0xFFFCFBF9);
 
-    return Material(
-      color: scaffoldBg,
-      child: Stack(
-        children: [
-          // Background blobs — rebuilt only when Theme changes (no nav subscription)
-          _buildBackgroundGlows(context),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
 
-          // Scaffold is static — no NavigationProvider.watch here
-          Scaffold(
-            extendBody: true,
-            backgroundColor: Colors.transparent,
-            body: Stack(
-              children: [
-                // Only rebuilds when currentIndex crosses the <=1 boundary
-                Selector<NavigationProvider, bool>(
-                  selector: (_, nav) => nav.currentIndex <= 1,
-                  builder: (context, showPageView, _) {
-                    if (!showPageView) return const SizedBox.shrink();
-                    return PageView(
-                      controller: _pageController,
-                      allowImplicitScrolling: true,
-                      physics: const ClampingScrollPhysics(),
-                      onPageChanged: (index) {
-                        context.read<NavigationProvider>().setIndex(index);
-                      },
-                      children: const [
-                        HomeScreen(),
-                        CommunityScreen(),
+        final nav = context.read<NavigationProvider>();
+
+        // 1. Close the side menu if open
+        if (nav.isMenuOpen) {
+          nav.toggleMenu(false);
+          return;
+        }
+
+        // 2. Return to Home tab from any other tab
+        if (nav.currentIndex != NavigationProvider.homeTab) {
+          nav.setIndex(NavigationProvider.homeTab);
+          return;
+        }
+
+        // 3. Exit the app (Android)
+        if (Platform.isAndroid) SystemNavigator.pop();
+      },
+      child: Material(
+        color: scaffoldBg,
+        child: Stack(
+          children: [
+            _buildBackgroundGlows(context),
+
+            // ── Main scaffold ────────────────────────────────────────────────
+            Scaffold(
+              backgroundColor: Colors.transparent,
+              extendBody: true,
+              body: Builder(
+                builder: (context) {
+                  final deviceBottom = MediaQuery.viewPaddingOf(context).bottom;
+                  const navBarHeight = 72.0;
+                  final mq = MediaQuery.of(context);
+                  return MediaQuery(
+                    data: mq.copyWith(
+                      padding: mq.padding
+                          .copyWith(bottom: deviceBottom + navBarHeight),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Tab screens — IndexedStack keeps all 3 alive so
+                        // switching tabs is instant with no rebuild.
+                        Selector<NavigationProvider, int>(
+                          selector: (_, nav) => nav.currentIndex,
+                          builder: (_, index, __) => IndexedStack(
+                            index: index,
+                            children: const [
+                              HomeScreen(),
+                              CommunityScreen(),
+                              ProfileScreen(),
+                            ],
+                          ),
+                        ),
+
+                        // QuickActionsSheet (navbar) always on top of tabs.
+                        const QuickActionsSheet(),
                       ],
-                    );
-                  },
-                ),
-                const QuickActionsSheet(),
-              ],
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
 
-          // Voice assistant — only rebuilds when visibility changes
-          Selector<NavigationProvider, bool>(
-            selector: (_, nav) => nav.isVoiceAssistantOpen,
-            builder: (_, isOpen, __) =>
-                isOpen ? const VoiceAssistantOverlay() : const SizedBox.shrink(),
-          ),
-
-          // Menu — driven by AnimationController; no nav watch in parent needed
-          AnimatedBuilder(
-            animation: _menuController,
-            builder: (context, child) {
-              if (_menuController.isDismissed) return const SizedBox.shrink();
-              return child!;
-            },
-            child: SideMenu(
-              navProvider: context.read<NavigationProvider>(),
-              animationController: _menuController,
+            // ── Voice assistant overlay ──────────────────────────────────────
+            Selector<NavigationProvider, bool>(
+              selector: (_, nav) => nav.isVoiceAssistantOpen,
+              builder: (_, isOpen, __) =>
+                  isOpen ? const VoiceAssistantOverlay() : const SizedBox.shrink(),
             ),
-          ),
-        ],
+
+            // ── Side menu — kept in tree (Offstage) for zero-rebuild opens ──
+            AnimatedBuilder(
+              animation: _menuController,
+              builder: (context, child) => Offstage(
+                offstage: _menuController.isDismissed,
+                child: child,
+              ),
+              child: SideMenu(
+                navProvider: context.read<NavigationProvider>(),
+                animationController: _menuController,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -144,28 +164,28 @@ class _MainScaffoldState extends State<MainScaffold>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return RepaintBoundary(
       child: ExcludeSemantics(
-      child: Container(
-        color: isDark ? const Color(0xFF0D1117) : const Color(0xFFFCFBF9),
-        child: Stack(
-          children: [
-            Positioned(
-              top: -100,
-              right: -50,
-              child: _glowBlob(300, primary.withValues(alpha: 0.2)),
-            ),
-            Positioned(
-              top: size.height * 0.4,
-              left: -100,
-              child: _glowBlob(350, primary.withValues(alpha: 0.18)),
-            ),
-            Positioned(
-              bottom: 50,
-              right: -80,
-              child: _glowBlob(320, primary.withValues(alpha: 0.15)),
-            ),
-          ],
+        child: Container(
+          color: isDark ? const Color(0xFF0D1117) : const Color(0xFFFCFBF9),
+          child: Stack(
+            children: [
+              Positioned(
+                top: -100,
+                right: -50,
+                child: _glowBlob(300, primary.withValues(alpha: 0.2)),
+              ),
+              Positioned(
+                top: size.height * 0.4,
+                left: -100,
+                child: _glowBlob(350, primary.withValues(alpha: 0.18)),
+              ),
+              Positioned(
+                bottom: 50,
+                right: -80,
+                child: _glowBlob(320, primary.withValues(alpha: 0.15)),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

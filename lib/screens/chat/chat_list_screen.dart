@@ -19,7 +19,7 @@ import '../community/widgets/glass_refresher.dart';
 import '../../core/widgets/side_menu.dart';
 import '../../core/widgets/unified_action_sheet.dart';
 import '../../core/providers/theme_provider.dart';
-import '../../core/utils/app_routes.dart';
+import 'ai_chat_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -780,7 +780,8 @@ class _ChatListScreenState extends State<ChatListScreen>
     String t(String key) => AppLocalizations.of(context).translate(key);
     final primary = context.read<ThemeProvider>().primaryColor;
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, AppRoutes.aiChat),
+      onTap: () => Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const AIChatScreen())),
       child: Container(
         margin: EdgeInsets.only(bottom: 16.h),
         padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 14.h),

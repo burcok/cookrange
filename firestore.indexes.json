@@ -68,6 +68,42 @@
       "fields": [
         { "fieldPath": "onboarding_data.streak", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "favorites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "savedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "meal_plan_history",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "archivedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "recent_foods",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lastLoggedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "recent_foods",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "logCount", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "exercise_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "date", "order": "ASCENDING" },
+        { "fieldPath": "loggedAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

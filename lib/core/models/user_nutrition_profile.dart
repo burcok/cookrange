@@ -12,6 +12,8 @@ class UserNutritionProfile {
   final List<String> allergyIds;
   final List<String> dietaryRestrictionIds;
   final List<String> dislikedFoodKeys;
+  /// Free-form ingredients/foods the user wants excluded from recipes/plans.
+  final List<String> avoidIngredients;
   final String? cookingLevel;
   final List<String> kitchenEquipmentIds;
   final String? lifestyleProfile;
@@ -27,6 +29,7 @@ class UserNutritionProfile {
     this.allergyIds = const [],
     this.dietaryRestrictionIds = const [],
     this.dislikedFoodKeys = const [],
+    this.avoidIngredients = const [],
     this.cookingLevel,
     this.kitchenEquipmentIds = const [],
     this.lifestyleProfile,
@@ -54,6 +57,7 @@ class UserNutritionProfile {
       allergyIds: _extractIds(raw['allergies']),
       dietaryRestrictionIds: _extractIds(raw['dietary_restrictions']),
       dislikedFoodKeys: _extractDislikedFoodKeys(raw['disliked_foods']),
+      avoidIngredients: _extractStringList(raw['avoid_ingredients']),
       cookingLevel: _extractId(raw['cooking_level']),
       kitchenEquipmentIds: _extractIds(raw['kitchen_equipments']),
       lifestyleProfile: _extractId(raw['lifestyle_profile']),
@@ -69,7 +73,9 @@ class UserNutritionProfile {
     final now = DateTime.now();
     int y = now.year - birthDate!.year;
     if (now.month < birthDate!.month ||
-        (now.month == birthDate!.month && now.day < birthDate!.day)) y--;
+        (now.month == birthDate!.month && now.day < birthDate!.day)) {
+      y--;
+    }
     return y;
   }
 
@@ -111,6 +117,14 @@ class UserNutritionProfile {
           if (e is Map) return e['value'] as String? ?? '';
           return '';
         })
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  static List<String> _extractStringList(dynamic v) {
+    if (v is! List) return const [];
+    return v
+        .whereType<String>()
         .where((s) => s.isNotEmpty)
         .toList();
   }

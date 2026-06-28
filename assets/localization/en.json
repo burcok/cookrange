@@ -562,7 +562,14 @@
     "servings": "Servings",
     "start_cooking": "Start Cooking",
     "description": "Description",
-    "items": "Items"
+    "items": "Items",
+    "notes": {
+      "title": "Personal Notes",
+      "hint": "Add your own notes, substitutions, or tips for this recipe.",
+      "placeholder": "e.g. Add extra chili, use almond milk instead...",
+      "save": "Save Note",
+      "saved": "Note saved"
+    }
   },
   "shopping": {
     "title": "Shopping List",
@@ -897,7 +904,10 @@
     "meal_type_breakfast": "Breakfast",
     "meal_type_lunch": "Lunch",
     "meal_type_dinner": "Dinner",
-    "meal_type_snack": "Snack"
+    "meal_type_snack": "Snack",
+    "meal_breakdown": {
+      "title": "Today's Meal Breakdown"
+    }
   },
   "ai_chat": {
     "title": "AI Nutritionist",
@@ -909,6 +919,7 @@
     "not_configured": "AI assistant is not configured yet.",
     "banner_title": "AI Nutritionist",
     "banner_subtitle": "Get personalized nutrition advice",
+    "voice_mode": "Voice Mode",
     "suggestions": [
       "What should I eat for breakfast?",
       "How can I increase my protein intake?",
@@ -941,6 +952,7 @@
     "preparing_mic": "Preparing microphone...",
     "listen_again": "Listen Again",
     "start": "Start",
+    "text_mode": "Text Chat",
     "input_hint": "Type or speak something...",
     "suggestions": [
       "What should I cook for dinner?",
@@ -955,7 +967,15 @@
     "history": "History",
     "home": "Home",
     "meals": "Meals",
-    "community": "Community"
+    "community": "Community",
+    "meal_scanner": "Meal Scanner",
+    "nutrition_analytics": "Nutrition Analytics",
+    "barcode_scanner": "Barcode Scanner",
+    "favorites": "My Favorites",
+    "my_gym": "My Gym",
+    "coming_soon": "Coming Soon",
+    "voice_assistant": "Voice Assistant",
+    "ai_assistant": "AI Assistant"
   },
   "community": {
     "title": "Community",
@@ -1070,6 +1090,7 @@
     "logout": "Logout",
     "community": "Community",
     "section_main": "MENU",
+    "section_pages": "PAGES",
     "section_social": "Social",
     "section_account": "ACCOUNT & MORE",
     "home": "Home",
@@ -1078,7 +1099,20 @@
     "leaderboard": "Leaderboard",
     "profile": "My Account",
     "settings": "Settings",
-    "about": "About"
+    "about": "About",
+    "section_nutrition": "NUTRITION & FITNESS",
+    "meal_scanner": "Meal Scanner",
+    "barcode_scanner": "Barcode Scanner",
+    "nutrition_analytics": "Nutrition Analytics",
+    "shopping_list": "Shopping List",
+    "meal_plan_history": "Meal Plan History",
+    "ai_chat": "AI Assistant",
+    "dietary_preferences": "Dietary Preferences",
+    "section_gym": "MY GYM",
+    "my_gym": "My Gym",
+    "coming_soon": "Coming Soon",
+    "explore": "Explore",
+    "nav_profile": "Profile"
   },
   "account_suspended": {
     "title_header": "ACCOUNT STATUS",
@@ -1288,6 +1322,12 @@
       "custom": "Custom",
       "custom_unit": "pts"
     },
+    "difficulty": {
+      "all": "All",
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard"
+    },
     "create": {
       "title": "New Challenge",
       "name_label": "Challenge Name",
@@ -1295,6 +1335,7 @@
       "desc_label": "Description (optional)",
       "desc_hint": "What is this challenge about?",
       "type_label": "Challenge Type",
+      "difficulty_label": "Difficulty",
       "goal_label": "Goal",
       "goal_hint": "Target value",
       "end_date_label": "End Date",
@@ -1342,5 +1383,148 @@
     },
     "log_btn": "Log this meal",
     "log_success": "Meal logged successfully!"
+  },
+  "barcode": {
+    "scan_btn": "Scan Barcode",
+    "scan_hint": "Point camera at a product barcode",
+    "looking_up": "Looking up product...",
+    "not_found_title": "Product Not Found",
+    "not_found_body": "We couldn't find nutritional data for this barcode. Try another product or use the AI text analysis.",
+    "scan_again": "Scan Again",
+    "serving_label": "Serving Size",
+    "meal_type_label": "Log as",
+    "log_btn": "Log Food",
+    "macro_cal": "Cal",
+    "macro_protein": "Protein",
+    "macro_carbs": "Carbs",
+    "macro_fat": "Fat"
+  },
+  "calendar": {
+    "export_btn": "Export to Calendar",
+    "export_error": "Could not export meal plan. Please try again."
+  },
+  "favorites": {
+    "title": "My Favorites",
+    "empty_title": "No Favorites Yet",
+    "empty_subtitle": "Tap the bookmark icon on any recipe to save it here.",
+    "saved": "Recipe saved to favorites",
+    "removed": "Recipe removed from favorites"
+  },
+  "explore": {
+    "title": "Explore",
+    "subtitle": "Discover and generate personalized recipes",
+    "tab_discover": "Discover",
+    "tab_favorites": "Saved",
+    "search_hint": "e.g. Salmon with asparagus...",
+    "generate_error": "Could not generate recipe. Please try again.",
+    "try_searching": "Try searching for:",
+    "suggestion.pasta": "Quick Pasta",
+    "suggestion.chicken": "Low Carb Chicken",
+    "suggestion.vegan": "Vegan Burger",
+    "suggestion.breakfast": "Healthy Breakfast",
+    "suggestion.salad": "Greek Salad",
+    "suggestion.smoothie": "Protein Smoothie",
+    "filter_by_time": "Filter by Cook Time",
+    "time_filter.all": "All",
+    "time_filter.quick": "Quick (< 20 min)",
+    "time_filter.medium": "Medium (20-45 min)",
+    "time_filter.slow": "Slow (45+ min)",
+    "difficulty_label": "Difficulty",
+    "difficulty.all": "All",
+    "difficulty.easy": "Easy",
+    "difficulty.medium": "Medium",
+    "difficulty.hard": "Hard"
+  },
+  "meal_compare": {
+    "title": "Compare Plans",
+    "subtitle": "See how alternative macro approaches compare to your current plan.",
+    "generating": "Generating alternatives with AI...",
+    "error": "Could not generate alternatives. Please try again.",
+    "current_label": "Current",
+    "current_plan": "My Active Plan",
+    "current_desc": "Your existing weekly meal plan",
+    "alternates_label": "ALTERNATIVES",
+    "alt_label": "Option",
+    "keep_plan": "Keep Current Plan",
+    "apply_alt": "Generate This Plan"
+  },
+  "meal_history": {
+    "title": "Meal Plan History",
+    "empty_title": "No History Yet",
+    "empty_subtitle": "Your past meal plans will appear here once you generate new ones.",
+    "week_label": "Week of",
+    "load_plan": "Load This Plan",
+    "load_confirm": "Load the meal plan from {week}?",
+    "loaded": "Meal plan loaded",
+    "days": "days",
+    "meals": "meals"
+  },
+  "quick_add": {
+    "title": "Quick Add",
+    "recent_title": "Recent Foods",
+    "frequent_title": "Frequent Foods",
+    "empty_title": "No Recent Foods",
+    "empty_subtitle": "Foods you log will appear here for quick access.",
+    "add_btn": "Log",
+    "all_btn": "Log All"
+  },
+  "user_search": {
+    "title": "Find People",
+    "hint": "Search by name...",
+    "empty_title": "No Results",
+    "empty_subtitle": "Try a different name.",
+    "add_friend": "Add Friend",
+    "request_sent": "Request sent",
+    "already_friends": "Friends"
+  },
+  "notification_prefs": {
+    "title": "Notification Preferences",
+    "subtitle": "Choose which notifications you receive",
+    "likes": "Likes & Reactions",
+    "comments": "Comments",
+    "friends": "Friend Requests",
+    "system": "System & Streaks",
+    "challenges": "Challenges",
+    "referral": "Referral Rewards",
+    "saved": "Preferences saved"
+  },
+  "dietary_prefs": {
+    "title": "Dietary Preferences",
+    "save": "Save",
+    "saved": "Preferences saved",
+    "none_set": "None set",
+    "allergies_title": "Allergies",
+    "allergies_subtitle": "Set during onboarding — update your profile to change",
+    "diet_title": "Dietary Restrictions",
+    "diet_subtitle": "Set during onboarding — update your profile to change",
+    "avoid_title": "Avoid List",
+    "avoid_subtitle": "Specific ingredients to exclude from recipes and meal plans",
+    "avoid_hint": "e.g. mushrooms, cilantro...",
+    "avoid_empty": "No avoided ingredients yet. Add items above."
+  },
+  "exercise": {
+    "title": "Log Exercise",
+    "type_label": "Activity Type",
+    "duration_label": "Duration",
+    "minutes": "min",
+    "estimated_burn": "Estimated Burn",
+    "log_button": "Log Activity",
+    "log_button_short": "Log Exercise",
+    "logged_success": "Exercise logged! Great work!",
+    "burned_today": "Burned {kcal} kcal today",
+    "types": {
+      "running": "Running",
+      "walking": "Walking",
+      "cycling": "Cycling",
+      "swimming": "Swimming",
+      "weight_training": "Weights",
+      "hiit": "HIIT",
+      "yoga": "Yoga",
+      "jump_rope": "Jump Rope",
+      "basketball": "Basketball",
+      "football": "Football",
+      "dancing": "Dancing",
+      "other": "Other"
+    }
   }
 }

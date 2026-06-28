@@ -21,6 +21,7 @@ import '../core/localization/app_localizations.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/att_consent_service.dart';
+import '../core/services/firestore_service.dart';
 import '../core/services/deep_link_service.dart';
 import '../core/providers/device_info_provider.dart';
 import 'package:provider/provider.dart';
@@ -423,17 +424,31 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
+    // Merge private nutrition PII (owner-only subcollection) so the
+    // completeness check and OnboardingProvider get the full picture.
+    final privateNutrition = userModel != null
+        ? await FirestoreService().getPrivateNutritionData(userModel.uid)
+        : null;
+    final mergedModel = (userModel != null && privateNutrition != null)
+        ? userModel.withPrivateNutrition(privateNutrition)
+        : userModel;
+
+    // Update UserProvider with the merged model immediately.
+    if (!mounted) return;
+    Provider.of<UserProvider>(context, listen: false).setUser(mergedModel);
+
     if (!mounted) return;
 
-    if (_isOnboardingDataComplete(userModel)) {
+    if (_isOnboardingDataComplete(mergedModel)) {
       // Request ATT before navigating — only prompts once per install.
       await ATTConsentService().requestIfNeeded();
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.main);
     } else {
-      if (userModel?.onboardingData != null) {
+      final combined = mergedModel?.onboardingData;
+      if (combined != null) {
         Provider.of<OnboardingProvider>(context, listen: false)
-            .initializeFromFirestore(userModel!.onboardingData!);
+            .initializeFromFirestore(combined);
       }
       Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
     }

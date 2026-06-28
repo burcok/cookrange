@@ -1231,92 +1231,100 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
         return StatefulBuilder(builder: (context, setModal) {
           return Container(
-            padding: EdgeInsets.fromLTRB(
-                AppSpacing.xl, AppSpacing.sm, AppSpacing.xl,
-                MediaQuery.of(context).viewInsets.bottom + AppSpacing.xxl),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
+              color: Colors.transparent,
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
+            ),
+            child: Material(
               color: palette.surface,
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: AppSize.sheetHandleW,
-                    height: AppSize.sheetHandleH,
-                    margin: const EdgeInsets.only(bottom: AppSpacing.lg),
-                    decoration: BoxDecoration(
-                      color: palette.border,
-                      borderRadius: BorderRadius.circular(AppRadius.full),
+              clipBehavior: Clip.antiAlias,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                    AppSpacing.xl, AppSpacing.sm, AppSpacing.xl,
+                    MediaQuery.of(context).viewInsets.bottom + AppSpacing.xxl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: AppSize.sheetHandleW,
+                        height: AppSize.sheetHandleH,
+                        margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: palette.border,
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                Text(
-                  l10n.translate('community.report.dialog_title'),
-                  style: textStyles.headlineS,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  l10n.translate('community.report.dialog_subtitle'),
-                  style: textStyles.bodyM,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                RadioGroup<String>(
-                  groupValue: selectedReason,
-                  onChanged: (v) => setModal(() => selectedReason = v),
-                  child: Column(
-                    children: reasons
-                        .map((r) => RadioListTile<String>(
-                              value: r.$1,
-                              title: Text(r.$2, style: textStyles.titleM),
-                              activeColor: palette.error,
-                              contentPadding: EdgeInsets.zero,
-                            ))
-                        .toList(),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: (selectedReason == null || submitting)
-                        ? null
-                        : () async {
-                            setModal(() => submitting = true);
-                            if (commentId != null) {
-                              await _service.reportComment(
-                                  widget.postId, commentId, selectedReason!);
-                            } else {
-                              await _service.reportPost(
-                                  widget.postId, selectedReason!);
-                            }
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                  content: Text(
-                                      l10n.translate('community.report.submitted'))));
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: palette.error,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md)),
+                    Text(
+                      l10n.translate('community.report.dialog_title'),
+                      style: textStyles.headlineS,
                     ),
-                    child: submitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2))
-                        : Text(l10n.translate('post.submit')),
-                  ),
+                    const SizedBox(height: 6),
+                    Text(
+                      l10n.translate('community.report.dialog_subtitle'),
+                      style: textStyles.bodyM,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    RadioGroup<String>(
+                      groupValue: selectedReason,
+                      onChanged: (v) => setModal(() => selectedReason = v),
+                      child: Column(
+                        children: reasons
+                            .map((r) => RadioListTile<String>(
+                                  value: r.$1,
+                                  title: Text(r.$2, style: textStyles.titleM),
+                                  activeColor: palette.error,
+                                  contentPadding: EdgeInsets.zero,
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: (selectedReason == null || submitting)
+                            ? null
+                            : () async {
+                                setModal(() => submitting = true);
+                                if (commentId != null) {
+                                  await _service.reportComment(
+                                      widget.postId, commentId, selectedReason!);
+                                } else {
+                                  await _service.reportPost(
+                                      widget.postId, selectedReason!);
+                                }
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                      content: Text(
+                                          l10n.translate('community.report.submitted'))));
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: palette.error,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.md)),
+                        ),
+                        child: submitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2))
+                            : Text(l10n.translate('post.submit')),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           );
         });

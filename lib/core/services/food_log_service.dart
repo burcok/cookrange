@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/food_log_model.dart';
 import '../models/dish_model.dart';
 import '../models/recipe_model.dart';
 import 'food_analysis_service.dart';
+import 'barcode_lookup_service.dart';
+import 'recent_food_service.dart';
 
 /// Manages food/meal logging for a user.
 /// Collection: users/{uid}/food_logs/{logId}
@@ -29,18 +32,30 @@ class FoodLogService {
     required DishModel dish,
   }) async {
     final now = DateTime.now();
+    final cal = dish.calories.toDouble();
+    final p = dish.protein.toDouble();
+    final c = dish.carbs.toDouble();
+    final f = dish.fat.toDouble();
     await _logsRef(userId).add({
       'userId': userId,
       'mealType': mealType,
       'dishId': dish.id,
       'dishName': dish.name,
-      'calories': dish.calories.toDouble(),
-      'protein': dish.protein.toDouble(),
-      'carbs': dish.carbs.toDouble(),
-      'fat': dish.fat.toDouble(),
+      'calories': cal,
+      'protein': p,
+      'carbs': c,
+      'fat': f,
       'loggedAt': Timestamp.fromDate(now),
       'date': _todayKey(),
     });
+    unawaited(RecentFoodService().recordFood(
+      dishId: dish.id,
+      dishName: dish.name,
+      calories: cal,
+      protein: p,
+      carbs: c,
+      fat: f,
+    ));
   }
 
   /// Log a cooked recipe as a meal entry.
@@ -50,18 +65,30 @@ class FoodLogService {
     required Recipe recipe,
   }) async {
     final now = DateTime.now();
+    final cal = (recipe.macros['calories'] ?? 0).toDouble();
+    final p = (recipe.macros['protein'] ?? 0).toDouble();
+    final c = (recipe.macros['carbs'] ?? 0).toDouble();
+    final f = (recipe.macros['fat'] ?? 0).toDouble();
     await _logsRef(userId).add({
       'userId': userId,
       'mealType': mealType,
       'dishId': recipe.id,
       'dishName': recipe.title,
-      'calories': (recipe.macros['calories'] ?? 0).toDouble(),
-      'protein': (recipe.macros['protein'] ?? 0).toDouble(),
-      'carbs': (recipe.macros['carbs'] ?? 0).toDouble(),
-      'fat': (recipe.macros['fat'] ?? 0).toDouble(),
+      'calories': cal,
+      'protein': p,
+      'carbs': c,
+      'fat': f,
       'loggedAt': Timestamp.fromDate(now),
       'date': _todayKey(),
     });
+    unawaited(RecentFoodService().recordFood(
+      dishId: recipe.id,
+      dishName: recipe.title,
+      calories: cal,
+      protein: p,
+      carbs: c,
+      fat: f,
+    ));
   }
 
   /// Log an AI-analyzed food description as a meal entry.
@@ -83,6 +110,77 @@ class FoodLogService {
       'loggedAt': Timestamp.fromDate(now),
       'date': _todayKey(),
     });
+  }
+
+  /// Log a food entry from quick-add (recent/frequent foods).
+  Future<void> logQuickFood({
+    required String userId,
+    required String mealType,
+    required String dishId,
+    required String dishName,
+    required double calories,
+    required double protein,
+    required double carbs,
+    required double fat,
+  }) async {
+    final now = DateTime.now();
+    await _logsRef(userId).add({
+      'userId': userId,
+      'mealType': mealType,
+      'dishId': dishId,
+      'dishName': dishName,
+      'calories': calories,
+      'protein': protein,
+      'carbs': carbs,
+      'fat': fat,
+      'loggedAt': Timestamp.fromDate(now),
+      'date': _todayKey(),
+    });
+    unawaited(RecentFoodService().recordFood(
+      dishId: dishId,
+      dishName: dishName,
+      calories: calories,
+      protein: protein,
+      carbs: carbs,
+      fat: fat,
+    ));
+  }
+
+  /// Log a barcode-scanned packaged food product.
+  Future<void> logBarcodeFood({
+    required String userId,
+    required String mealType,
+    required BarcodeProduct product,
+    double? customServingG,
+  }) async {
+    final now = DateTime.now();
+    final serving = customServingG ?? product.servingSizeG;
+    final ratio = serving / 100.0;
+    final cal = product.calories * ratio;
+    final p = product.protein * ratio;
+    final c = product.carbs * ratio;
+    final f = product.fat * ratio;
+
+    await _logsRef(userId).add({
+      'userId': userId,
+      'mealType': mealType,
+      'dishId': 'barcode_${product.barcode}',
+      'dishName': product.displayName,
+      'calories': cal,
+      'protein': p,
+      'carbs': c,
+      'fat': f,
+      'loggedAt': Timestamp.fromDate(now),
+      'date': _todayKey(),
+    });
+    unawaited(RecentFoodService().recordFood(
+      dishId: 'barcode_${product.barcode}',
+      dishName: product.displayName,
+      calories: cal,
+      protein: p,
+      carbs: c,
+      fat: f,
+    ));
   }
 
   /// Remove a previously logged meal entry.

@@ -1,15 +1,18 @@
+import 'dart:async';
 import 'dart:ui';
+import 'package:cookrange/screens/chat/ai_chat_screen.dart';
 import 'package:cookrange/screens/chat/chat_list_screen.dart';
 import 'package:cookrange/screens/challenges/challenges_screen.dart';
 import 'package:cookrange/screens/leaderboard/leaderboard_screen.dart';
+import 'package:cookrange/screens/profile/dietary_preferences_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/providers/navigation_provider.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/providers/user_provider.dart';
-import '../../screens/profile/profile_screen.dart';
+import '../../core/theme/app_palette.dart';
+import '../../core/widgets/ds/ds.dart';
 import '../../screens/profile/settings_screen.dart';
 
 class SideMenu extends StatefulWidget {
@@ -41,7 +44,8 @@ class _SideMenuState extends State<SideMenu> {
   void didUpdateWidget(SideMenu oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.animationController != widget.animationController) {
-      oldWidget.animationController.removeStatusListener(_onAnimationStatusChanged);
+      oldWidget.animationController
+          .removeStatusListener(_onAnimationStatusChanged);
       widget.animationController.addStatusListener(_onAnimationStatusChanged);
       _shouldBlur = widget.animationController.isCompleted;
     }
@@ -56,39 +60,35 @@ class _SideMenuState extends State<SideMenu> {
   void _onAnimationStatusChanged(AnimationStatus status) {
     final newShouldBlur = status == AnimationStatus.completed;
     if (newShouldBlur != _shouldBlur) {
-      setState(() {
-        _shouldBlur = newShouldBlur;
-      });
+      setState(() => _shouldBlur = newShouldBlur);
     }
   }
 
-  void _handleNavigation(BuildContext context, VoidCallback action) {
+  void _close() {
+    // Remove BackdropFilter immediately so the slide-out animation
+    // doesn't carry the expensive blur compositing layer.
+    if (_shouldBlur) setState(() => _shouldBlur = false);
     widget.navProvider.toggleMenu(false);
-    // Add a small delay for the menu close animation to start
-    Future.delayed(const Duration(milliseconds: 150), () {
-      action();
-    });
   }
 
   void _navigateToMainTab(int index) {
-    _handleNavigation(context, () {
-      // Pop until we are at the root (MainScaffold)
-      Navigator.of(context).popUntil((route) => route.isFirst);
-      widget.navProvider.setIndex(index);
-    });
+    _close();
+    widget.navProvider.setIndex(index);
+  }
+
+  void _push(Widget screen) {
+    _close();
+    if (!mounted) return;
+    Navigator.of(context).push(AppTransitions.slideRight(screen));
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = AppPalette.of(context);
+    final primary = Theme.of(context).primaryColor;
     final user = context.watch<UserProvider>().user;
-
-    // Design Colors
-    final primaryColor = theme.primaryColor;
-
-    if (widget.animationController.isDismissed) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
 
     final menuContent = Container(
       width: MediaQuery.of(context).size.width * 0.80,
@@ -96,8 +96,8 @@ class _SideMenuState extends State<SideMenu> {
       height: double.infinity,
       decoration: BoxDecoration(
         color: isDark
-            ? const Color(0xFF0F172A).withValues(alpha: 0.85)
-            : Colors.white.withValues(alpha: 0.9),
+            ? const Color(0xFF0F172A).withValues(alpha: 0.92)
+            : Colors.white.withValues(alpha: 0.92),
         border: Border(
           right: BorderSide(
             color: isDark
@@ -107,8 +107,8 @@ class _SideMenuState extends State<SideMenu> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 24,
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 32,
             offset: const Offset(8, 0),
           ),
         ],
@@ -116,113 +116,112 @@ class _SideMenuState extends State<SideMenu> {
       child: SafeArea(
         child: Column(
           children: [
-            // Profile Section
-            _buildProfileSection(context, user, isDark, primaryColor),
-
-            // Navigation Items
+            _buildProfileSection(context, user, isDark, primary, palette),
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionHeader(
-                        l10n.translate('menu.section_main')),
-                    _buildMenuItem(
-                      context,
+                    // ── PAGES ───────────────────────────────────────────
+                    _sectionHeader(l10n.translate('menu.section_pages'), palette),
+                    _menuItem(
                       icon: Icons.home_rounded,
                       label: l10n.translate('menu.home'),
                       isDark: isDark,
-                      primaryColor: primaryColor,
-                      onTap: () => _navigateToMainTab(0),
+                      primary: primary,
+                      palette: palette,
+                      onTap: () => _navigateToMainTab(NavigationProvider.homeTab),
                     ),
-                    const SizedBox(height: 32),
-                    _buildSectionHeader(
-                        l10n.translate('menu.section_social')),
-                    _buildMenuItem(
-                      context,
-                      icon: Icons.chat_bubble_rounded,
-                      label: l10n.translate('menu.chats'),
-                      isDark: isDark,
-                      primaryColor: primaryColor,
-                      onTap: () => _handleNavigation(context, () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const ChatListScreen()));
-                      }),
-                    ),
-                    _buildMenuItem(
-                      context,
+                    _menuItem(
                       icon: Icons.groups_rounded,
                       label: l10n.translate('menu.community'),
                       isDark: isDark,
-                      primaryColor: primaryColor,
-                      onTap: () => _navigateToMainTab(1),
+                      primary: primary,
+                      palette: palette,
+                      onTap: () =>
+                          _navigateToMainTab(NavigationProvider.communityTab),
                     ),
-                    _buildMenuItem(
-                      context,
+
+                    const SizedBox(height: 28),
+
+                    // ── SOCIAL ──────────────────────────────────────────
+                    _sectionHeader(l10n.translate('menu.section_social'), palette),
+                    _menuItem(
+                      icon: Icons.chat_bubble_rounded,
+                      label: l10n.translate('menu.chats'),
+                      isDark: isDark,
+                      primary: primary,
+                      palette: palette,
+                      onTap: () => _push(const ChatListScreen()),
+                    ),
+                    _menuItem(
+                      icon: Icons.auto_awesome_rounded,
+                      label: l10n.translate('menu.ai_chat'),
+                      isDark: isDark,
+                      primary: primary,
+                      palette: palette,
+                      onTap: () => _push(const AIChatScreen()),
+                    ),
+                    _menuItem(
                       icon: Icons.emoji_events_rounded,
                       label: l10n.translate('menu.challenges'),
                       isDark: isDark,
-                      primaryColor: primaryColor,
-                      onTap: () => _handleNavigation(context, () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const ChallengesScreen()),
-                        );
-                      }),
+                      primary: primary,
+                      palette: palette,
+                      onTap: () => _push(const ChallengesScreen()),
                     ),
-                    _buildMenuItem(
-                      context,
+                    _menuItem(
                       icon: Icons.leaderboard_rounded,
                       label: l10n.translate('menu.leaderboard'),
                       isDark: isDark,
-                      primaryColor: primaryColor,
-                      onTap: () => _handleNavigation(context, () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => const LeaderboardScreen()),
-                        );
-                      }),
+                      primary: primary,
+                      palette: palette,
+                      onTap: () => _push(const LeaderboardScreen()),
                     ),
-                    const SizedBox(height: 32),
-                    _buildSectionHeader(
-                        l10n.translate('menu.section_account')),
-                    _buildSimpleMenuItem(
-                      context,
-                      icon: Icons.person_rounded,
-                      label: l10n.translate('menu.profile'),
+
+
+                    const SizedBox(height: 28),
+
+                    // ── MY GYM (coming soon) ─────────────────────────────
+                    _sectionHeader(
+                        l10n.translate('menu.section_gym'), palette),
+                    _menuItem(
+                      icon: Icons.fitness_center_rounded,
+                      label: l10n.translate('menu.my_gym'),
                       isDark: isDark,
-                      onTap: () => _handleNavigation(context, () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const ProfileScreen()));
-                      }),
+                      primary: primary,
+                      palette: palette,
+                      comingSoon: true,
+                      onTap: null,
                     ),
-                    _buildSimpleMenuItem(
-                      context,
+
+                    const SizedBox(height: 28),
+
+                    // ── ACCOUNT & MORE ───────────────────────────────────
+                    _sectionHeader(
+                        l10n.translate('menu.section_account'), palette),
+                    _simpleItem(
+                      icon: Icons.manage_accounts_rounded,
+                      label: l10n.translate('menu.dietary_preferences'),
+                      isDark: isDark,
+                      palette: palette,
+                      onTap: () => _push(const DietaryPreferencesScreen()),
+                    ),
+                    _simpleItem(
                       icon: Icons.settings_rounded,
                       label: l10n.translate('menu.settings'),
                       isDark: isDark,
-                      onTap: () => _handleNavigation(context, () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const SettingsScreen()));
-                      }),
+                      palette: palette,
+                      onTap: () => _push(const SettingsScreen()),
                     ),
                   ],
                 ),
               ),
             ),
-
-            // Footer
-            _buildFooter(context, isDark, primaryColor),
+            _buildFooter(context, isDark, primary, palette),
           ],
         ),
       ),
@@ -232,20 +231,17 @@ class _SideMenuState extends State<SideMenu> {
       color: Colors.transparent,
       child: Stack(
         children: [
-          // 1. Dimmed Background with Fade
           FadeTransition(
             opacity: widget.animationController,
             child: GestureDetector(
-              onTap: () => widget.navProvider.toggleMenu(false),
+              onTap: _close,
               child: Container(
-                color: Colors.black.withValues(alpha: 0.4),
+                color: Colors.black.withValues(alpha: 0.42),
                 width: double.infinity,
                 height: double.infinity,
               ),
             ),
           ),
-
-          // 2. Glass Sidebar with Slide
           SlideTransition(
             position: Tween<Offset>(
               begin: const Offset(-1.0, 0.0),
@@ -257,15 +253,13 @@ class _SideMenuState extends State<SideMenu> {
             )),
             child: GestureDetector(
               onHorizontalDragUpdate: (details) {
-                if (details.delta.dx < -10) {
-                  widget.navProvider.toggleMenu(false);
-                }
+                if (details.delta.dx < -10) _close();
               },
               child: RepaintBoundary(
                 child: ClipRect(
                   child: _shouldBlur
                       ? BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
                           child: menuContent,
                         )
                       : menuContent,
@@ -273,8 +267,6 @@ class _SideMenuState extends State<SideMenu> {
               ),
             ),
           ),
-
-          // Global Logout Spinner
           if (_isLoggingOut)
             Container(
               color: Colors.black.withValues(alpha: 0.5),
@@ -287,95 +279,65 @@ class _SideMenuState extends State<SideMenu> {
     );
   }
 
-  Widget _buildProfileSection(
-      BuildContext context, dynamic user, bool isDark, Color primaryColor) {
-    final photoUrl = user?.photoURL;
-    final displayName = user?.displayName ?? "User";
-    const isPro =
-        true; // Hardcoded for design as requested, or logic: user?.isPro ?? false
+  // ── Profile section ────────────────────────────────────────────────────────
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(32, 48, 32, 32),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.grey.withValues(alpha: 0.1),
+  Widget _buildProfileSection(BuildContext context, dynamic user, bool isDark,
+      Color primary, AppPalette palette) {
+    final photoUrl = user?.photoURL;
+    final displayName = user?.displayName ?? 'User';
+
+    return GestureDetector(
+      onTap: () => _navigateToMainTab(2),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(28, 44, 28, 28),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.grey.withValues(alpha: 0.1),
+            ),
           ),
         ),
-      ),
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ProfileScreen()),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
+        child: Row(
+          children: [
+            Stack(
               children: [
-                // Glow Effect
                 Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: primaryColor.withValues(alpha: 0.2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: primaryColor.withValues(alpha: 0.3),
-                        blurRadius: 40,
-                        spreadRadius: 10,
-                      ),
-                    ],
-                  ),
-                ),
-                // Avatar
-                Container(
-                  width: 96,
-                  height: 96,
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.1)
-                          : Colors.white.withValues(alpha: 0.8),
-                      width: 4,
+                      color: primary.withValues(alpha: 0.4),
+                      width: 2.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
+                        color: primary.withValues(alpha: 0.25),
                         blurRadius: 16,
-                        offset: const Offset(0, 8),
+                        spreadRadius: 2,
                       ),
                     ],
                   ),
                   child: ClipOval(
                     child: photoUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: photoUrl,
+                        ? Image.network(
+                            photoUrl,
                             fit: BoxFit.cover,
-                            // OPTIMIZATION: Resize image in memory to avoid full-res decoding
-                            memCacheWidth: 300,
-                            placeholder: (context, url) =>
-                                Container(color: Colors.grey.shade200),
-                            errorWidget: (context, url, error) =>
-                                const Icon(Icons.person, size: 40),
+                            cacheWidth: 240,
+                            errorBuilder: (_, __, ___) =>
+                                _avatarPlaceholder(primary),
                           )
-                        : Container(
-                            color: Colors.grey.shade200,
-                            child: Icon(Icons.person,
-                                size: 48, color: Colors.grey.shade400),
-                          ),
+                        : _avatarPlaceholder(primary),
                   ),
                 ),
-                // Online Indicator
                 Positioned(
-                  bottom: 4,
-                  right: 4,
+                  bottom: 2,
+                  right: 2,
                   child: Container(
-                    width: 20,
-                    height: 20,
+                    width: 14,
+                    height: 14,
                     decoration: BoxDecoration(
                       color: Colors.green,
                       shape: BoxShape.circle,
@@ -388,99 +350,160 @@ class _SideMenuState extends State<SideMenu> {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            displayName,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF1F2937),
-            ),
-          ),
-          const SizedBox(height: 4),
-          if (isPro)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: palette.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Pro',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              child: Text(
-                "Pro Üye",
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: primaryColor,
-                ),
-              ),
             ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 16, bottom: 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
-          letterSpacing: 1.2,
+            Icon(Icons.chevron_right_rounded,
+                color: palette.textSecondary, size: 20),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildMenuItem(
-    BuildContext context, {
+  Widget _avatarPlaceholder(Color primary) {
+    return Container(
+      color: primary.withValues(alpha: 0.15),
+      child: Icon(Icons.person_rounded, size: 30, color: primary),
+    );
+  }
+
+  // ── Section header ─────────────────────────────────────────────────────────
+
+  Widget _sectionHeader(String title, AppPalette palette) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: palette.textSecondary.withValues(alpha: 0.6),
+          letterSpacing: 1.3,
+        ),
+      ),
+    );
+  }
+
+  // ── Menu item (with colored icon support + coming soon) ────────────────────
+
+  Widget _menuItem({
     required IconData icon,
+    Color? iconColor,
     required String label,
     required bool isDark,
-    required Color primaryColor,
-    required VoidCallback onTap,
+    required Color primary,
+    required AppPalette palette,
+    required VoidCallback? onTap,
+    bool comingSoon = false,
   }) {
+    final effectiveIconColor = iconColor ??
+        (isDark ? Colors.grey.shade400 : Colors.grey.shade500);
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Material(
-        color: Colors.transparent,
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.03)
+            : Colors.white.withValues(alpha: 0.45),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.white.withValues(alpha: 0.4),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          onTap: comingSoon ? null : onTap,
           overlayColor:
-              WidgetStateProperty.all(primaryColor.withValues(alpha: 0.1)),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.03)
-                  : Colors.white.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.white.withValues(alpha: 0.4),
-              ),
-            ),
+              WidgetStateProperty.all(primary.withValues(alpha: 0.08)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             child: Row(
               children: [
-                Icon(
-                  icon,
-                  size: 24,
-                  color: Colors.grey.shade500, // Inactive color
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.grey.shade200 : Colors.grey.shade700,
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: effectiveIconColor.withValues(
+                        alpha: comingSoon ? 0.06 : 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 20,
+                    color: comingSoon
+                        ? effectiveIconColor.withValues(alpha: 0.35)
+                        : effectiveIconColor,
                   ),
                 ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: comingSoon
+                          ? palette.textSecondary.withValues(alpha: 0.4)
+                          : palette.textPrimary.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ),
+                if (comingSoon)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      AppLocalizations.of(context)
+                          .translate('menu.coming_soon'),
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: palette.textSecondary.withValues(alpha: 0.5),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -489,39 +512,45 @@ class _SideMenuState extends State<SideMenu> {
     );
   }
 
-  Widget _buildSimpleMenuItem(
-    BuildContext context, {
+  // ── Simple item (settings / preferences — lighter style) ──────────────────
+
+  Widget _simpleItem({
     required IconData icon,
     required String label,
     required bool isDark,
+    required AppPalette palette,
     required VoidCallback onTap,
   }) {
     return Material(
       color: Colors.transparent,
       child: ListTile(
-      onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Icon(
-        icon,
-        size: 22,
-        color: Colors.grey.shade400,
-      ),
-      title: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+        onTap: onTap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+        leading: Icon(
+          icon,
+          size: 22,
+          color: palette.textSecondary.withValues(alpha: 0.6),
+        ),
+        title: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: palette.textSecondary.withValues(alpha: 0.75),
+          ),
         ),
       ),
-    ),
     );
   }
 
-  Widget _buildFooter(BuildContext context, bool isDark, Color primaryColor) {
+  // ── Footer ─────────────────────────────────────────────────────────────────
+
+  Widget _buildFooter(BuildContext context, bool isDark, Color primary,
+      AppPalette palette) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
@@ -534,48 +563,44 @@ class _SideMenuState extends State<SideMenu> {
       child: Column(
         children: [
           Material(
-            color: Colors.transparent,
+            color: isDark
+                ? Colors.red.withValues(alpha: 0.08)
+                : Colors.red.withValues(alpha: 0.05),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: BorderSide(
+                color: isDark
+                    ? Colors.red.withValues(alpha: 0.18)
+                    : Colors.red.withValues(alpha: 0.12),
+              ),
+            ),
+            clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () async {
-                // Close menu
-                widget.navProvider.toggleMenu(false);
+                _close();
                 setState(() => _isLoggingOut = true);
-
-                await Future.delayed(const Duration(seconds: 1)); // UX delay
-
+                await Future.delayed(const Duration(milliseconds: 800));
                 if (!mounted) return;
                 await AuthService().signOut();
-
-                if (mounted) {
-                  Navigator.of(context)
-                      .pushNamedAndRemoveUntil('/login', (route) => false);
-                  setState(() => _isLoggingOut = false);
-                }
+                if (!mounted) return;
+                // ignore: use_build_context_synchronously
+                unawaited(Navigator.of(context)
+                    .pushNamedAndRemoveUntil('/login', (route) => false));
+                setState(() => _isLoggingOut = false);
               },
-              borderRadius: BorderRadius.circular(16),
               overlayColor:
                   WidgetStateProperty.all(Colors.red.withValues(alpha: 0.1)),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.red.withValues(alpha: 0.1)
-                      : Colors.red.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.red.withValues(alpha: 0.2)
-                        : Colors.red.withValues(alpha: 0.1),
-                  ),
-                ),
-                child: const Row(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.logout_rounded, color: Colors.red, size: 20),
-                    SizedBox(width: 8),
+                    const Icon(Icons.logout_rounded,
+                        color: Colors.red, size: 18),
+                    const SizedBox(width: 8),
                     Text(
-                      "Çıkış Yap",
-                      style: TextStyle(
+                      AppLocalizations.of(context).translate('menu.logout'),
+                      style: const TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -588,10 +613,10 @@ class _SideMenuState extends State<SideMenu> {
           ),
           const SizedBox(height: 6),
           Text(
-            "Versiyon 1.0.0",
+            'v1.0.0',
             style: TextStyle(
               fontSize: 10,
-              color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
+              color: palette.textSecondary.withValues(alpha: 0.35),
             ),
           ),
         ],

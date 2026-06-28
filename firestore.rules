@@ -71,6 +71,42 @@ service cloud.firestore {
       match /food_logs/{logId} {
         allow read, write: if isOwner(uid);
       }
+
+      // Favorites (bookmarked recipes): strictly owner-only
+      match /favorites/{recipeId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Shopping list
+      match /lists/{listId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Recent foods for quick-add
+      match /recent_foods/{foodId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Notification preferences
+      match /notification_preferences/{prefId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Exercise / activity logs
+      match /exercise_logs/{logId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Personal recipe notes
+      match /recipe_notes/{recipeId} {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Private PII subcollection (nutrition profile) — owner-only; never
+      // readable by other authenticated users regardless of friendship status.
+      match /private/{docId} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // ─── Logs (auth/session/activity audit trail) ───────────────────────────

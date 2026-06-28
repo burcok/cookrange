@@ -21,6 +21,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
     with SingleTickerProviderStateMixin {
   final ChallengeService _service = ChallengeService();
   late TabController _tabController;
+  ChallengeDifficulty? _difficultyFilter;
 
   @override
   void initState() {
@@ -90,20 +91,30 @@ class _ChallengesScreenState extends State<ChallengesScreen>
           ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _ChallengeList(
-            stream: _service.getActiveChallengesStream(),
-            emptyKey: 'challenge.empty_active',
-            emptyIcon: Icons.emoji_events_outlined,
-            primary: primary,
-          ),
-          _ChallengeList(
-            stream: _service.getMyChallengesStream(),
-            emptyKey: 'challenge.empty_mine',
-            emptyIcon: Icons.flag_outlined,
-            primary: primary,
+          // Difficulty filter chips
+          _buildDifficultyFilter(context, l10n, palette, t, primary),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _ChallengeList(
+                  stream: _service.getActiveChallengesStream(),
+                  emptyKey: 'challenge.empty_active',
+                  emptyIcon: Icons.emoji_events_outlined,
+                  primary: primary,
+                  difficultyFilter: _difficultyFilter,
+                ),
+                _ChallengeList(
+                  stream: _service.getMyChallengesStream(),
+                  emptyKey: 'challenge.empty_mine',
+                  emptyIcon: Icons.flag_outlined,
+                  primary: primary,
+                  difficultyFilter: _difficultyFilter,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -118,6 +129,98 @@ class _ChallengesScreenState extends State<ChallengesScreen>
       ),
     );
   }
+
+  Widget _buildDifficultyFilter(
+    BuildContext context,
+    AppLocalizations l10n,
+    AppPalette palette,
+    AppText t,
+    Color primary,
+  ) {
+    Color diffColor(ChallengeDifficulty d) {
+      switch (d) {
+        case ChallengeDifficulty.easy:
+          return palette.success;
+        case ChallengeDifficulty.medium:
+          return palette.warning;
+        case ChallengeDifficulty.hard:
+          return palette.error;
+      }
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.surface,
+        border: Border(bottom: BorderSide(color: palette.divider)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          // "All" chip
+          _DiffChip(
+            label: l10n.translate('challenge.difficulty.all'),
+            color: primary,
+            isSelected: _difficultyFilter == null,
+            onTap: () => setState(() => _difficultyFilter = null),
+            t: t,
+          ),
+          const SizedBox(width: 8),
+          ...ChallengeDifficulty.values.map((d) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _DiffChip(
+                  label: l10n.translate(d.locKey),
+                  color: diffColor(d),
+                  isSelected: _difficultyFilter == d,
+                  onTap: () => setState(() => _difficultyFilter = d),
+                  t: t,
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiffChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final AppText t;
+
+  const _DiffChip({
+    required this.label,
+    required this.color,
+    required this.isSelected,
+    required this.onTap,
+    required this.t,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(
+            color: isSelected ? color : color.withValues(alpha: 0.3),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: t.labelS.copyWith(
+            color: color,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ChallengeList extends StatelessWidget {
@@ -125,12 +228,14 @@ class _ChallengeList extends StatelessWidget {
   final String emptyKey;
   final IconData emptyIcon;
   final Color primary;
+  final ChallengeDifficulty? difficultyFilter;
 
   const _ChallengeList({
     required this.stream,
     required this.emptyKey,
     required this.emptyIcon,
     required this.primary,
+    this.difficultyFilter,
   });
 
   @override
@@ -148,7 +253,11 @@ class _ChallengeList extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const AppSkeletonList(itemCount: 4);
         }
-        final challenges = snapshot.data ?? [];
+        final all = snapshot.data ?? [];
+        final challenges = difficultyFilter == null
+            ? all
+            : all.where((c) => c.difficulty == difficultyFilter).toList();
+
         if (challenges.isEmpty) {
           return AppEmptyState(
             icon: emptyIcon,
@@ -204,6 +313,17 @@ class _ChallengeCard extends StatelessWidget {
         return palette.info;
       case ChallengeType.custom:
         return palette.fat;
+    }
+  }
+
+  Color _difficultyColor(AppPalette palette) {
+    switch (challenge.difficulty) {
+      case ChallengeDifficulty.easy:
+        return palette.success;
+      case ChallengeDifficulty.medium:
+        return palette.warning;
+      case ChallengeDifficulty.hard:
+        return palette.error;
     }
   }
 
@@ -346,6 +466,22 @@ class _ChallengeCard extends StatelessWidget {
                     style: t.labelS.copyWith(color: palette.textSecondary),
                   ),
                   const Spacer(),
+                  // Difficulty badge
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                    decoration: BoxDecoration(
+                      color: _difficultyColor(palette).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(
+                      l10n.translate(challenge.difficulty.locKey),
+                      style: t.labelS.copyWith(
+                        color: _difficultyColor(palette),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: AppSpacing.sm.w),
                   Icon(Icons.group_outlined,
                       size: 14.r, color: palette.textTertiary),
                   SizedBox(width: 4.w),

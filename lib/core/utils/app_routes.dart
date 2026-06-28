@@ -13,4 +13,7 @@ class AppRoutes {
   static const String resetPassword = '/reset_password';
   static const String nutritionAnalytics = '/nutrition_analytics';
   static const String aiChat = '/ai_chat';
+  static const String favorites = '/favorites';
+  static const String mealPlanHistory = '/meal_plan_history';
+  static const String userSearch = '/user_search';
 }

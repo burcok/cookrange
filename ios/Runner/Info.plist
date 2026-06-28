@@ -60,6 +60,8 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>NSCameraUsageDescription</key>
+		<string>Camera is used to scan food barcodes to log nutritional information.</string>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Mikrofonu sesli asistan için kullanıyoruz.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

@@ -1,11 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/recipe_model.dart';
 import '../../core/providers/theme_provider.dart';
+import '../../core/services/favorite_service.dart';
+import '../../core/services/recipe_note_service.dart';
 import '../../core/services/sharing_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/widgets/ds/ds.dart';
@@ -120,6 +123,59 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
         ),
       ),
       actions: [
+        // Favorite button
+        StreamBuilder<bool>(
+          stream: FavoriteService().isFavoriteStream(widget.recipe.id),
+          builder: (context, snapshot) {
+            final isFav = snapshot.data ?? false;
+            return Padding(
+              padding: EdgeInsets.only(left: 4.w, top: 8.w, bottom: 8.w),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.md.r),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    child: IconButton(
+                      icon: AnimatedSwitcher(
+                        duration: AppMotion.fast,
+                        transitionBuilder: (child, anim) =>
+                            ScaleTransition(scale: anim, child: child),
+                        child: Icon(
+                          isFav ? Icons.bookmark : Icons.bookmark_border,
+                          key: ValueKey(isFav),
+                          color: Colors.white,
+                        ),
+                      ),
+                      onPressed: () async {
+                        HapticFeedback.lightImpact();
+                        await FavoriteService().toggleFavorite(widget.recipe);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        // Notes button
+        Padding(
+          padding: EdgeInsets.only(left: 4.w, top: 8.w, bottom: 8.w),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.2),
+                child: IconButton(
+                  icon: const Icon(Icons.edit_note_rounded, color: Colors.white),
+                  onPressed: () => _showNotesSheet(context),
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Share button
         Padding(
           padding: EdgeInsets.all(8.w),
           child: ClipRRect(
@@ -550,6 +606,54 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
         );
       },
     );
+  }
+
+  Future<void> _showNotesSheet(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final existing = await RecipeNoteService().getNote(widget.recipe.id);
+    if (!mounted) return;
+
+    final controller = TextEditingController(text: existing ?? '');
+    await AppSheet.show(
+      context: context,
+      title: l10n.translate('recipe.notes.title'),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 24.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(l10n.translate('recipe.notes.hint'),
+                style: AppText.of(context).bodyM),
+            SizedBox(height: 12.h),
+            AppTextField(
+              controller: controller,
+              hintText: l10n.translate('recipe.notes.placeholder'),
+              maxLines: 5,
+            ),
+            SizedBox(height: 20.h),
+            AppButton(
+              label: l10n.translate('recipe.notes.save'),
+              variant: AppButtonVariant.primary,
+              onPressed: () async {
+                await RecipeNoteService()
+                    .saveNote(widget.recipe.id, controller.text);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  AppSnackBar.success(
+                    context,
+                    l10n.translate('recipe.notes.saved'),
+                  );
+                }
+              },
+            ),
+            SizedBox(
+                height: MediaQuery.of(context).viewInsets.bottom + 8.h),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
   }
 
   Widget _buildBottomAction(BuildContext context, AppLocalizations l10n,

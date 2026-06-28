@@ -6,7 +6,9 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../providers/navigation_provider.dart';
 import '../localization/app_localizations.dart';
 import '../providers/theme_provider.dart';
-import '../utils/app_routes.dart';
+import '../services/ai/ai_chat_history_service.dart';
+import '../services/ai/ai_chat_service.dart';
+import '../../screens/chat/ai_chat_screen.dart';
 
 class VoiceAssistantOverlay extends StatefulWidget {
   const VoiceAssistantOverlay({super.key});
@@ -187,15 +189,59 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
             child: Column(
               children: [
                 SizedBox(height: _scale(context, 20)),
-                Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: EdgeInsets.only(right: _scale(context, 20)),
-                    child: IconButton(
-                      icon: const Icon(Icons.close,
-                          color: Colors.white, size: 36),
-                      onPressed: () => nav.toggleVoiceAssistant(false),
-                    ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: _scale(context, 8)),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Switch to text-chat mode
+                      GestureDetector(
+                        onTap: () {
+                          nav.toggleVoiceAssistant(false);
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AIChatScreen(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: _scale(context, 14),
+                            vertical: _scale(context, 9),
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withAlpha(25),
+                            borderRadius:
+                                BorderRadius.circular(_scale(context, 20)),
+                            border:
+                                Border.all(color: Colors.white.withAlpha(40)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.chat_bubble_outline_rounded,
+                                  color: Colors.white, size: 15),
+                              SizedBox(width: _scale(context, 6)),
+                              Text(
+                                AppLocalizations.of(context)
+                                    .translate('assistant.text_mode'),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: _scale(context, 13),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Close button
+                      IconButton(
+                        icon: const Icon(Icons.close,
+                            color: Colors.white, size: 32),
+                        onPressed: () => nav.toggleVoiceAssistant(false),
+                      ),
+                    ],
                   ),
                 ),
                 const Spacer(),
@@ -401,13 +447,14 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
                   onPressed: () {
                     final transcript = _textController.text.trim();
                     nav.toggleVoiceAssistant(false);
-                    if (transcript.isNotEmpty) {
-                      Navigator.pushNamed(
-                        context,
-                        AppRoutes.aiChat,
-                        arguments: transcript,
-                      );
-                    }
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AIChatScreen(
+                          initialMessage:
+                              transcript.isEmpty ? null : transcript,
+                        ),
+                      ),
+                    );
                   },
                 ),
               ),
@@ -423,7 +470,11 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
     return GestureDetector(
       onTap: () {
         nav.toggleVoiceAssistant(false);
-        Navigator.pushNamed(context, AppRoutes.aiChat, arguments: text);
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => AIChatScreen(initialMessage: text),
+          ),
+        );
       },
       child: Container(
         margin: EdgeInsets.only(right: _scale(context, 10)),
