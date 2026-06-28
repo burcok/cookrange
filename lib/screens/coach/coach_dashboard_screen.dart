@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/models/coach_application_model.dart';
 import '../../core/models/coach_client_model.dart';
 import '../../core/models/coach_profile_model.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/services/coach_application_service.dart';
 import '../../core/services/coach_service.dart';
 import '../../core/widgets/ds/ds.dart';
+import 'coach_application_pending_screen.dart';
+import 'coach_application_screen.dart';
 import 'coach_client_detail_screen.dart';
 import 'coach_clients_screen.dart';
 import 'coach_profile_setup_screen.dart';
@@ -70,7 +74,7 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
           }
 
           if (profile == null) {
-            return _buildSetupCta(context, palette, l10n);
+            return _buildSetupCta(context, palette, l10n, uid);
           }
 
           return StreamBuilder<List<CoachClientModel>>(
@@ -117,50 +121,80 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
     );
   }
 
-  Widget _buildSetupCta(
-      BuildContext context, AppPalette palette, AppLocalizations l10n) {
-    final primary = Theme.of(context).primaryColor;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: primary.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.insights_rounded, size: 40, color: primary),
+  Widget _buildSetupCta(BuildContext context, AppPalette palette,
+      AppLocalizations l10n, String uid) {
+    return StreamBuilder<CoachApplicationModel?>(
+      stream: CoachApplicationService().getMyApplicationStream(uid),
+      builder: (ctx, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const AppSkeletonList(itemCount: 3);
+        }
+        final app = snap.data;
+
+        // Pending or needs more info → show status screen
+        if (app != null &&
+            (app.isPending || app.needsMoreInfo)) {
+          return CoachApplicationPendingScreen(
+            showBackButton: false,
+            status: app.status,
+            reviewerNotes: app.reviewerNotes,
+          );
+        }
+
+        // Rejected → show rejection screen
+        if (app != null && app.isRejected) {
+          return CoachApplicationPendingScreen(
+            showBackButton: false,
+            status: app.status,
+            reviewerNotes: app.reviewerNotes,
+          );
+        }
+
+        // No application → show apply CTA
+        final primary = Theme.of(context).primaryColor;
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.insights_rounded, size: 40, color: primary),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  l10n.translate('coach.setup_cta_title'),
+                  style: AppText.of(context).headlineS.copyWith(
+                      color: palette.textPrimary, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.translate('coach.setup_cta_sub'),
+                  style: AppText.of(context)
+                      .bodyM
+                      .copyWith(color: palette.textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+                AppButton(
+                  label: l10n.translate('coach.setup_cta_btn'),
+                  onPressed: () => Navigator.push(
+                    context,
+                    AppTransitions.slideRight(const CoachApplicationScreen()),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            Text(
-              l10n.translate('coach.setup_cta_title'),
-              style: AppText.of(context).headlineS.copyWith(
-                  color: palette.textPrimary, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.translate('coach.setup_cta_sub'),
-              style: AppText.of(context)
-                  .bodyM
-                  .copyWith(color: palette.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 28),
-            AppButton(
-              label: l10n.translate('coach.setup_cta_btn'),
-              onPressed: () => Navigator.push(
-                context,
-                AppTransitions.slideRight(const CoachProfileSetupScreen()),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

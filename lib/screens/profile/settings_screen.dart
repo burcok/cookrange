@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/models/user_model.dart';
 import '../../core/providers/language_provider.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/test_mode_provider.dart';
@@ -20,6 +21,7 @@ import '../../core/services/notification_preferences_service.dart';
 import '../../core/services/referral_service.dart';
 import '../../core/utils/app_routes.dart';
 import '../../core/widgets/ds/ds.dart';
+import '../admin/admin_panel_screen.dart';
 import '../coach/coach_dashboard_screen.dart';
 import '../gym/gym_dashboard_screen.dart';
 import '../legal/legal_screen.dart';
@@ -34,7 +36,8 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _openHelp() async {
-    final uri = Uri.parse('mailto:support@cookrange.app?subject=Cookrange%20Help');
+    final uri =
+        Uri.parse('mailto:support@cookrangeapp.com?subject=Cookrange%20Help');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     }
@@ -180,7 +183,9 @@ class SettingsScreen extends StatelessWidget {
           await AuthService().updateEmail(email, password);
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(appLoc.translate('settings.account.change_email_success'))),
+              SnackBar(
+                  content: Text(appLoc
+                      .translate('settings.account.change_email_success'))),
             );
           }
         },
@@ -199,7 +204,9 @@ class SettingsScreen extends StatelessWidget {
           await AuthService().updatePassword(currentPassword, newPassword);
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(appLoc.translate('settings.account.change_password_success'))),
+              SnackBar(
+                  content: Text(appLoc
+                      .translate('settings.account.change_password_success'))),
             );
           }
         },
@@ -226,7 +233,8 @@ class SettingsScreen extends StatelessWidget {
     } catch (e) {
       if (!context.mounted) return;
       Navigator.of(context).pop();
-      AppSnackBar.error(context, appLoc.translate('settings.account.export_error'));
+      AppSnackBar.error(
+          context, appLoc.translate('settings.account.export_error'));
     }
   }
 
@@ -316,7 +324,8 @@ class SettingsScreen extends StatelessWidget {
                       children: [
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: Icon(Icons.arrow_back, color: palette.textPrimary),
+                          icon: Icon(Icons.arrow_back,
+                              color: palette.textPrimary),
                         ),
                       ],
                     ),
@@ -445,7 +454,8 @@ class SettingsScreen extends StatelessWidget {
                           palette: palette,
                           trailing: Switch(
                             value: userProvider.user?.isPrivate ?? false,
-                            onChanged: (val) => unawaited(_togglePrivacy(context, val)),
+                            onChanged: (val) =>
+                                unawaited(_togglePrivacy(context, val)),
                             activeThumbColor: primaryColor,
                           ),
                         ),
@@ -584,8 +594,7 @@ class SettingsScreen extends StatelessWidget {
                           paddingLeft: 0,
                           onTap: _openHelp,
                           trailing: Icon(Icons.open_in_new,
-                              size: 20,
-                              color: palette.textSecondary),
+                              size: 20, color: palette.textSecondary),
                         ),
                         _buildSettingsRow(
                           context,
@@ -643,8 +652,10 @@ class SettingsScreen extends StatelessWidget {
                           iconBgColor: palette.isDark
                               ? palette.fat.withValues(alpha: 0.3)
                               : palette.fat.withValues(alpha: 0.15),
-                          title: appLoc.translate('settings.developer.test_mode'),
-                          subtitle: appLoc.translate('settings.developer.test_mode_subtitle'),
+                          title:
+                              appLoc.translate('settings.developer.test_mode'),
+                          subtitle: appLoc.translate(
+                              'settings.developer.test_mode_subtitle'),
                           palette: palette,
                           trailing: Switch(
                             value: testModeProvider.isActive,
@@ -670,15 +681,23 @@ class SettingsScreen extends StatelessWidget {
                       children: [
                         _buildSettingsRow(
                           context,
-                          icon: Icons.add_business_rounded,
+                          icon: userProvider.user?.userRole == UserRole.gymOwner
+                              ? Icons.dashboard_rounded
+                              : Icons.add_business_rounded,
                           iconColor: palette.info,
                           iconBgColor: palette.isDark
                               ? palette.info.withValues(alpha: 0.2)
                               : palette.info.withValues(alpha: 0.15),
-                          title: appLoc
-                              .translate('settings.business.register_gym'),
-                          subtitle: appLoc.translate(
-                              'settings.business.register_gym_sub'),
+                          title: userProvider.user?.userRole ==
+                                  UserRole.gymOwner
+                              ? appLoc.translate('settings.business.my_gym')
+                              : appLoc
+                                  .translate('settings.business.register_gym'),
+                          subtitle: userProvider.user?.userRole ==
+                                  UserRole.gymOwner
+                              ? appLoc.translate('settings.business.my_gym_sub')
+                              : appLoc.translate(
+                                  'settings.business.register_gym_sub'),
                           palette: palette,
                           onTap: () => Navigator.push(
                             context,
@@ -692,14 +711,19 @@ class SettingsScreen extends StatelessWidget {
                           icon: Icons.sports_rounded,
                           iconColor: const Color(0xFF6366F1),
                           iconBgColor: palette.isDark
-                              ? const Color(0xFF6366F1)
-                                  .withValues(alpha: 0.2)
-                              : const Color(0xFF6366F1)
-                                  .withValues(alpha: 0.15),
-                          title: appLoc
-                              .translate('settings.business.become_coach'),
-                          subtitle: appLoc.translate(
-                              'settings.business.become_coach_sub'),
+                              ? const Color(0xFF6366F1).withValues(alpha: 0.2)
+                              : const Color(0xFF6366F1).withValues(alpha: 0.15),
+                          title: userProvider.user?.userRole == UserRole.coach
+                              ? appLoc
+                                  .translate('settings.business.my_coaching')
+                              : appLoc
+                                  .translate('settings.business.become_coach'),
+                          subtitle:
+                              userProvider.user?.userRole == UserRole.coach
+                                  ? appLoc.translate(
+                                      'settings.business.my_coaching_sub')
+                                  : appLoc.translate(
+                                      'settings.business.become_coach_sub'),
                           palette: palette,
                           onTap: () => Navigator.push(
                             context,
@@ -713,6 +737,36 @@ class SettingsScreen extends StatelessWidget {
                     ),
 
                     const SizedBox(height: 24),
+
+                    // Admin panel (admin-only)
+                    if (userProvider.user?.userRole == UserRole.admin) ...[
+                      _buildGlassSection(
+                        context: context,
+                        title: appLoc.translate('admin.panel_title'),
+                        palette: palette,
+                        children: [
+                          _buildSettingsRow(
+                            context,
+                            icon: Icons.admin_panel_settings_rounded,
+                            iconColor: palette.error,
+                            iconBgColor: palette.isDark
+                                ? palette.error.withValues(alpha: 0.2)
+                                : palette.error.withValues(alpha: 0.15),
+                            title: appLoc.translate('admin.panel_title'),
+                            subtitle: '${appLoc.translate('admin.tab_coaches')} & ${appLoc.translate('admin.tab_gyms')}',
+                            palette: palette,
+                            onTap: () => Navigator.push(
+                              context,
+                              AppTransitions.slideRight(
+                                  const AdminPanelScreen()),
+                            ),
+                            trailing: Icon(Icons.chevron_right_rounded,
+                                color: palette.textSecondary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                    ],
 
                     // My Earnings
                     _buildGlassSection(
@@ -728,7 +782,8 @@ class SettingsScreen extends StatelessWidget {
                               ? palette.success.withValues(alpha: 0.2)
                               : palette.success.withValues(alpha: 0.15),
                           title: appLoc.translate('settings.earnings.title'),
-                          subtitle: appLoc.translate('settings.earnings.coming_soon_short'),
+                          subtitle: appLoc
+                              .translate('settings.earnings.coming_soon_short'),
                           palette: palette,
                           onTap: () => Navigator.push(
                             context,
@@ -756,7 +811,8 @@ class SettingsScreen extends StatelessWidget {
                           iconBgColor: palette.isDark
                               ? palette.info.withValues(alpha: 0.2)
                               : palette.info.withValues(alpha: 0.15),
-                          title: appLoc.translate('settings.account.change_email'),
+                          title:
+                              appLoc.translate('settings.account.change_email'),
                           palette: palette,
                           onTap: () => _showChangeEmailDialog(context),
                           trailing: Icon(Icons.chevron_right,
@@ -769,7 +825,8 @@ class SettingsScreen extends StatelessWidget {
                           iconBgColor: palette.isDark
                               ? palette.warning.withValues(alpha: 0.2)
                               : palette.calories.withValues(alpha: 0.15),
-                          title: appLoc.translate('settings.account.change_password'),
+                          title: appLoc
+                              .translate('settings.account.change_password'),
                           palette: palette,
                           onTap: () => _showChangePasswordDialog(context),
                           trailing: Icon(Icons.chevron_right,
@@ -782,8 +839,8 @@ class SettingsScreen extends StatelessWidget {
                           iconBgColor: palette.isDark
                               ? palette.info.withValues(alpha: 0.2)
                               : palette.info.withValues(alpha: 0.15),
-                          title: appLoc
-                              .translate('settings.account.export_data'),
+                          title:
+                              appLoc.translate('settings.account.export_data'),
                           subtitle: appLoc.translate(
                               'settings.account.export_data_subtitle'),
                           palette: palette,
@@ -843,8 +900,8 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPremiumCard(
-      BuildContext context, Color primaryColor, AppLocalizations appLoc, AppPalette palette) {
+  Widget _buildPremiumCard(BuildContext context, Color primaryColor,
+      AppLocalizations appLoc, AppPalette palette) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(36),
@@ -885,8 +942,7 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.workspace_premium,
-                        color: palette.warning),
+                    Icon(Icons.workspace_premium, color: palette.warning),
                     const SizedBox(width: 8),
                     Text(
                       appLoc.translate('settings.premium.badge').toUpperCase(),
@@ -923,8 +979,7 @@ class SettingsScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () =>
-                        FeatureGateService().showPaywall(context),
+                    onPressed: () => FeatureGateService().showPaywall(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: primaryColor,
@@ -1074,7 +1129,8 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildColorOption(ThemeProvider provider, Color color, AppPalette palette) {
+  Widget _buildColorOption(
+      ThemeProvider provider, Color color, AppPalette palette) {
     bool isSelected = provider.primaryColor == color;
     return GestureDetector(
       onTap: () => provider.setPrimaryColor(color),
@@ -1142,8 +1198,8 @@ Widget _dsTextField({
       ),
       filled: true,
       fillColor: palette.surfaceVariant.withValues(alpha: 0.5),
-      contentPadding:
-          EdgeInsets.symmetric(horizontal: AppSpacing.xl.w, vertical: AppSpacing.md.h),
+      contentPadding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.xl.w, vertical: AppSpacing.md.h),
     ),
   );
 }
@@ -1189,7 +1245,8 @@ class _ChangeEmailSheetState extends State<_ChangeEmailSheet> {
         SizedBox(height: AppSpacing.md.h),
         _dsTextField(
           controller: _passCtrl,
-          label: widget.appLoc.translate('settings.account.change_email_password'),
+          label:
+              widget.appLoc.translate('settings.account.change_email_password'),
           palette: palette,
           primary: primary,
           obscureText: true,
@@ -1224,7 +1281,8 @@ class _ChangeEmailSheetState extends State<_ChangeEmailSheet> {
 
 class _ChangePasswordSheet extends StatefulWidget {
   final AppLocalizations appLoc;
-  final Future<void> Function(String currentPassword, String newPassword) onSave;
+  final Future<void> Function(String currentPassword, String newPassword)
+      onSave;
 
   const _ChangePasswordSheet({required this.appLoc, required this.onSave});
 
@@ -1426,11 +1484,12 @@ class _ReferralCardState extends State<_ReferralCard> {
 
   void _share(BuildContext buttonContext) {
     if (_code == null) return;
-    
+
     final box = buttonContext.findRenderObject() as RenderBox?;
     final rect = box != null ? box.localToGlobal(Offset.zero) & box.size : null;
 
-    ReferralService().shareCode(buttonContext, _code!, sharePositionOrigin: rect);
+    ReferralService()
+        .shareCode(buttonContext, _code!, sharePositionOrigin: rect);
   }
 
   Future<void> _showApplySheet() async {

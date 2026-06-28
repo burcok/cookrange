@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:cookrange.app</string>
+		<string>applinks:cookrangeapp.com</string>
 	</array>
 </dict>
 </plist>

@@ -1,7 +1,12 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/coach_profile_model.dart';
+import '../../core/models/user_model.dart';
+import '../../core/providers/user_provider.dart';
 import '../../core/services/coach_service.dart';
 import '../../core/widgets/ds/ds.dart';
 import 'coach_dashboard_screen.dart';
@@ -230,6 +235,9 @@ class _CoachCardState extends State<_CoachCard>
     final text = AppText.of(context);
     final coach = widget.coach;
     final specs = coach.specializations.take(3).toList();
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final currentUserRole = context.read<UserProvider>().user?.userRole;
+    final isSelf = coach.uid == currentUid;
 
     return FadeTransition(
       opacity: _fade,
@@ -299,7 +307,7 @@ class _CoachCardState extends State<_CoachCard>
                   if (coach.hourlyRate != null) ...[
                     const Spacer(),
                     Text(
-                      '€${coach.hourlyRate!.toStringAsFixed(0)}${t.translate('coach.discovery_per_hour')}',
+                      '₺${coach.hourlyRate!.toStringAsFixed(0)}${t.translate('coach.discovery_per_hour')}',
                       style: text.labelS.copyWith(
                         color: palette.textPrimary,
                         fontWeight: FontWeight.w700,
@@ -308,9 +316,100 @@ class _CoachCardState extends State<_CoachCard>
                   ],
                 ],
               ),
+              // ── Request button ─────────────────────────────────────────
+              if (!isSelf && currentUserRole != UserRole.coach) ...[
+                const SizedBox(height: AppSpacing.sm),
+                StreamBuilder<String?>(
+                  stream: CoachService()
+                      .getRequestStatusStream(coach.uid, currentUid),
+                  builder: (context, snap) {
+                    final status = snap.data;
+                    if (status == 'accepted') {
+                      return _RequestChip(
+                        label: t.translate('coach.request_accepted'),
+                        color: palette.success,
+                        icon: Icons.check_circle_rounded,
+                        palette: palette,
+                        text: text,
+                      );
+                    }
+                    if (status == 'pending') {
+                      return _RequestChip(
+                        label: t.translate('coach.request_pending'),
+                        color: palette.warning,
+                        icon: Icons.hourglass_top_rounded,
+                        palette: palette,
+                        text: text,
+                      );
+                    }
+                    // No request yet — show button
+                    return AppButton(
+                      label: t.translate('coach.request_coaching'),
+                      size: AppButtonSize.small,
+                      expand: false,
+                      variant: AppButtonVariant.tonal,
+                      onPressed: () async {
+                        unawaited(HapticFeedback.mediumImpact());
+                        try {
+                          await CoachService()
+                              .requestCoaching(coach.uid, currentUid);
+                        } catch (e) {
+                          debugPrint(
+                              '_CoachCard: requestCoaching error: $e');
+                        }
+                      },
+                    );
+                  },
+                ),
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _RequestChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final IconData icon;
+  final AppPalette palette;
+  final AppText text;
+
+  const _RequestChip({
+    required this.label,
+    required this.color,
+    required this.icon,
+    required this.palette,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xxs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: AppSpacing.xxs),
+          Text(
+            label,
+            style: text.labelS.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

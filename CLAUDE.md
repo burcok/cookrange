@@ -176,7 +176,7 @@ lib/
 ## AI Integration
 
 - Provider: OpenRouter (`https://openrouter.ai/api/v1/chat/completions`)
-- Model: `google/gemma-4-26b-a4b-it:free` (configurable)
+- Model: `openrouter/free` (configurable)
 - Key stored in `.env` (client-side for MVP; move server-side before GA)
 - `AIService.isConfigured` guards all AI calls — returns empty results if key is placeholder
 - JSON responses: use `AIService.generateJson()` which returns `Map<String, dynamic>`

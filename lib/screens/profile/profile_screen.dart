@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:cookrange/core/constants/onboarding_options.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 import 'package:cookrange/core/providers/theme_provider.dart';
-import 'package:cookrange/widgets/onboarding_common_widgets.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../core/services/firestore_service.dart';
@@ -1248,8 +1247,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ));
   }
 
-  Widget _buildGoalChip(String label, IconData icon, Color color, bool isDark) {
+  Widget _buildGoalChip(String goalKey, IconData fallbackIcon, Color color, bool isDark) {
     final localizations = AppLocalizations.of(context);
+    final goalData = OnboardingOptions.primaryGoals[goalKey] ?? OnboardingOptions.primaryGoals[goalKey.toLowerCase()];
+    final label = goalData != null
+        ? localizations.translate(goalData['label'] as String)
+        : goalKey;
+    final icon = goalData != null
+        ? (goalData['icon'] as IconData)
+        : fallbackIcon;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -1267,16 +1273,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 4),
           Text(
-              OnboardingOptions.primaryGoals.entries
-                  .map((e) {
-                    return OptionData(
-                      label: localizations.translate(e.value['label']),
-                      icon: e.value['icon'] as IconData,
-                      value: e.key,
-                    );
-                  })
-                  .firstWhere((e) => e.value == label)
-                  .label,
+              label,
               style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -1452,13 +1449,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                      "${localizations.translate('profile.kitchen_lifestyle.cooking_level')}: ${OnboardingOptions.cookingLevels.entries.map((e) {
-                            return OptionData(
-                              label: localizations.translate(e.value['label']),
-                              icon: e.value['icon'] as IconData,
-                              value: e.key,
-                            );
-                          }).firstWhere((e) => e.value == cookingLevel).label}",
+                      "${localizations.translate('profile.kitchen_lifestyle.cooking_level')}: ${(() {
+                        final key = cookingLevel;
+                        if (OnboardingOptions.cookingLevels.containsKey(key)) {
+                          return localizations.translate(OnboardingOptions.cookingLevels[key]!['label'] as String);
+                        }
+                        final lowerKey = key.toLowerCase();
+                        if (OnboardingOptions.cookingLevels.containsKey(lowerKey)) {
+                          return localizations.translate(OnboardingOptions.cookingLevels[lowerKey]!['label'] as String);
+                        }
+                        return key;
+                      })()}",
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -1556,19 +1557,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     border: Border.all(color: palette.border),
                                     borderRadius: BorderRadius.circular(8)),
                                 child: Text(
-                                    OnboardingOptions
-                                        .predefinedIngredients.entries
-                                        .map((a) {
-                                          return OptionData(
-                                            label: localizations
-                                                .translate(a.value['label']),
-                                            icon: a.value['icon'] as IconData,
-                                            value: a.key,
-                                          );
-                                        })
-                                        .firstWhere(
-                                            (i) => i.value == e.toString())
-                                        .label,
+                                    (() {
+                                      final key = e.toString();
+                                      if (OnboardingOptions.predefinedIngredients.containsKey(key)) {
+                                        return localizations.translate(OnboardingOptions.predefinedIngredients[key]!['label'] as String);
+                                      }
+                                      final lowerKey = key.toLowerCase();
+                                      if (OnboardingOptions.predefinedIngredients.containsKey(lowerKey)) {
+                                        return localizations.translate(OnboardingOptions.predefinedIngredients[lowerKey]!['label'] as String);
+                                      }
+                                      return key;
+                                    })(),
                                     style: TextStyle(
                                         fontSize: 12,
                                         color: palette.textSecondary)),

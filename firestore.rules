@@ -24,6 +24,11 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == signalData.userId;
     }
 
+    function isAdmin() {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/admin/status/$(request.auth.uid)).data.is_admin == true;
+    }
+
     // Validate that only allowed fields are being written
     function hasNoExtraFields(allowedFields) {
       return request.resource.data.keys().hasOnly(allowedFields);
@@ -376,9 +381,42 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ─── Coaching requests (client→coach) ────────────────────────────────────
+    // Path: users/{coachUid}/coaching_requests/{clientUid}
+    // Coach reads their own requests; client reads/writes their own request doc.
+    match /users/{uid}/coaching_requests/{requestDoc} {
+      allow read: if isAuthenticated()
+        && (request.auth.uid == uid || request.auth.uid == requestDoc);
+      allow write: if isAuthenticated() && request.auth.uid == requestDoc;
+    }
+
     // ─── Payout requests ──────────────────────────────────────────────────────
     match /users/{uid}/payout_requests/{requestId} {
       allow read, write: if isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // ─── AI twin projections (history) ────────────────────────────────────────
+    match /users/{uid}/ai_twin_projections/{doc} {
+      allow read, write: if isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // ─── Coach applications ────────────────────────────────────────────────────
+    // Applicant can read/write their own; admin can read/write all.
+    match /coach_applications/{appId} {
+      allow read: if isAuthenticated()
+        && (request.auth.uid == resource.data.applicantUid || isAdmin());
+      allow create: if isAuthenticated()
+        && request.resource.data.applicantUid == request.auth.uid;
+      allow update: if isAuthenticated() && isAdmin();
+    }
+
+    // ─── Gym applications ──────────────────────────────────────────────────────
+    match /gym_applications/{appId} {
+      allow read: if isAuthenticated()
+        && (request.auth.uid == resource.data.applicantUid || isAdmin());
+      allow create: if isAuthenticated()
+        && request.resource.data.applicantUid == request.auth.uid;
+      allow update: if isAuthenticated() && isAdmin();
     }
 
     // ─── Deny everything else ─────────────────────────────────────────────────

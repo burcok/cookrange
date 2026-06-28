@@ -141,6 +141,40 @@ class CoachService {
     }
   }
 
+  // ─── Coaching Requests (persistent state) ─────────────────────────────────
+
+  /// Writes a pending coaching request from [clientUid] to [coachUid]'s
+  /// `users/{coachUid}/coaching_requests/{clientUid}` subcollection.
+  Future<void> requestCoaching(String coachUid, String clientUid) async {
+    debugPrint('CoachService: $clientUid requesting coaching from $coachUid');
+    await _db
+        .collection('users')
+        .doc(coachUid)
+        .collection('coaching_requests')
+        .doc(clientUid)
+        .set({
+      'status': 'pending',
+      'requestedAt': FieldValue.serverTimestamp(),
+      'clientUid': clientUid,
+    });
+    debugPrint('CoachService: coaching request written');
+  }
+
+  /// Streams the current request status ('pending' / 'accepted' / null) for
+  /// the given client→coach pair.
+  Stream<String?> getRequestStatusStream(String coachUid, String clientUid) {
+    return _db
+        .collection('users')
+        .doc(coachUid)
+        .collection('coaching_requests')
+        .doc(clientUid)
+        .snapshots()
+        .map((doc) {
+          if (!doc.exists) return null;
+          return doc.data()?['status'] as String?;
+        });
+  }
+
   // ─── Client Requests ───────────────────────────────────────────────────────
 
   Future<void> sendClientRequest(String coachUid) async {

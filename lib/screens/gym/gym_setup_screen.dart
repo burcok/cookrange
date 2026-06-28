@@ -149,7 +149,7 @@ class _GymSetupScreenState extends State<GymSetupScreen>
           'description': _descCtrl.text.trim(),
           'address': _addressCtrl.text.trim(),
           'city': _cityCtrl.text.trim(),
-          'country': _countryCtrl.text.trim(),
+          'country': 'Türkiye',
           'is_public': _isPublic,
           'tags': _selectedTags,
           'brand_color': _brandColorHex,
@@ -169,7 +169,7 @@ class _GymSetupScreenState extends State<GymSetupScreen>
           description: _descCtrl.text.trim(),
           address: _addressCtrl.text.trim(),
           city: _cityCtrl.text.trim(),
-          country: _countryCtrl.text.trim(),
+          country: 'Türkiye',
           isPublic: _isPublic,
           tags: _selectedTags,
         );
@@ -273,7 +273,6 @@ class _GymSetupScreenState extends State<GymSetupScreen>
                 _Step2Location(
                   addressCtrl: _addressCtrl,
                   cityCtrl: _cityCtrl,
-                  countryCtrl: _countryCtrl,
                   palette: palette,
                   isDark: isDark,
                   l10n: l10n,
@@ -725,7 +724,6 @@ class _LogoPickerSection extends StatelessWidget {
 class _Step2Location extends StatelessWidget {
   final TextEditingController addressCtrl;
   final TextEditingController cityCtrl;
-  final TextEditingController countryCtrl;
   final AppPalette palette;
   final bool isDark;
   final AppLocalizations l10n;
@@ -733,7 +731,6 @@ class _Step2Location extends StatelessWidget {
   const _Step2Location({
     required this.addressCtrl,
     required this.cityCtrl,
-    required this.countryCtrl,
     required this.palette,
     required this.isDark,
     required this.l10n,
@@ -770,26 +767,11 @@ class _Step2Location extends StatelessWidget {
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: AppTextField(
-                  controller: cityCtrl,
-                  labelText: l10n.translate('gym.field_city'),
-                  hintText: l10n.translate('gym.field_city_hint'),
-                  textInputAction: TextInputAction.next,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: AppTextField(
-                  controller: countryCtrl,
-                  labelText: l10n.translate('gym.field_country'),
-                  hintText: l10n.translate('gym.field_country_hint'),
-                  textInputAction: TextInputAction.done,
-                ),
-              ),
-            ],
+          AppTextField(
+            controller: cityCtrl,
+            labelText: l10n.translate('gym.field_city'),
+            hintText: l10n.translate('gym.field_city_hint'),
+            textInputAction: TextInputAction.done,
           ),
         ],
       ),

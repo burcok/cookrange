@@ -7,10 +7,10 @@ import 'crashlytics_service.dart';
 /// custom `cookrange://` scheme.
 ///
 /// URL scheme:
-///   https://cookrange.app/recipe/{id}
-///   https://cookrange.app/post/{id}
-///   https://cookrange.app/user/{uid}
-///   https://cookrange.app/challenge/{id}
+///   https://cookrangeapp.com/recipe/{id}
+///   https://cookrangeapp.com/post/{id}
+///   https://cookrangeapp.com/user/{uid}
+///   https://cookrangeapp.com/challenge/{id}
 ///   cookrange://recipe/{id}  (custom scheme, dev/testing)
 ///
 /// Usage:

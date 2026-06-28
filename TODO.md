@@ -438,12 +438,12 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 
 ## PHASE 8 — GROWTH · target v1.0.0+
 
-- [x] ✅ **Referral program** — `ReferralService` singleton: `getOrCreateCode()` generates 6-char secure code + writes `referrals/{code}` Firestore doc; `getReferralCount()` reads usage; `applyCode()` validates + awards 7-day premium trial to both referrer and referee via batch write + `NotificationService.sendNotification(system)`; `shareCode()` delegates to `SharingService.shareReferral()`. `_ReferralCard` StatefulWidget in Settings with shimmer loading, letter-spaced code display, usage count, Share + "I have a code" buttons; `_ApplyCodeSheet` bottom sheet with `AppTextField` (alpha-num formatter) + `AppButton(loading)`. `firestore.rules` `referrals/{code}` path added (read=auth, create=owner, update=auth with immutable owner+max_uses). EN+TR `settings.referral.*` keys (8 each). Deep link: `cookrange.app/invite/{code}` → `DeepLinkService` routes on `invite` path (extendable). 0 analyze errors.
-- [x] ✅ **Invite system (deep links)** — Universal Links (iOS) + App Links (Android) configured via `DeepLinkService`; `cookrange.app/invite/{code}` routes user to Settings with code; `SharingService.shareReferral()` generates invite text + link; full `ReferralService` loop closes invite → reward cycle. Phone contacts picker: deferred (requires `contacts_service` package + privacy consent flow — post-v1.0 addition).
+- [x] ✅ **Referral program** — `ReferralService` singleton: `getOrCreateCode()` generates 6-char secure code + writes `referrals/{code}` Firestore doc; `getReferralCount()` reads usage; `applyCode()` validates + awards 7-day premium trial to both referrer and referee via batch write + `NotificationService.sendNotification(system)`; `shareCode()` delegates to `SharingService.shareReferral()`. `_ReferralCard` StatefulWidget in Settings with shimmer loading, letter-spaced code display, usage count, Share + "I have a code" buttons; `_ApplyCodeSheet` bottom sheet with `AppTextField` (alpha-num formatter) + `AppButton(loading)`. `firestore.rules` `referrals/{code}` path added (read=auth, create=owner, update=auth with immutable owner+max_uses). EN+TR `settings.referral.*` keys (8 each). Deep link: `cookrangeapp.com/invite/{code}` → `DeepLinkService` routes on `invite` path (extendable). 0 analyze errors.
+- [x] ✅ **Invite system (deep links)** — Universal Links (iOS) + App Links (Android) configured via `DeepLinkService`; `cookrangeapp.com/invite/{code}` routes user to Settings with code; `SharingService.shareReferral()` generates invite text + link; full `ReferralService` loop closes invite → reward cycle. Phone contacts picker: deferred (requires `contacts_service` package + privacy consent flow — post-v1.0 addition).
 - [x] ✅ **Social sharing** (recipes, progress, lists). — Done. `SharingService` singleton (`share_plus`): `shareRecipe()`, `shareProgress()`, `sharePost()`, `shareShoppingList()`. Wired into: recipe detail AppBar share button, home nutrition header (share progress), community post onShare callback, shopping list toolbar. EN+TR `shopping.share` + `home.share_progress` keys. 0 analyze errors.
 - [x] ✅ **Virality: shareable fitness-score card** — `ShareableFitnessCard` widget (`RenderRepaintBoundary.toImage(pixelRatio:3.0)` → PNG → `Share.shareXFiles(XFile)`); card shows: calorie progress ring, consumed vs target, protein/carbs/fat macro chips, streak badge, "Cookrange" footer — dark gradient aesthetic, no external packages. `ShareableFitnessCard.capture(key)` static method handles temp-file creation (`path_provider`). Wired into home screen share button: shows `AppSheet` preview with the card + "Share" `AppButton`; `_shareCardKey` `GlobalKey` in `_HomeScreenState`. 0 analyze errors.
-- [x] ✅ **Community growth loops** — challenge sharing via `SharingService.shareChallenge()` + deep link `cookrange.app/challenge/{id}`; share button added to `ChallengeDetailScreen` SliverAppBar. Leaderboard already builds competitive visibility. Referral program closes acquisition loop. Shareable fitness-score cards drive organic social spread. Growth loop: join challenge → achieve goal → share card → friend joins via deep link → referral reward → repeat.
-- [x] ✅ **Deep linking / App Links + Universal Links** — `app_links: ^6.3.4` added; `DeepLinkService` singleton handles initial + stream URI routing; URL scheme `https://cookrange.app/{recipe|post|user|challenge}/{id}`; Android App Links `intent-filter autoVerify="true"` + custom `cookrange://` scheme in `AndroidManifest.xml`; iOS `Runner.entitlements` with `applinks:cookrange.app`; custom scheme fallback for dev testing; wired into `_fireAndForgetPreloading()` in splash; `SharingService.shareRecipe/sharePost` now append deep-link URL when ID provided. Server-side `.well-known/assetlinks.json` + `apple-app-site-association` are deploy-time steps. 0 analyze errors.
+- [x] ✅ **Community growth loops** — challenge sharing via `SharingService.shareChallenge()` + deep link `cookrangeapp.com/challenge/{id}`; share button added to `ChallengeDetailScreen` SliverAppBar. Leaderboard already builds competitive visibility. Referral program closes acquisition loop. Shareable fitness-score cards drive organic social spread. Growth loop: join challenge → achieve goal → share card → friend joins via deep link → referral reward → repeat.
+- [x] ✅ **Deep linking / App Links + Universal Links** — `app_links: ^6.3.4` added; `DeepLinkService` singleton handles initial + stream URI routing; URL scheme `https://cookrangeapp.com/{recipe|post|user|challenge}/{id}`; Android App Links `intent-filter autoVerify="true"` + custom `cookrange://` scheme in `AndroidManifest.xml`; iOS `Runner.entitlements` with `applinks:cookrangeapp.com`; custom scheme fallback for dev testing; wired into `_fireAndForgetPreloading()` in splash; `SharingService.shareRecipe/sharePost` now append deep-link URL when ID provided. Server-side `.well-known/assetlinks.json` + `apple-app-site-association` are deploy-time steps. 0 analyze errors.
 
 ---
 
@@ -649,6 +649,209 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 illustrated feature tour before the data form · ☑ Empty states route forward, not nowhere · ☑ All new
 copy in EN+TR, all new UI correct in light+dark on iOS+Android, 60fps, reduced-motion aware ·
 ☑ `flutter analyze lib/` 0 errors · ☑ CLAUDE.md + this roadmap updated (R8).
+
+---
+
+## Phase 11 — Gym/Coach Verification & Admin Pipeline
+
+> **Scope:** Real approval pipeline for coach and gym registrations; admin review UI; AI Twin history
+> persistence; language-aware AI responses; test mode coverage; role-aware button labels; Turkish Lira
+> currency; coach request persistent state.
+
+### 11.1 — AI Twin History & Language-Aware AI ✅
+- [x] `AIInsightService.generateFitnessTwin()` and `generateAccountabilityInsight()` now accept `{String locale}` — passes language instruction to AI prompt ("Respond entirely in English." / "Tüm yanıtları Türkçe ver.") ✅
+- [x] Cache keys include locale so EN/TR projections are stored separately ✅
+- [x] After successful AI call, `unawaited(_saveTwinProjection(...))` saves to `users/{uid}/ai_twin_projections/{auto-id}` ✅
+- [x] `AiFitnessTwinScreen` shows past projections via `StreamBuilder` on the subcollection (ordered by `generatedAt desc`, limit 10) ✅
+- [x] `firestore.rules` — `ai_twin_projections` subcollection owner-only read/write ✅
+- [x] EN+TR keys: `ai.twin_history_*` (5 keys) ✅
+
+### 11.2 — Test Mode Full Coverage ✅
+- [x] `TestDataLibrary.gyms()` — 3 gyms: Iron Paradise, Zen Flow Studio, Fighter's Den ✅
+- [x] `TestDataLibrary.coaches()` — 3 coaches: Ahmet Yıldız, Elif Kaya, Mert Demir ✅
+- [x] `TestDataLibrary.programs()` — 3 programs across difficulty tiers ✅
+- [x] `TestDataLibrary.challenges()` — 3 challenges ✅
+- [x] Test data injected into `GymService.searchGyms()`, `CoachService.searchCoaches()`, `ProgramService.getPublishedProgramsStream()`, `ChallengeService.getActiveChallengesStream()` ✅
+
+### 11.3 — Social & Discovery Polish ✅
+- [x] **Role-aware labels:** "Register Your Gym" → "My Gym" / "Become a Coach" → "My Coaching" in Settings ✅
+- [x] **Currency:** `€` → `₺` everywhere (coach discovery, coach profile, affiliate earnings, referral string) ✅
+- [x] **Coach request persistent state:** `coaching_requests` subcollection; pending chip shown after request; self-request blocked; re-request blocked ✅
+- [x] EN+TR keys: `coach.request_*`, `settings.business.my_*`, `menu.my_coaching` ✅
+
+### 11.4 — Coach & Gym Approval Pipeline ✅
+- [x] `CoachApplicationModel` + `GymApplicationModel` data models ✅
+- [x] `CoachApplicationService` + `GymApplicationService` singletons ✅
+- [x] `CoachApplicationScreen` — 3-step PageView (bio + specializations, evidence upload, references) ✅
+- [x] `CoachApplicationPendingScreen` — 3-state (pending / rejected / needsMoreInfo) with reviewer notes ✅
+- [x] `GymApplicationPendingScreen` — 2-state (pending / rejected) with reviewer notes ✅
+- [x] `CoachDashboardScreen` — gates on `CoachApplicationService.getMyApplicationStream()`: no-app → apply CTA, pending/rejected → status screen ✅
+- [x] `GymDashboardScreen` — same gate via `GymApplicationService.getMyApplicationStream()` ✅
+- [x] `firestore.rules` — `coach_applications` + `gym_applications` + `ai_twin_projections` + `isAdmin()` function ✅
+
+### 11.5 — Admin Applications Review Panel ✅
+- [x] `AdminService` — batch approve/reject for coaches and gyms; notifications sent to applicants ✅
+- [x] `AdminPanelScreen` — 2-tab TabBar (coaches / gyms) with real-time pending streams ✅
+- [x] `ApplicationReviewScreen.forCoach()` / `.forGym()` — full review with evidence links, approve/reject ✅
+- [x] Settings entry for admin users (`UserRole.admin`) → `AdminPanelScreen` ✅
+- [x] EN+TR keys: `admin.*` (18 keys), `coach.app_*`, `gym.app_*` (15+ keys each) ✅
+
+### Definition of Done — Phase 11
+☑ All AI responses language-aware · ☑ AI Twin history persisted + surfaced in UI · ☑ Test mode has
+gym/coach/program/challenge data · ☑ Role labels update post-approval · ☑ Coach request is persistent +
+idempotent + blocks self-request · ☑ Coach/gym applications require multi-step evidence submission ·
+☑ Admin can approve/reject from a real-time panel · ☑ All new copy EN+TR · ☑ `flutter analyze lib/` 0 errors
+
+---
+
+## Phase 12 — AI Economy, Localization Integrity & Role Navigation
+
+> **Scope:** Fix the AI-Twin localization + regeneration regression, make all AI calls language-aware
+> and persisted, introduce a **daily** credit economy (premium 20/day, free 2/day) with a tappable
+> credit→paywall surface, and complete role-aware navigation so **coach** and **admin** have full
+> parity with gym (side menu + settings + admin operations). Flagship-grade: optimized, 60fps,
+> iOS+Android, light+dark, EN+TR. **R0–R8 apply to every item.**
+
+> ### 🔴 Known Regression (root-caused — fix in 12.1/12.2 first)
+> A parallel sub-agent run silently **lost** the original AI-Twin localization work in a shared-file
+> write collision. The current code reflects this:
+> - `AiInsightService.generateFitnessTwin(UserModel user)` — **no `locale` param, no caching, no
+>   persistence.** Every entry to `AiFitnessTwinScreen` fires a fresh AI call → always English, new
+>   request on every tap. (`lib/core/services/ai_insight_service.dart:121`)
+> - `generateAccountabilityInsight(UserModel user)` — no `locale`; caches by **date only** in
+>   SharedPrefs (`ai_insight_generated_at/_message/_tips`) → switching to TR returns cached English.
+> - `prompt_service.dart` — **no language instruction** in any prompt; only `AIChatService` is
+>   language-aware.
+> - **Orphaned artifacts** already merged but unused: `firestore.rules` → `ai_twin_projections`
+>   owner-rule, and `ai.twin_history_*` (5 EN+TR keys). 12.1 must reconnect code to these, not
+>   re-add them.
+> - **Process fix (12.6):** never let two agents write the same JSON/rules file in parallel again.
+
+### 12.1 — Language-Aware AI Everywhere (fix regression + extend) · 🔴 Critical · Medium · 2–3 d
+
+- [ ] **Centralize the language directive** in `PromptService`: a single `_localeInstruction(locale)`
+  helper ("Respond entirely in English." / "Tüm yanıtları Türkçe ver, tüm alan değerleri dahil.")
+  appended to **every** prompt builder — meal plan, recipe, ingredient-validate, alternates — not just chat.
+- [ ] **Add `{required String locale}`** to `generateFitnessTwin`, `generateAccountabilityInsight`,
+  and any other `AIService`/`AIInsightService` entry that returns user-facing text. No default that
+  silently falls back to English.
+- [ ] **Read locale at every call site BEFORE the first `await`** (from `LanguageProvider` /
+  `AppLocalizations.of(context).locale`) and pass it down. Audit: `ai_fitness_twin_screen.dart`,
+  `ai_insight_card.dart`, `home.dart`, `explore_screen.dart`, `food_scan_screen.dart`,
+  `meal_plan_comparison_sheet.dart`, chat.
+- [ ] **Locale-tag every cache key** (`..._{uid}_{locale}_{dateKey}`) in SharedPrefs/Hive/Firestore so
+  a language switch never returns stale opposite-language text. Migrate the date-only insight keys.
+- [ ] **Audit pass:** grep every prompt string; assert none are English-only and none hardcode
+  user-facing copy that should come from the model in the active language.
+- [ ] **Definition:** switching app language and reopening any AI surface yields text in that language;
+  no English leakage in TR mode. Verified on both locales.
+
+### 12.2 — AI Request Economy: Persist-Once + Daily Quotas · 🔴 Critical · Medium–Large · 3–5 d
+
+- [ ] **Re-implement Twin persistence** (restore lost work): after a successful generation,
+  `unawaited(_saveTwinProjection(uid, locale, result))` → `users/{uid}/ai_twin_projections/{autoId}`
+  with `generatedAt`, `locale`, inputs-hash, and payload. Reconnect to the orphaned firestore rule.
+- [ ] **Load-saved-first, generate-on-demand-only:** `AiFitnessTwinScreen` shows the **latest saved
+  projection instantly** (stale-while-revalidate, R3); a fresh AI call happens **only** on explicit
+  "Regenerate" or when inputs-hash changed — never on plain re-entry/rebuild. Kills the "new request
+  every tap" behavior.
+- [ ] **Twin history UI** (reconnect orphaned `ai.twin_history_*` keys): `StreamBuilder` on
+  `ai_twin_projections` ordered `generatedAt desc, limit 10`; tap a past projection to view it.
+- [ ] **Home initial AI runs once, then reads saved data:** accountability insight + any home AI
+  generate at most once/day, persist, and reload from the saved snapshot on subsequent loads (R3
+  stale-while-revalidate). No silent re-fire on every home mount.
+- [ ] **Migrate credit model monthly → daily** (`AiCreditModel`): replace `freeMonthlyLimit=20` /
+  month reset with **daily** quotas: **premium = 20/day, free = 2/day**. Add `freeDailyLimit=2`,
+  `premiumDailyLimit=20`; `resetAt` = next local midnight (timezone-aware); `fromFirestore` migration
+  for existing `ai_credits_reset_at`/`_used` docs.
+- [ ] **Quota = NEW generations only.** Reading a cached/saved projection or insight must **not**
+  consume a credit. Only a genuine model call decrements.
+- [ ] **Consistent gating — route ALL AI through `checkAndConsume`:** add gates to the currently
+  ungated paths (food scan, recipe generation, weekly meal plan, plan alternates, accountability
+  insight) so the daily quota is real and uniform. Today only AI Chat + Twin are gated.
+- [ ] **Optimistic decrement + rollback** on failure; never charge a credit for a failed/empty AI call.
+- [ ] **Server-side enforcement note:** client-side counters are spoofable. Track as a hardening item —
+  enforce quota in the AI Cloud Function proxy (ties to the existing security recommendation). · High
+- [ ] **Definition:** free user gets exactly 2 new generations/day across all AI; premium 20/day;
+  counts reset at local midnight; cached views are free; quota survives app restart.
+
+### 12.3 — Credit & Premium Conversion Surface · High · Medium · 2–3 d
+
+- [ ] **Make `AiCreditBadge` tappable** (add `onTap` + press-scale + haptic) → opens the credits sheet.
+- [ ] **New `AiCreditsSheet` / screen** (DS `AppSheet`): shows used/remaining today, reset countdown,
+  the premium plans (monthly/yearly from `BillingService`), a **Buy Credits** top-up option (consumable
+  IAP for one-off extra daily calls), perks list, and **Restore Purchases**. Flagship loading/empty/
+  error states.
+- [ ] **Wire all dead-ends to it:** limit-reached snackbar CTA, badge tap, a Settings "AI & Credits"
+  row, and the paywall fallback all converge on this surface (reuse `FeatureGateService.showPaywall`
+  where it already fits; extend for the top-up path).
+- [ ] **Consumable top-up plumbing** in `BillingService` (e.g. `+10 AI calls`): grant by incrementing a
+  separate `ai_credits_bonus` field so top-ups stack on top of the daily allowance and aren't wiped by
+  the midnight reset. Define product IDs.
+- [ ] **Definition:** tapping remaining-credits anywhere opens a buy credits/premium screen; purchase
+  updates the badge live; smooth animations, light/dark, EN+TR.
+
+### 12.4 — Role-Aware Navigation Completion (coach + admin parity) · High · Medium · 2–3 d
+
+- [ ] **Wire the side-menu Admin section** (`side_menu.dart:647`): replace the two `comingSoon:true,
+  onTap:null` items with real entries → **Admin Panel** (applications), and stubs that route to the
+  12.5 screens. Show a **live pending-count badge** (`AdminService.pendingCountStream()`).
+- [ ] **Coaching button parity with gym** everywhere a gym entry exists: side menu (already has a coach
+  section — verify it mirrors gym: dashboard, clients, discovery), Settings business row (done in 11.3),
+  and the **quick-actions sheet** (today only the gym tile is role-aware — add a coach-aware tile, or a
+  combined "My Business" tile that resolves by role).
+- [ ] **Pending-state-aware labels:** a consumer who has applied sees "Application Pending" (not
+  "Become a Coach"/"Register Gym") on the relevant entry points, driven by the application streams.
+- [ ] **Live role refresh after approval:** when admin approves and `user_role` flips, the app updates
+  menus/labels without a manual restart (listen to the user doc; refresh `UserProvider`).
+- [ ] **Definition:** coach has the same discoverability as gym; admin reaches every admin screen from
+  the side menu with a pending badge; labels reflect real application state.
+
+### 12.5 — Admin Operations Suite (beyond applications) · Medium · Large · 4–6 d
+
+- [ ] **Admin home dashboard** — at-a-glance counts (pending coaches, pending gyms, total users, open
+  reports) with cards that route into each queue; real-time streams; flagship empty states.
+- [ ] **User management** — search users, view profile/role, **ban/unban** (ties to `admin/status/{uid}`
+  + existing `BanCheckObserver`), promote/demote role with confirmation + audit entry.
+- [ ] **Moderation / reports queue** — review reported community posts & comments (reconnects the
+  side-menu `admin_reports` item); approve/remove with reason; notify author.
+- [ ] **Application history** — approved/rejected lists with filters; re-open a decision; see reviewer
+  notes + timestamps.
+- [ ] **Audit log** — append-only `admin_audit/{id}` for every admin action (who/what/when/target);
+  admin-only rules.
+- [ ] **Definition:** an admin can run the marketplace end-to-end (review, approve, moderate, manage
+  users) from in-app, with every action logged.
+
+### 12.6 — Cross-Cutting Hardening & "Didn't-Think-Of" Items · Medium · ongoing
+
+- [ ] **i18n parity CI gate** — a test/script that fails CI if `en.json` and `tr.json` diverge in key
+  set (count + paths). Would have caught the agent-collision key loss.
+- [ ] **Shared-file parallel-write guard** — process rule + (optionally) a pre-write merge check so two
+  agents/edits never clobber the same JSON/rules file; document in CLAUDE.md.
+- [ ] **Notification copy for application lifecycle** — verify `NotificationPresenter` renders
+  `coachApplicationApproved/Rejected`, `gymApplicationApproved/Rejected` (types already emitted by
+  `AdminService`) with EN+TR `notifications.feed.*` keys; add if missing.
+- [ ] **AI state polish** — flagship loading (branded shimmer, not bare spinner), empty ("no projection
+  yet"), error (retry), and "limit reached" states across Twin, insight card, chat, scan. (R7)
+- [ ] **Analytics funnel** — instrument `ai_generated`, `ai_cache_hit`, `credit_consumed`,
+  `credit_exhausted`, `paywall_shown`, `credit_topup_purchased`, `role_upgrade_completed`,
+  `admin_action`. Let data drive pricing/limits.
+- [ ] **Accessibility & reduced motion** on every new surface (credits sheet, admin screens, twin
+  history) — semantic labels, `MediaQuery.disableAnimations`, large-text safe.
+- [ ] **Firestore indexes** — add composite/single-field indexes for the new admin/history queries
+  (`ai_twin_projections` by `generatedAt`, applications by `status`+`submittedAt`, audit by `createdAt`)
+  to `firestore.indexes.json`.
+- [ ] **Currency consistency sweep** — confirm no `$`/`€` remain anywhere AI/credits/premium pricing is
+  shown; ₺ + Türkiye only (R6).
+
+### Definition of Done — Phase 12
+☑ Every AI surface respects the active language (no English leak in TR) · ☑ Twin/insight load saved
+data instantly and only generate on demand — no per-tap refire · ☑ Daily quotas live (free 2/day,
+premium 20/day), cached views free, survives restart · ☑ Remaining-credits is tappable → buy
+credits/premium, purchase reflects live · ☑ Coach + admin have full navigation parity with gym; admin
+runs review/moderation/users in-app with audit log · ☑ i18n parity enforced in CI · ☑ All new copy
+EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ `flutter analyze lib/`
+0 errors · ☑ CLAUDE.md + this roadmap updated (R8).
 
 ---
 

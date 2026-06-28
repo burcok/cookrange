@@ -679,7 +679,11 @@
       "register_gym": "Register Your Gym",
       "register_gym_sub": "Manage members, check-ins & analytics",
       "become_coach": "Become a Coach",
-      "become_coach_sub": "Coach clients and build your roster"
+      "become_coach_sub": "Coach clients and build your roster",
+      "my_gym": "My Gym",
+      "my_gym_sub": "Manage your gym profile and members",
+      "my_coaching": "My Coaching",
+      "my_coaching_sub": "Manage your clients and coaching profile"
     },
     "earnings": {
       "title": "My Earnings",
@@ -694,7 +698,7 @@
       "no_earnings": "No Earnings Yet",
       "no_earnings_msg": "Refer friends or coach clients to start earning.",
       "how_to_earn": "How to Earn",
-      "referral_earn": "Refer a friend: earn €5 when they upgrade to Premium",
+      "referral_earn": "Refer a friend: earn ₺5 when they upgrade to Premium",
       "coaching_earn": "Coaching (coming soon): earn commission per session",
       "program_earn": "Sell a program: earn from marketplace sales",
       "payout_requested": "Payout Requested",
@@ -1158,7 +1162,8 @@
     "find_coach": "Find a Coach",
     "section_grow": "Grow With Cookrange",
     "register_gym": "Register Your Gym",
-    "become_coach": "Become a Coach"
+    "become_coach": "Become a Coach",
+    "my_coaching": "My Coaching"
   },
   "account_suspended": {
     "title_header": "ACCOUNT STATUS",
@@ -1751,7 +1756,19 @@
     "member_leaderboard": "Leaderboard",
     "member_community_sub": "Posts & announcements",
     "member_checkin_sub": "Scan QR or check in by location",
-    "member_leaderboard_sub": "This week's top members"
+    "member_leaderboard_sub": "This week's top members",
+    "app_pending_title": "Application Submitted",
+    "app_pending_body": "Your gym application is under review. We will notify you once our team has verified your documents.",
+    "app_rejected_title": "Application Rejected",
+    "app_rejected_body": "Unfortunately your gym application was not approved. You may reapply after reviewing the feedback below.",
+    "app_reviewer_notes": "Reviewer Notes",
+    "app_pending_step1": "Application submitted successfully",
+    "app_pending_step2": "Under review by our team (2-5 business days)",
+    "app_pending_step3": "You will receive a notification with the result",
+    "app_reapply": "Reapply",
+    "description": "Description",
+    "address": "Address",
+    "contact": "Contact Phone"
   },
   "coach": {
     "setup_title": "Coach Profile Setup",
@@ -1818,7 +1835,22 @@
     "discovery_empty_msg": "No coaches match your search yet. Why not become one?",
     "become_coach": "Become a Coach",
     "discovery_search_hint": "Search coaches by name or specialty",
-    "discovery_per_hour": "/hr"
+    "discovery_per_hour": "/hr",
+    "app_pending_title": "Application Submitted",
+    "app_pending_body": "Your coach application is under review. We will notify you once our team has reviewed your documents.",
+    "app_rejected_title": "Application Rejected",
+    "app_rejected_body": "Unfortunately your coach application was not approved at this time. You may reapply after reviewing the feedback below.",
+    "app_more_info_title": "More Information Required",
+    "app_more_info_body": "Our team needs additional information before proceeding with your application.",
+    "app_reviewer_notes": "Reviewer Notes",
+    "app_pending_step1": "Application submitted successfully",
+    "app_pending_step2": "Under review by our team (1-3 business days)",
+    "app_pending_step3": "You will receive a notification with the result",
+    "app_reapply": "Reapply",
+    "request_coaching": "Request Coaching",
+    "request_pending": "Request Pending",
+    "request_accepted": "Now a Client",
+    "request_self": "This is you"
   },
   "ai": {
     "twin_title": "AI Body Projection",
@@ -1842,7 +1874,12 @@
     "insight_risk_low": "Log your meals to keep your streak going.",
     "insight_dismiss": "Dismiss",
     "insight_see_projection": "See Projection →",
-    "risk_cta": "Log Now"
+    "risk_cta": "Log Now",
+    "twin_history_title": "Past Projections",
+    "twin_history_empty": "No past projections yet. Your first projection will appear here.",
+    "twin_history_date": "Generated on {date}",
+    "twin_history_motivation": "Motivation",
+    "twin_history_goal_date": "Goal date: {date}"
   },
   "ai_credits": {
     "unlimited": "Unlimited",
@@ -1913,5 +1950,25 @@
       "message": "Please enable this permission in Settings to use this feature."
     },
     "open_settings": "Open Settings"
+  },
+  "admin": {
+    "panel_title": "Admin Panel",
+    "tab_coaches": "Coaches",
+    "tab_gyms": "Gyms",
+    "no_pending": "All clear",
+    "no_pending_coaches": "No pending coach applications",
+    "no_pending_gyms": "No pending gym applications",
+    "review_title": "Review Application",
+    "action_approve": "Approve",
+    "action_reject": "Reject",
+    "action_approved": "Application approved",
+    "action_rejected": "Application rejected",
+    "reject_notes_title": "Rejection reason",
+    "reject_notes_hint": "Explain why the application was rejected...",
+    "reject_confirm": "Confirm Rejection",
+    "evidence_docs": "Evidence Documents",
+    "references": "References",
+    "business_doc": "Business License",
+    "gym_photo": "Gym Photo"
   }
 }

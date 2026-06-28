@@ -15,7 +15,7 @@ class AIService {
 
   static const String _baseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
-  static const String _model = 'google/gemma-4-26b-a4b-it:free';
+  static const String _model = 'openrouter/free';
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(seconds: 2);
 
@@ -313,7 +313,8 @@ class AIService {
       return choices[0]['message']['content'] as String;
     }
     if (response.statusCode == 429 || response.statusCode >= 500) {
-      throw AIRetryableException('HTTP ${response.statusCode}: ${response.body}');
+      throw AIRetryableException(
+          'HTTP ${response.statusCode}: ${response.body}');
     }
     throw AIFatalException('HTTP ${response.statusCode}: ${response.body}');
   }
@@ -382,8 +383,7 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
         final token = await user?.getIdToken();
         if (token != null) headers['Authorization'] = 'Bearer $token';
         try {
-          final appCheckToken =
-              await FirebaseAppCheck.instance.getToken();
+          final appCheckToken = await FirebaseAppCheck.instance.getToken();
           if (appCheckToken != null) {
             headers['X-Firebase-AppCheck'] = appCheckToken;
           }

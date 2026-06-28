@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/localization/app_localizations.dart';
@@ -19,8 +20,12 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
-  bool _requestSent = false;
   bool _isSending = false;
+
+  String get _currentUid =>
+      FirebaseAuth.instance.currentUser?.uid ?? '';
+
+  bool get _isSelf => widget.coachUid == _currentUid;
 
   @override
   void initState() {
@@ -41,15 +46,12 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
   }
 
   Future<void> _sendRequest() async {
-    if (_isSending || _requestSent) return;
+    if (_isSending) return;
     setState(() => _isSending = true);
     try {
-      await CoachService().sendClientRequest(widget.coachUid);
+      await CoachService().requestCoaching(widget.coachUid, _currentUid);
       if (!mounted) return;
-      setState(() {
-        _requestSent = true;
-        _isSending = false;
-      });
+      setState(() => _isSending = false);
       unawaited(HapticFeedback.mediumImpact());
       AppSnackBar.success(
           context,
@@ -143,15 +145,41 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                         ],
                         _buildStatsRow(context, profile, palette),
                         const SizedBox(height: 32),
-                        if (profile.isAcceptingClients)
-                          AppButton(
-                            label: _requestSent
-                                ? l10n.translate('coach.profile_request_sent')
-                                : l10n
+                        if (_isSelf)
+                          _InfoBanner(
+                            message: l10n.translate('coach.request_self'),
+                            color: palette.info,
+                            palette: palette,
+                          )
+                        else if (profile.isAcceptingClients)
+                          StreamBuilder<String?>(
+                            stream: CoachService().getRequestStatusStream(
+                                widget.coachUid, _currentUid),
+                            builder: (context, snap) {
+                              final status = snap.data;
+                              if (status == 'accepted') {
+                                return _InfoBanner(
+                                  message: l10n.translate(
+                                      'coach.request_accepted'),
+                                  color: palette.success,
+                                  palette: palette,
+                                );
+                              }
+                              if (status == 'pending') {
+                                return _InfoBanner(
+                                  message: l10n.translate(
+                                      'coach.request_pending'),
+                                  color: palette.warning,
+                                  palette: palette,
+                                );
+                              }
+                              return AppButton(
+                                label: l10n
                                     .translate('coach.profile_request_btn'),
-                            onPressed: _requestSent || _isSending
-                                ? null
-                                : _sendRequest,
+                                onPressed: _isSending ? null : _sendRequest,
+                                loading: _isSending,
+                              );
+                            },
                           )
                         else
                           Container(
@@ -318,13 +346,52 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
           Expanded(
             child: _StatCard(
               icon: Icons.attach_money_rounded,
-              value: '\$${profile.hourlyRate!.toStringAsFixed(0)}/hr',
+              value: '₺${profile.hourlyRate!.toStringAsFixed(0)}/saat',
               label: 'Rate',
               palette: palette,
             ),
           ),
         ],
       ],
+    );
+  }
+}
+
+class _InfoBanner extends StatelessWidget {
+  final String message;
+  final Color color;
+  final AppPalette palette;
+
+  const _InfoBanner({
+    required this.message,
+    required this.color,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline_rounded, color: color, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: AppText.of(context).bodyM.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

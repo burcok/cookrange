@@ -118,7 +118,7 @@ class _AffiliateEarningsScreenState extends State<AffiliateEarningsScreen> {
               Expanded(
                 child: _StatCard(
                   label: l.translate('settings.earnings.total'),
-                  value: '€${summary.totalEarned.toStringAsFixed(2)}',
+                  value: '₺${summary.totalEarned.toStringAsFixed(2)}',
                   valueColor: palette.success,
                   palette: palette,
                   t: t,
@@ -128,7 +128,7 @@ class _AffiliateEarningsScreenState extends State<AffiliateEarningsScreen> {
               Expanded(
                 child: _StatCard(
                   label: l.translate('settings.earnings.pending'),
-                  value: '€${summary.pendingAmount.toStringAsFixed(2)}',
+                  value: '₺${summary.pendingAmount.toStringAsFixed(2)}',
                   valueColor: palette.warning,
                   palette: palette,
                   t: t,
@@ -138,7 +138,7 @@ class _AffiliateEarningsScreenState extends State<AffiliateEarningsScreen> {
               Expanded(
                 child: _StatCard(
                   label: l.translate('settings.earnings.paid_out'),
-                  value: '€${summary.paidAmount.toStringAsFixed(2)}',
+                  value: '₺${summary.paidAmount.toStringAsFixed(2)}',
                   valueColor: palette.textSecondary,
                   palette: palette,
                   t: t,
@@ -153,7 +153,7 @@ class _AffiliateEarningsScreenState extends State<AffiliateEarningsScreen> {
           if (summary.pendingAmount > 0) ...[
             AppButton(
               label:
-                  '${l.translate('settings.earnings.request_payout')} €${summary.pendingAmount.toStringAsFixed(2)}',
+                  '${l.translate('settings.earnings.request_payout')} ₺${summary.pendingAmount.toStringAsFixed(2)}',
               onPressed: _payoutLoading ? null : () => _requestPayout(summary),
               loading: _payoutLoading,
             ),
@@ -379,7 +379,7 @@ class _CommissionRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '+€${commission.amount.toStringAsFixed(2)}',
+                  '+₺${commission.amount.toStringAsFixed(2)}',
                   style: t.bodyM.copyWith(
                     color: palette.success,
                     fontWeight: FontWeight.w700,

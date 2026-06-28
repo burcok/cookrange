@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/models/gym_application_model.dart';
 import '../../core/models/gym_model.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/services/gym_application_service.dart';
 import '../../core/services/gym_service.dart';
 import '../../core/widgets/ds/ds.dart';
+import 'gym_application_pending_screen.dart';
 import 'gym_community_screen.dart';
 import 'gym_discovery_screen.dart';
 import 'gym_members_screen.dart';
@@ -220,21 +223,45 @@ class _GymDashboardScreenState extends State<GymDashboardScreen>
     bool isDark,
     AppLocalizations l10n,
   ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
-      child: Column(
-        children: [
-          _SetupCard(
-            palette: palette,
-            primary: primary,
-            isDark: isDark,
-            l10n: l10n,
-            onSetup: _goSetup,
+    final uid = context.read<UserProvider>().user?.uid ?? '';
+    return StreamBuilder<GymApplicationModel?>(
+      stream: GymApplicationService().getMyApplicationStream(uid),
+      builder: (ctx, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(20),
+            child: AppSkeletonList(itemCount: 3),
+          );
+        }
+        final app = snap.data;
+
+        // Pending or rejected → show status screen body
+        if (app != null) {
+          return GymApplicationPendingScreen(
+            showBackButton: false,
+            status: app.status,
+            reviewerNotes: app.reviewerNotes,
+          );
+        }
+
+        // No application → show setup CTA
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+          child: Column(
+            children: [
+              _SetupCard(
+                palette: palette,
+                primary: primary,
+                isDark: isDark,
+                l10n: l10n,
+                onSetup: _goSetup,
+              ),
+              const SizedBox(height: 24),
+              _FeaturePreview(palette: palette, primary: primary, isDark: isDark, l10n: l10n),
+            ],
           ),
-          const SizedBox(height: 24),
-          _FeaturePreview(palette: palette, primary: primary, isDark: isDark, l10n: l10n),
-        ],
-      ),
+        );
+      },
     );
   }
 

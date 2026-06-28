@@ -679,7 +679,11 @@
       "register_gym": "Salonunu Kaydet",
       "register_gym_sub": "Üyeleri, girişleri ve analitiği yönet",
       "become_coach": "Antrenör Ol",
-      "become_coach_sub": "Danışanları yönet ve listeni oluştur"
+      "become_coach_sub": "Danışanları yönet ve listeni oluştur",
+      "my_gym": "Salonumm",
+      "my_gym_sub": "Spor salonu profilinizi ve üyelerinizi yönetin",
+      "my_coaching": "Antrenörlüğüm",
+      "my_coaching_sub": "Müşterilerinizi ve koçluk profilinizi yönetin"
     },
     "earnings": {
       "title": "Kazançlarım",
@@ -694,7 +698,7 @@
       "no_earnings": "Henüz Kazanç Yok",
       "no_earnings_msg": "Arkadaşlarınızı davet edin veya koçluk yapın ve kazanmaya başlayın.",
       "how_to_earn": "Nasıl Kazanılır?",
-      "referral_earn": "Arkadaşını davet et: Premium'a geçince €5 kazan",
+      "referral_earn": "Arkadaşını davet et: Premium'a geçince ₺5 kazan",
       "coaching_earn": "Koçluk (yakında): her seans için komisyon kazan",
       "program_earn": "Program sat: pazar yerinden kazanç elde et",
       "payout_requested": "Ödeme Talep Edildi",
@@ -1158,7 +1162,8 @@
     "find_coach": "Antrenör Bul",
     "section_grow": "Cookrange ile Büyü",
     "register_gym": "Salonunu Kaydet",
-    "become_coach": "Antrenör Ol"
+    "become_coach": "Antrenör Ol",
+    "my_coaching": "Antrenörlüğüm"
   },
   "account_suspended": {
     "title_header": "HESAP DURUMU",
@@ -1751,7 +1756,19 @@
     "member_leaderboard": "Sıralama",
     "member_community_sub": "Gönderiler ve duyurular",
     "member_checkin_sub": "QR tarat veya konumla giriş yap",
-    "member_leaderboard_sub": "Bu haftanın en iyileri"
+    "member_leaderboard_sub": "Bu haftanın en iyileri",
+    "app_pending_title": "Başvuru Gönderildi",
+    "app_pending_body": "Spor salonu başvurunuz inceleniyor. Ekibimiz belgelerinizi doğruladıktan sonra sizi bilgilendireceğiz.",
+    "app_rejected_title": "Başvuru Reddedildi",
+    "app_rejected_body": "Maalesef spor salonu başvurunuz onaylanmadı. Aşağıdaki geri bildirimi inceledikten sonra yeniden başvurabilirsiniz.",
+    "app_reviewer_notes": "İnceleyici Notları",
+    "app_pending_step1": "Başvuru başarıyla gönderildi",
+    "app_pending_step2": "Ekibimiz tarafından inceleniyor (2-5 iş günü)",
+    "app_pending_step3": "Sonuç hakkında bildirim alacaksınız",
+    "app_reapply": "Yeniden Başvur",
+    "description": "Açıklama",
+    "address": "Adres",
+    "contact": "İletişim Telefonu"
   },
   "coach": {
     "setup_title": "Antrenör Profili Kurulumu",
@@ -1818,7 +1835,22 @@
     "discovery_empty_msg": "Aramanızla eşleşen antrenör yok. Neden siz olmuyorsunuz?",
     "become_coach": "Antrenör Ol",
     "discovery_search_hint": "İsim veya uzmanlığa göre antrenör ara",
-    "discovery_per_hour": "/saat"
+    "discovery_per_hour": "/saat",
+    "app_pending_title": "Başvuru Gönderildi",
+    "app_pending_body": "Antrenörlük başvurunuz inceleniyor. Ekibimiz belgelerinizi inceledikten sonra sizi bilgilendireceğiz.",
+    "app_rejected_title": "Başvuru Reddedildi",
+    "app_rejected_body": "Maalesef antrenörlük başvurunuz bu sefer onaylanmadı. Aşağıdaki geri bildirimi inceledikten sonra yeniden başvurabilirsiniz.",
+    "app_more_info_title": "Ek Bilgi Gerekli",
+    "app_more_info_body": "Ekibimiz başvurunuzu inceledi ve devam etmeden önce ek bilgiye ihtiyaç duymaktadır.",
+    "app_reviewer_notes": "İnceleyici Notları",
+    "app_pending_step1": "Başvuru başarıyla gönderildi",
+    "app_pending_step2": "Ekibimiz tarafından inceleniyor (1-3 iş günü)",
+    "app_pending_step3": "Sonuç hakkında bildirim alacaksınız",
+    "app_reapply": "Yeniden Başvur",
+    "request_coaching": "Koçluk İste",
+    "request_pending": "İstek Bekliyor",
+    "request_accepted": "Artık Müşteri",
+    "request_self": "Bu sizsiniz"
   },
   "ai": {
     "twin_title": "Yapay Zeka Vücut Projeksiyonu",
@@ -1842,7 +1874,12 @@
     "insight_risk_low": "Serinizi sürdürmek için öğünlerinizi kaydedin.",
     "insight_dismiss": "Kapat",
     "insight_see_projection": "Projeksiyona Git →",
-    "risk_cta": "Şimdi Kaydet"
+    "risk_cta": "Şimdi Kaydet",
+    "twin_history_title": "Geçmiş Projeksiyonlar",
+    "twin_history_empty": "Henüz geçmiş projeksiyon yok. İlk projeksiyonunuz burada görünecek.",
+    "twin_history_date": "{date} tarihinde oluşturuldu",
+    "twin_history_motivation": "Motivasyon",
+    "twin_history_goal_date": "Hedef tarihi: {date}"
   },
   "ai_credits": {
     "unlimited": "Sınırsız",
@@ -1913,5 +1950,25 @@
       "message": "Bu özelliği kullanmak için lütfen Ayarlar'dan bu izni etkinleştirin."
     },
     "open_settings": "Ayarları Aç"
+  },
+  "admin": {
+    "panel_title": "Admin Paneli",
+    "tab_coaches": "Antrenörler",
+    "tab_gyms": "Spor Salonları",
+    "no_pending": "Temiz",
+    "no_pending_coaches": "Bekleyen antrenör başvurusu yok",
+    "no_pending_gyms": "Bekleyen spor salonu başvurusu yok",
+    "review_title": "Başvuruyu İncele",
+    "action_approve": "Onayla",
+    "action_reject": "Reddet",
+    "action_approved": "Başvuru onaylandı",
+    "action_rejected": "Başvuru reddedildi",
+    "reject_notes_title": "Red nedeni",
+    "reject_notes_hint": "Başvurunun neden reddedildiğini açıklayın...",
+    "reject_confirm": "Reddi Onayla",
+    "evidence_docs": "Kanıt Belgeleri",
+    "references": "Referanslar",
+    "business_doc": "İşletme Lisansı",
+    "gym_photo": "Salon Fotoğrafı"
   }
 }

@@ -13,7 +13,7 @@ import 'sharing_service.dart';
 ///
 /// Flow:
 ///  1. User A calls [getOrCreateCode] → receives e.g. "AB3X9K".
-///  2. A shares the link via [shareCode] → "cookrange.app/invite/AB3X9K".
+///  2. A shares the link via [shareCode] → "cookrangeapp.com/invite/AB3X9K".
 ///  3. User B installs, taps the link (deep-linked) or types the code in
 ///     Settings → calls [applyCode("AB3X9K", uidOfB)].
 ///  4. Both A and B receive a 7-day premium trial.
@@ -96,7 +96,9 @@ class ReferralService {
 
       if (ownerUid == uid) return 'You cannot use your own code';
       if (usedByUids.contains(uid)) return 'You have already used this code';
-      if (usedByUids.length >= maxUses) return 'This code has reached its usage limit';
+      if (usedByUids.length >= maxUses) {
+        return 'This code has reached its usage limit';
+      }
 
       // Also prevent a user from applying any code if they already used one.
       final myDoc = await _db.doc('users/$uid').get();
@@ -143,10 +145,12 @@ class ReferralService {
       unawaited(CommissionService().recordReferralCommission(
         ownerUid: ownerUid,
         refereeUid: uid,
-        refereeName: FirebaseAuth.instance.currentUser?.displayName ?? 'New User',
+        refereeName:
+            FirebaseAuth.instance.currentUser?.displayName ?? 'New User',
       ));
 
-      debugPrint('ReferralService: code $code applied by $uid → rewarded $ownerUid');
+      debugPrint(
+          'ReferralService: code $code applied by $uid → rewarded $ownerUid');
       return null; // success
     } catch (e, stack) {
       unawaited(CrashlyticsService()
@@ -158,8 +162,10 @@ class ReferralService {
   // ── Sharing ──────────────────────────────────────────────────────────────
 
   /// Share the user's referral link via the OS share sheet.
-  Future<void> shareCode(BuildContext context, String code, {Rect? sharePositionOrigin}) async {
-    await SharingService().shareReferral(context, code: code, sharePositionOrigin: sharePositionOrigin);
+  Future<void> shareCode(BuildContext context, String code,
+      {Rect? sharePositionOrigin}) async {
+    await SharingService().shareReferral(context,
+        code: code, sharePositionOrigin: sharePositionOrigin);
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -169,12 +175,14 @@ class ReferralService {
     final rng = Random.secure();
 
     for (var attempt = 0; attempt < 10; attempt++) {
-      final code = List.generate(6, (_) => chars[rng.nextInt(chars.length)]).join();
+      final code =
+          List.generate(6, (_) => chars[rng.nextInt(chars.length)]).join();
       final doc = await _db.doc('referrals/$code').get();
       if (!doc.exists) return code;
     }
     // Fallback: timestamp suffix ensures uniqueness.
-    final ts = DateTime.now().millisecondsSinceEpoch.toRadixString(36).toUpperCase();
+    final ts =
+        DateTime.now().millisecondsSinceEpoch.toRadixString(36).toUpperCase();
     return ts.substring(max(0, ts.length - 6));
   }
 }

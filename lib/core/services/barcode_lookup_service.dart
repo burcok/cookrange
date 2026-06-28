@@ -37,11 +37,13 @@ class BarcodeNotFoundError implements Exception {
 
 /// Looks up nutritional data by EAN/UPC barcode using Open Food Facts API.
 class BarcodeLookupService {
-  static final BarcodeLookupService _instance = BarcodeLookupService._internal();
+  static final BarcodeLookupService _instance =
+      BarcodeLookupService._internal();
   factory BarcodeLookupService() => _instance;
   BarcodeLookupService._internal();
 
-  static const String _baseUrl = 'https://world.openfoodfacts.org/api/v0/product';
+  static const String _baseUrl =
+      'https://world.openfoodfacts.org/api/v0/product';
 
   // Simple in-memory cache — keyed by barcode
   final Map<String, BarcodeProduct> _cache = {};
@@ -54,7 +56,7 @@ class BarcodeLookupService {
 
     final uri = Uri.parse('$_baseUrl/$barcode.json');
     final response = await http.get(uri, headers: {
-      'User-Agent': 'Cookrange/1.0 (contact@cookrange.app)',
+      'User-Agent': 'Cookrange/1.0 (contact@cookrangeapp.com)',
     }).timeout(const Duration(seconds: 10));
 
     if (response.statusCode != 200) {

@@ -95,7 +95,7 @@ class MealPlanCalendarService {
 
         final uid = 'cookrange-${mealType.substring(0, 2)}-'
             '${_fmt(day.date.year)}${_fmt(day.date.month)}${_fmt(day.date.day)}'
-            '@cookrange.app';
+            '@cookrangeapp.com';
 
         String calStr(String dt) =>
             '${_fmt(dt.substring(0, 4))}${_fmt(dt.substring(5, 7))}'
