@@ -14,9 +14,7 @@ import 'widgets/signal_dialog.dart';
 import 'widgets/select_friend_sheet.dart';
 import 'widgets/create_group_chat_sheet.dart';
 import 'chat_detail_screen.dart';
-import '../../core/providers/navigation_provider.dart';
 import '../community/widgets/glass_refresher.dart';
-import '../../core/widgets/side_menu.dart';
 import '../../core/widgets/unified_action_sheet.dart';
 import '../../core/providers/theme_provider.dart';
 import 'ai_chat_screen.dart';
@@ -29,7 +27,7 @@ class ChatListScreen extends StatefulWidget {
 }
 
 class _ChatListScreenState extends State<ChatListScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   int _selectedFilterIndex = 0;
 
   // Power FAB Animation
@@ -50,20 +48,12 @@ class _ChatListScreenState extends State<ChatListScreen>
     setState(() {});
   }
 
-  // Menu Animation
-  late AnimationController _menuController;
-  NavigationProvider? _navProvider;
-
   // Stream state
   late Stream<List<ChatModel>> _chatStream;
 
   @override
   void initState() {
     super.initState();
-    _menuController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
 
     final currentUser = context.read<UserProvider>().user;
     if (currentUser != null) {
@@ -71,11 +61,6 @@ class _ChatListScreenState extends State<ChatListScreen>
     } else {
       _chatStream = const Stream.empty();
     }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _navProvider = context.read<NavigationProvider>();
-      _navProvider?.addListener(_handleNavChange);
-    });
 
     _fabController = AnimationController(
       vsync: this,
@@ -102,26 +87,9 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   @override
   void dispose() {
-    _navProvider?.removeListener(_handleNavChange);
-    _menuController.dispose();
     _fabController.dispose();
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _handleNavChange() {
-    if (!mounted) return;
-    final nav = context.read<NavigationProvider>();
-
-    if (nav.isMenuOpen &&
-        _menuController.status != AnimationStatus.forward &&
-        _menuController.status != AnimationStatus.completed) {
-      _menuController.forward();
-    } else if (!nav.isMenuOpen &&
-        _menuController.status != AnimationStatus.reverse &&
-        _menuController.status != AnimationStatus.dismissed) {
-      _menuController.reverse();
-    }
   }
 
   void _toggleFab() {
@@ -284,18 +252,6 @@ class _ChatListScreenState extends State<ChatListScreen>
             child: _buildFab(context, palette),
           ),
 
-          // Side Menu Overlay
-          AnimatedBuilder(
-            animation: _menuController,
-            builder: (context, child) {
-              if (_menuController.isDismissed) return const SizedBox.shrink();
-              return child!;
-            },
-            child: SideMenu(
-              navProvider: context.read<NavigationProvider>(),
-              animationController: _menuController,
-            ),
-          ),
         ],
       ),
     );
@@ -338,14 +294,14 @@ class _ChatListScreenState extends State<ChatListScreen>
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Back button
                     IconButton(
-                      icon: const Icon(Icons.menu, size: 28),
-                      color: palette.textPrimary,
-                      onPressed: () =>
-                          context.read<NavigationProvider>().toggleMenu(true),
+                      icon: Icon(Icons.arrow_back_ios_new_rounded,
+                          size: 20, color: palette.textPrimary),
+                      onPressed: () => Navigator.pop(context),
                     ),
+                    // Title or search field
                     Expanded(
                       child: _isSearchOpen
                           ? TextField(
@@ -355,27 +311,34 @@ class _ChatListScreenState extends State<ChatListScreen>
                                 hintText: AppLocalizations.of(context)
                                     .translate('chat.list_title'),
                                 border: InputBorder.none,
-                                hintStyle: TextStyle(
-                                  color: palette.textSecondary,
-                                ),
+                                hintStyle:
+                                    TextStyle(color: palette.textSecondary),
                               ),
                               style: TextStyle(
                                 color: palette.textPrimary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
                               ),
-                              onChanged: (val) {
-                                setState(() {
-                                  _searchQuery = val;
-                                });
-                              },
+                              onChanged: (val) =>
+                                  setState(() => _searchQuery = val),
                             )
-                          : const SizedBox(),
+                          : Text(
+                              AppLocalizations.of(context)
+                                  .translate('chat.list_title'),
+                              style: TextStyle(
+                                color: palette.textPrimary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                                fontFamily: 'Poppins',
+                              ),
+                            ),
                     ),
+                    // Search toggle
                     IconButton(
-                      icon: Icon(_isSearchOpen ? Icons.close : Icons.search,
-                          size: 28),
-                      color: palette.textPrimary,
+                      icon: Icon(
+                          _isSearchOpen ? Icons.close : Icons.search,
+                          size: 24,
+                          color: palette.textPrimary),
                       onPressed: () {
                         setState(() {
                           if (_isSearchOpen) {
@@ -388,9 +351,10 @@ class _ChatListScreenState extends State<ChatListScreen>
                         });
                       },
                     ),
+                    // Filter toggle
                     IconButton(
                       icon: Icon(Icons.tune,
-                          size: 28,
+                          size: 24,
                           color: _selectedFilterIndex != 0
                               ? primary
                               : palette.textPrimary),

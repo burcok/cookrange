@@ -1,3 +1,4 @@
+import 'package:cookrange/core/providers/theme_provider.dart';
 import 'package:cookrange/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -774,7 +775,7 @@ class _SplashScreenState extends State<SplashScreen>
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 16,
-                          color: Theme.of(context).colorScheme.secondary,
+                          color: context.watch<ThemeProvider>().primaryColor,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
