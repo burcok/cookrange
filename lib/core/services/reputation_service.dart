@@ -50,7 +50,6 @@ class ReputationService {
 
   static const int _pointsPerStreakDay = 2;
   static const int _pointsPerPost = 5;
-  static const int _pointsPerChallenge = 10;
 
   static ReputationTier _tierFromScore(int score) {
     if (score >= 700) return ReputationTier.legend;
@@ -61,27 +60,13 @@ class ReputationService {
   }
 
   /// Compute reputation for a user given their streak and post count.
-  /// Also fetches challenge participation count from Firestore.
   Future<ReputationData> computeReputation({
     required String uid,
     required int streak,
     required int postCount,
   }) async {
-    int challengeCount = 0;
-    try {
-      final snap = await _db
-          .collection('challenges')
-          .where('participantIds', arrayContains: uid)
-          .count()
-          .get();
-      challengeCount = snap.count ?? 0;
-    } catch (e) {
-      debugPrint('ReputationService: challenge count error: $e');
-    }
-
     final score = streak * _pointsPerStreakDay +
-        postCount * _pointsPerPost +
-        challengeCount * _pointsPerChallenge;
+        postCount * _pointsPerPost;
 
     final tier = _tierFromScore(score);
     await _cacheScore(uid, score);

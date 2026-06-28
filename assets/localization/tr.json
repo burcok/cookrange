@@ -725,9 +725,6 @@
     "post_subject": "Cookrange Topluluk Gönderisi",
     "shopping_list_prefix": "🛒 {title}\n\n",
     "shopping_list_default_prefix": "🛒 Alışveriş Listesi {date}\n\n",
-    "challenge_goal": "\n🎯 Hedef: {goal}",
-    "challenge_text": "💪 Cookrange'de \"{name}\" hedefine sen de katıl!{goalLine}\n\n{link}\n\n{appTag}",
-    "challenge_subject": "\"{name}\" Hedefine Cookrange'de Katıl",
     "referral_text": "🎁 Yapay zeka destekli beslenme uygulaması Cookrange'e katıl!\n\nDavet kodumu (**{code}**) kullanarak sen de ben de {rewardDays} ücretsiz Premium kazanalım.\n\n{link}\n\n{appTag}",
     "referral_subject": "Cookrange'e Katıl — Ücretsiz Premium Daveti"
   },
@@ -1144,7 +1141,6 @@
     "section_account": "HESAP & DİĞER",
     "home": "Ana Sayfa",
     "meal_plan": "Yemek Planı",
-    "challenges": "Meydan Okumalar",
     "leaderboard": "Sıralama",
     "profile": "Hesabım",
     "settings": "Ayarlar",
@@ -1370,65 +1366,6 @@
     "empty": "Henüz veri yok.",
     "empty_friends": "Sıralamayı görmek için arkadaş ekle.",
     "error": "Sıralama yüklenemedi."
-  },
-  "challenge": {
-    "screen_title": "Meydan Okumalar",
-    "tab_active": "Aktif",
-    "tab_mine": "Katıldıklarım",
-    "create_btn": "Oluştur",
-    "empty_active": "Henüz aktif meydan okuma yok.\nİlk sen oluştur!",
-    "empty_mine": "Henüz bir meydan okumaya katılmadın.",
-    "error_loading": "Meydan okumalar yüklenemedi.",
-    "ended": "Sona Erdi",
-    "days_left": "{days}g kaldı",
-    "join": "Katıl",
-    "leave": "Ayrıl",
-    "my_progress": "İlerlemem",
-    "update_progress": "İlerlemeyi Güncelle",
-    "save_progress": "Kaydet",
-    "progress_hint": "Mevcut değeri girin",
-    "leaderboard": "Katılımcılar",
-    "type": {
-      "steps": "Adım",
-      "calories": "Kalori",
-      "workoutDays": "Antrenman Günü",
-      "custom": "Özel",
-      "custom_unit": "puan"
-    },
-    "difficulty": {
-      "all": "Tümü",
-      "easy": "Kolay",
-      "medium": "Orta",
-      "hard": "Zor"
-    },
-    "create": {
-      "title": "Yeni Meydan Okuma",
-      "name_label": "Meydan Okuma Adı",
-      "name_hint": "ör. Günde 10K Adım",
-      "desc_label": "Açıklama (isteğe bağlı)",
-      "desc_hint": "Bu meydan okuma hakkında ne söylemek istersiniz?",
-      "type_label": "Meydan Okuma Türü",
-      "difficulty_label": "Zorluk Seviyesi",
-      "goal_label": "Hedef",
-      "goal_hint": "Hedef değer",
-      "end_date_label": "Bitiş Tarihi",
-      "public_label": "Herkese Açık",
-      "public_subtitle": "Tüm topluluk üyeleri görebilir",
-      "btn": "Meydan Okuma Oluştur"
-    },
-    "sponsor": {
-      "label": "Sponsorlu",
-      "by": "Sponsor:",
-      "reward": "Ödül",
-      "add_sponsor": "Sponsor Bilgisi Ekle",
-      "sponsor_name": "Sponsor Adı",
-      "sponsor_reward": "Ödül Açıklaması",
-      "sponsor_url": "Sponsor Web Sitesi (isteğe bağlı)",
-      "learn_more": "Daha Fazla",
-      "badge_label": "Sponsorlu Meydan Okuma",
-      "reward_badge": "Kazan",
-      "public_disclaimer": "Sponsor bilgileri herkese açıktır"
-    }
   },
   "premium": {
     "badge": "Premium'a Geç",
@@ -1945,7 +1882,9 @@
     "docs_tap_upload": "Yüklemek için dokunun (PDF veya görsel)",
     "docs_uploaded": "Yüklendi",
     "docs_required_warning": "Lütfen gerekli belgeleri yükleyin.",
-    "docs_count": "{n}/2 belge yüklendi"
+    "docs_count": "{n}/2 belge yüklendi",
+    "sort_top_rated": "En Yüksek Puan",
+    "sort_most_active": "En Aktif"
   },
   "ai": {
     "twin_title": "Yapay Zeka Vücut Projeksiyonu",
@@ -2150,7 +2089,16 @@
     "reports_status_dismissed": "Reddedildi",
     "reports_status_removed": "Kaldırıldı",
     "id_doc": "Kimlik Belgesi",
-    "no_docs_warning": "Belge yüklenmemiş"
+    "no_docs_warning": "Belge yüklenmemiş",
+    "tab_audit": "Denetim Günlüğü",
+    "doc_coach_cert": "Antrenörlük Sertifikası",
+    "doc_id": "Kimlik Belgesi",
+    "doc_business_license": "İşletme Ruhsatı",
+    "doc_none": "Belge yok",
+    "audit_empty_title": "Denetim kaydı yok",
+    "audit_empty_msg": "Yönetici eylemleri burada görünecek.",
+    "audit_actor": "İşlemi yapan",
+    "audit_target": "Hedef"
   },
   "intro": {
     "skip": "Atla",
@@ -2174,10 +2122,10 @@
     "subtitle": "%{pct} tamamlandı",
     "step_photo": "Profil fotoğrafı ekle",
     "step_meal": "İlk öğününü kaydet",
-    "step_challenge": "Bir meydan okumaya katıl",
     "cta_photo": "Fotoğraf Ekle",
     "cta_meal": "Öğün Kaydet",
-    "cta_challenge": "Keşfet"
+    "step_weight": "İlk kilonuzu kaydedin",
+    "cta_weight": "Kaydet"
   },
   "whats_new": {
     "title": "Yenilikler",
@@ -2209,18 +2157,27 @@
     "gym": "Spor Salonları",
     "coach": "Antrenörler",
     "programs": "Programlar",
-    "challenges": "Meydan Okumalar",
     "gym_tagline": "Yakındaki spor salonlarını bul",
     "coach_tagline": "Kişisel antrenman al",
     "program_tagline": "AI destekli programları keşfet",
-    "challenge_tagline": "Yarış ve ödül kazan",
     "premium_title": "Tüm Özelliklerin Kilidini Aç",
-    "premium_subtitle": "Ekosisteme tam erişim için Premium'a geç"
+    "premium_subtitle": "Ekosisteme tam erişim için Premium'a geç",
+    "leaderboard": "Sıralama",
+    "leaderboard_tagline": "Seri sıralamada yüksel"
   },
   "role": {
     "consumer": "Üye",
     "coach": "Antrenör",
     "gym_owner": "Salon Sahibi",
     "admin": "Admin"
+  },
+  "discovery": {
+    "filter_city": "Şehir",
+    "filter_district": "İlçe",
+    "filter_all": "Tümü",
+    "filter_clear": "Filtreleri temizle",
+    "sort_name": "A–Z",
+    "sort_popular": "Popüler",
+    "sort_newest": "En yeni"
   }
 }

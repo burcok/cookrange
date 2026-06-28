@@ -66,6 +66,19 @@ class AppPalette {
   final Color shimmerBase;
   final Color shimmerHighlight;
 
+  // ── Glassmorphism tokens ──
+  /// Semi-transparent frosted background fill for glass surfaces.
+  final Color glassFill;
+  /// Bright edge stroke that gives glass its luminous border.
+  final Color glassStroke;
+  /// Subtle inner top-edge highlight for depth on glass surfaces.
+  final Color glassHighlight;
+
+  /// Blur sigma presets — pick the right tier per elevation context.
+  static const double glassBlurSubtle = 8.0;
+  static const double glassBlurDefault = 16.0;
+  static const double glassBlurStrong = 28.0;
+
   const AppPalette({
     required this.background,
     required this.surface,
@@ -91,6 +104,9 @@ class AppPalette {
     required this.scrim,
     required this.shimmerBase,
     required this.shimmerHighlight,
+    required this.glassFill,
+    required this.glassStroke,
+    required this.glassHighlight,
   });
 
   static const AppPalette light = AppPalette(
@@ -118,6 +134,9 @@ class AppPalette {
     scrim: Color(0x99000000),
     shimmerBase: Color(0xFFE8EAEF),
     shimmerHighlight: Color(0xFFF6F7F9),
+    glassFill: Color(0xB3FFFFFF),    // white 70%
+    glassStroke: Color(0xBFFFFFFF),  // white 75%
+    glassHighlight: Color(0x80FFFFFF), // white 50%
   );
 
   static const AppPalette dark = AppPalette(
@@ -145,6 +164,9 @@ class AppPalette {
     scrim: Color(0xB3000000),
     shimmerBase: Color(0xFF1C2430),
     shimmerHighlight: Color(0xFF273140),
+    glassFill: Color(0x8C1E2531),    // surfaceElevated 55%
+    glassStroke: Color(0x1AFFFFFF),  // white 10%
+    glassHighlight: Color(0x14FFFFFF), // white 8%
   );
 
   /// Resolve the palette for the current theme brightness.

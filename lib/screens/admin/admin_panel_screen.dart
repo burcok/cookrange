@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -22,7 +23,7 @@ class AdminPanelScreen extends StatefulWidget {
 
 class _AdminPanelScreenState extends State<AdminPanelScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 5, vsync: this);
+  late final TabController _tabs = TabController(length: 6, vsync: this);
 
   @override
   void dispose() {
@@ -109,6 +110,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
               text: l10n.translate('admin.tab_history'),
               icon: const Icon(Icons.history_rounded, size: 18),
             ),
+            Tab(
+              text: l10n.translate('admin.tab_audit'),
+              icon: const Icon(Icons.security_rounded, size: 18),
+            ),
           ],
         ),
       ),
@@ -120,6 +125,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           _GymApplicationsList(palette: palette, l10n: l10n, t: t),
           _UsersTab(palette: palette, l10n: l10n, t: t),
           _HistoryTab(palette: palette, l10n: l10n, t: t),
+          _AuditLogTab(palette: palette, l10n: l10n, t: t),
         ],
       ),
     );
@@ -283,77 +289,76 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    return AppGlassCard(
       onTap: onTap,
-      child: Padding(
-        padding: EdgeInsets.all(14.r),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Icon + badge row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 40.r,
-                  height: 40.r,
-                  decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10.r),
-                  ),
-                  child: Icon(icon, color: accentColor, size: 20.r),
+      blur: AppPalette.glassBlurSubtle,
+      padding: EdgeInsets.all(14.r),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Icon + badge row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 40.r,
+                height: 40.r,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10.r),
                 ),
-                StreamBuilder<int>(
-                  stream: stream,
-                  builder: (context, snap) {
-                    final count = snap.data ?? 0;
-                    if (!showBadgeWhenNonZero || count == 0) {
-                      return const SizedBox.shrink();
-                    }
-                    return Semantics(
-                      label: '$count pending',
-                      child: Container(
-                        width: 10.r,
-                        height: 10.r,
-                        decoration: BoxDecoration(
-                          color: accentColor,
-                          shape: BoxShape.circle,
-                        ),
+                child: Icon(icon, color: accentColor, size: 20.r),
+              ),
+              StreamBuilder<int>(
+                stream: stream,
+                builder: (context, snap) {
+                  final count = snap.data ?? 0;
+                  if (!showBadgeWhenNonZero || count == 0) {
+                    return const SizedBox.shrink();
+                  }
+                  return Semantics(
+                    label: '$count pending',
+                    child: Container(
+                      width: 10.r,
+                      height: 10.r,
+                      decoration: BoxDecoration(
+                        color: accentColor,
+                        shape: BoxShape.circle,
                       ),
-                    );
-                  },
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          // Count
+          StreamBuilder<int>(
+            stream: stream,
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting &&
+                  !snap.hasData) {
+                return AppSkeletonBox(height: 36.h, width: 60.w);
+              }
+              return Text(
+                '${snap.data ?? 0}',
+                style: t.headlineL.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: palette.textPrimary,
                 ),
-              ],
-            ),
-            SizedBox(height: 10.h),
-            // Count
-            StreamBuilder<int>(
-              stream: stream,
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting &&
-                    !snap.hasData) {
-                  return AppSkeletonBox(height: 36.h, width: 60.w);
-                }
-                return Text(
-                  '${snap.data ?? 0}',
-                  style: t.headlineL.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: palette.textPrimary,
-                  ),
-                );
-              },
-            ),
-            SizedBox(height: 2.h),
-            // Label
-            Text(
-              label,
-              style: t.labelM.copyWith(color: palette.textSecondary),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+              );
+            },
+          ),
+          SizedBox(height: 2.h),
+          // Label
+          Text(
+            label,
+            style: t.labelM.copyWith(color: palette.textSecondary),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
@@ -1086,13 +1091,13 @@ class _CoachAppCard extends StatelessWidget {
                 ? [
                     if (hasCertDoc)
                       _DocChip(
-                        label: 'Antrenörlük Sertifikası',
+                        label: l10n.translate('admin.doc_coach_cert'),
                         url: app.certDocUrl!,
                         palette: palette,
                       ),
                     if (hasIdDoc)
                       _DocChip(
-                        label: 'Kimlik Belgesi',
+                        label: l10n.translate('admin.doc_id'),
                         url: app.idDocUrl!,
                         palette: palette,
                       ),
@@ -1114,7 +1119,7 @@ class _CoachAppCard extends StatelessWidget {
                               size: 12.r, color: palette.warning),
                           SizedBox(width: 4.w),
                           Text(
-                            'Belge yok',
+                            l10n.translate('admin.doc_none'),
                             style: TextStyle(
                               fontSize: 11,
                               color: palette.warning,
@@ -1279,19 +1284,18 @@ class _GymAppCard extends StatelessWidget {
                 ? [
                     if (hasBusinessDoc)
                       _DocChip(
-                        label: 'İşletme Ruhsatı',
+                        label: l10n.translate('admin.doc_business_license'),
                         url: app.businessDocUrl!,
                         palette: palette,
                       ),
                     if (hasIdDoc)
                       _DocChip(
-                        label: 'Kimlik Belgesi',
+                        label: l10n.translate('admin.doc_id'),
                         url: app.idDocUrl!,
                         palette: palette,
                       ),
                   ]
                 : [
-                    // No docs warning chip
                     Container(
                       padding: EdgeInsets.symmetric(
                           horizontal: 10.w, vertical: 5.h),
@@ -1308,7 +1312,7 @@ class _GymAppCard extends StatelessWidget {
                               size: 12.r, color: palette.warning),
                           SizedBox(width: 4.w),
                           Text(
-                            'Belge yok',
+                            l10n.translate('admin.doc_none'),
                             style: TextStyle(
                               fontSize: 11,
                               color: palette.warning,
@@ -1322,6 +1326,111 @@ class _GymAppCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Audit Log Tab ─────────────────────────────────────────────────────────────
+
+class _AuditLogTab extends StatelessWidget {
+  final AppPalette palette;
+  final AppLocalizations l10n;
+  final AppText t;
+
+  const _AuditLogTab({
+    required this.palette,
+    required this.l10n,
+    required this.t,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: AdminService().auditLogStream(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+          return const Padding(
+            padding: EdgeInsets.all(AppSpacing.lg),
+            child: AppSkeletonList(),
+          );
+        }
+        final entries = snap.data ?? [];
+        if (entries.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.security_rounded,
+            title: l10n.translate('admin.audit_empty_title'),
+            message: l10n.translate('admin.audit_empty_msg'),
+          );
+        }
+        return ListView.separated(
+          padding: EdgeInsets.all(16.r),
+          itemCount: entries.length,
+          separatorBuilder: (_, __) => SizedBox(height: 8.h),
+          itemBuilder: (_, i) {
+            final e = entries[i];
+            final action = e['action'] as String? ?? '?';
+            final actorUid = e['actorUid'] as String? ?? '';
+            final targetUid = e['targetUid'] as String?;
+            final ts = e['createdAt'];
+            String timeLabel = '';
+            if (ts is Timestamp) {
+              final dt = ts.toDate().toLocal();
+              timeLabel = DateFormat('MMM d, y · HH:mm').format(dt);
+            }
+            return AppCard(
+              elevated: false,
+              bordered: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 8.w, vertical: 3.h),
+                        decoration: BoxDecoration(
+                          color: palette.info.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6.r),
+                        ),
+                        child: Text(
+                          action,
+                          style: t.labelS.copyWith(
+                            color: palette.info,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(timeLabel,
+                          style: t.labelS
+                              .copyWith(color: palette.textTertiary)),
+                    ],
+                  ),
+                  SizedBox(height: 6.h),
+                  Text(
+                    '${l10n.translate('admin.audit_actor')}: $actorUid',
+                    style:
+                        t.labelS.copyWith(color: palette.textSecondary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (targetUid != null && targetUid.isNotEmpty) ...[
+                    SizedBox(height: 2.h),
+                    Text(
+                      '${l10n.translate('admin.audit_target')}: $targetUid',
+                      style:
+                          t.labelS.copyWith(color: palette.textSecondary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

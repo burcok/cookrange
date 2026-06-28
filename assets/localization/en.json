@@ -725,9 +725,6 @@
     "post_subject": "Cookrange Community Post",
     "shopping_list_prefix": "🛒 {title}\n\n",
     "shopping_list_default_prefix": "🛒 Shopping List {date}\n\n",
-    "challenge_goal": "\n🎯 Goal: {goal}",
-    "challenge_text": "💪 Join me in the \"{name}\" challenge on Cookrange!{goalLine}\n\n{link}\n\n{appTag}",
-    "challenge_subject": "Join \"{name}\" Challenge on Cookrange",
     "referral_text": "🎁 Join me on Cookrange — the AI-powered nutrition app!\n\nUse my invite code **{code}** and we both get {rewardDays} of Premium free.\n\n{link}\n\n{appTag}",
     "referral_subject": "Join Cookrange — Free Premium Invite"
   },
@@ -1144,7 +1141,6 @@
     "section_account": "ACCOUNT & MORE",
     "home": "Home",
     "meal_plan": "Meal Plan",
-    "challenges": "Challenges",
     "leaderboard": "Leaderboard",
     "profile": "My Account",
     "settings": "Settings",
@@ -1370,65 +1366,6 @@
     "empty": "No data yet.",
     "empty_friends": "Add friends to see their rankings.",
     "error": "Failed to load leaderboard."
-  },
-  "challenge": {
-    "screen_title": "Challenges",
-    "tab_active": "Active",
-    "tab_mine": "My Challenges",
-    "create_btn": "Create",
-    "empty_active": "No active challenges yet.\nBe the first to create one!",
-    "empty_mine": "You haven't joined any challenges yet.",
-    "error_loading": "Failed to load challenges.",
-    "ended": "Ended",
-    "days_left": "{days}d left",
-    "join": "Join Challenge",
-    "leave": "Leave Challenge",
-    "my_progress": "My Progress",
-    "update_progress": "Update Progress",
-    "save_progress": "Save",
-    "progress_hint": "Enter current value",
-    "leaderboard": "Participants",
-    "type": {
-      "steps": "Steps",
-      "calories": "Calories",
-      "workoutDays": "Workout Days",
-      "custom": "Custom",
-      "custom_unit": "pts"
-    },
-    "difficulty": {
-      "all": "All",
-      "easy": "Easy",
-      "medium": "Medium",
-      "hard": "Hard"
-    },
-    "create": {
-      "title": "New Challenge",
-      "name_label": "Challenge Name",
-      "name_hint": "e.g. 10K Steps a Day",
-      "desc_label": "Description (optional)",
-      "desc_hint": "What is this challenge about?",
-      "type_label": "Challenge Type",
-      "difficulty_label": "Difficulty",
-      "goal_label": "Goal",
-      "goal_hint": "Target value",
-      "end_date_label": "End Date",
-      "public_label": "Public Challenge",
-      "public_subtitle": "Visible to all community members",
-      "btn": "Create Challenge"
-    },
-    "sponsor": {
-      "label": "Sponsored",
-      "by": "Sponsored by",
-      "reward": "Reward",
-      "add_sponsor": "Add Sponsor Info",
-      "sponsor_name": "Sponsor Name",
-      "sponsor_reward": "Reward Description",
-      "sponsor_url": "Sponsor Website (optional)",
-      "learn_more": "Learn More",
-      "badge_label": "Sponsored Challenge",
-      "reward_badge": "Win",
-      "public_disclaimer": "Sponsor info is public"
-    }
   },
   "premium": {
     "badge": "Get Premium",
@@ -1945,7 +1882,9 @@
     "docs_tap_upload": "Tap to upload (PDF or image)",
     "docs_uploaded": "Uploaded",
     "docs_required_warning": "Please upload all required documents.",
-    "docs_count": "{n}/2 documents uploaded"
+    "docs_count": "{n}/2 documents uploaded",
+    "sort_top_rated": "Top Rated",
+    "sort_most_active": "Most Active"
   },
   "ai": {
     "twin_title": "AI Body Projection",
@@ -2150,7 +2089,16 @@
     "reports_status_dismissed": "Dismissed",
     "reports_status_removed": "Removed",
     "id_doc": "ID Document",
-    "no_docs_warning": "No documents uploaded"
+    "no_docs_warning": "No documents uploaded",
+    "tab_audit": "Audit Log",
+    "doc_coach_cert": "Coach Certificate",
+    "doc_id": "ID Document",
+    "doc_business_license": "Business License",
+    "doc_none": "No documents",
+    "audit_empty_title": "No audit entries",
+    "audit_empty_msg": "Admin actions will appear here.",
+    "audit_actor": "Actor",
+    "audit_target": "Target"
   },
   "intro": {
     "skip": "Skip",
@@ -2174,10 +2122,10 @@
     "subtitle": "{pct}% done",
     "step_photo": "Add a profile photo",
     "step_meal": "Log your first meal",
-    "step_challenge": "Join a challenge",
     "cta_photo": "Add Photo",
     "cta_meal": "Log Meal",
-    "cta_challenge": "Explore"
+    "step_weight": "Log your first weight",
+    "cta_weight": "Log Now"
   },
   "whats_new": {
     "title": "What's New",
@@ -2209,18 +2157,27 @@
     "gym": "Gyms",
     "coach": "Coaches",
     "programs": "Programs",
-    "challenges": "Challenges",
     "gym_tagline": "Find nearby gyms & check in",
     "coach_tagline": "Get personalized coaching",
     "program_tagline": "Browse AI-powered programs",
-    "challenge_tagline": "Compete & earn rewards",
     "premium_title": "Unlock All Features",
-    "premium_subtitle": "Go Premium to access the full ecosystem"
+    "premium_subtitle": "Go Premium to access the full ecosystem",
+    "leaderboard": "Leaderboard",
+    "leaderboard_tagline": "Climb the streak rankings"
   },
   "role": {
     "consumer": "Member",
     "coach": "Coach",
     "gym_owner": "Gym Owner",
     "admin": "Admin"
+  },
+  "discovery": {
+    "filter_city": "City",
+    "filter_district": "District",
+    "filter_all": "All",
+    "filter_clear": "Clear filters",
+    "sort_name": "A–Z",
+    "sort_popular": "Popular",
+    "sort_newest": "Newest"
   }
 }

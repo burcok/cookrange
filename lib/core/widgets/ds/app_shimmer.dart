@@ -131,6 +131,120 @@ class AppSkeletonBox extends StatelessWidget {
   }
 }
 
+/// Meal-card skeleton — matches the image-left + macro-chip-row layout used in
+/// the home meal plan section.
+class AppSkeletonMealCard extends StatelessWidget {
+  final int itemCount;
+
+  const AppSkeletonMealCard({super.key, this.itemCount = 4});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppShimmer(
+      child: Column(
+        children: List.generate(itemCount, (_) {
+          return Padding(
+            padding: EdgeInsets.only(bottom: AppSpacing.md.h),
+            child: Container(
+              height: 110.h,
+              decoration: BoxDecoration(
+                color: AppPalette.of(context).surface,
+                borderRadius: BorderRadius.circular(AppRadius.card.r),
+              ),
+              child: Row(
+                children: [
+                  // Image placeholder
+                  AppSkeletonBox(
+                    width: 100.w,
+                    height: 110.h,
+                    radius: AppRadius.card,
+                  ),
+                  SizedBox(width: AppSpacing.md.w),
+                  // Content
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AppSkeletonBox(width: 56.w, height: 10),
+                          SizedBox(height: AppSpacing.xs.h),
+                          const AppSkeletonBox(width: double.infinity, height: 15),
+                          SizedBox(height: AppSpacing.xs.h),
+                          AppSkeletonBox(width: 140.w, height: 13),
+                          const Spacer(),
+                          Row(
+                            children: [
+                              AppSkeletonBox(width: 52.w, height: 20, radius: 20),
+                              SizedBox(width: AppSpacing.xs.w),
+                              AppSkeletonBox(width: 52.w, height: 20, radius: 20),
+                              SizedBox(width: AppSpacing.xs.w),
+                              AppSkeletonBox(width: 52.w, height: 20, radius: 20),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: AppSpacing.sm.w),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+/// Stat-grid skeleton — matches 2-column admin/dashboard metric cards
+/// (number + label stacked inside a card).
+class AppSkeletonStatGrid extends StatelessWidget {
+  final int itemCount;
+  final int crossAxisCount;
+
+  const AppSkeletonStatGrid({
+    super.key,
+    this.itemCount = 4,
+    this.crossAxisCount = 2,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppShimmer(
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: AppSpacing.sm.w,
+          mainAxisSpacing: AppSpacing.sm.h,
+          childAspectRatio: 1.5,
+        ),
+        itemCount: itemCount,
+        itemBuilder: (_, __) {
+          return Container(
+            padding: EdgeInsets.all(AppSpacing.md.r),
+            decoration: BoxDecoration(
+              color: AppPalette.of(context).surface,
+              borderRadius: BorderRadius.circular(AppRadius.card.r),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AppSkeletonBox(width: 64.w, height: 28),
+                SizedBox(height: AppSpacing.xs.h),
+                AppSkeletonBox(width: 80.w, height: 12),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 /// Ready-made skeleton for a list of cards (common loading surface).
 class AppSkeletonList extends StatelessWidget {
   final int itemCount;

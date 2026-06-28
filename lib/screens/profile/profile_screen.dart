@@ -670,13 +670,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
               child: ClipOval(
-                child: photoURL != null
-                    ? Image.network(photoURL, fit: BoxFit.cover)
+                child: photoURL != null && photoURL.isNotEmpty
+                    ? Image.network(
+                        photoURL,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (_, child, progress) => progress == null
+                            ? child
+                            : Center(
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white.withValues(alpha: 0.7)),
+                              ),
+                        errorBuilder: (_, __, ___) => Center(
+                          child: Text(
+                            displayName.isNotEmpty
+                                ? displayName[0].toUpperCase()
+                                : 'U',
+                            style: const TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.w300,
+                                color: Colors.white),
+                          ),
+                        ),
+                      )
                     : Center(
                         child: Text(
                           displayName.isNotEmpty
-                              ? displayName[0].toLowerCase()
-                              : "u",
+                              ? displayName[0].toUpperCase()
+                              : 'U',
                           style: const TextStyle(
                               fontSize: 36,
                               fontWeight: FontWeight.w300,

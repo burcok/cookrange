@@ -283,6 +283,72 @@
         { "fieldPath": "status", "arrayConfig": "CONTAINS" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "gyms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "is_public", "order": "ASCENDING" },
+        { "fieldPath": "city", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "gyms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "is_public", "order": "ASCENDING" },
+        { "fieldPath": "city", "order": "ASCENDING" },
+        { "fieldPath": "member_count", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "gyms",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "is_public", "order": "ASCENDING" },
+        { "fieldPath": "city", "order": "ASCENDING" },
+        { "fieldPath": "district", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "coach_profiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "is_public", "order": "ASCENDING" },
+        { "fieldPath": "is_accepting_clients", "order": "ASCENDING" },
+        { "fieldPath": "city", "order": "ASCENDING" },
+        { "fieldPath": "avg_rating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "coach_profiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "is_public", "order": "ASCENDING" },
+        { "fieldPath": "is_accepting_clients", "order": "ASCENDING" },
+        { "fieldPath": "city", "order": "ASCENDING" },
+        { "fieldPath": "client_count", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "coach_profiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "is_public", "order": "ASCENDING" },
+        { "fieldPath": "is_accepting_clients", "order": "ASCENDING" },
+        { "fieldPath": "avg_rating", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "coach_profiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "is_public", "order": "ASCENDING" },
+        { "fieldPath": "is_accepting_clients", "order": "ASCENDING" },
+        { "fieldPath": "client_count", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

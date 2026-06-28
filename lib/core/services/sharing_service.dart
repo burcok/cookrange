@@ -133,34 +133,6 @@ class SharingService {
     );
   }
 
-  /// Share a challenge invite link so others can join.
-  Future<void> shareChallenge(
-    BuildContext context, {
-    required String name,
-    required String challengeId,
-    String? goal,
-    Rect? sharePositionOrigin,
-  }) async {
-    final link = '$_baseUrl/challenge/$challengeId';
-    final l10n = AppLocalizations.of(context);
-
-    final goalLine = goal != null
-        ? l10n.translate('sharing.challenge_goal', variables: {'goal': goal})
-        : '';
-
-    final text = l10n.translate('sharing.challenge_text', variables: {
-      'name': name,
-      'goalLine': goalLine,
-      'link': link,
-      'appTag': _appTag,
-    });
-
-    final subject =
-        l10n.translate('sharing.challenge_subject', variables: {'name': name});
-
-    await Share.share(text,
-        subject: subject, sharePositionOrigin: sharePositionOrigin);
-  }
 
   /// Share a referral invite link.
   Future<void> shareReferral(

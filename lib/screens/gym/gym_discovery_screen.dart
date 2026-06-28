@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import '../../core/data/turkish_locations.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/gym_model.dart';
 import '../../core/providers/user_provider.dart';
@@ -28,6 +30,9 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
   String _query = '';
   DocumentSnapshot? _lastDoc;
   bool _hasMore = true;
+  String? _selectedCity;
+  String? _selectedDistrict;
+  String _sortBy = 'name';
 
   final Set<String> _joiningIds = {};
 
@@ -66,6 +71,9 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
     try {
       final results = await GymService().searchGyms(
         _query,
+        city: _selectedCity,
+        district: _selectedDistrict,
+        sortBy: _sortBy,
         startAfter: more ? _lastDoc : null,
       );
       if (!mounted) return;
@@ -148,6 +156,41 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
               onChanged: _onQueryChanged,
               textInputAction: TextInputAction.search,
             ),
+          ),
+          _FilterBar(
+            selectedCity: _selectedCity,
+            selectedDistrict: _selectedDistrict,
+            sortBy: _sortBy,
+            onCityChanged: (city) {
+              setState(() {
+                _selectedCity = city;
+                _selectedDistrict = null;
+                _gyms = [];
+                _lastDoc = null;
+                _hasMore = true;
+              });
+              unawaited(_load());
+            },
+            onDistrictChanged: (district) {
+              setState(() {
+                _selectedDistrict = district;
+                _gyms = [];
+                _lastDoc = null;
+                _hasMore = true;
+              });
+              unawaited(_load());
+            },
+            onSortChanged: (sort) {
+              setState(() {
+                _sortBy = sort;
+                _gyms = [];
+                _lastDoc = null;
+                _hasMore = true;
+              });
+              unawaited(_load());
+            },
+            palette: palette,
+            l10n: l10n,
           ),
           Expanded(
             child: RefreshIndicator(
@@ -506,6 +549,259 @@ class _GymCard extends StatelessWidget {
           fontSize: 18,
           fontWeight: FontWeight.w800,
           color: primary,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Filter Bar ─────────────────────────────────────────────────────────────────
+
+class _FilterBar extends StatelessWidget {
+  final String? selectedCity;
+  final String? selectedDistrict;
+  final String sortBy;
+  final ValueChanged<String?> onCityChanged;
+  final ValueChanged<String?> onDistrictChanged;
+  final ValueChanged<String> onSortChanged;
+  final AppPalette palette;
+  final AppLocalizations l10n;
+
+  const _FilterBar({
+    required this.selectedCity,
+    required this.selectedDistrict,
+    required this.sortBy,
+    required this.onCityChanged,
+    required this.onDistrictChanged,
+    required this.onSortChanged,
+    required this.palette,
+    required this.l10n,
+  });
+
+  void _showCityPicker(BuildContext context) {
+    final cities = TurkishLocations.provinces;
+    AppSheet.show(
+      context: context,
+      title: l10n.translate('discovery.filter_city'),
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          ListTile(
+            title: Text(l10n.translate('discovery.filter_all'),
+                style: TextStyle(color: palette.textSecondary)),
+            onTap: () {
+              Navigator.pop(context);
+              onCityChanged(null);
+            },
+          ),
+          ...cities.map((city) => ListTile(
+                title: Text(city,
+                    style: TextStyle(
+                      color: palette.textPrimary,
+                      fontWeight: selectedCity == city
+                          ? FontWeight.w700
+                          : FontWeight.normal,
+                    )),
+                trailing: selectedCity == city
+                    ? Icon(Icons.check_rounded,
+                        color: palette.info, size: 18.r)
+                    : null,
+                onTap: () {
+                  Navigator.pop(context);
+                  onCityChanged(city);
+                },
+              )),
+        ],
+      ),
+    );
+  }
+
+  void _showDistrictPicker(BuildContext context) {
+    if (selectedCity == null) return;
+    final districts = TurkishLocations.districtsOf(selectedCity!);
+    AppSheet.show(
+      context: context,
+      title: l10n.translate('discovery.filter_district'),
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          ListTile(
+            title: Text(l10n.translate('discovery.filter_all'),
+                style: TextStyle(color: palette.textSecondary)),
+            onTap: () {
+              Navigator.pop(context);
+              onDistrictChanged(null);
+            },
+          ),
+          ...districts.map((d) => ListTile(
+                title: Text(d,
+                    style: TextStyle(
+                      color: palette.textPrimary,
+                      fontWeight: selectedDistrict == d
+                          ? FontWeight.w700
+                          : FontWeight.normal,
+                    )),
+                trailing: selectedDistrict == d
+                    ? Icon(Icons.check_rounded,
+                        color: palette.info, size: 18.r)
+                    : null,
+                onTap: () {
+                  Navigator.pop(context);
+                  onDistrictChanged(d);
+                },
+              )),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasFilter =
+        selectedCity != null || sortBy != 'name';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 40.h,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            children: [
+              // City chip
+              _chip(
+                context,
+                icon: Icons.location_city_rounded,
+                label: selectedCity ?? l10n.translate('discovery.filter_city'),
+                active: selectedCity != null,
+                onTap: () => _showCityPicker(context),
+              ),
+              SizedBox(width: 8.w),
+              // District chip (only when city is selected)
+              if (selectedCity != null) ...[
+                _chip(
+                  context,
+                  icon: Icons.map_outlined,
+                  label: selectedDistrict ??
+                      l10n.translate('discovery.filter_district'),
+                  active: selectedDistrict != null,
+                  onTap: () => _showDistrictPicker(context),
+                ),
+                SizedBox(width: 8.w),
+              ],
+              // Sort chips
+              _sortChip(context, 'name',
+                  l10n.translate('discovery.sort_name')),
+              SizedBox(width: 8.w),
+              _sortChip(context, 'member_count',
+                  l10n.translate('discovery.sort_popular')),
+              SizedBox(width: 8.w),
+              _sortChip(context, 'created_at',
+                  l10n.translate('discovery.sort_newest')),
+            ],
+          ),
+        ),
+        if (hasFilter)
+          Padding(
+            padding: EdgeInsets.only(left: 16.w, bottom: 4.h),
+            child: TextButton.icon(
+              onPressed: () {
+                onCityChanged(null);
+                onSortChanged('name');
+              },
+              icon: Icon(Icons.clear_rounded,
+                  size: 14.r, color: palette.textTertiary),
+              label: Text(
+                l10n.translate('discovery.filter_clear'),
+                style: AppText.of(context)
+                    .labelS
+                    .copyWith(color: palette.textTertiary),
+              ),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _chip(BuildContext context, {
+    required IconData icon,
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    final primary = Theme.of(context).primaryColor;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+        decoration: BoxDecoration(
+          color: active
+              ? primary.withValues(alpha: 0.12)
+              : palette.surfaceVariant,
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(
+            color: active
+                ? primary.withValues(alpha: 0.4)
+                : palette.border,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 14.r,
+                color: active ? primary : palette.textSecondary),
+            SizedBox(width: 4.w),
+            Text(
+              label,
+              style: AppText.of(context).labelM.copyWith(
+                    color: active ? primary : palette.textSecondary,
+                    fontWeight:
+                        active ? FontWeight.w600 : FontWeight.normal,
+                  ),
+            ),
+            SizedBox(width: 2.w),
+            Icon(Icons.arrow_drop_down_rounded,
+                size: 14.r,
+                color: active ? primary : palette.textTertiary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sortChip(BuildContext context, String value, String label) {
+    final active = sortBy == value;
+    final primary = Theme.of(context).primaryColor;
+    return GestureDetector(
+      onTap: () => onSortChanged(value),
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+        decoration: BoxDecoration(
+          color: active
+              ? primary.withValues(alpha: 0.12)
+              : palette.surfaceVariant,
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(
+            color: active
+                ? primary.withValues(alpha: 0.4)
+                : palette.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppText.of(context).labelM.copyWith(
+                color: active ? primary : palette.textSecondary,
+                fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+              ),
         ),
       ),
     );

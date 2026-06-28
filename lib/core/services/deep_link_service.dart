@@ -13,7 +13,6 @@ import 'gym_service.dart';
 ///   https://cookrangeapp.com/recipe/{id}
 ///   https://cookrangeapp.com/post/{id}
 ///   https://cookrangeapp.com/user/{uid}
-///   https://cookrangeapp.com/challenge/{id}
 ///   cookrange://recipe/{id}  (custom scheme, dev/testing)
 ///
 /// QR check-in scheme (opaque URI emitted by GymQrScreen):
@@ -89,8 +88,6 @@ class DeepLinkService {
         nav.pushNamed('/post_detail', arguments: {'postId': id});
       case 'user':
         nav.pushNamed('/profile', arguments: {'uid': id});
-      case 'challenge':
-        nav.pushNamed('/challenge_detail', arguments: {'challengeId': id});
       case 'invite':
         nav.pushNamed('/settings', arguments: {'referral_code': id});
       default:

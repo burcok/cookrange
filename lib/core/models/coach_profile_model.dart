@@ -14,6 +14,11 @@ class CoachProfileModel {
   final bool isPublic;
   final DateTime createdAt;
   final DateTime updatedAt;
+  // Discovery & ranking fields
+  final String? city;
+  final String? district;
+  final double avgRating;
+  final int ratingCount;
 
   const CoachProfileModel({
     required this.uid,
@@ -29,6 +34,10 @@ class CoachProfileModel {
     required this.isPublic,
     required this.createdAt,
     required this.updatedAt,
+    this.city,
+    this.district,
+    this.avgRating = 0.0,
+    this.ratingCount = 0,
   });
 
   factory CoachProfileModel.fromFirestore(
@@ -48,6 +57,10 @@ class CoachProfileModel {
       isPublic: data['is_public'] as bool? ?? true,
       createdAt: (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updated_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      city: data['city'] as String?,
+      district: data['district'] as String?,
+      avgRating: (data['avg_rating'] as num?)?.toDouble() ?? 0.0,
+      ratingCount: data['rating_count'] as int? ?? 0,
     );
   }
 
@@ -65,6 +78,10 @@ class CoachProfileModel {
         'is_public': isPublic,
         'created_at': Timestamp.fromDate(createdAt),
         'updated_at': Timestamp.fromDate(updatedAt),
+        if (city != null) 'city': city,
+        if (district != null) 'district': district,
+        'avg_rating': avgRating,
+        'rating_count': ratingCount,
       };
 
   CoachProfileModel copyWith({
@@ -81,6 +98,10 @@ class CoachProfileModel {
     bool? isPublic,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? city,
+    String? district,
+    double? avgRating,
+    int? ratingCount,
   }) =>
       CoachProfileModel(
         uid: uid ?? this.uid,
@@ -96,5 +117,9 @@ class CoachProfileModel {
         isPublic: isPublic ?? this.isPublic,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        city: city ?? this.city,
+        district: district ?? this.district,
+        avgRating: avgRating ?? this.avgRating,
+        ratingCount: ratingCount ?? this.ratingCount,
       );
 }

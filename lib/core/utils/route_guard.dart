@@ -182,7 +182,8 @@ class _RouteGuardState extends State<RouteGuard> {
     // D. Onboarding Check (only if we have user data)
     if (userModel != null &&
         !userModel.onboardingCompleted &&
-        routeName != AppRoutes.onboarding) {
+        routeName != AppRoutes.onboarding &&
+        routeName != AppRoutes.intro) {
       if (!_hasRedirected) {
         _hasRedirected = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {

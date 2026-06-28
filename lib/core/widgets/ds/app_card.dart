@@ -62,12 +62,14 @@ class _AppCardState extends State<AppCard>
       builder: (context, child) =>
           Transform.scale(scale: 1 - _c.value, child: child),
       child: Container(
-        padding: EdgeInsets.all(
-          (widget.padding is EdgeInsets
-                  ? (widget.padding as EdgeInsets).top
-                  : AppSpacing.md)
-              .r,
-        ),
+        padding: widget.padding is EdgeInsets
+            ? EdgeInsets.fromLTRB(
+                (widget.padding as EdgeInsets).left.w,
+                (widget.padding as EdgeInsets).top.h,
+                (widget.padding as EdgeInsets).right.w,
+                (widget.padding as EdgeInsets).bottom.h,
+              )
+            : EdgeInsets.all(AppSpacing.md.r),
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(widget.radius.r),
@@ -112,46 +114,104 @@ class _AppCardState extends State<AppCard>
 }
 
 /// Frosted-glass surface — for premium hero cards / overlays.
-class AppGlassCard extends StatelessWidget {
+///
+/// Uses semantic [AppPalette] glass tokens so it automatically adapts to
+/// dark/light themes. Supports [onTap] with a press-scale animation.
+class AppGlassCard extends StatefulWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final double radius;
   final double blur;
+  final VoidCallback? onTap;
+  final String? semanticLabel;
 
   const AppGlassCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(AppSpacing.lg),
     this.radius = AppRadius.card,
-    this.blur = 12,
+    this.blur = AppPalette.glassBlurDefault,
+    this.onTap,
+    this.semanticLabel,
   });
+
+  @override
+  State<AppGlassCard> createState() => _AppGlassCardState();
+}
+
+class _AppGlassCardState extends State<AppGlassCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: AppMotion.instant,
+    upperBound: 0.025,
+  );
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  EdgeInsets _scaleInsets(EdgeInsetsGeometry p) {
+    if (p is EdgeInsets) {
+      return EdgeInsets.fromLTRB(
+        p.left.w, p.top.h, p.right.w, p.bottom.h,
+      );
+    }
+    return EdgeInsets.all(AppSpacing.lg.r);
+  }
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius.r),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: Container(
-          padding: EdgeInsets.all(
-            (padding is EdgeInsets
-                    ? (padding as EdgeInsets).top
-                    : AppSpacing.lg)
-                .r,
-          ),
-          decoration: BoxDecoration(
-            color: palette.surface
-                .withValues(alpha: palette.isDark ? 0.55 : 0.65),
-            borderRadius: BorderRadius.circular(radius.r),
-            border: Border.all(
-              color: palette.isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.white.withValues(alpha: 0.6),
+
+    Widget glass = AnimatedBuilder(
+      animation: _c,
+      builder: (context, child) =>
+          Transform.scale(scale: 1 - _c.value, child: child),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(widget.radius.r),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+              sigmaX: widget.blur, sigmaY: widget.blur),
+          child: Container(
+            padding: _scaleInsets(widget.padding),
+            decoration: BoxDecoration(
+              color: palette.glassFill,
+              borderRadius: BorderRadius.circular(widget.radius.r),
+              border: Border.all(color: palette.glassStroke),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  palette.glassHighlight,
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.5],
+              ),
             ),
+            child: widget.child,
           ),
-          child: child,
         ),
+      ),
+    );
+
+    if (widget.onTap == null) return glass;
+
+    return Semantics(
+      button: true,
+      label: widget.semanticLabel,
+      onTap: widget.onTap,
+      child: GestureDetector(
+        onTapDown: (_) => _c.forward(),
+        onTapUp: (_) => _c.reverse(),
+        onTapCancel: () => _c.reverse(),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          widget.onTap!();
+        },
+        child: glass,
       ),
     );
   }

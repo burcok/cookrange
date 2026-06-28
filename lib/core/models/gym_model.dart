@@ -26,6 +26,7 @@ class GymModel {
   final String? logoUrl;
   final String? address;
   final String? city;
+  final String? district;
   final String? country;
   final bool isPublic;
   final int memberCount;
@@ -48,6 +49,7 @@ class GymModel {
     this.logoUrl,
     this.address,
     this.city,
+    this.district,
     this.country,
     required this.isPublic,
     required this.memberCount,
@@ -76,6 +78,7 @@ class GymModel {
       logoUrl: d['logo_url'] as String?,
       address: d['address'] as String?,
       city: d['city'] as String?,
+      district: d['district'] as String?,
       country: d['country'] as String?,
       isPublic: d['is_public'] as bool? ?? true,
       memberCount: d['member_count'] as int? ?? 0,
@@ -102,6 +105,7 @@ class GymModel {
         if (logoUrl != null) 'logo_url': logoUrl,
         if (address != null) 'address': address,
         if (city != null) 'city': city,
+        if (district != null) 'district': district,
         if (country != null) 'country': country,
         'is_public': isPublic,
         'member_count': memberCount,
@@ -121,6 +125,7 @@ class GymModel {
     String? logoUrl,
     String? address,
     String? city,
+    String? district,
     String? country,
     bool? isPublic,
     int? memberCount,
@@ -142,6 +147,7 @@ class GymModel {
         logoUrl: logoUrl ?? this.logoUrl,
         address: address ?? this.address,
         city: city ?? this.city,
+        district: district ?? this.district,
         country: country ?? this.country,
         isPublic: isPublic ?? this.isPublic,
         memberCount: memberCount ?? this.memberCount,

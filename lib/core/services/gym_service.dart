@@ -160,30 +160,57 @@ class GymService {
     });
   }
 
-  /// Paginated search across public gyms.
+  /// Paginated search across public gyms with optional city/district/tag filters.
+  ///
+  /// When [city] is provided a Firestore equality filter is applied (exact match).
+  /// [district] is only applied when [city] is also set. [tags] uses client-side
+  /// intersection since Firestore array-contains only accepts a single value.
   Future<List<GymModel>> searchGyms(
     String query, {
+    String? city,
+    String? district,
+    List<String>? tags,
+    String sortBy = 'name', // 'name' | 'member_count' | 'created_at'
     DocumentSnapshot? startAfter,
     int limit = 20,
   }) async {
-    Query<Map<String, dynamic>> q = _gyms
-        .where('is_public', isEqualTo: true)
-        .orderBy('name')
-        .limit(limit);
+    Query<Map<String, dynamic>> q =
+        _gyms.where('is_public', isEqualTo: true);
+
+    if (city != null && city.isNotEmpty) {
+      q = q.where('city', isEqualTo: city);
+    }
+    if (district != null && district.isNotEmpty) {
+      q = q.where('district', isEqualTo: district);
+    }
+
+    final orderDesc = sortBy == 'member_count' || sortBy == 'created_at';
+    q = q.orderBy(sortBy, descending: orderDesc).limit(limit);
 
     if (startAfter != null) q = q.startAfterDocument(startAfter);
 
     final snap = await q.get();
-    final all = snap.docs.map(GymModel.fromFirestore).toList();
+    var all = snap.docs.map(GymModel.fromFirestore).toList();
 
-    // Client-side substring filter (Firestore has no native LIKE)
-    if (query.isEmpty) return all;
-    final lower = query.toLowerCase();
-    return all
-        .where((g) =>
-            g.name.toLowerCase().contains(lower) ||
-            (g.city?.toLowerCase().contains(lower) ?? false))
-        .toList();
+    // Client-side text filter
+    if (query.isNotEmpty) {
+      final lower = query.toLowerCase();
+      all = all
+          .where((g) =>
+              g.name.toLowerCase().contains(lower) ||
+              (g.city?.toLowerCase().contains(lower) ?? false) ||
+              (g.district?.toLowerCase().contains(lower) ?? false))
+          .toList();
+    }
+
+    // Client-side tag intersection
+    if (tags != null && tags.isNotEmpty) {
+      all = all
+          .where((g) => tags.any((t) => g.tags.contains(t)))
+          .toList();
+    }
+
+    return all;
   }
 
   // ── Membership ───────────────────────────────────────────────────────────────

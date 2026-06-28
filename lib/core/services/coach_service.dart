@@ -117,15 +117,31 @@ class CoachService {
 
   // ─── Search ────────────────────────────────────────────────────────────────
 
-  Future<List<CoachProfileModel>> searchCoaches(String query,
-      {int limit = 20}) async {
+  Future<List<CoachProfileModel>> searchCoaches(
+    String query, {
+    String? city,
+    String? district,
+    // 'display_name' | 'avg_rating' | 'client_count' | 'created_at'
+    String sortBy = 'display_name',
+    int limit = 25,
+  }) async {
     try {
-      final snap = await _coaches
+      Query<Map<String, dynamic>> q = _coaches
           .where('is_public', isEqualTo: true)
-          .where('is_accepting_clients', isEqualTo: true)
-          .orderBy('display_name')
-          .limit(limit)
-          .get();
+          .where('is_accepting_clients', isEqualTo: true);
+
+      if (city != null && city.isNotEmpty) {
+        q = q.where('city', isEqualTo: city);
+      }
+      if (district != null && district.isNotEmpty) {
+        q = q.where('district', isEqualTo: district);
+      }
+
+      final orderDesc =
+          sortBy == 'avg_rating' || sortBy == 'client_count' || sortBy == 'created_at';
+      q = q.orderBy(sortBy, descending: orderDesc).limit(limit);
+
+      final snap = await q.get();
 
       final lowerQuery = query.toLowerCase();
       return snap.docs

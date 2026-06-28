@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import '../../core/data/turkish_locations.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/coach_profile_model.dart';
 import '../../core/models/user_model.dart';
@@ -27,6 +29,8 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
   bool _error = false;
   List<CoachProfileModel> _coaches = const [];
   String _query = '';
+  String? _selectedCity;
+  String _sortBy = 'display_name'; // 'display_name'|'avg_rating'|'client_count'|'created_at'
 
   @override
   void initState() {
@@ -47,7 +51,11 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
       _error = false;
     });
     try {
-      final results = await CoachService().searchCoaches(_query);
+      final results = await CoachService().searchCoaches(
+        _query,
+        city: _selectedCity,
+        sortBy: _sortBy,
+      );
       if (!mounted) return;
       setState(() {
         _coaches = results;
@@ -112,6 +120,20 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
               prefixIcon: const Icon(Icons.search_rounded),
               onChanged: _onSearchChanged,
             ),
+          ),
+          _CoachFilterBar(
+            selectedCity: _selectedCity,
+            sortBy: _sortBy,
+            onCityChanged: (city) {
+              setState(() { _selectedCity = city; });
+              _load();
+            },
+            onSortChanged: (sort) {
+              setState(() { _sortBy = sort; });
+              _load();
+            },
+            palette: palette,
+            l10n: t,
           ),
           Expanded(child: _buildBody(t, palette)),
         ],
@@ -456,6 +478,169 @@ class _SpecChip extends StatelessWidget {
         style: text.labelS.copyWith(
           color: palette.info,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Coach Filter Bar ────────────────────────────────────────────────────────────
+
+class _CoachFilterBar extends StatelessWidget {
+  final String? selectedCity;
+  final String sortBy;
+  final ValueChanged<String?> onCityChanged;
+  final ValueChanged<String> onSortChanged;
+  final AppPalette palette;
+  final AppLocalizations l10n;
+
+  const _CoachFilterBar({
+    required this.selectedCity,
+    required this.sortBy,
+    required this.onCityChanged,
+    required this.onSortChanged,
+    required this.palette,
+    required this.l10n,
+  });
+
+  void _showCityPicker(BuildContext context) {
+    final cities = TurkishLocations.provinces;
+    AppSheet.show(
+      context: context,
+      title: l10n.translate('discovery.filter_city'),
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          ListTile(
+            title: Text(l10n.translate('discovery.filter_all'),
+                style: TextStyle(color: palette.textSecondary)),
+            onTap: () {
+              Navigator.pop(context);
+              onCityChanged(null);
+            },
+          ),
+          ...cities.map((city) => ListTile(
+                title: Text(city,
+                    style: TextStyle(
+                      color: palette.textPrimary,
+                      fontWeight: selectedCity == city
+                          ? FontWeight.w700
+                          : FontWeight.normal,
+                    )),
+                trailing: selectedCity == city
+                    ? Icon(Icons.check_rounded,
+                        color: palette.info, size: 18.r)
+                    : null,
+                onTap: () {
+                  Navigator.pop(context);
+                  onCityChanged(city);
+                },
+              )),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+
+    Widget sortChip(String value, String label) {
+      final active = sortBy == value;
+      return GestureDetector(
+        onTap: () => onSortChanged(value),
+        child: AnimatedContainer(
+          duration: AppMotion.fast,
+          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+          decoration: BoxDecoration(
+            color: active
+                ? primary.withValues(alpha: 0.12)
+                : palette.surfaceVariant,
+            borderRadius: BorderRadius.circular(20.r),
+            border: Border.all(
+              color: active
+                  ? primary.withValues(alpha: 0.4)
+                  : palette.border,
+            ),
+          ),
+          child: Text(
+            label,
+            style: AppText.of(context).labelM.copyWith(
+                  color: active ? primary : palette.textSecondary,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: SizedBox(
+        height: 40.h,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+          children: [
+            // City filter chip
+            GestureDetector(
+              onTap: () => _showCityPicker(context),
+              child: AnimatedContainer(
+                duration: AppMotion.fast,
+                padding:
+                    EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                decoration: BoxDecoration(
+                  color: selectedCity != null
+                      ? primary.withValues(alpha: 0.12)
+                      : palette.surfaceVariant,
+                  borderRadius: BorderRadius.circular(20.r),
+                  border: Border.all(
+                    color: selectedCity != null
+                        ? primary.withValues(alpha: 0.4)
+                        : palette.border,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.location_city_rounded,
+                        size: 14.r,
+                        color: selectedCity != null
+                            ? primary
+                            : palette.textSecondary),
+                    SizedBox(width: 4.w),
+                    Text(
+                      selectedCity ??
+                          l10n.translate('discovery.filter_city'),
+                      style: AppText.of(context).labelM.copyWith(
+                            color: selectedCity != null
+                                ? primary
+                                : palette.textSecondary,
+                            fontWeight: selectedCity != null
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                    ),
+                    SizedBox(width: 2.w),
+                    Icon(Icons.arrow_drop_down_rounded,
+                        size: 14.r,
+                        color: selectedCity != null
+                            ? primary
+                            : palette.textTertiary),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(width: 8.w),
+            sortChip('display_name', l10n.translate('discovery.sort_name')),
+            SizedBox(width: 8.w),
+            sortChip('avg_rating', l10n.translate('coach.sort_top_rated')),
+            SizedBox(width: 8.w),
+            sortChip('client_count',
+                l10n.translate('coach.sort_most_active')),
+            SizedBox(width: 8.w),
+            sortChip('created_at', l10n.translate('discovery.sort_newest')),
+          ],
         ),
       ),
     );

@@ -3,11 +3,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/app_localizations.dart';
+import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/feature_gate_service.dart';
 import '../../core/widgets/ds/ds.dart';
-import '../challenges/challenges_screen.dart';
 import '../coach/coach_discovery_screen.dart';
+import '../leaderboard/leaderboard_screen.dart';
 import '../gym/gym_discovery_screen.dart';
 import '../programs/program_marketplace_screen.dart';
 
@@ -19,33 +20,52 @@ class DiscoverHubScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
     final text = AppText.of(context);
+    final primary = context.watch<ThemeProvider>().primaryColor;
     final user = context.watch<UserProvider>().user;
     final isPremium =
         user?.subscriptionTier.isPaid ?? false;
 
     return Scaffold(
       backgroundColor: palette.background,
-      body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // ── Header ───────────────────────────────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpacing.screenH.w,
-                  AppSpacing.xl.h,
-                  AppSpacing.screenH.w,
-                  AppSpacing.lg.h,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.translate('discover.title'),
-                      style: text.headlineL,
-                    ),
-                    SizedBox(height: 4.h),
+      body: Stack(
+        children: [
+          // Ambient mesh-glow blobs so glass cards have visual depth behind them
+          ...AppGradients.meshGlow(palette, primary),
+          CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // ── AppBar ─────────────────────────────────────────────────────────
+          SliverAppBar(
+            backgroundColor: palette.background,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            floating: true,
+            automaticallyImplyLeading: false,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back_ios_rounded,
+                  color: palette.textPrimary, size: 20),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            title: Text(
+              l10n.translate('discover.title'),
+              style: text.titleM.copyWith(
+                color: palette.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          // ── Header subtitle ────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.screenH.w,
+                AppSpacing.xs.h,
+                AppSpacing.screenH.w,
+                AppSpacing.lg.h,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                     Text(
                       l10n.translate('discover.subtitle'),
                       style: text.bodyM.copyWith(
@@ -98,12 +118,12 @@ class DiscoverHubScreen extends StatelessWidget {
                     ),
                   ),
                   _DiscoverCard(
-                    icon: Icons.emoji_events_rounded,
-                    title: l10n.translate('discover.challenges'),
-                    tagline: l10n.translate('discover.challenge_tagline'),
+                    icon: Icons.leaderboard_rounded,
+                    title: l10n.translate('discover.leaderboard'),
+                    tagline: l10n.translate('discover.leaderboard_tagline'),
                     accentColor: palette.warning,
                     onTap: () => Navigator.of(context).push(
-                      AppTransitions.slideRight(const ChallengesScreen()),
+                      AppTransitions.slideRight(const LeaderboardScreen()),
                     ),
                   ),
                 ]),
@@ -129,6 +149,7 @@ class DiscoverHubScreen extends StatelessWidget {
             SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl.h)),
           ],
         ),
+        ], // Stack children
       ),
     );
   }
@@ -158,11 +179,10 @@ class _DiscoverCard extends StatelessWidget {
     final palette = AppPalette.of(context);
     final text = AppText.of(context);
 
-    return AppCard(
+    return AppGlassCard(
       padding: EdgeInsets.all(AppSpacing.md.r),
       onTap: onTap,
       semanticLabel: title,
-      bordered: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

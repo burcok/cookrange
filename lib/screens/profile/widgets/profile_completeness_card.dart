@@ -3,9 +3,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/food_log_service.dart';
+import '../../../core/services/storage_service.dart';
 import '../../../core/widgets/ds/ds.dart';
 import '../../home/food_scan_screen.dart';
-import '../../challenges/challenges_screen.dart';
 
 class _Step {
   final bool done;
@@ -35,28 +35,35 @@ class ProfileCompletenessCard extends StatefulWidget {
 
 class _ProfileCompletenessCardState extends State<ProfileCompletenessCard> {
   bool _hasMealLog = false;
+  bool _hasWeightLog = false;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _checkMealLog();
+    _checkLogs();
   }
 
-  Future<void> _checkMealLog() async {
+  Future<void> _checkLogs() async {
+    // Weight log is synchronous (Hive)
+    final hasWeight = StorageService().getWeightHistory().isNotEmpty;
+
+    // Meal log requires async Firestore check
+    bool hasMeal = false;
     try {
       final logs = await FoodLogService()
           .todayLogsStream(widget.user.uid)
           .first
           .timeout(const Duration(seconds: 3));
-      if (mounted) {
-        setState(() {
-          _hasMealLog = logs.isNotEmpty;
-          _loading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      hasMeal = logs.isNotEmpty;
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        _hasMealLog = hasMeal;
+        _hasWeightLog = hasWeight;
+        _loading = false;
+      });
     }
   }
 
@@ -78,12 +85,12 @@ class _ProfileCompletenessCardState extends State<ProfileCompletenessCard> {
           icon: Icons.restaurant_rounded,
         ),
         _Step(
-          done: false,
-          labelKey: 'profile_meter.step_challenge',
-          ctaKey: 'profile_meter.cta_challenge',
-          onTap: (ctx) => Navigator.of(ctx)
-              .push(AppTransitions.slideRight(const ChallengesScreen())),
-          icon: Icons.emoji_events_rounded,
+          done: _hasWeightLog,
+          labelKey: 'profile_meter.step_weight',
+          ctaKey: 'profile_meter.cta_weight',
+          // Pop back to home where TrackingCard handles weight logging
+          onTap: (ctx) => Navigator.of(ctx).pop(),
+          icon: Icons.monitor_weight_rounded,
         ),
       ];
 

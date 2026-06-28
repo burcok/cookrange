@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -937,7 +938,14 @@ class _HomeScreenState extends State<HomeScreen>
     final primary = context.watch<ThemeProvider>().primaryColor;
     final targetCalInt = targetCalories.toInt();
 
-    return Container(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.card.r),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: AppPalette.glassBlurSubtle,
+          sigmaY: AppPalette.glassBlurSubtle,
+        ),
+        child: Container(
       padding: EdgeInsets.all(AppSpacing.xl.r),
       decoration: BoxDecoration(
         gradient: AppGradients.brandSoft(primary, dark: palette.isDark),
@@ -1033,7 +1041,9 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ],
       ),
-    );
+        ), // Container
+      ), // BackdropFilter
+    ); // ClipRRect
   }
 
   Widget _macroBar(String label, double consumed, double target, Color color,
@@ -1074,7 +1084,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildMealPlanSection(
       BuildContext context, UserModel user, AppLocalizations l10n) {
     if (_isLoadingPlan) {
-      return const AppSkeletonList(itemCount: 5);
+      return const AppSkeletonMealCard();
     }
 
     if (_weeklyPlan == null) {
@@ -1201,14 +1211,11 @@ class _HomeScreenState extends State<HomeScreen>
 
         SizedBox(width: AppSpacing.xs.w),
 
-        // Overflow menu — keeps the header tidy regardless of plan state
-        _MealHeaderMenu(
-          l10n: l10n,
+        // History — always visible
+        _MealIconBtn(
+          icon: Icons.history_rounded,
           primary: primary,
-          palette: palette,
-          showRegenerate: showRegenerate,
-          user: user,
-          onHistory: () async {
+          onTap: () async {
             final reloaded = await Navigator.of(context).push<Object?>(
                 MaterialPageRoute(
                     builder: (_) => const MealPlanHistoryScreen()));
@@ -1216,20 +1223,42 @@ class _HomeScreenState extends State<HomeScreen>
               unawaited(_generateWeeklyPlan(user, forceRefresh: false));
             }
           },
-          onCompare: showRegenerate && user != null
-              ? () => unawaited(MealPlanComparisonSheet.show(
-                    context,
-                    user: user,
-                    currentPlan: _weeklyPlan!,
-                    onApplyAlternate: () => _generateWeeklyPlan(user),
-                  ))
-              : null,
-          onCalendar: showRegenerate
-              ? () => unawaited(_exportPlanToCalendar(l10n))
-              : null,
-          onRegenerate:
-              showRegenerate && user != null ? () => _generateWeeklyPlan(user) : null,
         ),
+
+        SizedBox(width: AppSpacing.xs.w),
+
+        // Compare — visible when plan exists
+        if (showRegenerate && user != null) ...[
+          _MealIconBtn(
+            icon: Icons.compare_arrows_rounded,
+            primary: primary,
+            onTap: () => unawaited(MealPlanComparisonSheet.show(
+              context,
+              user: user,
+              currentPlan: _weeklyPlan!,
+              onApplyAlternate: () => _generateWeeklyPlan(user),
+            )),
+          ),
+          SizedBox(width: AppSpacing.xs.w),
+        ],
+
+        // Calendar export — visible when plan exists
+        if (showRegenerate) ...[
+          _MealIconBtn(
+            icon: Icons.calendar_month_rounded,
+            primary: primary,
+            onTap: () => unawaited(_exportPlanToCalendar(l10n)),
+          ),
+          SizedBox(width: AppSpacing.xs.w),
+        ],
+
+        // Regenerate — visible when plan exists
+        if (showRegenerate && user != null)
+          _MealIconBtn(
+            icon: Icons.refresh_rounded,
+            primary: primary,
+            onTap: () => _generateWeeklyPlan(user),
+          ),
       ],
     );
   }
@@ -1302,97 +1331,33 @@ class _HomeScreenState extends State<HomeScreen>
 
 // ── Meal section overflow menu ───────────────────────────────────────────────
 
-class _MealHeaderMenu extends StatelessWidget {
-  final AppLocalizations l10n;
+class _MealIconBtn extends StatelessWidget {
+  final IconData icon;
   final Color primary;
-  final AppPalette palette;
-  final bool showRegenerate;
-  final UserModel? user;
-  final VoidCallback onHistory;
-  final VoidCallback? onCompare;
-  final VoidCallback? onCalendar;
-  final VoidCallback? onRegenerate;
+  final VoidCallback onTap;
 
-  const _MealHeaderMenu({
-    required this.l10n,
+  const _MealIconBtn({
+    required this.icon,
     required this.primary,
-    required this.palette,
-    required this.showRegenerate,
-    required this.user,
-    required this.onHistory,
-    this.onCompare,
-    this.onCalendar,
-    this.onRegenerate,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<_MealAction>(
-      onSelected: (action) {
-        switch (action) {
-          case _MealAction.history:
-            onHistory();
-          case _MealAction.compare:
-            onCompare?.call();
-          case _MealAction.calendar:
-            onCalendar?.call();
-          case _MealAction.regenerate:
-            onRegenerate?.call();
-        }
-      },
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: palette.surface,
-      elevation: 4,
-      position: PopupMenuPosition.under,
-      offset: const Offset(0, 4),
+    return GestureDetector(
+      onTap: onTap,
       child: Container(
-        width: 36,
-        height: 36,
+        width: 34,
+        height: 34,
         decoration: BoxDecoration(
           color: primary.withValues(alpha: 0.12),
           shape: BoxShape.circle,
         ),
-        child: Icon(Icons.more_horiz_rounded, size: 20, color: primary),
-      ),
-      itemBuilder: (_) => [
-        _menuItem(_MealAction.history, Icons.history_rounded,
-            l10n.translate('meal_history.title')),
-        if (showRegenerate) ...[
-          _menuItem(_MealAction.compare, Icons.compare_arrows_rounded,
-              l10n.translate('meal_compare.title')),
-          _menuItem(_MealAction.calendar, Icons.calendar_month_rounded,
-              l10n.translate('calendar.export_btn')),
-          _menuItem(_MealAction.regenerate, Icons.refresh_rounded,
-              l10n.translate('home.regenerate')),
-        ],
-      ],
-    );
-  }
-
-  PopupMenuItem<_MealAction> _menuItem(
-      _MealAction action, IconData icon, String label) {
-    return PopupMenuItem(
-      value: action,
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: primary),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: palette.textPrimary,
-            ),
-          ),
-        ],
+        child: Icon(icon, size: AppSize.iconSm, color: primary),
       ),
     );
   }
 }
-
-enum _MealAction { history, compare, calendar, regenerate }
 
 // ── Meal card ───────────────────────────────────────────────────────────────
 
