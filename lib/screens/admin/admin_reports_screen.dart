@@ -78,18 +78,62 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
 
 // ── Report List ───────────────────────────────────────────────────────────────
 
-class _ReportList extends StatelessWidget {
+class _ReportList extends StatefulWidget {
   final Stream<List<ReportModel>> stream;
   final bool showActions;
 
   const _ReportList({required this.stream, required this.showActions});
 
   @override
+  State<_ReportList> createState() => _ReportListState();
+}
+
+class _ReportListState extends State<_ReportList> {
+  final Set<String> _selected = {};
+  bool _bulkLoading = false;
+
+  Future<void> _bulkDismiss(List<ReportModel> all) async {
+    final ids = all.where((r) => _selected.contains(r.id)).map((r) => r.id).toList();
+    if (ids.isEmpty) return;
+    setState(() => _bulkLoading = true);
+    try {
+      await AdminService().bulkDismissReports(ids);
+      if (mounted) setState(() => _selected.clear());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkLoading = false);
+    }
+  }
+
+  Future<void> _bulkRemove(List<ReportModel> all) async {
+    final targets = all.where((r) => _selected.contains(r.id)).toList();
+    if (targets.isEmpty) return;
+    setState(() => _bulkLoading = true);
+    try {
+      await AdminService().bulkRemoveContent(targets);
+      if (mounted) setState(() => _selected.clear());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _bulkLoading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
 
     return StreamBuilder<List<ReportModel>>(
-      stream: stream,
+      stream: widget.stream,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Padding(
@@ -108,11 +152,11 @@ class _ReportList extends StatelessWidget {
         final reports = snap.data ?? [];
 
         if (reports.isEmpty) {
-          final title = showActions
+          final title = widget.showActions
               ? l10n.translate('admin.reports_empty')
               : l10n.translate('admin.reports_reviewed_empty');
           final message =
-              showActions ? l10n.translate('admin.reports_empty_msg') : '';
+              widget.showActions ? l10n.translate('admin.reports_empty_msg') : '';
 
           return AppEmptyState(
             icon: Icons.check_circle_outline_rounded,
@@ -121,16 +165,156 @@ class _ReportList extends StatelessWidget {
           );
         }
 
-        return ListView.separated(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-          itemCount: reports.length,
-          separatorBuilder: (_, __) => SizedBox(height: 10.h),
-          itemBuilder: (context, i) => _ReportCard(
-            report: reports[i],
-            showActions: showActions,
-          ),
+        return Column(
+          children: [
+            // Bulk action bar (visible only in pending tab when items selected)
+            if (widget.showActions && _selected.isNotEmpty)
+              _BulkActionBar(
+                selectedCount: _selected.length,
+                totalCount: reports.length,
+                loading: _bulkLoading,
+                allSelected: _selected.length == reports.length,
+                onSelectAll: () => setState(() {
+                  if (_selected.length == reports.length) {
+                    _selected.clear();
+                  } else {
+                    _selected.addAll(reports.map((r) => r.id));
+                  }
+                }),
+                onDismiss: () => _bulkDismiss(reports),
+                onRemove: () => _bulkRemove(reports),
+                palette: palette,
+                t: t,
+                l10n: l10n,
+              ),
+            // Select-all chip when none selected (pending only)
+            if (widget.showActions && _selected.isEmpty && reports.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 0),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => setState(() =>
+                          _selected.addAll(reports.map((r) => r.id))),
+                      child: Row(
+                        children: [
+                          Icon(Icons.check_box_outline_blank_rounded,
+                              size: 16.r, color: palette.textSecondary),
+                          SizedBox(width: 4.w),
+                          Text(l10n.translate('admin.reports_select_all'),
+                              style: t.labelM
+                                  .copyWith(color: palette.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: ListView.separated(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                itemCount: reports.length,
+                separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                itemBuilder: (context, i) => _ReportCard(
+                  report: reports[i],
+                  showActions: widget.showActions,
+                  selected: _selected.contains(reports[i].id),
+                  onToggleSelect: widget.showActions
+                      ? () => setState(() {
+                            if (_selected.contains(reports[i].id)) {
+                              _selected.remove(reports[i].id);
+                            } else {
+                              _selected.add(reports[i].id);
+                            }
+                          })
+                      : null,
+                ),
+              ),
+            ),
+          ],
         );
       },
+    );
+  }
+}
+
+// ── Bulk Action Bar ───────────────────────────────────────────────────────────
+
+class _BulkActionBar extends StatelessWidget {
+  final int selectedCount;
+  final int totalCount;
+  final bool loading;
+  final bool allSelected;
+  final VoidCallback onSelectAll;
+  final VoidCallback onDismiss;
+  final VoidCallback onRemove;
+  final AppPalette palette;
+  final AppText t;
+  final AppLocalizations l10n;
+
+  const _BulkActionBar({
+    required this.selectedCount,
+    required this.totalCount,
+    required this.loading,
+    required this.allSelected,
+    required this.onSelectAll,
+    required this.onDismiss,
+    required this.onRemove,
+    required this.palette,
+    required this.t,
+    required this.l10n,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+      color: palette.surfaceVariant,
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: onSelectAll,
+            child: Icon(
+              allSelected
+                  ? Icons.check_box_rounded
+                  : Icons.indeterminate_check_box_rounded,
+              size: 20.r,
+              color: palette.textSecondary,
+            ),
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              l10n
+                  .translate('admin.reports_selected_count')
+                  .replaceFirst('{n}', '$selectedCount'),
+              style: t.labelM.copyWith(color: palette.textPrimary),
+            ),
+          ),
+          if (loading)
+            SizedBox(
+              width: 20.r,
+              height: 20.r,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: palette.textSecondary),
+            )
+          else ...[
+            TextButton(
+              onPressed: onDismiss,
+              child: Text(l10n.translate('admin.reports_bulk_dismiss'),
+                  style:
+                      t.labelM.copyWith(color: palette.textSecondary)),
+            ),
+            SizedBox(width: 4.w),
+            TextButton(
+              onPressed: onRemove,
+              child: Text(l10n.translate('admin.reports_bulk_remove'),
+                  style: t.labelM
+                      .copyWith(color: palette.error, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -140,8 +324,15 @@ class _ReportList extends StatelessWidget {
 class _ReportCard extends StatelessWidget {
   final ReportModel report;
   final bool showActions;
+  final bool selected;
+  final VoidCallback? onToggleSelect;
 
-  const _ReportCard({required this.report, required this.showActions});
+  const _ReportCard({
+    required this.report,
+    required this.showActions,
+    this.selected = false,
+    this.onToggleSelect,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -157,7 +348,9 @@ class _ReportCard extends StatelessWidget {
     final badgeColor =
         report.status == 'pending' ? palette.error : palette.textSecondary;
 
-    return AppCard(
+    return GestureDetector(
+      onTap: onToggleSelect,
+      child: AppCard(
       padding: EdgeInsets.zero,
       child: Padding(
         padding: EdgeInsets.all(14.r),
@@ -168,6 +361,18 @@ class _ReportCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (onToggleSelect != null) ...[
+                  Icon(
+                    selected
+                        ? Icons.check_box_rounded
+                        : Icons.check_box_outline_blank_rounded,
+                    size: 18.r,
+                    color: selected
+                        ? palette.error
+                        : palette.textSecondary,
+                  ),
+                  SizedBox(width: 6.w),
+                ],
                 Container(
                   padding:
                       EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
@@ -236,7 +441,7 @@ class _ReportCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 
   void _dismiss(

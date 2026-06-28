@@ -24,12 +24,14 @@ import '../core/services/auth_service.dart';
 import '../core/services/att_consent_service.dart';
 import '../core/services/firestore_service.dart';
 import '../core/services/deep_link_service.dart';
+import '../core/services/push_notification_service.dart';
 import '../core/providers/device_info_provider.dart';
 import 'package:provider/provider.dart';
 import '../core/providers/onboarding_provider.dart';
 import '../core/providers/user_provider.dart';
 import '../core/models/user_model.dart';
 import '../core/utils/app_routes.dart';
+import '../core/utils/onboarding_flow_resolver.dart';
 import '../core/widgets/error_fallback_widget.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -138,11 +140,14 @@ class _SplashScreenState extends State<SplashScreen>
       // PHASE 3: Load User Data (Essential for routing)
       if (AuthService().currentUser != null && mounted) {
         try {
+          debugPrint('SplashScreen: Loading user data...');
           await Provider.of<UserProvider>(context, listen: false).loadUser();
           debugPrint('SplashScreen: User data loaded.');
         } catch (e) {
           debugPrint('SplashScreen: Error loading user data: $e');
         }
+      } else {
+        debugPrint('SplashScreen: No authenticated user — skipping user load.');
       }
 
       // PHASE 4: Fire-and-forget background preloading (non-blocking)
@@ -198,6 +203,7 @@ class _SplashScreenState extends State<SplashScreen>
     DeepLinkService()
         .init(AuthService().navigatorKey)
         .catchError((e) => debugPrint('DeepLink init error: $e'));
+    PushNotificationService().setNavigatorKey(AuthService().navigatorKey);
   }
 
   /// Fire-and-forget device info initialization
@@ -412,6 +418,7 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
+    debugPrint('SplashScreen: Fetching user document...');
     final userModel = await AuthService().getUserData(user.uid);
     debugPrint('SplashScreen: User data: ${userModel?.email}');
 
@@ -427,9 +434,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Merge private nutrition PII (owner-only subcollection) so the
     // completeness check and OnboardingProvider get the full picture.
+    debugPrint('SplashScreen: Fetching private nutrition data...');
     final privateNutrition = userModel != null
         ? await FirestoreService().getPrivateNutritionData(userModel.uid)
         : null;
+    debugPrint('SplashScreen: Private nutrition data loaded.');
     final mergedModel = (userModel != null && privateNutrition != null)
         ? userModel.withPrivateNutrition(privateNutrition)
         : userModel;
@@ -440,25 +449,34 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    if (_isOnboardingDataComplete(mergedModel)) {
-      // Request ATT before navigating — only prompts once per install.
-      await ATTConsentService().requestIfNeeded();
-      if (!mounted) return;
-      unawaited(Navigator.pushReplacementNamed(context, AppRoutes.main));
-    } else {
+    // Sync SharedPrefs intro_seen from Firestore truth (handles reinstalls).
+    if (mergedModel?.introSeen == true) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('intro_seen', true);
+    }
+
+    // Request ATT before any navigation.
+    await ATTConsentService().requestIfNeeded();
+    if (!mounted) return;
+
+    final destination = OnboardingFlowResolver.resolve(mergedModel);
+
+    if (destination.route == AppRoutes.onboarding) {
       final combined = mergedModel?.onboardingData;
       if (combined != null) {
         Provider.of<OnboardingProvider>(context, listen: false)
             .initializeFromFirestore(combined);
       }
-      // Check if intro was already seen
-      final prefs = await SharedPreferences.getInstance();
-      final introSeen = prefs.getBool('intro_seen') ?? false;
-      if (!mounted) return;
-      if (introSeen) {
-        unawaited(Navigator.pushReplacementNamed(context, AppRoutes.onboarding));
-      } else {
-        unawaited(Navigator.pushReplacementNamed(context, AppRoutes.intro));
+      unawaited(Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.onboarding,
+        arguments: destination.initialStep,
+      ));
+    } else {
+      unawaited(Navigator.pushReplacementNamed(context, destination.route));
+      // Drain any cold-start notification tap once /main is built.
+      if (destination.route == AppRoutes.main) {
+        PushNotificationService().drainPendingNavigation();
       }
     }
   }
@@ -471,33 +489,13 @@ class _SplashScreenState extends State<SplashScreen>
     }
   }
 
+  // Replaced by OnboardingFlowResolver.resolve() — kept in case any downstream
+  // caller references this symbol until migrated. Delegates to the resolver.
+  // ignore: unused_element
   bool _isOnboardingDataComplete(UserModel? userModel) {
-    if (userModel == null || !userModel.onboardingCompleted) {
-      return false;
-    }
-
-    final onboardingData = userModel.onboardingData;
-
-    if (onboardingData == null) {
-      return false;
-    }
-
-    final primaryGoals = onboardingData['primary_goals'];
-    final kitchenEquipments = onboardingData['kitchen_equipments'];
-
-    return onboardingData['personal_info']['gender'] != null &&
-        onboardingData['personal_info']['birth_date'] != null &&
-        onboardingData['personal_info']['height'] != null &&
-        onboardingData['personal_info']['weight'] != null &&
-        (primaryGoals is List
-            ? primaryGoals.isNotEmpty
-            : primaryGoals != null) &&
-        onboardingData['cooking_level'] != null &&
-        onboardingData['activity_level'] != null &&
-        onboardingData['meal_schedule'] != null &&
-        (kitchenEquipments is List
-            ? kitchenEquipments.isNotEmpty
-            : kitchenEquipments != null);
+    if (userModel == null) return false;
+    final dest = OnboardingFlowResolver.resolve(userModel);
+    return dest.route == AppRoutes.main;
   }
 
   Future<void> _checkConnectivity() async {

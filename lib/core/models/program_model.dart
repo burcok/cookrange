@@ -52,6 +52,8 @@ class ProgramModel {
   final List<String> tags;
   final List<String> highlights;
   final bool isPublished;
+  // 'draft' | 'pending' | 'approved' | 'rejected'
+  final String status;
   final int enrollmentCount;
   final double rating;
   final int ratingCount;
@@ -74,6 +76,7 @@ class ProgramModel {
     required this.tags,
     required this.highlights,
     required this.isPublished,
+    this.status = 'approved',
     required this.enrollmentCount,
     required this.rating,
     required this.ratingCount,
@@ -106,6 +109,7 @@ class ProgramModel {
       tags: List<String>.from(d['tags'] as List? ?? []),
       highlights: List<String>.from(d['highlights'] as List? ?? []),
       isPublished: d['is_published'] as bool? ?? false,
+      status: d['status'] as String? ?? 'approved',
       enrollmentCount: d['enrollment_count'] as int? ?? 0,
       rating: (d['rating'] as num?)?.toDouble() ?? 0.0,
       ratingCount: d['rating_count'] as int? ?? 0,
@@ -129,6 +133,7 @@ class ProgramModel {
         'tags': tags,
         'highlights': highlights,
         'is_published': isPublished,
+        'status': status,
         'enrollment_count': enrollmentCount,
         'rating': rating,
         'rating_count': ratingCount,
@@ -138,6 +143,7 @@ class ProgramModel {
 
   ProgramModel copyWith({
     bool? isPublished,
+    String? status,
     int? enrollmentCount,
     String? coverImageUrl,
   }) =>
@@ -157,6 +163,7 @@ class ProgramModel {
         tags: tags,
         highlights: highlights,
         isPublished: isPublished ?? this.isPublished,
+        status: status ?? this.status,
         enrollmentCount: enrollmentCount ?? this.enrollmentCount,
         rating: rating,
         ratingCount: ratingCount,

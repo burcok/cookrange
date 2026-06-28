@@ -92,6 +92,11 @@ service cloud.firestore {
         allow read, write: if isOwner(uid);
       }
 
+      // Saved/bookmarked community posts
+      match /saved_posts/{postId} {
+        allow read, write: if isOwner(uid);
+      }
+
       // Notification preferences
       match /notification_preferences/{prefId} {
         allow read, write: if isOwner(uid);
@@ -132,8 +137,7 @@ service cloud.firestore {
     // ─── Dishes (read-only catalog for users) ───────────────────────────────
     match /dishes/{dishId} {
       allow read: if isAuthenticated();
-      // No client-side writes; seeding done via admin SDK or script with admin credentials
-      allow write: if false;
+      allow write: if isAuthenticated() && isAdmin();
     }
 
     // ─── App Settings (read-only config) ────────────────────────────────────
@@ -265,8 +269,9 @@ service cloud.firestore {
       // Only the gym owner can create/update their gym
       allow create: if isAuthenticated()
         && request.resource.data.owner_uid == request.auth.uid;
+      // Owner updates gym; admin may set is_verified badge.
       allow update: if isAuthenticated()
-        && resource.data.owner_uid == request.auth.uid;
+        && (resource.data.owner_uid == request.auth.uid || isAdmin());
       allow delete: if isAuthenticated()
         && resource.data.owner_uid == request.auth.uid;
 
@@ -338,7 +343,9 @@ service cloud.firestore {
     // ─── Coach Profiles ───────────────────────────────────────────────────────
     match /coach_profiles/{coachUid} {
       allow read: if isAuthenticated();
-      allow create, update: if isOwner(coachUid);
+      allow create: if isOwner(coachUid);
+      // Owner updates their own profile; admin may set is_verified badge.
+      allow update: if isOwner(coachUid) || isAdmin();
       allow delete: if false;
 
       match /clients/{clientUid} {
@@ -362,9 +369,20 @@ service cloud.firestore {
       allow create: if isAuthenticated()
         && (request.resource.data.coach_uid == request.auth.uid
             || request.resource.data.coach_uid == 'demo');
-      // Only the owning coach can update or delete (demo programs are read-only)
-      allow update, delete: if isAuthenticated()
+      // Owning coach can update/delete; admin can update status (approve/reject).
+      allow update: if isAuthenticated()
+        && (resource.data.coach_uid == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated()
         && resource.data.coach_uid == request.auth.uid;
+
+      // Week content subcollection — any enrolled user or owner may read.
+      // Writes restricted to the owning coach or demo seeder.
+      match /weeks/{weekId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated()
+          && (get(/databases/$(database)/documents/programs/$(programId)).data.coach_uid == request.auth.uid
+              || get(/databases/$(database)/documents/programs/$(programId)).data.coach_uid == 'demo');
+      }
     }
 
     // ─── Seeds (idempotent seeder gates) ──────────────────────────────────────
@@ -439,6 +457,24 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isAdmin();
       allow read: if isAuthenticated() && isAdmin();
       allow update, delete: if false;
+    }
+
+    // ─── Admin Config (feature flags + maintenance + AI model) ───────────────
+    // Admin reads/writes; app reads only maintenance_mode and min_version via
+    // admin_status_service (Firestore-first, RC fallback). No user access.
+    match /admin_config/{docId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow write: if isAuthenticated() && isAdmin();
+    }
+
+    // ─── Broadcasts (admin push + in-app announcements) ───────────────────────
+    // Admins create and read; Cloud Functions update status/counts; nobody deletes.
+    match /broadcasts/{id} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow create: if isAuthenticated() && isAdmin()
+        && request.resource.data.admin_uid == request.auth.uid;
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if false;
     }
 
     // ─── Deny everything else ─────────────────────────────────────────────────

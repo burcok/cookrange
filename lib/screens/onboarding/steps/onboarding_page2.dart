@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/constants/onboarding_options.dart';
 import '../../../widgets/onboarding_common_widgets.dart';
 import '../../../core/providers/onboarding_provider.dart';
+import '../../../core/widgets/ds/ds.dart';
 
 class OnboardingPage2 extends StatefulWidget {
   final int step;
@@ -77,13 +77,11 @@ class _OnboardingPage2State extends State<OnboardingPage2> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final localizations = AppLocalizations.of(context);
     final onboarding = context.watch<OnboardingProvider>();
 
     return Scaffold(
-      backgroundColor: colorScheme.backgroundColor2,
+      backgroundColor: AppPalette.of(context).background,
       body: SafeArea(
         child: Column(
           children: [

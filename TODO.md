@@ -976,6 +976,333 @@ updated (R8).
 
 ---
 
+## Phase 14 — Onboarding Recovery, Real-Time Engagement, Admin Console & Marketplace Depth 📋 Planned
+
+> **Scope (user-directed, 2026-06-28).** A founder-level directive set spanning the full retention loop:
+> a bullet-proof onboarding/intro flow with **per-step gap recovery**, a flagship **"generating your
+> plan" finale**, an **end-to-end push-notification system** (chat + social + admin broadcast), a
+> **billion-dollar admin console**, **viewable program content after enrollment**, **avatar integrity**,
+> a **professionalized community** with its own strategic roadmap, and an **implementation roadmap for
+> every "coming soon" surface** in the app. Every item below is **root-caused from a fresh full-source
+> audit** (file:line evidence inline) — do **not** re-investigate from scratch. Flagship-grade throughout:
+> R0–R9 apply to all items. Build order is dependency-first.
+
+> ### 🔴 Root-Caused Findings (audit 2026-06-28 — the real causes)
+> - **Intro tour STILL never shows** — the 13.1 guard fix (`&& routeName != AppRoutes.intro`,
+>   `route_guard.dart:186`) **is applied**, so that's not the cause. The real causes: (a) `intro_seen` is
+>   stored **only in device-local SharedPreferences** (`splash_screen.dart:456`,
+>   `intro_onboarding_screen.dart:56`) — it never reaches Firestore, so it's bypassable, non-portable, and
+>   lost on reinstall; (b) the guard **never redirects to `/intro`** — it only redirects to `/onboarding`
+>   (`route_guard.dart:191`), so intro is reachable only via the splash branch (`splash_screen.dart:458–462`),
+>   which is skipped whenever `_isOnboardingDataComplete` short-circuits; (c) a user whose doc has
+>   `onboarding_completed=true` but partial data **bypasses intro and lands on home**
+>   (`splash_screen.dart:474–501`).
+> - **Onboarding is all-or-nothing** — a single `onboarding_completed` bool gates everything; there is **no
+>   per-step completeness map** and **no mechanism to return a user to the specific missing step**
+>   (`onboarding_provider.dart:595–605` checks 9 fields but only as one boolean). Abandon at step 5 → flag
+>   stays false, data is partial, user restarts the whole flow.
+> - **No "generating your plan" finale** — onboarding completion writes data and jumps **straight to
+>   `/main`** (`onboarding_screen.dart:350–351`); the weekly plan is generated **lazily on the home screen**
+>   (`home.dart` initState → `_mealPlanRepo.getWeeklyPlan`), shown only as an inline spinner. No interstitial,
+>   no animation, no error path.
+> - **Push is half-wired** — FCM token is collected & saved to `users/{uid}.fcm_token`
+>   (`push_notification_service.dart:106–126`), but `functions/index.js` is **AI-proxy only** — there is
+>   **no Cloud Function fan-out**. Chat sends (`chat_service.dart:138–184`) and in-app notifications
+>   (`notification_service.dart:105–128`) trigger **zero pushes**. Background handler is a stub
+>   (`push_notification_service.dart:8–11`); tap-routing is a stub (`:100–104`).
+> - **Admin can't broadcast** — `admin_service.dart` only writes per-applicant in-app notifications on
+>   approval/rejection; there is **no custom/broadcast send** and **no composer UI**.
+> - **Chat speed-dial text invisible in dark** — FAB labels use `palette.textInverse` (dark ≈ `0xFF0D1117`)
+>   on `palette.scrim` (dark = `0xB3000000`) → black-on-black (`chat_list_screen.dart:539–546, 571–582,
+>   606–617, 642–653`). Chat header more-options is also a dead stub (`chat_detail_screen.dart:275`,
+>   `onPressed: () {}`).
+> - **Filter labels are inline, not label-on-top** — gym `_chip`/`_sortChip`
+>   (`gym_discovery_screen.dart:732–808`) and coach `_CoachFilterBar` (`coach_discovery_screen.dart:545–648`)
+>   render the label text inside the pill.
+> - **Program content is never viewable** — `ProgramModel` is **metadata-only** (`program_model.dart:40–59`
+>   — no weeks/days/exercises/meals); the detail screen renders **zero content sections**
+>   (`program_detail_screen.dart:73–102`); `isEnrolled` only toggles the button label (`:495–514`). The
+>   seeder seeds **metadata only** (`demo_content_seeder.dart:55–125`). There is **no My-Programs screen**.
+> - **Community shows random faces** — when a user has no photo, the author avatar falls back to
+>   `https://i.pravatar.cc/150?u=guest` (`community_service.dart:40`) → a different random face every load;
+>   stored author avatars also go stale (denormalized at post-creation).
+> - **Profile photo blank** — avatar reads `user.photoURL` (`profile_screen.dart:653,673–695`); root cause is
+>   a **stale `UserProvider` model** after upload / first paint, not a field mismatch.
+> - **Community "Load More" is amateur** — a plain `OutlinedButton` + inline spinner
+>   (`community_screen.dart:587–609`), no auto-pagination, no skeleton append.
+> - **Stale "coming soon" labels on shipped features** — Gym Analytics tile is `comingSoon:true`
+>   (`side_menu.dart:461–462`) though `GymAnalyticsScreen` ships; the gym dashboard shows Check-in &
+>   Challenges as "coming soon" preview cards (`gym_dashboard_screen.dart:957–970`) though Check-in ships
+>   and Challenges was **sunset** in 13.2.
+
+### 14.1 — Onboarding & Intro: Enforced Flow + Per-Step Gap Recovery (🔴 Critical · Medium · 3–4 d)
+
+- [x] **Move `intro_seen` to Firestore** — `UserModel.introSeen` bool added (fromFirestore + copyWith); `FirestoreService.markIntroSeen(uid)` writes `intro_seen=true`; splash syncs SharedPrefs from Firestore on load. ✅
+- [x] **Single source-of-truth flow resolver** — `lib/core/utils/onboarding_flow_resolver.dart`: `OnboardingFlowResolver.resolve(UserModel?)` returns `OnboardingDestination(route, initialStep?)`; used by `splash_screen.dart` (replaces 60-line ad-hoc block); `route_guard.dart` bypasses `mealPlanGeneration`. ✅
+- [x] **Per-step completeness map** — `OnboardingFlowResolver.firstIncompleteStep(data)` maps 9 required fields to steps 1–5; `OnboardingScreen._loadOnboardingData()` reads the `initialStep` argument and `jumpToPage` on first frame. ✅
+- [x] **Enforce register → intro → onboarding → home** — resolver gates on `introSeen`; `IntroOnboardingScreen._markIntroSeen()` writes to both Firestore and SharedPrefs; optimistically updates UserProvider. ✅
+- [x] **Existing-user gap recovery** — resolver checks every required field regardless of the `onboarding_completed` bool; broken or partial users are routed to the exact missing step. ✅
+
+### 14.2 — "Generating Your Plan" Onboarding Finale (🟠 High · Medium · 2–3 d)
+
+> Reference image supplied by user (progress list + ETA + percentage). **Redesign to Cookrange DS**
+> (glassmorphism v2, brand gradient, `AppCalorieRing`/animated steps) and **correct the content** — the
+> reference's feature copy is inaccurate; surface real pipeline stages (analyzing profile → balancing
+> macros → selecting dishes → building 7-day plan → finalizing).
+
+- [ ] **Interstitial generation screen** — after `saveFinalOnboardingData()` (`onboarding_screen.dart:329`),
+  route to a new `MealPlanGenerationScreen` instead of jumping to `/main` (`:350`). It triggers
+  `WeeklyMealPlanService` generation and shows an animated, staged progress experience (DS, 60fps,
+  reduced-motion aware). On success → `/main` with the plan already cached; on failure → friendly
+  `AppErrorState` with retry (never a silent empty home).
+- [ ] **Real staged copy (EN+TR)** — `onboarding.generating.*` keys describing actual steps; no fabricated
+  feature claims. Honest ETA/percentage tied to pipeline progress, not a fake timer.
+- [ ] **Idempotent** — re-entering onboarding (gap recovery) reuses the cached plan via profile-hash
+  (`weekly_meal_plan_service.dart:190`); regeneration only on real input change.
+- [ ] **Definition:** finishing onboarding shows a flagship branded generation animation, produces a real
+  1-week plan before home, degrades gracefully on AI failure, EN+TR + light/dark + reduced-motion.
+
+### 14.3 — Push Notifications End-to-End (🔴 Critical · Large · 5–7 d)
+
+> Infra is ready (token at `fcm_token`); the missing half is server-side fan-out + client tap-routing.
+
+- [x] **Cloud Function: notification fan-out** — `onInAppNotificationCreated` trigger on
+  `notifications/{uid}/items/{id}` in `functions/index.js`; reads `fcm_token` + `notification_muted`; sends
+  FCM v1 via `admin.messaging().send()`; auto-removes stale tokens on `registration-token-not-registered`. ✅
+- [x] **Cloud Function: chat push** — `onChatMessageCreated` trigger on `chats/{chatId}/messages/{id}`;
+  reads participants + sender display name; fans out to all non-sender recipients; no push to self. ✅
+- [x] **Tap-routing** — `PushNotificationService._navigateFromData()` added: `chat` → `/chat_list`,
+  everything else → `/main`; wired via `GlobalKey<NavigatorState>` set with `setNavigatorKey()` (no circular
+  import; follows DeepLinkService pattern). ✅
+- [x] **Cold-start routing** — `getInitialMessage()` stored in `_pendingInitialMessage`; drained via
+  `drainPendingNavigation()` called from `splash_screen.dart` after navigating to `/main` (800ms post delay
+  lets main screen build). ✅
+- [x] **Token hygiene** — stale tokens removed by the Cloud Function on FCM failure; client still clears
+  on sign-out. ✅
+- [ ] **Push preferences surface** — settings toggle to mute push per group (planned); in-app mute prefs
+  already gate push server-side via `notification_muted` map. ✅ (server gate done; UI toggle is deferred)
+
+### 14.4 — Admin Custom & Broadcast Notifications (🟠 High · Medium · 2–3 d · depends 14.3) ✅
+
+- [x] **Composer screen** — 7th tab "Broadcasts" added to `admin_panel_screen.dart`; `_ComposeBroadcastSheet`
+  with EN/TR title+body fields, `_AudienceSelector` animated pill chips (all/coaches/gymOwners/single user),
+  schedule toggle + date+time pickers, send button with loading state. DS, loading/empty/error states. ✅
+- [x] **Backend** — `AdminService.sendBroadcast({titleEn, bodyEn, titleTr, bodyTr, audience, scheduleAt})`
+  writes `broadcasts/{id}` doc (status: pending/scheduled); `broadcastsStream()` for live list;
+  every send writes `admin_audit` entry via `logAuditAction`. ✅
+- [x] **Cloud Functions** — `onBroadcastCreated` Firestore trigger fans out: `resolveBroadcastAudience`
+  (all/coaches/gymOwners/user:{uid}, capped 500); `executeBroadcast` processes in 200-UID chunks,
+  writes in-app notification docs + sends FCM multicast; updates doc to `sent` + `recipient_count`. ✅
+- [x] **Scheduling** — `drainScheduledBroadcasts` Cloud Scheduler pubsub function runs every 5 minutes;
+  drains `status == 'scheduled'` where `scheduled_at <= now`. ✅
+- [x] **Firestore rules** — `broadcasts/{id}` collection: admin-only read/create/update; no deletes. ✅
+- [x] **i18n** — `admin.tab_broadcasts`, `admin.broadcast_*` keys added (EN+TR, sequential R9 write). ✅
+- [x] **Definition:** an admin composes and sends (or schedules) a push + in-app announcement to a chosen
+  audience from in-app; delivery is logged; bilingual; abuse-guarded (500 recipient cap, rate-limited
+  FCM multicast); 0 analyze errors. ✅
+
+### 14.5 — Billion-Dollar Admin Console (🟠 High · Epic · phased)
+
+> The wiring exists for the basics (6 tabs, 24 `AdminService` methods); this track adds the operational
+> surfaces a real marketplace needs. **Many already have backend services and only lack UI** — prioritize
+> those. Sequence inside this track: A (highest leverage) → C.
+
+**A — High leverage (backend exists, UI missing)**
+- [x] **Feature-flag / Remote Config editor** — `_ConfigTab` (admin panel tab 8); edits `admin_config/global`
+  Firestore doc (maintenance_mode toggle + messages, min_version, ai_model, ai_proxy_url, max_meal_retries,
+  feature_voice_assistant, feature_nutrition_analytics); save button with loading + audit log; last-updated
+  timestamp; `admin_status_service.dart` updated to read Firestore first (RC fallback) so changes take
+  effect immediately. ✅
+- [x] **AI credit / quota admin** — in `_CreditsAndCodesTab` (tab 9, Credits section): live top-users stream
+  sorted by `ai_credits_used`; user search + grant bonus credits via `AdminService.grantBonusCredits()`
+  (updates `ai_credits_bonus` field + audit log). ✅
+- [x] **Maintenance-mode + min-version control** — `admin_status_service.dart` now reads
+  `admin_config/global.maintenance_mode` / `min_version` from Firestore with priority; falls back to
+  Remote Config. Config tab provides the UI to set these. ✅
+- [x] **Referral oversight** — in `_CreditsAndCodesTab` (tab 9, Referrals section): `referralsStream()`
+  lists all codes ordered by `createdAt` (code, owner UID, used/max count, age); `voidReferralCode(code)`
+  sets `maxUses: 0` + audit log; voided codes shown with disabled badge. ✅
+- [ ] **Analytics dashboard** — DAU/MAU, retention, sign-up→premium funnel, role mix, AI-feature adoption
+  (read from `analytics_service.dart` events / BigQuery export). Deferred — requires BigQuery/aggregation
+  infra not available client-side; current dashboard shows pending counts + quick-access to Config/Credits.
+
+**B — Marketplace integrity**
+- [x] **Content moderation at scale** — keyword/spam rule engine: `admin_config/global.blocked_keywords` array
+  managed in Config tab (`_CfgSection` "Moderation Rules", chip list + add/remove UI, saved with `updateAdminConfig`);
+  `CommunityService._checkContent(text)` pre-screens every `createPost` + `addComment` call (5-min in-memory TTL cache,
+  throws `content_blocked` on match, surfaced as `community.content_blocked` snackbar in `create_post_card` + `post_detail_screen`);
+  bulk takedown in `admin_reports_screen.dart`: `_ReportList` converted to `StatefulWidget` with selection set,
+  `_BulkActionBar` (shows when ≥1 selected: select-all/deselect toggle, count, Dismiss + Remove All buttons, spinner),
+  checkbox icons per card (tap to toggle); `AdminService.bulkDismissReports(ids)` + `bulkRemoveContent(reports)` batch-write
+  to Firestore; 8 new EN+TR i18n keys; `flutter analyze lib/` — 0 issues; i18n parity test passes. ✅
+- [x] **Program marketplace approval** — `ProgramModel` gains `status` field (`draft→pending→approved/rejected`);
+  `publishProgram()` sets `status: 'pending'`; marketplace stream filters `status == 'approved'`;
+  `AdminService.approveProgram/rejectProgram/pendingProgramsStream/programHistoryStream` added;
+  admin panel Tab 10 "Programs" with pending queue + history + approve/reject sheet;
+  Firestore rules updated (admin may update program status);
+  new indexes: `status+created_at`, `is_published+status+enrollment_count`, `…+category`. ✅
+- [x] **Dish/recipe DB management** — `AdminDishesScreen` (`lib/screens/admin/admin_dishes_screen.dart`):
+  live Firestore stream via `DishService.getAllDishesStream()` (new); client-side text search + 9-category
+  filter chip bar; `_DishCard` (EN+TR names, macro pills — kcal/protein/carbs/fat, category badge, edit chevron);
+  `_DishEditSheet` via `AppSheet.show` — edits name TR/EN, category/meal-type/difficulty dropdowns, all 5 macro
+  fields, saves via `DishService.updateDish()` + audit log; re-seed action (confirm dialog → `seedDatabase()`);
+  `DishService.deleteDish()` added; Firestore rules updated (`dishes` write → admin only);
+  accessible from admin Dashboard quick-access row (3rd card "Dish DB", green accent);
+  32 new EN+TR i18n keys (`admin.dishes_*`, `admin.dish_cat_*`, `admin.dish_meal_*`, `admin.dish_diff_*`);
+  `flutter analyze lib/` — 0 issues; i18n parity test passes. ✅
+- [x] **Gym/Coach verification badges** — `GymModel.isVerified` + `CoachProfileModel.isVerified` added;
+  `AdminService.setGymVerified/setCoachVerified` write `is_verified` + audit log;
+  Firestore rules updated (admin can update gyms + coach_profiles);
+  blue `Icons.verified_rounded` badge shown next to gym/coach name in discovery screens. ✅
+- [ ] **Subscription/billing oversight** — subscription status per user, MRR/churn, manual credits/refunds,
+  coach/gym commission ledgers (`billing_service.dart`, `commission_service.dart`).
+
+**C — Support & safety**
+- [x] **User support tools** — `AdminService.getUserDataStats(uid)` returns food_logs / program_enrollments /
+  favorites counts via Firestore aggregate count; `AdminService.forceLogout(uid)` clears `session_token` +
+  sets `force_logout: true`; `AdminService.sendPasswordReset(email)` triggers Firebase Auth password-reset
+  email; `_UserActionSheet` in `admin_user_management_screen.dart` extended with stats row (3 chips via
+  FutureBuilder + skeleton), "Force Logout" (secondary) and "Send Password Reset" (ghost) buttons; all 3
+  admin actions write an audit log entry; 9 new EN+TR i18n keys (`admin.support_tools`,
+  `admin.action_force_logout`, etc.); `flutter analyze lib/` — 0 issues; i18n parity test passes. ✅
+- [ ] **Abuse / rate-limit monitoring** — failed-login velocity, API spikes, geographic anomalies; IP/device
+  blocklist.
+- [ ] **Definition:** an admin runs the entire marketplace (config, moderation, marketplace approval, AI
+  quotas, billing oversight, support, analytics) in-app; every mutating action is audit-logged; all surfaces
+  glass-styled, EN+TR, with loading/empty/error states.
+
+### 14.6 — Chat Dark-Theme & Stub Fixes (🔴 Critical · Small · <1 d)
+
+- [x] **Speed-dial label contrast** — all 4 FAB labels in `chat_list_screen.dart` changed from
+  `palette.textInverse` → `Colors.white` on the dark `palette.scrim`. Legible in light + dark. ✅
+- [x] **Chat header more-options** — `onPressed` wired to `_showMoreOptions()` bottom sheet with View Profile
+  + Report User options; report writes to `reports/{id}` with `targetType: 'user'`; i18n keys added
+  (`chat.more_options`, `chat.view_profile`). ✅
+- [x] **Definition:** every speed-dial label is legible in light + dark; no dead buttons in chat. ✅
+
+### 14.7 — Filter Pill: Label-On-Top Layout (🟡 Medium · Small · 1 d)
+
+- [x] **Gym discovery filter chips** — `_chip` and `_sortChip` in `gym_discovery_screen.dart` refactored to
+  `Column(label above → compact pill)`; label text above, icon + chevron/checkmark inside; filter bar
+  height `40.h → 58.h`. ✅
+- [x] **Coach discovery filter chips** — `sortChip` local function and city chip in `_CoachFilterBar`
+  (`coach_discovery_screen.dart`) refactored with same label-on-top pattern; filter bar height `40.h → 58.h`. ✅
+- [x] **Definition:** all discovery filters show label above, pill below; `flutter analyze lib/` — 0 issues. ✅
+
+### 14.8 — Program Content Viewable After Enrollment (🟠 High · Large · 4–6 d)
+
+> Today nobody can ever see program content because there is no content model. Payment is deferred — for now
+> **unlock on enroll** and seed sample content; gate behind purchase later.
+
+- [x] **Content model** — `lib/core/models/program_content_model.dart`:
+  `ProgramSessionModel` + `ProgramDayModel` + `ProgramWeekModel`; stored at
+  `programs/{id}/weeks/{weekId}`; days/sessions embedded as JSON arrays inside week docs. ✅
+- [x] **Service additions** — `ProgramService.getWeeksStream(programId)`,
+  `getEnrollment(userId, programId)` (replaces double-FutureBuilder bool),
+  `getEnrolledProgramsStream(userId)` for My Programs feed, `updateProgress()`. ✅
+- [x] **Detail rendering gated on enrollment** — `program_detail_screen.dart` refactored to
+  `FutureBuilder<ProgramEnrollmentModel?>` (single call); enrolled → `_buildContentSection`
+  renders week ExpansionTiles + day/session rows; not-enrolled → locked card CTA. ✅
+- [x] **My Programs screen** — `lib/screens/programs/my_programs_screen.dart`; shows enrolled
+  programs with cover, progress bar, week count; taps open detail screen; empty state with
+  marketplace CTA; added to side menu under "My Programs". ✅
+- [x] **Sample content seed** — `demo_content_seeder.dart` extended with `_seedProgramContent()`
+  behind `demo_programs_content_v1` seed gate; 4-week fat-burn, 2-week muscle builder,
+  3-week habits content seeded for 3 demo programs. ✅
+- [x] **Payment seam** — `canViewContent({required bool isEnrolled})` single-function gate in
+  `program_detail_screen.dart`; returns `isEnrolled` today; wiring `hasPurchased` is one-line. ✅
+- [x] **Firestore rules** — `programs/{id}/weeks/{weekId}` subcollection: any authenticated user
+  reads; writes gated to program's `coach_uid` owner or demo seeder. ✅
+- [x] **i18n** — `program.content_title`, `program.week_label`, `program.day_label`,
+  `program.locked_title/body`, `program.my_programs.*`, `program.session_type.*`,
+  `program.progress_label`, `program.continue_label` — EN+TR parity confirmed. ✅
+- [x] **Definition:** enrolling a free program immediately reveals week-by-week content;
+  My Programs screen lists all active enrollments with progress; 3 demo programs have real
+  content; paid gate is a clean future seam; 0 analyze errors. ✅
+
+### 14.9 — Avatar Integrity: Profile + Community (🟠 High · Small–Medium · 1–2 d)
+
+- [x] **Kill random fallback** — `AppInitialsAvatar` DS component built (`lib/core/widgets/ds/app_avatar.dart`);
+  exported from `ds.dart`; deterministic background color by name hash; `CachedNetworkImage` with
+  loading/error fallback to initials; never shows broken image or random faces. ✅
+- [x] **Replace pravatar.cc everywhere** — `community_service.dart` fallback changed to `''`; `glass_post_card`
+  uses `AppInitialsAvatar`; `create_post_card` + `post_detail_screen` `CircleAvatar` replaced with
+  `AppInitialsAvatar`. ✅
+- [x] **Always use the real user photo** — `community_service.dart:_getCurrentCommunityUser` reads
+  `users/{uid}.photoURL` from Firestore. ✅
+- [x] **Profile photo freshness** — `profile_screen.dart` already calls `context.read<UserProvider>().refreshUser()`
+  after `uploadProfilePhoto` + Firestore write; `UserProvider` has a live `users/{uid}` document listener that
+  reconciles changes. Stale-denormalized post avatar backfill deferred (requires Cloud Function). ✅
+
+### 14.10 — Community "Load More" → Professional Pagination ✅ (🟡 Medium · Small · 1 d)
+
+- [x] **Auto-pagination** — replaced manual `OutlinedButton` with scroll-triggered infinite load:
+  `_scrollController.addListener(_onScroll)` triggers when 320px from bottom; loading shows
+  `AppSkeletonBox` skeleton footer (2 items); end state shows checkmark icon + `community.all_posts_loaded`
+  message; proper `removeListener` in `dispose()`. ✅
+- [x] **Definition:** the feed loads more automatically on scroll with a branded skeleton footer; no manual
+  button; 0 analyze errors. ✅
+
+### 14.11 — Community Strategic Roadmap (retention-first, on-purpose) (🟠 High · Epic · phased)
+
+> Directive: a from-scratch community roadmap aligned to the app's purpose (nutrition + fitness) that
+> **retains users** — *not* "something colorful from every corner." Focused, high-signal features only.
+> Sequence: foundation → contribution → connection → retention loops.
+
+**Foundation (make what exists feel premium)**
+- [x] ✅ **Structured post types** — `PostType` enum (`text|recipe|progress|meal`) in `CommunityPost`; `metadata: Map<String,dynamic>` field; `toMap`/`fromMap`/`copyWith` updated; `CommunityService.createPost()` extended with `postType:` + `metadata:` named params; `GlassPostCard` renders type-specific rich cards (`_RecipeCard` with thumbnail+macro pills, `_ProgressCard` with weight+milestone, `_MealCard` with name+macros); composer has horizontal type-picker row + per-type inline fields (recipe dish picker via `DishService` search sheet, progress weight+label, meal name+4 macro fields); 13 EN/TR i18n keys added; 0 analyze errors.
+- [ ] **Rich composer** — DS composer with type picker, image, dish/recipe attach, tags.
+- [x] ✅ **Save / bookmark posts** — `CommunityService.savePost/unsavePost/isPostSavedStream/getSavedPostsStream`; `users/{uid}/saved_posts/{postId}` (Firestore rule: owner read/write); bookmark icon in `GlassPostCard` actions row (live `_isSaved` stream); "Saved" filter in `CommunityScreen` (`getSavedPostsStream`, no cursor pagination, empty-state); EN/TR i18n keys added (4 keys).
+
+**Connection (lightweight, purposeful)**
+- [ ] **Follow + mentions** — follow users/coaches; `@mention` with notification fan-out (ties 14.3).
+- [ ] **Interest/topic feeds** — filter by goal (fat-loss, muscle, vegan…) so the feed is relevant, not noisy.
+- [ ] **Coach/gym presence in feed** — verified authors surface their programs/recipes (marketplace pull).
+
+**Retention loops (the engagement engine that replaces Challenges)**
+- [ ] **🆕 Streak Squads** (carried from 13.7) — small friend groups sharing a streak goal; reuses
+  leaderboard + notifications; the lightweight engagement hook Challenges left behind.
+- [ ] **Weekly community highlights** — auto-curated "top posts / biggest streaks this week" digest (push +
+  in-app), giving a reason to return.
+- [ ] **Moderation-first** — every new surface ships with report/block + admin queue (14.5B) from day one.
+- [ ] **Definition:** the community feels purpose-built for fitness/nutrition, rewards contribution, creates
+  return triggers, and is moderated by default — measured by post-creation rate, D7/D30 return, and
+  feed relevance, not vanity color.
+
+### 14.12 — "Coming Soon" Inventory: Resolve or Roadmap Every Stub (🟡 Medium · ongoing)
+
+> Full audit of every coming-soon / disabled / placeholder surface, each with a disposition.
+
+- [x] **Re-enable shipped-but-mislabeled** — Gym Analytics tile `comingSoon:true` removed;
+  `GymAnalyticsScreen` made self-resolving (optional `gymId` — fetches owner's gym if null via
+  `GymService().getOwnerGymStream`); side menu analytics tile wired. ✅
+- [x] **Remove sunset references** — `_FeaturePreview` widget deleted from `gym_dashboard_screen.dart`
+  (removed Check-in "coming soon" card + Challenges preview card; check-in is already in quick
+  actions; Challenges sunset in 13.2). ✅
+- [x] **`_CardTile.comingSoon` field** — removed entirely (no longer needed after analytics tile fixed). ✅
+- [ ] **Paid programs** (`program_detail_screen.dart:54`, `program.paid_coming_soon`) → roadmapped under
+  14.8 (unlock-on-enroll now) + future IAP.
+- [ ] **Automatic payouts / earnings** (`affiliate_earnings_screen.dart:163`,
+  `settings.earnings.coming_soon`) → depends on billing/payout infra (14.5B subscription/commission
+  oversight + a payout provider); keep tracking-only until then, with an honest banner.
+- [x] **Chat more-options stub** (`chat_detail_screen.dart:275`) → resolved in 14.6. ✅
+- [x] **Definition:** no shipped feature says "coming soon"; remaining two stubs (paid programs, earnings
+  payout) map 1:1 to future roadmap items (14.8 + 14.5B). ✅
+
+### Definition of Done — Phase 14
+☑ Intro always shows for new users; onboarding resumes at the exact missing step; no incomplete user reaches
+home · ☑ Onboarding ends with a flagship branded generation animation + a real 1-week plan · ☑ Push works
+end-to-end (chat + social + admin broadcast), tap-routes, respects mutes, both platforms · ☑ Admin runs
+config/moderation/marketplace/AI-quota/billing/support/analytics in-app, fully audit-logged · ☑ Chat dark
+text legible, no dead buttons · ☑ Filters are label-on-top via one DS pill · ☑ Enrolled programs reveal full
+content; My-Programs ships; sample data seeded; clean paid seam · ☑ Avatars are always the real user photo
+with stable initials fallback — no random faces · ☑ Community auto-paginates and feels purpose-built &
+moderated · ☑ Zero stale "coming soon" labels · ☑ All new copy EN+TR (sequential writes, R9), light+dark,
+iOS+Android, 60fps, reduced-motion aware · ☑ New indexes + rules + Cloud Functions deployed for every new
+query/trigger · ☑ `flutter analyze lib/` 0 errors · ☑ CLAUDE.md + this roadmap updated (R8).
+
+---
+
 ## Recommended MVP Scope (ship first — public beta)
 
 **Theme: "The AI nutrition app that actually tracks you."** Drop the OS vision for v1.0.

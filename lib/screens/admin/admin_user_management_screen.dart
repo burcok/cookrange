@@ -386,11 +386,13 @@ class _UserActionSheet extends StatefulWidget {
 class _UserActionSheetState extends State<_UserActionSheet> {
   late String _selectedRole;
   bool _loading = false;
+  late Future<Map<String, int>> _statsFuture;
 
   @override
   void initState() {
     super.initState();
     _selectedRole = widget.role;
+    _statsFuture = widget.adminService.getUserDataStats(widget.uid);
   }
 
   Future<void> _changeRole() async {
@@ -507,6 +509,41 @@ class _UserActionSheetState extends State<_UserActionSheet> {
     return result == true;
   }
 
+  Future<void> _forceLogout() async {
+    setState(() => _loading = true);
+    try {
+      await widget.adminService.forceLogout(widget.uid);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(widget.l10n.translate('admin.force_logout_done'))));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _sendPasswordReset() async {
+    if (widget.email.isEmpty) return;
+    setState(() => _loading = true);
+    try {
+      await widget.adminService.sendPasswordReset(widget.email);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(widget.l10n.translate('admin.password_reset_done'))));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = widget.l10n;
@@ -551,6 +588,60 @@ class _UserActionSheetState extends State<_UserActionSheet> {
             label: l10n.translate('admin.action_unban'),
             variant: AppButtonVariant.tonal,
             onPressed: _loading ? null : _unban,
+            loading: _loading,
+          ),
+        SizedBox(height: 16.h),
+        const Divider(height: 1),
+        SizedBox(height: 12.h),
+        Text(l10n.translate('admin.support_tools'),
+            style: t.labelM.copyWith(color: palette.textSecondary)),
+        SizedBox(height: 8.h),
+        FutureBuilder<Map<String, int>>(
+          future: _statsFuture,
+          builder: (context, snap) {
+            if (!snap.hasData) {
+              return const AppSkeletonBox(height: 56, radius: AppRadius.md);
+            }
+            final stats = snap.data!;
+            return Row(
+              children: [
+                _StatChip(
+                  label: l10n.translate('admin.stats_food_logs'),
+                  value: '${stats['food_logs']}',
+                  palette: palette,
+                  t: t,
+                ),
+                SizedBox(width: 8.w),
+                _StatChip(
+                  label: l10n.translate('admin.stats_enrolled_programs'),
+                  value: '${stats['enrolled_programs']}',
+                  palette: palette,
+                  t: t,
+                ),
+                SizedBox(width: 8.w),
+                _StatChip(
+                  label: l10n.translate('admin.stats_favorites'),
+                  value: '${stats['favorites']}',
+                  palette: palette,
+                  t: t,
+                ),
+              ],
+            );
+          },
+        ),
+        SizedBox(height: 8.h),
+        AppButton(
+          label: l10n.translate('admin.action_force_logout'),
+          variant: AppButtonVariant.secondary,
+          onPressed: _loading ? null : _forceLogout,
+          loading: _loading,
+        ),
+        SizedBox(height: 8.h),
+        if (widget.email.isNotEmpty)
+          AppButton(
+            label: l10n.translate('admin.action_password_reset'),
+            variant: AppButtonVariant.ghost,
+            onPressed: _loading ? null : _sendPasswordReset,
             loading: _loading,
           ),
         SizedBox(height: 8.h),
@@ -653,6 +744,47 @@ class _RoleDropdown extends StatelessWidget {
                         style: t.bodyM.copyWith(color: palette.textPrimary)),
                   ))
               .toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final AppPalette palette;
+  final AppText t;
+
+  const _StatChip({
+    required this.label,
+    required this.value,
+    required this.palette,
+    required this.t,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 4.w),
+        decoration: BoxDecoration(
+          color: palette.surfaceVariant,
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
+          border: Border.all(color: palette.border),
+        ),
+        child: Column(
+          children: [
+            Text(value,
+                style: t.titleL
+                    .copyWith(color: palette.textPrimary, fontWeight: FontWeight.w700)),
+            SizedBox(height: 2.h),
+            Text(label,
+                style: t.labelS.copyWith(color: palette.textSecondary),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          ],
         ),
       ),
     );

@@ -4,350 +4,662 @@
       "collectionGroup": "posts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "signals",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "expiresAt", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "expiresAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "messages",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "createdAt", "order": "ASCENDING" }
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "food_logs",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "date", "order": "DESCENDING" },
-        { "fieldPath": "loggedAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "loggedAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "posts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "authorId", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "authorId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "posts",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "tags", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "tags",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "challenges",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "isPublic", "order": "ASCENDING" },
-        { "fieldPath": "endDate", "order": "ASCENDING" }
+        {
+          "fieldPath": "isPublic",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "endDate",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "challenges",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "participantIds", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "participantIds",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "users",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "onboarding_data.streak", "order": "DESCENDING" }
+        {
+          "fieldPath": "onboarding_data.streak",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "favorites",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "savedAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "savedAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "meal_plan_history",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "archivedAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "archivedAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "recent_foods",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "lastLoggedAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "lastLoggedAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "recent_foods",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "logCount", "order": "DESCENDING" }
+        {
+          "fieldPath": "logCount",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "exercise_logs",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "date", "order": "ASCENDING" },
-        { "fieldPath": "loggedAt", "order": "ASCENDING" }
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "loggedAt",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gyms",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "owner_uid", "order": "ASCENDING" }
+        {
+          "fieldPath": "owner_uid",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gyms",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "is_public", "order": "ASCENDING" },
-        { "fieldPath": "name", "order": "ASCENDING" }
+        {
+          "fieldPath": "is_public",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "members",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "joined_at", "order": "ASCENDING" }
+        {
+          "fieldPath": "joined_at",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "posts",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "is_announcement", "order": "ASCENDING" },
-        { "fieldPath": "created_at", "order": "DESCENDING" }
+        {
+          "fieldPath": "is_announcement",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "posts",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
-        { "fieldPath": "created_at", "order": "DESCENDING" }
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "checkins",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "checkins",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "timestamp", "order": "ASCENDING" }
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gym_wars",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "gym_a_id", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" }
+        {
+          "fieldPath": "gym_a_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gym_wars",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "gym_b_id", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" }
+        {
+          "fieldPath": "gym_b_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "coach_profiles",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "is_public", "order": "ASCENDING" },
-        { "fieldPath": "is_accepting_clients", "order": "ASCENDING" },
-        { "fieldPath": "display_name", "order": "ASCENDING" }
+        {
+          "fieldPath": "is_public",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_accepting_clients",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "display_name",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "clients",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "linked_at", "order": "DESCENDING" }
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "linked_at",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "programs",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "is_published", "order": "ASCENDING" },
-        { "fieldPath": "enrollment_count", "order": "DESCENDING" }
+        {
+          "fieldPath": "is_published",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "enrollment_count",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "programs",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "is_published", "order": "ASCENDING" },
-        { "fieldPath": "category", "order": "ASCENDING" },
-        { "fieldPath": "enrollment_count", "order": "DESCENDING" }
+        {
+          "fieldPath": "is_published",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "category",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "enrollment_count",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "programs",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "coach_uid", "order": "ASCENDING" },
-        { "fieldPath": "created_at", "order": "DESCENDING" }
+        {
+          "fieldPath": "coach_uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "commissions",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "created_at", "order": "DESCENDING" }
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "ai_twin_projections",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "locale", "order": "ASCENDING" },
-        { "fieldPath": "generatedAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "locale",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "generatedAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "coach_applications",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "submittedAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "submittedAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gym_applications",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "submittedAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "submittedAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gym_applications",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "applicantUid", "order": "ASCENDING" },
-        { "fieldPath": "submittedAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "applicantUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "submittedAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "coach_applications",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "applicantUid", "order": "ASCENDING" },
-        { "fieldPath": "submittedAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "applicantUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "submittedAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "admin_audit",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "reports",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "reports",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
+        {
+          "fieldPath": "status",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gyms",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "is_public", "order": "ASCENDING" },
-        { "fieldPath": "city", "order": "ASCENDING" },
-        { "fieldPath": "name", "order": "ASCENDING" }
+        {
+          "fieldPath": "is_public",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "city",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gyms",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "is_public", "order": "ASCENDING" },
-        { "fieldPath": "city", "order": "ASCENDING" },
-        { "fieldPath": "member_count", "order": "DESCENDING" }
+        {
+          "fieldPath": "is_public",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "city",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "member_count",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "gyms",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "is_public", "order": "ASCENDING" },
-        { "fieldPath": "city", "order": "ASCENDING" },
-        { "fieldPath": "district", "order": "ASCENDING" },
-        { "fieldPath": "name", "order": "ASCENDING" }
+        {
+          "fieldPath": "is_public",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "city",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "district",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "coach_profiles",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "is_public", "order": "ASCENDING" },
-        { "fieldPath": "is_accepting_clients", "order": "ASCENDING" },
-        { "fieldPath": "city", "order": "ASCENDING" },
-        { "fieldPath": "avg_rating", "order": "DESCENDING" }
+        {
+          "fieldPath": "is_public",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_accepting_clients",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "city",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "avg_rating",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "coach_profiles",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "is_public", "order": "ASCENDING" },
-        { "fieldPath": "is_accepting_clients", "order": "ASCENDING" },
-        { "fieldPath": "city", "order": "ASCENDING" },
-        { "fieldPath": "client_count", "order": "DESCENDING" }
+        {
+          "fieldPath": "is_public",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_accepting_clients",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "city",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "client_count",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "coach_profiles",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "is_public", "order": "ASCENDING" },
-        { "fieldPath": "is_accepting_clients", "order": "ASCENDING" },
-        { "fieldPath": "avg_rating", "order": "DESCENDING" }
+        {
+          "fieldPath": "is_public",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_accepting_clients",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "avg_rating",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "coach_profiles",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "is_public", "order": "ASCENDING" },
-        { "fieldPath": "is_accepting_clients", "order": "ASCENDING" },
-        { "fieldPath": "client_count", "order": "DESCENDING" }
+        {
+          "fieldPath": "is_public",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_accepting_clients",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "client_count",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "programs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "created_at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "programs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_published",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "enrollment_count",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "programs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_published",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "category",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "enrollment_count",
+          "order": "DESCENDING"
+        }
       ]
     }
   ],

@@ -44,6 +44,7 @@ class UserModel {
   // Multi-role: non-consumer roles held by this user. Consumer is the default base.
   final List<UserRole> userRoles;
   final List<String> gymMemberships;
+  final bool introSeen;
 
   UserModel({
     required this.uid,
@@ -67,6 +68,7 @@ class UserModel {
     this.streakFreezeCount = 0,
     this.userRoles = const [],
     this.gymMemberships = const [],
+    this.introSeen = false,
   });
 
   /// Primary role for display — highest priority in the hierarchy.
@@ -125,6 +127,7 @@ class UserModel {
         return parsed;
       }(),
       gymMemberships: List<String>.from(data['gym_memberships'] as List? ?? []),
+      introSeen: data['intro_seen'] as bool? ?? false,
     );
   }
 
@@ -170,6 +173,7 @@ class UserModel {
     int? streakFreezeCount,
     List<UserRole>? userRoles,
     List<String>? gymMemberships,
+    bool? introSeen,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -194,6 +198,7 @@ class UserModel {
       streakFreezeCount: streakFreezeCount ?? this.streakFreezeCount,
       userRoles: userRoles ?? this.userRoles,
       gymMemberships: gymMemberships ?? this.gymMemberships,
+      introSeen: introSeen ?? this.introSeen,
     );
   }
 }

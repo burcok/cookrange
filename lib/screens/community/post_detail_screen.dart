@@ -13,6 +13,7 @@ import '../../core/providers/theme_provider.dart';
 import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
+import '../../core/widgets/ds/app_avatar.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final String postId;
@@ -1176,10 +1177,22 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final content = _commentController.text.trim();
     if (content.isEmpty) return;
     setState(() => _isSendingComment = true);
-    await _service.addComment(widget.postId, content);
-    _commentController.clear();
-    setState(() => _isSendingComment = false);
-    unawaited(_loadData());
+    try {
+      await _service.addComment(widget.postId, content);
+      _commentController.clear();
+      unawaited(_loadData());
+    } catch (e) {
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        final msg = e.toString().contains('content_blocked')
+            ? l10n.translate('community.content_blocked')
+            : e.toString();
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
+      }
+    } finally {
+      if (mounted) setState(() => _isSendingComment = false);
+    }
   }
 
   Future<void> _loadData() async {
@@ -1353,10 +1366,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           child: Row(
             children: [
               if (_post != null)
-                CircleAvatar(
-                  radius: 18,
-                  backgroundImage: NetworkImage(
-                      userImage ?? 'https://i.pravatar.cc/150?u=current'),
+                AppInitialsAvatar(
+                  photoUrl: userImage,
+                  name: user?.displayName ?? '',
+                  size: 36,
                 ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(

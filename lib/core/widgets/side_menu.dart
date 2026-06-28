@@ -13,10 +13,12 @@ import '../../core/models/coach_application_model.dart';
 import '../../core/models/gym_application_model.dart';
 import '../../core/services/coach_application_service.dart';
 import '../../core/services/gym_application_service.dart';
+import 'package:cookrange/screens/gym/gym_analytics_screen.dart';
 import 'package:cookrange/screens/gym/gym_dashboard_screen.dart';
 import 'package:cookrange/screens/gym/gym_discovery_screen.dart';
 import 'package:cookrange/screens/leaderboard/leaderboard_screen.dart';
 import 'package:cookrange/screens/profile/dietary_preferences_screen.dart';
+import 'package:cookrange/screens/programs/my_programs_screen.dart';
 import 'package:cookrange/screens/programs/program_marketplace_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -254,6 +256,7 @@ class _SidePanel extends StatelessWidget {
                     _NavTile(icon: Icons.chat_bubble_rounded, label: l10n.translate('menu.chats'), onTap: () => onPush(const ChatListScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.auto_awesome_rounded, label: l10n.translate('menu.ai_chat'), onTap: () => onPush(const AIChatScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.leaderboard_rounded, label: l10n.translate('menu.leaderboard'), onTap: () => onPush(const LeaderboardScreen()), palette: palette, isDark: isDark, primary: primary),
+                    _NavTile(icon: Icons.library_books_rounded, label: l10n.translate('program.my_programs'), onTap: () => onPush(const MyProgramsScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.store_rounded, label: l10n.translate('menu.program_marketplace'), onTap: () => onPush(const ProgramMarketplaceScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.fitness_center_rounded, label: l10n.translate('menu.find_gym'), onTap: () => onPush(const GymDiscoveryScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.sports_rounded, label: l10n.translate('menu.find_coach'), onTap: () => onPush(const CoachDiscoveryScreen()), palette: palette, isDark: isDark, primary: primary),
@@ -458,8 +461,7 @@ class _GymCard extends StatelessWidget {
           palette: palette,
           isDark: isDark,
           primary: primary,
-          onTap: null,
-          comingSoon: true,
+          onTap: () => onPush(const GymAnalyticsScreen()),
         ),
       ],
     );
@@ -678,7 +680,6 @@ class _CardTile extends StatelessWidget {
   final AppPalette palette;
   final bool isDark;
   final Color primary;
-  final bool comingSoon;
   final String? badge;
   final Color? statusColor;
 
@@ -689,14 +690,12 @@ class _CardTile extends StatelessWidget {
     required this.palette,
     required this.isDark,
     required this.primary,
-    this.comingSoon = false,
     this.badge,
     this.statusColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final iconColor = statusColor ?? palette.textSecondary.withValues(alpha: 0.65);
 
     return Material(
@@ -704,7 +703,7 @@ class _CardTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: comingSoon ? null : onTap,
+        onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         overlayColor: WidgetStateProperty.all(
             primary.withValues(alpha: 0.07)),
@@ -720,9 +719,7 @@ class _CardTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w500,
-                    color: comingSoon
-                        ? palette.textSecondary.withValues(alpha: 0.35)
-                        : palette.textPrimary.withValues(alpha: 0.85),
+                    color: palette.textPrimary.withValues(alpha: 0.85),
                   ),
                 ),
               ),
@@ -739,24 +736,6 @@ class _CardTile extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
-                    ),
-                  ),
-                ),
-              if (comingSoon)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.07)
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Text(
-                    l10n.translate('menu.coming_soon'),
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: palette.textSecondary.withValues(alpha: 0.4),
                     ),
                   ),
                 ),

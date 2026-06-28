@@ -10,8 +10,7 @@ import 'package:cookrange/core/services/firestore_service.dart';
 import 'package:cookrange/core/models/user_model.dart';
 import 'package:cookrange/core/services/storage_upload_service.dart';
 import 'package:cookrange/core/utils/profile_navigation.dart';
-import 'package:cookrange/core/theme/app_palette.dart';
-import 'package:cookrange/core/theme/app_typography.dart';
+import 'package:cookrange/core/widgets/ds/ds.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -158,6 +157,131 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+  void _showMoreOptions(BuildContext context, AppPalette palette,
+      AppLocalizations l10n) {
+    AppSheet.show(
+      context: context,
+      title: l10n.translate('chat.more_options'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_otherUserId.isNotEmpty)
+            ListTile(
+              leading:
+                  Icon(Icons.person_outline_rounded, color: palette.textPrimary),
+              title: Text(l10n.translate('chat.view_profile'),
+                  style: AppText.of(context)
+                      .bodyM
+                      .copyWith(color: palette.textPrimary)),
+              onTap: () {
+                Navigator.pop(context);
+                openUserProfile(context, userId: _otherUserId);
+              },
+            ),
+          ListTile(
+            leading:
+                Icon(Icons.flag_outlined, color: palette.error),
+            title: Text(l10n.translate('community.menu.report'),
+                style: AppText.of(context)
+                    .bodyM
+                    .copyWith(color: palette.error)),
+            onTap: () {
+              Navigator.pop(context);
+              if (_otherUserId.isNotEmpty) {
+                _showReportDialog(context, palette, l10n);
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  void _showReportDialog(BuildContext context, AppPalette palette,
+      AppLocalizations l10n) {
+    final reasons = [
+      l10n.translate('community.report.reason_spam'),
+      l10n.translate('community.report.reason_harassment'),
+      l10n.translate('community.report.reason_inappropriate'),
+      l10n.translate('community.report.reason_other'),
+    ];
+    String? selectedReason;
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: palette.surface,
+          title: Text(l10n.translate('community.report.dialog_title'),
+              style:
+                  AppText.of(context).titleM.copyWith(color: palette.textPrimary)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: reasons.map((r) {
+              final isSelected = selectedReason == r;
+              return ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(r,
+                    style: AppText.of(context)
+                        .bodyM
+                        .copyWith(color: palette.textPrimary)),
+                trailing: isSelected
+                    ? Icon(Icons.check_rounded,
+                        color: palette.info, size: 20)
+                    : null,
+                onTap: () => setDialogState(() => selectedReason = r),
+              );
+            }).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.translate('common.cancel'),
+                  style: TextStyle(color: palette.textSecondary)),
+            ),
+            TextButton(
+              onPressed: selectedReason == null
+                  ? null
+                  : () async {
+                      Navigator.pop(ctx);
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        await FirebaseFirestore.instance
+                            .collection('reports')
+                            .add({
+                          'reportedBy':
+                              FirebaseAuth.instance.currentUser?.uid ?? '',
+                          'targetId': _otherUserId,
+                          'targetType': 'user',
+                          'reason': selectedReason,
+                          'status': 'pending',
+                          'timestamp': FieldValue.serverTimestamp(),
+                        });
+                        if (mounted) {
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(l10n
+                                  .translate('community.report.submitted')),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      } catch (_) {}
+                    },
+              child: Text(l10n.translate('common.confirm'),
+                  style: TextStyle(
+                      color: selectedReason != null
+                          ? palette.info
+                          : palette.textTertiary)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
@@ -272,7 +396,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               actions: [
                 IconButton(
                   icon: Icon(Icons.more_vert, color: palette.textPrimary),
-                  onPressed: () {},
+                  onPressed: () => _showMoreOptions(context, palette, localizations),
                 ),
               ],
             ),

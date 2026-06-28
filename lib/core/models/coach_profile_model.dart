@@ -19,6 +19,7 @@ class CoachProfileModel {
   final String? district;
   final double avgRating;
   final int ratingCount;
+  final bool isVerified;
 
   const CoachProfileModel({
     required this.uid,
@@ -38,6 +39,7 @@ class CoachProfileModel {
     this.district,
     this.avgRating = 0.0,
     this.ratingCount = 0,
+    this.isVerified = false,
   });
 
   factory CoachProfileModel.fromFirestore(
@@ -61,6 +63,7 @@ class CoachProfileModel {
       district: data['district'] as String?,
       avgRating: (data['avg_rating'] as num?)?.toDouble() ?? 0.0,
       ratingCount: data['rating_count'] as int? ?? 0,
+      isVerified: data['is_verified'] as bool? ?? false,
     );
   }
 

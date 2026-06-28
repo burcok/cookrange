@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../models/community_post.dart';
 import '../models/notification_model.dart';
 import 'analytics_service.dart';
+import 'firestore_service.dart';
 import 'log_service.dart';
 import 'notification_service.dart';
 
@@ -17,6 +18,9 @@ class CommunityService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final LogService _logger = LogService();
 
+  List<String> _cachedBlockedKeywords = [];
+  DateTime? _keywordsCacheTime;
+
   String get currentUserId => _auth.currentUser?.uid ?? 'guest';
 
   // --- Helpers ---
@@ -26,19 +30,51 @@ class CommunityService {
   Future<CommunityUser> _getCurrentCommunityUser() async {
     final user = _auth.currentUser;
     if (user != null) {
+      // Firestore is the source of truth for the in-app avatar (uploaded photos
+      // land on users/{uid}.photoURL, not on the Firebase Auth profile).
+      final model = await FirestoreService().getUserData(user.uid);
+      final photo = (model?.photoURL?.isNotEmpty ?? false)
+          ? model!.photoURL!
+          : (user.photoURL ?? '');
       return CommunityUser(
         id: user.uid,
-        name: user.displayName ?? 'User',
-        avatarUrl: user.photoURL ??
-            'https://i.pravatar.cc/150?u=${user.uid}', // Fallback
+        name: model?.displayName ?? user.displayName ?? 'User',
+        avatarUrl: photo, // empty string → AppInitialsAvatar in UI
       );
     }
-    // Fallback for guest
+    // Fallback for guest — no photo; UI shows initials
     return CommunityUser(
       id: 'guest',
       name: 'Guest User',
-      avatarUrl: 'https://i.pravatar.cc/150?u=guest',
+      avatarUrl: '',
     );
+  }
+
+  // --- Content Guard ---
+
+  Future<void> _checkContent(String text) async {
+    final now = DateTime.now();
+    if (_keywordsCacheTime == null ||
+        now.difference(_keywordsCacheTime!) > const Duration(minutes: 5)) {
+      try {
+        final doc = await _firestore
+            .collection('admin_config')
+            .doc('global')
+            .get();
+        _cachedBlockedKeywords = List<String>.from(
+            doc.data()?['blocked_keywords'] as List? ?? []);
+        _keywordsCacheTime = now;
+      } catch (_) {
+        _cachedBlockedKeywords = [];
+      }
+    }
+    if (_cachedBlockedKeywords.isEmpty) return;
+    final lower = text.toLowerCase();
+    for (final kw in _cachedBlockedKeywords) {
+      if (kw.isNotEmpty && lower.contains(kw.toLowerCase())) {
+        throw Exception('content_blocked');
+      }
+    }
   }
 
   // --- Posts ---
@@ -139,22 +175,30 @@ class CommunityService {
   }
 
   Future<void> createPost(
-      String content, List<String> imageUrls, List<String> tags) async {
+    String content,
+    List<String> imageUrls,
+    List<String> tags, {
+    PostType postType = PostType.text,
+    Map<String, dynamic> metadata = const {},
+  }) async {
+    await _checkContent(content);
     final user = await _getCurrentCommunityUser();
 
     final newPost = CommunityPost(
-      id: '', // Firestore will gen
+      id: '',
       author: user,
       content: content,
       imageUrls: imageUrls,
       imageUrl: imageUrls.isNotEmpty ? imageUrls.first : null,
       timestamp: DateTime.now(),
       tags: tags,
+      postType: postType,
+      metadata: metadata,
     );
 
     final docRef = await _firestore.collection('posts').add({
       ...newPost.toMap(),
-      'authorId': user.id, // top-level for filter queries (authorId + timestamp index)
+      'authorId': user.id,
       'likedUserIds': [],
       'commentsCount': 0,
       'likesCount': 0,
@@ -165,12 +209,14 @@ class CommunityService {
       'content_length': content.length,
       'has_images': imageUrls.isNotEmpty,
       'tags': tags,
+      'post_type': postType.value,
     });
     unawaited(AnalyticsService().logEvent(
       name: 'post_created',
       parameters: {
         'has_images': imageUrls.isNotEmpty,
         'tag_count': tags.length,
+        'post_type': postType.value,
       },
     ));
   }
@@ -453,6 +499,7 @@ class CommunityService {
   }
 
   Future<CommunityComment> addComment(String postId, String content) async {
+    await _checkContent(content);
     final user = await _getCurrentCommunityUser();
 
     final commentRef =
@@ -907,5 +954,67 @@ class CommunityService {
     } catch (e) {
       // Ignore
     }
+  }
+
+  // ── Save / Bookmark ────────────────────────────────────────────────────────
+
+  Future<void> savePost(CommunityPost post) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    debugPrint('CommunityService: savePost postId=${post.id}');
+    final data = {
+      ...post.toMap(),
+      'id': post.id,
+      'authorId': post.author.id,
+      'savedAt': FieldValue.serverTimestamp(),
+    };
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('saved_posts')
+        .doc(post.id)
+        .set(data);
+  }
+
+  Future<void> unsavePost(String postId) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    debugPrint('CommunityService: unsavePost postId=$postId');
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('saved_posts')
+        .doc(postId)
+        .delete();
+  }
+
+  Stream<bool> isPostSavedStream(String postId) {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return Stream.value(false);
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('saved_posts')
+        .doc(postId)
+        .snapshots()
+        .map((snap) => snap.exists)
+        .handleError((_) => false);
+  }
+
+  Stream<List<CommunityPost>> getSavedPostsStream() {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return Stream.value([]);
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('saved_posts')
+        .orderBy('savedAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) {
+              final data = d.data();
+              final postId = data['id'] as String? ?? d.id;
+              return CommunityPost.fromMap(data, postId, currentUserId: uid);
+            }).toList())
+        .handleError((_) => <CommunityPost>[]);
   }
 }

@@ -23,6 +23,7 @@ import '../../screens/chat/ai_chat_screen.dart';
 import '../../screens/recipe/favorites_screen.dart';
 import '../../screens/community/user_search_screen.dart';
 import '../../screens/onboarding/intro_onboarding_screen.dart';
+import '../../screens/onboarding/meal_plan_generation_screen.dart';
 import '../../screens/discover/discover_hub_screen.dart';
 import '../models/chat_model.dart';
 import '../widgets/error_fallback_widget.dart';
@@ -72,6 +73,8 @@ class RouteConfigurationService {
       AppRoutes.intro: (context) => const IntroOnboardingScreen(),
       AppRoutes.discover: (context) =>
           const RouteGuard(child: DiscoverHubScreen()),
+      AppRoutes.mealPlanGeneration: (context) =>
+          const RouteGuard(child: MealPlanGenerationScreen()),
     };
   }
 

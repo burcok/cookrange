@@ -543,7 +543,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                       AppLocalizations.of(context)
                           .translate('chat.signal_send'),
                       style:
-                          TextStyle(color: palette.textInverse, fontSize: 12)),
+                          const TextStyle(color: Colors.white, fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(
@@ -578,7 +578,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                   child: Text(
                       AppLocalizations.of(context).translate('chat.meal_share'),
                       style:
-                          TextStyle(color: palette.textInverse, fontSize: 12)),
+                          const TextStyle(color: Colors.white, fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(
@@ -613,7 +613,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                   child: Text(
                       AppLocalizations.of(context).translate('chat.new_group'),
                       style:
-                          TextStyle(color: palette.textInverse, fontSize: 12)),
+                          const TextStyle(color: Colors.white, fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(
@@ -649,7 +649,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                   child: Text(
                       AppLocalizations.of(context).translate('chat.new_chat'),
                       style:
-                          TextStyle(color: palette.textInverse, fontSize: 12)),
+                          const TextStyle(color: Colors.white, fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(

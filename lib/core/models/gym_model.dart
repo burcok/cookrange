@@ -40,6 +40,7 @@ class GymModel {
   final String? qrToken;
   final DateTime? qrTokenExpiresAt;
   final String? brandColor;
+  final bool isVerified;
 
   const GymModel({
     required this.id,
@@ -63,6 +64,7 @@ class GymModel {
     this.qrToken,
     this.qrTokenExpiresAt,
     this.brandColor,
+    this.isVerified = false,
   });
 
   factory GymModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -95,6 +97,7 @@ class GymModel {
           ? (d['qr_token_expires_at'] as Timestamp).toDate()
           : null,
       brandColor: d['brand_color'] as String?,
+      isVerified: d['is_verified'] as bool? ?? false,
     );
   }
 

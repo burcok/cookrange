@@ -272,7 +272,8 @@ class AppInitializationService {
     try {
       _log.info('Starting services initialization...', service: _serviceName);
 
-      // Initialize independent services in parallel
+      // Initialize independent services in parallel — hard cap of 15 s so a
+      // hanging network call (e.g. FCM getToken) can never freeze the splash.
       await Future.wait([
         _initCrashlytics(),
         _initAnalytics(),
@@ -280,7 +281,16 @@ class AppInitializationService {
         _initPushNotifications(),
         _initRemoteConfig(),
         _initPerformance(),
-      ]);
+      ]).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          _log.warning(
+            'Services initialization timed out after 15s — continuing with partial init',
+            service: _serviceName,
+          );
+          return <void>[];
+        },
+      );
 
       _log.info('App services initialized', service: _serviceName);
 

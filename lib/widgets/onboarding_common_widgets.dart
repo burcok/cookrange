@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../core/localization/app_localizations.dart';
 import '../core/providers/theme_provider.dart';
@@ -281,14 +282,15 @@ class OnboardingOption extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(99),
+          color: isSelected
+              ? primary.withValues(alpha: 0.15)
+              : palette.surfaceVariant,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? primary.withValues(alpha: 0.2)
-                : palette.border,
+            color: isSelected ? primary : palette.border,
+            width: isSelected ? 1.5 : 1.0,
           ),
         ),
         child: Row(
@@ -297,18 +299,26 @@ class OnboardingOption extends StatelessWidget {
             if (option.icon != null) ...[
               Icon(
                 option.icon!,
-                size: 20,
-                color: isSelected ? Colors.white : palette.textPrimary,
+                size: 22,
+                color: isSelected ? primary : palette.textSecondary,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8.w),
             ],
             Text(
               option.label,
               style: t.bodyM.copyWith(
-                fontWeight: FontWeight.w500,
-                color: isSelected ? Colors.white : palette.textPrimary,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? primary : palette.textPrimary,
               ),
             ),
+            if (isSelected) ...[
+              SizedBox(width: 6.w),
+              Icon(
+                Icons.check_circle_rounded,
+                size: 16,
+                color: primary,
+              ),
+            ],
           ],
         ),
       ),
@@ -330,45 +340,15 @@ class OnboardingContinueButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = context.read<ThemeProvider>().primaryColor;
-    final t = AppText.of(context);
-
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
       child: ValueListenableBuilder<bool>(
         valueListenable: isLoadingNotifier,
-        builder: (context, isLoading, child) {
-          return ElevatedButton(
-            onPressed: onPressed != null && !isLoading ? onPressed : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 56),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(99),
-              ),
-              elevation: 0,
-              shadowColor: Colors.transparent,
-              disabledBackgroundColor: primary.withValues(alpha: 0.5),
-            ),
-            child: isLoading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 3,
-                    ),
-                  )
-                : Text(
-                    text,
-                    style: t.titleM.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-          );
-        },
+        builder: (context, isLoading, _) => AppButton(
+          label: text,
+          onPressed: (onPressed != null && !isLoading) ? onPressed : null,
+          loading: isLoading,
+        ),
       ),
     );
   }
@@ -394,11 +374,10 @@ class OnboardingHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final primary = context.read<ThemeProvider>().primaryColor;
-    final localizations = AppLocalizations.of(context);
     final t = AppText.of(context);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -413,8 +392,8 @@ class OnboardingHeader extends StatelessWidget {
                 child: Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: t.titleM.copyWith(
-                    fontWeight: FontWeight.bold,
+                  style: t.titleL.copyWith(
+                    fontWeight: FontWeight.w800,
                     color: palette.textPrimary,
                   ),
                 ),
@@ -422,43 +401,48 @@ class OnboardingHeader extends StatelessWidget {
               if (onBackButtonPressed != null) const SizedBox(width: 24),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            '${localizations.translate('onboarding.step')} $currentStep/$totalSteps',
-            style: t.bodyM.copyWith(
-              fontWeight: FontWeight.w600,
-              color: palette.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final double progress = (currentStep / totalSteps).clamp(
-                0.0,
-                1.0,
-              );
-              return Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: primary.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    width: constraints.maxWidth * progress,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: primary,
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                ],
-              );
-            },
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final double progress = (currentStep / totalSteps).clamp(0.0, 1.0);
+                    return Stack(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          height: 6.h,
+                          decoration: BoxDecoration(
+                            color: primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: constraints.maxWidth * progress,
+                          height: 6.h,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(99),
+                            gradient: const LinearGradient(
+                              colors: [AppPalette.brand, Color(0xFFFF6B6B)],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '$currentStep/$totalSteps',
+                style: t.labelS.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: palette.textSecondary,
+                ),
+              ),
+            ],
           ),
         ],
       ),

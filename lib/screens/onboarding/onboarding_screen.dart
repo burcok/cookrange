@@ -75,6 +75,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     } else {
       onboardingProvider.reset();
     }
+
+    // Jump to the first incomplete step if one was passed by the resolver
+    // (gap-recovery path: e.g. user abandoned at step 3 → opens there).
+    if (!mounted) return;
+    final initialStep =
+        ModalRoute.of(context)?.settings.arguments as int?;
+    if (initialStep != null && initialStep > 0 && initialStep < 6) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _pageController.jumpToPage(initialStep);
+          setState(() => _currentStep = initialStep);
+        }
+      });
+    }
   }
 
   void _startScreenTimeTracking() {
@@ -342,13 +356,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               );
             }
 
-            // Navigate immediately. Background refresh can happen later if needed.
-            // We don't await refreshUser() here because it might fetch stale data
-            // due to race conditions or latency, causing a loop.
             if (mounted) {
-              // If all info is complete, go home
+              // Route to the generation screen — it generates the 1-week plan
+              // with a flagship animation, then navigates to /main.
               unawaited(Navigator.pushNamedAndRemoveUntil(
-                  context, AppRoutes.main, (route) => false));
+                  context, AppRoutes.mealPlanGeneration, (route) => false));
             }
           }
         } else {

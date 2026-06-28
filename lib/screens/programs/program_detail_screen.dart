@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/models/program_content_model.dart';
+import '../../core/models/program_enrollment_model.dart';
 import '../../core/models/program_model.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/services/feature_gate_service.dart';
@@ -67,9 +69,11 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
       backgroundColor: palette.background,
       body: uid == null
           ? const AppErrorState(title: 'Sign in to view programs')
-          : FutureBuilder<bool>(
-              future: ProgramService().isEnrolled(uid, _p.id),
+          : FutureBuilder<ProgramEnrollmentModel?>(
+              future: ProgramService().getEnrollment(uid, _p.id),
               builder: (context, enrollSnap) {
+                final enrollment = enrollSnap.data;
+                final isEnrolled = enrollment != null;
                 return CustomScrollView(
                   slivers: [
                     _buildSliverAppBar(context, palette, primary, t),
@@ -94,6 +98,11 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                             ],
                             SizedBox(height: AppSpacing.lg.h),
                             _buildDescription(context, palette, primary, t, l10n),
+                            SizedBox(height: AppSpacing.lg.h),
+                            _buildContentSection(
+                                context, palette, primary, t, l10n,
+                                isEnrolled: isEnrolled,
+                                enrollment: enrollment),
                           ],
                         ),
                       ),
@@ -104,10 +113,10 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
             ),
       bottomNavigationBar: uid == null
           ? null
-          : FutureBuilder<bool>(
-              future: ProgramService().isEnrolled(uid, _p.id),
+          : FutureBuilder<ProgramEnrollmentModel?>(
+              future: ProgramService().getEnrollment(uid, _p.id),
               builder: (context, snap) {
-                final isEnrolled = snap.data ?? false;
+                final isEnrolled = snap.data != null;
                 return _buildEnrollBar(
                     context, palette, primary, t, l10n, isEnrolled);
               },
@@ -438,6 +447,274 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // ── Content section (enrolled users) ──────────────────────────────────────
+
+  Widget _buildContentSection(
+    BuildContext context,
+    AppPalette palette,
+    Color primary,
+    AppText t,
+    AppLocalizations l10n, {
+    required bool isEnrolled,
+    ProgramEnrollmentModel? enrollment,
+  }) {
+    if (!canViewContent(isEnrolled: isEnrolled)) {
+      return _buildLockedContent(context, palette, primary, t, l10n);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.translate('program.content_title'),
+          style: t.titleM.copyWith(fontWeight: FontWeight.w800),
+        ),
+        if (enrollment != null) ...[
+          SizedBox(height: 8.h),
+          _buildProgressBar(context, palette, primary, t, l10n, enrollment),
+        ],
+        SizedBox(height: 12.h),
+        StreamBuilder<List<ProgramWeekModel>>(
+          stream: ProgramService().getWeeksStream(_p.id),
+          builder: (context, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const AppSkeletonList(itemCount: 3);
+            }
+            if (snap.hasError || !snap.hasData || snap.data!.isEmpty) {
+              return Padding(
+                padding: EdgeInsets.symmetric(vertical: 24.h),
+                child: AppEmptyState(
+                  title: l10n.translate('program.content_title'),
+                  message: '',
+                ),
+              );
+            }
+            final weeks = snap.data!;
+            return Column(
+              children: weeks
+                  .map((w) => _buildWeekCard(
+                      context, palette, primary, t, l10n, w, enrollment))
+                  .toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  /// Single source of truth for content unlock condition.
+  /// `hasPurchased` can be wired here when IAP ships (14.8 payment seam).
+  bool canViewContent({required bool isEnrolled}) => isEnrolled;
+
+  Widget _buildLockedContent(
+    BuildContext context,
+    AppPalette palette,
+    Color primary,
+    AppText t,
+    AppLocalizations l10n,
+  ) {
+    return AppCard(
+      bordered: true,
+      elevated: false,
+      child: Column(
+        children: [
+          Container(
+            width: 52.r,
+            height: 52.r,
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.lock_outline_rounded, color: primary, size: 26.r),
+          ),
+          SizedBox(height: 12.h),
+          Text(
+            l10n.translate('program.locked_title'),
+            style: t.titleM.copyWith(fontWeight: FontWeight.w700),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            l10n.translate('program.locked_body'),
+            style: t.bodyM.copyWith(color: palette.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressBar(
+    BuildContext context,
+    AppPalette palette,
+    Color primary,
+    AppText t,
+    AppLocalizations l10n,
+    ProgramEnrollmentModel enrollment,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              l10n
+                  .translate('program.progress_label')
+                  .replaceFirst('{current}', enrollment.currentWeek.toString())
+                  .replaceFirst('{total}', enrollment.totalWeeks.toString()),
+              style: t.labelM.copyWith(color: palette.textSecondary),
+            ),
+            Text(
+              '${(enrollment.progressPercent * 100).toInt()}%',
+              style:
+                  t.labelM.copyWith(color: primary, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        SizedBox(height: 6.h),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4.r),
+          child: LinearProgressIndicator(
+            value: enrollment.progressPercent,
+            backgroundColor: primary.withValues(alpha: 0.12),
+            valueColor: AlwaysStoppedAnimation<Color>(primary),
+            minHeight: 6.h,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeekCard(
+    BuildContext context,
+    AppPalette palette,
+    Color primary,
+    AppText t,
+    AppLocalizations l10n,
+    ProgramWeekModel week,
+    ProgramEnrollmentModel? enrollment,
+  ) {
+    final isCurrentWeek = enrollment?.currentWeek == week.weekNumber;
+    return Container(
+      margin: EdgeInsets.only(bottom: 12.h),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card.r),
+        border: Border.all(
+          color: isCurrentWeek
+              ? primary.withValues(alpha: 0.6)
+              : palette.border.withValues(alpha: 0.4),
+          width: isCurrentWeek ? 1.5 : 1,
+        ),
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: isCurrentWeek,
+        tilePadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+        childrenPadding:
+            EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
+        leading: Container(
+          width: 36.r,
+          height: 36.r,
+          decoration: BoxDecoration(
+            color: isCurrentWeek
+                ? primary.withValues(alpha: 0.12)
+                : palette.surfaceVariant,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              '${week.weekNumber}',
+              style: t.labelM.copyWith(
+                color: isCurrentWeek ? primary : palette.textSecondary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                l10n
+                    .translate('program.week_label')
+                    .replaceFirst('{n}', week.weekNumber.toString()),
+                style: t.bodyM.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            if (isCurrentWeek)
+              Container(
+                padding:
+                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.full.r),
+                ),
+                child: Text(
+                  l10n.translate('program.continue_label'),
+                  style: t.labelS.copyWith(
+                      color: primary, fontWeight: FontWeight.w700),
+                ),
+              ),
+          ],
+        ),
+        subtitle: Text(
+          week.title,
+          style: t.labelS.copyWith(color: palette.textSecondary),
+        ),
+        children: week.days
+            .map((day) => _buildDayRow(context, palette, primary, t, l10n, day))
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildDayRow(
+    BuildContext context,
+    AppPalette palette,
+    Color primary,
+    AppText t,
+    AppLocalizations l10n,
+    ProgramDayModel day,
+  ) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${l10n.translate('program.day_label').replaceFirst('{n}', day.dayNumber.toString())} — ${day.title}',
+            style: t.labelM.copyWith(
+                color: palette.textPrimary, fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: 4.h),
+          ...day.sessions.map((s) => Padding(
+                padding: EdgeInsets.only(left: 8.w, bottom: 4.h),
+                child: Row(
+                  children: [
+                    Text(s.type.emoji,
+                        style: TextStyle(fontSize: 13.sp)),
+                    SizedBox(width: 6.w),
+                    Expanded(
+                      child: Text(
+                        s.title,
+                        style:
+                            t.bodyM.copyWith(color: palette.textSecondary),
+                      ),
+                    ),
+                    if (s.durationMinutes != null)
+                      Text(
+                        '${s.durationMinutes}m',
+                        style: t.labelS.copyWith(color: palette.textTertiary),
+                      ),
+                  ],
+                ),
+              )),
+        ],
+      ),
     );
   }
 

@@ -183,7 +183,8 @@ class _RouteGuardState extends State<RouteGuard> {
     if (userModel != null &&
         !userModel.onboardingCompleted &&
         routeName != AppRoutes.onboarding &&
-        routeName != AppRoutes.intro) {
+        routeName != AppRoutes.intro &&
+        routeName != AppRoutes.mealPlanGeneration) {
       if (!_hasRedirected) {
         _hasRedirected = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {

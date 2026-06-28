@@ -256,8 +256,6 @@ class _GymDashboardScreenState extends State<GymDashboardScreen>
                 l10n: l10n,
                 onSetup: _goSetup,
               ),
-              const SizedBox(height: 24),
-              _FeaturePreview(palette: palette, primary: primary, isDark: isDark, l10n: l10n),
             ],
           ),
         );
@@ -555,12 +553,6 @@ class _GymDashboardScreenState extends State<GymDashboardScreen>
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          _FeaturePreview(
-              palette: palette,
-              primary: primary,
-              isDark: isDark,
-              l10n: l10n),
         ],
       ),
     );
@@ -937,118 +929,3 @@ class _DayBar extends StatelessWidget {
   }
 }
 
-// ── Feature preview (coming soon) ────────────────────────────────────────────
-
-class _FeaturePreview extends StatelessWidget {
-  final AppPalette palette;
-  final Color primary;
-  final bool isDark;
-  final AppLocalizations l10n;
-
-  const _FeaturePreview({
-    required this.palette,
-    required this.primary,
-    required this.isDark,
-    required this.l10n,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final features = [
-      (
-        icon: Icons.qr_code_scanner_rounded,
-        color: const Color(0xFF6366F1),
-        title: l10n.translate('gym.feature_checkin'),
-        subtitle: l10n.translate('gym.feature_checkin_sub'),
-      ),
-      (
-        icon: Icons.emoji_events_rounded,
-        color: const Color(0xFFEC4899),
-        title: l10n.translate('gym.feature_challenges'),
-        subtitle: l10n.translate('gym.feature_challenges_sub'),
-      ),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 2, bottom: 12),
-          child: Text(
-            l10n.translate('gym.coming_features').toUpperCase(),
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: palette.textSecondary.withValues(alpha: 0.6),
-              letterSpacing: 1.3,
-            ),
-          ),
-        ),
-        ...features.map(
-          (f) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: AppCard(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: f.color.withValues(alpha: isDark ? 0.15 : 0.1),
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                    ),
-                    child: Icon(f.icon, color: f.color, size: 22),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          f.title,
-                          style: AppText.of(context).bodyM.copyWith(
-                                color: palette.textPrimary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          f.subtitle,
-                          style: AppText.of(context).bodyM.copyWith(
-                                color: palette.textSecondary,
-                                fontSize: 12,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.06)
-                          : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      l10n.translate('menu.coming_soon'),
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: palette.textSecondary.withValues(alpha: 0.5),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}

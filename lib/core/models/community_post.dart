@@ -1,5 +1,35 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+enum PostType { text, recipe, progress, meal }
+
+extension PostTypeX on PostType {
+  String get value {
+    switch (this) {
+      case PostType.text:
+        return 'text';
+      case PostType.recipe:
+        return 'recipe';
+      case PostType.progress:
+        return 'progress';
+      case PostType.meal:
+        return 'meal';
+    }
+  }
+}
+
+PostType _postTypeFromString(String? s) {
+  switch (s) {
+    case 'recipe':
+      return PostType.recipe;
+    case 'progress':
+      return PostType.progress;
+    case 'meal':
+      return PostType.meal;
+    default:
+      return PostType.text;
+  }
+}
+
 class CommunityUser {
   final String id;
   final String name;
@@ -102,7 +132,7 @@ class CommunityPost {
   final CommunityUser author;
   final String content;
   final String? imageUrl;
-  final List<String> imageUrls; // New: Support multiple images
+  final List<String> imageUrls;
   int likesCount;
   int commentsCount;
   final DateTime timestamp;
@@ -112,7 +142,10 @@ class CommunityPost {
   final List<CommunityUser> likedByUsers;
   final Map<String, int> reactions;
   List<String> userReactions;
-  final bool isEdited; // New: For face pile
+  final bool isEdited;
+  final PostType postType;
+  // Type-specific payload (recipe/progress/meal metadata)
+  final Map<String, dynamic> metadata;
 
   CommunityPost({
     required this.id,
@@ -130,6 +163,8 @@ class CommunityPost {
     this.reactions = const {},
     this.userReactions = const [],
     this.isEdited = false,
+    this.postType = PostType.text,
+    this.metadata = const {},
   });
 
   CommunityPost copyWith({
@@ -148,6 +183,8 @@ class CommunityPost {
     Map<String, int>? reactions,
     List<String>? userReactions,
     bool? isEdited,
+    PostType? postType,
+    Map<String, dynamic>? metadata,
   }) {
     return CommunityPost(
       id: id ?? this.id,
@@ -165,6 +202,8 @@ class CommunityPost {
       reactions: reactions ?? this.reactions,
       userReactions: userReactions ?? this.userReactions,
       isEdited: isEdited ?? this.isEdited,
+      postType: postType ?? this.postType,
+      metadata: metadata ?? this.metadata,
     );
   }
 
@@ -179,9 +218,9 @@ class CommunityPost {
       'tags': tags,
       'reactions': reactions,
       'isEdited': isEdited,
-      // Note: likedByUsers is typically stored in a subcollection or separate logic,
-      // but for "recent likers" face pile, we can store a small array.
       'recentLikers': likedByUsers.map((u) => u.toMap()).toList(),
+      'post_type': postType.value,
+      'metadata': metadata,
     };
   }
 
@@ -232,6 +271,8 @@ class CommunityPost {
         return reactions;
       }(),
       isEdited: map['isEdited'] ?? false,
+      postType: _postTypeFromString(map['post_type'] as String?),
+      metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
     );
   }
 }

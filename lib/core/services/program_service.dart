@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/coach_profile_model.dart';
+import '../models/program_content_model.dart';
 import '../models/program_enrollment_model.dart';
 import '../models/program_model.dart';
 
@@ -52,6 +53,7 @@ class ProgramService {
       tags: tags,
       highlights: highlights,
       isPublished: false,
+      status: 'draft',
       enrollmentCount: 0,
       rating: 0.0,
       ratingCount: 0,
@@ -76,6 +78,7 @@ class ProgramService {
     debugPrint('ProgramService: publishing program $programId');
     await _programs.doc(programId).update({
       'is_published': true,
+      'status': 'pending',
       'updated_at': FieldValue.serverTimestamp(),
     });
   }
@@ -100,8 +103,9 @@ class ProgramService {
     ProgramCategory? category,
     ProgramDifficulty? difficulty,
   }) {
-    Query<Map<String, dynamic>> q =
-        _programs.where('is_published', isEqualTo: true);
+    Query<Map<String, dynamic>> q = _programs
+        .where('is_published', isEqualTo: true)
+        .where('status', isEqualTo: 'approved');
 
     if (category != null) {
       q = q.where('category', isEqualTo: category.firestoreValue);
@@ -165,5 +169,67 @@ class ProgramService {
   Future<bool> isEnrolled(String userId, String programId) async {
     final doc = await _enrollments(userId).doc(programId).get();
     return doc.exists;
+  }
+
+  Future<ProgramEnrollmentModel?> getEnrollment(
+      String userId, String programId) async {
+    final doc = await _enrollments(userId).doc(programId).get();
+    if (!doc.exists) return null;
+    return ProgramEnrollmentModel.fromFirestore(doc);
+  }
+
+  // ─── Program content ───────────────────────────────────────────────────────
+
+  Stream<List<ProgramWeekModel>> getWeeksStream(String programId) {
+    return _programs
+        .doc(programId)
+        .collection('weeks')
+        .orderBy('week_number')
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => ProgramWeekModel.fromFirestore(
+                d as DocumentSnapshot<Map<String, dynamic>>))
+            .toList())
+        .handleError((Object e) {
+      debugPrint('ProgramService: getWeeksStream error for $programId — $e');
+    });
+  }
+
+  /// Returns enrolled programs paired with a fresh [ProgramModel] fetch.
+  /// Useful for My Programs screen — emits on enrollment changes.
+  Stream<List<({ProgramEnrollmentModel enrollment, ProgramModel? program})>>
+      getEnrolledProgramsStream(String userId) {
+    return _enrollments(userId)
+        .where('status', isEqualTo: 'active')
+        .orderBy('enrolled_at', descending: true)
+        .snapshots()
+        .asyncMap((snap) async {
+      final enrollments =
+          snap.docs.map(ProgramEnrollmentModel.fromFirestore).toList();
+      final pairs = await Future.wait(enrollments.map((e) async {
+        try {
+          final programDoc = await _programs.doc(e.programId).get();
+          final program = programDoc.exists
+              ? ProgramModel.fromFirestore(programDoc)
+              : null;
+          return (enrollment: e, program: program);
+        } catch (_) {
+          return (enrollment: e, program: null);
+        }
+      }));
+      return pairs.toList();
+    }).handleError((Object e) {
+      debugPrint('ProgramService: getEnrolledProgramsStream error — $e');
+    });
+  }
+
+  Future<void> updateProgress(
+      String userId, String programId, int currentWeek, int currentSession) async {
+    debugPrint(
+        'ProgramService: updateProgress $programId week=$currentWeek session=$currentSession');
+    await _enrollments(userId).doc(programId).update({
+      'current_week': currentWeek,
+      'current_session': currentSession,
+    });
   }
 }

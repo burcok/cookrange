@@ -519,4 +519,330 @@ class AdminService {
         .snapshots()
         .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList());
   }
+
+  // ── Broadcasts ─────────────────────────────────────────────────────────────
+
+  /// [audience] values: 'all' | 'coaches' | 'gymOwners' | 'user:{uid}'
+  Future<void> sendBroadcast({
+    required String titleEn,
+    required String bodyEn,
+    required String titleTr,
+    required String bodyTr,
+    required String audience,
+    DateTime? scheduleAt,
+  }) async {
+    final adminUid = _auth.currentUser?.uid ?? '';
+    debugPrint(
+        'AdminService: sendBroadcast audience=$audience scheduleAt=$scheduleAt');
+
+    final docRef = _db.collection('broadcasts').doc();
+    final isScheduled =
+        scheduleAt != null && scheduleAt.isAfter(DateTime.now());
+
+    await docRef.set({
+      'admin_uid': adminUid,
+      'title_en': titleEn,
+      'body_en': bodyEn,
+      'title_tr': titleTr,
+      'body_tr': bodyTr,
+      'audience': audience,
+      'status': isScheduled ? 'scheduled' : 'pending',
+      'scheduled_at':
+          scheduleAt != null ? Timestamp.fromDate(scheduleAt) : null,
+      'sent_at': null,
+      'recipient_count': 0,
+      'created_at': FieldValue.serverTimestamp(),
+    });
+
+    await logAuditAction(
+      action: 'send_broadcast',
+      targetUid: 'audience:$audience',
+      metadata: {
+        'broadcast_id': docRef.id,
+        'title_en': titleEn,
+        'audience': audience,
+        'scheduled': isScheduled,
+      },
+    );
+
+    debugPrint('AdminService: broadcast doc created ${docRef.id}');
+  }
+
+  Stream<List<Map<String, dynamic>>> broadcastsStream() {
+    return _db
+        .collection('broadcasts')
+        .orderBy('created_at', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList())
+        .handleError((Object e) {
+      debugPrint('AdminService: broadcastsStream error — $e');
+    });
+  }
+
+  // ── Program Marketplace Approval ──────────────────────────────────────────
+
+  Stream<List<Map<String, dynamic>>> pendingProgramsStream() {
+    return _db
+        .collection('programs')
+        .where('status', isEqualTo: 'pending')
+        .orderBy('created_at', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList())
+        .handleError((Object e) {
+      debugPrint('AdminService: pendingProgramsStream error — $e');
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> programHistoryStream({String? status}) {
+    Query<Map<String, dynamic>> q = _db.collection('programs');
+    if (status != null) {
+      q = q.where('status', isEqualTo: status);
+    } else {
+      q = q.where('status', whereIn: ['approved', 'rejected']);
+    }
+    return q
+        .orderBy('created_at', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList())
+        .handleError((Object e) {
+      debugPrint('AdminService: programHistoryStream error — $e');
+    });
+  }
+
+  Future<void> approveProgram(String programId) async {
+    final adminUid = _auth.currentUser?.uid ?? '';
+    debugPrint('AdminService: approveProgram $programId');
+    await _db.collection('programs').doc(programId).update({
+      'status': 'approved',
+      'reviewed_by': adminUid,
+      'reviewed_at': FieldValue.serverTimestamp(),
+    });
+    await logAuditAction(
+      action: 'approve_program',
+      targetUid: programId,
+      metadata: {'programId': programId},
+    );
+  }
+
+  Future<void> rejectProgram(String programId, String notes) async {
+    final adminUid = _auth.currentUser?.uid ?? '';
+    debugPrint('AdminService: rejectProgram $programId notes=$notes');
+    await _db.collection('programs').doc(programId).update({
+      'status': 'rejected',
+      'rejection_notes': notes,
+      'reviewed_by': adminUid,
+      'reviewed_at': FieldValue.serverTimestamp(),
+    });
+    await logAuditAction(
+      action: 'reject_program',
+      targetUid: programId,
+      metadata: {'programId': programId, 'notes': notes},
+    );
+  }
+
+  // ── Verification Badges ────────────────────────────────────────────────────
+
+  Future<void> setGymVerified(String gymId, bool verified) async {
+    debugPrint('AdminService: setGymVerified gymId=$gymId verified=$verified');
+    await _db.collection('gyms').doc(gymId).update({'is_verified': verified});
+    await logAuditAction(
+      action: verified ? 'verify_gym' : 'unverify_gym',
+      targetUid: gymId,
+      metadata: {'gymId': gymId, 'verified': verified},
+    );
+  }
+
+  Future<void> setCoachVerified(String coachUid, bool verified) async {
+    debugPrint(
+        'AdminService: setCoachVerified uid=$coachUid verified=$verified');
+    await _db
+        .collection('coach_profiles')
+        .doc(coachUid)
+        .update({'is_verified': verified});
+    await logAuditAction(
+      action: verified ? 'verify_coach' : 'unverify_coach',
+      targetUid: coachUid,
+      metadata: {'coachUid': coachUid, 'verified': verified},
+    );
+  }
+
+  // ── Admin Config ───────────────────────────────────────────────────────────
+
+  Stream<Map<String, dynamic>?> adminConfigStream() {
+    return _db
+        .collection('admin_config')
+        .doc('global')
+        .snapshots()
+        .map((d) => d.exists ? d.data() : null)
+        .handleError((Object e) {
+      debugPrint('AdminService: adminConfigStream error — $e');
+    });
+  }
+
+  Future<void> updateAdminConfig(Map<String, dynamic> updates) async {
+    final adminUid = _auth.currentUser?.uid ?? '';
+    debugPrint(
+        'AdminService: updateAdminConfig keys=${updates.keys.join(",")}');
+    await _db.collection('admin_config').doc('global').set(
+      {
+        ...updates,
+        'updated_at': FieldValue.serverTimestamp(),
+        'updated_by': adminUid,
+      },
+      SetOptions(merge: true),
+    );
+    await logAuditAction(
+      action: 'update_admin_config',
+      targetUid: adminUid,
+      metadata: {'keys': updates.keys.toList()},
+    );
+  }
+
+  // ── AI Credits Admin ───────────────────────────────────────────────────────
+
+  Stream<List<Map<String, dynamic>>> aiUsageStream({int limit = 20}) {
+    return _db
+        .collection('users')
+        .where('ai_credits_used', isGreaterThan: 0)
+        .orderBy('ai_credits_used', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((s) => s.docs.map((d) => {'uid': d.id, ...d.data()}).toList())
+        .handleError((Object e) {
+      debugPrint('AdminService: aiUsageStream error — $e');
+    });
+  }
+
+  Future<void> grantBonusCredits(String uid, int count, String reason) async {
+    debugPrint(
+        'AdminService: grantBonusCredits uid=$uid count=$count reason=$reason');
+    await _db.collection('users').doc(uid).update({
+      'ai_credits_bonus': FieldValue.increment(count),
+    });
+    await logAuditAction(
+      action: 'grant_bonus_credits',
+      targetUid: uid,
+      metadata: {'count': count, 'reason': reason},
+    );
+  }
+
+  // ── Referrals ──────────────────────────────────────────────────────────────
+
+  Stream<List<Map<String, dynamic>>> referralsStream({int limit = 50}) {
+    return _db
+        .collection('referrals')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList())
+        .handleError((Object e) {
+      debugPrint('AdminService: referralsStream error — $e');
+    });
+  }
+
+  Future<void> voidReferralCode(String code) async {
+    debugPrint('AdminService: voidReferralCode code=$code');
+    await _db.collection('referrals').doc(code).update({'maxUses': 0});
+    await logAuditAction(
+      action: 'void_referral_code',
+      targetUid: code,
+      metadata: {'code': code},
+    );
+  }
+
+  // ── Support Tools ──────────────────────────────────────────────────────────
+
+  Future<Map<String, int>> getUserDataStats(String uid) async {
+    debugPrint('AdminService: getUserDataStats uid=$uid');
+    try {
+      final userRef = _db.collection('users').doc(uid);
+      final results = await Future.wait([
+        userRef.collection('food_logs').count().get(),
+        userRef.collection('program_enrollments').count().get(),
+        userRef.collection('favorites').count().get(),
+      ]);
+      return {
+        'food_logs': results[0].count ?? 0,
+        'enrolled_programs': results[1].count ?? 0,
+        'favorites': results[2].count ?? 0,
+      };
+    } catch (e) {
+      debugPrint('AdminService: getUserDataStats error — $e');
+      return {'food_logs': 0, 'enrolled_programs': 0, 'favorites': 0};
+    }
+  }
+
+  Future<void> forceLogout(String uid) async {
+    debugPrint('AdminService: forceLogout uid=$uid');
+    await _db.collection('users').doc(uid).update({
+      'session_token': FieldValue.delete(),
+      'force_logout': true,
+    });
+    await logAuditAction(action: 'force_logout', targetUid: uid);
+  }
+
+  Future<void> sendPasswordReset(String email) async {
+    debugPrint('AdminService: sendPasswordReset email=$email');
+    await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+    await logAuditAction(
+      action: 'send_password_reset',
+      targetUid: email,
+      metadata: {'email': email},
+    );
+  }
+
+  // ── Bulk Moderation ────────────────────────────────────────────────────────
+
+  Future<void> bulkDismissReports(List<String> reportIds) async {
+    if (reportIds.isEmpty) return;
+    debugPrint('AdminService: bulkDismissReports count=${reportIds.length}');
+    final batch = _db.batch();
+    final uid = _auth.currentUser?.uid ?? 'system';
+    for (final id in reportIds) {
+      batch.update(_db.collection('reports').doc(id), {
+        'status': 'dismissed',
+        'reviewed_at': FieldValue.serverTimestamp(),
+        'reviewed_by': uid,
+      });
+    }
+    await batch.commit();
+    await logAuditAction(
+      action: 'bulk_dismiss_reports',
+      targetUid: 'bulk',
+      metadata: {'count': reportIds.length},
+    );
+  }
+
+  Future<void> bulkRemoveContent(List<ReportModel> reports) async {
+    if (reports.isEmpty) return;
+    debugPrint('AdminService: bulkRemoveContent count=${reports.length}');
+    final batch = _db.batch();
+    final uid = _auth.currentUser?.uid ?? 'system';
+    for (final r in reports) {
+      batch.update(_db.collection('reports').doc(r.id), {
+        'status': 'removed',
+        'reviewed_at': FieldValue.serverTimestamp(),
+        'reviewed_by': uid,
+      });
+      if (r.targetId.isNotEmpty) {
+        if (r.targetType == 'post') {
+          batch.delete(_db.collection('posts').doc(r.targetId));
+        } else if (r.targetType == 'comment' && r.postId.isNotEmpty) {
+          batch.delete(_db.collection('posts')
+              .doc(r.postId)
+              .collection('comments')
+              .doc(r.targetId));
+        }
+      }
+    }
+    await batch.commit();
+    await logAuditAction(
+      action: 'bulk_remove_content',
+      targetUid: 'bulk',
+      metadata: {'count': reports.length},
+    );
+  }
 }

@@ -12,6 +12,7 @@ export '../../theme/app_dimensions.dart';
 export '../../theme/app_gradients.dart';
 export '../../theme/app_palette.dart';
 export '../../theme/app_typography.dart';
+export 'app_avatar.dart';
 export 'app_button.dart';
 export 'app_selectors.dart';
 export 'app_calorie_ring.dart';

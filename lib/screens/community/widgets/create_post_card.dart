@@ -1,8 +1,12 @@
 import 'dart:io';
+import 'package:cookrange/core/models/dish_model.dart';
 import 'package:cookrange/core/providers/user_provider.dart';
+import 'package:cookrange/core/services/dish_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/models/community_post.dart';
 import '../../../../core/services/community_service.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/services/storage_upload_service.dart';
@@ -11,6 +15,8 @@ import '../../../../core/providers/theme_provider.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/app_dimensions.dart';
+import '../../../../core/widgets/ds/app_avatar.dart';
+import '../../../../core/widgets/app_image.dart';
 
 class CreatePostCard extends StatefulWidget {
   final VoidCallback onPostCreated;
@@ -32,6 +38,19 @@ class _CreatePostCardState extends State<CreatePostCard> {
   bool _isUploadingImage = false;
   List<String> _attachedImageUrls = [];
   List<String> _selectedTags = [];
+  PostType _postType = PostType.text;
+  Map<String, dynamic> _metadata = {};
+
+  // progress fields
+  final TextEditingController _weightCtrl = TextEditingController();
+  final TextEditingController _progressLabelCtrl = TextEditingController();
+  // meal fields
+  final TextEditingController _mealNameCtrl = TextEditingController();
+  final TextEditingController _mealCalCtrl = TextEditingController();
+  final TextEditingController _mealProtCtrl = TextEditingController();
+  final TextEditingController _mealCarbCtrl = TextEditingController();
+  final TextEditingController _mealFatCtrl = TextEditingController();
+
   final List<String> _suggestedTags = [
     "🔥 Bugün trend",
     "🥦 Vegan",
@@ -62,6 +81,13 @@ class _CreatePostCardState extends State<CreatePostCard> {
     _focusNode.removeListener(_onFocusChange);
     _controller.dispose();
     _focusNode.dispose();
+    _weightCtrl.dispose();
+    _progressLabelCtrl.dispose();
+    _mealNameCtrl.dispose();
+    _mealCalCtrl.dispose();
+    _mealProtCtrl.dispose();
+    _mealCarbCtrl.dispose();
+    _mealFatCtrl.dispose();
     super.dispose();
   }
 
@@ -137,30 +163,81 @@ class _CreatePostCardState extends State<CreatePostCard> {
 
   Future<void> _handlePost() async {
     final content = _controller.text.trim();
-    if (content.isEmpty && _attachedImageUrls.isEmpty) return;
+    if (content.isEmpty && _attachedImageUrls.isEmpty &&
+        _postType == PostType.text) {
+      return;
+    }
+
+    // Build metadata from current type
+    final meta = _buildMetadata();
 
     setState(() => _isPosting = true);
 
     try {
-      await _service.createPost(content, _attachedImageUrls, _selectedTags);
+      await _service.createPost(
+        content,
+        _attachedImageUrls,
+        _selectedTags,
+        postType: _postType,
+        metadata: meta,
+      );
       _controller.clear();
       _focusNode.unfocus();
+      _weightCtrl.clear();
+      _progressLabelCtrl.clear();
+      _mealNameCtrl.clear();
+      _mealCalCtrl.clear();
+      _mealProtCtrl.clear();
+      _mealCarbCtrl.clear();
+      _mealFatCtrl.clear();
       setState(() {
         _attachedImageUrls = [];
         _selectedTags = [];
+        _postType = PostType.text;
+        _metadata = {};
         _isExpanded = false;
       });
       widget.onPostCreated();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  "${AppLocalizations.of(context).translate('community.create_post.error')}: $e")),
-        );
+        final l10n = AppLocalizations.of(context);
+        final msg = e.toString().contains('content_blocked')
+            ? l10n.translate('community.content_blocked')
+            : "${l10n.translate('community.create_post.error')}: $e";
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
       }
     } finally {
       if (mounted) setState(() => _isPosting = false);
+    }
+  }
+
+  Map<String, dynamic> _buildMetadata() {
+    switch (_postType) {
+      case PostType.recipe:
+        return Map<String, dynamic>.from(_metadata);
+      case PostType.progress:
+        final w = double.tryParse(_weightCtrl.text.trim());
+        return {
+          if (w != null) 'weight': w,
+          if (_progressLabelCtrl.text.trim().isNotEmpty)
+            'label': _progressLabelCtrl.text.trim(),
+        };
+      case PostType.meal:
+        return {
+          if (_mealNameCtrl.text.trim().isNotEmpty)
+            'name': _mealNameCtrl.text.trim(),
+          if (double.tryParse(_mealCalCtrl.text.trim()) != null)
+            'calories': double.parse(_mealCalCtrl.text.trim()),
+          if (double.tryParse(_mealProtCtrl.text.trim()) != null)
+            'protein': double.parse(_mealProtCtrl.text.trim()),
+          if (double.tryParse(_mealCarbCtrl.text.trim()) != null)
+            'carbs': double.parse(_mealCarbCtrl.text.trim()),
+          if (double.tryParse(_mealFatCtrl.text.trim()) != null)
+            'fat': double.parse(_mealFatCtrl.text.trim()),
+        };
+      default:
+        return {};
     }
   }
 
@@ -198,6 +275,167 @@ class _CreatePostCardState extends State<CreatePostCard> {
     }
   }
 
+  Future<void> _showDishPicker() async {
+    final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final primaryColor = context.read<ThemeProvider>().primaryColor;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final searchCtrl = TextEditingController();
+        List<DishModel> allDishes = [];
+        List<DishModel> filtered = [];
+        bool loading = true;
+
+        return StatefulBuilder(
+          builder: (context, setModal) {
+            if (loading) {
+              DishService().getAllDishesStream().first.then((dishes) {
+                setModal(() {
+                  allDishes = dishes;
+                  filtered = dishes;
+                  loading = false;
+                });
+              });
+            }
+
+            void onSearch(String q) {
+              final query = q.toLowerCase();
+              setModal(() {
+                filtered = allDishes
+                    .where((d) =>
+                        d.name.toLowerCase().contains(query) ||
+                        d.nameEn.toLowerCase().contains(query))
+                    .toList();
+              });
+            }
+
+            return DraggableScrollableSheet(
+              initialChildSize: 0.75,
+              maxChildSize: 0.92,
+              minChildSize: 0.4,
+              builder: (_, sc) => Container(
+                decoration: BoxDecoration(
+                  color: palette.surface,
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(AppRadius.sheet)),
+                ),
+                child: Column(
+                  children: [
+                    const SizedBox(height: AppSpacing.xs),
+                    Container(
+                      width: AppSize.sheetHandleW,
+                      height: AppSize.sheetHandleH,
+                      decoration: BoxDecoration(
+                        color: palette.border,
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Text(
+                        l10n.translate('community.create_post.pick_recipe'),
+                        style: textStyles.headlineS,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md, 0, AppSpacing.md, AppSpacing.xs),
+                      child: TextField(
+                        controller: searchCtrl,
+                        onChanged: onSearch,
+                        decoration: InputDecoration(
+                          hintText:
+                              l10n.translate('community.create_post.search_recipe'),
+                          prefixIcon: const Icon(Icons.search),
+                          filled: true,
+                          fillColor: palette.surfaceVariant,
+                          border: OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.full),
+                            borderSide: BorderSide.none,
+                          ),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: loading
+                          ? const Center(child: CircularProgressIndicator())
+                          : ListView.builder(
+                              controller: sc,
+                              itemCount: filtered.length,
+                              itemBuilder: (_, i) {
+                                final dish = filtered[i];
+                                return ListTile(
+                                  leading: dish.imageUrl != null
+                                      ? ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(AppRadius.sm),
+                                          child: AppImage(
+                                            imageUrl: dish.imageUrl!,
+                                            width: 48,
+                                            height: 48,
+                                          ),
+                                        )
+                                      : Container(
+                                          width: 48,
+                                          height: 48,
+                                          decoration: BoxDecoration(
+                                            color: palette.surfaceVariant,
+                                            borderRadius:
+                                                BorderRadius.circular(AppRadius.sm),
+                                          ),
+                                          child: const Icon(
+                                              Icons.restaurant_rounded),
+                                        ),
+                                  title: Text(dish.nameEn.isNotEmpty
+                                      ? dish.nameEn
+                                      : dish.name),
+                                  subtitle: Text(
+                                      '${dish.calories.toStringAsFixed(0)} kcal · '
+                                      '${dish.protein.toStringAsFixed(0)}g P · '
+                                      '${dish.carbs.toStringAsFixed(0)}g C · '
+                                      '${dish.fat.toStringAsFixed(0)}g F',
+                                      style: textStyles.labelS),
+                                  onTap: () {
+                                    Navigator.pop(ctx, dish);
+                                  },
+                                  selectedColor: primaryColor,
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).then((dish) {
+      if (dish is DishModel && mounted) {
+        setState(() {
+          _postType = PostType.recipe;
+          _metadata = {
+            'dish_id': dish.id,
+            'dish_name': dish.name,
+            'dish_name_en': dish.nameEn,
+            'image_url': dish.imageUrl ?? '',
+            'calories': dish.calories,
+            'protein': dish.protein,
+            'carbs': dish.carbs,
+            'fat': dish.fat,
+          };
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
@@ -228,10 +466,10 @@ class _CreatePostCardState extends State<CreatePostCard> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                backgroundImage: NetworkImage(
-                    userImage ?? 'https://i.pravatar.cc/150?u=current'),
-                radius: 20,
+              AppInitialsAvatar(
+                photoUrl: userImage,
+                name: user?.displayName ?? '',
+                size: 40,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
@@ -260,6 +498,42 @@ class _CreatePostCardState extends State<CreatePostCard> {
               _attachedImageUrls.isNotEmpty ||
               _selectedTags.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
+
+            // Post type picker
+            _PostTypePicker(
+              selected: _postType,
+              onSelect: (type) {
+                setState(() {
+                  _postType = type;
+                  _metadata = {};
+                });
+              },
+              onPickRecipe: _showDishPicker,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+
+            // Per-type metadata UI
+            if (_postType == PostType.recipe && _metadata.isNotEmpty)
+              _RecipeAttachmentPreview(
+                metadata: _metadata,
+                onClear: () => setState(() => _metadata = {}),
+              ),
+            if (_postType == PostType.progress)
+              _ProgressFields(
+                  weightCtrl: _weightCtrl, labelCtrl: _progressLabelCtrl),
+            if (_postType == PostType.meal)
+              _MealFields(
+                nameCtrl: _mealNameCtrl,
+                calCtrl: _mealCalCtrl,
+                protCtrl: _mealProtCtrl,
+                carbCtrl: _mealCarbCtrl,
+                fatCtrl: _mealFatCtrl,
+              ),
+
+            if (_postType == PostType.recipe && _metadata.isNotEmpty ||
+                _postType == PostType.progress ||
+                _postType == PostType.meal)
+              const SizedBox(height: AppSpacing.sm),
 
             // Selected Tags
             if (_selectedTags.isNotEmpty)
@@ -394,6 +668,347 @@ class _CreatePostCardState extends State<CreatePostCard> {
               ],
             )
           ]
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Post type picker ──────────────────────────────────────────────────────────
+
+class _PostTypePicker extends StatelessWidget {
+  final PostType selected;
+  final ValueChanged<PostType> onSelect;
+  final VoidCallback onPickRecipe;
+
+  const _PostTypePicker({
+    required this.selected,
+    required this.onSelect,
+    required this.onPickRecipe,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final primaryColor = context.read<ThemeProvider>().primaryColor;
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+
+    final types = [
+      (PostType.text, Icons.article_outlined,
+          l10n.translate('community.post_type.text')),
+      (PostType.recipe, Icons.menu_book_rounded,
+          l10n.translate('community.post_type.recipe')),
+      (PostType.progress, Icons.trending_up_rounded,
+          l10n.translate('community.post_type.progress')),
+      (PostType.meal, Icons.restaurant_rounded,
+          l10n.translate('community.post_type.meal')),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: types.map((t) {
+          final isSelected = selected == t.$1;
+          return GestureDetector(
+            onTap: () {
+              if (t.$1 == PostType.recipe) {
+                onSelect(PostType.recipe);
+                onPickRecipe();
+              } else {
+                onSelect(t.$1);
+              }
+            },
+            child: AnimatedContainer(
+              duration: AppMotion.fast,
+              margin: const EdgeInsets.only(right: AppSpacing.xs),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm, vertical: AppSpacing.xxs + 2),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? primaryColor.withValues(alpha: 0.12)
+                    : palette.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+                border: Border.all(
+                  color: isSelected ? primaryColor : Colors.transparent,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(t.$2,
+                      size: 14,
+                      color: isSelected ? primaryColor : palette.textSecondary),
+                  const SizedBox(width: 4),
+                  Text(
+                    t.$3,
+                    style: textStyles.labelS.copyWith(
+                      color:
+                          isSelected ? primaryColor : palette.textSecondary,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+// ─── Recipe attachment preview (once dish is picked) ──────────────────────────
+
+class _RecipeAttachmentPreview extends StatelessWidget {
+  final Map<String, dynamic> metadata;
+  final VoidCallback onClear;
+  const _RecipeAttachmentPreview(
+      {required this.metadata, required this.onClear});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final primaryColor = context.read<ThemeProvider>().primaryColor;
+    final imageUrl = metadata['image_url'] as String?;
+    final name = metadata['dish_name_en'] as String? ??
+        metadata['dish_name'] as String? ??
+        '';
+    final cal = (metadata['calories'] as num?)?.toStringAsFixed(0) ?? '0';
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: primaryColor.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.xs),
+              child: AppImage(imageUrl: imageUrl, width: 40, height: 40),
+            ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name,
+                    style: textStyles.labelM,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                Text('$cal kcal',
+                    style: textStyles.labelS
+                        .copyWith(color: palette.textSecondary)),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 16),
+            color: palette.textSecondary,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            onPressed: onClear,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Progress metadata fields ──────────────────────────────────────────────────
+
+class _ProgressFields extends StatelessWidget {
+  final TextEditingController weightCtrl;
+  final TextEditingController labelCtrl;
+  const _ProgressFields(
+      {required this.weightCtrl, required this.labelCtrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _InlineField(
+                controller: weightCtrl,
+                hint: l10n.translate('community.create_post.weight_hint'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+                ],
+                suffix: 'kg',
+                palette: palette,
+                textStyles: textStyles,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        _InlineField(
+          controller: labelCtrl,
+          hint: l10n.translate('community.create_post.progress_label_hint'),
+          palette: palette,
+          textStyles: textStyles,
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Meal metadata fields ──────────────────────────────────────────────────────
+
+class _MealFields extends StatelessWidget {
+  final TextEditingController nameCtrl;
+  final TextEditingController calCtrl;
+  final TextEditingController protCtrl;
+  final TextEditingController carbCtrl;
+  final TextEditingController fatCtrl;
+  const _MealFields({
+    required this.nameCtrl,
+    required this.calCtrl,
+    required this.protCtrl,
+    required this.carbCtrl,
+    required this.fatCtrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final numFmt = [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))];
+    const numKb = TextInputType.numberWithOptions(decimal: true);
+
+    return Column(
+      children: [
+        _InlineField(
+          controller: nameCtrl,
+          hint: l10n.translate('community.create_post.meal_name_hint'),
+          palette: palette,
+          textStyles: textStyles,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Row(
+          children: [
+            Expanded(
+              child: _InlineField(
+                controller: calCtrl,
+                hint: l10n.translate('community.create_post.cal_hint'),
+                keyboardType: numKb,
+                inputFormatters: numFmt,
+                suffix: 'kcal',
+                palette: palette,
+                textStyles: textStyles,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: _InlineField(
+                controller: protCtrl,
+                hint: l10n.translate('community.create_post.prot_hint'),
+                keyboardType: numKb,
+                inputFormatters: numFmt,
+                suffix: 'g P',
+                palette: palette,
+                textStyles: textStyles,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: _InlineField(
+                controller: carbCtrl,
+                hint: l10n.translate('community.create_post.carb_hint'),
+                keyboardType: numKb,
+                inputFormatters: numFmt,
+                suffix: 'g C',
+                palette: palette,
+                textStyles: textStyles,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: _InlineField(
+                controller: fatCtrl,
+                hint: l10n.translate('community.create_post.fat_hint'),
+                keyboardType: numKb,
+                inputFormatters: numFmt,
+                suffix: 'g F',
+                palette: palette,
+                textStyles: textStyles,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Shared compact text field ─────────────────────────────────────────────────
+
+class _InlineField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
+  final String? suffix;
+  final AppPalette palette;
+  final AppText textStyles;
+
+  const _InlineField({
+    required this.controller,
+    required this.hint,
+    this.keyboardType,
+    this.inputFormatters,
+    this.suffix,
+    required this.palette,
+    required this.textStyles,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm, vertical: AppSpacing.xxs),
+      decoration: BoxDecoration(
+        color: palette.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: palette.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              keyboardType: keyboardType,
+              inputFormatters: inputFormatters,
+              style: textStyles.bodyM,
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: textStyles.bodyM
+                    .copyWith(color: palette.textTertiary),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ),
+          if (suffix != null)
+            Text(suffix!,
+                style: textStyles.labelS
+                    .copyWith(color: palette.textSecondary)),
         ],
       ),
     );

@@ -2,23 +2,27 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/gym_analytics_model.dart';
 import '../../core/models/gym_member_model.dart';
+import '../../core/models/gym_model.dart';
+import '../../core/providers/user_provider.dart';
 import '../../core/services/gym_analytics_service.dart';
+import '../../core/services/gym_service.dart';
 import '../../core/utils/profile_navigation.dart';
 import '../../core/widgets/ds/ds.dart';
 
 class GymAnalyticsScreen extends StatefulWidget {
-  final String gymId;
-  final String gymName;
+  final String? gymId;
+  final String? gymName;
   final Color? brandColor;
 
   const GymAnalyticsScreen({
     super.key,
-    required this.gymId,
-    required this.gymName,
+    this.gymId,
+    this.gymName,
     this.brandColor,
   });
 
@@ -37,6 +41,10 @@ class _GymAnalyticsScreenState extends State<GymAnalyticsScreen>
   String? _error;
   bool _exporting = false;
 
+  String _resolvedGymId = '';
+  String _resolvedGymName = '';
+  StreamSubscription<GymModel?>? _gymSub;
+
   @override
   void initState() {
     super.initState();
@@ -48,11 +56,34 @@ class _GymAnalyticsScreenState extends State<GymAnalyticsScreen>
       parent: _animController,
       curve: AppMotion.emphasized,
     );
-    _loadAnalytics();
+    if (widget.gymId != null && widget.gymId!.isNotEmpty) {
+      _resolvedGymId = widget.gymId!;
+      _resolvedGymName = widget.gymName ?? '';
+      _loadAnalytics();
+    }
+    // else resolved in didChangeDependencies
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_resolvedGymId.isEmpty && _gymSub == null) {
+      final uid = context.read<UserProvider>().user?.uid;
+      if (uid == null) return;
+      _gymSub = GymService().getOwnerGymStream(uid).listen((gym) {
+        if (gym == null || !mounted) return;
+        _gymSub?.cancel();
+        _gymSub = null;
+        _resolvedGymId = gym.id;
+        _resolvedGymName = gym.name;
+        _loadAnalytics();
+      });
+    }
   }
 
   @override
   void dispose() {
+    _gymSub?.cancel();
     _animController.dispose();
     super.dispose();
   }
@@ -66,13 +97,13 @@ class _GymAnalyticsScreenState extends State<GymAnalyticsScreen>
     try {
       final membersSnap = await FirebaseFirestore.instance
           .collection('gyms')
-          .doc(widget.gymId)
+          .doc(_resolvedGymId)
           .collection('members')
           .get();
       _allMembers = membersSnap.docs.map(GymMemberModel.fromFirestore).toList();
 
       final analytics =
-          await GymAnalyticsService().computeAnalytics(widget.gymId);
+          await GymAnalyticsService().computeAnalytics(_resolvedGymId);
 
       if (!mounted) return;
       setState(() {
@@ -96,11 +127,11 @@ class _GymAnalyticsScreenState extends State<GymAnalyticsScreen>
     try {
       unawaited(HapticFeedback.mediumImpact());
       final csv =
-          await GymAnalyticsService().exportCsv(widget.gymId, _allMembers);
+          await GymAnalyticsService().exportCsv(_resolvedGymId, _allMembers);
       if (!mounted) return;
       await Share.share(
         csv,
-        subject: '${widget.gymName} — Analytics Export',
+        subject: '$_resolvedGymName — Analytics Export',
       );
       if (mounted) AppSnackBar.success(context, l10n.translate('gym.analytics_export_success'));
     } catch (e) {
@@ -130,7 +161,7 @@ class _GymAnalyticsScreenState extends State<GymAnalyticsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.gymName,
+              _resolvedGymName,
               style: AppText.of(context)
                   .titleM
                   .copyWith(color: palette.textPrimary, fontWeight: FontWeight.w800),

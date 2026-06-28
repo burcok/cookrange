@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../profile/profile_screen.dart';
 import 'package:cookrange/core/widgets/app_image.dart';
@@ -12,6 +13,7 @@ import '../../../../core/widgets/unified_action_sheet.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_dimensions.dart';
+import '../../../core/widgets/ds/app_avatar.dart';
 
 class GlassPostCard extends StatefulWidget {
   final CommunityPost post;
@@ -37,11 +39,18 @@ class GlassPostCard extends StatefulWidget {
 
 class _GlassPostCardState extends State<GlassPostCard> {
   late CommunityPost _post;
+  bool _isSaved = false;
+  StreamSubscription<bool>? _saveSub;
 
   @override
   void initState() {
     super.initState();
     _post = widget.post;
+    _saveSub = CommunityService()
+        .isPostSavedStream(widget.post.id)
+        .listen((saved) {
+      if (mounted) setState(() => _isSaved = saved);
+    });
   }
 
   @override
@@ -49,6 +58,21 @@ class _GlassPostCardState extends State<GlassPostCard> {
     super.didUpdateWidget(oldWidget);
     if (widget.post != oldWidget.post) {
       _post = widget.post;
+    }
+  }
+
+  @override
+  void dispose() {
+    _saveSub?.cancel();
+    super.dispose();
+  }
+
+  void _toggleSave() {
+    final service = CommunityService();
+    if (_isSaved) {
+      service.unsavePost(_post.id);
+    } else {
+      service.savePost(_post);
     }
   }
 
@@ -304,18 +328,9 @@ class _GlassPostCardState extends State<GlassPostCard> {
                     },
                     child: Row(
                       children: [
-                        Container(
-                          width: AppSize.avatarMd,
-                          height: AppSize.avatarMd,
-                          decoration:
-                              const BoxDecoration(shape: BoxShape.circle),
-                          child: ClipOval(
-                            child: AppImage(
-                              imageUrl: _post.author.avatarUrl,
-                              width: AppSize.avatarMd,
-                              height: AppSize.avatarMd,
-                            ),
-                          ),
+                        AppInitialsAvatar(
+                          photoUrl: _post.author.avatarUrl,
+                          name: _post.author.name,
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         Column(
@@ -375,6 +390,13 @@ class _GlassPostCardState extends State<GlassPostCard> {
                 ),
 
               const SizedBox(height: AppSpacing.md),
+
+              // Structured post type attachment
+              if (_post.postType != PostType.text)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: _PostTypeCard(post: _post),
+                ),
 
               // Image content
               if (_post.imageUrls.isNotEmpty)
@@ -539,6 +561,18 @@ class _GlassPostCardState extends State<GlassPostCard> {
                       ],
                     ),
                   ),
+                  const Spacer(),
+                  // Bookmark
+                  GestureDetector(
+                    onTap: _toggleSave,
+                    child: Icon(
+                      _isSaved
+                          ? Icons.bookmark_rounded
+                          : Icons.bookmark_border_rounded,
+                      color: _isSaved ? primaryColor : palette.textSecondary,
+                      size: AppSize.iconMd,
+                    ),
+                  ),
                 ],
               )
             ],
@@ -691,5 +725,270 @@ class _GlassPostCardState extends State<GlassPostCard> {
       'name2': 'User',
       'count': (likes - 1).toString()
     });
+  }
+}
+
+// ─── Structured post type attachment card ─────────────────────────────────────
+
+class _PostTypeCard extends StatelessWidget {
+  final CommunityPost post;
+  const _PostTypeCard({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    switch (post.postType) {
+      case PostType.recipe:
+        return _RecipeCard(metadata: post.metadata);
+      case PostType.progress:
+        return _ProgressCard(metadata: post.metadata);
+      case PostType.meal:
+        return _MealCard(metadata: post.metadata);
+      case PostType.text:
+        return const SizedBox.shrink();
+    }
+  }
+}
+
+class _RecipeCard extends StatelessWidget {
+  final Map<String, dynamic> metadata;
+  const _RecipeCard({required this.metadata});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final l10n = AppLocalizations.of(context);
+    final primaryColor = context.read<ThemeProvider>().primaryColor;
+    final imageUrl = metadata['image_url'] as String?;
+    final name = metadata['dish_name'] as String? ?? '';
+    final cal = (metadata['calories'] as num?)?.toDouble() ?? 0;
+    final prot = (metadata['protein'] as num?)?.toDouble() ?? 0;
+    final carbs = (metadata['carbs'] as num?)?.toDouble() ?? 0;
+    final fat = (metadata['fat'] as num?)?.toDouble() ?? 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: palette.border),
+      ),
+      child: Row(
+        children: [
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            ClipRRect(
+              borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(AppRadius.md)),
+              child: AppImage(
+                imageUrl: imageUrl,
+                width: 72,
+                height: 72,
+              ),
+            ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.menu_book_rounded,
+                          size: 12, color: primaryColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        l10n.translate('community.post_type.recipe'),
+                        style: textStyles.labelS.copyWith(color: primaryColor),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(name,
+                      style: textStyles.titleM,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    children: [
+                      _MacroPill(
+                          label: '${cal.toStringAsFixed(0)} kcal',
+                          color: palette.calories),
+                      _MacroPill(
+                          label: '${prot.toStringAsFixed(0)}g P',
+                          color: palette.protein),
+                      _MacroPill(
+                          label: '${carbs.toStringAsFixed(0)}g C',
+                          color: palette.carbs),
+                      _MacroPill(
+                          label: '${fat.toStringAsFixed(0)}g F',
+                          color: palette.fat),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProgressCard extends StatelessWidget {
+  final Map<String, dynamic> metadata;
+  const _ProgressCard({required this.metadata});
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyles = AppText.of(context);
+    final l10n = AppLocalizations.of(context);
+    final primaryColor = context.read<ThemeProvider>().primaryColor;
+    final weight = (metadata['weight'] as num?)?.toDouble();
+    final label = metadata['label'] as String? ?? '';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: primaryColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.trending_up_rounded,
+                color: primaryColor, size: AppSize.iconMd),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.translate('community.post_type.progress'),
+                  style: textStyles.labelS.copyWith(color: primaryColor),
+                ),
+                if (weight != null)
+                  Text(
+                    '${weight.toStringAsFixed(1)} kg',
+                    style: textStyles.headlineS,
+                  ),
+                if (label.isNotEmpty)
+                  Text(label,
+                      style: textStyles.bodyM,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MealCard extends StatelessWidget {
+  final Map<String, dynamic> metadata;
+  const _MealCard({required this.metadata});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final l10n = AppLocalizations.of(context);
+    final name = metadata['name'] as String? ?? '';
+    final cal = (metadata['calories'] as num?)?.toDouble();
+    final prot = (metadata['protein'] as num?)?.toDouble();
+    final carbs = (metadata['carbs'] as num?)?.toDouble();
+    final fat = (metadata['fat'] as num?)?.toDouble();
+    final hasMacros =
+        cal != null || prot != null || carbs != null || fat != null;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: palette.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: palette.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.restaurant_rounded,
+                  size: 12, color: palette.textSecondary),
+              const SizedBox(width: 4),
+              Text(
+                l10n.translate('community.post_type.meal'),
+                style:
+                    textStyles.labelS.copyWith(color: palette.textSecondary),
+              ),
+            ],
+          ),
+          if (name.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(name,
+                style: textStyles.titleM,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          ],
+          if (hasMacros) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: AppSpacing.xs,
+              children: [
+                if (cal != null)
+                  _MacroPill(
+                      label: '${cal.toStringAsFixed(0)} kcal',
+                      color: palette.calories),
+                if (prot != null)
+                  _MacroPill(
+                      label: '${prot.toStringAsFixed(0)}g P',
+                      color: palette.protein),
+                if (carbs != null)
+                  _MacroPill(
+                      label: '${carbs.toStringAsFixed(0)}g C',
+                      color: palette.carbs),
+                if (fat != null)
+                  _MacroPill(
+                      label: '${fat.toStringAsFixed(0)}g F',
+                      color: palette.fat),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MacroPill extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _MacroPill({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(AppRadius.full),
+      ),
+      child: Text(
+        label,
+        style: AppText.of(context)
+            .labelS
+            .copyWith(color: color, fontWeight: FontWeight.w600),
+      ),
+    );
   }
 }

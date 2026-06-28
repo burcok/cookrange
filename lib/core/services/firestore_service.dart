@@ -354,6 +354,13 @@ class FirestoreService {
     }
   }
 
+  /// Marks the intro tour as seen for [uid] — both in Firestore (cross-device
+  /// source of truth) and reflected back through [updateUserData].
+  Future<void> markIntroSeen(String uid) async {
+    _log.info('Marking intro_seen=true for uid: $uid', service: _serviceName);
+    await updateUserData(uid, {'intro_seen': true});
+  }
+
   /// Updates a user's document with the provided data.
   /// Handles special cases, like logging onboarding completion.
   Future<void> updateUserData(String uid, Map<String, dynamic> data) async {

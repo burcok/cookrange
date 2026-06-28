@@ -40,6 +40,7 @@ class _CommunityScreenState extends State<CommunityScreen>
     "Global",
     "Friends Only",
     "Gym",
+    "Saved",
   ];
   String _selectedFilter = "Latest Updates";
 
@@ -57,6 +58,15 @@ class _CommunityScreenState extends State<CommunityScreen>
     super.initState();
     _loadGroups();
     _postsStream = _service.getPostsStream();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 320) {
+      _loadMorePosts();
+    }
   }
 
   Future<void> _loadMorePosts() async {
@@ -129,6 +139,16 @@ class _CommunityScreenState extends State<CommunityScreen>
           _lastDoc = null;
           _hasMorePosts = true;
           _postsStream = _service.getPostsStream(gymOnly: true);
+        });
+        break;
+      case 'Saved':
+        if (!mounted) return;
+        setState(() {
+          _cachedFriendIds = [];
+          _additionalPosts = [];
+          _lastDoc = null;
+          _hasMorePosts = false;
+          _postsStream = _service.getSavedPostsStream();
         });
         break;
       default: // 'Latest Updates' or 'Global'
@@ -317,6 +337,8 @@ class _CommunityScreenState extends State<CommunityScreen>
         return Icons.people;
       case "Gym":
         return Icons.fitness_center;
+      case "Saved":
+        return Icons.bookmark_rounded;
       default:
         return Icons.circle;
     }
@@ -324,6 +346,7 @@ class _CommunityScreenState extends State<CommunityScreen>
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
@@ -343,6 +366,7 @@ class _CommunityScreenState extends State<CommunityScreen>
       "Global": "community.filters.global",
       "Friends Only": "community.filters.friends",
       "Gym": "community.filters.gym",
+      "Saved": "community.filters.saved",
     };
 
     return Scaffold(
@@ -488,22 +512,23 @@ class _CommunityScreenState extends State<CommunityScreen>
                         ? 'community.filters.no_friends_posts'
                         : _selectedFilter == 'Gym'
                             ? 'community.filters.no_gym_posts'
-                            : 'community.no_posts';
+                            : _selectedFilter == 'Saved'
+                                ? 'community.filters.no_saved_posts'
+                                : 'community.no_posts';
+                    final emptyIcon = _selectedFilter == 'Friends Only'
+                        ? Icons.people_outline
+                        : _selectedFilter == 'Gym'
+                            ? Icons.fitness_center
+                            : _selectedFilter == 'Saved'
+                                ? Icons.bookmark_border_rounded
+                                : Icons.article_outlined;
                     return SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.all(AppSpacing.xxxl),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              _selectedFilter == 'Friends Only'
-                                  ? Icons.people_outline
-                                  : _selectedFilter == 'Gym'
-                                      ? Icons.fitness_center
-                                      : Icons.article_outlined,
-                              size: 48,
-                              color: palette.textTertiary,
-                            ),
+                            Icon(emptyIcon, size: 48, color: palette.textTertiary),
                             const SizedBox(height: AppSpacing.md),
                             Text(
                               appLoc.translate(emptyKey),
@@ -583,29 +608,10 @@ class _CommunityScreenState extends State<CommunityScreen>
                   ),
                 ),
 
-              // Load More button
+              // Pagination footer: skeleton while loading, end-state when done
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xl, vertical: AppSpacing.xs),
-                  child: _hasMorePosts
-                      ? OutlinedButton(
-                          onPressed: _isLoadingMore ? null : _loadMorePosts,
-                          child: _isLoadingMore
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2))
-                              : Text(appLoc.translate('common.load_more')),
-                        )
-                      : Center(
-                          child: Text(
-                            appLoc.translate('community.all_posts_loaded'),
-                            style: textStyles.labelM,
-                          ),
-                        ),
-                ),
+                child: _buildPaginationFooter(
+                    appLoc, palette, textStyles),
               ),
 
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -614,6 +620,44 @@ class _CommunityScreenState extends State<CommunityScreen>
         ),
       ),
     );
+  }
+
+  Widget _buildPaginationFooter(AppLocalizations appLoc, AppPalette palette,
+      AppText textStyles) {
+    if (_isLoadingMore) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.sm),
+        child: Column(
+          children: List.generate(
+            2,
+            (_) => const Padding(
+              padding: EdgeInsets.only(bottom: AppSpacing.sm),
+              child: AppSkeletonBox(height: 88, width: double.infinity),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (!_hasMorePosts && _additionalPosts.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+        child: Column(
+          children: [
+            Icon(Icons.check_circle_outline_rounded,
+                color: palette.textTertiary, size: 28),
+            const SizedBox(height: 6),
+            Text(
+              appLoc.translate('community.all_posts_loaded'),
+              style: textStyles.labelM.copyWith(color: palette.textTertiary),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox(height: AppSpacing.md);
   }
 
   Widget _buildNewGroupItem(AppLocalizations appLoc) {

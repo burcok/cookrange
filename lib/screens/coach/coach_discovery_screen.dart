@@ -258,12 +258,23 @@ class _CoachCardState extends State<_CoachCard>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          coach.displayName,
-                          style: text.titleM
-                              .copyWith(fontWeight: FontWeight.w700),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                coach.displayName,
+                                style: text.titleM
+                                    .copyWith(fontWeight: FontWeight.w700),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (coach.isVerified) ...[
+                              const SizedBox(width: 4),
+                              Icon(Icons.verified_rounded,
+                                  size: 15, color: Colors.blue.shade400),
+                            ],
+                          ],
                         ),
                         if (coach.bio != null && coach.bio!.isNotEmpty) ...[
                           const SizedBox(height: AppSpacing.xxs),
@@ -545,31 +556,48 @@ class _CoachFilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = Theme.of(context).primaryColor;
 
+    // Label pinned above a compact indicator pill.
     Widget sortChip(String value, String label) {
       final active = sortBy == value;
       return GestureDetector(
         onTap: () => onSortChanged(value),
-        child: AnimatedContainer(
-          duration: AppMotion.fast,
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-          decoration: BoxDecoration(
-            color: active
-                ? primary.withValues(alpha: 0.12)
-                : palette.surfaceVariant,
-            borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(
-              color: active
-                  ? primary.withValues(alpha: 0.4)
-                  : palette.border,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: AppText.of(context).labelS.copyWith(
+                    fontSize: 10.sp,
+                    height: 1.2,
+                    color: active ? primary : palette.textTertiary,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                  ),
             ),
-          ),
-          child: Text(
-            label,
-            style: AppText.of(context).labelM.copyWith(
-                  color: active ? primary : palette.textSecondary,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+            SizedBox(height: 3.h),
+            AnimatedContainer(
+              duration: AppMotion.fast,
+              width: 30.w,
+              height: 20.h,
+              decoration: BoxDecoration(
+                color: active
+                    ? primary.withValues(alpha: 0.12)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(AppRadius.full.r),
+                border: Border.all(
+                  color: active
+                      ? primary.withValues(alpha: 0.4)
+                      : palette.border,
+                  width: active ? 1.5 : 1,
                 ),
-          ),
+              ),
+              child: active
+                  ? Center(
+                      child: Icon(Icons.check_rounded,
+                          size: 11.r, color: primary),
+                    )
+                  : null,
+            ),
+          ],
         ),
       );
     }
@@ -577,58 +605,70 @@ class _CoachFilterBar extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(bottom: 8.h),
       child: SizedBox(
-        height: 40.h,
+        height: 58.h,
         child: ListView(
           scrollDirection: Axis.horizontal,
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
           children: [
-            // City filter chip
+            // City filter chip — label pinned above pill
             GestureDetector(
               onTap: () => _showCityPicker(context),
-              child: AnimatedContainer(
-                duration: AppMotion.fast,
-                padding:
-                    EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                decoration: BoxDecoration(
-                  color: selectedCity != null
-                      ? primary.withValues(alpha: 0.12)
-                      : palette.surfaceVariant,
-                  borderRadius: BorderRadius.circular(20.r),
-                  border: Border.all(
-                    color: selectedCity != null
-                        ? primary.withValues(alpha: 0.4)
-                        : palette.border,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    selectedCity ?? l10n.translate('discovery.filter_city'),
+                    style: AppText.of(context).labelS.copyWith(
+                          fontSize: 10.sp,
+                          height: 1.2,
+                          color: selectedCity != null
+                              ? primary
+                              : palette.textTertiary,
+                          fontWeight: selectedCity != null
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
                   ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.location_city_rounded,
-                        size: 14.r,
+                  SizedBox(height: 3.h),
+                  AnimatedContainer(
+                    duration: AppMotion.fast,
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 10.w, vertical: 5.h),
+                    decoration: BoxDecoration(
+                      color: selectedCity != null
+                          ? primary.withValues(alpha: 0.12)
+                          : palette.surfaceVariant,
+                      borderRadius:
+                          BorderRadius.circular(AppRadius.full.r),
+                      border: Border.all(
                         color: selectedCity != null
-                            ? primary
-                            : palette.textSecondary),
-                    SizedBox(width: 4.w),
-                    Text(
-                      selectedCity ??
-                          l10n.translate('discovery.filter_city'),
-                      style: AppText.of(context).labelM.copyWith(
+                            ? primary.withValues(alpha: 0.4)
+                            : palette.border,
+                        width: selectedCity != null ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.location_city_rounded,
+                            size: 13.r,
                             color: selectedCity != null
                                 ? primary
-                                : palette.textSecondary,
-                            fontWeight: selectedCity != null
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                          ),
+                                : palette.textSecondary),
+                        SizedBox(width: 3.w),
+                        Icon(
+                          selectedCity != null
+                              ? Icons.check_rounded
+                              : Icons.keyboard_arrow_down_rounded,
+                          size: 13.r,
+                          color: selectedCity != null
+                              ? primary
+                              : palette.textTertiary,
+                        ),
+                      ],
                     ),
-                    SizedBox(width: 2.w),
-                    Icon(Icons.arrow_drop_down_rounded,
-                        size: 14.r,
-                        color: selectedCity != null
-                            ? primary
-                            : palette.textTertiary),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             SizedBox(width: 8.w),

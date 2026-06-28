@@ -353,14 +353,25 @@ class _MyGymChip extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    gym.name,
-                    style: AppText.of(context).bodyM.copyWith(
-                          color: palette.textPrimary,
-                          fontWeight: FontWeight.w700,
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          gym.name,
+                          style: AppText.of(context).bodyM.copyWith(
+                                color: palette.textPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                      ),
+                      if (gym.isVerified) ...[
+                        const SizedBox(width: 4),
+                        Icon(Icons.verified_rounded,
+                            size: 14, color: Colors.blue.shade400),
+                      ],
+                    ],
                   ),
                   if (gym.locationDisplay.isNotEmpty) ...[
                     const SizedBox(height: 2),
@@ -452,14 +463,25 @@ class _GymCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    gym.name,
-                    style: AppText.of(context).bodyM.copyWith(
-                          color: palette.textPrimary,
-                          fontWeight: FontWeight.w700,
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          gym.name,
+                          style: AppText.of(context).bodyM.copyWith(
+                                color: palette.textPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                      ),
+                      if (gym.isVerified) ...[
+                        const SizedBox(width: 4),
+                        Icon(Icons.verified_rounded,
+                            size: 14, color: Colors.blue.shade400),
+                      ],
+                    ],
                   ),
                   if (gym.locationDisplay.isNotEmpty) ...[
                     const SizedBox(height: 2),
@@ -664,7 +686,7 @@ class _FilterBar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 40.h,
+          height: 58.h,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -729,6 +751,7 @@ class _FilterBar extends StatelessWidget {
     );
   }
 
+  // Label pinned above pill, centered; pill contains only the icon indicator.
   Widget _chip(BuildContext context, {
     required IconData icon,
     required String label,
@@ -738,71 +761,97 @@ class _FilterBar extends StatelessWidget {
     final primary = Theme.of(context).primaryColor;
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-        decoration: BoxDecoration(
-          color: active
-              ? primary.withValues(alpha: 0.12)
-              : palette.surfaceVariant,
-          borderRadius: BorderRadius.circular(20.r),
-          border: Border.all(
-            color: active
-                ? primary.withValues(alpha: 0.4)
-                : palette.border,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: AppText.of(context).labelS.copyWith(
+                  fontSize: 10.sp,
+                  height: 1.2,
+                  color: active ? primary : palette.textTertiary,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon,
-                size: 14.r,
-                color: active ? primary : palette.textSecondary),
-            SizedBox(width: 4.w),
-            Text(
-              label,
-              style: AppText.of(context).labelM.copyWith(
-                    color: active ? primary : palette.textSecondary,
-                    fontWeight:
-                        active ? FontWeight.w600 : FontWeight.normal,
-                  ),
+          SizedBox(height: 3.h),
+          AnimatedContainer(
+            duration: AppMotion.fast,
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+            decoration: BoxDecoration(
+              color: active
+                  ? primary.withValues(alpha: 0.12)
+                  : palette.surfaceVariant,
+              borderRadius: BorderRadius.circular(AppRadius.full.r),
+              border: Border.all(
+                color: active
+                    ? primary.withValues(alpha: 0.4)
+                    : palette.border,
+                width: active ? 1.5 : 1,
+              ),
             ),
-            SizedBox(width: 2.w),
-            Icon(Icons.arrow_drop_down_rounded,
-                size: 14.r,
-                color: active ? primary : palette.textTertiary),
-          ],
-        ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon,
+                    size: 13.r,
+                    color: active ? primary : palette.textSecondary),
+                SizedBox(width: 3.w),
+                Icon(
+                  active
+                      ? Icons.check_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 13.r,
+                  color: active ? primary : palette.textTertiary,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
+  // Label pinned above a compact indicator pill.
   Widget _sortChip(BuildContext context, String value, String label) {
     final active = sortBy == value;
     final primary = Theme.of(context).primaryColor;
     return GestureDetector(
       onTap: () => onSortChanged(value),
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-        decoration: BoxDecoration(
-          color: active
-              ? primary.withValues(alpha: 0.12)
-              : palette.surfaceVariant,
-          borderRadius: BorderRadius.circular(20.r),
-          border: Border.all(
-            color: active
-                ? primary.withValues(alpha: 0.4)
-                : palette.border,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: AppText.of(context).labelS.copyWith(
+                  fontSize: 10.sp,
+                  height: 1.2,
+                  color: active ? primary : palette.textTertiary,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                ),
           ),
-        ),
-        child: Text(
-          label,
-          style: AppText.of(context).labelM.copyWith(
-                color: active ? primary : palette.textSecondary,
-                fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+          SizedBox(height: 3.h),
+          AnimatedContainer(
+            duration: AppMotion.fast,
+            width: 30.w,
+            height: 20.h,
+            decoration: BoxDecoration(
+              color: active ? primary.withValues(alpha: 0.12) : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.full.r),
+              border: Border.all(
+                color: active
+                    ? primary.withValues(alpha: 0.4)
+                    : palette.border,
+                width: active ? 1.5 : 1,
               ),
-        ),
+            ),
+            child: active
+                ? Center(
+                    child: Icon(Icons.check_rounded,
+                        size: 11.r, color: primary),
+                  )
+                : null,
+          ),
+        ],
       ),
     );
   }
