@@ -4,6 +4,25 @@
 
 ---
 
+## 📖 START HERE — The Documentation System
+
+This file holds the **rules** (R0–R9 + Definition of Done). Two companions hold the rest:
+
+- **`AGENTS.md`** — *how to work*: the mandatory per-prompt workflow, the pre-flight checklist,
+  anti-drift constraints, and the "keep docs in sync" golden rule. **Read it before any task.**
+- **`ARCHITECTURE.md`** — *how the system fits together*: layers, data flow, directory map.
+- **`docs/`** — *where everything is* (so you don't grep blind): `DATA_MODEL.md`, `SERVICES.md`,
+  `FRONTEND.md`, `DESIGN_SYSTEM.md`, `FEATURES.md`, `PLATFORM.md`, `LOCALIZATION.md`,
+  `roadmap/GO_LIVE.md`, `roadmap/FUTURE_FEATURES.md`. Index: `docs/INDEX.md`.
+
+**The loop every prompt:** classify the task → read the relevant `docs/` file → think in 3 roles
+(R0) → satisfy the pre-flight checklist (`AGENTS.md` §2) → make the smallest correct change →
+`flutter analyze lib/` (0 errors) → **update the `docs/` file you just made stale.** When you change
+code, the doc that covers it (and `CLAUDE.md`/`TODO.md` if scope/status changed) must change in the
+same task — code is truth, docs must not drift.
+
+---
+
 ## 🔱 GLOBAL ENGINEERING RULES (NON-NEGOTIABLE — APPLY ON EVERY PROMPT)
 
 > These rules are **always active**. They are not optional, not per-task. Every feature, fix,
