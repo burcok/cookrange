@@ -184,17 +184,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                                   if (_searchQuery.isEmpty)
                                     _buildSupportToast(context, palette),
                                   const SizedBox(height: 32),
-                                  AppEmptyState(
-                                    icon: Icons.chat_bubble_outline_rounded,
-                                    title: t('chat.no_chats_found'),
-                                    message: '',
-                                    actionLabel: t('chat.find_friends_cta'),
-                                    onAction: () => Navigator.of(context).push(
-                                      AppTransitions.slideRight(
-                                        const UserSearchScreen(),
-                                      ),
-                                    ),
-                                  ),
+                                  _buildEmptyStateWithGlow(context, palette, t),
                                 ],
                               );
                             }
@@ -286,7 +276,7 @@ class _ChatListScreenState extends State<ChatListScreen>
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
           padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 24, bottom: 12),
+              top: MediaQuery.of(context).padding.top + 24),
           child: Column(
             children: [
               Padding(
@@ -359,6 +349,22 @@ class _ChatListScreenState extends State<ChatListScreen>
                   ],
                 ),
               ),
+              // 2px brand gradient accent line at the bottom of the AppBar
+              Container(
+                height: 2,
+                margin: const EdgeInsets.only(top: 10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      primary.withValues(alpha: 0.0),
+                      primary,
+                      AppPalette.energyLight,
+                      primary.withValues(alpha: 0.0),
+                    ],
+                    stops: const [0.0, 0.35, 0.65, 1.0],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -367,10 +373,11 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   Widget _buildNutritionChatCard(
-      BuildContext context, ChatModel chat, AppPalette palette) {
-    return _buildGlassCard(
-      context,
-      palette,
+      BuildContext context, ChatModel chat, AppPalette palette, String currentUserId) {
+    final unread = chat.unreadCounts[currentUserId] ?? 0;
+    return AppGlassCard(
+      padding: const EdgeInsets.all(12),
+
       child: Row(
         children: [
           Container(
@@ -420,16 +427,21 @@ class _ChatListScreenState extends State<ChatListScreen>
               ],
             ),
           ),
+          if (unread > 0) ...[
+            const SizedBox(width: 8),
+            _buildUnreadBadge(unread),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildGenericGroupChatCard(
-      BuildContext context, ChatModel chat, AppPalette palette) {
-    return _buildGlassCard(
-      context,
-      palette,
+      BuildContext context, ChatModel chat, AppPalette palette, String currentUserId) {
+    final unread = chat.unreadCounts[currentUserId] ?? 0;
+    return AppGlassCard(
+      padding: const EdgeInsets.all(12),
+
       child: Row(
         children: [
           Container(
@@ -483,6 +495,10 @@ class _ChatListScreenState extends State<ChatListScreen>
               ],
             ),
           ),
+          if (unread > 0) ...[
+            const SizedBox(width: 8),
+            _buildUnreadBadge(unread),
+          ],
         ],
       ),
     );
@@ -490,33 +506,49 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   Widget _buildSystemChatCard(
       BuildContext context, ChatModel chat, AppPalette palette) {
-    return _buildGlassCard(context, palette,
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Text(chat.lastMessage?.text ?? 'System Message',
-              style: TextStyle(color: palette.textPrimary)),
-        ));
+    return AppGlassCard(
+      padding: const EdgeInsets.all(12),
+
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Text(
+          chat.lastMessage?.text ?? 'System Message',
+          style: TextStyle(color: palette.textPrimary),
+        ),
+      ),
+    );
   }
 
-  Widget _buildGlassCard(BuildContext context, AppPalette palette,
-      {required Widget child}) {
+  /// Brand-gradient unread badge — not a plain colored dot.
+  Widget _buildUnreadBadge(int count) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: palette.surface.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: palette.border.withValues(alpha: 0.5),
+        gradient: const LinearGradient(
+          colors: [AppPalette.sunsetB, AppPalette.sunsetC],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(11),
         boxShadow: [
           BoxShadow(
-            color: palette.shadow.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: AppPalette.brand.withValues(alpha: 0.4),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: child,
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          height: 1.4,
+        ),
+      ),
     );
   }
 
@@ -664,8 +696,8 @@ class _ChatListScreenState extends State<ChatListScreen>
                     );
                   },
                   backgroundColor: palette.success,
-                  child: Icon(Icons.chat_bubble_outline,
-                      color: palette.textInverse),
+                  child: const Icon(Icons.chat_bubble_outline,
+                      color: Colors.white),
                 ),
               ],
             ),
@@ -707,27 +739,48 @@ class _ChatListScreenState extends State<ChatListScreen>
   Widget _buildBackgroundGlows(BuildContext context, AppPalette palette) {
     final size = MediaQuery.of(context).size;
     final primary = context.watch<ThemeProvider>().primaryColor;
-    return RepaintBoundary(
-      child: Container(
-        color: palette.background,
-        child: Stack(
-          children: [
-            Positioned(
-              top: -100,
-              right: -50,
-              child: _glowBlob(300, primary.withValues(alpha: 0.2)),
-            ),
-            Positioned(
-              top: size.height * 0.4,
-              left: -100,
-              child: _glowBlob(350, primary.withValues(alpha: 0.18)),
-            ),
-            Positioned(
-              bottom: 50,
-              right: -80,
-              child: _glowBlob(320, primary.withValues(alpha: 0.15)),
-            ),
-          ],
+    // Resolve energy color from theme
+    final energyColor = palette.energy;
+    return IgnorePointer(
+      child: RepaintBoundary(
+        child: Container(
+          color: palette.background,
+          child: Stack(
+            children: [
+              // Top-right: brand glow
+              Positioned(
+                top: -60,
+                right: -80,
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                  child: Container(
+                    width: 240,
+                    height: 240,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primary.withValues(alpha: 0.05),
+                    ),
+                  ),
+                ),
+              ),
+              // Bottom-left: energy glow
+              Positioned(
+                bottom: size.height * 0.15,
+                left: -80,
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                  child: Container(
+                    width: 280,
+                    height: 280,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: energyColor.withValues(alpha: 0.05),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -947,351 +1000,344 @@ class _ChatListScreenState extends State<ChatListScreen>
   }
 
   Widget _buildGymChatCard(
-      BuildContext context, ChatModel chat, AppPalette palette) {
-    return Container(
-      decoration: BoxDecoration(
-        color: palette.surfaceVariant.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: palette.shadow.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Stack(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: palette.success.withValues(alpha: 0.3),
-                        width: 2),
-                    color: palette.surface,
-                  ),
-                  child: ClipOval(
-                    child: chat.image != null
-                        ? AppImage(
-                            imageUrl: chat.image!,
-                            width: 56,
-                            height: 56,
-                          )
-                        : Icon(Icons.fitness_center,
-                            color: palette.textPrimary),
-                  ),
+      BuildContext context, ChatModel chat, AppPalette palette, String currentUserId) {
+    final unread = chat.unreadCounts[currentUserId] ?? 0;
+    return AppGlassCard(
+      padding: const EdgeInsets.all(16),
+      radius: 24,
+      child: Row(
+        children: [
+          Stack(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: palette.success.withValues(alpha: 0.3),
+                      width: 2),
+                  color: palette.surface,
                 ),
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: palette.error,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: palette.surface, width: 2),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          chat.name ?? 'Gym Chat',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: palette.textPrimary,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        "10:42",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: palette.textTertiary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Text("🔥", style: TextStyle(fontSize: 12)),
-                      const SizedBox(width: 6),
-                      Text(
-                        chat.metadata?['status_text'] ?? "14 Kişi Antrenmanda",
-                        style: TextStyle(
-                          color: palette.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Text("🗓️", style: TextStyle(fontSize: 12)),
-                      const SizedBox(width: 6),
-                      Text(
-                        chat.metadata?['event_text'] ?? "Etkinlik Günü: Yoga",
-                        style: TextStyle(
-                          color: palette.textTertiary,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPrivateChatCard(BuildContext context, ChatModel chat,
-      AppPalette palette, String currentUserId) {
-    return Container(
-      decoration: BoxDecoration(
-        color: palette.surfaceVariant.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Stack(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: const BoxDecoration(shape: BoxShape.circle),
-                  clipBehavior: Clip.antiAlias,
+                child: ClipOval(
                   child: chat.image != null
                       ? AppImage(
                           imageUrl: chat.image!,
                           width: 56,
                           height: 56,
-                          placeholder: Icon(
-                            Icons.person,
-                            color: palette.textTertiary,
-                            size: 30,
-                          ),
-                          errorWidget: Icon(
-                            Icons.error,
-                            color: palette.error,
-                            size: 30,
-                          ),
                         )
-                      : Icon(Icons.person,
-                          color: palette.textTertiary, size: 30),
+                      : Icon(Icons.fitness_center,
+                          color: palette.textPrimary),
                 ),
-                if (chat.metadata?['is_online'] ?? false)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        color: palette.success,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: palette.surface),
-                        boxShadow: [
-                          BoxShadow(
-                              color: palette.shadow.withValues(alpha: 0.1),
-                              blurRadius: 4)
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                    ),
+              ),
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: palette.error,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: palette.surface, width: 2),
                   ),
-              ],
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        chat.name ?? 'User',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        chat.name ?? 'Gym Chat',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                           color: palette.textPrimary,
                         ),
                       ),
-                      Text(
-                        chat.lastMessage != null
-                            ? _formatTime(context, chat.lastMessage!.timestamp)
-                            : '',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: palette.textTertiary,
-                        ),
+                    ),
+                    Text(
+                      "10:42",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: palette.textTertiary,
+                        fontWeight: FontWeight.w500,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          chat.lastMessage?.text ?? '',
-                          style: TextStyle(
-                            color: palette.textSecondary,
-                            fontSize: 13,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Text("🔥", style: TextStyle(fontSize: 12)),
+                    const SizedBox(width: 6),
+                    Text(
+                      chat.metadata?['status_text'] ?? "14 Kişi Antrenmanda",
+                      style: TextStyle(
+                        color: palette.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                       ),
-                      if (chat.lastMessage?.senderId == currentUserId) ...[
-                        const SizedBox(width: 4),
-                        Icon(
-                          chat.lastMessage?.isRead == true
-                              ? Icons.done_all
-                              : Icons.done,
-                          size: 16,
-                          color: chat.lastMessage?.isRead == true
-                              ? palette.info
-                              : palette.textTertiary,
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Text("🗓️", style: TextStyle(fontSize: 12)),
+                    const SizedBox(width: 6),
+                    Text(
+                      chat.metadata?['event_text'] ?? "Etkinlik Günü: Yoga",
+                      style: TextStyle(
+                        color: palette.textTertiary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+          ),
+          if (unread > 0) ...[
+            const SizedBox(width: 8),
+            _buildUnreadBadge(unread),
           ],
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrivateChatCard(BuildContext context, ChatModel chat,
+      AppPalette palette, String currentUserId) {
+    final unread = chat.unreadCounts[currentUserId] ?? 0;
+    return AppGlassCard(
+      padding: const EdgeInsets.all(16),
+
+      child: Row(
+        children: [
+          Stack(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: const BoxDecoration(shape: BoxShape.circle),
+                clipBehavior: Clip.antiAlias,
+                child: chat.image != null
+                    ? AppImage(
+                        imageUrl: chat.image!,
+                        width: 56,
+                        height: 56,
+                        placeholder: Icon(
+                          Icons.person,
+                          color: palette.textTertiary,
+                          size: 30,
+                        ),
+                        errorWidget: Icon(
+                          Icons.error,
+                          color: palette.error,
+                          size: 30,
+                        ),
+                      )
+                    : Icon(Icons.person,
+                        color: palette.textTertiary, size: 30),
+              ),
+              if (chat.metadata?['is_online'] ?? false)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: palette.success,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: palette.surface),
+                      boxShadow: [
+                        BoxShadow(
+                            color: palette.shadow.withValues(alpha: 0.1),
+                            blurRadius: 4)
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      chat.name ?? 'User',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: palette.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      chat.lastMessage != null
+                          ? _formatTime(context, chat.lastMessage!.timestamp)
+                          : '',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: palette.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        chat.lastMessage?.text ?? '',
+                        style: TextStyle(
+                          color: palette.textSecondary,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (chat.lastMessage?.senderId == currentUserId) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        chat.lastMessage?.isRead == true
+                            ? Icons.done_all
+                            : Icons.done,
+                        size: 16,
+                        color: chat.lastMessage?.isRead == true
+                            ? palette.info
+                            : palette.textTertiary,
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (unread > 0) ...[
+            const SizedBox(width: 8),
+            _buildUnreadBadge(unread),
+          ],
+        ],
       ),
     );
   }
 
   Widget _buildRecipeChatCard(
-      BuildContext context, ChatModel chat, AppPalette palette) {
-    return Container(
-      decoration: BoxDecoration(
-        color: palette.success.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: palette.success.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(Icons.ramen_dining, color: palette.success, size: 28),
+      BuildContext context, ChatModel chat, AppPalette palette, String currentUserId) {
+    final unread = chat.unreadCounts[currentUserId] ?? 0;
+    return AppGlassCard(
+      padding: const EdgeInsets.all(16),
+      radius: 24,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: palette.success.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          chat.name ?? 'Group',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: palette.textPrimary,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        "08:30",
+            child: Icon(Icons.ramen_dining, color: palette.success, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        chat.name ?? 'Group',
                         style: TextStyle(
-                          fontSize: 12,
-                          color: palette.textTertiary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: palette.textPrimary,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: palette.warning.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: palette.warning.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Text("🥕", style: TextStyle(fontSize: 10)),
-                            const SizedBox(width: 4),
-                            Text(
-                              "${chat.metadata?['new_recipes_count']} Yeni Tarif",
-                              style: TextStyle(
-                                  color: palette.warning,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "~ Popüler",
-                        style: TextStyle(
-                            color: palette.success,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    chat.lastMessage?.text ?? '',
-                    style: TextStyle(
-                      color: palette.textSecondary,
-                      fontSize: 13,
-                      height: 1.4,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    Text(
+                      "08:30",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: palette.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: palette.warning.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: palette.warning.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Text("🥕", style: TextStyle(fontSize: 10)),
+                          const SizedBox(width: 4),
+                          Text(
+                            "${chat.metadata?['new_recipes_count']} Yeni Tarif",
+                            style: TextStyle(
+                                color: palette.warning,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "~ Popüler",
+                      style: TextStyle(
+                          color: palette.success,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  chat.lastMessage?.text ?? '',
+                  style: TextStyle(
+                    color: palette.textSecondary,
+                    fontSize: 13,
+                    height: 1.4,
                   ),
-                ],
-              ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
+          ),
+          if (unread > 0) ...[
+            const SizedBox(width: 8),
+            _buildUnreadBadge(unread),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1299,33 +1345,60 @@ class _ChatListScreenState extends State<ChatListScreen>
   Widget _buildChatCard(BuildContext context, ChatModel chat,
       AppPalette palette, String currentUserId) {
     if (chat.metadata?['subtype'] == 'recipe') {
-      return _buildRecipeChatCard(context, chat, palette);
+      return _buildRecipeChatCard(context, chat, palette, currentUserId);
     }
     switch (chat.type) {
       case ChatType.gym:
-        return _buildGymChatCard(context, chat, palette);
+        return _buildGymChatCard(context, chat, palette, currentUserId);
       case ChatType.private:
         return _buildPrivateChatCard(context, chat, palette, currentUserId);
       case ChatType.group:
         if (chat.metadata?['subtype'] == 'nutrition') {
-          return _buildNutritionChatCard(context, chat, palette);
+          return _buildNutritionChatCard(context, chat, palette, currentUserId);
         }
-        return _buildGenericGroupChatCard(context, chat, palette);
+        return _buildGenericGroupChatCard(context, chat, palette, currentUserId);
       case ChatType.system:
         return _buildSystemChatCard(context, chat, palette);
     }
   }
 
-  Widget _glowBlob(double size, Color color) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [color, color.withValues(alpha: 0)],
+  /// Empty state with a brand-glow halo behind the icon.
+  Widget _buildEmptyStateWithGlow(
+      BuildContext context, AppPalette palette, String Function(String) t) {
+    final primary = context.read<ThemeProvider>().primaryColor;
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Brand glow behind icon
+        Positioned(
+          top: 0,
+          child: Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  primary.withValues(alpha: 0.18),
+                  primary.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
         ),
-      ),
+        AppEmptyState(
+          icon: Icons.chat_bubble_outline_rounded,
+          title: t('chat.no_chats_found'),
+          message: '',
+          actionLabel: t('chat.find_friends_cta'),
+          onAction: () => Navigator.of(context).push(
+            AppTransitions.slideRight(
+              const UserSearchScreen(),
+            ),
+          ),
+        ),
+      ],
     );
   }
+
 }

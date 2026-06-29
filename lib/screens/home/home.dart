@@ -42,6 +42,8 @@ import '../../core/providers/test_mode_provider.dart';
 import '../../core/widgets/main_header.dart';
 import 'nutrition_analytics_screen.dart';
 import 'meal_plan_history_screen.dart';
+import 'widgets/today_summary_card.dart';
+import '../../core/services/storage_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -83,6 +85,9 @@ class _HomeScreenState extends State<HomeScreen>
   // Streak milestone banner — dismissed per session
   bool _streakMilestoneDismissed = false;
 
+  // Hydration snapshot for TodaySummaryCard — read from local Hive storage
+  double _waterMl = 0;
+
   // Shareable card capture key
   final _shareCardKey = GlobalKey();
 
@@ -100,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen>
       _testModeProvider!.addListener(_onTestModeChanged);
       _loadWeeklyPlan();
       _subscribeToFoodLogs();
+      _loadWaterMl();
       // Notification primer — shown once, 3s after home loads so it doesn't
       // compete with the initial loading experience.
       Future.delayed(const Duration(seconds: 3), _maybeRequestNotifications);
@@ -119,6 +125,23 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _maybeRequestNotifications() async {
     if (!mounted) return;
     await PermissionService().requestNotifications(context);
+  }
+
+  void _loadWaterMl() {
+    final today = DateTime.now();
+    final ml = StorageService().getHydration(today);
+    if (mounted) setState(() => _waterMl = ml);
+  }
+
+  // Returns the next meal type label (localized) based on current hour,
+  // or null when no standard meal is expected (late night / all done).
+  String? _nextMealName(AppLocalizations l10n) {
+    final h = DateTime.now().hour;
+    if (h < 6 || h >= 22) return null;
+    if (h < 11) return l10n.translate('home.meal_type_breakfast');
+    if (h < 14) return l10n.translate('home.meal_type_lunch');
+    if (h < 17) return l10n.translate('home.meal_type_snack');
+    return l10n.translate('home.meal_type_dinner');
   }
 
   void _subscribeToFoodLogs() {
@@ -705,6 +728,18 @@ class _HomeScreenState extends State<HomeScreen>
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: AiInsightCard(user: userModel),
+        ),
+        SizedBox(height: 20.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: TodaySummaryCard(
+            calorieConsumed: _consumed.calories.round(),
+            calorieTarget: adjustedTDEE.round(),
+            streak: streak,
+            waterMl: _waterMl.round(),
+            waterTargetMl: 2000,
+            nextMealName: _nextMealName(l10n),
+          ),
         ),
         SizedBox(height: 32.h),
         _buildMealPlanSection(context, userModel, l10n),

@@ -477,6 +477,21 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ─── Streak Squads ────────────────────────────────────────────────────────
+    // Members can read their own squads; any authenticated user can create;
+    // members can update; only the creator can delete.
+    match /squads/{squadId} {
+      allow read: if isAuthenticated()
+        && request.auth.uid in resource.data.memberUids;
+      allow create: if isAuthenticated()
+        && request.auth.uid == request.resource.data.creatorUid
+        && request.auth.uid in request.resource.data.memberUids;
+      allow update: if isAuthenticated()
+        && request.auth.uid in resource.data.memberUids;
+      allow delete: if isAuthenticated()
+        && request.auth.uid == resource.data.creatorUid;
+    }
+
     // ─── Deny everything else ─────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

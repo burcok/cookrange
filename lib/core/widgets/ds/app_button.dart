@@ -108,93 +108,99 @@ class _AppButtonState extends State<AppButton>
         ? style.foreground.withValues(alpha: 0.45)
         : style.foreground;
 
-    Widget content = widget.loading
-        ? SizedBox(
-            width: 18.r,
-            height: 18.r,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.2,
-              valueColor: AlwaysStoppedAnimation<Color>(contentColor),
-            ),
-          )
-        : Row(
-            mainAxisSize: widget.expand ? MainAxisSize.max : MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (widget.icon != null) ...[
-                Icon(widget.icon, size: AppSize.iconSm.r, color: contentColor),
-                SizedBox(width: AppSpacing.xs.w),
-              ],
-              Flexible(
-                child: Text(
-                  widget.label,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.labelL.copyWith(
-                    fontSize: _fontSize.sp,
-                    color: contentColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              if (widget.trailingIcon != null) ...[
-                SizedBox(width: AppSpacing.xs.w),
-                Icon(widget.trailingIcon,
-                    size: AppSize.iconSm.r, color: contentColor),
-              ],
-            ],
-          );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool canExpand = widget.expand && constraints.maxWidth != double.infinity;
 
-    return Semantics(
-      button: true,
-      enabled: !_disabled,
-      label: widget.loading ? '${widget.label}, loading' : widget.label,
-      onTap: _disabled ? null : _onTap,
-      child: GestureDetector(
-      onTapDown: _onTapDown,
-      onTapUp: _onTapUp,
-      onTapCancel: () => _onTapUp(null),
-      onTap: _onTap,
-      child: AnimatedBuilder(
-        animation: _c,
-        builder: (context, child) => Transform.scale(
-          scale: 1 - _c.value,
-          child: child,
-        ),
-        child: AnimatedContainer(
-          duration: AppMotion.fast,
-          curve: AppMotion.standard,
-          height: _height.h,
-          width: widget.expand ? double.infinity : null,
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: _disabled
-                ? style.background.withValues(
-                    alpha: style.background.a == 0 ? 0 : 0.5)
-                : style.background,
-            borderRadius: BorderRadius.circular(AppRadius.button.r),
-            border: style.borderColor != null
-                ? Border.all(
-                    color: _disabled
-                        ? style.borderColor!.withValues(alpha: 0.4)
-                        : style.borderColor!,
-                    width: 1.5,
-                  )
-                : null,
-            boxShadow: style.elevated && !_disabled
-                ? [
-                    BoxShadow(
-                      color: primary.withValues(alpha: 0.28),
-                      blurRadius: AppElevation.blurMd.r,
-                      offset: AppElevation.offsetMd,
+        Widget content = widget.loading
+            ? SizedBox(
+                width: 18.r,
+                height: 18.r,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  valueColor: AlwaysStoppedAnimation<Color>(contentColor),
+                ),
+              )
+            : Row(
+                mainAxisSize: canExpand ? MainAxisSize.max : MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (widget.icon != null) ...[
+                    Icon(widget.icon, size: AppSize.iconSm.r, color: contentColor),
+                    SizedBox(width: AppSpacing.xs.w),
+                  ],
+                  Flexible(
+                    child: Text(
+                      widget.label,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.labelL.copyWith(
+                        fontSize: _fontSize.sp,
+                        color: contentColor,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ]
-                : null,
+                  ),
+                  if (widget.trailingIcon != null) ...[
+                    SizedBox(width: AppSpacing.xs.w),
+                    Icon(widget.trailingIcon,
+                        size: AppSize.iconSm.r, color: contentColor),
+                  ],
+                ],
+              );
+
+        return Semantics(
+          button: true,
+          enabled: !_disabled,
+          label: widget.loading ? '${widget.label}, loading' : widget.label,
+          onTap: _disabled ? null : _onTap,
+          child: GestureDetector(
+            onTapDown: _onTapDown,
+            onTapUp: _onTapUp,
+            onTapCancel: () => _onTapUp(null),
+            onTap: _onTap,
+            child: AnimatedBuilder(
+              animation: _c,
+              builder: (context, child) => Transform.scale(
+                scale: 1 - _c.value,
+                child: child,
+              ),
+              child: AnimatedContainer(
+                duration: AppMotion.fast,
+                curve: AppMotion.standard,
+                height: _height.h,
+                width: canExpand ? double.infinity : null,
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: _disabled
+                      ? style.background.withValues(
+                          alpha: style.background.a == 0 ? 0 : 0.5)
+                      : style.background,
+                  borderRadius: BorderRadius.circular(AppRadius.button.r),
+                  border: style.borderColor != null
+                      ? Border.all(
+                          color: _disabled
+                              ? style.borderColor!.withValues(alpha: 0.4)
+                              : style.borderColor!,
+                          width: 1.5,
+                        )
+                      : null,
+                  boxShadow: style.elevated && !_disabled
+                      ? [
+                          BoxShadow(
+                            color: primary.withValues(alpha: 0.28),
+                            blurRadius: AppElevation.blurMd.r,
+                            offset: AppElevation.offsetMd,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: content,
+              ),
+            ),
           ),
-          child: content,
-        ),
-      ),
-      ),
+        );
+      },
     );
   }
 

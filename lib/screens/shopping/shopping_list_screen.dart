@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/ingredient_model.dart';
 import '../../core/providers/language_provider.dart';
+import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/repositories/shopping_repository.dart';
 import '../../core/services/analytics_service.dart';
@@ -253,9 +256,8 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final palette = AppPalette.of(context);
-    final primary = theme.colorScheme.primary;
+    final primary = context.watch<ThemeProvider>().primaryColor;
 
     final unchecked =
         _shoppingList.where((i) => !_checkedItems.contains(i.name)).toList();
@@ -264,102 +266,152 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
 
     return Scaffold(
       backgroundColor: palette.background,
-      appBar: AppBar(
-        backgroundColor: palette.background,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        title: Text(
-          l10n.translate('shopping.title'),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: palette.textPrimary,
-          ),
-        ),
-        iconTheme: IconThemeData(color: palette.textPrimary),
-        actions: [
-          if (_isGenerating)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else
-            IconButton(
-              tooltip: l10n.translate('shopping.generate_from_plan'),
-              icon: const Icon(Icons.auto_awesome),
-              onPressed: _generateFromPlan,
-            ),
-          if (_shoppingList.isNotEmpty) ...[
-            Builder(
-              builder: (buttonContext) => IconButton(
-                tooltip: l10n.translate('shopping.share'),
-                icon: const Icon(Icons.share_outlined),
-                onPressed: () => _shareList(buttonContext),
-              ),
-            ),
-            IconButton(
-              tooltip: l10n.translate('shopping.copy'),
-              icon: const Icon(Icons.copy_outlined),
-              onPressed: _copyToClipboard,
-            ),
-            IconButton(
-              tooltip: l10n.translate('shopping.clear_list'),
-              icon: const Icon(Icons.delete_outline),
-              onPressed: _clearList,
-            ),
-          ],
+      appBar: _buildAppBar(l10n, palette, primary),
+      body: Stack(
+        children: [
+          // Mesh-glow ambient background blobs
+          ...AppGradients.meshGlow(palette, primary),
+          // Main content
+          _shoppingList.isEmpty
+              ? _buildEmptyState(l10n, palette, primary)
+              : _buildList(l10n, palette, primary, unchecked, checked),
         ],
       ),
-      body: _shoppingList.isEmpty
-          ? _buildEmptyState(l10n, palette, primary)
-          : _buildList(l10n, palette, primary, unchecked, checked),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: _buildFab(l10n, primary),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(
+    AppLocalizations l10n,
+    AppPalette palette,
+    Color primary,
+  ) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(kToolbarHeight + 2),
+      child: Column(
+        children: [
+          AppBar(
+            backgroundColor: palette.background,
+            elevation: 0,
+            surfaceTintColor: Colors.transparent,
+            title: Text(
+              l10n.translate('shopping.title'),
+              style: AppText.of(context).headlineS,
+            ),
+            iconTheme: IconThemeData(color: palette.textPrimary),
+            actions: [
+              if (_isGenerating)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: primary,
+                    ),
+                  ),
+                )
+              else
+                IconButton(
+                  tooltip: l10n.translate('shopping.generate_from_plan'),
+                  icon: const Icon(Icons.auto_awesome),
+                  onPressed: _generateFromPlan,
+                ),
+              if (_shoppingList.isNotEmpty) ...[
+                Builder(
+                  builder: (buttonContext) => IconButton(
+                    tooltip: l10n.translate('shopping.share'),
+                    icon: const Icon(Icons.share_outlined),
+                    onPressed: () => _shareList(buttonContext),
+                  ),
+                ),
+                IconButton(
+                  tooltip: l10n.translate('shopping.copy'),
+                  icon: const Icon(Icons.copy_outlined),
+                  onPressed: _copyToClipboard,
+                ),
+                IconButton(
+                  tooltip: l10n.translate('shopping.clear_list'),
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: _clearList,
+                ),
+              ],
+            ],
+          ),
+          // Gradient accent line below AppBar
+          Container(
+            height: 2,
+            decoration: BoxDecoration(
+              gradient: AppGradients.brand(primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFab(AppLocalizations l10n, Color primary) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppGradients.brand(primary),
+        borderRadius: BorderRadius.circular(AppRadius.full.r),
+        boxShadow: [
+          BoxShadow(
+            color: primary.withValues(alpha: 0.38),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: FloatingActionButton.extended(
         onPressed: _showAddItemDialog,
-        backgroundColor: primary,
+        backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
-        elevation: 4,
+        elevation: 0,
+        highlightElevation: 0,
         icon: const Icon(Icons.add),
         label: Text(l10n.translate('shopping.add_item')),
       ),
     );
   }
 
-  Widget _buildEmptyState(AppLocalizations l10n, AppPalette palette, Color primary) {
+  Widget _buildEmptyState(
+    AppLocalizations l10n,
+    AppPalette palette,
+    Color primary,
+  ) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.shopping_basket_outlined,
-              size: 72,
-              color: palette.textTertiary),
-          const SizedBox(height: 16),
-          Text(
-            l10n.translate('shopping.empty'),
-            style: TextStyle(
-              color: palette.textSecondary,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: _isGenerating ? null : _generateFromPlan,
-            icon: _isGenerating
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.auto_awesome),
-            label: Text(l10n.translate('shopping.generate_from_plan')),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: primary,
-              side: BorderSide(color: primary),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
+          // Brand-colored glow behind the icon
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 120.r,
+                height: 120.r,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      primary.withValues(alpha: 0.18),
+                      primary.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+              AppEmptyState(
+                icon: Icons.shopping_basket_outlined,
+                title: l10n.translate('shopping.empty'),
+                actionLabel: _isGenerating
+                    ? null
+                    : l10n.translate('shopping.generate_from_plan'),
+                onAction: _isGenerating ? null : _generateFromPlan,
+                compact: true,
+              ),
+            ],
           ),
         ],
       ),
@@ -374,37 +426,64 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
     List<Ingredient> checked,
   ) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md.w,
+        AppSpacing.xs.h,
+        AppSpacing.md.w,
+        100.h,
+      ),
       children: [
         if (unchecked.isNotEmpty) ...[
           _buildSectionHeader(
             '${l10n.translate('shopping.to_buy')} (${unchecked.length})',
             palette,
+            primary,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: AppSpacing.xs.h),
           ...unchecked.map((item) => _buildItem(item, palette, primary)),
         ],
         if (checked.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          SizedBox(height: AppSpacing.md.h),
           _buildSectionHeader(
             '${l10n.translate('shopping.in_cart')} (${checked.length})',
             palette,
+            primary,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: AppSpacing.xs.h),
           ...checked.map((item) => _buildItem(item, palette, primary)),
         ],
       ],
     );
   }
 
-  Widget _buildSectionHeader(String title, AppPalette palette) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.8,
-        color: palette.textTertiary,
+  Widget _buildSectionHeader(String title, AppPalette palette, Color primary) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: AppSpacing.xxs.h),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.sm.r),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: AppPalette.glassBlurSubtle,
+            sigmaY: AppPalette.glassBlurSubtle,
+          ),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm.w,
+              vertical: AppSpacing.xxs.h + 2,
+            ),
+            decoration: BoxDecoration(
+              color: palette.glassFill.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(AppRadius.sm.r),
+              border: Border.all(
+                color: palette.glassStroke.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Text(
+              title.toUpperCase(),
+              style: AppText.of(context).overline,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -412,99 +491,100 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
   Widget _buildItem(Ingredient item, AppPalette palette, Color primary) {
     final isChecked = _checkedItems.contains(item.name);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: AppSpacing.xs.h),
       child: Dismissible(
         key: Key(item.name),
         direction: DismissDirection.endToStart,
         background: Container(
           decoration: BoxDecoration(
             color: palette.error,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.card.r),
           ),
           alignment: Alignment.centerRight,
-          padding: const EdgeInsets.only(right: 20),
+          padding: EdgeInsets.only(right: AppSpacing.lg.w),
           child: const Icon(Icons.delete, color: Colors.white),
         ),
         onDismissed: (_) => _deleteItem(item.name),
-        child: TweenAnimationBuilder<Color?>(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-          tween: ColorTween(
-            begin: isChecked ? palette.surfaceVariant : palette.surface,
-            end: isChecked ? palette.surfaceVariant : palette.surface,
+        child: AppGlassCard(
+          blur: isChecked
+              ? AppPalette.glassBlurSubtle
+              : AppPalette.glassBlurDefault,
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm.w,
+            vertical: AppSpacing.xxs.h,
           ),
-          builder: (context, color, child) {
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOut,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isChecked ? Colors.transparent : palette.border,
+          onTap: () => _toggleItem(item.name),
+          child: AnimatedOpacity(
+            duration: AppMotion.fast,
+            opacity: isChecked ? 0.65 : 1.0,
+            child: ListTile(
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs.w,
+                vertical: AppSpacing.xxs.h,
+              ),
+              leading: GestureDetector(
+                onTap: () => _toggleItem(item.name),
+                child: AnimatedContainer(
+                  duration: AppMotion.fast,
+                  width: 24.r,
+                  height: 24.r,
+                  decoration: BoxDecoration(
+                    color: isChecked ? primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppRadius.xs.r),
+                    border: Border.all(
+                      color: isChecked ? primary : palette.textTertiary,
+                      width: 2,
+                    ),
+                    boxShadow: isChecked
+                        ? [
+                            BoxShadow(
+                              color: primary.withValues(alpha: 0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: isChecked
+                      ? Icon(Icons.check, size: 14.r, color: Colors.white)
+                      : null,
                 ),
-                boxShadow: isChecked
-                    ? []
-                    : [
-                        BoxShadow(
-                          color: palette.shadow.withValues(alpha: 0.06),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
               ),
-              child: Material(
-                color: color,
-                clipBehavior: Clip.antiAlias,
-                borderRadius: BorderRadius.circular(12),
-                child: child,
+              title: AnimatedDefaultTextStyle(
+                duration: AppMotion.fast,
+                style: AppText.of(context).titleM.copyWith(
+                  decoration: isChecked
+                      ? TextDecoration.lineThrough
+                      : TextDecoration.none,
+                  decorationColor: palette.textTertiary,
+                  color: isChecked
+                      ? palette.textTertiary
+                      : palette.textPrimary,
+                  fontWeight:
+                      isChecked ? FontWeight.normal : FontWeight.w600,
+                ),
+                child: Text(item.name),
               ),
-            );
-          },
-          child: ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            leading: GestureDetector(
-              onTap: () => _toggleItem(item.name),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 24,
-                height: 24,
+              trailing: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xs.w,
+                  vertical: AppSpacing.xxs.h,
+                ),
                 decoration: BoxDecoration(
-                  color: isChecked ? primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: isChecked ? primary : palette.textTertiary,
-                    width: 2,
+                  color: isChecked
+                      ? palette.surfaceVariant
+                      : primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.xs.r),
+                ),
+                child: Text(
+                  '${item.amount % 1 == 0 ? item.amount.toInt() : item.amount} ${item.unit}',
+                  style: AppText.of(context).labelM.copyWith(
+                    color: isChecked ? palette.textTertiary : primary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                child: isChecked
-                    ? const Icon(Icons.check, size: 16, color: Colors.white)
-                    : null,
               ),
             ),
-            title: AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight:
-                    isChecked ? FontWeight.normal : FontWeight.w600,
-                decoration: isChecked
-                    ? TextDecoration.lineThrough
-                    : TextDecoration.none,
-                decorationColor: palette.textTertiary,
-                color: isChecked ? palette.textTertiary : palette.textPrimary,
-              ),
-              child: Text(item.name),
-            ),
-            trailing: Text(
-              '${item.amount % 1 == 0 ? item.amount.toInt() : item.amount} ${item.unit}',
-              style: TextStyle(
-                color: isChecked ? palette.textTertiary : primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-            onTap: () => _toggleItem(item.name),
           ),
         ),
       ),

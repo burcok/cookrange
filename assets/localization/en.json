@@ -963,7 +963,8 @@
       "coach_clients": "{n} active clients",
       "gym_title": "My Gym",
       "gym_members": "{n} active members"
-    }
+    },
+    "today_summary_title": "Today"
   },
   "ai_chat": {
     "title": "AI Nutritionist",
@@ -2360,5 +2361,36 @@
     "sort_name": "A–Z",
     "sort_popular": "Popular",
     "sort_newest": "Newest"
+  },
+  "squad": {
+    "title": "Streak Squads",
+    "empty_title": "No Squads Yet",
+    "empty_msg": "Create a squad or join one with an invite code to keep your streak going together.",
+    "join_action": "Join Squad",
+    "create_title": "Create Squad",
+    "join_title": "Join Squad",
+    "goal_days": "{days}-day goal",
+    "invite_code": "Invite Code",
+    "code_copied": "Invite code copied!",
+    "leave_confirm_title": "Leave Squad?",
+    "leave_confirm_msg": "You will lose your progress in this squad. This cannot be undone.",
+    "leave_action": "Leave",
+    "left_msg": "You have left the squad.",
+    "leave_error": "Failed to leave squad. Please try again.",
+    "created_msg": "Squad created! Invite code: {code}",
+    "copy_code": "Copy Code",
+    "create_error": "Failed to create squad. Please try again.",
+    "name_required": "Squad name is required.",
+    "name_label": "Squad Name",
+    "name_hint": "e.g. Morning Grinders",
+    "goal_label": "Streak Goal",
+    "create_action": "Create",
+    "code_label": "Invite Code",
+    "code_hint": "Enter 6-character code",
+    "code_not_found": "Squad not found. Check the code and try again.",
+    "code_invalid": "Invalid invite code. Must be 6 characters.",
+    "already_member": "You are already a member of this squad.",
+    "join_error": "Failed to join squad. Please try again.",
+    "joined_msg": "Welcome to the squad!"
   }
 }

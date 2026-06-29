@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -93,49 +94,108 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
     );
   }
 
+  bool get _showRankBadges =>
+      _sortBy == 'avg_rating' || _sortBy == 'client_count';
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
+    final primary = Theme.of(context).primaryColor;
 
     return Scaffold(
       backgroundColor: palette.background,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(t.translate('coach.discovery_title')),
-        backgroundColor: palette.background,
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              color: palette.background.withValues(alpha: 0.7),
+            ),
+          ),
+        ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.md,
-              AppSpacing.lg,
-              AppSpacing.sm,
-            ),
-            child: AppTextField(
-              controller: _searchController,
-              hintText: t.translate('coach.discovery_search_hint'),
-              prefixIcon: const Icon(Icons.search_rounded),
-              onChanged: _onSearchChanged,
+          // ── Mesh-glow ambient background ─────────────────────────────
+          Positioned(
+            top: -60,
+            left: -80,
+            child: IgnorePointer(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                child: Container(
+                  width: 280.r,
+                  height: 280.r,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: primary.withValues(alpha: 0.05),
+                  ),
+                ),
+              ),
             ),
           ),
-          _CoachFilterBar(
-            selectedCity: _selectedCity,
-            sortBy: _sortBy,
-            onCityChanged: (city) {
-              setState(() { _selectedCity = city; });
-              _load();
-            },
-            onSortChanged: (sort) {
-              setState(() { _sortBy = sort; });
-              _load();
-            },
-            palette: palette,
-            l10n: t,
+          Positioned(
+            bottom: 120,
+            right: -60,
+            child: IgnorePointer(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
+                child: Container(
+                  width: 240.r,
+                  height: 240.r,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: palette.energy.withValues(alpha: 0.05),
+                  ),
+                ),
+              ),
+            ),
           ),
-          Expanded(child: _buildBody(t, palette)),
+          // ── Main content ─────────────────────────────────────────────
+          Column(
+            children: [
+              // AppBar space
+              SizedBox(height: MediaQuery.of(context).padding.top + kToolbarHeight),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
+                child: AppTextField(
+                  controller: _searchController,
+                  hintText: t.translate('coach.discovery_search_hint'),
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  onChanged: _onSearchChanged,
+                ),
+              ),
+              _CoachFilterBar(
+                selectedCity: _selectedCity,
+                sortBy: _sortBy,
+                onCityChanged: (city) {
+                  setState(() {
+                    _selectedCity = city;
+                  });
+                  _load();
+                },
+                onSortChanged: (sort) {
+                  setState(() {
+                    _sortBy = sort;
+                  });
+                  _load();
+                },
+                palette: palette,
+                l10n: t,
+              ),
+              Expanded(child: _buildBody(t, palette)),
+            ],
+          ),
         ],
       ),
     );
@@ -181,6 +241,7 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
           child: _CoachCard(
             coach: coach,
             index: index,
+            rank: _showRankBadges && index < 3 ? index + 1 : null,
             onTap: () => _openProfile(coach),
           ),
         );
@@ -189,14 +250,52 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
   }
 }
 
+// ── Rank badge colors ────────────────────────────────────────────────────────
+
+const _rankGold = Color(0xFFFFCC00);
+const _rankSilver = Color(0xFFC0C8D2);
+const _rankBronze = Color(0xFFCD7F32);
+
+Color _rankColor(int rank) {
+  switch (rank) {
+    case 1:
+      return _rankGold;
+    case 2:
+      return _rankSilver;
+    case 3:
+      return _rankBronze;
+    default:
+      return _rankBronze;
+  }
+}
+
+String _rankLabel(int rank) {
+  switch (rank) {
+    case 1:
+      return '#1';
+    case 2:
+      return '#2';
+    case 3:
+      return '#3';
+    default:
+      return '#$rank';
+  }
+}
+
+// ── Coach Card ───────────────────────────────────────────────────────────────
+
 class _CoachCard extends StatefulWidget {
   final CoachProfileModel coach;
   final int index;
+
+  /// 1-based rank (1=gold, 2=silver, 3=bronze). Null = no badge.
+  final int? rank;
   final VoidCallback onTap;
 
   const _CoachCard({
     required this.coach,
     required this.index,
+    required this.rank,
     required this.onTap,
   });
 
@@ -244,143 +343,270 @@ class _CoachCardState extends State<_CoachCard>
       opacity: _fade,
       child: Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.md),
-        child: AppCard(
-          onTap: widget.onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AppGlassCard(
+              onTap: widget.onTap,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Avatar(coach: coach, palette: palette, text: text),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppInitialsAvatar(
+                        photoUrl: coach.photoURL,
+                        name: coach.displayName,
+                        size: 52.r,
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Flexible(
-                              child: Text(
-                                coach.displayName,
-                                style: text.titleM
-                                    .copyWith(fontWeight: FontWeight.w700),
-                                maxLines: 1,
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    coach.displayName,
+                                    style: text.titleM.copyWith(
+                                        fontWeight: FontWeight.w700),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (coach.isVerified) ...[
+                                  const SizedBox(width: 4),
+                                  Icon(Icons.verified_rounded,
+                                      size: 15, color: Colors.blue.shade400),
+                                ],
+                              ],
+                            ),
+                            // ── Rating stars ──────────────────────────
+                            if (coach.avgRating > 0) ...[
+                              const SizedBox(height: AppSpacing.xxs),
+                              _RatingRow(
+                                rating: coach.avgRating,
+                                count: coach.ratingCount,
+                                palette: palette,
+                                text: text,
+                              ),
+                            ],
+                            if (coach.bio != null &&
+                                coach.bio!.isNotEmpty) ...[
+                              const SizedBox(height: AppSpacing.xxs),
+                              Text(
+                                coach.bio!,
+                                style: text.bodyM.copyWith(
+                                    color: palette.textSecondary),
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            if (coach.isVerified) ...[
-                              const SizedBox(width: 4),
-                              Icon(Icons.verified_rounded,
-                                  size: 15, color: Colors.blue.shade400),
                             ],
                           ],
                         ),
-                        if (coach.bio != null && coach.bio!.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.xxs),
-                          Text(
-                            coach.bio!,
-                            style: text.bodyM
-                                .copyWith(color: palette.textSecondary),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                      ),
+                    ],
+                  ),
+                  if (specs.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        for (final spec in specs)
+                          _SpecChip(
+                              label: spec, palette: palette, text: text),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              if (specs.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Wrap(
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xs,
-                  children: [
-                    for (final spec in specs)
-                      _SpecChip(label: spec, palette: palette, text: text),
                   ],
-                ),
-              ],
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Icon(
-                    Icons.people_outline_rounded,
-                    size: 16,
-                    color: palette.textTertiary,
-                  ),
-                  const SizedBox(width: AppSpacing.xxs),
-                  Text(
-                    '${coach.clientCount}',
-                    style:
-                        text.labelS.copyWith(color: palette.textSecondary),
-                  ),
-                  if (coach.hourlyRate != null) ...[
-                    const Spacer(),
-                    Text(
-                      '₺${coach.hourlyRate!.toStringAsFixed(0)}${t.translate('coach.discovery_per_hour')}',
-                      style: text.labelS.copyWith(
-                        color: palette.textPrimary,
-                        fontWeight: FontWeight.w700,
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.people_outline_rounded,
+                        size: 16,
+                        color: palette.textTertiary,
                       ),
+                      const SizedBox(width: AppSpacing.xxs),
+                      Text(
+                        '${coach.clientCount}',
+                        style: text.labelS
+                            .copyWith(color: palette.textSecondary),
+                      ),
+                      if (coach.hourlyRate != null) ...[
+                        const Spacer(),
+                        Text(
+                          '₺${coach.hourlyRate!.toStringAsFixed(0)}${t.translate('coach.discovery_per_hour')}',
+                          style: text.labelS.copyWith(
+                            color: palette.textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  // ── Request button ────────────────────────────────
+                  if (!isSelf &&
+                      currentUser?.hasRole(UserRole.coach) != true) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    StreamBuilder<String?>(
+                      stream: CoachService()
+                          .getRequestStatusStream(coach.uid, currentUid),
+                      builder: (context, snap) {
+                        final status = snap.data;
+                        if (status == 'accepted') {
+                          return _RequestChip(
+                            label: t.translate('coach.request_accepted'),
+                            color: palette.success,
+                            icon: Icons.check_circle_rounded,
+                            palette: palette,
+                            text: text,
+                          );
+                        }
+                        if (status == 'pending') {
+                          return _RequestChip(
+                            label: t.translate('coach.request_pending'),
+                            color: palette.warning,
+                            icon: Icons.hourglass_top_rounded,
+                            palette: palette,
+                            text: text,
+                          );
+                        }
+                        return AppButton(
+                          label: t.translate('coach.request_coaching'),
+                          size: AppButtonSize.small,
+                          expand: false,
+                          variant: AppButtonVariant.tonal,
+                          onPressed: () async {
+                            unawaited(HapticFeedback.mediumImpact());
+                            try {
+                              await CoachService()
+                                  .requestCoaching(coach.uid, currentUid);
+                            } catch (e) {
+                              debugPrint(
+                                  '_CoachCard: requestCoaching error: $e');
+                            }
+                          },
+                        );
+                      },
                     ),
                   ],
                 ],
               ),
-              // ── Request button ─────────────────────────────────────────
-              if (!isSelf && currentUser?.hasRole(UserRole.coach) != true) ...[
-                const SizedBox(height: AppSpacing.sm),
-                StreamBuilder<String?>(
-                  stream: CoachService()
-                      .getRequestStatusStream(coach.uid, currentUid),
-                  builder: (context, snap) {
-                    final status = snap.data;
-                    if (status == 'accepted') {
-                      return _RequestChip(
-                        label: t.translate('coach.request_accepted'),
-                        color: palette.success,
-                        icon: Icons.check_circle_rounded,
-                        palette: palette,
-                        text: text,
-                      );
-                    }
-                    if (status == 'pending') {
-                      return _RequestChip(
-                        label: t.translate('coach.request_pending'),
-                        color: palette.warning,
-                        icon: Icons.hourglass_top_rounded,
-                        palette: palette,
-                        text: text,
-                      );
-                    }
-                    // No request yet — show button
-                    return AppButton(
-                      label: t.translate('coach.request_coaching'),
-                      size: AppButtonSize.small,
-                      expand: false,
-                      variant: AppButtonVariant.tonal,
-                      onPressed: () async {
-                        unawaited(HapticFeedback.mediumImpact());
-                        try {
-                          await CoachService()
-                              .requestCoaching(coach.uid, currentUid);
-                        } catch (e) {
-                          debugPrint(
-                              '_CoachCard: requestCoaching error: $e');
-                        }
-                      },
-                    );
-                  },
-                ),
-              ],
-            ],
-          ),
+            ),
+            // ── Rank badge ────────────────────────────────────────────
+            if (widget.rank != null)
+              Positioned(
+                top: -10,
+                right: 12,
+                child: _RankBadge(rank: widget.rank!),
+              ),
+          ],
         ),
       ),
     );
   }
 }
+
+// ── Rank Badge ───────────────────────────────────────────────────────────────
+
+class _RankBadge extends StatelessWidget {
+  final int rank;
+
+  const _RankBadge({required this.rank});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _rankColor(rank);
+    final label = _rankLabel(rank);
+    final text = AppText.of(context);
+
+    return Container(
+      width: 36.r,
+      height: 36.r,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.5),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.6),
+          width: 1.5,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: text.labelS.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 9.sp,
+          height: 1.0,
+          shadows: [
+            Shadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Rating Row ───────────────────────────────────────────────────────────────
+
+class _RatingRow extends StatelessWidget {
+  final double rating;
+  final int count;
+  final AppPalette palette;
+  final AppText text;
+
+  const _RatingRow({
+    required this.rating,
+    required this.count,
+    required this.palette,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.star_rounded, size: 14, color: palette.warning),
+        const SizedBox(width: 2),
+        Text(
+          rating.toStringAsFixed(1),
+          style: text.labelS.copyWith(
+            color: palette.warning,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (count > 0) ...[
+          const SizedBox(width: 2),
+          Text(
+            '($count)',
+            style: text.labelS.copyWith(
+              color: palette.textTertiary,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ── Request Chip ─────────────────────────────────────────────────────────────
 
 class _RequestChip extends StatelessWidget {
   final String label;
@@ -427,40 +653,7 @@ class _RequestChip extends StatelessWidget {
   }
 }
 
-class _Avatar extends StatelessWidget {
-  final CoachProfileModel coach;
-  final AppPalette palette;
-  final AppText text;
-
-  const _Avatar({
-    required this.coach,
-    required this.palette,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasPhoto = coach.photoURL != null && coach.photoURL!.isNotEmpty;
-    if (hasPhoto) {
-      return CircleAvatar(
-        radius: 26,
-        backgroundColor: palette.surfaceVariant,
-        backgroundImage: NetworkImage(coach.photoURL!),
-      );
-    }
-    final initials = coach.displayName.trim().isNotEmpty
-        ? coach.displayName.trim()[0].toUpperCase()
-        : '?';
-    return CircleAvatar(
-      radius: 26,
-      backgroundColor: palette.surfaceVariant,
-      child: Text(
-        initials,
-        style: text.titleM.copyWith(color: palette.textSecondary),
-      ),
-    );
-  }
-}
+// ── Spec Chip ────────────────────────────────────────────────────────────────
 
 class _SpecChip extends StatelessWidget {
   final String label;
@@ -495,7 +688,7 @@ class _SpecChip extends StatelessWidget {
   }
 }
 
-// ── Coach Filter Bar ────────────────────────────────────────────────────────────
+// ── Coach Filter Bar ─────────────────────────────────────────────────────────
 
 class _CoachFilterBar extends StatelessWidget {
   final String? selectedCity;
@@ -531,13 +724,15 @@ class _CoachFilterBar extends StatelessWidget {
             },
           ),
           ...cities.map((city) => ListTile(
-                title: Text(city,
-                    style: TextStyle(
-                      color: palette.textPrimary,
-                      fontWeight: selectedCity == city
-                          ? FontWeight.w700
-                          : FontWeight.normal,
-                    )),
+                title: Text(
+                  city,
+                  style: TextStyle(
+                    color: palette.textPrimary,
+                    fontWeight: selectedCity == city
+                        ? FontWeight.w700
+                        : FontWeight.normal,
+                  ),
+                ),
                 trailing: selectedCity == city
                     ? Icon(Icons.check_rounded,
                         color: palette.info, size: 18.r)
@@ -556,7 +751,6 @@ class _CoachFilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = Theme.of(context).primaryColor;
 
-    // Label pinned above a compact indicator pill.
     Widget sortChip(String value, String label) {
       final active = sortBy == value;
       return GestureDetector(
@@ -570,7 +764,8 @@ class _CoachFilterBar extends StatelessWidget {
                     fontSize: 10.sp,
                     height: 1.2,
                     color: active ? primary : palette.textTertiary,
-                    fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight:
+                        active ? FontWeight.w600 : FontWeight.w400,
                   ),
             ),
             SizedBox(height: 3.h),
@@ -610,14 +805,14 @@ class _CoachFilterBar extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
           children: [
-            // City filter chip — label pinned above pill
             GestureDetector(
               onTap: () => _showCityPicker(context),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    selectedCity ?? l10n.translate('discovery.filter_city'),
+                    selectedCity ??
+                        l10n.translate('discovery.filter_city'),
                     style: AppText.of(context).labelS.copyWith(
                           fontSize: 10.sp,
                           height: 1.2,
@@ -672,14 +867,17 @@ class _CoachFilterBar extends StatelessWidget {
               ),
             ),
             SizedBox(width: 8.w),
-            sortChip('display_name', l10n.translate('discovery.sort_name')),
+            sortChip(
+                'display_name', l10n.translate('discovery.sort_name')),
             SizedBox(width: 8.w),
-            sortChip('avg_rating', l10n.translate('coach.sort_top_rated')),
+            sortChip(
+                'avg_rating', l10n.translate('coach.sort_top_rated')),
             SizedBox(width: 8.w),
             sortChip('client_count',
                 l10n.translate('coach.sort_most_active')),
             SizedBox(width: 8.w),
-            sortChip('created_at', l10n.translate('discovery.sort_newest')),
+            sortChip(
+                'created_at', l10n.translate('discovery.sort_newest')),
           ],
         ),
       ),

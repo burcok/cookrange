@@ -96,50 +96,142 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
     final l10n = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
     final textTheme = AppText.of(context);
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
     final user = context.watch<UserProvider>().user;
 
     return Scaffold(
       backgroundColor: palette.background,
-      appBar: AppBar(
-        backgroundColor: palette.background,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: palette.textPrimary, size: 20.r),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          l10n.translate('ai.twin_title'),
-          style: textTheme.titleM.copyWith(color: palette.textPrimary),
-        ),
-        actions: [
-          if (user != null) ...[
-            if (!_isGenerating)
-              IconButton(
-                icon: Icon(Icons.refresh_rounded,
-                    color: palette.textSecondary, size: 22.r),
-                tooltip: l10n.translate('ai.twin_regenerate'),
-                onPressed: _generate,
+      appBar: _buildAppBar(context, l10n, palette, textTheme, primaryColor, user),
+      body: Stack(
+        children: [
+          // ── Ambient mesh-glow background ──────────────────────────────────
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Stack(
+                children: [
+                  // Large brand blob — top-right
+                  Positioned(
+                    top: -100,
+                    right: -80,
+                    child: _GlowBlob(
+                      color: primaryColor,
+                      size: 340,
+                      opacity: palette.isDark ? 0.28 : 0.18,
+                    ),
+                  ),
+                  // Energy blob — mid-left
+                  Positioned(
+                    top: 220,
+                    left: -100,
+                    child: _GlowBlob(
+                      color: palette.energy,
+                      size: 300,
+                      opacity: palette.isDark ? 0.22 : 0.14,
+                    ),
+                  ),
+                  // Info accent blob — bottom-right (small)
+                  Positioned(
+                    bottom: 60,
+                    right: -60,
+                    child: _GlowBlob(
+                      color: palette.info,
+                      size: 200,
+                      opacity: palette.isDark ? 0.16 : 0.10,
+                    ),
+                  ),
+                ],
               ),
-            Padding(
-              padding: EdgeInsets.only(right: 8.w),
-              child: Center(
-                child: AiCreditBadge(
-                  uid: user.uid,
-                  isPremium: user.subscriptionTier.isPremiumOrAbove,
+            ),
+          ),
+          // ── Main content ──────────────────────────────────────────────────
+          user == null
+              ? AppEmptyState(
+                  icon: Icons.person_outline_rounded,
+                  title: l10n.translate('common.not_signed_in'),
+                  message: l10n.translate('common.sign_in_to_continue'),
+                )
+              : _buildStreamBody(context, l10n, palette, textTheme, user),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context,
+    AppLocalizations l10n,
+    AppPalette palette,
+    AppText textTheme,
+    Color primaryColor,
+    UserModel? user,
+  ) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(kToolbarHeight + 2),
+      child: Container(
+        decoration: BoxDecoration(
+          color: palette.background,
+          // Gradient accent line at the bottom of the AppBar
+          border: const Border(
+            bottom: BorderSide(
+              color: Colors.transparent,
+              width: 0,
+            ),
+          ),
+        ),
+        child: Stack(
+          children: [
+            AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    color: palette.textPrimary, size: 20.r),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              title: Text(
+                l10n.translate('ai.twin_title'),
+                style: textTheme.titleM.copyWith(color: palette.textPrimary),
+              ),
+              actions: [
+                if (user != null) ...[
+                  if (!_isGenerating)
+                    IconButton(
+                      icon: Icon(Icons.refresh_rounded,
+                          color: palette.textSecondary, size: 22.r),
+                      tooltip: l10n.translate('ai.twin_regenerate'),
+                      onPressed: _generate,
+                    ),
+                  Padding(
+                    padding: EdgeInsets.only(right: 8.w),
+                    child: Center(
+                      child: AiCreditBadge(
+                        uid: user.uid,
+                        isPremium: user.subscriptionTier.isPremiumOrAbove,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            // Gradient accent line at the bottom
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                height: 2,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      primaryColor,
+                      palette.energy,
+                    ],
+                  ),
                 ),
               ),
             ),
           ],
-        ],
+        ),
       ),
-      body: user == null
-          ? AppEmptyState(
-              icon: Icons.person_outline_rounded,
-              title: l10n.translate('common.not_signed_in'),
-              message: l10n.translate('common.sign_in_to_continue'),
-            )
-          : _buildStreamBody(context, l10n, palette, textTheme, user),
     );
   }
 
@@ -243,12 +335,27 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
     AppPalette palette,
     AppText textTheme,
   ) {
-    return AppEmptyState(
-      icon: Icons.self_improvement_rounded,
-      title: l10n.translate('ai.twin_empty_title'),
-      message: _generateError ?? l10n.translate('ai.twin_empty_msg'),
-      actionLabel: l10n.translate('ai.twin_generate'),
-      onAction: _generate,
+    final primaryColor = context.read<ThemeProvider>().primaryColor;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        AppEmptyState(
+          icon: Icons.self_improvement_rounded,
+          title: l10n.translate('ai.twin_empty_title'),
+          message: _generateError ?? l10n.translate('ai.twin_empty_msg'),
+        ),
+        SizedBox(height: 8.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 32.w),
+          child: _GradientButton(
+            label: l10n.translate('ai.twin_generate'),
+            primaryColor: primaryColor,
+            energyColor: palette.energy,
+            onPressed: _generate,
+          ),
+        ),
+        SizedBox(height: 40.h),
+      ],
     );
   }
 
@@ -298,6 +405,7 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
     Map<String, dynamic> data,
     DateTime? generatedAt,
   ) {
+    final primaryColor = context.read<ThemeProvider>().primaryColor;
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
@@ -316,14 +424,24 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
           ],
           _buildHeaderCard(context, l10n, palette, textTheme, data),
           SizedBox(height: 16.h),
-          _buildProjectionTimeline(context, l10n, palette, textTheme, data),
+          _buildStatsGrid(context, l10n, palette, textTheme, data),
           SizedBox(height: 16.h),
-          _buildGoalDateCard(context, l10n, palette, textTheme, data),
+          _buildProjectionTimeline(context, l10n, palette, textTheme, data),
           _buildCalorieGapSection(context, l10n, palette, textTheme, data),
           SizedBox(height: 16.h),
           _buildRecommendations(context, l10n, palette, textTheme, data),
           SizedBox(height: 16.h),
           _buildHistorySection(context, l10n, palette, textTheme),
+          SizedBox(height: 20.h),
+          // Regenerate button at the bottom
+          _GradientButton(
+            label: l10n.translate('ai.twin_regenerate'),
+            primaryColor: primaryColor,
+            energyColor: palette.energy,
+            icon: Icons.refresh_rounded,
+            onPressed: _isGenerating ? null : _generate,
+            loading: _isGenerating,
+          ),
           SizedBox(height: 24.h),
         ],
       ),
@@ -343,7 +461,7 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
     final motivationScore = (data['motivationScore'] as num?)?.toInt() ?? 70;
     final currentStatus = data['currentStatus'] as String? ?? '';
 
-    return AppCard(
+    return AppGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -353,11 +471,18 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
                 width: 48.r,
                 height: 48.r,
                 decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: 0.15),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      primaryColor.withValues(alpha: 0.9),
+                      palette.energy.withValues(alpha: 0.8),
+                    ],
+                  ),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.psychology_rounded,
-                    color: primaryColor, size: 26.r),
+                    color: Colors.white, size: 26.r),
               ),
               SizedBox(width: 12.w),
               Expanded(
@@ -391,6 +516,99 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
           ),
         ],
       ),
+    );
+  }
+
+  /// Stats grid: weeklyWeightChange, goalDate, calorieGap, motivationScore
+  Widget _buildStatsGrid(
+    BuildContext context,
+    AppLocalizations l10n,
+    AppPalette palette,
+    AppText textTheme,
+    Map<String, dynamic> data,
+  ) {
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
+    final goalDate = data['goalDateEstimate'] as String? ?? '—';
+    final weeklyChange = (data['weeklyWeightChange'] as num?)?.toDouble() ?? 0;
+    final sign = weeklyChange >= 0 ? '+' : '';
+    final calorieGap = (data['calorieGap'] as num?)?.toInt() ?? 0;
+    final motivationScore = (data['motivationScore'] as num?)?.toInt() ?? 70;
+
+    final weightColor = weeklyChange > 0
+        ? palette.success
+        : weeklyChange < 0
+            ? palette.error
+            : palette.textSecondary;
+    final calorieColor = calorieGap < 0 ? palette.warning : palette.info;
+    final motivationColor = motivationScore >= 75
+        ? palette.success
+        : motivationScore >= 50
+            ? palette.warning
+            : palette.error;
+
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 10.h,
+      crossAxisSpacing: 10.w,
+      childAspectRatio: 1.6,
+      children: [
+        _StatCell(
+          icon: Icons.trending_up_rounded,
+          iconGradient: LinearGradient(
+            colors: [weightColor, weightColor.withValues(alpha: 0.6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          label: l10n.translate('ai.twin_weekly_change'),
+          value: '$sign${weeklyChange.toStringAsFixed(1)} kg/wk',
+          valueColor: weightColor,
+          textTheme: textTheme,
+          palette: palette,
+        ),
+        _StatCell(
+          icon: Icons.emoji_events_rounded,
+          iconGradient: LinearGradient(
+            colors: [palette.success, palette.success.withValues(alpha: 0.6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          label: l10n.translate('ai.twin_goal_date'),
+          value: goalDate,
+          valueColor: palette.textPrimary,
+          textTheme: textTheme,
+          palette: palette,
+        ),
+        _StatCell(
+          icon: Icons.local_fire_department_rounded,
+          iconGradient: LinearGradient(
+            colors: [calorieColor, calorieColor.withValues(alpha: 0.6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          label: l10n.translate('ai.twin_calorie_gap'),
+          value: calorieGap == 0
+              ? '—'
+              : '${calorieGap > 0 ? '+' : ''}$calorieGap kcal',
+          valueColor: calorieGap == 0 ? palette.textSecondary : calorieColor,
+          textTheme: textTheme,
+          palette: palette,
+        ),
+        _StatCell(
+          icon: Icons.bolt_rounded,
+          iconGradient: LinearGradient(
+            colors: [motivationColor, primaryColor.withValues(alpha: 0.6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          label: l10n.translate('ai.twin_motivation'),
+          value: '$motivationScore%',
+          valueColor: motivationColor,
+          textTheme: textTheme,
+          palette: palette,
+        ),
+      ],
     );
   }
 
@@ -429,10 +647,10 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
             return Expanded(
               child: Padding(
                 padding: EdgeInsets.only(right: i < items.length - 1 ? 8.w : 0),
-                child: _ProjectionCard(
+                child: _GlassProjectionCard(
                   label: item.$1,
                   text: item.$2,
-                  color: item.$3.withValues(alpha: item.$4),
+                  accentColor: item.$3.withValues(alpha: item.$4),
                   textTheme: textTheme,
                   palette: palette,
                 ),
@@ -441,74 +659,6 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
           }).toList(),
         ),
       ],
-    );
-  }
-
-  Widget _buildGoalDateCard(
-    BuildContext context,
-    AppLocalizations l10n,
-    AppPalette palette,
-    AppText textTheme,
-    Map<String, dynamic> data,
-  ) {
-    final goalDate = data['goalDateEstimate'] as String? ?? '—';
-    final weeklyChange =
-        (data['weeklyWeightChange'] as num?)?.toDouble() ?? 0;
-    final sign = weeklyChange >= 0 ? '+' : '';
-
-    return AppCard(
-      child: Row(
-        children: [
-          Container(
-            width: 44.r,
-            height: 44.r,
-            decoration: BoxDecoration(
-              color: AppPalette.of(context).success.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.emoji_events_rounded,
-                color: palette.success, size: 24.r),
-          ),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l10n.translate('ai.twin_goal_date'),
-                  style:
-                      textTheme.labelS.copyWith(color: palette.textTertiary),
-                ),
-                Text(
-                  goalDate,
-                  style:
-                      textTheme.titleM.copyWith(color: palette.textPrimary),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                l10n.translate('ai.twin_weekly_change'),
-                style:
-                    textTheme.labelS.copyWith(color: palette.textTertiary),
-              ),
-              Text(
-                '$sign${weeklyChange.toStringAsFixed(1)} kg/wk',
-                style: textTheme.labelL.copyWith(
-                  color: weeklyChange > 0
-                      ? palette.success
-                      : weeklyChange < 0
-                          ? palette.error
-                          : palette.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -536,12 +686,24 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
 
     return Padding(
       padding: EdgeInsets.only(top: 16.h),
-      child: AppCard(
-        color: color.withValues(alpha: 0.08),
+      child: AppGlassCard(
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
           children: [
-            Icon(Icons.local_fire_department_rounded,
-                color: color, size: 28.r),
+            Container(
+              width: 40.r,
+              height: 40.r,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [color, color.withValues(alpha: 0.6)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.local_fire_department_rounded,
+                  color: Colors.white, size: 22.r),
+            ),
             SizedBox(width: 12.w),
             Expanded(
               child: Column(
@@ -589,7 +751,8 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
         ...recs.asMap().entries.map(
               (entry) => Padding(
                 padding: EdgeInsets.only(bottom: 10.h),
-                child: AppCard(
+                child: AppGlassCard(
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -597,14 +760,21 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
                         width: 28.r,
                         height: 28.r,
                         decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.15),
+                          gradient: LinearGradient(
+                            colors: [
+                              primaryColor,
+                              palette.energy.withValues(alpha: 0.8),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                           shape: BoxShape.circle,
                         ),
                         child: Center(
                           child: Text(
                             '${entry.key + 1}',
                             style: textTheme.labelS.copyWith(
-                                color: primaryColor,
+                                color: Colors.white,
                                 fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -683,7 +853,8 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
 
                 return Padding(
                   padding: EdgeInsets.only(bottom: 10.h),
-                  child: AppCard(
+                  child: AppGlassCard(
+                    padding: const EdgeInsets.all(AppSpacing.md),
                     child: Row(
                       children: [
                         Expanded(
@@ -722,6 +893,103 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
 
 // ─── Helper Widgets ──────────────────────────────────────────────────────────
 
+/// Ambient glow blob for the mesh-glow background effect.
+class _GlowBlob extends StatelessWidget {
+  final Color color;
+  final double size;
+  final double opacity;
+
+  const _GlowBlob({
+    required this.color,
+    required this.size,
+    required this.opacity,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [
+            color.withValues(alpha: opacity),
+            color.withValues(alpha: 0),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Stats grid cell using AppGlassCard with gradient icon background.
+class _StatCell extends StatelessWidget {
+  final IconData icon;
+  final Gradient iconGradient;
+  final String label;
+  final String value;
+  final Color valueColor;
+  final AppText textTheme;
+  final AppPalette palette;
+
+  const _StatCell({
+    required this.icon,
+    required this.iconGradient,
+    required this.label,
+    required this.value,
+    required this.valueColor,
+    required this.textTheme,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppGlassCard(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Row(
+        children: [
+          Container(
+            width: 36.r,
+            height: 36.r,
+            decoration: BoxDecoration(
+              gradient: iconGradient,
+              borderRadius: BorderRadius.circular(AppRadius.sm.r),
+            ),
+            child: Icon(icon, color: Colors.white, size: 18.r),
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  style: textTheme.labelS
+                      .copyWith(color: palette.textTertiary, fontSize: 10.sp),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  value,
+                  style: textTheme.labelL.copyWith(
+                    color: valueColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MotivationBadge extends StatelessWidget {
   final int score;
   const _MotivationBadge({required this.score});
@@ -758,39 +1026,45 @@ class _MotivationBadge extends StatelessWidget {
   }
 }
 
-class _ProjectionCard extends StatelessWidget {
+/// Glassmorphism projection card for the 30/60/90-day timeline.
+class _GlassProjectionCard extends StatelessWidget {
   final String label;
   final String text;
-  final Color color;
+  final Color accentColor;
   final AppText textTheme;
   final AppPalette palette;
 
-  const _ProjectionCard({
+  const _GlassProjectionCard({
     required this.label,
     required this.text,
-    required this.color,
+    required this.accentColor,
     required this.textTheme,
     required this.palette,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(12.r),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
+    return AppGlassCard(
+      padding: const EdgeInsets.all(AppSpacing.sm),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: textTheme.labelS
-                .copyWith(color: color, fontWeight: FontWeight.bold),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(AppRadius.xs.r),
+              border: Border.all(
+                color: accentColor.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Text(
+              label,
+              style: textTheme.labelS.copyWith(
+                  color: accentColor, fontWeight: FontWeight.bold),
+            ),
           ),
-          SizedBox(height: 6.h),
+          SizedBox(height: 8.h),
           Text(
             text,
             style: textTheme.bodyM.copyWith(color: palette.textPrimary),
@@ -798,6 +1072,57 @@ class _ProjectionCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Gradient-filled regenerate button wrapping AppButton primary variant.
+/// Uses a DecoratedBox + ClipRRect to apply a brand→energy gradient while
+/// still leveraging AppButton's press-scale, haptics, and loading state.
+class _GradientButton extends StatelessWidget {
+  final String label;
+  final Color primaryColor;
+  final Color energyColor;
+  final IconData? icon;
+  final VoidCallback? onPressed;
+  final bool loading;
+
+  const _GradientButton({
+    required this.label,
+    required this.primaryColor,
+    required this.energyColor,
+    this.icon,
+    this.onPressed,
+    this.loading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onPressed == null || loading;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.button.r),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: disabled
+                ? [
+                    primaryColor.withValues(alpha: 0.4),
+                    energyColor.withValues(alpha: 0.3),
+                  ]
+                : [
+                    primaryColor,
+                    energyColor,
+                  ],
+          ),
+        ),
+        child: AppButton(
+          label: label,
+          onPressed: onPressed,
+          icon: icon,
+          loading: loading,
+          variant: AppButtonVariant.ghost,
+        ),
       ),
     );
   }

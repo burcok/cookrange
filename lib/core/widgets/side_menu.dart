@@ -16,6 +16,7 @@ import '../../core/services/gym_application_service.dart';
 import 'package:cookrange/screens/gym/gym_analytics_screen.dart';
 import 'package:cookrange/screens/gym/gym_dashboard_screen.dart';
 import 'package:cookrange/screens/gym/gym_discovery_screen.dart';
+import 'package:cookrange/screens/community/streak_squad_screen.dart';
 import 'package:cookrange/screens/leaderboard/leaderboard_screen.dart';
 import 'package:cookrange/screens/profile/dietary_preferences_screen.dart';
 import 'package:cookrange/screens/programs/my_programs_screen.dart';
@@ -256,6 +257,7 @@ class _SidePanel extends StatelessWidget {
                     _NavTile(icon: Icons.chat_bubble_rounded, label: l10n.translate('menu.chats'), onTap: () => onPush(const ChatListScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.auto_awesome_rounded, label: l10n.translate('menu.ai_chat'), onTap: () => onPush(const AIChatScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.leaderboard_rounded, label: l10n.translate('menu.leaderboard'), onTap: () => onPush(const LeaderboardScreen()), palette: palette, isDark: isDark, primary: primary),
+                    _NavTile(icon: Icons.groups_2_rounded, label: l10n.translate('squad.title'), onTap: () => onPush(const StreakSquadScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.library_books_rounded, label: l10n.translate('program.my_programs'), onTap: () => onPush(const MyProgramsScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.store_rounded, label: l10n.translate('menu.program_marketplace'), onTap: () => onPush(const ProgramMarketplaceScreen()), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.fitness_center_rounded, label: l10n.translate('menu.find_gym'), onTap: () => onPush(const GymDiscoveryScreen()), palette: palette, isDark: isDark, primary: primary),

@@ -25,6 +25,7 @@ import '../../screens/community/user_search_screen.dart';
 import '../../screens/onboarding/intro_onboarding_screen.dart';
 import '../../screens/onboarding/meal_plan_generation_screen.dart';
 import '../../screens/discover/discover_hub_screen.dart';
+import '../../screens/community/streak_squad_screen.dart';
 import '../models/chat_model.dart';
 import '../widgets/error_fallback_widget.dart';
 
@@ -75,6 +76,8 @@ class RouteConfigurationService {
           const RouteGuard(child: DiscoverHubScreen()),
       AppRoutes.mealPlanGeneration: (context) =>
           const RouteGuard(child: MealPlanGenerationScreen()),
+      AppRoutes.streakSquads: (context) =>
+          const RouteGuard(child: StreakSquadScreen()),
     };
   }
 

@@ -963,7 +963,8 @@
       "coach_clients": "{n} aktif danışan",
       "gym_title": "Spor Salonum",
       "gym_members": "{n} aktif üye"
-    }
+    },
+    "today_summary_title": "Bugün"
   },
   "ai_chat": {
     "title": "Yapay Zeka Diyetisyen",
@@ -2360,5 +2361,36 @@
     "sort_name": "A–Z",
     "sort_popular": "Popüler",
     "sort_newest": "En yeni"
+  },
+  "squad": {
+    "title": "Seri Ekipleri",
+    "empty_title": "Henüz Ekip Yok",
+    "empty_msg": "Bir ekip oluştur veya davet kodu ile katıl, seriyi birlikte sürdürün.",
+    "join_action": "Ekibe Katıl",
+    "create_title": "Ekip Oluştur",
+    "join_title": "Ekibe Katıl",
+    "goal_days": "{days} günlük hedef",
+    "invite_code": "Davet Kodu",
+    "code_copied": "Davet kodu kopyalandı!",
+    "leave_confirm_title": "Ekibi Terk Et?",
+    "leave_confirm_msg": "Bu ekipteki ilerlemenizi kaybedeceksiniz. Bu işlem geri alınamaz.",
+    "leave_action": "Terk Et",
+    "left_msg": "Ekipten ayrıldınız.",
+    "leave_error": "Ekipten ayrılırken hata oluştu. Tekrar deneyin.",
+    "created_msg": "Ekip oluşturuldu! Davet kodu: {code}",
+    "copy_code": "Kodu Kopyala",
+    "create_error": "Ekip oluşturulurken hata oluştu. Tekrar deneyin.",
+    "name_required": "Ekip adı zorunludur.",
+    "name_label": "Ekip Adı",
+    "name_hint": "örn. Sabah Koşucuları",
+    "goal_label": "Seri Hedefi",
+    "create_action": "Oluştur",
+    "code_label": "Davet Kodu",
+    "code_hint": "6 karakterli kodu girin",
+    "code_not_found": "Ekip bulunamadı. Kodu kontrol edip tekrar deneyin.",
+    "code_invalid": "Geçersiz davet kodu. 6 karakter olmalıdır.",
+    "already_member": "Bu ekibin zaten bir üyesisiniz.",
+    "join_error": "Ekibe katılırken hata oluştu. Tekrar deneyin.",
+    "joined_msg": "Ekibe hoş geldiniz!"
   }
 }

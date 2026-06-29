@@ -19,4 +19,5 @@ class AppRoutes {
   static const String intro = '/intro';
   static const String discover = '/discover';
   static const String mealPlanGeneration = '/meal_plan_generation';
+  static const String streakSquads = '/streak_squads';
 }

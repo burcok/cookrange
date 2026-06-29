@@ -880,7 +880,8 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 - [x] **Glass tokens & guardrails** — `app_palette.dart` extended with `glassFill`, `glassStroke`, `glassHighlight` (light+dark) + static blur constants (`glassBlurSubtle/Default/Strong`). ✅
 - [x] **Component upgrades** — `AppGlassCard` upgraded: uses palette glass tokens, adds `onTap`/`semanticLabel`/press-scale animation, fixes padding; `AppCard` padding bug fixed. ✅
 - [x] **Screen re-skin sweep (initial)** — discover hub (mesh-glow backdrop + glass cards), home NutritionHero (glass blur layer), admin stat cards (AppGlassCard). ✅
-- [ ] **Screen re-skin sweep (continued)** — profile & settings, shopping, notifications, chat, cooking, food scan, AI twin, onboarding & intro — carry into Phase 14.
+- [x] **Screen re-skin sweep (continued — partial)** — shopping (`shopping_list_screen.dart`: mesh-glow + AppGlassCard items + gradient FAB), notifications (`notification_screen.dart`: mesh-glow + glass rows + glass filter chips + gradient AppBar accent), coach discovery (`coach_discovery_screen.dart`: AppGlassCard cards + rank badges + rating stars + AppInitialsAvatar + mesh-glow), intro + onboarding (done in current session above). ✅
+- [x] **Screen re-skin sweep (extended)** — chat list (`chat_list_screen.dart`: mesh-glow + AppGlassCard all tile types + gradient unread badge + RadialGradient empty state), chat detail (`chat_detail_screen.dart`: subtle mesh-glow + frosted received bubbles + brand-gradient sent bubbles + glass input bar + glass typing indicator + gradient AppBar accent), AI Fitness Twin (`ai_fitness_twin_screen.dart`: 3-blob rich mesh-glow + glass stats grid + glass projection cards + GradientButton regenerate). Remaining: cooking_mode, food_scan, profile, settings — carry into next phase. ✅ (partial)
 - [ ] **Accessibility** — WCAG-AA contrast + reduce-transparency path — carry into Phase 14.
 - [ ] **Performance** — DevTools measurement + mid-Android verification — carry into Phase 14.
 - [ ] **Definition:** every primary surface shares one cohesive frosted-glass language; 60fps on a mid
@@ -920,7 +921,7 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 
 **Filtering, sorting & the competitive screen**
 - [x] **Gym discovery filters** — `_FilterBar` added to `gym_discovery_screen.dart`: city chip (AppSheet picker from TurkishLocations.provinces) → district chip (cascading), sort chips (A-Z/Popular/Newest); `GymService.searchGyms()` extended with `city`/`district`/`sortBy` params; Firestore equality filter applied. ✅
-- [ ] **Coach discovery → competitive directory** — `_CoachFilterBar` (city chip + sort tabs: A-Z/Top Rated/Most Active/Newest) added. **Full "ranked leaderboard-feel" redesign with rank badges, rating stars, price chip** — carry into Phase 14.
+- [x] **Coach discovery → competitive directory** — `coach_discovery_screen.dart` fully redesigned: AppGlassCard cards, rank badges (gold/silver/bronze circles on top-3 when sorted by rating/activity), star rating display when `avgRating > 0`, AppInitialsAvatar with initials fallback, mesh-glow ambient background. ✅
 - [x] **Backend** — 7 composite indexes added to `firestore.indexes.json`: gym `is_public+city+name`, `is_public+city+member_count`, `is_public+city+district+name`; coach `is_public+accepting+city+avg_rating`, `is_public+accepting+city+client_count`, `is_public+accepting+avg_rating`, `is_public+accepting+client_count`. ✅
 - [x] **Discover grid replacement** — done in 13.2: Leaderboard card fills the Challenges slot. ✅
 - [ ] **Definition:** carry into Phase 14 (full competitive coach directory pending).
@@ -951,11 +952,8 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
   credible marketplace, not a list.
 - [ ] **🆕 Verified reviews loop** — only clients with logged sessions can review (anti-fraud); a post-goal
   "rate your coach" prompt closes the quality loop and feeds 13.5 ranking.
-- [ ] **🆕 Replace Challenges' social hook with "Streak Squads"** — lightweight friend groups that share a
-  streak goal (reuses leaderboard + notifications), filling the engagement gap Challenges leaves without its
-  heavy create/join/track machinery.
-- [ ] **🆕 Glassmorphic "Today" widget / home summary** — a single frosted hero summarizing calories,
-  streak, water, next meal — the flagship surface for the 13.3 language.
+- [x] **🆕 Replace Challenges' social hook with "Streak Squads"** — `StreakSquadModel` + `StreakSquadService` (Firestore `squads/{squadId}`, createSquad/joinSquad/leaveSquad/getMemberStreaks, chunked whereIn, collision-retry invite codes) + `StreakSquadScreen` (mesh-glow, glass squad cards with staggered entry, top-3 leaderboard, `_SquadDetailSheet` full leaderboard + medals + copy invite code + leave, `_CreateSquadSheet` AppTextField + AppChipPicker goal selector, `_JoinSquadSheet` auto-uppercase + typed errors); `AppRoutes.streakSquads` wired in `route_configuration_service.dart`; side menu Social section "Seri Ekipleri" entry; Firestore `squads` rules (member read/write, creator delete) + index (`memberUids arrayContains + createdAt DESC`); 27 `squad.*` i18n keys added EN+TR (sequential Python R9); i18n parity test green; 0 analyze errors. ✅
+- [x] **🆕 Glassmorphic "Today" widget / home summary** — `TodaySummaryCard` created at `lib/screens/home/widgets/today_summary_card.dart`; frosted-glass 2×2 stat grid (calories ring, streak flame, water bar, next meal); brand gradient header bar; glow bloom; wired into `home.dart` between AiInsightCard and meal plan section; `home.today_summary_title` EN+TR key added. ✅
 - [ ] **🆕 Onboarding intro → personalized** — now that the intro is reachable (13.1), tailor its final
   slide CTA to route power users straight to Discover (find a gym/coach) vs consumers to meal planning.
 - [ ] **🆕 Coach/gym profile share cards** — extend `ShareableFitnessCard` pattern to shareable coach/gym
@@ -1050,17 +1048,10 @@ updated (R8).
 > reference's feature copy is inaccurate; surface real pipeline stages (analyzing profile → balancing
 > macros → selecting dishes → building 7-day plan → finalizing).
 
-- [ ] **Interstitial generation screen** — after `saveFinalOnboardingData()` (`onboarding_screen.dart:329`),
-  route to a new `MealPlanGenerationScreen` instead of jumping to `/main` (`:350`). It triggers
-  `WeeklyMealPlanService` generation and shows an animated, staged progress experience (DS, 60fps,
-  reduced-motion aware). On success → `/main` with the plan already cached; on failure → friendly
-  `AppErrorState` with retry (never a silent empty home).
-- [ ] **Real staged copy (EN+TR)** — `onboarding.generating.*` keys describing actual steps; no fabricated
-  feature claims. Honest ETA/percentage tied to pipeline progress, not a fake timer.
-- [ ] **Idempotent** — re-entering onboarding (gap recovery) reuses the cached plan via profile-hash
-  (`weekly_meal_plan_service.dart:190`); regeneration only on real input change.
-- [ ] **Definition:** finishing onboarding shows a flagship branded generation animation, produces a real
-  1-week plan before home, degrades gracefully on AI failure, EN+TR + light/dark + reduced-motion.
+- [x] **Interstitial generation screen** — `MealPlanGenerationScreen` exists at `lib/screens/onboarding/meal_plan_generation_screen.dart`; `onboarding_screen.dart:362` routes to it via `AppRoutes.mealPlanGeneration` after `saveFinalOnboardingData()`. ✅
+- [x] **Real staged copy (EN+TR)** — `onboarding.generating.*` keys (heading, eta, stage0–5, error_title/msg, skip) fully in both locales. ✅
+- [x] **Idempotent** — `WeeklyMealPlanService` profile-hash check (`weekly_meal_plan_service.dart:190`) reuses cached plan when inputs unchanged. ✅
+- [x] **Definition:** finishing onboarding shows a flagship branded generation animation (two-phase linear progress, glassmorphism, staged copy), produces a real 1-week plan before home, degrades gracefully with AppErrorState + retry, EN+TR + light/dark + reduced-motion. ✅
 
 ### 14.3 — Push Notifications End-to-End (🔴 Critical · Large · 5–7 d)
 
@@ -1260,8 +1251,7 @@ updated (R8).
 - [ ] **Coach/gym presence in feed** — verified authors surface their programs/recipes (marketplace pull).
 
 **Retention loops (the engagement engine that replaces Challenges)**
-- [ ] **🆕 Streak Squads** (carried from 13.7) — small friend groups sharing a streak goal; reuses
-  leaderboard + notifications; the lightweight engagement hook Challenges left behind.
+- [x] **🆕 Streak Squads** (carried from 13.7) — fully shipped; see 13.7 for implementation detail. `squads/{squadId}` Firestore collection, invite codes, leaderboard, glass UI, route + side menu + 27 i18n keys. ✅
 - [ ] **Weekly community highlights** — auto-curated "top posts / biggest streaks this week" digest (push +
   in-app), giving a reason to return.
 - [ ] **Moderation-first** — every new surface ships with report/block + admin queue (14.5B) from day one.

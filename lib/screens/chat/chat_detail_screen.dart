@@ -296,117 +296,186 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         child: ClipRRect(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: AppBar(
-              backgroundColor: palette.surface.withValues(alpha: 0.8),
-              elevation: 0,
-              leading: IconButton(
-                icon: Icon(Icons.arrow_back, color: palette.textPrimary),
-                onPressed: () => Navigator.pop(context),
-              ),
-              title: StreamBuilder<DocumentSnapshot>(
-                  stream: _otherUserStream,
-                  builder: (context, snapshot) {
-                    String chatTitle = widget.chat.name ?? 'Chat';
-                    String? chatImage = widget.chat.image;
-                    bool isOnline = false;
-                    DateTime? lastActiveAt;
-
-                    if (snapshot.hasData &&
-                        snapshot.data != null &&
-                        snapshot.data!.exists) {
-                      final user = UserModel.fromFirestore(snapshot.data!
-                          as DocumentSnapshot<Map<String, dynamic>>);
-                      chatTitle = user.displayName ?? chatTitle;
-                      chatImage = user.photoURL ?? chatImage;
-                      isOnline = user.isOnline;
-                      lastActiveAt = user.lastActiveAt?.toDate();
-                    }
-
-                    if (widget.chat.type != ChatType.private) {
-                      // Group/gym titles stay as passed in widget.chat
-                    }
-
-                    return GestureDetector(
-                      onTap: (widget.chat.type == ChatType.private &&
-                              _otherUserId.isNotEmpty)
-                          ? () => openUserProfile(context, userId: _otherUserId)
-                          : null,
-                      child: Row(
-                      children: [
-                        if (chatImage != null)
-                          CircleAvatar(
-                            backgroundImage: NetworkImage(chatImage),
-                            radius: 16,
-                          )
-                        else
-                          CircleAvatar(
-                            backgroundColor: palette.surfaceVariant,
-                            radius: 16,
-                            child: Icon(
-                              Icons.person,
-                              size: 20,
-                              color: palette.textTertiary,
-                            ),
-                          ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                chatTitle,
-                                overflow: TextOverflow.ellipsis,
-                                style: appText.titleM.copyWith(
-                                  color: palette.textPrimary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              if (widget.chat.type == ChatType.private)
-                                if (isOnline)
-                                  Text(
-                                    'Online',
-                                    style: TextStyle(
-                                      color: palette.success,
-                                      fontSize: 12,
-                                    ),
-                                  )
-                                else if (lastActiveAt != null)
-                                  Text(
-                                    localizations.translate(
-                                        'profile.chat.last_active_at',
-                                        variables: {
-                                          'time': _formatLastActive(
-                                              context, lastActiveAt)
-                                        }),
-                                    style: TextStyle(
-                                      color: palette.textTertiary,
-                                      fontSize: 10,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    );
-                  }),
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.more_vert, color: palette.textPrimary),
-                  onPressed: () => _showMoreOptions(context, palette, localizations),
+            child: Container(
+              decoration: BoxDecoration(
+                color: palette.surface.withValues(alpha: 0.8),
+                // 2px brand gradient accent line at the bottom of the AppBar
+                border: Border(
+                  bottom: BorderSide(
+                    color: palette.glassStroke,
+                    width: 0.5,
+                  ),
                 ),
-              ],
+              ),
+              child: Stack(
+                children: [
+                  // Gradient accent line at the very bottom
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      height: 2,
+                      decoration: BoxDecoration(
+                        gradient: AppGradients.brand(theme.primaryColor),
+                      ),
+                    ),
+                  ),
+                  AppBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    leading: IconButton(
+                      icon: Icon(Icons.arrow_back, color: palette.textPrimary),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    title: StreamBuilder<DocumentSnapshot>(
+                        stream: _otherUserStream,
+                        builder: (context, snapshot) {
+                          String chatTitle = widget.chat.name ?? 'Chat';
+                          String? chatImage = widget.chat.image;
+                          bool isOnline = false;
+                          DateTime? lastActiveAt;
+
+                          if (snapshot.hasData &&
+                              snapshot.data != null &&
+                              snapshot.data!.exists) {
+                            final user = UserModel.fromFirestore(snapshot.data!
+                                as DocumentSnapshot<Map<String, dynamic>>);
+                            chatTitle = user.displayName ?? chatTitle;
+                            chatImage = user.photoURL ?? chatImage;
+                            isOnline = user.isOnline;
+                            lastActiveAt = user.lastActiveAt?.toDate();
+                          }
+
+                          if (widget.chat.type != ChatType.private) {
+                            // Group/gym titles stay as passed in widget.chat
+                          }
+
+                          return GestureDetector(
+                            onTap: (widget.chat.type == ChatType.private &&
+                                    _otherUserId.isNotEmpty)
+                                ? () => openUserProfile(context, userId: _otherUserId)
+                                : null,
+                            child: Row(
+                              children: [
+                                if (chatImage != null)
+                                  CircleAvatar(
+                                    backgroundImage: NetworkImage(chatImage),
+                                    radius: 16,
+                                  )
+                                else
+                                  CircleAvatar(
+                                    backgroundColor: palette.surfaceVariant,
+                                    radius: 16,
+                                    child: Icon(
+                                      Icons.person,
+                                      size: 20,
+                                      color: palette.textTertiary,
+                                    ),
+                                  ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        chatTitle,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: appText.titleM.copyWith(
+                                          color: palette.textPrimary,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      if (widget.chat.type == ChatType.private)
+                                        if (isOnline)
+                                          Text(
+                                            'Online',
+                                            style: TextStyle(
+                                              color: palette.success,
+                                              fontSize: 12,
+                                            ),
+                                          )
+                                        else if (lastActiveAt != null)
+                                          Text(
+                                            localizations.translate(
+                                                'profile.chat.last_active_at',
+                                                variables: {
+                                                  'time': _formatLastActive(
+                                                      context, lastActiveAt)
+                                                }),
+                                            style: TextStyle(
+                                              color: palette.textTertiary,
+                                              fontSize: 10,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                    actions: [
+                      IconButton(
+                        icon: Icon(Icons.more_vert, color: palette.textPrimary),
+                        onPressed: () => _showMoreOptions(context, palette, localizations),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
       body: Stack(
         children: [
+          // Background fill
           Positioned.fill(
             child: Container(color: palette.background),
+          ),
+
+          // Subtle ambient mesh-glow blobs (very faint — messages overlay them)
+          Positioned(
+            top: -60,
+            right: -80,
+            child: IgnorePointer(
+              child: Container(
+                width: 260,
+                height: 260,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppPalette.brand.withValues(alpha: 0.04),
+                      AppPalette.brand.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 80,
+            left: -100,
+            child: IgnorePointer(
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      palette.energy.withValues(alpha: 0.03),
+                      palette.energy.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
 
           Column(
@@ -467,7 +536,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               "${message.timestamp.hour}:${message.timestamp.minute.toString().padLeft(2, '0')}",
                               style: TextStyle(
                                 fontSize: 10,
-                                // On image overlays keep white; on text bubbles use palette
                                 color: isImage
                                     ? Colors.white
                                     : (isMe
@@ -503,97 +571,27 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                 margin: const EdgeInsets.symmetric(vertical: 4),
                                 constraints:
                                     const BoxConstraints(maxWidth: 240),
-                                decoration: BoxDecoration(
-                                  color: isImage
-                                      ? null
-                                      : (isMe
-                                          ? theme.primaryColor
-                                          : palette.surfaceVariant),
-                                  borderRadius: br,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: palette.shadow
-                                          .withValues(alpha: 0.05),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
                                 child: isImage
-                                    ? ClipRRect(
-                                        borderRadius: br,
-                                        child: Stack(
-                                          children: [
-                                            Image.network(
-                                              message.text,
-                                              fit: BoxFit.cover,
-                                              width: 240,
-                                              loadingBuilder:
-                                                  (ctx, child, progress) =>
-                                                      progress == null
-                                                          ? child
-                                                          : const SizedBox(
-                                                              width: 240,
-                                                              height: 180,
-                                                              child: Center(
-                                                                child:
-                                                                    CircularProgressIndicator(),
-                                                              ),
-                                                            ),
-                                              errorBuilder:
-                                                  (ctx, err, st) =>
-                                                      SizedBox(
-                                                        width: 240,
-                                                        height: 180,
-                                                        child: Center(
-                                                          child: Icon(
-                                                              Icons.broken_image,
-                                                              color: palette.textTertiary),
-                                                        ),
-                                                      ),
-                                            ),
-                                            Positioned(
-                                              bottom: 6,
-                                              right: 8,
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.black54,
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                ),
-                                                child: timestampWidget,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                    ? _buildImageBubble(
+                                        message: message,
+                                        br: br,
+                                        palette: palette,
+                                        timestampWidget: timestampWidget,
                                       )
-                                    : Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 10),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              message.text,
-                                              style: TextStyle(
-                                                // sent → white (intentional contrast); received → textPrimary
-                                                color: isMe
-                                                    ? Colors.white
-                                                    : palette.textPrimary,
-                                                fontSize: 15,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            timestampWidget,
-                                          ],
-                                        ),
-                                      ),
+                                    : isMe
+                                        ? _buildSentBubble(
+                                            message: message,
+                                            br: br,
+                                            theme: theme,
+                                            palette: palette,
+                                            timestampWidget: timestampWidget,
+                                          )
+                                        : _buildReceivedBubble(
+                                            message: message,
+                                            br: br,
+                                            palette: palette,
+                                            timestampWidget: timestampWidget,
+                                          ),
                               ),
                             ),
                           ],
@@ -620,114 +618,304 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         padding: const EdgeInsets.only(left: 16, bottom: 8),
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: palette.surface.withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: palette.shadow.withValues(alpha: 0.05),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: 12,
-                                  height: 12,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: palette.textSecondary,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(
+                                sigmaX: AppPalette.glassBlurSubtle,
+                                sigmaY: AppPalette.glassBlurSubtle,
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: palette.glassFill,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: palette.glassStroke,
+                                    width: 0.5,
                                   ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: palette.shadow.withValues(alpha: 0.05),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  "Yazıyor...",
-                                  style: TextStyle(
-                                    color: palette.textSecondary,
-                                    fontSize: 12,
-                                  ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: palette.textSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      "Yazıyor...",
+                                      style: TextStyle(
+                                        color: palette.textSecondary,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
                       );
                     }),
 
-              // Input Area
-              Container(
-                padding: EdgeInsets.fromLTRB(
-                    16, 16, 16, 16 + MediaQuery.of(context).padding.bottom),
-                decoration: BoxDecoration(
-                  color: palette.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: palette.shadow.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, -4),
+              // Frosted glass input area
+              ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: AppPalette.glassBlurDefault,
+                    sigmaY: AppPalette.glassBlurDefault,
+                  ),
+                  child: Container(
+                    padding: EdgeInsets.fromLTRB(
+                        16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
+                    decoration: BoxDecoration(
+                      color: palette.glassFill,
+                      border: Border(
+                        top: BorderSide(
+                          color: palette.glassStroke,
+                          width: 0.5,
+                        ),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: palette.shadow.withValues(alpha: 0.06),
+                          blurRadius: 12,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    _isUploadingImage
-                        ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                    child: Row(
+                      children: [
+                        _isUploadingImage
+                            ? const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              )
+                            : IconButton(
+                                icon: const Icon(Icons.add_circle_outline),
+                                color: palette.textTertiary,
+                                onPressed: _pickAndSendImage,
+                              ),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(
+                                sigmaX: AppPalette.glassBlurSubtle,
+                                sigmaY: AppPalette.glassBlurSubtle,
+                              ),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: palette.surfaceVariant.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: palette.glassStroke,
+                                    width: 0.5,
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: _messageController,
+                                  decoration: InputDecoration(
+                                    hintText: localizations.translate(
+                                        'chat.actions.placeholder_message_input'),
+                                    hintStyle: TextStyle(color: palette.textTertiary),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
+                                  ),
+                                  minLines: 1,
+                                  maxLines: 4,
+                                ),
+                              ),
                             ),
-                          )
-                        : IconButton(
-                            icon: const Icon(Icons.add_circle_outline),
-                            color: palette.textTertiary,
-                            onPressed: _pickAndSendImage,
                           ),
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: palette.surfaceVariant,
-                          borderRadius: BorderRadius.circular(24),
                         ),
-                        child: TextField(
-                          controller: _messageController,
-                          decoration: InputDecoration(
-                            hintText: localizations.translate(
-                                'chat.actions.placeholder_message_input'),
-                            hintStyle: TextStyle(color: palette.textTertiary),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: _sendMessage,
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              gradient: AppGradients.brand(theme.primaryColor),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.primaryColor.withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.send,
+                                color: Colors.white, size: 20),
                           ),
-                          minLines: 1,
-                          maxLines: 4,
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: _sendMessage,
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: theme.primaryColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.send,
-                            color: Colors.white, size: 20),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Sent bubble: brand gradient background
+  Widget _buildSentBubble({
+    required MessageModel message,
+    required BorderRadius br,
+    required ThemeData theme,
+    required AppPalette palette,
+    required Widget timestampWidget,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppGradients.brand(theme.primaryColor),
+        borderRadius: br,
+        boxShadow: [
+          BoxShadow(
+            color: theme.primaryColor.withValues(alpha: 0.25),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message.text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 2),
+            timestampWidget,
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Received bubble: glassmorphism fill
+  Widget _buildReceivedBubble({
+    required MessageModel message,
+    required BorderRadius br,
+    required AppPalette palette,
+    required Widget timestampWidget,
+  }) {
+    return ClipRRect(
+      borderRadius: br,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: AppPalette.glassBlurSubtle,
+          sigmaY: AppPalette.glassBlurSubtle,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: palette.glassFill,
+            borderRadius: br,
+            border: Border.all(
+              color: palette.glassStroke,
+              width: 0.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: palette.shadow.withValues(alpha: 0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  message.text,
+                  style: TextStyle(
+                    color: palette.textPrimary,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                timestampWidget,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Image bubble: rounded border + ClipRRect, preserved
+  Widget _buildImageBubble({
+    required MessageModel message,
+    required BorderRadius br,
+    required AppPalette palette,
+    required Widget timestampWidget,
+  }) {
+    return ClipRRect(
+      borderRadius: br,
+      child: Stack(
+        children: [
+          Image.network(
+            message.text,
+            fit: BoxFit.cover,
+            width: 240,
+            loadingBuilder: (ctx, child, progress) => progress == null
+                ? child
+                : const SizedBox(
+                    width: 240,
+                    height: 180,
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+            errorBuilder: (ctx, err, st) => SizedBox(
+              width: 240,
+              height: 180,
+              child: Center(
+                child: Icon(Icons.broken_image, color: palette.textTertiary),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 6,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: timestampWidget,
+            ),
           ),
         ],
       ),
