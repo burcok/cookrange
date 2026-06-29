@@ -14,6 +14,7 @@ import '../core/widgets/quick_actions_sheet.dart';
 import '../core/widgets/voice_assistant_overlay.dart';
 import '../core/widgets/side_menu.dart';
 import '../core/widgets/whats_new_sheet.dart';
+import 'profile/widgets/consent_prompt_sheet.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -49,11 +50,17 @@ class _MainScaffoldState extends State<MainScaffold>
   Future<void> _maybeShowWhatsNew() async {
     if (!mounted) return;
     final should = await WhatsNewService().shouldShow();
-    if (!mounted || !should) return;
+    if (!mounted) return;
     // Small delay so the scaffold renders fully before the sheet appears.
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
-    unawaited(WhatsNewSheetContent.show(context));
+    if (should) {
+      // Show "What's New" this launch; the consent nudge waits for next time.
+      unawaited(WhatsNewSheetContent.show(context));
+    } else {
+      // Otherwise surface the one-time privacy/consent nudge.
+      unawaited(ConsentPromptSheet.maybeShow(context));
+    }
   }
 
   void _handleNavChange() {

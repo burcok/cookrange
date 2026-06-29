@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/analytics_service.dart';
@@ -104,59 +105,48 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
               previousStep: widget.previousStep,
             ),
 
-            // Main Content Section
+            // Image fills the available space
             Expanded(
-              child: Column(
-                children: [
-                  // Food illustration section
-                  Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 32,
-                    ),
-                    child: Center(
-                      child: Image.asset(
-                        'assets/images/onboarding/onboarding-1.png',
-                        width: size.width * 0.9,
-                        height: size.height * 0.35,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          _analyticsService.logError(
-                            errorName: 'image_load_error',
-                            errorDescription: 'Failed to load onboarding-1.png',
-                            parameters: {
-                              'step': 1,
-                              'error': error.toString(),
-                              'stack_trace': stackTrace.toString(),
-                            },
-                          );
-                          return Icon(
-                            Icons.emoji_food_beverage,
-                            size: 80,
-                            color: primary,
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ],
+              child: Center(
+                child: Image.asset(
+                  'assets/images/onboarding/onboarding-1.png',
+                  width: size.width * 0.85,
+                  height: size.height * 0.32,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    _analyticsService.logError(
+                      errorName: 'image_load_error',
+                      errorDescription: 'Failed to load onboarding-1.png',
+                      parameters: {
+                        'step': 1,
+                        'error': error.toString(),
+                        'stack_trace': stackTrace.toString(),
+                      },
+                    );
+                    return Icon(
+                      Icons.emoji_food_beverage,
+                      size: 80.r,
+                      color: primary,
+                    );
+                  },
+                ),
               ),
             ),
 
-            // Bottom Content Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
+            // Title + description
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
               child: Column(
                 children: [
                   Text(
                     localizations.translate('onboarding.page1.title'),
                     textAlign: TextAlign.center,
-                    style: t.displayM.copyWith(
+                    style: t.headlineL.copyWith(
+                      fontWeight: FontWeight.w800,
                       color: palette.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: AppSpacing.xs.h),
                   RichText(
                     textAlign: TextAlign.center,
                     text: TextSpan(
@@ -168,50 +158,29 @@ class _OnboardingPage1State extends State<OnboardingPage1> {
                           _buildStyledDescription(localizations, palette, primary),
                     ),
                   ),
-                  const SizedBox(height: 42),
-                  // Get Started Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        // Call onNext immediately
-                        widget.onNext?.call();
-
-                        // Run analytics in background
-                        Future.microtask(() {
-                          _analyticsService.logUserInteraction(
-                            interactionType: 'button_click',
-                            target: 'get_started_button',
-                            parameters: {
-                              'step': 1,
-                              'timestamp': DateTime.now().toIso8601String(),
-                            },
-                          );
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        localizations.translate('onboarding.page1.get_started'),
-                        style: t.titleM.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
+                  SizedBox(height: AppSpacing.lg.h),
                 ],
               ),
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: OnboardingContinueButton(
+        text: localizations.translate('onboarding.page1.get_started'),
+        isLoadingNotifier: widget.isLoadingNotifier,
+        onPressed: () {
+          widget.onNext?.call();
+          Future.microtask(() {
+            _analyticsService.logUserInteraction(
+              interactionType: 'button_click',
+              target: 'get_started_button',
+              parameters: {
+                'step': 1,
+                'timestamp': DateTime.now().toIso8601String(),
+              },
+            );
+          });
+        },
       ),
     );
   }

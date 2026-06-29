@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/coach_application_model.dart';
+import '../models/privacy_request_model.dart';
 import '../models/report_model.dart';
 import 'analytics_service.dart';
 import '../models/coach_profile_model.dart';
@@ -109,6 +110,40 @@ class AdminService {
       action: 'dismiss_report',
       targetUid: report.reporterId,
       metadata: {'reportId': report.id},
+    ));
+  }
+
+  // ── Privacy / data-subject requests (DSAR) ──────────────────────────────────
+
+  Stream<List<PrivacyRequestModel>> privacyRequestsStream({String? status}) {
+    Query<Map<String, dynamic>> q = _db.collection('privacy_requests');
+    if (status != null) q = q.where('status', isEqualTo: status);
+    return q
+        .orderBy('created_at', descending: true)
+        .limit(100)
+        .snapshots()
+        .map((s) => s.docs.map(PrivacyRequestModel.fromFirestore).toList());
+  }
+
+  Future<void> updatePrivacyRequest(
+    PrivacyRequestModel req,
+    PrivacyRequestStatus status, {
+    String? adminNote,
+  }) async {
+    final adminUid = _auth.currentUser?.uid;
+    if (adminUid == null) return;
+    debugPrint('AdminService: updatePrivacyRequest ${req.id} -> ${status.key}');
+    await _db.collection('privacy_requests').doc(req.id).update({
+      'status': status.key,
+      if (adminNote != null) 'admin_note': adminNote,
+      if (status == PrivacyRequestStatus.resolved ||
+          status == PrivacyRequestStatus.rejected)
+        'resolved_at': FieldValue.serverTimestamp(),
+    });
+    unawaited(logAuditAction(
+      action: 'privacy_request_${status.key}',
+      targetUid: req.uid,
+      metadata: {'requestId': req.id, 'type': req.type.key},
     ));
   }
 

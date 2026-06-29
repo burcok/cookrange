@@ -260,7 +260,7 @@ class OnboardingMultiSelectSection extends StatelessWidget {
   }
 }
 
-class OnboardingOption extends StatelessWidget {
+class OnboardingOption extends StatefulWidget {
   final OptionData option;
   final bool isSelected;
   final VoidCallback onTap;
@@ -273,53 +273,73 @@ class OnboardingOption extends StatelessWidget {
   });
 
   @override
+  State<OnboardingOption> createState() => _OnboardingOptionState();
+}
+
+class _OnboardingOptionState extends State<OnboardingOption> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final primary = context.read<ThemeProvider>().primaryColor;
     final t = AppText.of(context);
 
     return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? primary.withValues(alpha: 0.15)
-              : palette.surfaceVariant,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? primary : palette.border,
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (option.icon != null) ...[
-              Icon(
-                option.icon!,
-                size: 22,
-                color: isSelected ? primary : palette.textSecondary,
-              ),
-              SizedBox(width: 8.w),
-            ],
-            Text(
-              option.label,
-              style: t.bodyM.copyWith(
-                fontWeight: FontWeight.w600,
-                color: isSelected ? primary : palette.textPrimary,
-              ),
+      onTap: () {
+        widget.onTap();
+      },
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1.0,
+        duration: AppMotion.fast,
+        child: AnimatedContainer(
+          duration: AppMotion.fast,
+          curve: AppMotion.standard,
+          padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? primary.withValues(alpha: 0.12)
+                : palette.surfaceVariant,
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            border: Border.all(
+              color: widget.isSelected
+                  ? primary
+                  : palette.border,
+              width: widget.isSelected ? 1.5 : 1.0,
             ),
-            if (isSelected) ...[
-              SizedBox(width: 6.w),
-              Icon(
-                Icons.check_circle_rounded,
-                size: 16,
-                color: primary,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.option.icon != null) ...[
+                Icon(
+                  widget.option.icon!,
+                  size: AppSize.iconSm.r,
+                  color: widget.isSelected ? primary : palette.textSecondary,
+                ),
+                SizedBox(width: AppSpacing.xs.w),
+              ],
+              Text(
+                widget.option.label,
+                style: t.labelM.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: widget.isSelected ? primary : palette.textPrimary,
+                ),
               ),
+              if (widget.isSelected) ...[
+                SizedBox(width: AppSpacing.xxs.w),
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 15.r,
+                  color: primary,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -376,76 +396,117 @@ class OnboardingHeader extends StatelessWidget {
     final primary = context.read<ThemeProvider>().primaryColor;
     final t = AppText.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Stack(
+      children: [
+        // Subtle brand glow at top-left
+        Positioned(
+          top: -40.h,
+          left: -40.w,
+          child: Container(
+            width: 200.r,
+            height: 200.r,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  primary.withValues(alpha: 0.08),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl.w, vertical: AppSpacing.sm.h),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (onBackButtonPressed != null)
-                GestureDetector(
-                  onTap: onBackButtonPressed,
-                  child: Icon(Icons.arrow_back, size: 24, color: palette.textPrimary),
-                ),
-              Expanded(
-                child: Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: t.titleL.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: palette.textPrimary,
+              Row(
+                children: [
+                  if (onBackButtonPressed != null)
+                    GestureDetector(
+                      onTap: onBackButtonPressed,
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        width: 36.r,
+                        height: 36.r,
+                        decoration: BoxDecoration(
+                          color: palette.surfaceVariant.withValues(alpha: 0.6),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: palette.border),
+                        ),
+                        child: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          size: 15.r,
+                          color: palette.textPrimary,
+                        ),
+                      ),
+                    ),
+                  Expanded(
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: t.titleL.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: palette.textPrimary,
+                      ),
+                    ),
                   ),
-                ),
+                  if (onBackButtonPressed != null) SizedBox(width: 36.r),
+                ],
               ),
-              if (onBackButtonPressed != null) const SizedBox(width: 24),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final double progress = (currentStep / totalSteps).clamp(0.0, 1.0);
-                    return Stack(
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          height: 6.h,
-                          decoration: BoxDecoration(
-                            color: primary.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(99),
-                          ),
-                        ),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          width: constraints.maxWidth * progress,
-                          height: 6.h,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(99),
-                            gradient: const LinearGradient(
-                              colors: [AppPalette.brand, Color(0xFFFF6B6B)],
+              SizedBox(height: AppSpacing.sm.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final double progress =
+                            (currentStep / totalSteps).clamp(0.0, 1.0);
+                        return Stack(
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              height: 5.h,
+                              decoration: BoxDecoration(
+                                color: primary.withValues(alpha: 0.12),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.full.r),
+                              ),
                             ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                '$currentStep/$totalSteps',
-                style: t.labelS.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: palette.textSecondary,
-                ),
+                            AnimatedContainer(
+                              duration: AppMotion.normal,
+                              curve: AppMotion.standard,
+                              width: constraints.maxWidth * progress,
+                              height: 5.h,
+                              decoration: BoxDecoration(
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.full.r),
+                                gradient: LinearGradient(
+                                  colors: [primary, primary.withValues(alpha: 0.7)],
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  SizedBox(width: AppSpacing.xs.w),
+                  Text(
+                    '$currentStep/$totalSteps',
+                    style: t.labelS.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: palette.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -478,29 +539,20 @@ class OnboardingTextInputSection extends StatelessWidget {
           title,
           style: t.headlineS.copyWith(color: palette.textPrimary),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: AppSpacing.xxs.h),
         Text(
           subtitle,
           style: t.bodyM.copyWith(color: palette.textSecondary),
         ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: controller,
-          onChanged: onChanged,
-          decoration: InputDecoration(
+        SizedBox(height: AppSpacing.md.h),
+        AppCard(
+          bordered: true,
+          elevated: false,
+          padding: EdgeInsets.all(AppSpacing.sm.r),
+          child: AppTextField(
+            controller: controller,
             hintText: hintText,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: palette.border,
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: palette.border,
-              ),
-            ),
+            onChanged: onChanged,
           ),
         ),
       ],

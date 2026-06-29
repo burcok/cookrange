@@ -229,6 +229,17 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
+    // ─── Privacy / data-subject requests (DSAR — KVKK/GDPR) ───────────────────
+    // Owner files + reads own; admin reads + updates (status/notes). No deletion.
+    match /privacy_requests/{requestId} {
+      allow create: if isAuthenticated()
+        && request.resource.data.uid == request.auth.uid;
+      allow read: if isAuthenticated()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
     // ─── Block list (per-user, full CRUD by owner only) ──────────────────────
     match /users/{uid}/block_list/{blockedId} {
       allow read, write: if isOwner(uid);
@@ -427,6 +438,11 @@ service cloud.firestore {
 
     // ─── AI twin projections (history) ────────────────────────────────────────
     match /users/{uid}/ai_twin_projections/{doc} {
+      allow read, write: if isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // ─── Consent records (KVKK/GDPR — demonstrable, versioned, owner-only) ─────
+    match /users/{uid}/consents/{purpose} {
       allow read, write: if isAuthenticated() && request.auth.uid == uid;
     }
 

@@ -13,6 +13,7 @@ The Cookrange knowledge base. Start at `../AGENTS.md` for *how to work*, then co
 | [`FEATURES.md`](FEATURES.md) | Feature catalog (what exists, where) | — (cross-cutting) |
 | [`PLATFORM.md`](PLATFORM.md) | iOS/Android parity, native config, CI/CD | `android/`, `ios/`, `.github/workflows` |
 | [`LOCALIZATION.md`](LOCALIZATION.md) | i18n system, how to add strings | `lib/core/localization`, `assets/localization` |
+| [`COMPLIANCE.md`](COMPLIANCE.md) | **Legal-first framework** — KVKK + GDPR, data inventory, consent pattern, per-feature legal checklist | anything touching personal data + `lib/screens/legal` |
 | [`firebase-console-setup.md`](firebase-console-setup.md) | Firebase Console one-time steps | — |
 | [`roadmap/GO_LIVE.md`](roadmap/GO_LIVE.md) | Pre-launch / store submission roadmap | — |
 | [`roadmap/FUTURE_FEATURES.md`](roadmap/FUTURE_FEATURES.md) | Missing & future features + per-feature roadmaps | — |

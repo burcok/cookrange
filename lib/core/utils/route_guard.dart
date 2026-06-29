@@ -152,7 +152,9 @@ class _RouteGuardState extends State<RouteGuard> {
                 ? AppRoutes.verifyEmail
                 : (userModel?.onboardingCompleted == true
                     ? AppRoutes.main
-                    : AppRoutes.onboarding);
+                    : (userModel?.introSeen == true
+                        ? AppRoutes.onboarding
+                        : AppRoutes.intro));
             Navigator.pushNamedAndRemoveUntil(
                 context, destination, (route) => false);
           }
@@ -190,7 +192,11 @@ class _RouteGuardState extends State<RouteGuard> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             Navigator.pushNamedAndRemoveUntil(
-                context, AppRoutes.onboarding, (route) => false);
+                context,
+                userModel.introSeen
+                    ? AppRoutes.onboarding
+                    : AppRoutes.intro,
+                (route) => false);
           }
         });
       }
@@ -204,6 +210,7 @@ class _RouteGuardState extends State<RouteGuard> {
   bool _isAuthRoute(String? routeName) {
     return routeName == AppRoutes.login ||
         routeName == AppRoutes.register ||
+        routeName == AppRoutes.forgotPassword ||
         routeName == AppRoutes.priorityOnboarding;
   }
 }

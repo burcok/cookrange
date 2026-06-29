@@ -37,7 +37,7 @@
 |---|---|---|---|
 | Splash | `splash_screen.dart` | `/` | Orchestrates `AppInitializationService`; staggered logo animation; ≥5s min; ATT request; fire-and-forget preloads; offline banner + retry |
 | Login | `auth/login_screen.dart` | `login` | Email/password + Google; live password validation |
-| Register | `auth/register_screen.dart` | `register` | Email/pass + confirm + terms; 3-way validation |
+| Register | `auth/register_screen.dart` | `register` | Email/pass + confirm; two-tier consent — required Terms/Privacy + required **essential data consent** (health/AI/transfer) + optional opt-in (analytics, marketing); records via `ConsentService.recordInitialConsents` on success |
 | Verify Email | `auth/verify_email.dart` | `verifyEmail` | 5s poll, 180s resend cooldown |
 | Forgot/Reset Password | `auth/forgot_password_screen.dart` | `forgotPassword` | Email reset link |
 | Account Suspended | `auth/account_suspended_screen.dart` | (guard) | Ban screen w/ appeal |
@@ -86,6 +86,8 @@
 | Settings | `profile/settings_screen.dart` (~2000 LOC) | push | Language sheet (EN/TR), theme, notif group mutes, privacy toggle, data export, referral, support, version, admin link, replay intro, logout |
 | Dietary Preferences | `profile/dietary_preferences_screen.dart` | push | Restrictions/allergies/avoid multi-select |
 | Affiliate Earnings | `profile/affiliate_earnings_screen.dart` | push | Earnings summary, payout request, history (tracking layer) |
+| Consent Center | `profile/consent_center_screen.dart` | push (Settings → Privacy & Consents) | Per-purpose grant/withdraw toggles (health/location/AI/transfer/analytics/notifications/marketing); records versioned consent via `ConsentService`; stale "needs review" badge on policy bump; links to legal docs. KVKK/GDPR accountability |
+| Privacy Requests (DSAR) | `profile/privacy_request_screen.dart` | push (Settings → Privacy Requests) | File a data-subject request (access/rectify/erase/restrict/object/portability/withdraw/other) + track status. Admin: `admin/admin_privacy_requests_screen.dart` (side menu). First-run nudge: `profile/widgets/consent_prompt_sheet.dart` |
 
 ## 7. Recipe / Shopping / Explore
 | Screen | File | Notes |
@@ -106,7 +108,7 @@
 | Notifications | `notifications/notification_screen.dart` | push | Filtered, paginated, auto-mark-read, glass refresh |
 | Leaderboard | `leaderboard/leaderboard_screen.dart` | push | Global/Friends tabs, current-user highlight |
 | Discover Hub | `discover/discover_hub_screen.dart` | `discover` | 2×2 grid (Gym/Coach/Programs/Leaderboard) + premium banner |
-| Legal | `legal/legal_screen.dart` | push (type) | Privacy / ToS |
+| Legal | `legal/legal_screen.dart` | push (type) | Renders 4 docs (Privacy / Terms / KVKK Aydınlatma / Açık Rıza) from localized `assets/legal/*.md` via a dependency-free markdown renderer; EN+TR. See `docs/COMPLIANCE.md` §8 |
 | Generic Error | `common/generic_error_screen.dart` | — | Error boundary fallback |
 
 ---

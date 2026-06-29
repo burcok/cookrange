@@ -157,6 +157,12 @@ optimization, correct data tier + indexes + rules, logging, smooth iOS/Android U
 flagship-grade states (loading/empty/error/modal), `flutter analyze` 0 errors, and **docs updated**.
 Before coding, read [`AGENTS.md`](AGENTS.md) (the per-prompt workflow) and the relevant `docs/` file.
 
+**Legal-first (KVKK + GDPR):** data security and lawful processing are release blockers. Any feature
+touching personal data must pass the Legal & Privacy checklist (`AGENTS.md` §2) and follow
+[`docs/COMPLIANCE.md`](docs/COMPLIANCE.md) — disclose purpose + get consent *before* access, minimize
+(prefer transient/on-device over storage), and update the data inventory. (In-app legal documents are
+drafts pending qualified-lawyer review before launch.)
+
 ---
 
 # Part 2 — User Guide
@@ -222,7 +228,9 @@ trends, not just today.
   want in Settings.
 
 ### For gym members
-- **Find & join a gym** — discover gyms by city/district; scan a gym's QR to join and check in.
+- **Find & join a gym** — discover gyms by city/district, or tap **Near Me** to sort by distance on a
+  map. Cookrange asks first and tells you your location is used only on your device to sort gyms and is
+  **not stored** (KVKK/GDPR); you can decline and keep browsing by city. Scan a gym's QR to join and check in.
 - **Gym community** — your gym's own feed, announcements, and leaderboard.
 - **Check in** — QR, GPS, or manual; climb your gym's leaderboard.
 
@@ -254,10 +262,12 @@ your progress week by week. (Free programs are live; paid programs are coming wi
   categories, toggle privacy, **export all your data** (GDPR), copy your referral link, get support,
   and (for staff) open the admin panel.
 
-### Privacy & your data
-Your sensitive info (body metrics, allergies, dietary restrictions) is stored privately and is
-owner-only. You can export everything you've created as a file, or delete your account entirely, from
-Settings.
+### Privacy & your data (KVKK / GDPR)
+Cookrange is built privacy-first. Your sensitive info (body metrics, allergies, dietary restrictions)
+is stored **privately and owner-only**. Sensitive access is **consent-gated** — we tell you the
+purpose and whether data is stored *before* asking (e.g. location for "Near Me" is used on your device
+and **not stored**). You can **export everything** you've created as a file, or **delete your account
+entirely**, from Settings. Full framework: [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md).
 
 ---
 
@@ -278,6 +288,7 @@ the whole codebase to make a change):
 | [`docs/FEATURES.md`](docs/FEATURES.md) | Feature catalog (what exists, where) |
 | [`docs/PLATFORM.md`](docs/PLATFORM.md) | iOS/Android parity, native config, CI/CD |
 | [`docs/LOCALIZATION.md`](docs/LOCALIZATION.md) | i18n system + how to add strings |
+| [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md) | Legal-first framework — KVKK + GDPR, data inventory, consent pattern, per-feature legal checklist |
 | [`docs/roadmap/GO_LIVE.md`](docs/roadmap/GO_LIVE.md) | Full App Store + Play Store launch roadmap |
 | [`docs/roadmap/FUTURE_FEATURES.md`](docs/roadmap/FUTURE_FEATURES.md) | Missing & future features with build plans |
 | [`TODO.md`](TODO.md) | Live status & roadmap |

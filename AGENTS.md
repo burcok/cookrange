@@ -117,6 +117,22 @@ This is the operational expansion of `CLAUDE.md`'s Definition of Done.
 - [ ] **PII goes to the private subcollection** (`users/{uid}/private/nutrition`), never the
       public user doc. See `docs/DATA_MODEL.md`.
 
+### Any personal-data access (LEGAL-FIRST — KVKK + GDPR)
+> The founder treats data security & legal compliance as release blockers. Full framework:
+> `docs/COMPLIANCE.md`. Mirror its §9 checklist here:
+- [ ] **Identify the data.** What personal data does this touch? Is any **sensitive** (health,
+      location, biometric)? Sensitive data needs **explicit consent** (açık rıza).
+- [ ] **Disclose before access.** Show a `PermissionPrimer` / in-flow disclosure stating the
+      **purpose**, **what data**, **whether it's stored**, the **KVKK/GDPR note**, and that the user
+      **can decline** — *before* the OS dialog or processing. Reference impl:
+      `gym_discovery_screen.dart::_activateNearMe` ("location not stored").
+- [ ] **Minimize.** Prefer transient/on-device over storage. Don't persist what you don't need.
+- [ ] **Legal basis + retention** recorded; update `docs/COMPLIANCE.md` §4 inventory.
+- [ ] **Security:** owner-only rule, no PII on public docs/logs, nothing sensitive in plaintext logs.
+- [ ] **New sub-processor / cross-border transfer?** → add to `COMPLIANCE.md` §5 + Privacy Policy.
+- [ ] **Rights intact:** export/delete still cover the new data; graceful fallback if user declines.
+- [ ] Legal copy (consent/disclosure) added **EN+TR**.
+
 ### Docs (see §3)
 - [ ] **Relevant `docs/` file updated**, plus `CLAUDE.md` / `TODO.md` if needed.
 
@@ -138,6 +154,7 @@ code and don't update the doc, you've poisoned that trust.
 | `lib/core/theme/**`, `lib/core/widgets/ds/**` | `docs/DESIGN_SYSTEM.md` |
 | Any new/removed user-facing capability | `docs/FEATURES.md` **and** `README.md` (feature list + user guide) |
 | iOS/Android config, platform guards | `docs/PLATFORM.md` |
+| Anything touching personal data, consent, processors, or legal copy | `docs/COMPLIANCE.md` (+ legal docs) |
 | `assets/localization/**`, the i18n system | `docs/LOCALIZATION.md` |
 | Anything that changes a "Key Services / Files" table | `CLAUDE.md` |
 | Task status, scope, roadmap | `TODO.md` |

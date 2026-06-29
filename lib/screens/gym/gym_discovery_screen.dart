@@ -127,6 +127,25 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
   }
 
   Future<void> _activateNearMe() async {
+    final l10n = AppLocalizations.of(context);
+
+    // KVKK / GDPR: explain the purpose and that location is NOT stored, and get
+    // informed consent BEFORE touching the OS location permission dialog.
+    final consent = await PermissionPrimer.show(
+      context,
+      icon: Icons.location_on_rounded,
+      iconColor: AppPalette.of(context).warning,
+      title: l10n.translate('gym.nearby_consent_title'),
+      rationale: l10n.translate('gym.nearby_consent_rationale'),
+      allowLabel: l10n.translate('permission.allow'),
+      notNowLabel: l10n.translate('permission.not_now'),
+    );
+    if (!mounted) return;
+    if (!consent) {
+      setState(() => _sortBy = 'name'); // revert chip; keep browsing by city
+      return;
+    }
+
     setState(() => _loadingLocation = true);
 
     try {

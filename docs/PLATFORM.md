@@ -35,7 +35,7 @@ When you build or change anything, ask: **"Does this behave correctly on iOS *an
 | App Check | DeviceCheck (release) / debug | Play Integrity (release) / debug |
 | Push | APNs via FCM (needs APNs key in Firebase) | FCM direct |
 | Permissions | `Info.plist` usage strings (camera, mic, photos, location, tracking) | `AndroidManifest.xml` `<uses-permission>` + runtime requests |
-| Permission UX | Always precede the OS dialog with `PermissionPrimer.show()` | same |
+| Permission UX | Always precede the OS dialog with `PermissionPrimer.show()` **including a KVKK/GDPR disclosure** (purpose + whether stored + declinable) — see `docs/COMPLIANCE.md` §6 | same |
 | Deep links | `Runner.entitlements` `applinks:cookrangeapp.com` + AASA file | `intent-filter autoVerify=true` + assetlinks.json |
 | Min OS | iOS deployment target (Podfile/Xcode) | `minSdkVersion` (build.gradle) |
 | Build artifact | `.ipa` (App Store / TestFlight) | `.aab` (Play) / `.apk` (debug/CI) |

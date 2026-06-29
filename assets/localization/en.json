@@ -347,7 +347,8 @@
     "intro": {
       "cta_meal_plan": "Create My Meal Plan",
       "cta_find_gym": "Find a Gym Near Me"
-    }
+    },
+    "age_gate": "You must be at least 16 years old to use Cookrange."
   },
   "auth": {
     "login": "Login",
@@ -407,7 +408,8 @@
       "password_digit": "Password must contain at least one digit",
       "passwords_do_not_match": "Passwords do not match.",
       "invalid_email": "Please enter a valid email address.",
-      "accept_agreements": "Please accept the agreements to continue."
+      "accept_agreements": "Please accept the agreements to continue.",
+      "accept_essential": "Please accept the required data consent to continue."
     },
     "agreements": {
       "prefix": "By creating an account, you agree to Cookrange's ",
@@ -427,7 +429,13 @@
     "register": "Register",
     "logout_button": "Logout",
     "delete_account_button": "Delete Account",
-    "settings_title": "Settings"
+    "settings_title": "Settings",
+    "consent": {
+      "essential": "I consent to Cookrange processing my health & fitness data, using AI, and transferring data to its service providers abroad — required to use the app.",
+      "optional_header": "Optional (you can change these anytime in Settings):",
+      "analytics": "Share anonymous usage data to help improve the app.",
+      "marketing": "Send me product news and offers."
+    }
   },
   "profile": {
     "title": "Profile",
@@ -1248,7 +1256,8 @@
     "gym_app_pending": "Gym Application Pending",
     "coach_app_rejected": "Coach Application Rejected",
     "gym_app_rejected": "Gym Application Rejected",
-    "discover": "Discover"
+    "discover": "Discover",
+    "admin_privacy": "Privacy Requests"
   },
   "account_suspended": {
     "title_header": "ACCOUNT STATUS",
@@ -1839,7 +1848,9 @@
     "location_error": "Could not get your location. Please try again.",
     "toggle_map": "Map view",
     "toggle_list": "List view",
-    "map_view_gym": "View Gym"
+    "map_view_gym": "View Gym",
+    "nearby_consent_title": "Find Gyms Near You",
+    "nearby_consent_rationale": "Cookrange will use your device location only to sort gyms by distance. Your location is processed on your device for this screen and is NOT sent to or stored on our servers (KVKK / GDPR). You can decline and keep browsing by city instead."
   },
   "coach": {
     "setup_title": "Coach Profile Setup",
@@ -2115,7 +2126,8 @@
     },
     "location": {
       "title": "Location Access",
-      "rationale": "Cookrange needs your location to verify you're at the gym for GPS check-in."
+      "rationale": "Cookrange needs your location to verify you're at the gym for GPS check-in. Your location is used only to verify check-in and is not stored on our servers afterwards.",
+      "rationale_stored_note": "Your location is used only to verify check-in and is not stored on our servers afterwards."
     },
     "notifications": {
       "title": "Stay on Track",
@@ -2369,7 +2381,10 @@
     "analytics_role_coach": "Coach",
     "analytics_role_gym": "Gym Owner",
     "analytics_role_premium": "Premium",
-    "analytics_top_ai_title": "Top AI Users Today"
+    "analytics_top_ai_title": "Top AI Users Today",
+    "privacy_requests": "Privacy Requests",
+    "privacy_note": "Resolution note (optional)",
+    "privacy_note_hint": "Internal note / what action was taken."
   },
   "intro": {
     "skip": "Skip",
@@ -2502,5 +2517,82 @@
     "submit": "Submit Report",
     "submitted": "Thank you. Your report has been submitted.",
     "error": "Failed to submit report. Please try again."
+  },
+  "legal": {
+    "privacy_title": "Privacy Policy",
+    "terms_title": "Terms of Use",
+    "kvkk_title": "KVKK Clarification Text",
+    "consent_title": "Explicit Consent",
+    "load_error": "Couldn't load this document. Please try again."
+  },
+  "consent": {
+    "title": "Privacy & Consents",
+    "header_title": "You are in control",
+    "header_body": "Manage how Cookrange uses your data. You can grant or withdraw each consent at any time (KVKK / GDPR). Withdrawing does not affect processing already carried out.",
+    "granted": "Allowed",
+    "withdrawn": "Not allowed",
+    "not_set": "Not set yet",
+    "updated_on": "Updated {date}",
+    "needs_review": "Needs review",
+    "needs_review_note": "Our privacy terms were updated. Please review and confirm this consent.",
+    "required_note": "Turning this off limits the related feature.",
+    "optional_note": "Optional.",
+    "view_documents": "View privacy documents",
+    "withdraw_title": "Withdraw consent?",
+    "withdraw_body": "We will stop using your data for this purpose. You can re-enable it anytime. Some features may stop working.",
+    "confirm_withdraw": "Withdraw",
+    "saved": "Your choice was saved.",
+    "save_error": "Couldn't save your choice. Please try again.",
+    "purpose": {
+      "health_data_title": "Health & fitness data",
+      "health_data_desc": "Use your body metrics, allergies, dietary info and logs to personalise meal plans, recipes and analytics.",
+      "location_title": "Location",
+      "location_desc": "Use your device location for “gyms near me” and GPS check-in. Location is processed on your device and not stored on our servers.",
+      "ai_processing_title": "AI processing",
+      "ai_processing_desc": "Send your prompts and relevant profile context to our AI provider to generate plans, recipes and insights.",
+      "cross_border_transfer_title": "International data transfer",
+      "cross_border_transfer_desc": "Allow processing on overseas servers of providers such as Google and OpenRouter, as needed to run the app.",
+      "analytics_title": "Usage analytics",
+      "analytics_desc": "Help us improve the app with anonymous usage and stability data.",
+      "notifications_title": "Notifications",
+      "notifications_desc": "Send push notifications for activity, reminders and updates you opted into.",
+      "marketing_title": "Marketing communications",
+      "marketing_desc": "Receive occasional product news and offers. You can opt out anytime."
+    },
+    "prompt_title": "Your privacy, your choice",
+    "prompt_body": "Cookrange uses some data (like health info and location) only with your permission. Take a moment to review and set your privacy choices. You can change them anytime in Settings.",
+    "prompt_manage": "Review privacy choices",
+    "prompt_later": "Maybe later"
+  },
+  "privacy_request": {
+    "title": "Privacy Requests",
+    "intro": "Exercise your data rights (KVKK Art. 11 / GDPR Art. 15–22). For instant actions you can export or delete your data directly in Settings. For anything else, file a request below and we will respond within the statutory period (30 days).",
+    "new": "New request",
+    "choose_type": "Request type",
+    "message_label": "Details",
+    "message_hint": "Describe your request so we can act on it accurately.",
+    "submit": "Submit request",
+    "submitted": "Request submitted. We will respond by email.",
+    "submit_error": "Couldn't submit your request. Please try again.",
+    "my_requests": "Your requests",
+    "none": "No requests yet",
+    "none_desc": "When you file a privacy request it will appear here with its status.",
+    "filed_on": "Filed {date}",
+    "type": {
+      "access": "Access my data",
+      "rectification": "Correct my data",
+      "erasure": "Erase my data",
+      "restriction": "Restrict processing",
+      "objection": "Object to processing",
+      "portability": "Data portability",
+      "withdraw_consent": "Withdraw consent",
+      "other": "Other"
+    },
+    "status": {
+      "pending": "Pending",
+      "in_progress": "In progress",
+      "resolved": "Resolved",
+      "rejected": "Rejected"
+    }
   }
 }

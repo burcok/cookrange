@@ -50,17 +50,14 @@ regenerations, extra scans.
 
 ## B. Gym Ecosystem Depth
 
-### B1. 🔴 "Gyms Near Me" Map Discovery — M
-**Problem:** Gym discovery is name/city/district filtered only; no map, no proximity. (`flutter_map`
-+ `latlong2` + `geolocator` are already dependencies; gyms store lat/lng.)
-**Scope:** Map view with gym pins, "near me" radius sort (Haversine), tap-pin → gym preview → join.
-- **Architect:** Firestore can't geo-query natively without geohashing. Either add a **geohash**
-  field to gyms + range query, or client-side Haversine over a city-filtered set (cheaper for MVP).
-- **Data:** add `geohash` to `GymModel` (computed on save); index `is_public + geohash`.
-- **Services:** `GymService.searchGymsNearby(lat, lng, radiusKm)`.
-- **UI:** toggle list/map in `gym_discovery_screen`; `flutter_map` with clustered markers; permission
-  primer before GPS; current-location pin; bottom preview sheet.
-- **Effort:** M. **Risk:** location permission UX (use `PermissionPrimer`), battery (one-shot fix).
+### B1. ✅ "Gyms Near Me" Map Discovery — SHIPPED
+Already built in `gym_discovery_screen.dart`: "Near Me" sort chip, `_GymMapView` (flutter_map +
+OpenStreetMap), client-side **Haversine** distance sort over a city-filtered set, `_DistanceBadge`,
+in-memory `_userLat/_userLon` (location **never persisted** — data-minimized). **KVKK/GDPR consent
+gate added** (`_activateNearMe` shows a `PermissionPrimer` stating location is on-device + not stored
++ declinable, before the OS prompt — `gym.nearby_consent_*` keys). See `docs/FEATURES.md` + `COMPLIANCE.md` §6.
+**Optional later (🟢 S–M):** geohash + server-side radius query if the city-filtered client sort
+becomes too coarse at scale; marker clustering for dense cities.
 
 ### B2. 🟠 Gym Wars — Full Competition UI — M
 **Problem:** `GymWarModel` + `gym_wars/` collection + service exist, but the competition experience
@@ -177,6 +174,72 @@ deferred in Phase 9).
 
 ---
 
+## L. Legal & Compliance (🔴 founder priority — legal-first)
+
+> The app must proceed within a legal framework end-to-end. Framework lives in `docs/COMPLIANCE.md`;
+> these are the build-outs to reach full KVKK + GDPR compliance. **All drafted documents require a
+> qualified lawyer's review before launch — engineering produces mechanisms + drafts, not legal advice.**
+
+### L1. ✅ Comprehensive Legal Documents (EN+TR) — DRAFTED (pending lawyer review)
+**Done:** Privacy Policy, Terms of Use, KVKK Aydınlatma Metni, and Açık Rıza Beyanı drafted in EN+TR as
+markdown assets (`assets/legal/`), rendered by a dependency-free renderer in `legal_screen.dart`, wired
+into Settings + Register. Cookie/SDK + AI disclosures are sections of the Privacy Policy. See
+`docs/COMPLIANCE.md` §8. **⚠️ Drafts require qualified-lawyer review before launch.** Remaining:
+Coach/Gym/Marketplace agreements ship with payments (L7). Original scope below for reference:
+1. **Privacy Policy / Gizlilik Politikası** — every data point, purpose, legal basis, sub-processors
+   (Firebase, OpenRouter, stores, PSP, OSM), retention, cross-border transfer, rights + contact/DPO.
+2. **Terms of Use / Kullanım Koşulları** — accounts, acceptable use, UGC/moderation, marketplace,
+   subscriptions/credits, refunds, disclaimers (health is not medical advice), liability, governing law.
+3. **KVKK Aydınlatma Metni** — standalone Turkish clarification text (controller, purposes, recipients,
+   collection method + legal cause, Art. 11 rights).
+4. **Açık Rıza Beyanı** — explicit, separate, opt-in, withdrawable consent for **health data**,
+   **location**, **marketing**.
+5. **Cookie/SDK & Tracking notice** — Firebase Analytics, Crashlytics, ATT, OpenStreetMap tiles.
+6. **AI/automated-processing disclosure** — what's sent to the LLM, that outputs are estimates, no
+   solely-automated decisions with legal effect.
+- **Approach:** tailor wording to our real practices (do **not** copy other apps' contracts — copyright
+  + mismatch risk); use comparable apps only as *structure* reference. Health-app specifics
+  (no medical claims). Render in `legal_screen.dart` with new `LegalDocumentType` entries + i18n.
+- **Effort:** L (drafting) + lawyer review. **Dep:** none to draft; review before launch.
+
+### L2. ✅ Consent Management Center — SHIPPED
+**Done:** Settings → **Privacy & Consents** (`consent_center_screen.dart`) — per-purpose grant/withdraw
+toggles (health, location, AI, cross-border, analytics, notifications, marketing), each with what/why,
+status + recorded date, and a **"needs review"** badge when the policy version bumped. `ConsentService`
+writes versioned, timestamped, owner-only records to `users/{uid}/consents/{purpose}` (demonstrable
+consent) and exposes `hasConsent()` for gating. `kLegalPolicyVersion` constant triggers re-consent on
+bump. Firestore rule added; EN+TR copy. **Remaining (follow-up):** per-purpose *enforcement* (each
+consumer checks `ConsentService.hasConsent`) + first-run consent prompt — fold into L3 / app-entry.
+
+### L3. ✅ Data Subject Request (DSAR) Channel — SHIPPED
+`PrivacyRequestModel` + `PrivacyRequestService` + `privacy_requests/{id}` (owner create/read, admin
+read/update; 2 indexes). User flow: `privacy_request_screen.dart` (type chips + message + my-requests
+list, Settings → Privacy Requests). Admin: `AdminService.privacyRequestsStream/updatePrivacyRequest` +
+`admin_privacy_requests_screen.dart` (side menu → Privacy Requests; resolve with status + note + audit
+log). Self-service export/delete still cover access/erasure instantly. EN+TR.
+
+### L4. ✅ Age Gating & Children's Data — SHIPPED
+`AgeGate` util (`kMinimumAgeYears = 16`, GDPR Art. 8 conservative default — adjust per counsel). The
+onboarding birth-date picker's `maxDate` blocks under-age selection + defensive `isUnderMinimumAge`
+re-check with a localized message (`onboarding.age_gate`). Privacy Policy children's section already
+present.
+
+### L5. ✅ Cross-Border Transfer & VERBİS — ENGINEERING DONE (legal-ops open)
+Transfer register + mechanism documented in `docs/COMPLIANCE.md` §11; disclosed in Privacy Policy §8 +
+KVKK Aydınlatma §5; dedicated `crossBorderTransfer` consent purpose in the Consent Center. **Open
+(counsel):** VERBİS obligation assessment, signing processor DPAs, finalising the transfer mechanism.
+
+### L6. ✅ Breach Response Runbook — SHIPPED (doc)
+Documented in `docs/COMPLIANCE.md` §12: detect → contain → assess → notify (KVKK Board / GDPR 72h) +
+affected users → remediate, with roles, contact, pre-reqs, and an incident log.
+
+### L7. ⏳ Marketplace / Payout Legal Terms — DRAFTED (activates with A1 payouts)
+Coach & Marketplace Agreement drafted EN+TR (`assets/legal/marketplace_terms_{en,tr}.md`): provider
+status, listings, fees/commission, payouts/KYC, taxes, refunds/chargebacks, conduct, termination,
+liability. **Wires into the UI when payments/payouts ship (A1).** Lawyer review required.
+
+---
+
 ## G. Hardening (ongoing)
 
 ### G1. 🟠 Widget/Integration Test Coverage — M
@@ -196,7 +259,11 @@ conversion, D1/D7/D30 retention). Mostly console (see `GO_LIVE.md` §5.5). **Eff
 ---
 
 ## Suggested Sequencing (after launch)
-1. **B1 Gyms-near-me** (M, high retention, deps already present) + **D1 Rich composer** (M).
+0. **Legal track L1–L6 shipped** ✅ (docs, consent center, DSAR, age-gating, transfer register, breach
+   runbook). Remaining before public launch: **qualified-lawyer review** of all drafts, processor DPAs +
+   VERBİS assessment (L5 legal-ops), and per-purpose consent enforcement. L7 marketplace terms drafted,
+   activates with payments (A1).
+1. ~~B1 Gyms-near-me~~ ✅ shipped (with KVKK consent) + **D1 Rich composer** (M).
 2. **A1 Payouts** (XL, unlocks coach/affiliate revenue) — start KYC/provider early.
 3. **D3 Gamification** (M) + **B2 Gym Wars UI** (M) for engagement.
 4. **C1 Analytics export** turned on *now* (cheap) so **C1/C2 ML** can follow once data accrues.

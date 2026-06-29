@@ -13,7 +13,13 @@ This file holds the **rules** (R0–R9 + Definition of Done). Two companions hol
 - **`ARCHITECTURE.md`** — *how the system fits together*: layers, data flow, directory map.
 - **`docs/`** — *where everything is* (so you don't grep blind): `DATA_MODEL.md`, `SERVICES.md`,
   `FRONTEND.md`, `DESIGN_SYSTEM.md`, `FEATURES.md`, `PLATFORM.md`, `LOCALIZATION.md`,
-  `roadmap/GO_LIVE.md`, `roadmap/FUTURE_FEATURES.md`. Index: `docs/INDEX.md`.
+  `COMPLIANCE.md`, `roadmap/GO_LIVE.md`, `roadmap/FUTURE_FEATURES.md`. Index: `docs/INDEX.md`.
+
+> ⚖️ **Legal-first is non-negotiable.** Data security + KVKK/GDPR compliance are release blockers.
+> Any feature touching personal data must pass the Legal & Privacy checklist (`AGENTS.md` §2) and the
+> framework in `docs/COMPLIANCE.md`: disclose purpose + consent *before* access, minimize (prefer
+> transient/on-device over storage), and never store more than needed. Reference impl: the
+> "gyms near me" consent gate (location used on-device, not stored).
 
 **The loop every prompt:** classify the task → read the relevant `docs/` file → think in 3 roles
 (R0) → satisfy the pre-flight checklist (`AGENTS.md` §2) → make the smallest correct change →

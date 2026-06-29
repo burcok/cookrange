@@ -50,7 +50,9 @@ Legend: ✅ shipped · 🟡 partial/tracking-only · 🔗 entry point
 - ✅ **Gym community feed** — brand-colored, announcements.
 - ✅ **Gym leaderboard** — member rankings.
 - ✅ **Gym analytics** — active members, peak hours, retention (owner).
-- ✅ **Gym discovery** — city/district/sort filters.
+- ✅ **Gym discovery** — city/district/sort filters + **"Near Me"** map view (flutter_map/OSM,
+  Haversine distance sort, distance badges). Location is **consent-gated (KVKK/GDPR)** and
+  **never stored** (in-memory only). 🔗 `gym_discovery_screen`.
 - 🟡 **Gym Wars** — model + service exist; competition UI minimal.
 
 ## Coach Ecosystem
@@ -91,8 +93,17 @@ Legend: ✅ shipped · 🟡 partial/tracking-only · 🔗 entry point
 ## Platform & Compliance
 - ✅ **EN/TR localization** — parity-gated. ✅ **Dark/Light** themes + live brand color.
 - ✅ **iOS + Android** — Apple/Google sign-in, ATT consent, platform guards, safe areas, haptics.
-- ✅ **GDPR** — data export + account deletion. ✅ **Accessibility** — semantics, reduce-motion/
-  transparency. ✅ **Security** — App Check, AI key proxied, full Firestore/Storage rules.
+- ✅ **KVKK + GDPR legal-first** — data export + account deletion; consent-gated sensitive data
+  (health, location) with on-device/not-stored disclosures; data minimization. Framework:
+  `docs/COMPLIANCE.md`. ✅ **In-app legal docs** (Privacy Policy, Terms, KVKK Aydınlatma Metni, Açık
+  Rıza) drafted EN+TR (`assets/legal/`, lawyer-review pending). ✅ **Consent Center** (Settings →
+  Privacy & Consents) — per-purpose, versioned, withdrawable consent records (`ConsentService`),
+  captured at registration (two-tier: required essentials + optional opt-ins), managed/withdrawn in
+  the center. ✅ **DSAR channel** (Settings → Privacy Requests; admin queue). ✅ **Age
+  gating** (min 16, onboarding birth-date). ✅ **Breach runbook** + **transfer register** (COMPLIANCE
+  §11–§12). 🟡 Per-purpose enforcement + marketplace payout terms (ship with payments).
+  ✅ **Accessibility** — semantics, reduce-motion/transparency. ✅ **Security** — App Check, AI key
+  proxied, full Firestore/Storage rules.
 - ✅ **Monitoring** — Crashlytics, Performance (HttpMetric), Analytics. ✅ **Offline** — Firestore
   persistence (unlimited cache) + Hive.
 

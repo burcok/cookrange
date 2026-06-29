@@ -118,14 +118,14 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
     unawaited(_runFakeStages());
 
     try {
-      if (user != null) {
-        await MealPlanRepository().getWeeklyPlan(
-          user,
-          forceRefresh: true,
-          locale: localeCode,
-        );
-      }
+      if (user == null) throw Exception('user-not-loaded');
+      final plan = await MealPlanRepository().getWeeklyPlan(
+        user,
+        forceRefresh: true,
+        locale: localeCode,
+      );
       if (!mounted) return;
+      if (plan == null) throw Exception('plan-generation-failed');
       await _finishSuccess();
     } catch (e) {
       if (!mounted) return;

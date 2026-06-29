@@ -105,6 +105,17 @@
 - **PermissionService** `permission_service.dart` — Runtime permission requests (camera/GPS/notif).
 - **ATTConsentService** `att_consent_service.dart` — iOS App Tracking Transparency (one-shot,
   `att_prompted` SharedPref key).
+- **ConsentService** `consent_service.dart` — KVKK/GDPR consent records. `watchConsents()` /
+  `getConsents()` (all purposes, unset-filled), `setConsent(purpose, granted)` (stamps
+  `kLegalPolicyVersion` + server time; Crashlytics breadcrumb), `hasConsent(purpose)` (true only if
+  granted & not stale — callers re-prompt otherwise), `recordInitialConsents({analytics, marketing})`
+  (batch-writes essentials=granted + optionals at registration). Source of truth:
+  `users/{uid}/consents/{docId}` (owner-only). Surfaced in `ConsentCenterScreen` + captured in
+  `register_screen`. See `docs/COMPLIANCE.md`.
+- **PrivacyRequestService** `privacy_request_service.dart` — DSAR channel. `submit(type, message)`
+  → `privacy_requests/{id}`; `myRequestsStream()`. Admin side via `AdminService.privacyRequestsStream`
+  / `updatePrivacyRequest` (+ audit log). Screens: `privacy_request_screen` (user),
+  `admin_privacy_requests_screen` (admin).
 
 ## Infrastructure & Utilities
 - **StorageUploadService** — Firebase Storage uploads (avatars, post/chat images).

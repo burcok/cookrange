@@ -347,7 +347,8 @@
     "intro": {
       "cta_meal_plan": "Yemek Planımı Oluştur",
       "cta_find_gym": "Yakınımdaki Spor Salonunu Bul"
-    }
+    },
+    "age_gate": "Cookrange'i kullanmak için en az 16 yaşında olmalısınız."
   },
   "auth": {
     "login": "Giriş Yap",
@@ -407,7 +408,8 @@
       "password_digit": "Şifre en az bir rakam içermelidir",
       "passwords_do_not_match": "Şifreler eşleşmiyor.",
       "invalid_email": "Lütfen geçerli bir e-posta adresi girin.",
-      "accept_agreements": "Devam etmek için lütfen sözleşmeleri kabul edin."
+      "accept_agreements": "Devam etmek için lütfen sözleşmeleri kabul edin.",
+      "accept_essential": "Devam etmek için gerekli veri rızasını kabul edin."
     },
     "agreements": {
       "prefix": "Hesap oluşturarak Cookrange'in ",
@@ -427,7 +429,13 @@
     "register": "Kayıt Ol",
     "logout_button": "Çıkış Yap",
     "delete_account_button": "Hesabı Sil",
-    "settings_title": "Ayarlar"
+    "settings_title": "Ayarlar",
+    "consent": {
+      "essential": "Cookrange'in sağlık ve fitness verilerimi işlemesine, yapay zekâ kullanmasına ve verilerimi yurt dışındaki hizmet sağlayıcılarına aktarmasına izin veriyorum — uygulamayı kullanmak için gereklidir.",
+      "optional_header": "İsteğe bağlı (Ayarlar’dan istediğiniz zaman değiştirebilirsiniz):",
+      "analytics": "Uygulamayı iyileştirmek için anonim kullanım verisi paylaş.",
+      "marketing": "Bana ürün haberleri ve teklifler gönder."
+    }
   },
   "profile": {
     "title": "Profil",
@@ -1248,7 +1256,8 @@
     "gym_app_pending": "Salon Başvurusu Beklemede",
     "coach_app_rejected": "Antrenör Başvurusu Reddedildi",
     "gym_app_rejected": "Salon Başvurusu Reddedildi",
-    "discover": "Keşfet"
+    "discover": "Keşfet",
+    "admin_privacy": "Gizlilik Talepleri"
   },
   "account_suspended": {
     "title_header": "HESAP DURUMU",
@@ -1839,7 +1848,9 @@
     "location_error": "Konumunuz alınamadı. Lütfen tekrar deneyin.",
     "toggle_map": "Harita görünümü",
     "toggle_list": "Liste görünümü",
-    "map_view_gym": "Spor Salonu"
+    "map_view_gym": "Spor Salonu",
+    "nearby_consent_title": "Yakınındaki Salonları Bul",
+    "nearby_consent_rationale": "Cookrange, konumunu yalnızca salonları mesafeye göre sıralamak için kullanır. Konum bilgin bu ekran için cihazında işlenir; sunucularımıza gönderilmez ve saklanmaz (KVKK / GDPR). Reddedip şehre göre aramaya devam edebilirsin."
   },
   "coach": {
     "setup_title": "Antrenör Profili Kurulumu",
@@ -2115,7 +2126,8 @@
     },
     "location": {
       "title": "Konum Erişimi",
-      "rationale": "Cookrange, GPS check-in sırasında spor salonunda olduğunuzu doğrulamak için konumunuza ihtiyaç duyar."
+      "rationale": "Cookrange, GPS check-in sırasında spor salonunda olduğunuzu doğrulamak için konumunuza ihtiyaç duyar. Konumun yalnızca check-in doğrulaması için kullanılır ve sonrasında sunucularımızda saklanmaz.",
+      "rationale_stored_note": "Konumun yalnızca check-in doğrulaması için kullanılır ve sonrasında sunucularımızda saklanmaz."
     },
     "notifications": {
       "title": "Motivasyonu Koru",
@@ -2369,7 +2381,10 @@
     "analytics_role_coach": "Antrenör",
     "analytics_role_gym": "Salon Sahibi",
     "analytics_role_premium": "Premium",
-    "analytics_top_ai_title": "Bugünkü En Çok AI Kullananlar"
+    "analytics_top_ai_title": "Bugünkü En Çok AI Kullananlar",
+    "privacy_requests": "Gizlilik Talepleri",
+    "privacy_note": "Çözüm notu (isteğe bağlı)",
+    "privacy_note_hint": "Dahili not / yapılan işlem."
   },
   "intro": {
     "skip": "Atla",
@@ -2502,5 +2517,82 @@
     "submit": "Raporu Gönder",
     "submitted": "Teşekkürler. Raporunuz iletildi.",
     "error": "Rapor gönderilemedi. Lütfen tekrar deneyin."
+  },
+  "legal": {
+    "privacy_title": "Gizlilik Politikası",
+    "terms_title": "Kullanım Koşulları",
+    "kvkk_title": "KVKK Aydınlatma Metni",
+    "consent_title": "Açık Rıza Beyanı",
+    "load_error": "Bu belge yüklenemedi. Lütfen tekrar deneyin."
+  },
+  "consent": {
+    "title": "Gizlilik ve İzinler",
+    "header_title": "Kontrol sizde",
+    "header_body": "Cookrange’in verilerinizi nasıl kullandığını yönetin. Her izni dilediğiniz zaman verebilir veya geri çekebilirsiniz (KVKK / GDPR). Geri çekmek, önceden yapılan işlemeyi etkilemez.",
+    "granted": "İzin verildi",
+    "withdrawn": "İzin verilmedi",
+    "not_set": "Henüz belirlenmedi",
+    "updated_on": "Güncellendi: {date}",
+    "needs_review": "Gözden geçirin",
+    "needs_review_note": "Gizlilik koşullarımız güncellendi. Lütfen bu izni gözden geçirip onaylayın.",
+    "required_note": "Bunu kapatmak ilgili özelliği kısıtlar.",
+    "optional_note": "İsteğe bağlı.",
+    "view_documents": "Gizlilik belgelerini görüntüle",
+    "withdraw_title": "İzni geri çek?",
+    "withdraw_body": "Verilerinizi bu amaçla kullanmayı bırakacağız. İstediğiniz zaman yeniden açabilirsiniz. Bazı özellikler çalışmayabilir.",
+    "confirm_withdraw": "Geri çek",
+    "saved": "Tercihiniz kaydedildi.",
+    "save_error": "Tercihiniz kaydedilemedi. Lütfen tekrar deneyin.",
+    "purpose": {
+      "health_data_title": "Sağlık ve fitness verileri",
+      "health_data_desc": "Öğün planı, tarif ve analizleri kişiselleştirmek için vücut ölçülerinizi, alerjilerinizi, beslenme bilgilerinizi ve kayıtlarınızı kullanma.",
+      "location_title": "Konum",
+      "location_desc": "“Yakınımdaki salonlar” ve GPS check-in için cihaz konumunuzu kullanma. Konum cihazınızda işlenir ve sunucularımızda saklanmaz.",
+      "ai_processing_title": "Yapay zekâ işleme",
+      "ai_processing_desc": "Plan, tarif ve içgörü üretmek için istemlerinizi ve ilgili profil bağlamını yapay zekâ sağlayıcımıza gönderme.",
+      "cross_border_transfer_title": "Yurt dışına veri aktarımı",
+      "cross_border_transfer_desc": "Uygulamanın çalışması için gerektiğinde Google ve OpenRouter gibi sağlayıcıların yurt dışı sunucularında işlemeye izin verme.",
+      "analytics_title": "Kullanım analizi",
+      "analytics_desc": "Anonim kullanım ve kararlılık verileriyle uygulamayı geliştirmemize yardımcı olun.",
+      "notifications_title": "Bildirimler",
+      "notifications_desc": "Onayladığınız etkinlik, hatırlatma ve güncellemeler için anlık bildirim gönderme.",
+      "marketing_title": "Pazarlama iletişimi",
+      "marketing_desc": "Ara sıra ürün haberleri ve teklifler alın. İstediğiniz zaman çıkabilirsiniz."
+    },
+    "prompt_title": "Gizliliğiniz, sizin tercihiniz",
+    "prompt_body": "Cookrange bazı verileri (sağlık bilgisi ve konum gibi) yalnızca izninizle kullanır. Gizlilik tercihlerinizi gözden geçirip belirlemek için biraz zaman ayırın. İstediğiniz zaman Ayarlar’dan değiştirebilirsiniz.",
+    "prompt_manage": "Gizlilik tercihlerini gözden geçir",
+    "prompt_later": "Daha sonra"
+  },
+  "privacy_request": {
+    "title": "Gizlilik Talepleri",
+    "intro": "Veri haklarınızı kullanın (KVKK m. 11 / GDPR m. 15–22). Anlık işlemler için verilerinizi doğrudan Ayarlar’dan dışa aktarabilir veya silebilirsiniz. Diğer her şey için aşağıdan talep oluşturun; yasal süre içinde (30 gün) yanıt veririz.",
+    "new": "Yeni talep",
+    "choose_type": "Talep türü",
+    "message_label": "Ayrıntılar",
+    "message_hint": "Talebinizi doğru şekilde işleyebilmemiz için açıklayın.",
+    "submit": "Talebi gönder",
+    "submitted": "Talep gönderildi. E-posta ile yanıt vereceğiz.",
+    "submit_error": "Talebiniz gönderilemedi. Lütfen tekrar deneyin.",
+    "my_requests": "Talepleriniz",
+    "none": "Henüz talep yok",
+    "none_desc": "Bir gizlilik talebi oluşturduğunuzda durumuyla birlikte burada görünür.",
+    "filed_on": "Oluşturuldu: {date}",
+    "type": {
+      "access": "Verilerime erişim",
+      "rectification": "Verilerimi düzelt",
+      "erasure": "Verilerimi sil",
+      "restriction": "İşlemeyi kısıtla",
+      "objection": "İşlemeye itiraz",
+      "portability": "Veri taşınabilirliği",
+      "withdraw_consent": "Rızayı geri çek",
+      "other": "Diğer"
+    },
+    "status": {
+      "pending": "Beklemede",
+      "in_progress": "İşlemde",
+      "resolved": "Çözüldü",
+      "rejected": "Reddedildi"
+    }
   }
 }

@@ -5,6 +5,7 @@ import 'package:cookrange/screens/chat/chat_list_screen.dart';
 import 'package:cookrange/screens/discover/discover_hub_screen.dart';
 import 'package:cookrange/screens/admin/admin_panel_screen.dart';
 import 'package:cookrange/screens/admin/admin_reports_screen.dart';
+import 'package:cookrange/screens/admin/admin_privacy_requests_screen.dart';
 import '../../core/services/admin_service.dart';
 import 'package:cookrange/screens/coach/coach_clients_screen.dart';
 import 'package:cookrange/screens/coach/coach_dashboard_screen.dart';
@@ -360,6 +361,14 @@ class _AdminCard extends StatelessWidget {
           isDark: isDark,
           primary: primary,
           onTap: () => onPush(const AdminReportsScreen()),
+        ),
+        _CardTile(
+          icon: Icons.gpp_good_rounded,
+          label: l10n.translate('menu.admin_privacy'),
+          palette: palette,
+          isDark: isDark,
+          primary: primary,
+          onTap: () => onPush(const AdminPrivacyRequestsScreen()),
         ),
         _CardDivider(palette: palette, isDark: isDark),
         // Test mode toggle

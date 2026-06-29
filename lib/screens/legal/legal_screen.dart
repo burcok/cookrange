@@ -1,19 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../core/widgets/ds/ds.dart';
 
-enum LegalDocumentType { privacyPolicy, termsOfUse }
+/// The legal documents Cookrange ships. Each maps to a pair of markdown assets
+/// under `assets/legal/<base>_<lang>.md` (en/tr), rendered by [_MarkdownView].
+enum LegalDocumentType { privacyPolicy, termsOfUse, kvkkClarification, explicitConsent }
 
+extension LegalDocumentTypeX on LegalDocumentType {
+  String get assetBase => switch (this) {
+        LegalDocumentType.privacyPolicy => 'privacy_policy',
+        LegalDocumentType.termsOfUse => 'terms_of_use',
+        LegalDocumentType.kvkkClarification => 'kvkk_aydinlatma',
+        LegalDocumentType.explicitConsent => 'explicit_consent',
+      };
+
+  String titleKey() => switch (this) {
+        LegalDocumentType.privacyPolicy => 'legal.privacy_title',
+        LegalDocumentType.termsOfUse => 'legal.terms_title',
+        LegalDocumentType.kvkkClarification => 'legal.kvkk_title',
+        LegalDocumentType.explicitConsent => 'legal.consent_title',
+      };
+}
+
+/// Renders a long-form legal document from a localized markdown asset.
+///
+/// Legal text lives in `assets/legal/` (not in the i18n JSON) so the documents
+/// can be comprehensive without bloating localization or the parity test.
 class LegalScreen extends StatelessWidget {
   final LegalDocumentType type;
 
   const LegalScreen({super.key, required this.type});
 
+  Future<String> _load(String langCode) async {
+    final lang = langCode == 'tr' ? 'tr' : 'en';
+    final path = 'assets/legal/${type.assetBase}_$lang.md';
+    try {
+      return await rootBundle.loadString(path);
+    } catch (_) {
+      // Fallback to English if the localized file is missing.
+      return rootBundle.loadString('assets/legal/${type.assetBase}_en.md');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final title = type == LegalDocumentType.privacyPolicy
-        ? 'Privacy Policy'
-        : 'Terms of Use';
+    final l10n = AppLocalizations.of(context);
+    final lang = Localizations.localeOf(context).languageCode;
 
     return Scaffold(
       backgroundColor: palette.background,
@@ -24,153 +59,244 @@ class LegalScreen extends StatelessWidget {
           icon: Icon(Icons.arrow_back, color: palette.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(title, style: AppText.of(context).titleL),
+        title: Text(l10n.translate(type.titleKey()),
+            style: AppText.of(context).titleL),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        child: DefaultTextStyle(
-          style: AppText.of(context).bodyM.copyWith(height: 1.6),
-          child: type == LegalDocumentType.privacyPolicy
-              ? _buildPrivacyPolicy(context)
-              : _buildTermsOfUse(context),
-        ),
+      body: FutureBuilder<String>(
+        future: _load(lang),
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Padding(
+              padding: EdgeInsets.all(24),
+              child: AppSkeletonList(itemCount: 8),
+            );
+          }
+          if (snap.hasError || !snap.hasData) {
+            return AppErrorState(
+              title: l10n.translate('legal.load_error'),
+            );
+          }
+          return SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(24.w, 8.h, 24.w, 40.h),
+            child: _MarkdownView(source: snap.data!),
+          );
+        },
       ),
     );
   }
+}
 
-  Widget _buildSection(String heading, String body) {
+/// Lightweight, dependency-free markdown renderer tuned for legal documents.
+/// Supports: # / ## / ### headings, - bullets, | tables |, --- rules,
+/// *italic notes*, **bold** inline spans, and paragraphs.
+class _MarkdownView extends StatelessWidget {
+  final String source;
+  const _MarkdownView({required this.source});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppText.of(context);
+    final palette = AppPalette.of(context);
+    final lines = source.replaceAll('\r\n', '\n').split('\n');
+    final widgets = <Widget>[];
+
+    final tableBuffer = <String>[];
+    void flushTable() {
+      if (tableBuffer.isEmpty) return;
+      widgets.add(_buildTable(context, List.of(tableBuffer)));
+      widgets.add(SizedBox(height: 12.h));
+      tableBuffer.clear();
+    }
+
+    for (final raw in lines) {
+      final line = raw.trimRight();
+      final trimmed = line.trim();
+
+      // Table rows accumulate until a non-table line.
+      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+        tableBuffer.add(trimmed);
+        continue;
+      } else if (tableBuffer.isNotEmpty) {
+        flushTable();
+      }
+
+      if (trimmed.isEmpty) {
+        widgets.add(SizedBox(height: 10.h));
+      } else if (trimmed == '---') {
+        widgets.add(Padding(
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+          child: Divider(color: palette.border, height: 1),
+        ));
+      } else if (trimmed.startsWith('### ')) {
+        widgets.add(_heading(context, trimmed.substring(4),
+            t.titleM.copyWith(fontWeight: FontWeight.w700), 16.h));
+      } else if (trimmed.startsWith('## ')) {
+        widgets.add(_heading(context, trimmed.substring(3),
+            t.titleL.copyWith(fontWeight: FontWeight.w800), 18.h));
+      } else if (trimmed.startsWith('# ')) {
+        widgets.add(_heading(context, trimmed.substring(2),
+            t.headlineS.copyWith(fontWeight: FontWeight.w800), 8.h));
+      } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        widgets.add(_bullet(context, trimmed.substring(2)));
+      } else if (trimmed.startsWith('*') &&
+          trimmed.endsWith('*') &&
+          !trimmed.startsWith('**')) {
+        // Italic note line.
+        widgets.add(Padding(
+          padding: EdgeInsets.only(top: 6.h),
+          child: Text(
+            trimmed.replaceAll('*', ''),
+            style: t.labelS.copyWith(
+                color: palette.textTertiary, fontStyle: FontStyle.italic),
+          ),
+        ));
+      } else {
+        widgets.add(Padding(
+          padding: EdgeInsets.only(bottom: 4.h),
+          child: RichText(
+            text: _inlineSpans(context, trimmed,
+                t.bodyM.copyWith(color: palette.textSecondary, height: 1.6)),
+          ),
+        ));
+      }
+    }
+    flushTable();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: widgets,
+    );
+  }
+
+  Widget _heading(
+      BuildContext context, String text, TextStyle style, double topGap) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
+      padding: EdgeInsets.only(top: topGap, bottom: 6.h),
+      child: Text(text,
+          style: style.copyWith(color: AppPalette.of(context).textPrimary)),
+    );
+  }
+
+  Widget _bullet(BuildContext context, String text) {
+    final t = AppText.of(context);
+    final palette = AppPalette.of(context);
+    return Padding(
+      padding: EdgeInsets.only(left: 4.w, bottom: 6.h),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            heading,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+          Padding(
+            padding: EdgeInsets.only(top: 7.h, right: 8.w),
+            child: Container(
+              width: 5.w,
+              height: 5.w,
+              decoration: BoxDecoration(
+                  color: palette.textTertiary, shape: BoxShape.circle),
             ),
           ),
-          const SizedBox(height: 6),
-          Text(body),
+          Expanded(
+            child: RichText(
+              text: _inlineSpans(context, text,
+                  t.bodyM.copyWith(color: palette.textSecondary, height: 1.6)),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildPrivacyPolicy(BuildContext context) {
-    const lastUpdated = 'Last updated: June 2026';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          lastUpdated,
-          style: TextStyle(
-            fontSize: 12,
-            color: AppPalette.of(context).textTertiary,
-          ),
-        ),
-        const SizedBox(height: 16),
-        _buildSection(
-          '1. Information We Collect',
-          'We collect information you provide when creating an account, such as your name, email address, and profile photo. We also collect data about your use of the app, including meal plans, food logs, and nutritional preferences.',
-        ),
-        _buildSection(
-          '2. How We Use Your Information',
-          'We use your information to provide personalised meal plans and nutrition tracking, improve our AI recommendations, send push notifications you have opted into, and maintain account security.',
-        ),
-        _buildSection(
-          '3. Data Storage',
-          'Your data is stored securely using Firebase (Google Cloud). Profile photos and post images are stored in Firebase Storage. Authentication is managed by Firebase Authentication.',
-        ),
-        _buildSection(
-          '4. Third-Party Services',
-          'We use the following third-party services: Firebase (Google) for authentication and data storage, OpenRouter for AI-powered meal recommendations. These services have their own privacy policies.',
-        ),
-        _buildSection(
-          '5. Data Sharing',
-          'We do not sell your personal data. Community posts you create are visible to other authenticated users. Your personal nutrition data is private and visible only to you.',
-        ),
-        _buildSection(
-          '6. Data Retention and Deletion',
-          'You can delete your account and all associated data at any time from Settings > Account > Delete Account. Upon deletion, all personal data is permanently removed from our systems within 30 days.',
-        ),
-        _buildSection(
-          '7. Children\'s Privacy',
-          'Cookrange is not intended for children under 13. We do not knowingly collect personal information from children under 13.',
-        ),
-        _buildSection(
-          '8. Changes to This Policy',
-          'We may update this Privacy Policy from time to time. We will notify you of significant changes through the app or via email.',
-        ),
-        _buildSection(
-          '9. Contact',
-          'If you have questions about this Privacy Policy, please contact us at privacy@cookrangapp.com.',
-        ),
-        const SizedBox(height: 32),
-      ],
+  Widget _buildTable(BuildContext context, List<String> rows) {
+    final t = AppText.of(context);
+    final palette = AppPalette.of(context);
+
+    List<String> cells(String row) {
+      final parts = row.split('|');
+      // Drop the empty leading/trailing segments from the outer pipes.
+      if (parts.isNotEmpty && parts.first.trim().isEmpty) parts.removeAt(0);
+      if (parts.isNotEmpty && parts.last.trim().isEmpty) {
+        parts.removeLast();
+      }
+      return parts.map((c) => c.trim()).toList();
+    }
+
+    // Skip the |---|---| separator rows.
+    final dataRows = rows
+        .where((r) => !RegExp(r'^\|[\s:\-|]+\|$').hasMatch(r))
+        .map(cells)
+        .where((c) => c.isNotEmpty)
+        .toList();
+    if (dataRows.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: EdgeInsets.only(top: 6.h),
+      decoration: BoxDecoration(
+        border: Border.all(color: palette.border),
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < dataRows.length; i++)
+            Container(
+              decoration: BoxDecoration(
+                color: i == 0
+                    ? palette.surfaceVariant
+                    : Colors.transparent,
+                border: i == dataRows.length - 1
+                    ? null
+                    : Border(
+                        bottom: BorderSide(color: palette.border, width: 0.5)),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var j = 0; j < dataRows[i].length; j++)
+                    Expanded(
+                      flex: j == 0 ? 5 : 4,
+                      child: Padding(
+                        padding: EdgeInsets.only(right: j == 0 ? 8.w : 0),
+                        child: RichText(
+                          text: _inlineSpans(
+                            context,
+                            dataRows[i][j],
+                            (i == 0 ? t.labelM : t.bodyM).copyWith(
+                              color: i == 0
+                                  ? palette.textPrimary
+                                  : palette.textSecondary,
+                              fontWeight:
+                                  i == 0 ? FontWeight.w700 : FontWeight.w400,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildTermsOfUse(BuildContext context) {
-    const lastUpdated = 'Last updated: June 2026';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          lastUpdated,
-          style: TextStyle(
-            fontSize: 12,
-            color: AppPalette.of(context).textTertiary,
-          ),
-        ),
-        const SizedBox(height: 16),
-        _buildSection(
-          '1. Acceptance of Terms',
-          'By using Cookrange, you agree to these Terms of Use. If you do not agree, please do not use the app.',
-        ),
-        _buildSection(
-          '2. Account Responsibilities',
-          'You are responsible for maintaining the confidentiality of your account credentials and for all activity that occurs under your account. You must notify us immediately of any unauthorised use.',
-        ),
-        _buildSection(
-          '3. Acceptable Use',
-          'You agree not to: post content that is harmful, offensive, or misleading; impersonate other users; attempt to access other users\' data; use the app for any illegal purpose; or interfere with the app\'s functionality.',
-        ),
-        _buildSection(
-          '4. User Content',
-          'You retain ownership of content you post (photos, recipes, posts). By posting content, you grant Cookrange a licence to display it within the app. You are responsible for ensuring your content does not infringe third-party rights.',
-        ),
-        _buildSection(
-          '5. AI-Generated Meal Plans',
-          'Meal plans and nutritional information generated by our AI are for informational purposes only and do not constitute medical or dietary advice. Consult a qualified professional before making significant dietary changes.',
-        ),
-        _buildSection(
-          '6. Nutritional Information',
-          'Nutritional data provided in the app is estimated and may vary. We make no warranty as to the accuracy of nutritional information. Always verify with original product labels.',
-        ),
-        _buildSection(
-          '7. Intellectual Property',
-          'The Cookrange name, logo, and app design are our intellectual property. You may not reproduce or distribute them without our written permission.',
-        ),
-        _buildSection(
-          '8. Termination',
-          'We reserve the right to suspend or terminate accounts that violate these terms, at our discretion and without notice.',
-        ),
-        _buildSection(
-          '9. Limitation of Liability',
-          'Cookrange is provided "as is" without warranties of any kind. We are not liable for any indirect, incidental, or consequential damages arising from your use of the app.',
-        ),
-        _buildSection(
-          '10. Changes to Terms',
-          'We may update these Terms at any time. Continued use of the app after changes constitutes acceptance of the new Terms.',
-        ),
-        _buildSection(
-          '11. Contact',
-          'Questions about these Terms? Contact us at legal@cookrangapp.com.',
-        ),
-        const SizedBox(height: 32),
-      ],
-    );
+  /// Parses **bold** spans within a line into a TextSpan tree.
+  TextSpan _inlineSpans(BuildContext context, String text, TextStyle base) {
+    final spans = <TextSpan>[];
+    final pattern = RegExp(r'\*\*(.+?)\*\*');
+    int last = 0;
+    for (final m in pattern.allMatches(text)) {
+      if (m.start > last) {
+        spans.add(TextSpan(text: text.substring(last, m.start)));
+      }
+      spans.add(TextSpan(
+        text: m.group(1),
+        style: base.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppPalette.of(context).textPrimary),
+      ));
+      last = m.end;
+    }
+    if (last < text.length) spans.add(TextSpan(text: text.substring(last)));
+    return TextSpan(style: base, children: spans);
   }
 }

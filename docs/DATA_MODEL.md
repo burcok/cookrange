@@ -29,6 +29,7 @@
 | `users/{uid}/commissions/{id}` | Affiliate/coach commissions | Read owner · create any auth · update owner · no delete |
 | `users/{uid}/payout_requests/{id}` | Payout requests | Owner only |
 | `users/{uid}/ai_twin_projections/{id}` | Saved AI fitness projections (locale-tagged) | Owner only |
+| `users/{uid}/consents/{purpose}` | KVKK/GDPR consent records (granted, policy_version, updated_at) per purpose | Owner only |
 | `users/{uid}/following/{targetUid}` | Following graph | Read any auth · create/delete owner |
 | `users/{uid}/followers/{sourceUid}` | Follower graph | Read any auth · create/delete sourceUid |
 | `users/{uid}/friends/{friendId}` | Accepted friends | Read owner · write any auth |
@@ -48,6 +49,7 @@
 | `signals/{id}` | Ephemeral social broadcasts (TTL via expiresAt) | Read any auth · create owner · delete owner |
 | `notifications/{uid}/items/{id}` | (legacy alias of user notifications) | Owner |
 | `reports/{id}` | Moderation reports | Create author only · read/update **admin backend only** |
+| `privacy_requests/{id}` | DSAR requests (uid, email, type, message, status, admin_note) | Create owner · read owner/admin · update admin · no delete |
 | `challenges/{id}` | Challenges (legacy; mostly sunset) | Read any auth · create/own |
 | `referrals/{code}` | Referral codes (owner, usedByUids, maxUses) | Read any auth · create owner · update used_by only |
 | `gyms/{id}` | Gym profiles | Read any auth · create owner · update owner/admin · delete owner |
@@ -142,6 +144,13 @@
 - **ai_credit_model.dart** `AiCreditModel` (used, isPremium, resetAt, bonus; freeDailyLimit=2,
   premiumDailyLimit=20; remaining/isExhausted/usagePercent/minutesUntilReset).
 - **ai_insight_model.dart** `AiInsightModel` (accountability/riskAlert/projection/tip; riskLevel).
+- **consent_model.dart** `ConsentModel` + `ConsentPurpose` enum (healthData, location, aiProcessing,
+  crossBorderTransfer, analytics, notifications, marketing) → `users/{uid}/consents/{docId}`. Fields:
+  granted, policyVersion, updatedAt. `isUnset`, `isStale` (granted vs `kLegalPolicyVersion`).
+  Const `kLegalPolicyVersion` — bump on material legal-text change to trigger re-consent.
+- **privacy_request_model.dart** `PrivacyRequestModel` + `PrivacyRequestType` (access, rectification,
+  erasure, restriction, objection, portability, withdrawConsent, other) + `PrivacyRequestStatus`
+  (pending/inProgress/resolved/rejected) → `privacy_requests/{id}` (DSAR channel).
 - **leaderboard_entry_model.dart** `LeaderboardEntryModel` (computed) ·
   **report_model.dart** `ReportModel` → `reports/{id}` · **analytics_event.dart** `AnalyticsEvent`.
 
@@ -185,6 +194,7 @@ Add an index here for **every new query shape** (`where` + `orderBy` combos). Cu
 - **commissions**: created_at DESC · **ai_twin_projections**: locale+generatedAt DESC
 - **coach/gym_applications**: status+submittedAt DESC · applicantUid+submittedAt DESC
 - **admin_audit**: createdAt DESC · **reports**: status+timestamp DESC · **squads**: memberUids(array)+createdAt DESC
+- **privacy_requests**: uid+created_at DESC (user list) · status+created_at DESC (admin queue)
 - **following**: followedAt DESC · **users**: onboarding_data.streak DESC (leaderboard)
 
 ---

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/onboarding_provider.dart';
+import '../../../core/utils/age_gate.dart';
 import '../../../core/widgets/ds/ds.dart';
 import '../../../widgets/date_picker_modal.dart';
 import '../../../widgets/number_picker_modal.dart';
@@ -237,14 +238,28 @@ class OnboardingPageProfile extends StatelessWidget {
   }
 
   void _showDatePicker(BuildContext context, OnboardingProvider onboarding) {
+    // Age gate (KVKK/GDPR children's data): the picker cannot select a date
+    // younger than the minimum age, and we re-check defensively on selection.
+    final maxBirth = AgeGate.maxAllowedBirthDate();
+    final initial = onboarding.birthDate ??
+        (DateTime(2005, 9, 3).isAfter(maxBirth) ? maxBirth : DateTime(2005, 9, 3));
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) => DatePickerModal(
-        initialDate: onboarding.birthDate ?? DateTime(2005, 9, 3),
+        initialDate: initial,
         minDate: DateTime(1920),
-        maxDate: DateTime.now(),
-        onSelected: (date) => onboarding.setBirthDate(date),
+        maxDate: maxBirth,
+        onSelected: (date) {
+          if (AgeGate.isUnderMinimumAge(date)) {
+            AppSnackBar.warning(
+              context,
+              AppLocalizations.of(context).translate('onboarding.age_gate'),
+            );
+            return;
+          }
+          onboarding.setBirthDate(date);
+        },
       ),
     );
   }

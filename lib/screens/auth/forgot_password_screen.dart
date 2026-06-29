@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
@@ -77,101 +78,185 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     return Scaffold(
       backgroundColor: palette.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: palette.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(height: AppSpacing.lg.h),
-              Text(
-                'cookrange',
-                textAlign: TextAlign.center,
-                style: t.displayM.copyWith(
-                  fontFamily: 'Lexend',
-                  color: primary,
-                  fontWeight: FontWeight.bold,
+      body: Stack(
+        children: [
+          // Subtle brand glow
+          Positioned(
+            top: -80.h,
+            left: -60.w,
+            right: -60.w,
+            child: Container(
+              height: 240.h,
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.topCenter,
+                  colors: [primary.withValues(alpha: 0.10), Colors.transparent],
+                  radius: 0.75,
                 ),
               ),
-              SizedBox(height: AppSpacing.xxxl.h),
-              Text(
-                l10n.translate('auth.forgot_password'),
-                textAlign: TextAlign.center,
-                style: t.headlineL.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: palette.textPrimary),
-              ),
-              SizedBox(height: AppSpacing.md.h),
-              if (!_isSuccess) ...[
-                Text(
-                  l10n.translate('auth.forgot_password_desc'),
-                  textAlign: TextAlign.center,
-                  style: t.bodyL.copyWith(color: palette.textSecondary),
-                ),
-                SizedBox(height: AppSpacing.xxxl.h),
-                Text(l10n.translate('auth.email'),
-                    style: t.labelL.copyWith(color: palette.textPrimary)),
-                SizedBox(height: AppSpacing.xs.h),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  cursorColor: primary,
-                  style: t.bodyL.copyWith(color: palette.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: l10n.translate('auth.email_hint'),
-                    hintStyle: TextStyle(color: palette.textTertiary),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.input.r),
-                      borderSide: BorderSide(color: palette.border, width: 1.5),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(height: AppSpacing.md.h),
+                  // ── Inline back button ──────────────────────────────────────
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        width: 40.r,
+                        height: 40.r,
+                        decoration: BoxDecoration(
+                          color: palette.surfaceVariant.withValues(alpha: 0.6),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: palette.border),
+                        ),
+                        child: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: palette.textPrimary,
+                          size: 16.r,
+                        ),
+                      ),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.input.r),
-                      borderSide: BorderSide(color: primary, width: 2.0),
-                    ),
-                    filled: true,
-                    fillColor: palette.surfaceVariant.withValues(alpha: 0.5),
-                    contentPadding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xl.w,
-                        vertical: AppSpacing.md.h),
                   ),
-                ),
-                SizedBox(height: AppSpacing.xxl.h),
-                AppButton(
-                  label: l10n.translate('common.send'),
-                  loading: _isLoading,
-                  onPressed: _isLoading ? null : _resetPassword,
-                ),
-              ] else ...[
-                SizedBox(height: AppSpacing.xxl.h),
-                Icon(Icons.mark_email_read_rounded,
-                    size: 80.r, color: palette.success),
-                SizedBox(height: AppSpacing.xl.h),
-                Text(
-                  l10n.translate('auth.reset_link_sent'),
-                  textAlign: TextAlign.center,
-                  style: t.titleL.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: palette.textPrimary),
-                ),
-                SizedBox(height: AppSpacing.xxxl.h),
-                AppButton(
-                  label: l10n.translate('auth.back_to_login'),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ],
+                  SizedBox(height: AppSpacing.xxl.h),
+                  // ── Brand wordmark ──────────────────────────────────────────
+                  Text(
+                    'cookrange',
+                    textAlign: TextAlign.center,
+                    style: t.displayM.copyWith(
+                      fontFamily: 'Lexend',
+                      color: primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: AppSpacing.xl.h),
+                  // ── Animated content area ───────────────────────────────────
+                  AnimatedSwitcher(
+                    duration: AppMotion.normal,
+                    switchInCurve: AppMotion.decelerate,
+                    switchOutCurve: AppMotion.accelerate,
+                    transitionBuilder: (child, anim) => FadeTransition(
+                      opacity: anim,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.08),
+                          end: Offset.zero,
+                        ).animate(anim),
+                        child: child,
+                      ),
+                    ),
+                    child: _isSuccess
+                        ? _buildSuccess(palette, t, l10n)
+                        : _buildForm(palette, t, l10n),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildForm(AppPalette palette, AppText t, AppLocalizations l10n) {
+    return Column(
+      key: const ValueKey('form'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          l10n.translate('auth.forgot_password'),
+          textAlign: TextAlign.center,
+          style: t.headlineL.copyWith(
+              fontWeight: FontWeight.bold, color: palette.textPrimary),
+        ),
+        SizedBox(height: AppSpacing.sm.h),
+        Text(
+          l10n.translate('auth.forgot_password_desc'),
+          textAlign: TextAlign.center,
+          style: t.bodyL.copyWith(color: palette.textSecondary),
+        ),
+        SizedBox(height: AppSpacing.xxxl.h),
+        // Email field in a bordered card
+        AppCard(
+          bordered: true,
+          elevated: false,
+          padding: EdgeInsets.all(AppSpacing.md.r),
+          child: AppTextField(
+            controller: _emailController,
+            labelText: l10n.translate('auth.email'),
+            hintText: l10n.translate('auth.email_hint'),
+            keyboardType: TextInputType.emailAddress,
+            autofillHints: const [AutofillHints.email],
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _resetPassword(),
+            prefixIcon: Icon(
+              Icons.email_outlined,
+              color: palette.textTertiary,
+              size: AppSize.iconMd.r,
+            ),
           ),
         ),
-      ),
+        SizedBox(height: AppSpacing.xl.h),
+        AppButton(
+          label: l10n.translate('common.send'),
+          loading: _isLoading,
+          onPressed: _isLoading ? null : _resetPassword,
+        ),
+        SizedBox(height: AppSpacing.xl.h),
+      ],
+    );
+  }
+
+  Widget _buildSuccess(AppPalette palette, AppText t, AppLocalizations l10n) {
+    return Column(
+      key: const ValueKey('success'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(height: AppSpacing.md.h),
+        // Success icon with ring
+        Center(
+          child: Container(
+            width: 88.r,
+            height: 88.r,
+            decoration: BoxDecoration(
+              color: palette.success.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+              border: Border.all(
+                  color: palette.success.withValues(alpha: 0.3), width: 2),
+            ),
+            child:
+                Icon(Icons.mark_email_read_rounded, size: 42.r, color: palette.success),
+          ),
+        ),
+        SizedBox(height: AppSpacing.xl.h),
+        // Success message in a subtle card
+        AppCard(
+          bordered: true,
+          elevated: false,
+          padding: EdgeInsets.all(AppSpacing.lg.r),
+          child: Text(
+            l10n.translate('auth.reset_link_sent'),
+            textAlign: TextAlign.center,
+            style: t.bodyL.copyWith(
+                color: palette.textSecondary, height: 1.5),
+          ),
+        ),
+        SizedBox(height: AppSpacing.xl.h),
+        AppButton(
+          label: l10n.translate('auth.back_to_login'),
+          onPressed: () => Navigator.pop(context),
+        ),
+        SizedBox(height: AppSpacing.xl.h),
+      ],
     );
   }
 }

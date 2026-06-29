@@ -29,7 +29,9 @@ import '../coach/coach_dashboard_screen.dart';
 import '../gym/gym_dashboard_screen.dart';
 import '../legal/legal_screen.dart';
 import 'affiliate_earnings_screen.dart';
+import 'consent_center_screen.dart';
 import 'dietary_preferences_screen.dart';
+import 'privacy_request_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -696,6 +698,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         _buildSettingsRow(
                           context,
+                          icon: Icons.tune_rounded,
+                          iconColor: palette.success,
+                          iconBgColor: palette.isDark
+                              ? palette.success.withValues(alpha: 0.2)
+                              : palette.success.withValues(alpha: 0.15),
+                          title: appLoc.translate('consent.title'),
+                          palette: palette,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ConsentCenterScreen(),
+                            ),
+                          ),
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.gpp_good_outlined,
+                          iconColor: palette.info,
+                          iconBgColor: palette.isDark
+                              ? palette.info.withValues(alpha: 0.2)
+                              : palette.info.withValues(alpha: 0.15),
+                          title: appLoc.translate('privacy_request.title'),
+                          palette: palette,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PrivacyRequestScreen(),
+                            ),
+                          ),
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
                           icon: Icons.privacy_tip_outlined,
                           iconColor: palette.energy,
                           iconBgColor: palette.isDark
@@ -727,6 +765,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             MaterialPageRoute(
                               builder: (_) => const LegalScreen(
                                   type: LegalDocumentType.termsOfUse),
+                            ),
+                          ),
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.shield_outlined,
+                          iconColor: palette.warning,
+                          iconBgColor: palette.isDark
+                              ? palette.warning.withValues(alpha: 0.2)
+                              : palette.warning.withValues(alpha: 0.15),
+                          title: appLoc.translate('legal.kvkk_title'),
+                          palette: palette,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LegalScreen(
+                                  type: LegalDocumentType.kvkkClarification),
+                            ),
+                          ),
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.verified_user_outlined,
+                          iconColor: palette.success,
+                          iconBgColor: palette.isDark
+                              ? palette.success.withValues(alpha: 0.2)
+                              : palette.success.withValues(alpha: 0.15),
+                          title: appLoc.translate('legal.consent_title'),
+                          palette: palette,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LegalScreen(
+                                  type: LegalDocumentType.explicitConsent),
                             ),
                           ),
                           trailing: Icon(Icons.chevron_right,
