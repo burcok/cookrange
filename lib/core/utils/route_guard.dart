@@ -6,6 +6,8 @@ import '../services/auth_service.dart';
 import '../providers/user_provider.dart';
 import '../services/admin_status_service.dart';
 import '../../screens/auth/account_suspended_screen.dart';
+import '../../screens/onboarding/v2/onboarding_completion.dart';
+import '../../screens/onboarding/v2/onboarding_flow_screen.dart';
 import 'app_routes.dart';
 
 /// RouteGuard - SIMPLIFIED VERSION
@@ -100,6 +102,15 @@ class _RouteGuardState extends State<RouteGuard> {
       );
     }
 
+    // While onboarding is being finalized (account just created / logged-in
+    // completion), stay inert: render the current route and let
+    // OnboardingCompletion drive navigation to plan generation. Without this,
+    // the `authStateChanges` rebuild would redirect the register screen to
+    // onboarding before the (slow) finalize navigates. See ONBOARDING_V2 §8.
+    if (OnboardingCompletion.isFinalizing) {
+      return widget.child;
+    }
+
     // Get current user from Firebase Auth (synchronous)
     final firebaseUser = AuthService().currentUser;
     final routeName = ModalRoute.of(context)?.settings.name;
@@ -148,43 +159,48 @@ class _RouteGuardState extends State<RouteGuard> {
         _hasRedirected = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            final destination = !firebaseUser.emailVerified
-                ? AppRoutes.verifyEmail
-                : (userModel?.onboardingCompleted == true
-                    ? AppRoutes.main
-                    : (userModel?.introSeen == true
-                        ? AppRoutes.onboarding
-                        : AppRoutes.intro));
+            // Email verification is a SOFT reminder (not a hard gate) — see
+            // docs/roadmap/ONBOARDING_V2.md §3. We never block on it here.
+            // A logged-in but unfinished account finishes onboarding via the V2
+            // flow in logged-in mode (persists against its own uid).
+            final completed = userModel?.onboardingCompleted == true;
             Navigator.pushNamedAndRemoveUntil(
-                context, destination, (route) => false);
+              context,
+              completed ? AppRoutes.main : AppRoutes.onboardingV2,
+              (route) => false,
+              arguments: completed
+                  ? null
+                  : OnboardingFlowScreen.loggedInCompletionArgs,
+            );
           }
         });
       }
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // C. Email Verification Check
-    if (routeName != AppRoutes.verifyEmail) {
-      final isEmailVerified = firebaseUser.emailVerified;
-      final isVerifiedInFirestore = userModel == null || userModel.userVerified != null;
-      if (!isEmailVerified || !isVerifiedInFirestore) {
-        if (!_hasRedirected) {
-          _hasRedirected = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.pushNamedAndRemoveUntil(
-                  context, AppRoutes.verifyEmail, (route) => false);
-            }
-          });
-        }
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    // C. Hard email-verification gate. Email-auth accounts must verify before
+    //    using the app. Social-auth accounts (Google, Apple) have emailVerified=true
+    //    already, so they pass through immediately.
+    if (!firebaseUser.emailVerified &&
+        routeName != AppRoutes.verifyEmail &&
+        routeName != AppRoutes.mealPlanGeneration) {
+      if (!_hasRedirected) {
+        _hasRedirected = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, AppRoutes.verifyEmail, (route) => false);
+          }
+        });
       }
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // D. Onboarding Check (only if we have user data)
+    // D. Onboarding Check (only if we have user data). A logged-in but
+    //    unfinished account is sent to the V2 flow in logged-in mode.
     if (userModel != null &&
         !userModel.onboardingCompleted &&
-        routeName != AppRoutes.onboarding &&
+        routeName != AppRoutes.onboardingV2 &&
         routeName != AppRoutes.intro &&
         routeName != AppRoutes.mealPlanGeneration) {
       if (!_hasRedirected) {
@@ -192,11 +208,11 @@ class _RouteGuardState extends State<RouteGuard> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             Navigator.pushNamedAndRemoveUntil(
-                context,
-                userModel.introSeen
-                    ? AppRoutes.onboarding
-                    : AppRoutes.intro,
-                (route) => false);
+              context,
+              AppRoutes.onboardingV2,
+              (route) => false,
+              arguments: OnboardingFlowScreen.loggedInCompletionArgs,
+            );
           }
         });
       }

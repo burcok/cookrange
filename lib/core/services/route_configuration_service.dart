@@ -12,7 +12,6 @@ import '../../screens/auth/register_screen.dart';
 import '../../screens/home/home.dart';
 import '../../screens/auth/verify_email.dart';
 import '../../screens/auth/forgot_password_screen.dart';
-import '../../screens/onboarding/onboarding_screen.dart';
 import '../../screens/onboarding/priority_onboarding_screen.dart';
 import '../../screens/main_scaffold.dart';
 import '../../screens/chat/chat_list_screen.dart';
@@ -22,7 +21,8 @@ import '../../screens/home/meal_plan_history_screen.dart';
 import '../../screens/chat/ai_chat_screen.dart';
 import '../../screens/recipe/favorites_screen.dart';
 import '../../screens/community/user_search_screen.dart';
-import '../../screens/onboarding/intro_onboarding_screen.dart';
+import '../../screens/onboarding/v2/intro_screen.dart';
+import '../../screens/onboarding/v2/onboarding_flow_screen.dart';
 import '../../screens/onboarding/meal_plan_generation_screen.dart';
 import '../../screens/discover/discover_hub_screen.dart';
 import '../../screens/community/streak_squad_screen.dart';
@@ -47,8 +47,6 @@ class RouteConfigurationService {
       AppRoutes.main: (context) => const RouteGuard(child: MainScaffold()),
       AppRoutes.verifyEmail: (context) =>
           const RouteGuard(child: VerifyEmailScreen()),
-      AppRoutes.onboarding: (context) =>
-          const RouteGuard(child: OnboardingScreen()),
       AppRoutes.priorityOnboarding: (context) =>
           const RouteGuard(child: PriorityOnboardingScreen()),
       AppRoutes.chatList: (context) =>
@@ -71,7 +69,17 @@ class RouteConfigurationService {
           const RouteGuard(child: MealPlanHistoryScreen()),
       AppRoutes.userSearch: (context) =>
           const RouteGuard(child: UserSearchScreen()),
-      AppRoutes.intro: (context) => const IntroOnboardingScreen(),
+      // Pre-auth flow (unwrapped — no user exists yet).
+      AppRoutes.intro: (context) => const IntroScreen(),
+      AppRoutes.onboardingV2: (context) {
+        // Default entry is pre-registration. Splash / route guard / verify-email
+        // pass [loggedInCompletionArgs] when an authenticated-but-unfinished
+        // account is sent here to complete onboarding against its own uid.
+        final args = ModalRoute.of(context)?.settings.arguments;
+        final loggedIn = args is Map &&
+            args[OnboardingFlowScreen.loggedInCompletionArg] == true;
+        return OnboardingFlowScreen(loggedInCompletion: loggedIn);
+      },
       AppRoutes.discover: (context) =>
           const RouteGuard(child: DiscoverHubScreen()),
       AppRoutes.mealPlanGeneration: (context) =>

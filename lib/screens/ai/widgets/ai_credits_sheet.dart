@@ -226,14 +226,17 @@ class _SheetContentState extends State<_SheetContent> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                l10n
-                    .translate('ai.credits_daily_free')
-                    .replaceAll('{used}', '$used')
-                    .replaceAll('{limit}', '${limit + credits.bonus}'),
-                style:
-                    textTheme.labelS.copyWith(color: palette.textSecondary),
+              Flexible(
+                child: Text(
+                  l10n
+                      .translate('ai.credits_daily_free')
+                      .replaceAll('{used}', '$used')
+                      .replaceAll('{limit}', '${limit + credits.bonus}'),
+                  style:
+                      textTheme.labelS.copyWith(color: palette.textSecondary),
+                ),
               ),
+              SizedBox(width: 8.w),
               Text(
                 resetText,
                 style:
@@ -328,9 +331,20 @@ class _SheetContentState extends State<_SheetContent> {
                         .copyWith(color: palette.textSecondary),
                   ),
                   SizedBox(height: 14.h),
+                  // TODO(billing): wire to dedicated premium purchase screen once built.
                   AppButton(
                     label: l10n.translate('ai.credits_upgrade_cta'),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            l10n.translate('ai.premium_coming_soon'),
+                          ),
+                          backgroundColor: primaryColor,
+                        ),
+                      );
+                    },
                     icon: Icons.workspace_premium_rounded,
                   ),
                 ],

@@ -348,7 +348,198 @@
       "cta_meal_plan": "Yemek Planımı Oluştur",
       "cta_find_gym": "Yakınımdaki Spor Salonunu Bul"
     },
-    "age_gate": "Cookrange'i kullanmak için en az 16 yaşında olmalısınız."
+    "age_gate": "Cookrange'i kullanmak için en az 16 yaşında olmalısınız.",
+    "v2": {
+      "intro": {
+        "start": "Başla",
+        "have_account": "Zaten hesabım var",
+        "premium_badge": "Premium",
+        "features": {
+          "ai_plan": {
+            "title": "Yapay Zekâ Destekli Yemek Planları",
+            "subtitle": "Hedeflerine, damak tadına ve programına göre kişiye özel haftalık plan."
+          },
+          "scan": {
+            "title": "Anında Tara ve Takip Et",
+            "subtitle": "Barkodu ya da yemeği çek — kalori ve makroları saniyeler içinde gör."
+          },
+          "gyms": {
+            "title": "Spor Salonu Ekosistemi",
+            "subtitle": "Yakınındaki salonları keşfet, giriş yap ve topluluğunla antrenman yap."
+          },
+          "coaches": {
+            "title": "Cebinde Koçlar",
+            "subtitle": "Uzman koçları bul, programlarını takip et, hedeflerine daha hızlı ulaş."
+          },
+          "community": {
+            "title": "Seni Yükselten Topluluk",
+            "subtitle": "İlerlemeni paylaş, meydan okumalara katıl, birlikte motive ol."
+          },
+          "gym_presence": {
+            "title": "Kimler Çalışıyor Gör",
+            "subtitle": "Salonunda şu an kimin olduğunu gör, asla yalnız antrenman yapma."
+          }
+        }
+      },
+      "name": {
+        "title": "Önce tanışalım — sana nasıl hitap edelim?",
+        "subtitle": "Adını, Cookrange'i sana ait hissettirmek için kullanacağız.",
+        "hint": "Adın"
+      },
+      "goal": {
+        "title": "Ana hedefin ne, {name}?",
+        "subtitle": "Tüm planını bunun etrafında şekillendireceğiz.",
+        "options": {
+          "lose_weight": "Kilo ver",
+          "gain_weight": "Kilo al",
+          "build_muscle": "Kas yap",
+          "healthy_eating": "Daha sağlıklı beslen"
+        },
+        "gender_title": "Biyolojik cinsiyetin",
+        "gender_subtitle": "Kalori ve besin hesabını netleştirir.",
+        "why_gender": "Soruyoruz çünkü metabolizma hızı kadın ve erkek vücutlarında farklı hesaplanır — bu, hedeflerini isabetli kılar. Belirtmemeyi seçebilirsin."
+      },
+      "activity": {
+        "title": "Günlerin ne kadar hareketli, {name}?",
+        "subtitle": "Dürüst ol — az söz verip fazlasını vermeyi tercih ederiz.",
+        "motivators_title": "Seni en çok ne heyecanlandırıyor?",
+        "motivators_subtitle": "En fazla 5 tane seç — bunları hep ön planda tutacağız.",
+        "selected_count": "{count}/5 seçildi"
+      },
+      "metrics": {
+        "title": "Birkaç sayı, {name}",
+        "subtitle": "Kişisel kalori ve su hedeflerini bunlar belirler.",
+        "age_label": "Yaş",
+        "height_label": "Boy",
+        "weight_label": "Kilo"
+      },
+      "target": {
+        "title": "Hangi kilo sana doğru geliyor, {name}?",
+        "subtitle": "Hedefini belirle — güvenli ve gerçekçi bir yol çizelim.",
+        "current": "Şu an",
+        "goal": "Hedef",
+        "rate_label": "Sağlıklı tempo",
+        "weekly_rate": "{kg} kg / hafta",
+        "eta_label": "Tahmini ulaşma",
+        "eta_weeks": "~{weeks} hafta",
+        "eta_date": "{date} civarı",
+        "maintain_note": "Korumak harika bir hedef — dengeni ve enerjini koruyacağız.",
+        "disclaimer": "Bunlar tahmindir, tıbbi tavsiye değildir. Sağlıklı ve kalıcı değişim kademelidir."
+      },
+      "motivation": {
+        "title": "Düşündüğünden daha yakınsın, {name}",
+        "body": "Planın; nasıl yediğine, pişirdiğine ve hareket ettiğine göre her hafta uyarlanır. Şok diyet yok — yanında bir yapay zekâ asistanıyla istikrarlı ilerleme var.",
+        "tip1": "Kişiye özel haftalık yemek planları",
+        "tip2": "Damak tadına ve programına uyum sağlar",
+        "tip3": "İhtiyacın olduğunda rehberlik"
+      },
+      "trust": {
+        "title": "Gerçekten işe yarasın diye tasarlandı, {name}",
+        "subtitle": "İnsanların sürdürdüğü bir yöntem — ve arkasındaki güvenceler.",
+        "example_label": "Temsili örnek",
+        "j1_name": "Elif",
+        "j1_goal": "Daha sağlıklı beslenme",
+        "j1_quote": "Haftalık planlar nihayet programıma uydu — yemek yapmak yük olmaktan çıktı.",
+        "j2_name": "Mert",
+        "j2_goal": "Kas yapma",
+        "j2_quote": "Net hedefler ve gerçekten sevdiğim yemekler. Koçumu da burada buldum.",
+        "j3_name": "Aylin",
+        "j3_goal": "Kilo verme",
+        "j3_quote": "Küçük ama istikrarlı değişiklikler. Topluluk beni hep diri tutuyor.",
+        "badge_science": "Bilim temelli hedefler",
+        "badge_privacy": "KVKK & GDPR uyumlu",
+        "badge_ai": "Sana uyum sağlayan yapay zekâ",
+        "examples_note": "Cookrange'in nasıl kullanıldığını gösteren temsili örnekler — kesin sonuç vaadi değildir."
+      },
+      "dietary": {
+        "title": "Kaçınmamız gereken bir şey var mı, {name}?",
+        "subtitle": "Bunları senin için oluşturduğumuz her planın dışında tutacağız.",
+        "allergies_title": "Alerjiler ve intoleranslar",
+        "restrictions_title": "Beslenme tercihleri",
+        "dislikes_title": "Tercih etmediğin yiyecekler",
+        "dislikes_hint": "Hariç tutmak için bir yiyecek ara",
+        "optional_note": "Hepsi isteğe bağlı — ama ne kadar çok paylaşırsan plan o kadar iyi olur.",
+        "add_custom": "\"{q}\" ekle"
+      },
+      "cooking": {
+        "title": "Nasıl yemek yapmayı seversin, {name}?",
+        "subtitle": "Tarifleri yeteneğine ve mutfağına göre eşleştireceğiz.",
+        "level_title": "Pişirme seviyen",
+        "equipment_title": "Mutfağında neler var?",
+        "equipment_count": "{count} seçildi"
+      },
+      "lifestyle": {
+        "title": "Ne zaman yemek yersin, {name}?",
+        "subtitle": "Hayatına uyan ritmi seç — saatleri sonra ince ayar yapabilirsin."
+      },
+      "water": {
+        "title": "Su dengeni koruyalım, {name}",
+        "subtitle": "Vücuduna ve hareketine göre günlük bir hedef öneriyoruz.",
+        "recommended": "Önerilen günlük tüketim",
+        "reminder_title": "Günlük su hatırlatıcıları",
+        "reminder_subtitle": "Gün boyu nazik hatırlatmalar, böylece asla unutmazsın.",
+        "enable": "Su içmeyi hatırlat",
+        "wake": "İlk hatırlatma",
+        "sleep": "Son hatırlatma",
+        "disclaimer": "Genel bir öneridir — ihtiyacına ve tıbbi tavsiyelere göre ayarla."
+      },
+      "household": {
+        "title": "Başka birine de yemek yapıyor musun, {name}?",
+        "subtitle": "Planlarını tüm sofraya göre ölçeklendirebiliriz.",
+        "question": "Evde başka birine de yemek yapıyor musun?",
+        "yes": "Evet, bazen",
+        "no": "Sadece kendime",
+        "note": "Harika — bunu yakında aile boyu porsiyonlar sunmak için kullanacağız."
+      },
+      "premium": {
+        "badge": "Premium",
+        "title": "Cookrange'in tamamını aç, {name}",
+        "subtitle": "Onu tamamen sana ait kılan iki dokunuş daha.",
+        "locked_requests_title": "Özel istekler",
+        "locked_requests_desc": "“Sadece yeşillik”, “tavuk ama kırmızı et yok” — yapay zekâya tam olarak ne istediğini söyle.",
+        "locked_icon_title": "Kişiye özel uygulama simgesi",
+        "locked_icon_desc": "Ana ekran simgeni tarzına göre yeniden renklendir.",
+        "benefit1": "Sınırsız yapay zekâ planı ve özel istekler",
+        "benefit2": "Barkod ve fotoğrafla yiyecek tarama",
+        "benefit3": "Salonunda kimin çalıştığını gör",
+        "benefit4": "Kişiye özel simge ve temalar",
+        "benefit5": "İstediğin zaman iptal — taahhüt yok",
+        "cta": "Premium'a Geç",
+        "free": "Ücretsiz sürümle devam et"
+      },
+      "report": {
+        "title": "İşte planın, {name}",
+        "subtitle": "Bize söylediğin her şeyden yola çıkarak hazırlandı.",
+        "bmi_title": "Vücut Kitle İndeksi",
+        "calories_title": "Günlük kalori hedefi",
+        "calories_unit": "kcal",
+        "water_title": "Günlük su",
+        "eta_title": "Hedef takvimi",
+        "macros_title": "Günlük makrolar",
+        "protein": "Protein",
+        "carbs": "Karbonhidrat",
+        "fat": "Yağ",
+        "why_title": "Cookrange neden senin için işe yarar",
+        "why1": "Hedefine, vücuduna ve damak tadına göre ayarlanmış bir plan",
+        "why2": "Sen kaydettikçe ve pişirdikçe her hafta uyarlanır",
+        "why3": "Verilerin gizli kalır — KVKK & GDPR uyumlu",
+        "disclaimer": "Verdiğin bilgilere dayalı tahminlerdir, tıbbi tavsiye değildir. Tıbbi konularda bir uzmana danış.",
+        "confirm": "Hesabımı oluştur",
+        "have_account": "Zaten hesabım var"
+      },
+      "bmi": {
+        "underweight": "Zayıf",
+        "normal": "Normal",
+        "overweight": "Fazla kilolu",
+        "obese": "Obez"
+      },
+      "units": {
+        "kg": "kg",
+        "cm": "cm",
+        "years": "yaş",
+        "ml": "ml"
+      }
+    }
   },
   "auth": {
     "login": "Giriş Yap",
@@ -988,7 +1179,14 @@
       "gym_title": "Spor Salonum",
       "gym_members": "{n} aktif üye"
     },
-    "today_summary_title": "Bugün"
+    "today_summary_title": "Bugün",
+    "verify_email": {
+      "title": "E-postanı doğrula",
+      "subtitle": "Hesabını güvene almak için adresini onayla.",
+      "action": "Tekrar gönder",
+      "sent": "Doğrulama e-postası gönderildi — gelen kutunu kontrol et.",
+      "send_failed": "Şu anda gönderilemedi. Lütfen tekrar dene."
+    }
   },
   "ai_chat": {
     "title": "Yapay Zeka Diyetisyen",
@@ -1984,7 +2182,11 @@
     "badge_rising": "YÜKSELİŞTE",
     "badge_fast_responder": "Hızlı Yanıt",
     "rate_coachmark_tip_title": "Değerlendirme Bırak",
-    "rate_coachmark_tip": "Bu antrenörle çalıştınız — deneyiminizi paylaşarak başkalarına yardımcı olun."
+    "rate_coachmark_tip": "Bu antrenörle çalıştınız — deneyiminizi paylaşarak başkalarına yardımcı olun.",
+    "location_denied": "Konum izni reddedildi. Mesafeye göre sıralamak için Ayarlar'dan etkinleştirin.",
+    "location_error": "Konumunuz alınamadı. Lütfen tekrar deneyin.",
+    "nearby_consent_title": "Yakınındaki Antrenörleri Bul",
+    "nearby_consent_rationale": "Cookrange, antrenörleri mesafeye göre sıralamak için yalnızca cihazınızdaki konumu kullanır. Konumunuz sunucularımıza gönderilmez ve depolanmaz (KVKK / GDPR)."
   },
   "ai": {
     "twin_title": "Yapay Zeka Vücut Projeksiyonu",
@@ -2043,7 +2245,8 @@
     "credits_topup_price": "Tek seferlik satın alma",
     "credits_topup_success": "Hesabınıza 10 AI kredisi eklendi!",
     "credits_topup_failed": "Satın alma başarısız. Lütfen tekrar deneyin.",
-    "credits_bonus_label": "+{count} bonus"
+    "credits_bonus_label": "+{count} bonus",
+    "premium_coming_soon": "Premium abonelik çok yakında geliyor! Hazır olduğunda sizi bilgilendireceğiz."
   },
   "ai_credits": {
     "unlimited": "Sınırsız",
@@ -2464,7 +2667,9 @@
     "filter_clear": "Filtreleri temizle",
     "sort_name": "A–Z",
     "sort_popular": "Popüler",
-    "sort_newest": "En yeni"
+    "sort_newest": "En yeni",
+    "sort_top_rated": "En Yüksek Puan",
+    "sort_near_me": "En Yakın"
   },
   "squad": {
     "title": "Seri Ekipleri",
@@ -2594,5 +2799,15 @@
       "resolved": "Çözüldü",
       "rejected": "Reddedildi"
     }
+  },
+  "water_reminder": {
+    "notif_title": "Su içme zamanı 💧",
+    "notif_body": "Bir bardak su, {liters} L hedefine giden yolda seni diri tutar.",
+    "settings_title": "Su hatırlatıcısı",
+    "settings_subtitle": "{liters} L hedefine ulaşman için uyanık olduğun saatlere nazik su içme hatırlatmaları yayarız.",
+    "settings_enable": "Günlük hatırlatmalar",
+    "settings_on": "Açık",
+    "settings_off": "Kapalı",
+    "settings_saved": "Su hatırlatıcısı güncellendi"
   }
 }

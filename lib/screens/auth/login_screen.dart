@@ -316,7 +316,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
                           HapticFeedback.selectionClick();
-                          Navigator.pushNamed(context, AppRoutes.register);
+                          Navigator.pushNamed(context, AppRoutes.onboardingV2);
                         },
                         child: Padding(
                           padding: EdgeInsets.all(AppSpacing.xs.r),

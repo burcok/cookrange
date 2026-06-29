@@ -121,8 +121,8 @@ class CoachService {
     String query, {
     String? city,
     String? district,
-    // 'display_name' | 'avg_rating' | 'client_count' | 'created_at'
-    String sortBy = 'display_name',
+    // 'avg_rating' | 'client_count' | 'created_at'
+    String sortBy = 'client_count',
     int limit = 25,
   }) async {
     try {

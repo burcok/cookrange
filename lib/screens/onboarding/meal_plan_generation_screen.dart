@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/providers/language_provider.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/models/weekly_meal_plan_model.dart';
 import '../../core/repositories/meal_plan_repository.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/utils/app_routes.dart';
@@ -41,6 +42,9 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
   int _stage = 0;
   bool _hasError = false;
   bool _done = false;
+  // Signals _runFakeStages to stop once the real generation completes so it
+  // doesn't race with _finishSuccess on the shared animation controllers.
+  bool _finishing = false;
 
   // Minimum stage durations (ms) — total ~3.5 s minimum visual time
   static const _stageDurations = [600, 700, 700, 600, 500, 400];
@@ -117,28 +121,32 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
     // Advance fake UI stages in parallel with the real network call.
     unawaited(_runFakeStages());
 
+    WeeklyMealPlanModel? plan;
     try {
       if (user == null) throw Exception('user-not-loaded');
-      final plan = await MealPlanRepository().getWeeklyPlan(
+      plan = await MealPlanRepository().getWeeklyPlan(
         user,
         forceRefresh: true,
         locale: localeCode,
       );
       if (!mounted) return;
       if (plan == null) throw Exception('plan-generation-failed');
-      await _finishSuccess();
     } catch (e) {
       if (!mounted) return;
       setState(() => _hasError = true);
       _progressCtrl.stop();
       _pulseCtrl.stop();
+      return;
     }
+    // Stop fake-stage loop before finishing so there's no concurrent controller use.
+    _finishing = true;
+    await _finishSuccess();
   }
 
   Future<void> _runFakeStages() async {
     for (int i = 0; i < _stageDurations.length - 1; i++) {
       await Future.delayed(Duration(milliseconds: _stageDurations[i]));
-      if (!mounted || _hasError) return;
+      if (!mounted || _hasError || _finishing) return;
       await _advanceStage(i + 1);
     }
   }

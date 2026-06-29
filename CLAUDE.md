@@ -156,7 +156,7 @@ lib/
 
 | Collection | Purpose |
 |---|---|
-| `users/{uid}` | User profile, public onboarding data (streak, activity_level, goals, cooking_level, etc.) |
+| `users/{uid}` | User profile, public onboarding data (streak, activity_level, goals, cooking_level, `main_goal`, `target_weight`, `water_reminder`, `cooks_for_others`, etc.) |
 | `users/{uid}/private/nutrition` | **Owner-only PII** — personal_info (height/weight/gender/birth_date), allergies, dietary_restrictions, disliked_foods, avoid_ingredients |
 | `users/{uid}/meal_plans/current` | Current weekly meal plan |
 | `users/{uid}/food_logs/{logId}` | Daily food diary entries |
@@ -211,6 +211,9 @@ lib/
 | `AdminService` (extended) | `admin_service.dart` | Added `searchUsers`, `getUsersStream`, `banUser`, `unbanUser`, `setUserRole`, `coachApplicationHistoryStream`, `gymApplicationHistoryStream`, `logAuditAction`, `auditLogStream`, `pendingCountStream` |
 | `AiCreditsSheet` | `screens/ai/widgets/ai_credits_sheet.dart` | Bottom sheet: usage bar, reset countdown, plan chip, upgrade CTA; `AiCreditsSheet.show(context, uid:, isPremium:)` |
 | `AiCreditBadge` | `screens/ai/widgets/ai_credit_badge.dart` | Tappable badge → opens `AiCreditsSheet`; live credit stream |
+| `OnboardingProjectionService` | `onboarding_projection_service.dart` | Pure Dart: BMI+band, calories/macros (reuses `CalorieCalculator`), **safe-clamped** weekly rate + ETA, recommended water. Powers onboarding pages 5 + 14 |
+| `IntroScreen` / `OnboardingFlowScreen` | `screens/onboarding/v2/` | V2 flow: Yazio-style intro carousel + 14-page host (`onboarding_scaffold.dart` chrome, `v2/widgets/onboarding_widgets.dart` controls). `OnboardingFlowScreen(loggedInCompletion:)` runs pre-registration (default) **or** logged-in completion (prefills + persists to the existing uid). See "Onboarding V2" above |
+| `OnboardingCompletion` | `screens/onboarding/v2/onboarding_completion.dart` | Shared completion tail for BOTH onboarding exits (new-account register + logged-in completion): `finalizeAndRoute` → `OnboardingProvider.persistV2Profile` + water reminder + `UserProvider` (copyWith) + route to `mealPlanGeneration`; best-effort so a write hiccup never strands the account |
 
 ### Firestore collections (Phase 12 additions)
 | Collection | Purpose |
@@ -228,6 +231,14 @@ lib/
 
 ### Profile privacy
 - `UserModel.isPrivate` (`is_private`). Non-friends viewing a private profile see only the lock card; owner + accepted friends see full. Enforced in `profile_screen.dart` (`_privacyResolved` gate + fresh re-fetch). Profile detail is UI-gated (lives on the readable user doc); `food_logs`/`meal_plans` are server-side owner-only.
+
+### Onboarding V2 (pre-registration — INVERTED flow)
+- **Onboarding now runs BEFORE registration.** Flow: `Splash → Intro carousel → [Başla] → Onboarding (14 pages, in `lib/screens/onboarding/v2/`) → [Onayla] → Register → AI meal-plan generation → Home`. Side paths: intro/report `[Zaten hesabım var]` → `OnboardingProvider.reset()` → Login; Login `[Kayıt ol]` → `AppRoutes.onboardingV2`.
+- `OnboardingProvider` accumulates everything **in-memory (no uid)**; the shared tail `OnboardingCompletion.finalizeAndRoute` (`v2/onboarding_completion.dart`) persists it — public `onboarding_data` + private nutrition + `displayName` + `onboarding_completed:true` via `OnboardingProvider.persistV2Profile` (all best-effort) — schedules the water reminder, repopulates `UserProvider` (built via `copyWith`, since `persistV2Profile` writes through `FirestoreService` and does **not** invalidate the `AuthService` cache → a refetch could be stale), and routes to `mealPlanGeneration`. Two callers: `register_screen._completeV2Onboarding` (new account; also records consents) and the logged-in completion path below.
+- `AppRoutes.intro` + `AppRoutes.onboardingV2` are **unwrapped** (pre-auth, like splash). Host: `onboarding_flow_screen.dart`; shared chrome: `onboarding_scaffold.dart`; shared controls: `v2/widgets/onboarding_widgets.dart`.
+- **Email verification is a SOFT reminder**, not a hard route gate (Splash + RouteGuard no longer force `/verify_email`). New `onboarding_data` keys: `main_goal`, `target_weight`, `water_reminder{enabled,target_ml,wake,sleep}`, `cooks_for_others`.
+- **Legacy post-registration onboarding is fully removed** (`onboarding_screen.dart`, `steps/`, `screens/onboarding/widgets/`, `lib/widgets/onboarding_common_widgets.dart`, `AppRoutes.onboarding`). An already-authenticated account whose `onboarding_completed == false` (a legacy incomplete, or a V2 final-write failure) finishes in the **same V2 flow in logged-in mode**: `OnboardingFlowScreen(loggedInCompletion: true)` (route arg `OnboardingFlowScreen.loggedInCompletionArgs`) prefills from `UserProvider.user.onboardingData` (+ `displayName`), then `OnboardingCompletion` persists to the **existing uid** (no new account) and routes to `mealPlanGeneration`. Splash, RouteGuard (§B+§D), and verify-email send such accounts here; `OnboardingFlowResolver.resolve` returns only `main` (complete) or `onboardingV2` (incomplete) — the logged-out `intro`/`firstIncompleteStep` branches were dropped since the resolver only ever runs for an authenticated user.
+- New features introduced here: **water reminder** (`PushNotificationService.scheduleDailyWaterReminder` — precise, multi-time daily reminders via `timezone`/`flutter_timezone` + `zonedSchedule`, spread across the wake→sleep window; editable from **Settings → Water reminder**) and **`cooks_for_others`** flag (per-household meal scaling shelved — see `docs/roadmap/ONBOARDING_V2.md` §7).
 
 ## AI Integration
 
@@ -290,7 +301,9 @@ lib/
 All B1-B13 blockers are complete. App is in **v0.9.5 consumer-beta state**. Phase 2–3.5 are fully shipped:
 design system, food scanning, nutrition analytics, cooking mode, community, challenges, shopping list,
 settings, referral program, deep linking, ATT consent, accessibility semantics, performance RepaintBoundaries,
-GDPR data export, social sharing, and shareable fitness card. See `TODO.md` for current roadmap.
+GDPR data export, social sharing, and shareable fitness card. **Onboarding V2** (pre-registration inverted flow:
+Yazio-style intro + 14 personalized pages + water reminder + household flag) is shipped — see
+`docs/roadmap/ONBOARDING_V2.md` (incl. known follow-ups). See `TODO.md` for current roadmap.
 
 ## Running Locally
 

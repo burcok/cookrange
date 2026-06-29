@@ -14,8 +14,12 @@ import '../../core/models/food_log_model.dart';
 import '../../core/models/weekly_meal_plan_model.dart';
 import '../../core/providers/language_provider.dart';
 import '../../core/providers/user_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/admin_status_service.dart';
+import '../../core/services/auth_service.dart';
 import '../../core/services/permission_service.dart';
+import '../ai/widgets/ai_credits_sheet.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/repositories/meal_plan_repository.dart';
 import '../../core/repositories/food_log_repository.dart';
@@ -85,6 +89,9 @@ class _HomeScreenState extends State<HomeScreen>
   // Streak milestone banner — dismissed per session
   bool _streakMilestoneDismissed = false;
 
+  // Soft "verify your email" banner — dismissed per session
+  bool _emailBannerDismissed = false;
+
   // Hydration snapshot for TodaySummaryCard — read from local Hive storage
   double _waterMl = 0;
 
@@ -109,6 +116,9 @@ class _HomeScreenState extends State<HomeScreen>
       // Notification primer — shown once, 3s after home loads so it doesn't
       // compete with the initial loading experience.
       Future.delayed(const Duration(seconds: 3), _maybeRequestNotifications);
+      // If the user signalled premium intent during onboarding, surface the
+      // upgrade sheet once (account now exists, so a purchase can attach).
+      _maybeSurfacePremiumIntent();
     });
     _refreshController = AnimationController(
       vsync: this,
@@ -125,6 +135,38 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _maybeRequestNotifications() async {
     if (!mounted) return;
     await PermissionService().requestNotifications(context);
+  }
+
+  /// One-shot: if the user tapped "Get Premium" during onboarding, present the
+  /// upgrade sheet now that an account exists (intent → real purchase). The flag
+  /// is cleared regardless so it never re-fires.
+  Future<void> _maybeSurfacePremiumIntent() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!(prefs.getBool('pending_premium_intent') ?? false)) return;
+    await prefs.remove('pending_premium_intent');
+    if (!mounted) return;
+    final user = context.read<UserProvider>().user;
+    if (user == null || user.subscriptionTier.isPremiumOrAbove) return;
+    // Let the dashboard settle before presenting the sheet.
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) return;
+    await AiCreditsSheet.show(context, uid: user.uid, isPremium: false);
+  }
+
+  Future<void> _resendVerificationEmail() async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      await AuthService().sendEmailVerification();
+      if (mounted) {
+        AppSnackBar.success(
+            context, l10n.translate('home.verify_email.sent'));
+      }
+    } catch (_) {
+      if (mounted) {
+        AppSnackBar.error(
+            context, l10n.translate('home.verify_email.send_failed'));
+      }
+    }
   }
 
   void _loadWaterMl() {
@@ -505,6 +547,65 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   bool get wantKeepAlive => true;
 
+  bool get _showEmailBanner {
+    if (_emailBannerDismissed) return false;
+    final u = FirebaseAuth.instance.currentUser;
+    return u != null && !u.emailVerified;
+  }
+
+  Widget _buildEmailBanner(AppLocalizations l10n) {
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+    return Container(
+      padding: EdgeInsets.all(AppSpacing.md.r),
+      decoration: BoxDecoration(
+        color: palette.warning.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppRadius.lg.r),
+        border: Border.all(color: palette.warning.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.mark_email_unread_outlined,
+              color: palette.warning, size: AppSize.iconMd.r),
+          SizedBox(width: AppSpacing.sm.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.translate('home.verify_email.title'),
+                    style: t.labelL.copyWith(
+                        color: palette.textPrimary,
+                        fontWeight: FontWeight.w700)),
+                SizedBox(height: 2.h),
+                Text(l10n.translate('home.verify_email.subtitle'),
+                    style: t.labelM.copyWith(color: palette.textSecondary)),
+              ],
+            ),
+          ),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _resendVerificationEmail,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w),
+              child: Text(l10n.translate('home.verify_email.action'),
+                  style: t.labelM.copyWith(
+                      color: palette.warning, fontWeight: FontWeight.w700)),
+            ),
+          ),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _emailBannerDismissed = true),
+            child: Padding(
+              padding: EdgeInsets.only(left: AppSpacing.xs.w),
+              child: Icon(Icons.close_rounded,
+                  size: AppSize.iconSm.r, color: palette.textTertiary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -543,6 +644,10 @@ class _HomeScreenState extends State<HomeScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const MainHeader(),
+                  if (_showEmailBanner) ...[
+                    SizedBox(height: 16.h),
+                    _buildEmailBanner(l10n),
+                  ],
                   SizedBox(height: 32.h),
                   if (userProvider.isLoading && userProvider.user == null)
                     const AppSkeletonList()

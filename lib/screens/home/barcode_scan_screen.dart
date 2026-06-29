@@ -10,6 +10,8 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/services/barcode_lookup_service.dart';
 import '../../core/services/food_log_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 import '../../core/services/permission_service.dart';
 import '../../core/widgets/ds/ds.dart';
 
@@ -24,9 +26,9 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     with SingleTickerProviderStateMixin {
   final _lookupService = BarcodeLookupService();
   final _logService = FoodLogService();
-  final _cameraCtrl = MobileScannerController(
-    detectionSpeed: DetectionSpeed.noDuplicates,
-  );
+  // Initialized lazily after camera permission is confirmed to avoid
+  // MobileScannerController accessing camera hardware before the OS grant.
+  MobileScannerController? _cameraCtrl;
 
   bool _isLookingUp = false;
   bool _hasResult = false;
@@ -53,10 +55,27 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   }
 
   Future<void> _requestCamera() async {
-    final granted = await PermissionService().requestCamera(context);
+    // Check permission without the PermissionService primer — the scanner UI
+    // itself communicates why the camera is needed. This avoids the primer
+    // sheet/OS-dialog double-modal race that caused spurious `pop()` calls.
+    var status = await Permission.camera.status;
     if (!mounted) return;
-    if (granted) {
-      setState(() => _cameraReady = true);
+
+    if (!status.isGranted && !status.isPermanentlyDenied) {
+      status = await Permission.camera.request();
+    }
+    if (!mounted) return;
+
+    if (status.isGranted) {
+      setState(() {
+        _cameraCtrl = MobileScannerController(
+          detectionSpeed: DetectionSpeed.noDuplicates,
+        );
+        _cameraReady = true;
+      });
+    } else if (status.isPermanentlyDenied) {
+      unawaited(PermissionService().requestCamera(context)); // shows settings sheet
+      Navigator.of(context).pop();
     } else {
       Navigator.of(context).pop();
     }
@@ -65,7 +84,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   @override
   void dispose() {
     _lineAnim.dispose();
-    _cameraCtrl.dispose();
+    _cameraCtrl?.dispose();
     super.dispose();
   }
 
@@ -75,7 +94,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     if (code == null || code.isEmpty) return;
 
     unawaited(HapticFeedback.mediumImpact());
-    await _cameraCtrl.stop();
+    await _cameraCtrl?.stop();
 
     setState(() {
       _isLookingUp = true;
@@ -105,7 +124,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
         _errorMessage = e.toString();
       });
       // Resume scanning after error
-      unawaited(_cameraCtrl.start());
+      unawaited(_cameraCtrl?.start());
     }
   }
 
@@ -162,7 +181,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
       _errorMessage = null;
       _isLookingUp = false;
     });
-    unawaited(_cameraCtrl.start());
+    unawaited(_cameraCtrl?.start());
   }
 
   Future<void> _log() async {
@@ -202,7 +221,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
           // Camera view — only mounted after permission granted
           if (!_hasResult && _cameraReady)
             MobileScanner(
-              controller: _cameraCtrl,
+              controller: _cameraCtrl!,
               onDetect: _onBarcodeDetected,
             ),
           if (!_hasResult && !_cameraReady)
@@ -264,7 +283,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                   // Torch toggle (only when scanning)
                   if (!_hasResult && !_isLookingUp)
                     GestureDetector(
-                      onTap: () => unawaited(_cameraCtrl.toggleTorch()),
+                      onTap: () => unawaited(_cameraCtrl?.toggleTorch()),
                       child: Container(
                         width: 40.w,
                         height: 40.w,

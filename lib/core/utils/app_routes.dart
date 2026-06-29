@@ -5,7 +5,7 @@ class AppRoutes {
   static const String home = '/home';
   static const String main = '/main';
   static const String verifyEmail = '/verify_email';
-  static const String onboarding = '/onboarding';
+  static const String onboardingV2 = '/onboarding_v2';
   static const String priorityOnboarding = '/priority_onboarding';
   static const String chatList = '/chat_list';
   static const String chatDetail = '/chat_detail';

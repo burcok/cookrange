@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../localization/app_localizations.dart';
 import '../services/auth_service.dart';
@@ -29,6 +30,11 @@ class AuthErrorHandler {
       case 'type-error':
         return localizations.translate('auth.login_errors.type_error');
       default:
+        // In debug, surface the raw code so the real cause is visible without
+        // digging through console logs.
+        if (kDebugMode) {
+          return 'Unexpected auth error (code: ${e.code})';
+        }
         return localizations.translate('auth.login_errors.unexpected_error');
     }
   }

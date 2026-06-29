@@ -173,6 +173,14 @@ class AiCreditService {
           !data.containsKey('ai_credits_reset_at')) {
         return AiCreditModel.fresh(isPremium: isPremium);
       }
+      // Auto-reset if the day has rolled over. Fire-and-forget the write — it
+      // triggers a new snapshot which the stream delivers with fresh values.
+      final resetAtRaw = data['ai_credits_reset_at'];
+      if (resetAtRaw is Timestamp &&
+          DateTime.now().isAfter(resetAtRaw.toDate())) {
+        unawaited(_resetCredits(uid));
+        return AiCreditModel.fresh(isPremium: isPremium);
+      }
       return AiCreditModel.fromFirestore(data, isPremium: isPremium);
     });
   }

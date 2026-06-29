@@ -132,8 +132,8 @@ class AppPalette {
     energySoft: Color(0xFFCBF3EE),
     shadow: Color(0xFF1A2233),
     scrim: Color(0x99000000),
-    shimmerBase: Color(0xFFE8EAEF),
-    shimmerHighlight: Color(0xFFF6F7F9),
+    shimmerBase: Color(0xFFF0F1F6),
+    shimmerHighlight: Color(0xFFFBFCFF),
     glassFill: Color(0xB3FFFFFF),    // white 70%
     glassStroke: Color(0xBFFFFFFF),  // white 75%
     glassHighlight: Color(0x80FFFFFF), // white 50%

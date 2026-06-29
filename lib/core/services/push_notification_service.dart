@@ -3,6 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:timezone/data/latest_all.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
 
 import '../utils/app_routes.dart';
 
@@ -34,6 +37,10 @@ class PushNotificationService {
   GlobalKey<NavigatorState>? _navigatorKey;
   RemoteMessage? _pendingInitialMessage;
 
+  /// Guards one-time timezone-database initialization (required before any
+  /// [FlutterLocalNotificationsPlugin.zonedSchedule] call).
+  bool _tzInitialized = false;
+
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'cookrange_default',
     'Cookrange Notifications',
@@ -49,6 +56,10 @@ class PushNotificationService {
 
   /// Call once during app initialization.
   Future<void> initialize() async {
+    // Load the timezone database + resolve the device's local zone so exact,
+    // clock-anchored reminders (zonedSchedule) fire at the right local time.
+    await _configureLocalTimeZone();
+
     // Register background handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -109,6 +120,160 @@ class PushNotificationService {
     debugPrint(
         'PushNotificationService: permission status: ${settings.authorizationStatus}');
     await _saveToken();
+  }
+
+  // Contiguous id block reserved for the daily water reminders. Several
+  // reminders are scheduled across the user's waking window; this block lets us
+  // cancel/reschedule the whole set atomically. (Legacy single reminder used the
+  // base id 7001, so [cancelWaterReminder] also clears it.)
+  static const int _waterReminderIdBase = 7001;
+  static const int _waterReminderMaxCount = 12; // ids 7001..7012
+
+  /// Loads the IANA timezone database and pins `tz.local` to the device's zone.
+  /// Idempotent; safe to call repeatedly. Falls back to UTC on any failure so
+  /// scheduling still works (times are then interpreted in UTC).
+  Future<void> _configureLocalTimeZone() async {
+    if (_tzInitialized) return;
+    try {
+      tzdata.initializeTimeZones();
+    } catch (e) {
+      debugPrint('PushNotificationService: initializeTimeZones failed: $e');
+    }
+    var timeZoneName = 'UTC';
+    try {
+      timeZoneName = await FlutterTimezone.getLocalTimezone();
+    } catch (e) {
+      debugPrint(
+          'PushNotificationService: getLocalTimezone failed, using UTC: $e');
+    }
+    try {
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (e) {
+      debugPrint(
+          'PushNotificationService: unknown zone "$timeZoneName", using UTC: $e');
+      try {
+        tz.setLocalLocation(tz.getLocation('UTC'));
+      } catch (_) {}
+    }
+    _tzInitialized = true;
+    debugPrint('PushNotificationService: tz local = ${tz.local.name}');
+  }
+
+  /// Schedules several daily hydration reminders at precise local clock times,
+  /// evenly spread across the user's waking window ([wakeTime]–[sleepTime], each
+  /// "HH:mm"). Each reminder repeats daily ([DateTimeComponents.time]).
+  ///
+  /// Uses inexact alarms ([AndroidScheduleMode.inexactAllowWhileIdle]) so it does
+  /// NOT require the Android 13+ exact-alarm permission — minute-level precision
+  /// is unnecessary for a hydration nudge and inexact batching saves battery.
+  /// Any previously scheduled reminders (incl. the legacy single one) are
+  /// cancelled first so re-scheduling is idempotent.
+  Future<void> scheduleDailyWaterReminder({
+    required String title,
+    required String body,
+    String wakeTime = '08:00',
+    String sleepTime = '23:00',
+    int? count,
+  }) async {
+    try {
+      await _configureLocalTimeZone();
+      await cancelWaterReminder();
+
+      final times = spreadReminderTimes(wakeTime, sleepTime, count);
+      if (times.isEmpty) return;
+
+      final details = NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channel.id,
+          _channel.name,
+          channelDescription: _channel.description,
+        ),
+        iOS: const DarwinNotificationDetails(),
+      );
+
+      for (var i = 0; i < times.length; i++) {
+        await _localNotifications.zonedSchedule(
+          _waterReminderIdBase + i,
+          title,
+          body,
+          _nextInstanceOfTime(times[i].$1, times[i].$2),
+          details,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time,
+        );
+      }
+      debugPrint(
+          'scheduleDailyWaterReminder: ${times.length} reminders ($wakeTime–$sleepTime)');
+    } catch (e) {
+      debugPrint('scheduleDailyWaterReminder failed: $e');
+    }
+  }
+
+  /// Cancels every daily hydration reminder in the reserved id block (and the
+  /// legacy single reminder). Called when the user disables/edits it in settings.
+  Future<void> cancelWaterReminder() async {
+    try {
+      for (var i = 0; i < _waterReminderMaxCount; i++) {
+        await _localNotifications.cancel(_waterReminderIdBase + i);
+      }
+    } catch (e) {
+      debugPrint('cancelWaterReminder failed: $e');
+    }
+  }
+
+  /// The next future [tz.TZDateTime] matching [hour]:[minute] in the local zone.
+  /// If today's slot has already passed, rolls to tomorrow.
+  tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduled =
+        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    if (!scheduled.isAfter(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+    return scheduled;
+  }
+
+  /// Distributes reminder times evenly across the waking window. Returns a list
+  /// of (hour, minute) pairs. Handles windows that cross midnight (e.g. a night
+  /// shift: wake 22:00, sleep 06:00). The last reminder lands one segment before
+  /// [sleep] so the user is never pinged at bedtime. Duplicates are dropped.
+  ///
+  /// Pure + deterministic (no plugin/Firebase/tz access) so it is unit-tested
+  /// directly — see test/water_reminder_schedule_test.dart.
+  @visibleForTesting
+  static List<(int, int)> spreadReminderTimes(
+      String wake, String sleep, int? count) {
+    final wakeMin = _parseMinutes(wake) ?? 8 * 60;
+    var sleepMin = _parseMinutes(sleep) ?? 23 * 60;
+    if (sleepMin <= wakeMin) sleepMin += 24 * 60; // window crosses midnight
+    final window = sleepMin - wakeMin;
+    if (window <= 0) return [(wakeMin ~/ 60, wakeMin % 60)];
+
+    // ~one reminder every 2.5h, clamped to a sane range.
+    final n =
+        (count ?? (window / 150).round()).clamp(2, _waterReminderMaxCount);
+
+    final seen = <int>{};
+    final result = <(int, int)>[];
+    for (var i = 0; i < n; i++) {
+      final m = (wakeMin + (window * i ~/ n)) % (24 * 60);
+      if (seen.add(m)) result.add((m ~/ 60, m % 60));
+    }
+    return result;
+  }
+
+  /// Parses an "HH:mm" string to minutes-since-midnight, or null if malformed.
+  static int? _parseMinutes(String hhmm) {
+    final parts = hhmm.split(':');
+    if (parts.length < 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null || h < 0 || h > 23 || m < 0 || m > 59) {
+      return null;
+    }
+    return h * 60 + m;
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
@@ -175,10 +340,13 @@ class PushNotificationService {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     try {
-      await _db.collection('users').doc(uid).update({
+      // Upsert (merge) — the FCM token can be saved on app init / token refresh
+      // before the user doc exists (sign-up race), so update() would throw
+      // [cloud_firestore/not-found]. merge is safe whether or not it exists.
+      await _db.collection('users').doc(uid).set({
         'fcm_token': token,
         'fcm_token_updated_at': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('PushNotificationService: error saving token: $e');
     }

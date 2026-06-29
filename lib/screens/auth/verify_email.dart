@@ -9,6 +9,7 @@ import '../../core/providers/theme_provider.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/utils/app_routes.dart';
 import '../../core/widgets/ds/ds.dart';
+import '../onboarding/v2/onboarding_flow_screen.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   const VerifyEmailScreen({super.key});
@@ -117,14 +118,24 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           await _authService.verifyUserEmail();
           final userModel = await _authService.getUserData(reloadedUser.uid);
           final onboardingCompleted = userModel?.onboardingCompleted ?? false;
-          final introSeen = userModel?.introSeen ?? false;
           if (mounted) {
-            unawaited(Navigator.pushReplacementNamed(
-              context,
-              onboardingCompleted
-                  ? AppRoutes.home
-                  : (introSeen ? AppRoutes.onboarding : AppRoutes.intro),
-            ));
+            if (!onboardingCompleted) {
+              // Unfinished onboarding → complete it in the V2 flow in logged-in
+              // mode (persists against this account's uid).
+              unawaited(Navigator.pushReplacementNamed(
+                context,
+                AppRoutes.onboardingV2,
+                arguments: OnboardingFlowScreen.loggedInCompletionArgs,
+              ));
+            } else {
+              // Onboarding done → generate the first meal plan (same destination
+              // as OnboardingCompletion.finalizeAndRoute for social-auth users).
+              unawaited(Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.mealPlanGeneration,
+                (route) => false,
+              ));
+            }
           }
         }
       }

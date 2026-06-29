@@ -1,6 +1,8 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:async';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,6 +17,8 @@ import '../../core/utils/app_routes.dart';
 import '../../core/utils/auth_error_handler.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../legal/legal_screen.dart';
+import '../onboarding/v2/onboarding_completion.dart';
+import '../onboarding/v2/registration_handoff.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -118,14 +122,51 @@ class _RegisterScreenState extends State<RegisterScreen> {
     await prefs.setBool('consent_prompt_seen', true);
   }
 
+  /// True when this screen was reached from the V2 onboarding flow, meaning the
+  /// collected [OnboardingProvider] profile must be persisted at sign-up.
+  bool get _fromOnboarding {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    return args is Map &&
+        args[OnboardingRegistrationHandoff.fromOnboardingArg] == true;
+  }
+
+  /// Persists the in-memory V2 onboarding profile against the new account and
+  /// routes to AI meal-plan generation, skipping the (removed) legacy
+  /// post-register onboarding. Consents are recorded here because they're
+  /// captured on this screen; the shared tail — persist + water reminder +
+  /// UserProvider + navigation, all best-effort so a hiccup never strands the
+  /// new account — is reused by the logged-in completion path via
+  /// [OnboardingCompletion.finalizeAndRoute].
+  Future<void> _completeV2Onboarding(User user) async {
+    try {
+      await _recordConsents();
+    } catch (e) {
+      debugPrint('V2 onboarding: consent recording failed: $e');
+    }
+    if (!mounted) return;
+    await OnboardingCompletion.finalizeAndRoute(context, user: user);
+  }
+
   Future<void> _register() async {
     if (_isLoading || !_isFormValid()) return;
     setState(() => _isLoading = true);
+    // Guard RouteGuard against the account-creation `authStateChanges` race:
+    // set BEFORE registerWithEmail so the register screen can't be bounced to
+    // onboarding mid-flight. Cleared by finalizeAndRoute on success, or here on
+    // failure.
+    final fromOnboarding = _fromOnboarding;
+    if (fromOnboarding) OnboardingCompletion.isFinalizing = true;
+    var handedOff = false;
     try {
-      await AuthService().registerWithEmail(
+      final user = await AuthService().registerWithEmail(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
+      if (user != null && mounted && fromOnboarding) {
+        handedOff = true;
+        await _completeV2Onboarding(user);
+        return;
+      }
       await _recordConsents();
     } on AuthException catch (e) {
       if (mounted) AuthErrorHandler.showSnackBar(context, e);
@@ -134,6 +175,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) _showErrorSnack('auth.register_errors.register_error');
     } finally {
       if (mounted) setState(() => _isLoading = false);
+      if (fromOnboarding && !handedOff) {
+        OnboardingCompletion.isFinalizing = false;
+      }
     }
   }
 
@@ -147,8 +191,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     setState(() => _isLoading = true);
+    final fromOnboarding = _fromOnboarding;
+    if (fromOnboarding) OnboardingCompletion.isFinalizing = true;
+    var handedOff = false;
     try {
-      await AuthService().signInWithGoogle();
+      final user = await AuthService().signInWithGoogle();
+      if (user != null && mounted && fromOnboarding) {
+        handedOff = true;
+        await _completeV2Onboarding(user);
+        return;
+      }
       await _recordConsents();
       if (!mounted) return;
     } on AuthException catch (e) {
@@ -159,6 +211,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _showErrorSnack('auth.register_errors.register_error');
     } finally {
       if (mounted) setState(() => _isLoading = false);
+      if (fromOnboarding && !handedOff) {
+        OnboardingCompletion.isFinalizing = false;
+      }
     }
   }
 
@@ -172,8 +227,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     setState(() => _isLoading = true);
+    final fromOnboarding = _fromOnboarding;
+    if (fromOnboarding) OnboardingCompletion.isFinalizing = true;
+    var handedOff = false;
     try {
-      await AuthService().signInWithApple();
+      final user = await AuthService().signInWithApple();
+      if (user != null && mounted && fromOnboarding) {
+        handedOff = true;
+        await _completeV2Onboarding(user);
+        return;
+      }
       await _recordConsents();
       if (!mounted) return;
     } on AuthException catch (e) {
@@ -183,6 +246,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _showErrorSnack('auth.register_errors.register_error');
     } finally {
       if (mounted) setState(() => _isLoading = false);
+      if (fromOnboarding && !handedOff) {
+        OnboardingCompletion.isFinalizing = false;
+      }
     }
   }
 

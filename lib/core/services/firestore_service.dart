@@ -539,9 +539,11 @@ class FirestoreService {
     _log.info('Updating email verification for user: $uid',
         service: _serviceName);
     try {
-      await _firestore.collection('users').doc(uid).update({
+      // Upsert (merge) rather than update() so a missing/not-yet-created doc
+      // can't throw [cloud_firestore/not-found].
+      await _firestore.collection('users').doc(uid).set({
         'user_verified': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
       _log.info('Successfully updated email verification for user: $uid',
           service: _serviceName);
     } catch (e, s) {
@@ -555,9 +557,11 @@ class FirestoreService {
   Future<void> updateUserLastActiveTimestamp(String uid) async {
     _log.info('Updating last_active_at for user: $uid', service: _serviceName);
     try {
-      await _firestore.collection('users').doc(uid).update({
+      // Upsert (merge) — a presence/lifecycle write can race ahead of the
+      // user doc's creation right after sign-up; never throw not-found.
+      await _firestore.collection('users').doc(uid).set({
         'last_active_at': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
     } catch (e, s) {
       // This is a non-critical update, so we'll just log the error
       // without rethrowing to avoid any potential impact on app startup.
@@ -571,9 +575,11 @@ class FirestoreService {
     _log.info('Setting online status for user $uid to: $isOnline',
         service: _serviceName);
     try {
-      await _firestore.collection('users').doc(uid).update({
+      // Upsert (merge) — presence updates can fire before the user doc exists
+      // (sign-up race) or for an account whose doc was removed; never not-found.
+      await _firestore.collection('users').doc(uid).set({
         'is_online': isOnline,
-      });
+      }, SetOptions(merge: true));
     } catch (e, s) {
       _log.error('Error updating online status for user $uid',
           service: _serviceName, error: e, stackTrace: s);

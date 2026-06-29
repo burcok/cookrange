@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../../core/data/turkish_locations.dart';
 import '../../core/localization/app_localizations.dart';
@@ -11,6 +12,7 @@ import '../../core/models/coach_profile_model.dart';
 import '../../core/models/user_model.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/coach_service.dart';
+import '../../core/utils/haversine.dart';
 import '../../core/widgets/ds/ds.dart';
 import 'coach_dashboard_screen.dart';
 import 'coach_profile_screen.dart';
@@ -31,7 +33,13 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
   List<CoachProfileModel> _coaches = const [];
   String _query = '';
   String? _selectedCity;
-  String _sortBy = 'display_name'; // 'display_name'|'avg_rating'|'client_count'|'created_at'
+  String? _selectedDistrict;
+  String _sortBy = 'client_count'; // 'avg_rating'|'client_count'|'created_at'|'near_me'
+
+  // Near Me state
+  double? _userLat;
+  double? _userLon;
+  bool _loadingLocation = false;
 
   @override
   void initState() {
@@ -52,12 +60,32 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
       _error = false;
     });
     try {
-      final results = await CoachService().searchCoaches(
+      final firestoreSort =
+          _sortBy == 'near_me' ? 'client_count' : _sortBy;
+      var results = await CoachService().searchCoaches(
         _query,
         city: _selectedCity,
-        sortBy: _sortBy,
+        district: _selectedDistrict,
+        sortBy: firestoreSort,
       );
       if (!mounted) return;
+      // Client-side distance sort when near_me is active
+      if (_sortBy == 'near_me' &&
+          _userLat != null &&
+          _userLon != null) {
+        results = List.from(results)
+          ..sort((a, b) {
+            final da = (a.latitude != null && a.longitude != null)
+                ? haversineKm(
+                    _userLat!, _userLon!, a.latitude!, a.longitude!)
+                : double.infinity;
+            final db = (b.latitude != null && b.longitude != null)
+                ? haversineKm(
+                    _userLat!, _userLon!, b.latitude!, b.longitude!)
+                : double.infinity;
+            return da.compareTo(db);
+          });
+      }
       setState(() {
         _coaches = results;
         _loading = false;
@@ -69,6 +97,61 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
         _error = true;
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _activateNearMe() async {
+    final l10n = AppLocalizations.of(context);
+    final consent = await PermissionPrimer.show(
+      context,
+      icon: Icons.location_on_rounded,
+      iconColor: AppPalette.of(context).warning,
+      title: l10n.translate('coach.nearby_consent_title'),
+      rationale: l10n.translate('coach.nearby_consent_rationale'),
+      allowLabel: l10n.translate('permission.allow'),
+      notNowLabel: l10n.translate('permission.not_now'),
+    );
+    if (!mounted) return;
+    if (!consent) {
+      setState(() => _sortBy = 'client_count');
+      return;
+    }
+    setState(() => _loadingLocation = true);
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (!mounted) return;
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        setState(() {
+          _loadingLocation = false;
+          _sortBy = 'client_count';
+        });
+        AppSnackBar.warning(
+            context, l10n.translate('coach.location_denied'));
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.medium),
+      );
+      if (!mounted) return;
+      setState(() {
+        _userLat = pos.latitude;
+        _userLon = pos.longitude;
+        _loadingLocation = false;
+      });
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingLocation = false;
+        _sortBy = 'client_count';
+      });
+      AppSnackBar.error(
+          context, AppLocalizations.of(context).translate('coach.location_error'));
     }
   }
 
@@ -95,7 +178,7 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
   }
 
   bool get _showRankBadges =>
-      _sortBy == 'avg_rating' || _sortBy == 'client_count';
+      _sortBy == 'avg_rating' || _sortBy == 'client_count' || _sortBy == 'near_me';
 
   @override
   Widget build(BuildContext context) {
@@ -177,18 +260,27 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
               ),
               _CoachFilterBar(
                 selectedCity: _selectedCity,
+                selectedDistrict: _selectedDistrict,
                 sortBy: _sortBy,
+                loadingLocation: _loadingLocation,
                 onCityChanged: (city) {
                   setState(() {
                     _selectedCity = city;
+                    _selectedDistrict = null;
                   });
                   _load();
                 },
-                onSortChanged: (sort) {
-                  setState(() {
-                    _sortBy = sort;
-                  });
+                onDistrictChanged: (district) {
+                  setState(() => _selectedDistrict = district);
                   _load();
+                },
+                onSortChanged: (sort) {
+                  setState(() => _sortBy = sort);
+                  if (sort == 'near_me') {
+                    unawaited(_activateNearMe());
+                  } else {
+                    _load();
+                  }
                 },
                 palette: palette,
                 l10n: t,
@@ -227,7 +319,8 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
       );
     }
 
-    final showTopSection = _query.isEmpty && _selectedCity == null;
+    final showTopSection =
+        _query.isEmpty && _selectedCity == null && _selectedDistrict == null;
 
     return CustomScrollView(
       slivers: [
@@ -1078,16 +1171,22 @@ class _InlineBadge extends StatelessWidget {
 
 class _CoachFilterBar extends StatelessWidget {
   final String? selectedCity;
+  final String? selectedDistrict;
   final String sortBy;
+  final bool loadingLocation;
   final ValueChanged<String?> onCityChanged;
+  final ValueChanged<String?> onDistrictChanged;
   final ValueChanged<String> onSortChanged;
   final AppPalette palette;
   final AppLocalizations l10n;
 
   const _CoachFilterBar({
     required this.selectedCity,
+    required this.selectedDistrict,
     required this.sortBy,
+    required this.loadingLocation,
     required this.onCityChanged,
+    required this.onDistrictChanged,
     required this.onSortChanged,
     required this.palette,
     required this.l10n,
@@ -1102,6 +1201,8 @@ class _CoachFilterBar extends StatelessWidget {
         shrinkWrap: true,
         children: [
           ListTile(
+            leading: Icon(Icons.clear_rounded,
+                size: 18.r, color: palette.textTertiary),
             title: Text(l10n.translate('discovery.filter_all'),
                 style: TextStyle(color: palette.textSecondary)),
             onTap: () {
@@ -1110,15 +1211,13 @@ class _CoachFilterBar extends StatelessWidget {
             },
           ),
           ...cities.map((city) => ListTile(
-                title: Text(
-                  city,
-                  style: TextStyle(
-                    color: palette.textPrimary,
-                    fontWeight: selectedCity == city
-                        ? FontWeight.w700
-                        : FontWeight.normal,
-                  ),
-                ),
+                title: Text(city,
+                    style: TextStyle(
+                      color: palette.textPrimary,
+                      fontWeight: selectedCity == city
+                          ? FontWeight.w700
+                          : FontWeight.normal,
+                    )),
                 trailing: selectedCity == city
                     ? Icon(Icons.check_rounded,
                         color: palette.info, size: 18.r)
@@ -1133,137 +1232,301 @@ class _CoachFilterBar extends StatelessWidget {
     );
   }
 
+  void _showDistrictPicker(BuildContext context) {
+    if (selectedCity == null) return;
+    final districts = TurkishLocations.districtsOf(selectedCity!);
+    AppSheet.show(
+      context: context,
+      title: l10n.translate('discovery.filter_district'),
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          ListTile(
+            leading: Icon(Icons.clear_rounded,
+                size: 18.r, color: palette.textTertiary),
+            title: Text(l10n.translate('discovery.filter_all'),
+                style: TextStyle(color: palette.textSecondary)),
+            onTap: () {
+              Navigator.pop(context);
+              onDistrictChanged(null);
+            },
+          ),
+          ...districts.map((d) => ListTile(
+                title: Text(d,
+                    style: TextStyle(
+                      color: palette.textPrimary,
+                      fontWeight: selectedDistrict == d
+                          ? FontWeight.w700
+                          : FontWeight.normal,
+                    )),
+                trailing: selectedDistrict == d
+                    ? Icon(Icons.check_rounded,
+                        color: palette.info, size: 18.r)
+                    : null,
+                onTap: () {
+                  Navigator.pop(context);
+                  onDistrictChanged(d);
+                },
+              )),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).primaryColor;
+    final hasFilter = selectedCity != null || sortBy != 'client_count';
 
-    Widget sortChip(String value, String label) {
-      final active = sortBy == value;
-      return GestureDetector(
-        onTap: () => onSortChanged(value),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: AppText.of(context).labelS.copyWith(
-                    fontSize: 10.sp,
-                    height: 1.2,
-                    color: active ? primary : palette.textTertiary,
-                    fontWeight:
-                        active ? FontWeight.w600 : FontWeight.w400,
+    return Padding(
+      padding: EdgeInsets.only(bottom: 4.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 40.h,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+              children: [
+                // ── Location ─────────────────────────────────────────
+                _locationPill(
+                  context,
+                  icon: Icons.location_city_rounded,
+                  value: selectedCity,
+                  placeholder: l10n.translate('discovery.filter_city'),
+                  primary: primary,
+                  onTap: () => _showCityPicker(context),
+                ),
+                if (selectedCity != null) ...[
+                  SizedBox(width: 6.w),
+                  _locationPill(
+                    context,
+                    icon: Icons.map_outlined,
+                    value: selectedDistrict,
+                    placeholder:
+                        l10n.translate('discovery.filter_district'),
+                    primary: primary,
+                    onTap: () => _showDistrictPicker(context),
                   ),
+                ],
+                // ── Divider ──────────────────────────────────────────
+                SizedBox(width: 10.w),
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  indent: 6.h,
+                  endIndent: 6.h,
+                  color: palette.border,
+                ),
+                SizedBox(width: 10.w),
+                // ── Sort ─────────────────────────────────────────────
+                _sortPill(context, 'avg_rating', Icons.star_rounded,
+                    l10n.translate('discovery.sort_top_rated'), primary),
+                SizedBox(width: 6.w),
+                _sortPill(
+                    context,
+                    'client_count',
+                    Icons.local_fire_department_rounded,
+                    l10n.translate('discovery.sort_popular'),
+                    primary),
+                SizedBox(width: 6.w),
+                _sortPill(
+                    context,
+                    'created_at',
+                    Icons.new_releases_rounded,
+                    l10n.translate('discovery.sort_newest'),
+                    primary),
+                SizedBox(width: 6.w),
+                _nearMePill(context, primary),
+              ],
             ),
-            SizedBox(height: 3.h),
-            AnimatedContainer(
-              duration: AppMotion.fast,
-              width: 30.w,
-              height: 20.h,
-              decoration: BoxDecoration(
-                color: active
-                    ? primary.withValues(alpha: 0.12)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppRadius.full.r),
-                border: Border.all(
-                  color: active
-                      ? primary.withValues(alpha: 0.4)
-                      : palette.border,
-                  width: active ? 1.5 : 1,
+          ),
+          if (hasFilter)
+            Padding(
+              padding:
+                  EdgeInsets.only(left: AppSpacing.lg.w, top: 4.h, bottom: 2.h),
+              child: GestureDetector(
+                onTap: () {
+                  onCityChanged(null);
+                  onSortChanged('client_count');
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.close_rounded,
+                        size: 12.r, color: palette.textTertiary),
+                    SizedBox(width: 4.w),
+                    Text(
+                      l10n.translate('discovery.filter_clear'),
+                      style: AppText.of(context).labelS.copyWith(
+                            color: palette.textTertiary,
+                            fontSize: 11.sp,
+                          ),
+                    ),
+                  ],
                 ),
               ),
-              child: active
-                  ? Center(
-                      child: Icon(Icons.check_rounded,
-                          size: 11.r, color: primary),
-                    )
-                  : null,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _locationPill(
+    BuildContext context, {
+    required IconData icon,
+    required String? value,
+    required String placeholder,
+    required Color primary,
+    required VoidCallback onTap,
+  }) {
+    final active = value != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        height: 34.h,
+        padding: EdgeInsets.symmetric(horizontal: 10.w),
+        decoration: BoxDecoration(
+          color: active
+              ? primary.withValues(alpha: 0.1)
+              : palette.surfaceVariant,
+          borderRadius: BorderRadius.circular(AppRadius.full.r),
+          border: Border.all(
+            color: active
+                ? primary.withValues(alpha: 0.45)
+                : palette.border,
+            width: active ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 13.r,
+                color: active ? primary : palette.textSecondary),
+            SizedBox(width: 5.w),
+            Text(
+              value ?? placeholder,
+              style: AppText.of(context).labelM.copyWith(
+                    fontSize: 12.sp,
+                    color: active ? primary : palette.textSecondary,
+                    fontWeight:
+                        active ? FontWeight.w600 : FontWeight.w500,
+                  ),
+            ),
+            SizedBox(width: 4.w),
+            Icon(
+              active
+                  ? Icons.check_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+              size: 13.r,
+              color: active ? primary : palette.textTertiary,
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: 8.h),
-      child: SizedBox(
-        height: 58.h,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+  Widget _sortPill(BuildContext context, String value, IconData icon,
+      String label, Color primary) {
+    final active = sortBy == value;
+    return GestureDetector(
+      onTap: () => onSortChanged(value),
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        height: 34.h,
+        padding: EdgeInsets.symmetric(horizontal: 10.w),
+        decoration: BoxDecoration(
+          color: active
+              ? primary.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.full.r),
+          border: Border.all(
+            color: active
+                ? primary.withValues(alpha: 0.45)
+                : palette.border,
+            width: active ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            GestureDetector(
-              onTap: () => _showCityPicker(context),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    selectedCity ??
-                        l10n.translate('discovery.filter_city'),
-                    style: AppText.of(context).labelS.copyWith(
-                          fontSize: 10.sp,
-                          height: 1.2,
-                          color: selectedCity != null
-                              ? primary
-                              : palette.textTertiary,
-                          fontWeight: selectedCity != null
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
+            if (active) ...[
+              Icon(Icons.check_rounded, size: 11.r, color: primary),
+              SizedBox(width: 4.w),
+            ] else ...[
+              Icon(icon, size: 12.r, color: palette.textTertiary),
+              SizedBox(width: 4.w),
+            ],
+            Text(
+              label,
+              style: AppText.of(context).labelM.copyWith(
+                    fontSize: 12.sp,
+                    color: active ? primary : palette.textSecondary,
+                    fontWeight:
+                        active ? FontWeight.w600 : FontWeight.w500,
                   ),
-                  SizedBox(height: 3.h),
-                  AnimatedContainer(
-                    duration: AppMotion.fast,
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 10.w, vertical: 5.h),
-                    decoration: BoxDecoration(
-                      color: selectedCity != null
-                          ? primary.withValues(alpha: 0.12)
-                          : palette.surfaceVariant,
-                      borderRadius:
-                          BorderRadius.circular(AppRadius.full.r),
-                      border: Border.all(
-                        color: selectedCity != null
-                            ? primary.withValues(alpha: 0.4)
-                            : palette.border,
-                        width: selectedCity != null ? 1.5 : 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.location_city_rounded,
-                            size: 13.r,
-                            color: selectedCity != null
-                                ? primary
-                                : palette.textSecondary),
-                        SizedBox(width: 3.w),
-                        Icon(
-                          selectedCity != null
-                              ? Icons.check_rounded
-                              : Icons.keyboard_arrow_down_rounded,
-                          size: 13.r,
-                          color: selectedCity != null
-                              ? primary
-                              : palette.textTertiary,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ),
-            SizedBox(width: 8.w),
-            sortChip(
-                'display_name', l10n.translate('discovery.sort_name')),
-            SizedBox(width: 8.w),
-            sortChip(
-                'avg_rating', l10n.translate('coach.sort_top_rated')),
-            SizedBox(width: 8.w),
-            sortChip('client_count',
-                l10n.translate('coach.sort_most_active')),
-            SizedBox(width: 8.w),
-            sortChip(
-                'created_at', l10n.translate('discovery.sort_newest')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _nearMePill(BuildContext context, Color primary) {
+    final active = sortBy == 'near_me';
+    final energyColor = palette.energy;
+    return GestureDetector(
+      onTap: loadingLocation ? null : () => onSortChanged('near_me'),
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        height: 34.h,
+        padding: EdgeInsets.symmetric(horizontal: 10.w),
+        decoration: BoxDecoration(
+          color: active
+              ? energyColor.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.full.r),
+          border: Border.all(
+            color: active
+                ? energyColor.withValues(alpha: 0.45)
+                : palette.border,
+            width: active ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (loadingLocation)
+              SizedBox(
+                width: 12.r,
+                height: 12.r,
+                child: CircularProgressIndicator(
+                    strokeWidth: 1.5, color: primary),
+              )
+            else if (active) ...[
+              Icon(Icons.check_rounded,
+                  size: 11.r, color: energyColor),
+              SizedBox(width: 4.w),
+            ] else ...[
+              Icon(Icons.near_me_rounded,
+                  size: 12.r, color: palette.textTertiary),
+              SizedBox(width: 4.w),
+            ],
+            if (!loadingLocation)
+              Text(
+                l10n.translate('discovery.sort_near_me'),
+                style: AppText.of(context).labelM.copyWith(
+                      fontSize: 12.sp,
+                      color:
+                          active ? energyColor : palette.textSecondary,
+                      fontWeight:
+                          active ? FontWeight.w600 : FontWeight.w500,
+                    ),
+              ),
           ],
         ),
       ),

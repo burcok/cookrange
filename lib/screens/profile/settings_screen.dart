@@ -19,11 +19,13 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/data_export_service.dart';
 import '../../core/services/feature_gate_service.dart';
 import '../../core/services/notification_preferences_service.dart';
+import '../../core/services/permission_service.dart';
+import '../../core/services/push_notification_service.dart';
 import '../../core/services/referral_service.dart';
 import '../../core/utils/app_routes.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../admin/admin_panel_screen.dart';
-import '../onboarding/intro_onboarding_screen.dart';
+import '../onboarding/v2/intro_screen.dart';
 import '../ai/widgets/ai_credits_sheet.dart';
 import '../coach/coach_dashboard_screen.dart';
 import '../gym/gym_dashboard_screen.dart';
@@ -153,6 +155,168 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (context.mounted) {
       AppSnackBar.success(context, l10n.translate('notification_prefs.saved'));
+    }
+  }
+
+  /// Lets the user enable/disable hydration reminders and adjust the wake/sleep
+  /// window, then persists `onboarding_data.water_reminder` and reschedules (or
+  /// cancels) the precise daily local notifications via [PushNotificationService].
+  Future<void> _showWaterReminderSheet(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final userProvider = context.read<UserProvider>();
+    final uid = AuthService().currentUser?.uid;
+    if (uid == null) return;
+
+    final water = (userProvider.user?.onboardingData?['water_reminder'] as Map?)
+            ?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
+    var enabled = water['enabled'] == true;
+    final targetMl = (water['target_ml'] as num?)?.toInt();
+    var wake = water['wake'] as String? ?? '08:00';
+    var sleep = water['sleep'] as String? ?? '23:00';
+    final liters = ((targetMl ?? 2000) / 1000).toStringAsFixed(1);
+    var saving = false;
+
+    final saved = await AppSheet.show<bool>(
+      context: context,
+      title: l10n.translate('water_reminder.settings_title'),
+      child: StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final palette = AppPalette.of(ctx);
+          final t = AppText.of(ctx);
+          final primary = context.read<ThemeProvider>().primaryColor;
+
+          Future<void> pickTime(bool isWake) async {
+            final current = isWake ? wake : sleep;
+            final parts = current.split(':');
+            final picked = await showTimePicker(
+              context: ctx,
+              initialTime: TimeOfDay(
+                hour: int.tryParse(parts.first) ?? 8,
+                minute: int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0,
+              ),
+            );
+            if (picked != null) {
+              final v =
+                  '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+              setSheetState(() {
+                if (isWake) {
+                  wake = v;
+                } else {
+                  sleep = v;
+                }
+              });
+            }
+          }
+
+          Future<void> save() async {
+            setSheetState(() => saving = true);
+            // Turning the reminder on requires notification permission.
+            if (enabled) {
+              final granted =
+                  await PermissionService().requestNotifications(ctx);
+              if (!granted) {
+                setSheetState(() {
+                  enabled = false;
+                  saving = false;
+                });
+                return;
+              }
+            }
+            final map = <String, dynamic>{
+              'enabled': enabled,
+              'target_ml': targetMl,
+              'wake': wake,
+              'sleep': sleep,
+            };
+            // Nested-map merge (updateUserData uses set(merge:true), so dot
+            // notation would create a literal field — we write the sub-map).
+            await FirestoreService().updateUserData(uid, {
+              'onboarding_data': {'water_reminder': map},
+            });
+            final user = userProvider.user;
+            if (user != null) {
+              final merged = <String, dynamic>{
+                ...?user.onboardingData,
+                'water_reminder': map,
+              };
+              userProvider.setUser(user.copyWith(onboardingData: merged));
+            }
+            if (enabled) {
+              await PushNotificationService().scheduleDailyWaterReminder(
+                title: l10n.translate('water_reminder.notif_title'),
+                body: l10n.translate('water_reminder.notif_body',
+                    variables: {'liters': liters}),
+                wakeTime: wake,
+                sleepTime: sleep,
+              );
+            } else {
+              await PushNotificationService().cancelWaterReminder();
+            }
+            if (ctx.mounted) Navigator.of(ctx).pop(true);
+          }
+
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.translate('water_reminder.settings_subtitle',
+                      variables: {'liters': liters}),
+                  style: t.bodyM.copyWith(color: palette.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    l10n.translate('water_reminder.settings_enable'),
+                    style: t.titleM,
+                  ),
+                  value: enabled,
+                  activeTrackColor: primary,
+                  onChanged: (v) => setSheetState(() => enabled = v),
+                ),
+                if (enabled) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _WaterTimeField(
+                          label: l10n.translate('onboarding.v2.water.wake'),
+                          time: wake,
+                          onTap: () => pickTime(true),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _WaterTimeField(
+                          label: l10n.translate('onboarding.v2.water.sleep'),
+                          time: sleep,
+                          onTap: () => pickTime(false),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 20),
+                AppButton(
+                  label: l10n.translate('common.save'),
+                  loading: saving,
+                  onPressed: saving ? null : save,
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    if (saved == true && context.mounted) {
+      AppSnackBar.success(
+          context, l10n.translate('water_reminder.settings_saved'));
     }
   }
 
@@ -638,6 +802,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         _buildSettingsRow(
                           context,
+                          icon: Icons.water_drop_rounded,
+                          iconColor: palette.info,
+                          iconBgColor: palette.isDark
+                              ? palette.info.withValues(alpha: 0.3)
+                              : palette.info.withValues(alpha: 0.12),
+                          title:
+                              appLoc.translate('water_reminder.settings_title'),
+                          subtitle: ((userProvider.user?.onboardingData?[
+                                          'water_reminder'] as Map?)?['enabled'] ==
+                                  true)
+                              ? appLoc.translate('water_reminder.settings_on')
+                              : appLoc.translate('water_reminder.settings_off'),
+                          palette: palette,
+                          onTap: () => _showWaterReminderSheet(context),
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
                           icon: Icons.smartphone,
                           iconColor: palette.energy,
                           iconBgColor: palette.isDark
@@ -682,7 +865,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           palette: palette,
                           onTap: () => Navigator.of(context).push(
                             AppTransitions.slideRight(
-                                const IntroOnboardingScreen(isReplay: true)),
+                                const IntroScreen(isReplay: true)),
                           ),
                           trailing: Icon(Icons.chevron_right,
                               color: palette.textSecondary),
@@ -2085,6 +2268,45 @@ class _SettingsAppBar extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact tappable time field for the water-reminder settings sheet.
+class _WaterTimeField extends StatelessWidget {
+  final String label;
+  final String time;
+  final VoidCallback onTap;
+  const _WaterTimeField(
+      {required this.label, required this.time, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+    final primary = context.read<ThemeProvider>().primaryColor;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: palette.surfaceVariant,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: t.labelS.copyWith(color: palette.textTertiary)),
+            const SizedBox(height: 2),
+            Text(
+              time,
+              style:
+                  t.titleM.copyWith(color: primary, fontWeight: FontWeight.w700),
+            ),
+          ],
         ),
       ),
     );

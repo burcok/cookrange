@@ -95,15 +95,26 @@ class AuthService {
   // Get onboarding data
   Future<Map<String, dynamic>?> getOnboardingData() async {
     final String? data = _prefs.getString(_onboardingDataKey);
-    if (data == null) return null;
+    if (data == null || data.isEmpty) return null;
 
-    final mapEntries =
-        data.replaceAll('{', '').replaceAll('}', '').split(',').map((e) {
-      final parts = e.split(':');
-      return MapEntry(parts[0].trim(), parts[1].trim());
-    });
-
-    return Map<String, dynamic>.from(Map.fromEntries(mapEntries));
+    // Defensive: this legacy cache stores a Map.toString(); a naive parse can
+    // throw (RangeError) on nested/empty values. Never let it break sign-up.
+    try {
+      final mapEntries = data
+          .replaceAll('{', '')
+          .replaceAll('}', '')
+          .split(',')
+          .where((e) => e.contains(':'))
+          .map((e) {
+        final i = e.indexOf(':');
+        return MapEntry(e.substring(0, i).trim(), e.substring(i + 1).trim());
+      });
+      return Map<String, dynamic>.from(Map.fromEntries(mapEntries));
+    } catch (e) {
+      _log.warning('getOnboardingData parse failed; ignoring stale cache: $e',
+          service: _serviceName);
+      return null;
+    }
   }
 
   // Clear onboarding data

@@ -68,7 +68,7 @@ blobs (Stack behind content for depth).
 | **AppSheet** | `app_sheet.dart` | THE bottom sheet. `AppSheet.show<T>(context, child, title)`. Handle, blurred scrim, 350/260ms, safe-area + keyboard aware. A11y: opaque scrim + zero-duration on reduce settings. |
 | **AppShimmer / AppSkeleton\*** | `app_shimmer.dart` | Loading. `AppSkeletonList`, `AppSkeletonMealCard`, `AppSkeletonStatGrid`, `AppSkeletonChart`, `AppSkeletonBox`. Ambient shimmer; `ExcludeSemantics`. **No bare spinners.** |
 | **AppEmptyState** | `app_state_views.dart` | Empty. `icon`, `title`, `message`, optional `actionLabel`/`onAction`. Fade+scale entrance, `compact` mode, liveRegion. |
-| **AppErrorState** | `app_state_views.dart` | Error. `title` (**required**), `message`, `onRetry`. |
+| **AppErrorState** | `app_state_views.dart` | Error. `title` (**required**), `message`, `onRetry`. Logs to debug console in debug mode. |
 | **AppSnackBar** | `app_snackbar.dart` | Toasts. `.success/.error/.warning/.info(context, msg)` or `.show(...)` with action. Floating, colored icon, auto-hides previous. |
 | **AppTextField** | `app_text_field.dart` | Inputs. Label, hint, error, helper, password toggle, formatters, prefix/suffix, multiline. Filled bg, 1.5px→2px focus border (primary, error-aware). |
 | **AppTransitions** | `app_transitions.dart` | Route anims: `slideUp` / `slideRight` / `fade` / `fadeScale`. |

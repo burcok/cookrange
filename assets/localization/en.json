@@ -348,7 +348,198 @@
       "cta_meal_plan": "Create My Meal Plan",
       "cta_find_gym": "Find a Gym Near Me"
     },
-    "age_gate": "You must be at least 16 years old to use Cookrange."
+    "age_gate": "You must be at least 16 years old to use Cookrange.",
+    "v2": {
+      "intro": {
+        "start": "Get Started",
+        "have_account": "I already have an account",
+        "premium_badge": "Premium",
+        "features": {
+          "ai_plan": {
+            "title": "AI-Powered Meal Plans",
+            "subtitle": "A personalized weekly plan, built around your goals, tastes, and schedule."
+          },
+          "scan": {
+            "title": "Scan & Track Instantly",
+            "subtitle": "Snap a barcode or a dish — get calories and macros in seconds."
+          },
+          "gyms": {
+            "title": "A Gym Ecosystem",
+            "subtitle": "Discover gyms near you, check in, and train with your community."
+          },
+          "coaches": {
+            "title": "Coaches in Your Pocket",
+            "subtitle": "Find expert coaches, follow their programs, and reach your goals faster."
+          },
+          "community": {
+            "title": "A Community That Lifts",
+            "subtitle": "Share progress, join challenges, and stay motivated together."
+          },
+          "gym_presence": {
+            "title": "See Who's Training",
+            "subtitle": "Know who's at your gym right now and never train alone."
+          }
+        }
+      },
+      "name": {
+        "title": "First things first — what should we call you?",
+        "subtitle": "We'll use your name to make Cookrange feel like yours.",
+        "hint": "Your name"
+      },
+      "goal": {
+        "title": "What's your main goal, {name}?",
+        "subtitle": "We'll shape your whole plan around this.",
+        "options": {
+          "lose_weight": "Lose weight",
+          "gain_weight": "Gain weight",
+          "build_muscle": "Build muscle",
+          "healthy_eating": "Eat healthier"
+        },
+        "gender_title": "Your biological sex",
+        "gender_subtitle": "This sharpens your calorie and nutrient math.",
+        "why_gender": "We ask because metabolic rate is calculated differently for male and female bodies — it makes your targets accurate. You can choose not to say."
+      },
+      "activity": {
+        "title": "How active are your days, {name}?",
+        "subtitle": "Be honest — we'd rather under-promise and over-deliver.",
+        "motivators_title": "What excites you most?",
+        "motivators_subtitle": "Pick up to 5 — we'll keep these front and center.",
+        "selected_count": "{count}/5 selected"
+      },
+      "metrics": {
+        "title": "A few numbers, {name}",
+        "subtitle": "These power your personalized calorie and water targets.",
+        "age_label": "Age",
+        "height_label": "Height",
+        "weight_label": "Weight"
+      },
+      "target": {
+        "title": "What weight feels right, {name}?",
+        "subtitle": "Set your goal — we'll map a safe, realistic path.",
+        "current": "Current",
+        "goal": "Goal",
+        "rate_label": "Healthy pace",
+        "weekly_rate": "{kg} kg / week",
+        "eta_label": "Estimated to reach",
+        "eta_weeks": "~{weeks} weeks",
+        "eta_date": "around {date}",
+        "maintain_note": "Maintaining is a great goal — we'll keep you balanced and energized.",
+        "disclaimer": "These are estimates, not medical advice. Healthy, lasting change is gradual."
+      },
+      "motivation": {
+        "title": "You're closer than you think, {name}",
+        "body": "Your plan adapts every week to how you eat, cook, and move. No crash diets — just steady progress with an AI assistant in your corner.",
+        "tip1": "Personalized weekly meal plans",
+        "tip2": "Adapts to your tastes and schedule",
+        "tip3": "Guidance whenever you need it"
+      },
+      "trust": {
+        "title": "Built to actually work, {name}",
+        "subtitle": "A method people stick with — and the safeguards behind it.",
+        "example_label": "Illustrative example",
+        "j1_name": "Elif",
+        "j1_goal": "Healthier eating",
+        "j1_quote": "The weekly plans finally fit my schedule — cooking stopped feeling like a chore.",
+        "j2_name": "Mert",
+        "j2_goal": "Build muscle",
+        "j2_quote": "Clear targets and meals I actually enjoy. I found my coach right here too.",
+        "j3_name": "Aylin",
+        "j3_goal": "Lose weight",
+        "j3_quote": "Small, steady changes. The community keeps me showing up.",
+        "badge_science": "Science-based targets",
+        "badge_privacy": "KVKK & GDPR compliant",
+        "badge_ai": "AI that adapts to you",
+        "examples_note": "Representative examples of how Cookrange is used — not specific outcome promises."
+      },
+      "dietary": {
+        "title": "Anything we should avoid, {name}?",
+        "subtitle": "We'll keep these out of every plan we build for you.",
+        "allergies_title": "Allergies & intolerances",
+        "restrictions_title": "Dietary preferences",
+        "dislikes_title": "Foods you'd rather skip",
+        "dislikes_hint": "Search a food to exclude it",
+        "optional_note": "All optional — but the more you share, the better your plan.",
+        "add_custom": "Add \"{q}\""
+      },
+      "cooking": {
+        "title": "How do you like to cook, {name}?",
+        "subtitle": "We'll match recipes to your skills and kitchen.",
+        "level_title": "Your cooking level",
+        "equipment_title": "What's in your kitchen?",
+        "equipment_count": "{count} selected"
+      },
+      "lifestyle": {
+        "title": "When do you eat, {name}?",
+        "subtitle": "Pick the rhythm that fits your life — you can fine-tune the times."
+      },
+      "water": {
+        "title": "Let's keep you hydrated, {name}",
+        "subtitle": "Based on your body and activity, here's a daily target.",
+        "recommended": "Recommended daily intake",
+        "reminder_title": "Daily water reminders",
+        "reminder_subtitle": "Gentle nudges through the day so you never forget.",
+        "enable": "Remind me to drink water",
+        "wake": "First reminder",
+        "sleep": "Last reminder",
+        "disclaimer": "A general guideline — adjust to your needs and any medical advice."
+      },
+      "household": {
+        "title": "Cooking for anyone else, {name}?",
+        "subtitle": "We can size your plans for the whole table.",
+        "question": "Do you also cook for someone else at home?",
+        "yes": "Yes, sometimes",
+        "no": "Just me",
+        "note": "Great — we'll use this to offer family-sized portions soon."
+      },
+      "premium": {
+        "badge": "Premium",
+        "title": "Unlock the full Cookrange, {name}",
+        "subtitle": "Two more touches that make it truly yours.",
+        "locked_requests_title": "Custom requests",
+        "locked_requests_desc": "“Only greens”, “chicken but no red meat” — tell the AI exactly what you want.",
+        "locked_icon_title": "Personalized app icon",
+        "locked_icon_desc": "Recolor your home-screen icon to match your style.",
+        "benefit1": "Unlimited AI meal plans & custom requests",
+        "benefit2": "Barcode & photo food scanning",
+        "benefit3": "See who's training at your gym",
+        "benefit4": "Personalized app icon & themes",
+        "benefit5": "Cancel anytime — no commitment",
+        "cta": "Get Premium",
+        "free": "Continue with the free version"
+      },
+      "report": {
+        "title": "Here's your plan, {name}",
+        "subtitle": "Built from everything you told us.",
+        "bmi_title": "Body Mass Index",
+        "calories_title": "Daily calorie target",
+        "calories_unit": "kcal",
+        "water_title": "Daily water",
+        "eta_title": "Goal timeline",
+        "macros_title": "Daily macros",
+        "protein": "Protein",
+        "carbs": "Carbs",
+        "fat": "Fat",
+        "why_title": "Why Cookrange works for you",
+        "why1": "A plan tuned to your goal, body, and tastes",
+        "why2": "Adapts every week as you log and cook",
+        "why3": "Your data stays private — KVKK & GDPR compliant",
+        "disclaimer": "Estimates based on your inputs, not medical advice. Consult a professional for medical concerns.",
+        "confirm": "Create my account",
+        "have_account": "I already have an account"
+      },
+      "bmi": {
+        "underweight": "Underweight",
+        "normal": "Normal",
+        "overweight": "Overweight",
+        "obese": "Obese"
+      },
+      "units": {
+        "kg": "kg",
+        "cm": "cm",
+        "years": "yrs",
+        "ml": "ml"
+      }
+    }
   },
   "auth": {
     "login": "Login",
@@ -988,7 +1179,14 @@
       "gym_title": "My Gym",
       "gym_members": "{n} active members"
     },
-    "today_summary_title": "Today"
+    "today_summary_title": "Today",
+    "verify_email": {
+      "title": "Verify your email",
+      "subtitle": "Confirm your address to secure your account.",
+      "action": "Resend",
+      "sent": "Verification email sent — check your inbox.",
+      "send_failed": "Couldn't send right now. Please try again."
+    }
   },
   "ai_chat": {
     "title": "AI Nutritionist",
@@ -1984,7 +2182,11 @@
     "badge_rising": "RISING",
     "badge_fast_responder": "Fast Responder",
     "rate_coachmark_tip_title": "Leave a Review",
-    "rate_coachmark_tip": "You've worked with this coach — share your experience to help others."
+    "rate_coachmark_tip": "You've worked with this coach — share your experience to help others.",
+    "location_denied": "Location permission denied. Enable it in Settings to sort by distance.",
+    "location_error": "Could not get your location. Please try again.",
+    "nearby_consent_title": "Find Coaches Near You",
+    "nearby_consent_rationale": "Cookrange will use your device location only to sort coaches by distance. Your location is processed on your device and is NOT sent to or stored on our servers (KVKK / GDPR)."
   },
   "ai": {
     "twin_title": "AI Body Projection",
@@ -2043,7 +2245,8 @@
     "credits_topup_price": "One-time purchase",
     "credits_topup_success": "10 AI credits added to your account!",
     "credits_topup_failed": "Purchase failed. Please try again.",
-    "credits_bonus_label": "+{count} bonus"
+    "credits_bonus_label": "+{count} bonus",
+    "premium_coming_soon": "Premium subscription is coming soon! We'll notify you when it's available."
   },
   "ai_credits": {
     "unlimited": "Unlimited",
@@ -2464,7 +2667,9 @@
     "filter_clear": "Clear filters",
     "sort_name": "A–Z",
     "sort_popular": "Popular",
-    "sort_newest": "Newest"
+    "sort_newest": "Newest",
+    "sort_top_rated": "Highest Rated",
+    "sort_near_me": "Nearest"
   },
   "squad": {
     "title": "Streak Squads",
@@ -2594,5 +2799,15 @@
       "resolved": "Resolved",
       "rejected": "Rejected"
     }
+  },
+  "water_reminder": {
+    "notif_title": "Time to hydrate 💧",
+    "notif_body": "A glass of water keeps you on track for your {liters} L goal.",
+    "settings_title": "Water reminder",
+    "settings_subtitle": "We'll spread gentle hydration nudges across your waking hours to help you reach your {liters} L goal.",
+    "settings_enable": "Daily reminders",
+    "settings_on": "On",
+    "settings_off": "Off",
+    "settings_saved": "Water reminder updated"
   }
 }

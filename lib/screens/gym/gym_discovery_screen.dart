@@ -38,7 +38,7 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
   bool _hasMore = true;
   String? _selectedCity;
   String? _selectedDistrict;
-  String _sortBy = 'name';
+  String _sortBy = 'member_count';
 
   // Near Me state
   double? _userLat;
@@ -89,7 +89,7 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
         _query,
         city: _selectedCity,
         district: _selectedDistrict,
-        sortBy: _sortBy == 'near_me' ? 'name' : _sortBy,
+        sortBy: _sortBy == 'near_me' ? 'member_count' : _sortBy,
         startAfter: (_sortBy == 'near_me' || !more) ? null : _lastDoc,
         limit: _sortBy == 'near_me' ? 200 : 20,
       );
@@ -142,7 +142,7 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
     );
     if (!mounted) return;
     if (!consent) {
-      setState(() => _sortBy = 'name'); // revert chip; keep browsing by city
+      setState(() => _sortBy = 'member_count'); // revert chip; keep browsing by city
       return;
     }
 
@@ -160,7 +160,7 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
           permission == LocationPermission.deniedForever) {
         setState(() {
           _loadingLocation = false;
-          _sortBy = 'name'; // revert chip selection
+          _sortBy = 'member_count'; // revert chip selection
         });
         AppSnackBar.warning(
           context,
@@ -189,7 +189,7 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
       if (!mounted) return;
       setState(() {
         _loadingLocation = false;
-        _sortBy = 'name';
+        _sortBy = 'member_count';
       });
       AppSnackBar.error(
         context,
@@ -470,43 +470,60 @@ class _GymMapView extends StatelessWidget {
         )
         .toList();
 
-    return FlutterMap(
-      options: MapOptions(
-        initialCenter: center,
-        initialZoom: zoom,
-      ),
+    return Column(
       children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.cookrange_android.app',
-        ),
-        MarkerLayer(markers: gymMarkers),
-        if (hasUserPos)
-          MarkerLayer(
-            markers: [
-              Marker(
-                point: LatLng(userLat!, userLon!),
-                width: 20,
-                height: 20,
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: palette.info,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: palette.info.withValues(alpha: 0.45),
-                        blurRadius: 12,
-                        spreadRadius: 4,
-                      ),
-                    ],
-                  ),
-                ),
+        Expanded(
+          child: FlutterMap(
+            options: MapOptions(
+              initialCenter: center,
+              initialZoom: zoom,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate:
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.cookrange_android.app',
               ),
+              MarkerLayer(markers: gymMarkers),
+              if (hasUserPos)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: LatLng(userLat!, userLon!),
+                      width: 20,
+                      height: 20,
+                      child: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: palette.info,
+                          shape: BoxShape.circle,
+                          border:
+                              Border.all(color: Colors.white, width: 2.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: palette.info.withValues(alpha: 0.45),
+                              blurRadius: 12,
+                              spreadRadius: 4,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
+        ),
+        // ── Gym list panel ──────────────────────────────────────────
+        _GymMapList(
+          gyms: gyms,
+          joiningIds: joiningIds,
+          onJoin: onJoin,
+          onTap: (g) => _showGymSheet(context, g, palette, l10n),
+          palette: palette,
+          l10n: l10n,
+        ),
       ],
     );
   }
@@ -517,6 +534,7 @@ class _GymMapView extends StatelessWidget {
     AppPalette palette,
     AppLocalizations l10n,
   ) {
+    final primary = Theme.of(context).primaryColor;
     AppSheet.show(
       context: context,
       title: gym.name,
@@ -524,33 +542,60 @@ class _GymMapView extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (gym.locationDisplay.isNotEmpty)
-            Row(
-              children: [
-                Icon(Icons.location_on_rounded,
-                    size: 14, color: palette.textSecondary),
-                const SizedBox(width: 4),
-                Text(
-                  gym.locationDisplay,
-                  style: AppText.of(context)
-                      .bodyM
-                      .copyWith(color: palette.textSecondary),
-                ),
-              ],
+          // ── Info rows ─────────────────────────────────────────────
+          if (gym.address != null && gym.address!.isNotEmpty)
+            _SheetInfoRow(
+              icon: Icons.location_on_rounded,
+              text: gym.address!,
+              palette: palette,
             ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(Icons.people_rounded, size: 14, color: palette.textTertiary),
-              const SizedBox(width: 4),
-              Text(
+          if (gym.locationDisplay.isNotEmpty)
+            _SheetInfoRow(
+              icon: Icons.location_city_rounded,
+              text: gym.locationDisplay,
+              palette: palette,
+            ),
+          _SheetInfoRow(
+            icon: Icons.people_rounded,
+            text:
                 '${gym.memberCount} ${l10n.translate('gym.stat_members')}',
-                style: AppText.of(context)
-                    .bodyM
-                    .copyWith(color: palette.textTertiary),
-              ),
-            ],
+            palette: palette,
+            color: palette.textTertiary,
           ),
+          if (gym.description != null && gym.description!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              gym.description!,
+              style: AppText.of(context)
+                  .bodyM
+                  .copyWith(color: palette.textSecondary),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          if (gym.tags.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: gym.tags
+                  .take(4)
+                  .map((t) => Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: Text(t,
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: primary,
+                                fontWeight: FontWeight.w600)),
+                      ))
+                  .toList(),
+            ),
+          ],
           const SizedBox(height: 20),
           AppButton(
             label: l10n.translate('gym.map_view_gym'),
@@ -563,6 +608,178 @@ class _GymMapView extends StatelessWidget {
             },
             icon: Icons.arrow_forward_rounded,
             size: AppButtonSize.medium,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Gym map list panel ────────────────────────────────────────────────────────
+
+class _GymMapList extends StatelessWidget {
+  final List<GymModel> gyms;
+  final Set<String> joiningIds;
+  final Future<void> Function(GymModel) onJoin;
+  final void Function(GymModel) onTap;
+  final AppPalette palette;
+  final AppLocalizations l10n;
+
+  const _GymMapList({
+    required this.gyms,
+    required this.joiningIds,
+    required this.onJoin,
+    required this.onTap,
+    required this.palette,
+    required this.l10n,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (gyms.isEmpty) return const SizedBox.shrink();
+    final primary = Theme.of(context).primaryColor;
+
+    return Container(
+      height: 96,
+      decoration: BoxDecoration(
+        color: palette.surface,
+        border: Border(
+          top: BorderSide(color: palette.border),
+        ),
+      ),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        physics: const BouncingScrollPhysics(),
+        itemCount: gyms.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (ctx, i) {
+          final gym = gyms[i];
+          return GestureDetector(
+            onTap: () => onTap(gym),
+            child: Container(
+              width: 200,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: palette.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: palette.border),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: gym.logoUrl != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            child: Image.network(gym.logoUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    _initials(gym.name, primary)),
+                          )
+                        : _initials(gym.name, primary),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                gym.name,
+                                style: AppText.of(context).bodyM.copyWith(
+                                      color: palette.textPrimary,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (gym.isVerified) ...[
+                              const SizedBox(width: 3),
+                              Icon(Icons.verified_rounded,
+                                  size: 12, color: Colors.blue.shade400),
+                            ],
+                          ],
+                        ),
+                        if (gym.locationDisplay.isNotEmpty)
+                          Text(
+                            gym.locationDisplay,
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: palette.textTertiary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        Text(
+                          '${gym.memberCount} ${l10n.translate('gym.stat_members')}',
+                          style: TextStyle(
+                              fontSize: 10, color: palette.textTertiary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _initials(String name, Color primary) {
+    final init = name.isNotEmpty
+        ? name.trim().split(' ').take(2).map((w) => w[0]).join().toUpperCase()
+        : '?';
+    return Center(
+      child: Text(init,
+          style: TextStyle(
+              fontSize: 14, fontWeight: FontWeight.w800, color: primary)),
+    );
+  }
+}
+
+// ── Sheet info row helper ─────────────────────────────────────────────────────
+
+class _SheetInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final AppPalette palette;
+  final Color? color;
+
+  const _SheetInfoRow({
+    required this.icon,
+    required this.text,
+    required this.palette,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = color ?? palette.textSecondary;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, size: 14, color: textColor),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(text,
+                style: AppText.of(context).bodyM.copyWith(color: textColor)),
           ),
         ],
       ),
@@ -985,6 +1202,8 @@ class _FilterBar extends StatelessWidget {
         shrinkWrap: true,
         children: [
           ListTile(
+            leading: Icon(Icons.clear_rounded,
+                size: 18.r, color: palette.textTertiary),
             title: Text(l10n.translate('discovery.filter_all'),
                 style: TextStyle(color: palette.textSecondary)),
             onTap: () {
@@ -1024,6 +1243,8 @@ class _FilterBar extends StatelessWidget {
         shrinkWrap: true,
         children: [
           ListTile(
+            leading: Icon(Icons.clear_rounded,
+                size: 18.r, color: palette.textTertiary),
             title: Text(l10n.translate('discovery.filter_all'),
                 style: TextStyle(color: palette.textSecondary)),
             onTap: () {
@@ -1055,73 +1276,86 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasFilter = selectedCity != null || sortBy != 'name';
+    final primary = Theme.of(context).primaryColor;
+    final bool hasFilter =
+        selectedCity != null || sortBy != 'member_count';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 58.h,
+          height: 40.h,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.symmetric(horizontal: 16.w),
             children: [
-              // City chip
-              _chip(
+              // ── Location filters ─────────────────────────────────────
+              _locationPill(
                 context,
                 icon: Icons.location_city_rounded,
-                label: selectedCity ?? l10n.translate('discovery.filter_city'),
-                active: selectedCity != null,
+                value: selectedCity,
+                placeholder: l10n.translate('discovery.filter_city'),
+                primary: primary,
                 onTap: () => _showCityPicker(context),
               ),
-              SizedBox(width: 8.w),
-              // District chip (only when city is selected)
               if (selectedCity != null) ...[
-                _chip(
+                SizedBox(width: 6.w),
+                _locationPill(
                   context,
                   icon: Icons.map_outlined,
-                  label: selectedDistrict ??
-                      l10n.translate('discovery.filter_district'),
-                  active: selectedDistrict != null,
+                  value: selectedDistrict,
+                  placeholder: l10n.translate('discovery.filter_district'),
+                  primary: primary,
                   onTap: () => _showDistrictPicker(context),
                 ),
-                SizedBox(width: 8.w),
               ],
-              // Sort chips
-              _sortChip(context, 'name',
-                  l10n.translate('discovery.sort_name')),
-              SizedBox(width: 8.w),
-              _sortChip(context, 'member_count',
-                  l10n.translate('discovery.sort_popular')),
-              SizedBox(width: 8.w),
-              _sortChip(context, 'created_at',
-                  l10n.translate('discovery.sort_newest')),
-              SizedBox(width: 8.w),
-              // Near Me chip
-              _nearMeChip(context),
+              // ── Divider ──────────────────────────────────────────────
+              SizedBox(width: 10.w),
+              VerticalDivider(
+                width: 1,
+                thickness: 1,
+                indent: 6.h,
+                endIndent: 6.h,
+                color: palette.border,
+              ),
+              SizedBox(width: 10.w),
+              // ── Sort chips ───────────────────────────────────────────
+              _sortPill(context, 'avg_rating', Icons.star_rounded,
+                  l10n.translate('discovery.sort_top_rated'), primary),
+              SizedBox(width: 6.w),
+              _sortPill(context, 'member_count',
+                  Icons.local_fire_department_rounded,
+                  l10n.translate('discovery.sort_popular'), primary),
+              SizedBox(width: 6.w),
+              _sortPill(context, 'created_at', Icons.new_releases_rounded,
+                  l10n.translate('discovery.sort_newest'), primary),
+              SizedBox(width: 6.w),
+              _nearMePill(context, primary),
             ],
           ),
         ),
         if (hasFilter)
           Padding(
-            padding: EdgeInsets.only(left: 16.w, bottom: 4.h),
-            child: TextButton.icon(
-              onPressed: () {
+            padding: EdgeInsets.only(left: 16.w, top: 4.h, bottom: 2.h),
+            child: GestureDetector(
+              onTap: () {
                 onCityChanged(null);
-                onSortChanged('name');
+                onSortChanged('member_count');
               },
-              icon: Icon(Icons.clear_rounded,
-                  size: 14.r, color: palette.textTertiary),
-              label: Text(
-                l10n.translate('discovery.filter_clear'),
-                style: AppText.of(context)
-                    .labelS
-                    .copyWith(color: palette.textTertiary),
-              ),
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.close_rounded,
+                      size: 12.r, color: palette.textTertiary),
+                  SizedBox(width: 4.w),
+                  Text(
+                    l10n.translate('discovery.filter_clear'),
+                    style: AppText.of(context).labelS.copyWith(
+                          color: palette.textTertiary,
+                          fontSize: 11.sp,
+                        ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1129,173 +1363,168 @@ class _FilterBar extends StatelessWidget {
     );
   }
 
-  // Near Me chip with loading indicator support.
-  Widget _nearMeChip(BuildContext context) {
+  /// Location pill: shows placeholder + ▼ when empty; selected value + ✓ when set.
+  Widget _locationPill(
+    BuildContext context, {
+    required IconData icon,
+    required String? value,
+    required String placeholder,
+    required Color primary,
+    required VoidCallback onTap,
+  }) {
+    final active = value != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        height: 34.h,
+        padding: EdgeInsets.symmetric(horizontal: 10.w),
+        decoration: BoxDecoration(
+          color: active
+              ? primary.withValues(alpha: 0.1)
+              : palette.surfaceVariant,
+          borderRadius: BorderRadius.circular(AppRadius.full.r),
+          border: Border.all(
+            color: active
+                ? primary.withValues(alpha: 0.45)
+                : palette.border,
+            width: active ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 13.r,
+                color: active ? primary : palette.textSecondary),
+            SizedBox(width: 5.w),
+            Text(
+              value ?? placeholder,
+              style: AppText.of(context).labelM.copyWith(
+                    fontSize: 12.sp,
+                    color: active ? primary : palette.textSecondary,
+                    fontWeight:
+                        active ? FontWeight.w600 : FontWeight.w500,
+                  ),
+            ),
+            SizedBox(width: 4.w),
+            Icon(
+              active
+                  ? Icons.check_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+              size: 13.r,
+              color: active ? primary : palette.textTertiary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Sort pill: always shows full label; active = primary-tinted fill.
+  Widget _sortPill(BuildContext context, String value, IconData icon,
+      String label, Color primary) {
+    final active = sortBy == value;
+    return GestureDetector(
+      onTap: () => onSortChanged(value),
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        height: 34.h,
+        padding: EdgeInsets.symmetric(horizontal: 10.w),
+        decoration: BoxDecoration(
+          color: active
+              ? primary.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.full.r),
+          border: Border.all(
+            color: active
+                ? primary.withValues(alpha: 0.45)
+                : palette.border,
+            width: active ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (active) ...[
+              Icon(Icons.check_rounded, size: 11.r, color: primary),
+              SizedBox(width: 4.w),
+            ] else ...[
+              Icon(icon, size: 12.r, color: palette.textTertiary),
+              SizedBox(width: 4.w),
+            ],
+            Text(
+              label,
+              style: AppText.of(context).labelM.copyWith(
+                    fontSize: 12.sp,
+                    color: active ? primary : palette.textSecondary,
+                    fontWeight:
+                        active ? FontWeight.w600 : FontWeight.w500,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Near Me sort pill with location loading indicator.
+  Widget _nearMePill(BuildContext context, Color primary) {
     final active = sortBy == 'near_me';
-    final primary = Theme.of(context).primaryColor;
     final energyColor = palette.energy;
+    final activeColor = active ? energyColor : null;
+    final pillColor = activeColor ?? primary;
 
     return GestureDetector(
       onTap: loadingLocation ? null : () => onSortChanged('near_me'),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            l10n.translate('gym.sort_near_me'),
-            style: AppText.of(context).labelS.copyWith(
-                  fontSize: 10.sp,
-                  height: 1.2,
-                  color: active ? energyColor : palette.textTertiary,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                ),
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        height: 34.h,
+        padding: EdgeInsets.symmetric(horizontal: 10.w),
+        decoration: BoxDecoration(
+          color: active
+              ? energyColor.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.full.r),
+          border: Border.all(
+            color: active
+                ? energyColor.withValues(alpha: 0.45)
+                : palette.border,
+            width: active ? 1.5 : 1,
           ),
-          SizedBox(height: 3.h),
-          AnimatedContainer(
-            duration: AppMotion.fast,
-            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-            decoration: BoxDecoration(
-              color: active
-                  ? energyColor.withValues(alpha: 0.12)
-                  : palette.surfaceVariant,
-              borderRadius: BorderRadius.circular(AppRadius.full.r),
-              border: Border.all(
-                color: active
-                    ? energyColor.withValues(alpha: 0.4)
-                    : palette.border,
-                width: active ? 1.5 : 1,
-              ),
-            ),
-            child: loadingLocation
-                ? SizedBox(
-                    width: 13.r,
-                    height: 13.r,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 1.5,
-                      color: primary,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (loadingLocation)
+              SizedBox(
+                width: 12.r,
+                height: 12.r,
+                child: CircularProgressIndicator(
+                    strokeWidth: 1.5, color: pillColor),
+              )
+            else if (active) ...[
+              Icon(Icons.check_rounded,
+                  size: 11.r, color: energyColor),
+              SizedBox(width: 4.w),
+            ] else ...[
+              Icon(Icons.near_me_rounded,
+                  size: 12.r, color: palette.textTertiary),
+              SizedBox(width: 4.w),
+            ],
+            if (!loadingLocation) ...[
+              Text(
+                l10n.translate('discovery.sort_near_me'),
+                style: AppText.of(context).labelM.copyWith(
+                      fontSize: 12.sp,
+                      color: active ? energyColor : palette.textSecondary,
+                      fontWeight:
+                          active ? FontWeight.w600 : FontWeight.w500,
                     ),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.near_me_rounded,
-                        size: 13.r,
-                        color: active ? energyColor : palette.textSecondary,
-                      ),
-                      if (active) ...[
-                        SizedBox(width: 3.w),
-                        Icon(Icons.check_rounded,
-                            size: 11.r, color: energyColor),
-                      ],
-                    ],
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Label pinned above pill, centered; pill contains only the icon indicator.
-  Widget _chip(BuildContext context, {
-    required IconData icon,
-    required String label,
-    required bool active,
-    required VoidCallback onTap,
-  }) {
-    final primary = Theme.of(context).primaryColor;
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: AppText.of(context).labelS.copyWith(
-                  fontSize: 10.sp,
-                  height: 1.2,
-                  color: active ? primary : palette.textTertiary,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                ),
-          ),
-          SizedBox(height: 3.h),
-          AnimatedContainer(
-            duration: AppMotion.fast,
-            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
-            decoration: BoxDecoration(
-              color: active
-                  ? primary.withValues(alpha: 0.12)
-                  : palette.surfaceVariant,
-              borderRadius: BorderRadius.circular(AppRadius.full.r),
-              border: Border.all(
-                color: active
-                    ? primary.withValues(alpha: 0.4)
-                    : palette.border,
-                width: active ? 1.5 : 1,
               ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon,
-                    size: 13.r,
-                    color: active ? primary : palette.textSecondary),
-                SizedBox(width: 3.w),
-                Icon(
-                  active
-                      ? Icons.check_rounded
-                      : Icons.keyboard_arrow_down_rounded,
-                  size: 13.r,
-                  color: active ? primary : palette.textTertiary,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Label pinned above a compact indicator pill.
-  Widget _sortChip(BuildContext context, String value, String label) {
-    final active = sortBy == value;
-    final primary = Theme.of(context).primaryColor;
-    return GestureDetector(
-      onTap: () => onSortChanged(value),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: AppText.of(context).labelS.copyWith(
-                  fontSize: 10.sp,
-                  height: 1.2,
-                  color: active ? primary : palette.textTertiary,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                ),
-          ),
-          SizedBox(height: 3.h),
-          AnimatedContainer(
-            duration: AppMotion.fast,
-            width: 30.w,
-            height: 20.h,
-            decoration: BoxDecoration(
-              color: active ? primary.withValues(alpha: 0.12) : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppRadius.full.r),
-              border: Border.all(
-                color: active
-                    ? primary.withValues(alpha: 0.4)
-                    : palette.border,
-                width: active ? 1.5 : 1,
-              ),
-            ),
-            child: active
-                ? Center(
-                    child: Icon(Icons.check_rounded,
-                        size: 11.r, color: primary),
-                  )
-                : null,
-          ),
-        ],
+            ],
+          ],
+        ),
       ),
     );
   }

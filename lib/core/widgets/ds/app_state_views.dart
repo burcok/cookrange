@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
@@ -181,6 +182,13 @@ class AppErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (kDebugMode) {
+      debugPrint('🔴 [AppErrorState] Title: $title');
+      if (message != null) {
+        debugPrint('🔴 [AppErrorState] Message: $message');
+      }
+    }
+
     final palette = AppPalette.of(context);
     return Semantics(
       liveRegion: true,

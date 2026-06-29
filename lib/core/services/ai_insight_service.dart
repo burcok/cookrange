@@ -265,15 +265,15 @@ ${PromptService().localeInstruction(locale)}''';
     }
   }
 
-  /// Stream of the most recent saved projection for [uid]+[locale].
-  /// Returns null document if none exists — shows "generate" CTA.
+  /// Stream of the most recent saved projection for [uid].
+  /// Locale-agnostic — shows the latest projection regardless of the language it
+  /// was generated in. Returns null if no document exists → "generate" CTA.
   Stream<DocumentSnapshot?> getLatestProjectionStream(
       String uid, String locale) {
     return FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('ai_twin_projections')
-        .where('locale', isEqualTo: locale)
         .orderBy('generatedAt', descending: true)
         .limit(1)
         .snapshots()

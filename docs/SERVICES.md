@@ -102,6 +102,12 @@
 - **RemoteConfigService** `remote_config_service.dart` — Flags: `maintenanceMode`, `minVersion`,
   `aiModel`, `maxMealRetries`, `featureVoiceAssistant`, `featureNutritionAnalytics`, `aiProxyUrl`.
 - **PushNotificationService** `push_notification_service.dart` — FCM + `flutter_local_notifications`.
+  Initializes the `timezone` DB (`flutter_timezone` → device zone) in `initialize()`. Hydration
+  reminders are precise + multi-time: `scheduleDailyWaterReminder({title, body, wakeTime, sleepTime,
+  count})` uses `zonedSchedule` (`matchDateTimeComponents.time`, **inexact** alarms — no Android 13+
+  exact-alarm permission) at clock times evenly spread across the wake→sleep window (handles midnight
+  wrap), over a reserved id block (7001–7012). `cancelWaterReminder()` clears the block. Spread math is
+  pure + unit-tested (`PushNotificationService.spreadReminderTimes`).
 - **PermissionService** `permission_service.dart` — Runtime permission requests (camera/GPS/notif).
 - **ATTConsentService** `att_consent_service.dart` — iOS App Tracking Transparency (one-shot,
   `att_prompted` SharedPref key).

@@ -3,7 +3,6 @@ import 'package:cookrange/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../core/widgets/ds/ds.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
 import 'dart:math';
@@ -27,9 +26,9 @@ import '../core/services/deep_link_service.dart';
 import '../core/services/push_notification_service.dart';
 import '../core/providers/device_info_provider.dart';
 import 'package:provider/provider.dart';
-import '../core/providers/onboarding_provider.dart';
 import '../core/providers/user_provider.dart';
 import '../core/models/user_model.dart';
+import 'onboarding/v2/onboarding_flow_screen.dart';
 import '../core/utils/app_routes.dart';
 import '../core/utils/onboarding_flow_resolver.dart';
 import '../core/widgets/error_fallback_widget.dart';
@@ -405,32 +404,19 @@ class _SplashScreenState extends State<SplashScreen>
     final user = AuthService().currentUser;
     debugPrint('SplashScreen: Navigating. User: $user');
     if (user == null) {
-      unawaited(Navigator.pushReplacementNamed(context, AppRoutes.login));
+      // Always show the intro carousel for unauthenticated users — the one-shot
+      // intro_seen gate has been removed so returning/logged-out users always
+      // see the intro before reaching login.
+      if (!mounted) return;
+      unawaited(Navigator.pushReplacementNamed(context, AppRoutes.intro));
       return;
     }
 
-    if (!user.emailVerified) {
-      unawaited(Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.verifyEmail,
-        (route) => false,
-      ));
-      return;
-    }
-
+    // Email verification is enforced as a hard gate in RouteGuard — unverified
+    // users are redirected to /verify_email on any protected route.
     debugPrint('SplashScreen: Fetching user document...');
     final userModel = await AuthService().getUserData(user.uid);
     debugPrint('SplashScreen: User data: ${userModel?.email}');
-
-    if (userModel?.userVerified == null) {
-      if (!mounted) return;
-      unawaited(Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.verifyEmail,
-        (route) => false,
-      ));
-      return;
-    }
 
     // Merge private nutrition PII (owner-only subcollection) so the
     // completeness check and OnboardingProvider get the full picture.
@@ -449,35 +435,26 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    // Sync SharedPrefs intro_seen from Firestore truth (handles reinstalls).
-    if (mergedModel?.introSeen == true) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('intro_seen', true);
-    }
-
     // Request ATT before any navigation.
     await ATTConsentService().requestIfNeeded();
     if (!mounted) return;
 
     final destination = OnboardingFlowResolver.resolve(mergedModel);
 
-    if (destination.route == AppRoutes.onboarding) {
-      final combined = mergedModel?.onboardingData;
-      if (combined != null) {
-        Provider.of<OnboardingProvider>(context, listen: false)
-            .initializeFromFirestore(combined);
-      }
-      unawaited(Navigator.pushReplacementNamed(
-        context,
-        AppRoutes.onboarding,
-        arguments: destination.initialStep,
-      ));
-    } else {
-      unawaited(Navigator.pushReplacementNamed(context, destination.route));
-      // Drain any cold-start notification tap once /main is built.
-      if (destination.route == AppRoutes.main) {
-        PushNotificationService().drainPendingNavigation();
-      }
+    // A logged-in but unfinished account completes onboarding via the V2 flow in
+    // logged-in mode: it prefills from UserProvider (set above) and persists back
+    // to the same uid instead of creating a new account. The flow owns the
+    // prefill — see onboarding_flow_screen.dart.
+    unawaited(Navigator.pushReplacementNamed(
+      context,
+      destination.route,
+      arguments: destination.route == AppRoutes.onboardingV2
+          ? OnboardingFlowScreen.loggedInCompletionArgs
+          : null,
+    ));
+    // Drain any cold-start notification tap once /main is built.
+    if (destination.route == AppRoutes.main) {
+      PushNotificationService().drainPendingNavigation();
     }
   }
 

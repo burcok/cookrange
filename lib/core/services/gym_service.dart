@@ -170,7 +170,7 @@ class GymService {
     String? city,
     String? district,
     List<String>? tags,
-    String sortBy = 'name', // 'name' | 'member_count' | 'created_at'
+    String sortBy = 'member_count', // 'name' | 'member_count' | 'created_at' | 'avg_rating'
     DocumentSnapshot? startAfter,
     int limit = 20,
   }) async {
@@ -184,8 +184,11 @@ class GymService {
       q = q.where('district', isEqualTo: district);
     }
 
-    final orderDesc = sortBy == 'member_count' || sortBy == 'created_at';
-    q = q.orderBy(sortBy, descending: orderDesc).limit(limit);
+    final firestoreSortField = sortBy == 'avg_rating' ? 'avg_rating' : sortBy;
+    final orderDesc = firestoreSortField == 'member_count' ||
+        firestoreSortField == 'created_at' ||
+        firestoreSortField == 'avg_rating';
+    q = q.orderBy(firestoreSortField, descending: orderDesc).limit(limit);
 
     if (startAfter != null) q = q.startAfterDocument(startAfter);
 

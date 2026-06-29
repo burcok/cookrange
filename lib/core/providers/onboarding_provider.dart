@@ -1,9 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../services/analytics_service.dart';
-import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../constants/onboarding_options.dart';
+import '../utils/age_gate.dart';
 
 class OnboardingProvider with ChangeNotifier {
   // Personal Info
@@ -26,6 +26,27 @@ class OnboardingProvider with ChangeNotifier {
   List<String> _dietaryRestrictionIds = [];
   String? _cookingLevelId;
   List<String> _kitchenEquipmentIds = [];
+
+  // --- Onboarding V2 additions (collected pre-registration, in-memory) ---
+  /// First name (page 1) → persisted as the account `displayName` at registration.
+  String? _firstName;
+
+  /// Single primary goal (page 2): lose_weight | gain_weight | build_muscle | healthy_eating.
+  /// Distinct from [_primaryGoalIds], which are the multi-select "motivators" (page 3).
+  String? _mainGoal;
+
+  /// Water reminder (page 11). [_waterDailyTargetMl] is computed but user-adjustable.
+  bool _waterReminderEnabled = false;
+  int? _waterDailyTargetMl;
+  String _waterWakeTime = '08:00';
+  String _waterSleepTime = '23:00';
+
+  /// Household (page 12) — captured only; per-person meal scaling is shelved.
+  bool _cooksForOthers = false;
+
+  /// Premium intent (page 13). Transient: drives the post-registration purchase,
+  /// never written into `onboarding_data`.
+  bool _wantsPremiumIntent = false;
 
   // To track changes
   Map<String, dynamic>? _initialData;
@@ -123,6 +144,27 @@ class OnboardingProvider with ChangeNotifier {
     }).toList();
   }
 
+  // --- Onboarding V2 getters ---
+  String? get firstName => _firstName;
+  String? get mainGoal => _mainGoal;
+  bool get waterReminderEnabled => _waterReminderEnabled;
+  int? get waterDailyTargetMl => _waterDailyTargetMl;
+  String get waterWakeTime => _waterWakeTime;
+  String get waterSleepTime => _waterSleepTime;
+  bool get cooksForOthers => _cooksForOthers;
+  bool get wantsPremiumIntent => _wantsPremiumIntent;
+
+  /// Whole-year age derived from [birthDate], or null if unset.
+  int? get ageYears => birthDate == null ? null : AgeGate.ageInYears(birthDate!);
+
+  /// Non-PII payload for the public `users/{uid}.onboarding_data` map, written
+  /// once at registration. Mirrors [_toPublicMap].
+  Map<String, dynamic> get publicOnboardingData => _toPublicMap();
+
+  /// PII payload for the owner-only `users/{uid}/private/nutrition` doc, written
+  /// once at registration. Mirrors [_toPrivateMap].
+  Map<String, dynamic> get privateNutritionData => _toPrivateMap();
+
   bool get isDirty {
     final currentData = _toMap();
     if (_initialData == null) return false;
@@ -173,6 +215,16 @@ class OnboardingProvider with ChangeNotifier {
       'activity_level': _activityLevelId,
       'cooking_level': _cookingLevelId,
       'kitchen_equipments': _kitchenEquipmentIds,
+      // V2 additions
+      'main_goal': _mainGoal,
+      'target_weight': _targetWeight,
+      'water_reminder': {
+        'enabled': _waterReminderEnabled,
+        'target_ml': _waterDailyTargetMl,
+        'wake': _waterWakeTime,
+        'sleep': _waterSleepTime,
+      },
+      'cooks_for_others': _cooksForOthers,
     };
   }
 
@@ -270,6 +322,18 @@ class OnboardingProvider with ChangeNotifier {
     _cookingLevelId = _extractId(onboardingData['cooking_level']);
     _kitchenEquipmentIds = _extractIds(onboardingData['kitchen_equipments']);
 
+    // V2 fields (tolerant: legacy docs simply lack these keys)
+    _mainGoal = _extractId(onboardingData['main_goal']);
+    _targetWeight = _getInt(onboardingData, 'target_weight');
+    _cooksForOthers = onboardingData['cooks_for_others'] == true;
+    final water = onboardingData['water_reminder'];
+    if (water is Map) {
+      _waterReminderEnabled = water['enabled'] == true;
+      _waterDailyTargetMl = _getInt(water.cast<String, dynamic>(), 'target_ml');
+      _waterWakeTime = (water['wake'] as String?) ?? _waterWakeTime;
+      _waterSleepTime = (water['sleep'] as String?) ?? _waterSleepTime;
+    }
+
     _setInitialData();
     notifyListeners();
   }
@@ -324,45 +388,36 @@ class OnboardingProvider with ChangeNotifier {
     return null;
   }
 
-  /// Saves incremental onboarding changes. PII goes to the private subcollection;
-  /// non-PII updates the public `onboarding_data` map on the main user doc.
-  Future<void> updateOnboardingDataInFirestore() async {
-    final authService = AuthService();
-    final uid = authService.currentUser?.uid;
-    if (uid == null) return;
-    final publicData = _toPublicMap();
-    final privateData = _toPrivateMap();
-    await Future.wait([
-      if (publicData.isNotEmpty)
-        authService.updateUserData({'onboarding_data': publicData}),
-      if (privateData.isNotEmpty)
-        FirestoreService().savePrivateNutritionData(uid, privateData),
-    ]);
-    _setInitialData();
-  }
-
-  /// Called at the end of the onboarding flow. Writes non-PII to the main doc
-  /// (sets `onboarding_completed: true`) and PII to the private subcollection.
-  Future<bool> saveFinalOnboardingData() async {
-    final authService = AuthService();
-    final uid = authService.currentUser?.uid;
-    if (uid == null) return false;
-    if (!isOnboardingComplete) return false;
-    final publicData = _toPublicMap();
-    final privateData = _toPrivateMap();
+  /// Persists the collected V2 profile against [user]'s account (existing or
+  /// just-created): updates the Firebase Auth display name, writes the public
+  /// `onboarding_data` map + `onboarding_completed: true` to the user doc, and
+  /// the PII to the owner-only `private/nutrition` subcollection.
+  ///
+  /// Pure persistence: callers own consent recording, reminder scheduling,
+  /// [UserProvider] population, navigation, and [reset] — these differ between
+  /// new-account registration and logged-in completion. See
+  /// `screens/onboarding/v2/onboarding_completion.dart`.
+  Future<void> persistV2Profile(User user) async {
+    final uid = user.uid;
+    final name = _firstName;
+    if (name != null && name.isNotEmpty) {
+      try {
+        await user.updateDisplayName(name);
+      } catch (_) {}
+    }
+    await FirestoreService().updateUserData(uid, {
+      if (name != null && name.isNotEmpty) 'displayName': name,
+      'onboarding_data': _toPublicMap(),
+      'onboarding_completed': true,
+    });
+    // Best-effort: a private-nutrition write hiccup must not undo the
+    // authoritative completion flag written above.
     try {
-      await Future.wait([
-        authService.updateUserData({
-          'onboarding_data': publicData,
-          'onboarding_completed': true,
-        }),
-        FirestoreService().savePrivateNutritionData(uid, privateData),
-      ]);
-      _setInitialData();
-      return true;
+      await FirestoreService().savePrivateNutritionData(uid, _toPrivateMap());
     } catch (e) {
-      if (kDebugMode) debugPrint('Error saving onboarding data: $e');
-      return true;
+      if (kDebugMode) {
+        debugPrint('persistV2Profile: private nutrition write failed: $e');
+      }
     }
   }
 
@@ -383,6 +438,14 @@ class OnboardingProvider with ChangeNotifier {
     _dietaryRestrictionIds = [];
     _cookingLevelId = null;
     _kitchenEquipmentIds = [];
+    _firstName = null;
+    _mainGoal = null;
+    _waterReminderEnabled = false;
+    _waterDailyTargetMl = null;
+    _waterWakeTime = '08:00';
+    _waterSleepTime = '23:00';
+    _cooksForOthers = false;
+    _wantsPremiumIntent = false;
     _initialData = null;
     notifyListeners();
   }
@@ -390,6 +453,63 @@ class OnboardingProvider with ChangeNotifier {
   void setTargetWeight(int? weight) {
     if (_targetWeight != weight) {
       _targetWeight = weight;
+      notifyListeners();
+    }
+  }
+
+  // --- Onboarding V2 setters ---
+  void setFirstName(String? name) {
+    final trimmed = name?.trim();
+    final value = (trimmed != null && trimmed.isEmpty) ? null : trimmed;
+    if (_firstName != value) {
+      _firstName = value;
+      notifyListeners();
+    }
+  }
+
+  void setMainGoal(String? goal) {
+    if (_mainGoal != goal) {
+      _mainGoal = goal;
+      notifyListeners();
+    }
+  }
+
+  void setWaterReminder({
+    required bool enabled,
+    int? targetMl,
+    String? wake,
+    String? sleep,
+  }) {
+    var changed = false;
+    if (_waterReminderEnabled != enabled) {
+      _waterReminderEnabled = enabled;
+      changed = true;
+    }
+    if (targetMl != null && _waterDailyTargetMl != targetMl) {
+      _waterDailyTargetMl = targetMl;
+      changed = true;
+    }
+    if (wake != null && _waterWakeTime != wake) {
+      _waterWakeTime = wake;
+      changed = true;
+    }
+    if (sleep != null && _waterSleepTime != sleep) {
+      _waterSleepTime = sleep;
+      changed = true;
+    }
+    if (changed) notifyListeners();
+  }
+
+  void setCooksForOthers(bool value) {
+    if (_cooksForOthers != value) {
+      _cooksForOthers = value;
+      notifyListeners();
+    }
+  }
+
+  void setWantsPremiumIntent(bool value) {
+    if (_wantsPremiumIntent != value) {
+      _wantsPremiumIntent = value;
       notifyListeners();
     }
   }
@@ -604,31 +724,16 @@ class OnboardingProvider with ChangeNotifier {
         _kitchenEquipmentIds.isNotEmpty;
   }
 
-  Future<void> logOnboardingCompletion() async {
-    final analyticsService = AnalyticsService();
-    await analyticsService.logEvent(
-        name: 'onboarding_completed',
-        parameters: {'timestamp': DateTime.now().toIso8601String()});
+  /// Final safety gate for the V2 flow (before "Onayla" → registration).
+  /// Each page gates its own field, so this should always be true on arrival;
+  /// it guards against navigation bugs. Distinct from [isOnboardingComplete],
+  /// which the legacy flow still uses (kept intact until V2 fully replaces it).
+  bool get isV2Complete {
+    return _firstName != null &&
+        _firstName!.isNotEmpty &&
+        _mainGoal != null &&
+        _activityLevelId != null &&
+        isOnboardingComplete;
   }
 
-  Future<void> logOnboardingData() async {
-    final analyticsService = AnalyticsService();
-    await analyticsService.logEvent(
-      name: 'onboarding_data',
-      parameters: {
-        'gender': _personalInfo['gender'] ?? 'unknown',
-        'birth_date':
-            _personalInfo['birth_date']?.toIso8601String() ?? 'unknown',
-        'height': _personalInfo['height'] ?? 0,
-        'weight': _personalInfo['weight'] ?? 0,
-        'lifestyle_profile': _lifestyleProfileId ?? 'unknown',
-        'primary_goals': _primaryGoalIds.join(','),
-        'activity_level': _activityLevelId ?? 'unknown',
-        'disliked_foods':
-            _dislikedFoods.map((e) => e['value'] as String).join(','),
-        'cooking_level': _cookingLevelId ?? 'unknown',
-        'kitchen_equipment': _kitchenEquipmentIds.join(','),
-      },
-    );
-  }
 }

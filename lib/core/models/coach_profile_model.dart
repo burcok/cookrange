@@ -20,6 +20,8 @@ class CoachProfileModel {
   final double avgRating;
   final int ratingCount;
   final bool isVerified;
+  final double? latitude;
+  final double? longitude;
 
   const CoachProfileModel({
     required this.uid,
@@ -40,6 +42,8 @@ class CoachProfileModel {
     this.avgRating = 0.0,
     this.ratingCount = 0,
     this.isVerified = false,
+    this.latitude,
+    this.longitude,
   });
 
   factory CoachProfileModel.fromFirestore(
@@ -64,6 +68,8 @@ class CoachProfileModel {
       avgRating: (data['avg_rating'] as num?)?.toDouble() ?? 0.0,
       ratingCount: data['rating_count'] as int? ?? 0,
       isVerified: data['is_verified'] as bool? ?? false,
+      latitude: (data['latitude'] as num?)?.toDouble(),
+      longitude: (data['longitude'] as num?)?.toDouble(),
     );
   }
 
@@ -85,6 +91,8 @@ class CoachProfileModel {
         if (district != null) 'district': district,
         'avg_rating': avgRating,
         'rating_count': ratingCount,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
       };
 
   CoachProfileModel copyWith({
@@ -105,6 +113,8 @@ class CoachProfileModel {
     String? district,
     double? avgRating,
     int? ratingCount,
+    double? latitude,
+    double? longitude,
   }) =>
       CoachProfileModel(
         uid: uid ?? this.uid,
@@ -124,5 +134,7 @@ class CoachProfileModel {
         district: district ?? this.district,
         avgRating: avgRating ?? this.avgRating,
         ratingCount: ratingCount ?? this.ratingCount,
+        latitude: latitude ?? this.latitude,
+        longitude: longitude ?? this.longitude,
       );
 }

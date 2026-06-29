@@ -302,15 +302,28 @@ class _SidePanel extends StatelessWidget {
       cards.add(_CoachCard(l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush));
     }
 
-    if (cards.isEmpty) {
-      return _ConsumerCard(uid: user.uid, l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush);
-    }
-    if (cards.length == 1) return cards.first;
+    // Always show the "grow" card so any user (admin, gym owner, etc.) can still
+    // register for roles they don't have yet. Hidden only when the user already
+    // holds both roles (nothing left to grow into).
+    final isGymOwner = user.hasRole(UserRole.gymOwner);
+    final isCoach = user.hasRole(UserRole.coach);
+    final needsGrowCard = !isGymOwner || !isCoach;
 
+    if (cards.isEmpty && needsGrowCard) {
+      return _ConsumerCard(uid: user.uid, l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush, hideGym: isGymOwner, hideCoach: isCoach);
+    }
+    if (cards.isEmpty) return const SizedBox.shrink();
+
+    final allCards = [...cards];
+    if (needsGrowCard) {
+      allCards.add(_ConsumerCard(uid: user.uid, l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush, hideGym: isGymOwner, hideCoach: isCoach));
+    }
+
+    if (allCards.length == 1) return allCards.first;
     return Column(
-      children: cards
+      children: allCards
           .expand((c) => [c, const SizedBox(height: 12)])
-          .take(cards.length * 2 - 1)
+          .take(allCards.length * 2 - 1)
           .toList(),
     );
   }
@@ -486,8 +499,10 @@ class _ConsumerCard extends StatelessWidget {
   final bool isDark;
   final Color primary;
   final void Function(Widget) onPush;
+  final bool hideGym;
+  final bool hideCoach;
 
-  const _ConsumerCard({required this.uid, required this.l10n, required this.palette, required this.isDark, required this.primary, required this.onPush});
+  const _ConsumerCard({required this.uid, required this.l10n, required this.palette, required this.isDark, required this.primary, required this.onPush, this.hideGym = false, this.hideCoach = false});
 
   @override
   Widget build(BuildContext context) {
@@ -498,40 +513,42 @@ class _ConsumerCard extends StatelessWidget {
       palette: palette,
       isDark: isDark,
       children: [
-        StreamBuilder<GymApplicationModel?>(
-          stream: GymApplicationService().getMyApplicationStream(uid),
-          builder: (context, snap) {
-            final app = snap.data;
-            final isPending = app?.status == GymApplicationStatus.pending;
-            final isRejected = app?.status == GymApplicationStatus.rejected;
-            return _CardTile(
-              icon: isPending ? Icons.hourglass_top_rounded : isRejected ? Icons.cancel_outlined : Icons.add_business_rounded,
-              label: isPending ? l10n.translate('menu.gym_app_pending') : isRejected ? l10n.translate('menu.gym_app_rejected') : l10n.translate('menu.register_gym'),
-              palette: palette,
-              isDark: isDark,
-              primary: primary,
-              onTap: () => onPush(const GymDashboardScreen()),
-              statusColor: isPending ? palette.warning : isRejected ? palette.error : null,
-            );
-          },
-        ),
-        StreamBuilder<CoachApplicationModel?>(
-          stream: CoachApplicationService().getMyApplicationStream(uid),
-          builder: (context, snap) {
-            final app = snap.data;
-            final isPending = app != null && (app.isPending || app.status == CoachApplicationStatus.needsMoreInfo);
-            final isRejected = app != null && app.isRejected;
-            return _CardTile(
-              icon: isPending ? Icons.hourglass_top_rounded : isRejected ? Icons.cancel_outlined : Icons.sports_rounded,
-              label: isPending ? l10n.translate('menu.coach_app_pending') : isRejected ? l10n.translate('menu.coach_app_rejected') : l10n.translate('menu.become_coach'),
-              palette: palette,
-              isDark: isDark,
-              primary: primary,
-              onTap: () => onPush(const CoachDashboardScreen()),
-              statusColor: isPending ? palette.warning : isRejected ? palette.error : null,
-            );
-          },
-        ),
+        if (!hideGym)
+          StreamBuilder<GymApplicationModel?>(
+            stream: GymApplicationService().getMyApplicationStream(uid),
+            builder: (context, snap) {
+              final app = snap.data;
+              final isPending = app?.status == GymApplicationStatus.pending;
+              final isRejected = app?.status == GymApplicationStatus.rejected;
+              return _CardTile(
+                icon: isPending ? Icons.hourglass_top_rounded : isRejected ? Icons.cancel_outlined : Icons.add_business_rounded,
+                label: isPending ? l10n.translate('menu.gym_app_pending') : isRejected ? l10n.translate('menu.gym_app_rejected') : l10n.translate('menu.register_gym'),
+                palette: palette,
+                isDark: isDark,
+                primary: primary,
+                onTap: () => onPush(const GymDashboardScreen()),
+                statusColor: isPending ? palette.warning : isRejected ? palette.error : null,
+              );
+            },
+          ),
+        if (!hideCoach)
+          StreamBuilder<CoachApplicationModel?>(
+            stream: CoachApplicationService().getMyApplicationStream(uid),
+            builder: (context, snap) {
+              final app = snap.data;
+              final isPending = app != null && (app.isPending || app.status == CoachApplicationStatus.needsMoreInfo);
+              final isRejected = app != null && app.isRejected;
+              return _CardTile(
+                icon: isPending ? Icons.hourglass_top_rounded : isRejected ? Icons.cancel_outlined : Icons.sports_rounded,
+                label: isPending ? l10n.translate('menu.coach_app_pending') : isRejected ? l10n.translate('menu.coach_app_rejected') : l10n.translate('menu.become_coach'),
+                palette: palette,
+                isDark: isDark,
+                primary: primary,
+                onTap: () => onPush(const CoachDashboardScreen()),
+                statusColor: isPending ? palette.warning : isRejected ? palette.error : null,
+              );
+            },
+          ),
       ],
     );
   }
