@@ -16,7 +16,7 @@
 	<string>manual</string>
 	<key>provisioningProfiles</key>
 	<dict>
-		<key>com.cookrange_ios.app</key>
+		<key>com.cookrange-ios.app</key>
 		<string>Cookrange App Store</string>
 	</dict>
 </dict>

@@ -27,7 +27,7 @@ class AdminPanelScreen extends StatefulWidget {
 
 class _AdminPanelScreenState extends State<AdminPanelScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 10, vsync: this);
+  late final TabController _tabs = TabController(length: 13, vsync: this);
 
   @override
   void dispose() {
@@ -147,6 +147,18 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                     text: l10n.translate('admin.tab_programs'),
                     icon: Icon(Icons.library_books_rounded, size: 16.r),
                   ),
+                  Tab(
+                    text: l10n.translate('admin.tab_billing'),
+                    icon: Icon(Icons.credit_card_rounded, size: 16.r),
+                  ),
+                  Tab(
+                    text: l10n.translate('admin.tab_abuse'),
+                    icon: Icon(Icons.shield_moon_rounded, size: 16.r),
+                  ),
+                  Tab(
+                    text: l10n.translate('admin.tab_analytics'),
+                    icon: Icon(Icons.bar_chart_rounded, size: 16.r),
+                  ),
                 ],
               ),
               // Subtle brand gradient accent line below tabs
@@ -181,6 +193,9 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           _ConfigTab(palette: palette, l10n: l10n, t: t),
           _CreditsAndCodesTab(palette: palette, l10n: l10n, t: t),
           _ProgramReviewTab(palette: palette, l10n: l10n, t: t),
+          _BillingTab(palette: palette, l10n: l10n, t: t),
+          _AbuseTab(palette: palette, l10n: l10n, t: t),
+          _AnalyticsTab(palette: palette, l10n: l10n, t: t),
         ],
       ),
     );
@@ -277,54 +292,62 @@ class _AdminOverviewTab extends StatelessWidget {
             ),
             children: [
               // Pending Coaches
-              _StatCard(
-                label: l10n.translate('admin.dashboard_pending_coaches'),
-                icon: Icons.school_rounded,
-                accentColor: palette.warning,
-                stream: AdminService()
-                    .pendingCoachApplicationsStream()
-                    .map((list) => list.length),
-                showBadgeWhenNonZero: true,
-                onTap: () => tabs.animateTo(1),
-                palette: palette,
-                t: t,
+              RepaintBoundary(
+                child: _StatCard(
+                  label: l10n.translate('admin.dashboard_pending_coaches'),
+                  icon: Icons.school_rounded,
+                  accentColor: palette.warning,
+                  stream: AdminService()
+                      .pendingCoachApplicationsStream()
+                      .map((list) => list.length),
+                  showBadgeWhenNonZero: true,
+                  onTap: () => tabs.animateTo(1),
+                  palette: palette,
+                  t: t,
+                ),
               ),
               // Pending Gyms
-              _StatCard(
-                label: l10n.translate('admin.dashboard_pending_gyms'),
-                icon: Icons.fitness_center_rounded,
-                accentColor: palette.info,
-                stream: AdminService()
-                    .pendingGymApplicationsStream()
-                    .map((list) => list.length),
-                showBadgeWhenNonZero: true,
-                onTap: () => tabs.animateTo(2),
-                palette: palette,
-                t: t,
+              RepaintBoundary(
+                child: _StatCard(
+                  label: l10n.translate('admin.dashboard_pending_gyms'),
+                  icon: Icons.fitness_center_rounded,
+                  accentColor: palette.info,
+                  stream: AdminService()
+                      .pendingGymApplicationsStream()
+                      .map((list) => list.length),
+                  showBadgeWhenNonZero: true,
+                  onTap: () => tabs.animateTo(2),
+                  palette: palette,
+                  t: t,
+                ),
               ),
               // Total Users
-              _StatCard(
-                label: l10n.translate('admin.dashboard_total_users'),
-                icon: Icons.people_rounded,
-                accentColor: palette.success,
-                stream: AdminService().userCountStream(),
-                showBadgeWhenNonZero: false,
-                onTap: () => tabs.animateTo(3),
-                palette: palette,
-                t: t,
+              RepaintBoundary(
+                child: _StatCard(
+                  label: l10n.translate('admin.dashboard_total_users'),
+                  icon: Icons.people_rounded,
+                  accentColor: palette.success,
+                  stream: AdminService().userCountStream(),
+                  showBadgeWhenNonZero: false,
+                  onTap: () => tabs.animateTo(3),
+                  palette: palette,
+                  t: t,
+                ),
               ),
               // Open Reports
-              _StatCard(
-                label: l10n.translate('admin.dashboard_open_reports'),
-                icon: Icons.flag_rounded,
-                accentColor: palette.error,
-                stream: AdminService().openReportCountStream(),
-                showBadgeWhenNonZero: true,
-                onTap: () => Navigator.of(rootContext).push(
-                  AppTransitions.slideRight(const AdminReportsScreen()),
+              RepaintBoundary(
+                child: _StatCard(
+                  label: l10n.translate('admin.dashboard_open_reports'),
+                  icon: Icons.flag_rounded,
+                  accentColor: palette.error,
+                  stream: AdminService().openReportCountStream(),
+                  showBadgeWhenNonZero: true,
+                  onTap: () => Navigator.of(rootContext).push(
+                    AppTransitions.slideRight(const AdminReportsScreen()),
+                  ),
+                  palette: palette,
+                  t: t,
                 ),
-                palette: palette,
-                t: t,
               ),
             ],
           ),
@@ -776,14 +799,16 @@ class _CoachApplicationsList extends StatelessWidget {
           separatorBuilder: (_, __) => SizedBox(height: 8.h),
           itemBuilder: (ctx, i) {
             final app = apps[i];
-            return _CoachAppCard(
-              app: app,
-              palette: palette,
-              t: t,
-              l10n: l10n,
-              onTap: () => Navigator.of(ctx).push(
-                AppTransitions.slideRight(
-                    ApplicationReviewScreen.forCoach(app)),
+            return RepaintBoundary(
+              child: _CoachAppCard(
+                app: app,
+                palette: palette,
+                t: t,
+                l10n: l10n,
+                onTap: () => Navigator.of(ctx).push(
+                  AppTransitions.slideRight(
+                      ApplicationReviewScreen.forCoach(app)),
+                ),
               ),
             );
           },
@@ -835,14 +860,16 @@ class _GymApplicationsList extends StatelessWidget {
           separatorBuilder: (_, __) => SizedBox(height: 8.h),
           itemBuilder: (ctx, i) {
             final app = apps[i];
-            return _GymAppCard(
-              app: app,
-              palette: palette,
-              t: t,
-              l10n: l10n,
-              onTap: () => Navigator.of(ctx).push(
-                AppTransitions.slideRight(
-                    ApplicationReviewScreen.forGym(app)),
+            return RepaintBoundary(
+              child: _GymAppCard(
+                app: app,
+                palette: palette,
+                t: t,
+                l10n: l10n,
+                onTap: () => Navigator.of(ctx).push(
+                  AppTransitions.slideRight(
+                      ApplicationReviewScreen.forGym(app)),
+                ),
               ),
             );
           },
@@ -1091,18 +1118,20 @@ class _CoachHistoryList extends StatelessWidget {
             final app = apps[i];
             final isApproved =
                 app.status == CoachApplicationStatus.approved;
-            return _HistoryCard(
-              name: app.displayName,
-              subtitle:
-                  '${app.specializations.take(2).join(', ')} · ${app.experienceYears} yrs',
-              isApproved: isApproved,
-              reviewedAt: app.reviewedAt,
-              palette: palette,
-              t: t,
-              l10n: l10n,
-              onTap: () => Navigator.of(ctx).push(
-                AppTransitions.slideRight(
-                    ApplicationReviewScreen.forCoach(app)),
+            return RepaintBoundary(
+              child: _HistoryCard(
+                name: app.displayName,
+                subtitle:
+                    '${app.specializations.take(2).join(', ')} · ${app.experienceYears} yrs',
+                isApproved: isApproved,
+                reviewedAt: app.reviewedAt,
+                palette: palette,
+                t: t,
+                l10n: l10n,
+                onTap: () => Navigator.of(ctx).push(
+                  AppTransitions.slideRight(
+                      ApplicationReviewScreen.forCoach(app)),
+                ),
               ),
             );
           },
@@ -1157,17 +1186,19 @@ class _GymHistoryList extends StatelessWidget {
             final app = apps[i];
             final isApproved =
                 app.status == GymApplicationStatus.approved;
-            return _HistoryCard(
-              name: app.gymName,
-              subtitle: '${app.city} · ${app.tags.take(2).join(', ')}',
-              isApproved: isApproved,
-              reviewedAt: app.reviewedAt,
-              palette: palette,
-              t: t,
-              l10n: l10n,
-              onTap: () => Navigator.of(ctx).push(
-                AppTransitions.slideRight(
-                    ApplicationReviewScreen.forGym(app)),
+            return RepaintBoundary(
+              child: _HistoryCard(
+                name: app.gymName,
+                subtitle: '${app.city} · ${app.tags.take(2).join(', ')}',
+                isApproved: isApproved,
+                reviewedAt: app.reviewedAt,
+                palette: palette,
+                t: t,
+                l10n: l10n,
+                onTap: () => Navigator.of(ctx).push(
+                  AppTransitions.slideRight(
+                      ApplicationReviewScreen.forGym(app)),
+                ),
               ),
             );
           },
@@ -1782,7 +1813,7 @@ class _AuditLogTab extends StatelessWidget {
               final dt = ts.toDate().toLocal();
               timeLabel = DateFormat('MMM d, y · HH:mm').format(dt);
             }
-            return AppCard(
+            return RepaintBoundary(child: AppCard(
               elevated: false,
               bordered: true,
               child: Column(
@@ -1832,7 +1863,7 @@ class _AuditLogTab extends StatelessWidget {
                   ],
                 ],
               ),
-            );
+            ));
           },
         );
       },
@@ -3920,3 +3951,823 @@ class _ProgramCardState extends State<_ProgramCard> {
     );
   }
 }
+
+// ── Phase 14.5B: Billing Oversight Tab ─────────────────────────────────────
+
+class _BillingTab extends StatelessWidget {
+  final AppPalette palette;
+  final AppLocalizations l10n;
+  final AppText t;
+
+  const _BillingTab(
+      {required this.palette, required this.l10n, required this.t});
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: AdminService().premiumUsersStream(),
+      builder: (context, snap) {
+        final users = snap.data ?? [];
+        final premiumCount = users.length;
+        // Estimated MRR — placeholder price until IAP tracking is stored server-side.
+        // Replace with actual transaction data when revenue records are added.
+        const monthlyPriceTry = 49.99;
+        final estimatedMrr = premiumCount * monthlyPriceTry;
+
+        return ListView(
+          padding: EdgeInsets.all(16.r),
+          children: [
+            // KPI row
+            Row(
+              children: [
+                _BillingKpiCard(
+                  icon: Icons.workspace_premium_rounded,
+                  label: l10n.translate('admin.billing_premium_count'),
+                  value: '$premiumCount',
+                  color: primary,
+                  palette: palette,
+                  t: t,
+                  isLoading: snap.connectionState == ConnectionState.waiting,
+                ),
+                SizedBox(width: 12.w),
+                _BillingKpiCard(
+                  icon: Icons.trending_up_rounded,
+                  label: l10n.translate('admin.billing_mrr_estimate'),
+                  value: '₺${estimatedMrr.toStringAsFixed(0)}',
+                  color: palette.success,
+                  palette: palette,
+                  t: t,
+                  isLoading: snap.connectionState == ConnectionState.waiting,
+                ),
+              ],
+            ),
+            SizedBox(height: 16.r),
+
+            // Premium user list
+            Text(
+              l10n.translate('admin.billing_subscribers_label'),
+              style: t.titleM.copyWith(fontWeight: FontWeight.w800),
+            ),
+            SizedBox(height: 10.r),
+
+            if (snap.connectionState == ConnectionState.waiting)
+              const AppSkeletonList(itemCount: 5)
+            else if (users.isEmpty)
+              AppEmptyState(
+                icon: Icons.credit_card_off_rounded,
+                title: l10n.translate('admin.billing_no_subscribers'),
+                message: l10n.translate('admin.billing_no_subscribers_sub'),
+              )
+            else
+              ...users.map((u) => Padding(
+                    padding: EdgeInsets.only(bottom: 10.r),
+                    child: AppCard(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: primary.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.workspace_premium_rounded,
+                              color: primary,
+                              size: 20,
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  u['display_name'] as String? ??
+                                      u['uid'] as String? ??
+                                      '—',
+                                  style: t.labelL.copyWith(
+                                      fontWeight: FontWeight.w700),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  (u['subscription_tier'] as String? ?? 'premium')
+                                      .toUpperCase(),
+                                  style: t.labelS.copyWith(
+                                    color: primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _BillingKpiCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  final AppPalette palette;
+  final AppText t;
+  final bool isLoading;
+
+  const _BillingKpiCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.palette,
+    required this.t,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: AppGlassCard(
+        padding: EdgeInsets.all(16.r),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            SizedBox(height: 12.r),
+            if (isLoading)
+              const AppSkeletonBox(height: 24, width: 60)
+            else
+              Text(value,
+                  style: t.headlineM.copyWith(
+                      color: color, fontWeight: FontWeight.w800)),
+            SizedBox(height: 4.r),
+            Text(label,
+                style: t.labelS.copyWith(color: palette.textSecondary)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Phase 14.5C: Abuse & Rate-Limit Monitoring Tab ─────────────────────────
+
+class _AbuseTab extends StatefulWidget {
+  final AppPalette palette;
+  final AppLocalizations l10n;
+  final AppText t;
+
+  const _AbuseTab(
+      {required this.palette, required this.l10n, required this.t});
+
+  @override
+  State<_AbuseTab> createState() => _AbuseTabState();
+}
+
+class _AbuseTabState extends State<_AbuseTab> {
+  bool _showBanned = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = widget.palette;
+    final l10n = widget.l10n;
+    final t = widget.t;
+    final primary = Theme.of(context).primaryColor;
+
+    return Column(
+      children: [
+        // Section toggle
+        Padding(
+          padding: EdgeInsets.fromLTRB(16.r, 12.r, 16.r, 4.r),
+          child: Row(
+            children: [
+              _ToggleChip(
+                label: l10n.translate('admin.abuse_banned_tab'),
+                selected: _showBanned,
+                primary: primary,
+                palette: palette,
+                t: t,
+                onTap: () => setState(() => _showBanned = true),
+              ),
+              SizedBox(width: 8.r),
+              _ToggleChip(
+                label: l10n.translate('admin.abuse_ai_usage_tab'),
+                selected: !_showBanned,
+                primary: primary,
+                palette: palette,
+                t: t,
+                onTap: () => setState(() => _showBanned = false),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _showBanned
+              ? _BannedUsersList(palette: palette, l10n: l10n, t: t)
+              : _AiUsageList(palette: palette, l10n: l10n, t: t),
+        ),
+      ],
+    );
+  }
+}
+
+class _BannedUsersList extends StatelessWidget {
+  final AppPalette palette;
+  final AppLocalizations l10n;
+  final AppText t;
+
+  const _BannedUsersList(
+      {required this.palette, required this.l10n, required this.t});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: AdminService().bannedUsersStream(),
+      builder: (context, snap) {
+        final users = snap.data ?? [];
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const AppSkeletonList(itemCount: 5);
+        }
+        if (users.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.shield_rounded,
+            title: l10n.translate('admin.abuse_no_banned'),
+            message: l10n.translate('admin.abuse_no_banned_sub'),
+          );
+        }
+        return ListView.separated(
+          padding: EdgeInsets.all(16.r),
+          itemCount: users.length,
+          separatorBuilder: (_, __) => SizedBox(height: 10.r),
+          itemBuilder: (context, i) {
+            final u = users[i];
+            final uid = u['uid'] as String? ?? '';
+            final name =
+                u['display_name'] as String? ?? u['email'] as String? ?? uid;
+            return AppCard(
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: palette.error.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.block_rounded,
+                        color: palette.error, size: 20),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name,
+                            style:
+                                t.labelL.copyWith(fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        Text(
+                          l10n.translate('admin.abuse_banned_label'),
+                          style: t.labelS
+                              .copyWith(color: palette.error),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      await AdminService().unbanUser(uid);
+                    },
+                    child: Text(
+                      l10n.translate('admin.abuse_unban_btn'),
+                      style: t.labelM.copyWith(color: palette.success),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _AiUsageList extends StatelessWidget {
+  final AppPalette palette;
+  final AppLocalizations l10n;
+  final AppText t;
+
+  const _AiUsageList(
+      {required this.palette, required this.l10n, required this.t});
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).primaryColor;
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: AdminService().aiUsageStream(limit: 30),
+      builder: (context, snap) {
+        final users = snap.data ?? [];
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const AppSkeletonList(itemCount: 5);
+        }
+        if (users.isEmpty) {
+          return AppEmptyState(
+            icon: Icons.psychology_rounded,
+            title: l10n.translate('admin.abuse_no_ai_usage'),
+            message: l10n.translate('admin.abuse_no_ai_usage_sub'),
+          );
+        }
+        return ListView.separated(
+          padding: EdgeInsets.all(16.r),
+          itemCount: users.length,
+          separatorBuilder: (_, __) => SizedBox(height: 10.r),
+          itemBuilder: (context, i) {
+            final u = users[i];
+            final name =
+                u['display_name'] as String? ?? u['email'] as String? ?? '—';
+            final used = (u['ai_credits_used'] as num?)?.toInt() ?? 0;
+            final bonus = (u['ai_credits_bonus'] as num?)?.toInt() ?? 0;
+            final isPremium = (u['subscription_tier'] as String?) == 'premium';
+            final limit = isPremium ? 20 : 2;
+            final pct = (used / limit).clamp(0.0, 1.0);
+            final isAbuse = used >= limit * 2;
+
+            return AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: (isAbuse ? palette.error : primary)
+                              .withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.psychology_rounded,
+                          color: isAbuse ? palette.error : primary,
+                          size: 18,
+                        ),
+                      ),
+                      SizedBox(width: 10.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(name,
+                                style: t.labelL
+                                    .copyWith(fontWeight: FontWeight.w700),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                            Text(
+                              isPremium ? 'Premium' : 'Free',
+                              style: t.labelS.copyWith(
+                                  color: isPremium ? primary : palette.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '$used / $limit',
+                            style: t.labelM.copyWith(
+                              color: isAbuse ? palette.error : palette.textPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (bonus > 0)
+                            Text(
+                              '+$bonus bonus',
+                              style: t.labelS
+                                  .copyWith(color: palette.success),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 10.r),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: LinearProgressIndicator(
+                      value: pct,
+                      minHeight: 5,
+                      backgroundColor:
+                          (isAbuse ? palette.error : primary).withValues(alpha: 0.15),
+                      color: isAbuse ? palette.error : primary,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// ── Phase 14.5 Analytics Dashboard ─────────────────────────────────────────
+
+class _AnalyticsTab extends StatefulWidget {
+  final AppPalette palette;
+  final AppLocalizations l10n;
+  final AppText t;
+
+  const _AnalyticsTab(
+      {required this.palette, required this.l10n, required this.t});
+
+  @override
+  State<_AnalyticsTab> createState() => _AnalyticsTabState();
+}
+
+class _AnalyticsTabState extends State<_AnalyticsTab> {
+  Map<String, int>? _snapshot;
+  bool _loading = true;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _hasError = false;
+    });
+    try {
+      final data = await AdminService().fetchAnalyticsSnapshot();
+      if (mounted) setState(() => _snapshot = data);
+    } catch (_) {
+      if (mounted) setState(() => _hasError = true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = widget.palette;
+    final l10n = widget.l10n;
+    final t = widget.t;
+    final primary = Theme.of(context).primaryColor;
+
+    if (_hasError) {
+      return AppErrorState(
+        title: l10n.translate('errors.general'),
+        onRetry: _load,
+      );
+    }
+
+    final snap = _snapshot ?? {};
+    final total = snap['total_users'] ?? 0;
+    final premium = snap['premium_users'] ?? 0;
+    final coaches = snap['coaches'] ?? 0;
+    final gymOwners = snap['gym_owners'] ?? 0;
+    final posts = snap['posts'] ?? 0;
+    final openReports = snap['open_reports'] ?? 0;
+    final squads = snap['squads'] ?? 0;
+    final consumers = total - coaches - gymOwners;
+    final premiumPct =
+        total > 0 ? (premium / total * 100).toStringAsFixed(1) : '0.0';
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: primary,
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(16.r, 12.r, 16.r, 40.r),
+        children: [
+          // KPI grid – 2 columns
+          Text(
+            l10n.translate('admin.analytics_kpi_title'),
+            style: t.titleM.copyWith(fontWeight: FontWeight.w800),
+          ),
+          SizedBox(height: 12.r),
+          _loading
+              ? const AppSkeletonList(itemCount: 4, itemHeight: 90)
+              : Wrap(
+                  spacing: 12.r,
+                  runSpacing: 12.r,
+                  children: [
+                    _AnalyticsKpi(
+                      icon: Icons.people_rounded,
+                      label: l10n.translate('admin.analytics_total_users'),
+                      value: '$total',
+                      sub: '$coaches ${l10n.translate('admin.analytics_coaches_label')}'
+                          ' · $gymOwners ${l10n.translate('admin.analytics_gyms_label')}',
+                      color: primary,
+                      palette: palette,
+                      t: t,
+                    ),
+                    _AnalyticsKpi(
+                      icon: Icons.workspace_premium_rounded,
+                      label: l10n.translate('admin.analytics_premium'),
+                      value: '$premium',
+                      sub: '$premiumPct%'
+                          ' ${l10n.translate('admin.analytics_conversion')}',
+                      color: palette.success,
+                      palette: palette,
+                      t: t,
+                    ),
+                    _AnalyticsKpi(
+                      icon: Icons.forum_rounded,
+                      label: l10n.translate('admin.analytics_posts'),
+                      value: '$posts',
+                      sub: '$squads ${l10n.translate('admin.analytics_squads_label')}',
+                      color: palette.info,
+                      palette: palette,
+                      t: t,
+                    ),
+                    _AnalyticsKpi(
+                      icon: Icons.flag_rounded,
+                      label: l10n.translate('admin.analytics_open_reports'),
+                      value: '$openReports',
+                      sub: openReports > 0
+                          ? l10n.translate('admin.analytics_reports_action')
+                          : l10n.translate('admin.analytics_reports_clear'),
+                      color: openReports > 0 ? palette.warning : palette.success,
+                      palette: palette,
+                      t: t,
+                    ),
+                  ],
+                ),
+
+          SizedBox(height: 24.r),
+
+          // Role distribution
+          Text(
+            l10n.translate('admin.analytics_roles_title'),
+            style: t.titleM.copyWith(fontWeight: FontWeight.w800),
+          ),
+          SizedBox(height: 12.r),
+          _loading
+              ? const AppSkeletonBox(height: 120, width: double.infinity)
+              : AppGlassCard(
+                  padding: EdgeInsets.all(16.r),
+                  child: Column(
+                    children: [
+                      _RoleBar(
+                        label: l10n.translate('admin.analytics_role_consumer'),
+                        count: consumers < 0 ? 0 : consumers,
+                        total: total,
+                        color: primary,
+                        palette: palette,
+                        t: t,
+                      ),
+                      SizedBox(height: 10.r),
+                      _RoleBar(
+                        label: l10n.translate('admin.analytics_role_coach'),
+                        count: coaches,
+                        total: total,
+                        color: palette.success,
+                        palette: palette,
+                        t: t,
+                      ),
+                      SizedBox(height: 10.r),
+                      _RoleBar(
+                        label: l10n.translate('admin.analytics_role_gym'),
+                        count: gymOwners,
+                        total: total,
+                        color: palette.info,
+                        palette: palette,
+                        t: t,
+                      ),
+                      SizedBox(height: 10.r),
+                      _RoleBar(
+                        label: l10n.translate('admin.analytics_role_premium'),
+                        count: premium,
+                        total: total,
+                        color: palette.warning,
+                        palette: palette,
+                        t: t,
+                      ),
+                    ],
+                  ),
+                ),
+
+          SizedBox(height: 24.r),
+
+          // Top AI users
+          Text(
+            l10n.translate('admin.analytics_top_ai_title'),
+            style: t.titleM.copyWith(fontWeight: FontWeight.w800),
+          ),
+          SizedBox(height: 12.r),
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: AdminService().aiUsageStream(limit: 5),
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const AppSkeletonList(itemCount: 3);
+              }
+              final users = snap.data ?? [];
+              if (users.isEmpty) {
+                return AppEmptyState(
+                  icon: Icons.psychology_rounded,
+                  title: l10n.translate('admin.abuse_no_ai_usage'),
+                  compact: true,
+                );
+              }
+              return Column(
+                children: users.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final u = entry.value;
+                  final name = u['display_name'] as String? ?? '—';
+                  final used = (u['ai_credits_used'] as num?)?.toInt() ?? 0;
+                  final isPremium =
+                      (u['subscription_tier'] as String?) == 'premium';
+                  final limit = isPremium ? 20 : 2;
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: 8.r),
+                    child: AppCard(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: primary.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              '#${i + 1}',
+                              style: t.labelS.copyWith(
+                                color: primary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 10.w),
+                          Expanded(
+                            child: Text(name,
+                                style: t.labelL
+                                    .copyWith(fontWeight: FontWeight.w600),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                          Text(
+                            '$used / $limit',
+                            style: t.labelM.copyWith(
+                              color: primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnalyticsKpi extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final String sub;
+  final Color color;
+  final AppPalette palette;
+  final AppText t;
+
+  const _AnalyticsKpi({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.sub,
+    required this.color,
+    required this.palette,
+    required this.t,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: (MediaQuery.of(context).size.width - 56) / 2,
+      child: AppGlassCard(
+        padding: EdgeInsets.all(14.r),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              child: Icon(icon, color: color, size: 17),
+            ),
+            SizedBox(height: 10.r),
+            Text(value,
+                style: t.headlineM
+                    .copyWith(color: color, fontWeight: FontWeight.w800)),
+            SizedBox(height: 2.r),
+            Text(label,
+                style: t.labelS.copyWith(color: palette.textSecondary)),
+            SizedBox(height: 4.r),
+            Text(sub,
+                style: t.labelS
+                    .copyWith(color: color.withValues(alpha: 0.7), fontSize: 10),
+                maxLines: 2),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleBar extends StatelessWidget {
+  final String label;
+  final int count;
+  final int total;
+  final Color color;
+  final AppPalette palette;
+  final AppText t;
+
+  const _RoleBar({
+    required this.label,
+    required this.count,
+    required this.total,
+    required this.color,
+    required this.palette,
+    required this.t,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = total > 0 ? (count / total).clamp(0.0, 1.0) : 0.0;
+    final pctStr = (pct * 100).toStringAsFixed(1);
+    return Row(
+      children: [
+        SizedBox(
+          width: 80.w,
+          child: Text(label,
+              style: t.labelS.copyWith(color: palette.textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+        ),
+        SizedBox(width: 8.w),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: pct),
+              duration: AppMotion.slow,
+              curve: AppMotion.emphasized,
+              builder: (_, v, __) => LinearProgressIndicator(
+                value: v,
+                minHeight: 8,
+                backgroundColor: color.withValues(alpha: 0.12),
+                color: color,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 8.w),
+        SizedBox(
+          width: 40.w,
+          child: Text(
+            '$count ($pctStr%)',
+            style: t.labelS
+                .copyWith(color: palette.textTertiary, fontSize: 10),
+            textAlign: TextAlign.right,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+

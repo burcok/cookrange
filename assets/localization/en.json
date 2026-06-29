@@ -724,7 +724,8 @@
       "program_earn": "Sell a program: earn from marketplace sales",
       "payout_requested": "Payout Requested",
       "payout_recorded": "Your payout request has been recorded. We'll process it once automatic payouts are enabled — you'll be notified by email.",
-      "got_it": "Got it"
+      "got_it": "Got it",
+      "roadmap_title": "Payouts Coming Soon"
     },
     "developer": {
       "title": "Developer",
@@ -2100,7 +2101,8 @@
     "status_pending": "Pending Review",
     "status_approved": "Live",
     "status_draft": "Draft",
-    "status_rejected": "Rejected"
+    "status_rejected": "Rejected",
+    "paid_locked_title": "Premium Program"
   },
   "permission": {
     "camera": {
@@ -2332,7 +2334,42 @@
     "dish_meal_snack": "Snack",
     "dish_diff_easy": "Easy",
     "dish_diff_medium": "Medium",
-    "dish_diff_hard": "Hard"
+    "dish_diff_hard": "Hard",
+    "tab_billing": "Billing",
+    "tab_abuse": "Abuse",
+    "billing_premium_count": "Premium users",
+    "billing_mrr_estimate": "Est. MRR",
+    "billing_subscribers_label": "Active Subscribers",
+    "billing_no_subscribers": "No subscribers yet",
+    "billing_no_subscribers_sub": "Premium upgrades will appear here",
+    "abuse_banned_tab": "Banned",
+    "abuse_ai_usage_tab": "AI Usage",
+    "abuse_no_banned": "No banned users",
+    "abuse_no_banned_sub": "All users are currently in good standing",
+    "abuse_banned_label": "Banned",
+    "abuse_unban_btn": "Unban",
+    "abuse_no_ai_usage": "No AI usage data",
+    "abuse_no_ai_usage_sub": "Users with AI credits used will appear here",
+    "type_coach": "Coach Application",
+    "type_gym": "Gym Application",
+    "tab_analytics": "Analytics",
+    "analytics_kpi_title": "Key Metrics",
+    "analytics_total_users": "Total Users",
+    "analytics_coaches_label": "coaches",
+    "analytics_gyms_label": "gyms",
+    "analytics_premium": "Premium",
+    "analytics_conversion": "conversion",
+    "analytics_posts": "Posts",
+    "analytics_squads_label": "squads",
+    "analytics_open_reports": "Open Reports",
+    "analytics_reports_action": "needs attention",
+    "analytics_reports_clear": "all clear",
+    "analytics_roles_title": "User Role Distribution",
+    "analytics_role_consumer": "Consumer",
+    "analytics_role_coach": "Coach",
+    "analytics_role_gym": "Gym Owner",
+    "analytics_role_premium": "Premium",
+    "analytics_top_ai_title": "Top AI Users Today"
   },
   "intro": {
     "skip": "Skip",

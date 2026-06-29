@@ -160,19 +160,61 @@ class _AffiliateEarningsScreenState extends State<AffiliateEarningsScreen> {
             SizedBox(height: 16.h),
           ],
 
-          // ── Coming soon banner ───────────────────────────────────────────
-          AppCard(
-            padding: EdgeInsets.all(14.w),
+          // ── Honest-roadmap banner ─────────────────────────────────────────
+          AppGlassCard(
+            padding: EdgeInsets.all(AppSpacing.md.r),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.info_outline_rounded,
-                    color: palette.info, size: 18.sp),
-                SizedBox(width: 10.w),
+                Container(
+                  width: 40.r,
+                  height: 40.r,
+                  decoration: BoxDecoration(
+                    color: palette.success.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                  ),
+                  child: Icon(Icons.account_balance_rounded,
+                      color: palette.success, size: 20.sp),
+                ),
+                SizedBox(width: 12.w),
                 Expanded(
-                  child: Text(
-                    l.translate('settings.earnings.coming_soon'),
-                    style: t.labelM.copyWith(color: palette.textSecondary),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l.translate('settings.earnings.roadmap_title'),
+                              style: t.labelM.copyWith(
+                                  color: palette.textPrimary,
+                                  fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8.w, vertical: 2.h),
+                            decoration: BoxDecoration(
+                              color: palette.info.withValues(alpha: 0.12),
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.full.r),
+                            ),
+                            child: Text(
+                              'v2.0',
+                              style: t.labelS.copyWith(
+                                  color: palette.info,
+                                  fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 6.h),
+                      Text(
+                        l.translate('settings.earnings.coming_soon'),
+                        style:
+                            t.bodyM.copyWith(color: palette.textSecondary),
+                      ),
+                    ],
                   ),
                 ),
               ],

@@ -1157,7 +1157,7 @@ class _HomeScreenState extends State<HomeScreen>
               final palette = AppPalette.of(context);
               final t = AppText.of(context);
               final primary = context.watch<ThemeProvider>().primaryColor;
-              return GestureDetector(
+              return RepaintBoundary(child: GestureDetector(
                 onTap: () => setState(() => _selectedDayIndex = index),
                 child: AnimatedContainer(
                   duration: AppMotion.fast,
@@ -1200,7 +1200,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ],
                   ),
                 ),
-              );
+              ));
             },
           ),
         ),

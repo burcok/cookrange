@@ -724,7 +724,8 @@
       "program_earn": "Program sat: pazar yerinden kazanç elde et",
       "payout_requested": "Ödeme Talep Edildi",
       "payout_recorded": "Ödeme talebiniz kaydedildi. Otomatik ödemeler etkinleştirildiğinde işleme alınacak — e-posta ile bilgilendirileceksiniz.",
-      "got_it": "Anladım"
+      "got_it": "Anladım",
+      "roadmap_title": "Ödemeler Yakında"
     },
     "developer": {
       "title": "Geliştirici",
@@ -2100,7 +2101,8 @@
     "status_pending": "İnceleme Bekliyor",
     "status_approved": "Yayında",
     "status_draft": "Taslak",
-    "status_rejected": "Reddedildi"
+    "status_rejected": "Reddedildi",
+    "paid_locked_title": "Premium Program"
   },
   "permission": {
     "camera": {
@@ -2332,7 +2334,42 @@
     "dish_meal_snack": "Atıştırmalık",
     "dish_diff_easy": "Kolay",
     "dish_diff_medium": "Orta",
-    "dish_diff_hard": "Zor"
+    "dish_diff_hard": "Zor",
+    "tab_billing": "Faturalandırma",
+    "tab_abuse": "Kötüye Kullanım",
+    "billing_premium_count": "Premium kullanıcı",
+    "billing_mrr_estimate": "Tahmini ARA",
+    "billing_subscribers_label": "Aktif Aboneler",
+    "billing_no_subscribers": "Henüz abone yok",
+    "billing_no_subscribers_sub": "Premium yükseltmeleri burada görünecek",
+    "abuse_banned_tab": "Yasaklı",
+    "abuse_ai_usage_tab": "AI Kullanımı",
+    "abuse_no_banned": "Yasaklı kullanıcı yok",
+    "abuse_no_banned_sub": "Tüm kullanıcılar şu an uyumlu durumda",
+    "abuse_banned_label": "Yasaklı",
+    "abuse_unban_btn": "Yasağı Kaldır",
+    "abuse_no_ai_usage": "AI kullanım verisi yok",
+    "abuse_no_ai_usage_sub": "AI kredisi kullanan kullanıcılar burada görünecek",
+    "type_coach": "Antrenör Başvurusu",
+    "type_gym": "Spor Salonu Başvurusu",
+    "tab_analytics": "Analitik",
+    "analytics_kpi_title": "Temel Metrikler",
+    "analytics_total_users": "Toplam Kullanıcı",
+    "analytics_coaches_label": "antrenör",
+    "analytics_gyms_label": "spor salonu",
+    "analytics_premium": "Premium",
+    "analytics_conversion": "dönüşüm oranı",
+    "analytics_posts": "Gönderi",
+    "analytics_squads_label": "ekip",
+    "analytics_open_reports": "Açık Şikayetler",
+    "analytics_reports_action": "ilgilenilmeli",
+    "analytics_reports_clear": "her şey yolunda",
+    "analytics_roles_title": "Kullanıcı Rol Dağılımı",
+    "analytics_role_consumer": "Tüketici",
+    "analytics_role_coach": "Antrenör",
+    "analytics_role_gym": "Salon Sahibi",
+    "analytics_role_premium": "Premium",
+    "analytics_top_ai_title": "Bugünkü En Çok AI Kullananlar"
   },
   "intro": {
     "skip": "Atla",

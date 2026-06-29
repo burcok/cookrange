@@ -37,16 +37,12 @@ class AppLocalizations {
 
   Future<bool> load() async {
     try {
-      // Debug için mevcut locale bilgisini yazdır
       debugPrint('Current locale: ${locale.languageCode}');
 
-      // Dil dosyası yolunu oluştur
       final String languageCode = locale.languageCode == 'tr' ? 'tr' : 'en';
-      final String jsonPath =
-          'assets/localization/$languageCode.json';
+      final String jsonPath = 'assets/localization/$languageCode.json';
       debugPrint('Loading translations from: $jsonPath');
 
-      // Dosyayı yükle
       String jsonString = await rootBundle.loadString(jsonPath);
       debugPrint('Successfully loaded $languageCode translations');
 
@@ -142,7 +138,6 @@ class _AppLocalizationsDelegate
     if (!success) {
       debugPrint(
           'Failed to load translations for ${locale.languageCode}, falling back to English');
-      // Fallback to English if loading fails
       localizations = AppLocalizations(const Locale('en'));
       await localizations.load();
     }

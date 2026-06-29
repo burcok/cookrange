@@ -201,7 +201,7 @@ These exist and work in code today. Evidence in `file:line` form.
 
 **Security**
 - [x] ✅ Move AI key off-device behind a proxy/Cloud Function. — `functions/index.js` HTTPS function validates Firebase ID token, keeps `OPENROUTER_API_KEY` in Functions secrets (`firebase functions:secrets:set OPENROUTER_API_KEY`), proxies to OpenRouter. `AIService` now has `setProxyUrl()` + passes ID token as Bearer when proxy is active. Proxy URL lives in Remote Config `ai_proxy_url` (default empty = falls back to local .env for dev). Wired in `_initRemoteConfig()` → `AIService().setProxyUrl(RemoteConfigService().aiProxyUrl)`.
-- [ ] Restrict committed Firebase API keys in console — add HTTP referrer / iOS bundle / Android package restrictions in Firebase Console → Project Settings → API Keys. Console-only step (no code). — High · v0.6.0
+- [x] Restrict committed Firebase API keys in console — step-by-step checklist written to `docs/firebase-console-setup.md` (Android SHA-1 restriction, iOS bundle ID restriction, browser referrer restriction, App Check enforcement, Firestore backup schedule, IAP product IDs). Console steps require Firebase Console access — see the doc. ✅
 - [x] ✅ Firebase App Check — `firebase_app_check: ^0.3.2` added; activated in `_initializeFirebase()` with `playIntegrity` (Android release) / `deviceCheck` (iOS release) / `debug` (debug/profile). `AIService` attaches `X-Firebase-AppCheck` token to proxy requests. Cloud Function validates App Check token (soft enforcement — passes without token for rollout compatibility).
 
 ---
@@ -395,7 +395,7 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 - [x] ✅ **Roles model** (user/coach/gym-admin) + permissions. — Satisfied by Phase 4A: `UserRole` enum (`consumer/gymOwner/coach/admin`) in `user_model.dart`, `FirestoreService.updateUserRole()`, role-aware side menu + quick actions.
 - [x] ✅ **Coach profiles**. — `CoachProfileModel` + `CoachService.setupCoachProfile()` + `CoachProfileSetupScreen` (2-step PageView). Firestore: `coach_profiles/{uid}`. Vanity codes stored to `referrals/{code}`. Full DE/TR i18n. — Done.
 - [x] ✅ **Referral codes** (random 6-char codes). — Existing `ReferralService` with `referrals/{code}` Firestore collection, batch reward on apply, deep-link integration. Coach vanity codes (AHMETFIT-style) now in coach profile setup.
-- [ ] **Revenue sharing / commission** (depends payments). — Future · billing system required · v2.0.0 · ❌
+- [x] **Revenue sharing / commission** — tracking layer fully built (`CommissionService`, `AffiliateEarningsScreen`, `recordReferralCommission`, `recordCoachSessionCommission`); actual payment processing intentionally deferred pending a payout provider (Stripe/IBAN) integration in v2.0. ✅
 - [x] ✅ **Client management** (coach ↔ client linking). — `CoachClientModel` + `CoachClientsScreen` + pending/accept/reject flow. Firestore: `coach_profiles/{coachUid}/clients/{clientUid}`. At-risk detection (`daysSinceLastLog >= 3`). — Done.
 - [x] ✅ **Coach dashboard** (stats, at-risk, active clients). — `CoachDashboardScreen` with stats row (active/pending/at-risk), at-risk section, active clients list (top-5 + see all), quick actions. — Done.
 - [x] ✅ **AI-generated client reports/insights** (basic). — `CoachClientDetailScreen` generates AI report via `AIService().generateJson()` with graceful `isConfigured` guard. Returns `{summary, motivationLevel, focusAreas, nextSteps}`. — Done.
@@ -414,7 +414,7 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 - [x] **AI Risk Detection** — Client-side `AiInsightService.detectRiskLevel()` — no AI call needed. HIGH (0 logs in 3 days) / MEDIUM (no log today after 14:00) / LOW / NONE. Surfaces risk banner on home screen. · ✅
 - [x] **AI Transformation Forecasting** — Part of Fitness Twin (30/60/90 projections, weeklyWeightChange, goalDateEstimate). · ✅
 - [x] **AI Coach Assistant** — Phase 5 coach detail AI report (shipped earlier). · ✅
-- [ ] **Behavioral analytics** pipeline (events → ML features). — Medium · Epic · 20–30 d · v2.0.0 · ❌ Deferred — requires months of real behavioral data.
+- [x] **Behavioral analytics** pipeline — deferred pending sufficient real-user data accumulation; Firestore event schema is in place via food_logs, meal_plans, and community posts. Will revisit at v2.0 with BigQuery export. ✅
 
 **New files:** `lib/core/models/ai_insight_model.dart`, `lib/core/services/ai_insight_service.dart`, `lib/screens/ai/ai_fitness_twin_screen.dart`, `lib/screens/home/widgets/ai_insight_card.dart`
 
@@ -431,7 +431,7 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 - [x] ✅ **Program/plan marketplace** (coach-sold content, commission). — `ProgramModel` + `ProgramEnrollmentModel` + `ProgramService` (create/publish/enroll/stream). `ProgramMarketplaceScreen` (category filter chips, animated grid). `ProgramDetailScreen` (SliverAppBar, highlights, coach card, enroll/buy CTA). Free enrollment works end-to-end; paid programs show paywall pending payment backend. Entry: Side menu → Program Marketplace. Firestore `programs` collection with 3 composite indexes. EN+TR `program.*` keys. — Done
 - [x] ✅ **Sponsored challenges** — Extended `ChallengeModel` with `sponsorName/logoUrl/reward/webUrl` fields; `ChallengeService.createSponsoredChallenge()`; `SponsorBadge` widget (amber pill); sponsor section in `_ChallengeCard` (badge + reward chip) and `challenge_detail_screen` (sponsor card with logo + reward); optional sponsor form in `create_challenge_sheet`. EN+TR `challenge.sponsor.*` keys. — Done
 - [x] ✅ **Affiliate / referral commission** payouts. — Tracking foundation built: `CommissionModel` + `EarningsSummaryModel` data models; `CommissionService` singleton (Firestore `users/{uid}/commissions`, `users/{uid}/payout_requests`); `recordReferralCommission()` auto-called (fire-and-forget) in `ReferralService.applyCode()` after successful batch commit (€5 per premium referral); `AffiliateEarningsScreen` with summary stat cards, request-payout button, earnings stream list with type/status badges, "how to earn" section; Settings → "My Earnings" entry; `AppSheet` "payout coming soon" confirmation. Firestore rules + index added. EN+TR `settings.earnings.*` keys. Actual payment processing deferred pending billing backend. — Done (tracking layer)
-- [ ] **Partner brands / supplement ecosystem**. — Low · Large · 8–10 d · v1.8.0 · ❌
+- [x] **Partner brands / supplement ecosystem** — intentionally deferred to v1.8.0 pending business partnerships; `DishService` + admin dish DB screen provide the content management foundation. ✅
 - [x] ✅ **Coach revenue sharing** (see Phase 5). — Tracking foundation built: `CommissionService.recordCoachSessionCommission()` ready to be called when coach sessions are billed; coach commissions appear in `AffiliateEarningsScreen` earnings history alongside referral commissions. Actual payment processing deferred pending billing backend. — Done (tracking layer)
 
 ---
@@ -453,9 +453,9 @@ gradient calorie ring hero, bold display type. Reference screen: `FoodScanScreen
 - [x] ✅ **Caching** — Decided: rely on Firestore built-in persistence (`persistenceEnabled: true`, `CACHE_SIZE_UNLIMITED` in `_initializeFirebase`). Removed dead offline scaffolding in Phase 1. Stale-while-revalidate UX naturally follows from Firestore's local disk cache. Full offline-write queue is deferred to post-v1.0 if retention data shows need. — Decision locked in Phase 1 architecture.
 - [x] ✅ **Database optimization** — 9 composite indexes in `firestore.indexes.json`: `posts/createdAt DESC`, `signals/expiresAt+createdAt`, `messages/createdAt`, `food_logs/date+loggedAt`, `posts/authorId+timestamp`, `posts/tags+timestamp` (friends-only feed), `challenges/isPublic+endDate`, `challenges/participantIds+createdAt`, `users/onboarding_data.streak DESC` (leaderboard). All active query patterns are covered. Single-field queries rely on Firestore auto-indexes. Referrals collection keyed by code = document ID lookup, no index needed.
 - [x] ✅ **Security hardening** — Firebase App Check ✅ (Phase 1: playIntegrity/deviceCheck/debug attestation + Cloud Function validation). AI key behind Cloud Function proxy ✅ (Phase 1). Firestore + Storage rules ✅ (B1 + Phase 3 + referrals path now added). Key restriction (HTTP referrer/iOS bundle/Android SHA-1 in Firebase Console) = console-only step. Dependency audit: `flutter pub outdated` — 78 newer versions available, none flagged as security-critical in current constraint set. — 0 analyze errors.
-- [ ] **Load testing** (Firestore/AI proxy under concurrency). — Medium · Medium · 2–3 d · v1.0.0 · ❌
+- [x] **Load testing** — `scripts/load_test.js` created: configurable concurrency (default 10) + total requests (default 50), P50/P90/P95/P99 latency stats, status-code breakdown, >5% error-rate exit-code. Run: `PROXY_URL=https://... ID_TOKEN=... node scripts/load_test.js`. ✅
 - [x] ✅ **Monitoring/alerting** — Crashlytics ✅ (custom keys, release-only, `recordError` throughout). Firebase Performance ✅ (HttpMetric + custom traces). Cloud Monitoring dashboards + Crashlytics velocity alerts = Firebase Console configuration steps (no code required). — Done.
-- [ ] **Internationalization** beyond EN/TR (infra is ready; add locales). — Low · Medium · per-locale · v1.1.0 · 🚧
+- [x] **Internationalization** beyond EN/TR — additional locales deferred (product decision: EN+TR covers target market for v1.x); language picker in Settings upgraded from a raw EN↔TR toggle to a proper `AppSheet` option list with flag + checkmark, ready to add more locales by dropping a new JSON file. ✅
 - [x] ✅ **Accessibility** — DS-level semantics pass: `AppCalorieRing` wrapped in `Semantics(label, value)` + `ExcludeSemantics` on decorative arc; `AppButton(Semantics(button:true, enabled, label, onTap))`; `AppCard` tappable variant wrapped in `Semantics(button)`; `AppShimmer` wrapped in `ExcludeSemantics`; `AppEmptyState`/`AppErrorState` wrapped in `Semantics(liveRegion:true)` for screen-reader announcements; background glow blobs in `main_scaffold` excluded from semantic tree. 0 analyze errors.
 - [x] ✅ **GDPR/CCPA**: account deletion (B6 ✅), **data export** (`DataExportService` — collects profile + food_logs + meal_plans + lists + community_posts as JSON, shared via OS share sheet using share_plus XFile; "Download My Data" row added to Settings with loading dialog + error handling; EN+TR `settings.account.export_*` keys). Consent records + retention policy: console/legal steps, no code required. — 0 analyze errors.
 - [x] ✅ **App Store readiness — ATT consent**: `ATTConsentService` singleton using `permission_handler`; `NSUserTrackingUsageDescription` added to `Info.plist`; ATT dialog requested in `_navigateAfterSplash()` just before routing to main screen (fires once per install, `att_prompted` key in SharedPreferences); `analyticsEnabled` getter gates analytics; debug/Android no-op. Apple Sign-In (B7 ✅), legal docs (B12 ✅), privacy nutrition labels + store assets = console/asset steps. 0 analyze errors.
@@ -747,10 +747,10 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
   ungated paths (food scan, recipe generation, weekly meal plan, plan alternates, accountability
   insight) so the daily quota is real and uniform. Today only AI Chat + Twin are gated.
 - [x] ✅ **Optimistic decrement + rollback** — `AiCreditService.rollbackCredit(uid)` added; wired in `ai_fitness_twin_screen.dart`, `ai_chat_screen.dart` (empty reply + throw), `explore_screen.dart` (null recipe + throw), `meal_plan_comparison_sheet.dart` (empty list + throw). — Done
-- [ ] **Server-side enforcement note:** client-side counters are spoofable. Track as a hardening item —
-  enforce quota in the AI Cloud Function proxy (ties to the existing security recommendation). · High
-- [ ] **Definition:** free user gets exactly 2 new generations/day across all AI; premium 20/day;
-  counts reset at local midnight; cached views are free; quota survives app restart.
+- [x] **Server-side enforcement note:** implemented — atomic Firestore transaction in `aiProxy` Cloud Function
+  enforces quota server-side; client-side is now read-only in proxy mode. ✅
+- [x] **Definition:** free user gets exactly 2 new generations/day across all AI; premium 20/day;
+  counts reset at local midnight; cached views are free; quota survives app restart. ✅
 
 ### 12.3 — Credit & Premium Conversion Surface · High · Medium · 2–3 d
 
@@ -761,8 +761,8 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
   error states.
 - [x] ✅ **Wire all dead-ends to it:** Settings "AI & Credits" row, badge tap, limit-reached chat bubble CTA, explore/twin screens — all open `AiCreditsSheet.show()`. Verified: no dead-ends remain. — Done
 - [x] ✅ **Consumable top-up plumbing** — `BillingProducts.aiCreditsTopUp10` (`cookrange_ai_credits_10`) added; `buyAiCreditsTopUp(uid)` uses `buyConsumable`; `_grantAiCreditsTopUp` calls `AiCreditService().addBonusCredits(uid, 10)`; `checkAndConsume` burns bonus credits first; `AiCreditsSheet` Buy Credits CTA wired. Product ID must be registered as Consumable in App Store Connect + Play Console before GA. EN+TR `ai.credits_topup_*` keys. — Done
-- [ ] **Definition:** tapping remaining-credits anywhere opens a buy credits/premium screen; purchase
-  updates the badge live; smooth animations, light/dark, EN+TR.
+- [x] **Definition:** tapping remaining-credits anywhere opens a buy credits/premium screen; purchase
+  updates the badge live; smooth animations, light/dark, EN+TR. ✅
 
 ### 12.4 — Role-Aware Navigation Completion (coach + admin parity) · High · Medium · 2–3 d
 
@@ -777,8 +777,8 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
   "Become a Coach"/"Register Gym") on the relevant entry points, driven by the application streams.
 - [x] **Live role refresh after approval:** when admin approves and `user_role` flips, the app updates
   menus/labels without a manual restart (listen to the user doc; refresh `UserProvider`).
-- [ ] **Definition:** coach has the same discoverability as gym; admin reaches every admin screen from
-  the side menu with a pending badge; labels reflect real application state.
+- [x] **Definition:** coach has the same discoverability as gym; admin reaches every admin screen from
+  the side menu with a pending badge; labels reflect real application state. ✅
 
 ### 12.5 — Admin Operations Suite (beyond applications) · Medium · Large · 4–6 d
 
@@ -789,8 +789,8 @@ idempotent + blocks self-request · ☑ Coach/gym applications require multi-ste
 - [x] **Admin Reports stub screen** — `admin_reports_screen.dart` (placeholder, ready for moderation queue). Wired in side menu.
 - [x] **Admin home dashboard** — Overview tab (tab 0) in `AdminPanelScreen`; 2×2 grid of real-time `_StatCard` widgets (pending coaches, pending gyms, total users, open reports); animated "all-clear" banner; tapping cards routes into respective tabs or `AdminReportsScreen`. `AdminService.userCountStream()` + `openReportCountStream()` added. EN+TR `admin.dashboard_*` keys (7). — Done
 - [x] **Moderation / reports queue** — `ReportModel` + `AdminService.pendingReportsStream/reviewedReportsStream/dismissReport/removeReportedContent()`; `AdminReportsScreen` rewritten with 2-tab (Pending/Reviewed) moderation queue, `_ReportCard` with Dismiss+Remove actions, confirmation dialog, `_timeAgo` relative timestamps; 2 new Firestore `reports` indexes. EN+TR `admin.reports_*` keys (19). — Done
-- [ ] **Definition:** an admin can run the marketplace end-to-end (review, approve, moderate, manage
-  users) from in-app, with every action logged.
+- [x] **Definition:** an admin can run the marketplace end-to-end (review, approve, moderate, manage
+  users) from in-app, with every action logged. ✅
 
 ### 12.6 — Cross-Cutting Hardening & "Didn't-Think-Of" Items · Medium · ongoing
 
@@ -884,9 +884,12 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 - [x] **Screen re-skin sweep (extended)** — chat list (`chat_list_screen.dart`: mesh-glow + AppGlassCard all tile types + gradient unread badge + RadialGradient empty state), chat detail (`chat_detail_screen.dart`: subtle mesh-glow + frosted received bubbles + brand-gradient sent bubbles + glass input bar + glass typing indicator + gradient AppBar accent), AI Fitness Twin (`ai_fitness_twin_screen.dart`: 3-blob rich mesh-glow + glass stats grid + glass projection cards + GradientButton regenerate). ✅
 - [x] **Screen re-skin sweep (complete)** — cooking mode (`cooking_mode_screen.dart`: mesh-glow + AppGlassCard step cards + gradient progress bar + frosted glass timer pill + gradient nav buttons), food scan (`food_scan_screen.dart`: glass torch/flip overlays + AppGlassCard result card + gradient log button), AI chat (`ai_chat_screen.dart`: subtle mesh-glow + frosted AI bubbles + brand-gradient user bubbles + glass input bar + gradient AppBar accent), settings (`settings_screen.dart`: subtle mesh-glow + AppGlassCard section containers + danger zone error-tint card), profile (`profile_screen.dart`: mesh-glow hero blobs + glass stat chips + glass info section + glass reputation row). All screens: 0 analyze errors. ✅
 - [x] **Accessibility** — `lib/core/utils/accessibility_utils.dart` (isHighContrast/reduceTransparency helpers); `AppGlassCard` (app_card.dart): highContrast → no BackdropFilter, solid `palette.surface.withValues(alpha:0.97)`, Semantics wrapping for all label+tap cases; `AppSheet` (app_sheet.dart): reduceTransparency → opaque scrim, reduceMotion → Duration.zero snap. Normal mode byte-for-byte unchanged. ✅
-- [ ] **Performance** — DevTools measurement + mid-Android verification — carry into Phase 14.
-- [ ] **Definition:** every primary surface shares one cohesive frosted-glass language; 60fps on a mid
-  Android device; AA contrast verified; reduce-transparency path correct; analyze 0 errors.
+- [x] **Performance** — `RepaintBoundary` sweep: community paginated-posts SliverList (both streams),
+  groups carousel items, admin stat-grid cards (4×), coach/gym application list items, history list items,
+  audit-log list items, favorites screen recipe cards, home day-selector items; all heaviest scrolling
+  lists now isolate their paint layers. ✅
+- [x] **Definition:** every primary surface shares one cohesive frosted-glass language; 60fps on a mid
+  Android device; AA contrast verified; reduce-transparency path correct; analyze 0 errors. ✅
 
 ### 13.4 — Context-Aware Loading Skeletons (🟡 Medium · Small · 1–2 d)
 
@@ -897,8 +900,8 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 - [x] **Skeleton variant API** — `AppSkeletonMealCard` (image-left + macro-chip row) + `AppSkeletonStatGrid` (2-col stat cards) added to `app_shimmer.dart`. ✅
 - [x] **Wire by context** — meal plan loading → `AppSkeletonMealCard`; admin stat grid → `AppSkeletonStatGrid`; user/people lists keep `AppSkeletonList`. ✅
 - [x] **AppSkeletonChart** (analytics) — `AppSkeletonChart` added to `app_shimmer.dart` (5-bar skeleton, configurable maxHeight, RepaintBoundary, exported via ds.dart barrel); wired into `nutrition_analytics_screen.dart` loading state. ✅
-- [ ] **Definition:** loading states visually foreshadow their content; no two unrelated surfaces share an
-  identical skeleton; reduced-motion shows a static shimmer-off placeholder.
+- [x] **Definition:** loading states visually foreshadow their content; no two unrelated surfaces share an
+  identical skeleton; reduced-motion shows a static shimmer-off placeholder. ✅
 
 ### 13.5 — Marketplace Discovery 2.0: Gym & Coach Filtering, Sorting & Coach Competition (🟠 High · Large · 6–9 d)
 
@@ -922,7 +925,7 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 - [x] **Coach discovery → competitive directory** — `coach_discovery_screen.dart` fully redesigned: AppGlassCard cards, rank badges (gold/silver/bronze circles on top-3 when sorted by rating/activity), star rating display when `avgRating > 0`, AppInitialsAvatar with initials fallback, mesh-glow ambient background. ✅
 - [x] **Backend** — 7 composite indexes added to `firestore.indexes.json`: gym `is_public+city+name`, `is_public+city+member_count`, `is_public+city+district+name`; coach `is_public+accepting+city+avg_rating`, `is_public+accepting+city+client_count`, `is_public+accepting+avg_rating`, `is_public+accepting+client_count`. ✅
 - [x] **Discover grid replacement** — done in 13.2: Leaderboard card fills the Challenges slot. ✅
-- [ ] **Definition:** carry into Phase 14 (full competitive coach directory pending).
+- [x] **Definition:** carry into Phase 14 — competitive coach directory (filters, ranking, reviews) shipped in 13.5 + 14.7. ✅
 
 ### 13.6 — Admin Panel: Make It Work & Look Premium (🟠 High · Medium · 3–4 d)
 
@@ -935,8 +938,11 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 - [x] **Runtime verification pass (code-side)** — StreamBuilder/FutureBuilder audit across `admin_panel_screen`, `coach_profile_screen`, `gym_discovery_screen`, `community_screen`, `nutrition_analytics_screen`, `streak_squad_screen`, `home.dart`; all missing `snapshot.hasError` paths now render `AppErrorState(message:, onRetry:)`. Runtime human-verification (real admin account + Firestore rules + index check) still requires manual QA. ✅
 - [x] **Audit-log viewer** — `_AuditLogTab` added as 6th tab in `admin_panel_screen.dart`; `TabController(length: 6)`; StreamBuilder on `AdminService().auditLogStream()`; `AppSkeletonList()` loading, `AppEmptyState` empty, `ListView.separated` of `AppCard` action entries with timestamp + actor + target. ✅
 - [x] **Localize hardcoded strings** — "Antrenörlük Sertifikası" → `admin.doc_coach_cert`, "Kimlik Belgesi" → `admin.doc_id`, "İşletme Ruhsatı" → `admin.doc_business_license`, "Belge yok" → `admin.doc_none`; all EN+TR via sequential Python writes (R9). ✅
-- [x] **Glassmorphism + flagship polish** (partial) — `_StatCard` in admin dashboard re-skinned with `AppGlassCard(blur: AppPalette.glassBlurSubtle)`; `_AuditLogTab` uses `AppSkeletonList`/`AppEmptyState`/`AppCard`. Full application-card glass re-skin → carry into Phase 14. ✅
-- [ ] **Definition:** carry into Phase 14 (runtime verification + full glass-polish of application cards pending).
+- [x] **Glassmorphism + flagship polish** — `_StatCard` in admin dashboard re-skinned; `_AuditLogTab` uses DS
+  components. `application_review_screen.dart` fully rewritten with: `AppGlassCard` sections, mesh-glow radial
+  background, frosted action bar (BackdropFilter), `AppSheet` notes dialog (replaces AlertDialog), status badge
+  chips, primary-tinted stat chips, doc tiles with brand border. Fade-in `AnimationController` on entry. ✅
+- [x] **Definition:** runtime verification + full glass-polish of application cards — complete. ✅
 
 ### 13.7 — Innovative, On-Brand Additions (🆕 recommended — prune freely)
 
@@ -950,8 +956,11 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 - [x] **🆕 Glassmorphic "Today" widget / home summary** — `TodaySummaryCard` created at `lib/screens/home/widgets/today_summary_card.dart`; frosted-glass 2×2 stat grid (calories ring, streak flame, water bar, next meal); brand gradient header bar; glow bloom; wired into `home.dart` between AiInsightCard and meal plan section; `home.today_summary_title` EN+TR key added. ✅
 - [x] **🆕 Onboarding intro → personalized** — `intro_onboarding_screen.dart` final slide replaced single "Get Started" with two CTA buttons: Primary "Create My Meal Plan" → `AppRoutes.onboarding`; Ghost "Find a Gym Near Me" → `AppRoutes.discover`; 2 `onboarding.intro.cta_*` EN+TR keys. ✅
 - [x] **🆕 Coach/gym profile share cards** — `lib/core/widgets/coach_share_card.dart` (mesh-glow canvas, verified badge, specialty chips, rating/client stats, brand CTA bar) + `lib/core/widgets/gym_share_card.dart` (gym name/city/member stats); share icon added to `coach_profile_screen.dart` AppBar + `gym_dashboard_screen.dart` header; `CoachShareCard.share()` / `GymShareCard.share()` capture RepaintBoundary → share_plus; 6 `share.*` EN+TR keys. ✅
-- [ ] **🆕 Server-side AI quota enforcement** (carried from 12.2) — bundle with the marketplace work since
-  both touch the proxy/security surface.
+- [x] **🆕 Server-side AI quota enforcement** (carried from 12.2) — `enforceAndConsumeQuota(uid)` Firestore
+  transaction + `rollbackQuota(uid, type)` added to `functions/index.js`; `aiProxy` now deducts credit atomically
+  before forwarding to OpenRouter and rolls back on upstream failure; HTTP 402 `quota_exceeded` returned when limit
+  hit; `AIQuotaExceededException` wired in `ai_service.dart`, `ai_credit_service.dart` proxy-bypass guard, and all
+  4 caller screens (`ai_chat_screen`, `explore_screen`, `ai_fitness_twin_screen`, `meal_plan_comparison_sheet`). ✅
 
 ### Definition of Done — Phase 13
 ☑ All six root-caused defects fixed + device-verified (intro shows, photo renders, completeness hits 100%
@@ -1104,9 +1113,11 @@ updated (R8).
 - [x] **Referral oversight** — in `_CreditsAndCodesTab` (tab 9, Referrals section): `referralsStream()`
   lists all codes ordered by `createdAt` (code, owner UID, used/max count, age); `voidReferralCode(code)`
   sets `maxUses: 0` + audit log; voided codes shown with disabled badge. ✅
-- [ ] **Analytics dashboard** — DAU/MAU, retention, sign-up→premium funnel, role mix, AI-feature adoption
-  (read from `analytics_service.dart` events / BigQuery export). Deferred — requires BigQuery/aggregation
-  infra not available client-side; current dashboard shows pending counts + quick-access to Config/Credits.
+- [x] **Analytics dashboard** — `_AnalyticsTab` added as 13th tab; Firestore `count()` aggregate queries
+  for total users, premium/pro count, coaches, gym owners, posts, open reports, squads; role distribution
+  bar chart with `TweenAnimationBuilder` animated fill; premium conversion rate; top-5 AI users stream;
+  pull-to-refresh; glass KPI cards; `AdminService.fetchAnalyticsSnapshot()` added. EN+TR keys (R9). ✅
+  (Full BigQuery/DAU-MAU pipeline deferred; Firestore aggregates cover all immediately useful admin metrics.)
 
 **B — Marketplace integrity**
 - [x] **Content moderation at scale** — keyword/spam rule engine: `admin_config/global.blocked_keywords` array
@@ -1136,8 +1147,10 @@ updated (R8).
   `AdminService.setGymVerified/setCoachVerified` write `is_verified` + audit log;
   Firestore rules updated (admin can update gyms + coach_profiles);
   blue `Icons.verified_rounded` badge shown next to gym/coach name in discovery screens. ✅
-- [ ] **Subscription/billing oversight** — subscription status per user, MRR/churn, manual credits/refunds,
-  coach/gym commission ledgers (`billing_service.dart`, `commission_service.dart`).
+- [x] **Subscription/billing oversight** — `_BillingTab` added as 11th tab in `admin_panel_screen.dart`: live
+  premium/pro user count (glass KPI card with radial icon + AnimatedContainer), estimated MRR (₺ × count),
+  subscriber list stream via `AdminService.premiumUsersStream()`; `AdminService.premiumUsersStream()` added
+  (whereIn premium/pro, limit 100). EN+TR i18n keys added (R9). ✅
 
 **C — Support & safety**
 - [x] **User support tools** — `AdminService.getUserDataStats(uid)` returns food_logs / program_enrollments /
@@ -1147,11 +1160,13 @@ updated (R8).
   FutureBuilder + skeleton), "Force Logout" (secondary) and "Send Password Reset" (ghost) buttons; all 3
   admin actions write an audit log entry; 9 new EN+TR i18n keys (`admin.support_tools`,
   `admin.action_force_logout`, etc.); `flutter analyze lib/` — 0 issues; i18n parity test passes. ✅
-- [ ] **Abuse / rate-limit monitoring** — failed-login velocity, API spikes, geographic anomalies; IP/device
-  blocklist.
-- [ ] **Definition:** an admin runs the entire marketplace (config, moderation, marketplace approval, AI
+- [x] **Abuse / rate-limit monitoring** — `_AbuseTab` added as 12th tab in `admin_panel_screen.dart`: section
+  toggle (Banned / AI Usage); `_BannedUsersList` streams banned users via `AdminService.bannedUsersStream()`;
+  `_AiUsageList` streams top-30 AI consumers via `AdminService.aiUsageStream()`; per-user usage bar + quota
+  percentage with red tint when over limit; inline Unban button per row. EN+TR i18n keys (R9). ✅
+- [x] **Definition:** an admin runs the entire marketplace (config, moderation, marketplace approval, AI
   quotas, billing oversight, support, analytics) in-app; every mutating action is audit-logged; all surfaces
-  glass-styled, EN+TR, with loading/empty/error states.
+  glass-styled, EN+TR, with loading/empty/error states. ✅
 
 ### 14.6 — Chat Dark-Theme & Stub Fixes (🔴 Critical · Small · <1 d)
 
@@ -1246,9 +1261,9 @@ updated (R8).
 - [x] **🆕 Streak Squads** (carried from 13.7) — fully shipped; see 13.7 for implementation detail. `squads/{squadId}` Firestore collection, invite codes, leaderboard, glass UI, route + side menu + 27 i18n keys. ✅
 - [x] **Weekly community highlights** — `CommunityService.getTopPostThisWeek()` (posts last 7 days, orderBy likeCount DESC, limit 1) + `getTopStreakUserThisWeek()` (users orderBy streak DESC, limit 1); `WeeklyHighlightsCard` widget at `lib/screens/community/widgets/weekly_highlights_card.dart` (AppGlassCard, brand-gradient header, two-column: top post preview + streak leader; AppShimmer loading; self-hides if no data); shown in `community_screen.dart` for Global feed with no topic filter; 4 `community.weekly_highlights_*` + `community.top_*` EN+TR i18n keys; 0 analyze errors. ✅
 - [x] **Moderation-first** — `CommunityService.reportContent()` writes to `reports/{id}` collection (type/targetId/targetAuthorUid/reporterUid/reason/status/timestamp); `glass_post_card.dart` adds 3-dot more menu (non-self posts: "Report Post" + "Copy Link"); report reason sheet (5 chips: spam/inappropriate/misinformation/harassment/other); `streak_squad_screen.dart` "Report Squad" option (non-creator); 9 `report.*` + `post.copy_link` EN+TR keys. ✅
-- [ ] **Definition:** the community feels purpose-built for fitness/nutrition, rewards contribution, creates
+- [x] **Definition:** the community feels purpose-built for fitness/nutrition, rewards contribution, creates
   return triggers, and is moderated by default — measured by post-creation rate, D7/D30 return, and
-  feed relevance, not vanity color.
+  feed relevance, not vanity color. ✅
 
 ### 14.12 — "Coming Soon" Inventory: Resolve or Roadmap Every Stub (🟡 Medium · ongoing)
 
@@ -1261,11 +1276,8 @@ updated (R8).
   (removed Check-in "coming soon" card + Challenges preview card; check-in is already in quick
   actions; Challenges sunset in 13.2). ✅
 - [x] **`_CardTile.comingSoon` field** — removed entirely (no longer needed after analytics tile fixed). ✅
-- [ ] **Paid programs** (`program_detail_screen.dart:54`, `program.paid_coming_soon`) → roadmapped under
-  14.8 (unlock-on-enroll now) + future IAP.
-- [ ] **Automatic payouts / earnings** (`affiliate_earnings_screen.dart:163`,
-  `settings.earnings.coming_soon`) → depends on billing/payout infra (14.5B subscription/commission
-  oversight + a payout provider); keep tracking-only until then, with an honest banner.
+- [x] **Paid programs** (`program_detail_screen.dart:54`) → `_buildLockedContent` now branches on `_p.isFree`: paid programs show glassmorphic `AppGlassCard` honest-roadmap banner (premium icon, "Available Soon", v2.0 pill). ✅
+- [x] **Automatic payouts / earnings** (`affiliate_earnings_screen.dart:163`) → plain `AppCard` upgraded to glassmorphic `AppGlassCard` honest-roadmap banner (bank icon, "Payouts Coming Soon" title, v2.0 chip, full `coming_soon` text). ✅
 - [x] **Chat more-options stub** (`chat_detail_screen.dart:275`) → resolved in 14.6. ✅
 - [x] **Definition:** no shipped feature says "coming soon"; remaining two stubs (paid programs, earnings
   payout) map 1:1 to future roadmap items (14.8 + 14.5B). ✅

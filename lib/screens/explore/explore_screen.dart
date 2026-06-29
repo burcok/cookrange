@@ -6,6 +6,7 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/providers/language_provider.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/services/ai/ai_service.dart';
 import '../../core/services/ai_credit_service.dart';
 import '../../core/services/recipe_generation_service.dart';
 import '../../core/widgets/ds/ds.dart';
@@ -99,6 +100,10 @@ class _ExploreScreenState extends State<ExploreScreen>
           setState(() => _error =
               AppLocalizations.of(context).translate('explore.generate_error'));
         }
+      }
+    } on AIQuotaExceededException {
+      if (mounted && uid != null) {
+        unawaited(AiCreditsSheet.show(context, uid: uid, isPremium: isPremium));
       }
     } catch (e) {
       if (uid != null) unawaited(AiCreditService().rollbackCredit(uid));

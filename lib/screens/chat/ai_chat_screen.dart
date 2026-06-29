@@ -11,6 +11,7 @@ import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/ai/ai_chat_history_service.dart';
 import '../../core/services/ai/ai_chat_service.dart';
+import '../../core/services/ai/ai_service.dart';
 import '../../core/services/ai_credit_service.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../ai/widgets/ai_credit_badge.dart';
@@ -113,6 +114,13 @@ class _AIChatScreenState extends State<AIChatScreen> {
         _history.add(AIChatMessage(role: 'assistant', content: reply));
       }
       setState(() => _isTyping = false);
+    } on AIQuotaExceededException {
+      if (!mounted) return;
+      setState(() {
+        _isTyping = false;
+        _history.add(const AIChatMessage(role: '_limit', content: '__limit__'));
+      });
+      unawaited(AiCreditsSheet.show(context, uid: uid, isPremium: isPremium));
     } catch (e) {
       unawaited(AiCreditService().rollbackCredit(uid));
       if (!mounted) return;

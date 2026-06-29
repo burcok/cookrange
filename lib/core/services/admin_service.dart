@@ -794,6 +794,64 @@ class AdminService {
     );
   }
 
+  // ── Analytics ─────────────────────────────────────────────────────────────
+
+  /// Snapshot metrics for the analytics dashboard.
+  /// Uses Firestore aggregate count() queries for efficiency.
+  Future<Map<String, int>> fetchAnalyticsSnapshot() async {
+    try {
+      final results = await Future.wait([
+        _db.collection('users').count().get(),
+        _db.collection('users').where('subscription_tier', whereIn: ['premium', 'pro']).count().get(),
+        _db.collection('users').where('user_role', isEqualTo: 'coach').count().get(),
+        _db.collection('users').where('user_role', isEqualTo: 'gymOwner').count().get(),
+        _db.collection('posts').count().get(),
+        _db.collection('reports').where('status', isEqualTo: 'pending').count().get(),
+        _db.collection('squads').count().get(),
+      ]);
+      return {
+        'total_users': results[0].count ?? 0,
+        'premium_users': results[1].count ?? 0,
+        'coaches': results[2].count ?? 0,
+        'gym_owners': results[3].count ?? 0,
+        'posts': results[4].count ?? 0,
+        'open_reports': results[5].count ?? 0,
+        'squads': results[6].count ?? 0,
+      };
+    } catch (e) {
+      debugPrint('AdminService: fetchAnalyticsSnapshot error — $e');
+      return {};
+    }
+  }
+
+  // ── Billing & Abuse Streams ───────────────────────────────────────────────
+
+  /// Live stream of premium/pro subscribers, ordered by join date (newest first).
+  Stream<List<Map<String, dynamic>>> premiumUsersStream({int limit = 100}) {
+    return _db
+        .collection('users')
+        .where('subscription_tier', whereIn: ['premium', 'pro'])
+        .limit(limit)
+        .snapshots()
+        .map((s) => s.docs.map((d) => {'uid': d.id, ...d.data()}).toList())
+        .handleError((Object e) {
+      debugPrint('AdminService: premiumUsersStream error — $e');
+    });
+  }
+
+  /// Live stream of currently banned users.
+  Stream<List<Map<String, dynamic>>> bannedUsersStream({int limit = 50}) {
+    return _db
+        .collection('users')
+        .where('is_banned', isEqualTo: true)
+        .limit(limit)
+        .snapshots()
+        .map((s) => s.docs.map((d) => {'uid': d.id, ...d.data()}).toList())
+        .handleError((Object e) {
+      debugPrint('AdminService: bannedUsersStream error — $e');
+    });
+  }
+
   // ── Bulk Moderation ────────────────────────────────────────────────────────
 
   Future<void> bulkDismissReports(List<String> reportIds) async {

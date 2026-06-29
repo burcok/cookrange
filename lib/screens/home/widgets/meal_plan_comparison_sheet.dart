@@ -7,6 +7,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/models/weekly_meal_plan_model.dart';
 import '../../../core/providers/language_provider.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../core/services/ai/ai_service.dart';
 import '../../../core/services/ai_credit_service.dart';
 import '../../../core/services/weekly_meal_plan_service.dart';
 import '../../../core/widgets/ds/ds.dart';
@@ -90,6 +91,12 @@ class _MealPlanComparisonBodyState extends State<_MealPlanComparisonBody> {
           _alternates = alts;
           _isLoading = false;
         });
+      }
+    } on AIQuotaExceededException {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        final isPremium = widget.user.subscriptionTier.isPremiumOrAbove;
+        unawaited(AiCreditsSheet.show(context, uid: widget.user.uid, isPremium: isPremium));
       }
     } catch (_) {
       unawaited(AiCreditService().rollbackCredit(widget.user.uid));

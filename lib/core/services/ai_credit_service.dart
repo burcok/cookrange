@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/ai_credit_model.dart';
+import 'ai/ai_service.dart';
 import 'analytics_service.dart';
 
 /// Singleton service that tracks and gates **daily** AI usage per user.
@@ -52,6 +53,8 @@ class AiCreditService {
   /// Checks whether [uid] can make a new AI generation and, if so, consumes
   /// one credit atomically. Returns `true` when permitted.
   ///
+  /// In proxy mode ([AIService.hasProxy] == true) the server enforces quotas
+  /// atomically — client-side consumption is skipped to avoid double-counting.
   /// Bonus credits (from consumable IAP top-ups) are consumed first before the
   /// daily quota. Premium users still check the daily limit but have a higher
   /// cap. Only call this for genuine NEW AI generations — never for cache reads.
@@ -70,7 +73,14 @@ class AiCreditService {
       return false;
     }
 
-    // Consume bonus credit first, then daily quota.
+    // In proxy mode the server handles atomic consumption — skip client-side
+    // decrement to avoid double-counting. The credit badge updates via the
+    // live Firestore stream once the server responds.
+    if (AIService().hasProxy) {
+      return true;
+    }
+
+    // Local/dev mode (no proxy): consume client-side.
     if (credits.bonus > 0) {
       await _consumeBonusCredit(uid);
     } else {
@@ -90,7 +100,9 @@ class AiCreditService {
 
   /// Rolls back a previously consumed daily credit (call when the AI request
   /// that consumed the credit fails or returns empty). Floors at 0.
+  /// No-op in proxy mode — the server handles rollback on failure.
   Future<void> rollbackCredit(String uid) async {
+    if (AIService().hasProxy) return;
     try {
       await _users.doc(uid).update({
         'ai_credits_used': FieldValue.increment(-1),
@@ -103,7 +115,9 @@ class AiCreditService {
 
   /// Rolls back a previously consumed bonus credit (call when the AI request
   /// fails and the credit came from the bonus pool). Floors at 0.
+  /// No-op in proxy mode — the server handles rollback on failure.
   Future<void> rollbackBonusCredit(String uid) async {
+    if (AIService().hasProxy) return;
     try {
       await _users.doc(uid).update({
         'ai_credits_bonus': FieldValue.increment(1),

@@ -9,6 +9,106 @@ admin.initializeApp();
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MODEL = 'openrouter/free';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Server-Side AI Quota Enforcement
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FREE_DAILY_LIMIT = 2;
+const PREMIUM_DAILY_LIMIT = 20;
+
+/**
+ * Atomically checks and consumes one AI credit for the given user.
+ *
+ * Returns:
+ *   'daily'    — daily credit consumed successfully
+ *   'bonus'    — bonus (IAP) credit consumed successfully
+ *   'exceeded' — no credits available; caller should return 402
+ *
+ * Auto-resets the daily counter if the stored reset timestamp has passed.
+ * Mirrors the client-side AiCreditModel logic so they stay in sync.
+ */
+async function enforceAndConsumeQuota(uid) {
+  const db = admin.firestore();
+  const userRef = db.collection('users').doc(uid);
+
+  try {
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      if (!snap.exists) {
+        functions.logger.warn('enforceAndConsumeQuota: user doc not found', { uid });
+        return 'exceeded';
+      }
+
+      const data = snap.data();
+      const isPremium = data.subscription_tier === 'premium';
+      const dailyLimit = isPremium ? PREMIUM_DAILY_LIMIT : FREE_DAILY_LIMIT;
+
+      const now = new Date();
+      const resetAtRaw = data.ai_credits_reset_at;
+      const resetAt = resetAtRaw ? resetAtRaw.toDate() : null;
+
+      // Auto-reset if the day has rolled over
+      let used = data.ai_credits_used || 0;
+      if (!resetAt || now > resetAt) {
+        const nextMidnight = new Date(now);
+        nextMidnight.setHours(24, 0, 0, 0);
+        tx.update(userRef, {
+          ai_credits_used: 0,
+          ai_credits_reset_at: admin.firestore.Timestamp.fromDate(nextMidnight),
+        });
+        used = 0;
+      }
+
+      const bonus = data.ai_credits_bonus || 0;
+
+      // Deny if no bonus credits AND at/over daily limit
+      if (bonus <= 0 && used >= dailyLimit) {
+        functions.logger.info('enforceAndConsumeQuota: quota exceeded', {
+          uid, used, dailyLimit, bonus, isPremium,
+        });
+        return 'exceeded';
+      }
+
+      // Consume bonus credits first, then daily quota
+      if (bonus > 0) {
+        tx.update(userRef, {
+          ai_credits_bonus: admin.firestore.FieldValue.increment(-1),
+        });
+        return 'bonus';
+      } else {
+        tx.update(userRef, {
+          ai_credits_used: admin.firestore.FieldValue.increment(1),
+        });
+        return 'daily';
+      }
+    });
+  } catch (e) {
+    functions.logger.error('enforceAndConsumeQuota transaction failed', { uid, error: e.message });
+    // Fail open on Firestore errors — don't block users due to quota infra issues
+    return 'open';
+  }
+}
+
+/**
+ * Rolls back a previously consumed credit. Called when the upstream AI request
+ * fails after a credit was already consumed.
+ */
+async function rollbackQuota(uid, consumedType) {
+  if (consumedType !== 'daily' && consumedType !== 'bonus') return;
+  const db = admin.firestore();
+  const userRef = db.collection('users').doc(uid);
+  try {
+    if (consumedType === 'bonus') {
+      await userRef.update({ ai_credits_bonus: admin.firestore.FieldValue.increment(1) });
+    } else {
+      await userRef.update({ ai_credits_used: admin.firestore.FieldValue.increment(-1) });
+    }
+    functions.logger.info('rollbackQuota', { uid, consumedType });
+  } catch (e) {
+    functions.logger.error('rollbackQuota failed', { uid, error: e.message });
+  }
+}
+
 /**
  * AI proxy endpoint — keeps OPENROUTER_API_KEY server-side.
  *
@@ -46,8 +146,10 @@ exports.aiProxy = functions
       return;
     }
 
+    let uid;
     try {
-      await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      uid = decodedToken.uid;
     } catch (e) {
       res.status(401).json({ error: 'Invalid or expired ID token' });
       return;
@@ -66,8 +168,19 @@ exports.aiProxy = functions
       }
     }
 
+    // ── Server-side quota enforcement (atomic Firestore transaction) ──────────
+    const consumedType = await enforceAndConsumeQuota(uid);
+    if (consumedType === 'exceeded') {
+      functions.logger.info('aiProxy: quota exceeded', { uid });
+      res.status(402).json({ error: 'quota_exceeded' });
+      return;
+    }
+    // consumedType is 'daily', 'bonus', or 'open' (fail-open on infra errors)
+
     const { messages, model, temperature } = req.body || {};
     if (!Array.isArray(messages) || messages.length === 0) {
+      // Rollback the consumed credit — request was invalid
+      await rollbackQuota(uid, consumedType);
       res.status(400).json({ error: 'messages array is required' });
       return;
     }
@@ -75,6 +188,7 @@ exports.aiProxy = functions
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       functions.logger.error('OPENROUTER_API_KEY secret not set');
+      await rollbackQuota(uid, consumedType);
       res.status(500).json({ error: 'AI proxy not configured' });
       return;
     }
@@ -99,13 +213,17 @@ exports.aiProxy = functions
 
       if (!upstream.ok) {
         functions.logger.warn('OpenRouter error', { status: upstream.status, data });
+        // Roll back the credit — the AI call failed
+        await rollbackQuota(uid, consumedType);
         res.status(upstream.status).json(data);
         return;
       }
 
+      functions.logger.info('aiProxy: success', { uid, consumedType });
       res.status(200).json(data);
     } catch (e) {
-      functions.logger.error('aiProxy fetch error', e);
+      functions.logger.error('aiProxy fetch error', { uid, error: e.message });
+      await rollbackQuota(uid, consumedType);
       res.status(502).json({ error: 'Upstream AI request failed' });
     }
   });

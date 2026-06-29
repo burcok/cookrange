@@ -516,6 +516,9 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     AppText t,
     AppLocalizations l10n,
   ) {
+    if (!_p.isFree) {
+      return _buildPaidComingSoonBanner(context, palette, primary, t, l10n);
+    }
     return AppCard(
       bordered: true,
       elevated: false,
@@ -541,6 +544,66 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
             l10n.translate('program.locked_body'),
             style: t.bodyM.copyWith(color: palette.textSecondary),
             textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaidComingSoonBanner(
+    BuildContext context,
+    AppPalette palette,
+    Color primary,
+    AppText t,
+    AppLocalizations l10n,
+  ) {
+    return AppGlassCard(
+      padding: EdgeInsets.all(AppSpacing.lg.r),
+      child: Column(
+        children: [
+          Container(
+            width: 56.r,
+            height: 56.r,
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.workspace_premium_rounded,
+                color: primary, size: 28.r),
+          ),
+          SizedBox(height: 12.h),
+          Text(
+            l10n.translate('program.paid_locked_title'),
+            style: t.titleM.copyWith(fontWeight: FontWeight.w800),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 6.h),
+          Text(
+            l10n.translate('program.paid_coming_soon'),
+            style: t.bodyM.copyWith(color: palette.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 16.h),
+          Container(
+            padding:
+                EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(AppRadius.full.r),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.notifications_none_rounded,
+                    color: primary, size: 14.r),
+                SizedBox(width: 6.w),
+                Text(
+                  'v2.0',
+                  style: t.labelM.copyWith(
+                      color: primary, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
           ),
         ],
       ),

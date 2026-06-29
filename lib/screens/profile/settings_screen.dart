@@ -297,6 +297,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  static String _languageDisplayName(String code) =>
+      code == 'tr' ? 'Türkçe' : 'English';
+
+  Future<void> _showLanguageSheet(
+    BuildContext context,
+    LanguageProvider languageProvider,
+    AppLocalizations appLoc,
+    AppPalette palette,
+  ) async {
+    const languages = [
+      ('en', 'English', '🇬🇧'),
+      ('tr', 'Türkçe', '🇹🇷'),
+    ];
+    final primary = context.read<ThemeProvider>().primaryColor;
+    final t = AppText.of(context);
+
+    await AppSheet.show(
+      context: context,
+      title: appLoc.translate('settings.app_language'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: languages.map((lang) {
+          final (code, name, flag) = lang;
+          final isSelected =
+              languageProvider.currentLocale.languageCode == code;
+          return GestureDetector(
+            onTap: () {
+              languageProvider.setLanguage(code);
+              Navigator.of(context).pop();
+            },
+            child: Container(
+              margin: EdgeInsets.only(bottom: 10.h),
+              padding:
+                  EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? primary.withValues(alpha: 0.10)
+                    : palette.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppRadius.card.r),
+                border: Border.all(
+                  color: isSelected
+                      ? primary.withValues(alpha: 0.4)
+                      : palette.border.withValues(alpha: 0.3),
+                  width: isSelected ? 1.5 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Text(flag, style: TextStyle(fontSize: 24.sp)),
+                  SizedBox(width: 14.w),
+                  Expanded(
+                    child: Text(
+                      name,
+                      style: t.bodyM.copyWith(
+                        color: isSelected ? primary : palette.textPrimary,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                  if (isSelected)
+                    Icon(Icons.check_circle_rounded,
+                        color: primary, size: 20.sp),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
@@ -406,23 +479,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               : palette.calories.withValues(alpha: 0.15),
                           title: appLoc.translate('settings.language'),
                           palette: palette,
-                          onTap: () {
-                            // Simple language toggle for now, or could show dialog
-                            if (languageProvider.currentLocale.languageCode ==
-                                'en') {
-                              languageProvider.setLanguage('tr');
-                            } else {
-                              languageProvider.setLanguage('en');
-                            }
-                          },
+                          onTap: () => _showLanguageSheet(
+                              context, languageProvider, appLoc, palette),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                languageProvider.currentLocale.languageCode ==
-                                        'tr'
-                                    ? 'Türkçe'
-                                    : 'English',
+                                _languageDisplayName(
+                                    languageProvider.currentLocale.languageCode),
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: palette.textSecondary,

@@ -476,7 +476,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                               return _buildNewGroupItem(appLoc);
                             }
                             final group = _groups[index - 1];
-                            return _buildGroupItem(group);
+                            return RepaintBoundary(child: _buildGroupItem(group));
                           },
                         ),
                 ),
@@ -679,19 +679,21 @@ class _CommunityScreenState extends State<CommunityScreen>
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final post = _additionalPosts[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                            bottom: AppSpacing.lg, left: AppSpacing.xl, right: AppSpacing.xl),
-                        child: GlassPostCard(
-                          post: post,
-                          onTap: () => Navigator.push(context,
-                              AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
-                          onLike: () => _service.likePost(post.id),
-                          onComment: () => Navigator.push(context,
-                              AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
-                          onShare: () {},
-                          onReaction: (emoji) =>
-                              _service.toggleReaction(postId: post.id, emoji: emoji),
+                      return RepaintBoundary(
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                              bottom: AppSpacing.lg, left: AppSpacing.xl, right: AppSpacing.xl),
+                          child: GlassPostCard(
+                            post: post,
+                            onTap: () => Navigator.push(context,
+                                AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
+                            onLike: () => _service.likePost(post.id),
+                            onComment: () => Navigator.push(context,
+                                AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
+                            onShare: () {},
+                            onReaction: (emoji) =>
+                                _service.toggleReaction(postId: post.id, emoji: emoji),
+                          ),
                         ),
                       );
                     },

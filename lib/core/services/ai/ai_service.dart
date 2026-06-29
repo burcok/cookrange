@@ -39,6 +39,9 @@ class AIService {
 
   bool get isConfigured => _proxyUrl != null || _apiKey != null;
 
+  /// True when an AI proxy URL is configured — credits are enforced server-side.
+  bool get hasProxy => _proxyUrl != null;
+
   /// Called after Remote Config loads to activate server-side key proxying.
   void setProxyUrl(String? url) {
     final trimmed = url?.trim() ?? '';
@@ -218,6 +221,8 @@ class AIService {
         if (attempt < _maxRetries) {
           await Future.delayed(_retryDelay * attempt);
         }
+      } on AIQuotaExceededException {
+        rethrow;
       } on AIFatalException {
         rethrow;
       } catch (e) {
@@ -252,6 +257,8 @@ class AIService {
       } on AIRetryableException catch (e) {
         lastError = e;
         if (attempt < _maxRetries) await Future.delayed(_retryDelay * attempt);
+      } on AIQuotaExceededException {
+        rethrow;
       } on AIFatalException {
         rethrow;
       } catch (e) {
@@ -311,6 +318,9 @@ class AIService {
         throw const AIFatalException('Empty choices in API response');
       }
       return choices[0]['message']['content'] as String;
+    }
+    if (response.statusCode == 402) {
+      throw const AIQuotaExceededException();
     }
     if (response.statusCode == 429 || response.statusCode >= 500) {
       throw AIRetryableException(
@@ -420,6 +430,9 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
       return choices[0]['message']['content'] as String;
     }
 
+    if (response.statusCode == 402) {
+      throw const AIQuotaExceededException();
+    }
     if (response.statusCode == 429 || response.statusCode >= 500) {
       throw AIRetryableException(
           'HTTP ${response.statusCode}: ${response.body}');
@@ -479,4 +492,12 @@ class AIJsonParseException implements Exception {
   const AIJsonParseException(this.message);
   @override
   String toString() => 'AIJsonParseException: $message';
+}
+
+/// Thrown when the server-side AI proxy returns 402 (daily quota exceeded).
+/// Not retried — callers should surface the credits/paywall sheet.
+class AIQuotaExceededException implements Exception {
+  const AIQuotaExceededException();
+  @override
+  String toString() => 'AIQuotaExceededException: daily AI generation limit reached';
 }

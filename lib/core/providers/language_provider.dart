@@ -22,19 +22,10 @@ class LanguageProvider extends ChangeNotifier {
       debugPrint('Device language: $deviceLanguage');
       debugPrint('Saved language code: $savedLanguageCode');
 
-      // Eğer kayıtlı dil yoksa veya ilk kurulum ise telefonun dilini kullan
       if (savedLanguageCode == null) {
-        if (deviceLanguage == 'tr') {
-          _currentLocale = const Locale('tr');
-          // Bu kısımda dilleri set etmiyoruz çünkü default olarak
-          // uygulama dilini kaydetmemeli
-          // TODO: Ayarlardan dil değiştirildiği zaman
-          // await _prefs.setString(_languageKey, languageCode); kaydedilmeli.
-        } else {
-          _currentLocale = const Locale('en');
-        }
+        _currentLocale =
+            deviceLanguage == 'tr' ? const Locale('tr') : const Locale('en');
       } else {
-        // Kayıtlı dil varsa onu kullan
         _currentLocale = Locale(savedLanguageCode);
         debugPrint('Using saved language: $savedLanguageCode');
       }
@@ -43,7 +34,6 @@ class LanguageProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Error initializing language: $e');
-      // Hata durumunda telefonun dilini kullan
       final String deviceLanguage =
           WidgetsBinding.instance.platformDispatcher.locale.languageCode;
       _currentLocale =

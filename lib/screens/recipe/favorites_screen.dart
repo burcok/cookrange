@@ -72,8 +72,9 @@ class FavoritesBody extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 100.h),
           itemCount: recipes.length,
           separatorBuilder: (_, __) => SizedBox(height: AppSpacing.md.h),
-          itemBuilder: (context, index) =>
-              _FavoriteRecipeCard(recipe: recipes[index], primary: primary),
+          itemBuilder: (context, index) => RepaintBoundary(
+            child: _FavoriteRecipeCard(recipe: recipes[index], primary: primary),
+          ),
         );
       },
     );

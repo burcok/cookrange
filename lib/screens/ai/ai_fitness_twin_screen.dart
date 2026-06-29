@@ -11,6 +11,7 @@ import '../../core/models/user_model.dart';
 import '../../core/providers/language_provider.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/services/ai/ai_service.dart';
 import '../../core/services/ai_credit_service.dart';
 import '../../core/services/ai_insight_service.dart';
 import '../../core/widgets/ds/ds.dart';
@@ -81,6 +82,10 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
       if (!mounted) return;
       setState(() { _isGenerating = false; });
       unawaited(_fadeController.forward(from: 0));
+    } on AIQuotaExceededException {
+      if (!mounted) return;
+      setState(() { _isGenerating = false; _limitReached = true; });
+      unawaited(AiCreditsSheet.show(context, uid: uid, isPremium: isPremium));
     } catch (e) {
       unawaited(AiCreditService().rollbackCredit(uid));
       if (!mounted) return;
