@@ -9,6 +9,7 @@ import '../../core/providers/user_provider.dart';
 import '../../core/services/gym_application_service.dart';
 import '../../core/services/gym_service.dart';
 import '../../core/widgets/ds/ds.dart';
+import '../../core/widgets/gym_share_card.dart';
 import 'gym_application_pending_screen.dart';
 import 'gym_community_screen.dart';
 import 'gym_discovery_screen.dart';
@@ -153,6 +154,12 @@ class _GymDashboardScreenState extends State<GymDashboardScreen>
       ),
       actions: [
         if (_gym != null) ...[
+          IconButton(
+            icon: Icon(Icons.share_rounded,
+                color: palette.textSecondary, size: 22),
+            tooltip: l10n.translate('share.share_gym'),
+            onPressed: () => GymShareCard.share(context, _gym!),
+          ),
           IconButton(
             icon: Icon(Icons.people_rounded,
                 color: palette.textSecondary, size: 22),

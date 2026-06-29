@@ -7,6 +7,7 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/models/streak_squad_model.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/services/community_service.dart';
 import '../../core/services/streak_squad_service.dart';
 import '../../core/widgets/ds/ds.dart';
 
@@ -84,6 +85,13 @@ class _StreakSquadScreenState extends State<StreakSquadScreen> {
                       : StreamBuilder<List<StreakSquadModel>>(
                           stream: _service.getMySquadsStream(uid),
                           builder: (context, snap) {
+                            if (snap.hasError) {
+                              return AppErrorState(
+                                title: 'Something went wrong',
+                                message: snap.error.toString(),
+                                onRetry: () => setState(() {}),
+                              );
+                            }
                             if (snap.connectionState == ConnectionState.waiting) {
                               return const Padding(
                                 padding: EdgeInsets.only(top: AppSpacing.lg),
@@ -392,6 +400,13 @@ class _SquadCardState extends State<_SquadCard>
                 FutureBuilder<List<Map<String, dynamic>>>(
                   future: widget.service.getMemberStreaks(squad.memberUids),
                   builder: (context, snap) {
+                    if (snap.hasError) {
+                      return AppErrorState(
+                        title: 'Something went wrong',
+                        message: snap.error.toString(),
+                        onRetry: () => setState(() {}),
+                      );
+                    }
                     if (snap.connectionState == ConnectionState.waiting) {
                       return AppShimmer(
                         child: Row(
@@ -484,6 +499,40 @@ class _SquadDetailSheet extends StatefulWidget {
 class _SquadDetailSheetState extends State<_SquadDetailSheet> {
   bool _leaving = false;
 
+  void _showReportSheet() {
+    final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+
+    final reasons = [
+      ('spam', l10n.translate('report.reason_spam')),
+      ('inappropriate', l10n.translate('report.reason_inappropriate')),
+      ('misinformation', l10n.translate('report.reason_misinformation')),
+      ('harassment', l10n.translate('report.reason_harassment')),
+      ('other', l10n.translate('report.reason_other')),
+    ];
+
+    AppSheet.show<void>(
+      context: context,
+      title: l10n.translate('report.title'),
+      child: _SquadReportContent(
+        reasons: reasons,
+        palette: palette,
+        textStyles: t,
+        l10n: l10n,
+        onSubmit: (reason) async {
+          await CommunityService().reportContent(
+            type: 'squad',
+            targetId: widget.squad.squadId,
+            targetAuthorUid: widget.squad.creatorUid,
+            reporterUid: widget.currentUid,
+            reason: reason,
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _confirmLeave() async {
     final loc = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
@@ -537,6 +586,13 @@ class _SquadDetailSheetState extends State<_SquadDetailSheet> {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: widget.service.getMemberStreaks(widget.squad.memberUids),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return AppErrorState(
+            title: 'Something went wrong',
+            message: snap.error.toString(),
+            onRetry: () => setState(() {}),
+          );
+        }
         final members = snap.data ?? [];
         final isLoading = snap.connectionState == ConnectionState.waiting;
 
@@ -680,6 +736,19 @@ class _SquadDetailSheetState extends State<_SquadDetailSheet> {
                 ),
               ),
             SizedBox(height: AppSpacing.lg.h),
+            // Report button (non-creator only)
+            if (widget.squad.creatorUid != widget.currentUid)
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenH.w,
+                ).add(EdgeInsets.only(bottom: AppSpacing.xs.h)),
+                child: AppButton(
+                  label: loc.translate('report.title'),
+                  onPressed: _showReportSheet,
+                  variant: AppButtonVariant.ghost,
+                  icon: Icons.flag_outlined,
+                ),
+              ),
             // Leave button
             Padding(
               padding: EdgeInsets.symmetric(
@@ -941,6 +1010,129 @@ class _JoinSquadSheetState extends State<_JoinSquadSheet> {
             label: loc.translate('squad.join_action'),
             onPressed: _loading ? null : _join,
             loading: _loading,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Squad report reason selector (AppSheet child) ───────────────────────────
+
+class _SquadReportContent extends StatefulWidget {
+  final List<(String, String)> reasons;
+  final AppPalette palette;
+  final AppText textStyles;
+  final AppLocalizations l10n;
+  final Future<void> Function(String reason) onSubmit;
+
+  const _SquadReportContent({
+    required this.reasons,
+    required this.palette,
+    required this.textStyles,
+    required this.l10n,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_SquadReportContent> createState() => _SquadReportContentState();
+}
+
+class _SquadReportContentState extends State<_SquadReportContent> {
+  String? _selectedReason;
+  bool _submitting = false;
+
+  Future<void> _submit() async {
+    final reason = _selectedReason;
+    if (reason == null || _submitting) return;
+    setState(() => _submitting = true);
+    try {
+      await widget.onSubmit(reason);
+      if (!mounted) return;
+      Navigator.pop(context);
+      AppSnackBar.success(
+          context, widget.l10n.translate('report.submitted'));
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackBar.error(context, widget.l10n.translate('report.error'));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = widget.palette;
+    final t = widget.textStyles;
+    final l10n = widget.l10n;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.screenH.w,
+        0,
+        AppSpacing.screenH.w,
+        MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl.h,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ...widget.reasons.map((r) {
+            final isSelected = _selectedReason == r.$1;
+            return InkWell(
+              onTap: () => setState(() => _selectedReason = r.$1),
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
+              child: Container(
+                margin:
+                    EdgeInsets.symmetric(vertical: AppSpacing.xxs.h),
+                padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm.w,
+                    vertical: AppSpacing.sm.h),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? palette.error.withValues(alpha: 0.08)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppRadius.md.r),
+                  border: Border.all(
+                    color: isSelected
+                        ? palette.error.withValues(alpha: 0.4)
+                        : Colors.transparent,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected
+                          ? Icons.radio_button_checked_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      size: AppSize.iconMd.r,
+                      color: isSelected
+                          ? palette.error
+                          : palette.textTertiary,
+                    ),
+                    SizedBox(width: AppSpacing.sm.w),
+                    Expanded(
+                      child: Text(
+                        r.$2,
+                        style: t.titleM.copyWith(
+                          color: isSelected
+                              ? palette.error
+                              : palette.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+          SizedBox(height: AppSpacing.md.h),
+          AppButton(
+            label: l10n.translate('report.submit'),
+            onPressed:
+                (_selectedReason == null || _submitting) ? null : _submit,
+            loading: _submitting,
+            variant: AppButtonVariant.destructive,
           ),
         ],
       ),

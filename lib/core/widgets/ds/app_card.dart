@@ -165,54 +165,84 @@ class _AppGlassCardState extends State<AppGlassCard>
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
+    final mq = MediaQuery.of(context);
+    final reduceTransparency = mq.highContrast;
+
+    final borderRadius = BorderRadius.circular(widget.radius.r);
 
     Widget glass = AnimatedBuilder(
       animation: _c,
       builder: (context, child) =>
           Transform.scale(scale: 1 - _c.value, child: child),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(widget.radius.r),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-              sigmaX: widget.blur, sigmaY: widget.blur),
-          child: Container(
-            padding: _scaleInsets(widget.padding),
-            decoration: BoxDecoration(
-              color: palette.glassFill,
-              borderRadius: BorderRadius.circular(widget.radius.r),
-              border: Border.all(color: palette.glassStroke),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  palette.glassHighlight,
-                  Colors.transparent,
+      child: reduceTransparency
+          // ── Accessibility path: solid surface, no blur ──────────────────
+          ? Container(
+              padding: _scaleInsets(widget.padding),
+              decoration: BoxDecoration(
+                color: palette.surface.withValues(alpha: 0.97),
+                borderRadius: borderRadius,
+                border: Border.all(color: palette.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: palette.shadow.withValues(
+                        alpha: palette.isDark
+                            ? AppElevation.opacityStrong
+                            : AppElevation.opacityLight),
+                    blurRadius: AppElevation.blurMd.r,
+                    offset: AppElevation.offsetMd,
+                  ),
                 ],
-                stops: const [0.0, 0.5],
+              ),
+              child: widget.child,
+            )
+          // ── Normal path: frosted glass ──────────────────────────────────
+          : ClipRRect(
+              borderRadius: borderRadius,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(
+                    sigmaX: widget.blur, sigmaY: widget.blur),
+                child: Container(
+                  padding: _scaleInsets(widget.padding),
+                  decoration: BoxDecoration(
+                    color: palette.glassFill,
+                    borderRadius: borderRadius,
+                    border: Border.all(color: palette.glassStroke),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        palette.glassHighlight,
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.5],
+                    ),
+                  ),
+                  child: widget.child,
+                ),
               ),
             ),
-            child: widget.child,
-          ),
-        ),
-      ),
     );
+
+    // Wrap in Semantics whenever there is a label or the card is tappable.
+    if (widget.semanticLabel != null || widget.onTap != null) {
+      glass = Semantics(
+        button: widget.onTap != null,
+        label: widget.semanticLabel,
+        child: glass,
+      );
+    }
 
     if (widget.onTap == null) return glass;
 
-    return Semantics(
-      button: true,
-      label: widget.semanticLabel,
-      onTap: widget.onTap,
-      child: GestureDetector(
-        onTapDown: (_) => _c.forward(),
-        onTapUp: (_) => _c.reverse(),
-        onTapCancel: () => _c.reverse(),
-        onTap: () {
-          HapticFeedback.selectionClick();
-          widget.onTap!();
-        },
-        child: glass,
-      ),
+    return GestureDetector(
+      onTapDown: (_) => _c.forward(),
+      onTapUp: (_) => _c.reverse(),
+      onTapCancel: () => _c.reverse(),
+      onTap: () {
+        HapticFeedback.selectionClick();
+        widget.onTap!();
+      },
+      child: glass,
     );
   }
 }

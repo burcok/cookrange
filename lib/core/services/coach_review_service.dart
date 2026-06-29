@@ -67,18 +67,40 @@ class CoachReviewService {
         .map((snap) => snap.docs.map(CoachReviewModel.fromFirestore).toList());
   }
 
-  /// Returns true if [reviewerUid] is a linked client of [coachUid] AND has
-  /// not already submitted a review.
+  /// Returns true if [reviewerUid] is a linked client of [coachUid], has not
+  /// already submitted a review, AND has at least one food log entry (anti-fraud
+  /// signal that the account has had a real user session).
   Future<bool> canReview(String coachUid, String reviewerUid) async {
     debugPrint(
         'CoachReviewService.canReview: coachUid=$coachUid reviewerUid=$reviewerUid');
     try {
       final clientSnap = await _clientDoc(coachUid, reviewerUid).get();
-      if (!clientSnap.exists) return false;
+      if (!clientSnap.exists) {
+        debugPrint(
+            '[CoachReviewService] canReview: $reviewerUid is not a linked client of $coachUid');
+        return false;
+      }
 
-      final reviewSnap =
-          await _reviews(coachUid).doc(reviewerUid).get();
-      return !reviewSnap.exists;
+      final reviewSnap = await _reviews(coachUid).doc(reviewerUid).get();
+      if (reviewSnap.exists) {
+        debugPrint(
+            '[CoachReviewService] canReview: $reviewerUid already has a review for $coachUid');
+        return false;
+      }
+
+      final foodLogSnap = await _db
+          .collection('users')
+          .doc(reviewerUid)
+          .collection('food_logs')
+          .limit(1)
+          .get();
+      if (foodLogSnap.docs.isEmpty) {
+        debugPrint(
+            '[CoachReviewService] canReview: no food logs for $reviewerUid');
+        return false;
+      }
+
+      return true;
     } catch (e, stack) {
       debugPrint('CoachReviewService.canReview error: $e');
       unawaited(CrashlyticsService().recordError(e, stack,

@@ -159,6 +159,30 @@ class CoachService {
     }
   }
 
+  // ─── Top Coaches Stream ────────────────────────────────────────────────────
+
+  /// Returns a stream of the top 3 verified coaches ordered by avg_rating DESC.
+  /// Uses the existing is_public + is_accepting_clients + avg_rating index and
+  /// filters is_verified client-side to avoid requiring a 4-field index.
+  Stream<List<CoachProfileModel>> getTopCoachesStream() {
+    debugPrint('CoachService.getTopCoachesStream: subscribing');
+    return _coaches
+        .where('is_public', isEqualTo: true)
+        .where('is_accepting_clients', isEqualTo: true)
+        .orderBy('avg_rating', descending: true)
+        .limit(10)
+        .snapshots()
+        .map((snap) {
+      final verified = snap.docs
+          .map(CoachProfileModel.fromFirestore)
+          .where((c) => c.isVerified)
+          .take(3)
+          .toList();
+      debugPrint('CoachService.getTopCoachesStream: ${verified.length} verified top coaches');
+      return verified;
+    });
+  }
+
   // ─── Coaching Requests (persistent state) ─────────────────────────────────
 
   /// Writes a pending coaching request from [clientUid] to [coachUid]'s

@@ -245,6 +245,53 @@ class AppSkeletonStatGrid extends StatelessWidget {
   }
 }
 
+/// Bar-chart skeleton — mimics a 5-bar chart with varying heights and axis
+/// label placeholders. Use as a branded loading state for chart sections
+/// (replaces bare [CircularProgressIndicator] on analytics surfaces per R7).
+///
+/// ```dart
+/// AppSkeletonChart()                          // default 120.h
+/// AppSkeletonChart(maxHeight: 160)            // taller chart area
+/// ```
+class AppSkeletonChart extends StatelessWidget {
+  /// Maximum chart height in design-px (applied via [.h] screenutil extension).
+  final double maxHeight;
+
+  const AppSkeletonChart({super.key, this.maxHeight = 120});
+
+  static const List<double> _ratios = [0.4, 0.7, 0.55, 0.9, 0.65];
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: AppShimmer(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(_ratios.length, (i) {
+            final barH = maxHeight.h * _ratios[i];
+            return Padding(
+              padding: EdgeInsets.only(left: i == 0 ? 0 : 12.w),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppSkeletonBox(
+                    width: 28,
+                    height: barH / 1.h, // convert back to design-px for Box
+                    radius: 6,
+                  ),
+                  SizedBox(height: 6.h),
+                  const AppSkeletonBox(width: 28, height: 8),
+                ],
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+}
+
 /// Ready-made skeleton for a list of cards (common loading surface).
 class AppSkeletonList extends StatelessWidget {
   final int itemCount;

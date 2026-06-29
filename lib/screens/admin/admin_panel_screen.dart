@@ -752,6 +752,13 @@ class _CoachApplicationsList extends StatelessWidget {
     return StreamBuilder<List<CoachApplicationModel>>(
       stream: AdminService().pendingCoachApplicationsStream(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return AppErrorState(
+            title: 'Something went wrong',
+            message: snap.error.toString(),
+            onRetry: () {},
+          );
+        }
         if (snap.connectionState == ConnectionState.waiting) {
           return const AppSkeletonList(itemCount: 4);
         }
@@ -804,6 +811,13 @@ class _GymApplicationsList extends StatelessWidget {
     return StreamBuilder<List<GymApplicationModel>>(
       stream: AdminService().pendingGymApplicationsStream(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return AppErrorState(
+            title: 'Something went wrong',
+            message: snap.error.toString(),
+            onRetry: () {},
+          );
+        }
         if (snap.connectionState == ConnectionState.waiting) {
           return const AppSkeletonList(itemCount: 4);
         }
@@ -1051,6 +1065,13 @@ class _CoachHistoryList extends StatelessWidget {
       stream: AdminService()
           .coachApplicationHistoryStream(status: statusFilter),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return AppErrorState(
+            title: 'Something went wrong',
+            message: snap.error.toString(),
+            onRetry: () {},
+          );
+        }
         if (snap.connectionState == ConnectionState.waiting) {
           return const AppSkeletonList(itemCount: 5);
         }
@@ -1110,6 +1131,13 @@ class _GymHistoryList extends StatelessWidget {
       stream:
           AdminService().gymApplicationHistoryStream(status: statusFilter),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return AppErrorState(
+            title: 'Something went wrong',
+            message: snap.error.toString(),
+            onRetry: () {},
+          );
+        }
         if (snap.connectionState == ConnectionState.waiting) {
           return const AppSkeletonList(itemCount: 5);
         }
@@ -1718,6 +1746,13 @@ class _AuditLogTab extends StatelessWidget {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: AdminService().auditLogStream(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return AppErrorState(
+            title: 'Something went wrong',
+            message: snap.error.toString(),
+            onRetry: () {},
+          );
+        }
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const Padding(
             padding: EdgeInsets.all(AppSpacing.lg),
@@ -1912,6 +1947,13 @@ class _BroadcastsTab extends StatelessWidget {
         StreamBuilder<List<Map<String, dynamic>>>(
           stream: AdminService().broadcastsStream(),
           builder: (context, snap) {
+            if (snap.hasError) {
+              return AppErrorState(
+                title: 'Something went wrong',
+                message: snap.error.toString(),
+                onRetry: () {},
+              );
+            }
             if (snap.connectionState == ConnectionState.waiting) {
               return const Padding(
                 padding: EdgeInsets.all(20),
@@ -2635,6 +2677,13 @@ class _ConfigTabState extends State<_ConfigTab> {
     return StreamBuilder<Map<String, dynamic>?>(
       stream: AdminService().adminConfigStream(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return AppErrorState(
+            title: 'Something went wrong',
+            message: snap.error.toString(),
+            onRetry: () => setState(() {}),
+          );
+        }
         if (snap.hasData && snap.data != null && !_populated && !_hasChanges) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) setState(() => _populate(snap.data!));
@@ -2972,6 +3021,13 @@ class _CreditsAndCodesTabState extends State<_CreditsAndCodesTab> {
           StreamBuilder<List<Map<String, dynamic>>>(
             stream: AdminService().aiUsageStream(),
             builder: (context, snap) {
+              if (snap.hasError) {
+                return AppErrorState(
+                  title: 'Something went wrong',
+                  message: snap.error.toString(),
+                  onRetry: () {},
+                );
+              }
               if (snap.connectionState == ConnectionState.waiting) {
                 return const AppSkeletonList(itemCount: 4);
               }
@@ -3056,6 +3112,13 @@ class _CreditsAndCodesTabState extends State<_CreditsAndCodesTab> {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: AdminService().referralsStream(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return AppErrorState(
+            title: 'Something went wrong',
+            message: snap.error.toString(),
+            onRetry: () {},
+          );
+        }
         if (snap.connectionState == ConnectionState.waiting) {
           return const AppSkeletonList();
         }
@@ -3618,6 +3681,13 @@ class _ProgramList extends StatelessWidget {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: stream,
       builder: (context, snap) {
+        if (snap.hasError) {
+          return AppErrorState(
+            title: 'Something went wrong',
+            message: snap.error.toString(),
+            onRetry: () {},
+          );
+        }
         if (snap.connectionState == ConnectionState.waiting) {
           return const AppSkeletonList();
         }

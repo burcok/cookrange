@@ -111,7 +111,10 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
       ),
       body: _loading
           ? Center(
-              child: CircularProgressIndicator(color: primary),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+                child: const AppSkeletonChart(maxHeight: 160),
+              ),
             )
           : _summary == null || _summary!.loggedDays == 0
               ? _buildEmptyState(l10n, palette, t)

@@ -227,25 +227,39 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.sm,
-        AppSpacing.lg,
-        AppSpacing.xl,
-      ),
-      itemCount: _coaches.length,
-      itemBuilder: (context, index) {
-        final coach = _coaches[index];
-        return RepaintBoundary(
-          child: _CoachCard(
-            coach: coach,
-            index: index,
-            rank: _showRankBadges && index < 3 ? index + 1 : null,
-            onTap: () => _openProfile(coach),
+    final showTopSection = _query.isEmpty && _selectedCity == null;
+
+    return CustomScrollView(
+      slivers: [
+        if (showTopSection)
+          SliverToBoxAdapter(
+            child: _TopCoachesSection(
+              onTap: _openProfile,
+            ),
           ),
-        );
-      },
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            AppSpacing.xl,
+          ),
+          sliver: SliverList.builder(
+            itemCount: _coaches.length,
+            itemBuilder: (context, index) {
+              final coach = _coaches[index];
+              return RepaintBoundary(
+                child: _CoachCard(
+                  coach: coach,
+                  index: index,
+                  rank: _showRankBadges && index < 3 ? index + 1 : null,
+                  onTap: () => _openProfile(coach),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -422,6 +436,9 @@ class _CoachCardState extends State<_CoachCard>
                     ),
                   ],
                   const SizedBox(height: AppSpacing.sm),
+                  // ── Trust signal badges ───────────────────────────
+                  _TrustBadgeRow(coach: coach, palette: palette, text: text),
+                  const SizedBox(height: AppSpacing.xs),
                   Row(
                     children: [
                       Icon(
@@ -683,6 +700,375 @@ class _SpecChip extends StatelessWidget {
           color: palette.info,
           fontWeight: FontWeight.w600,
         ),
+      ),
+    );
+  }
+}
+
+// ── Top Coaches Section ──────────────────────────────────────────────────────
+
+class _TopCoachesSection extends StatelessWidget {
+  final void Function(CoachProfileModel) onTap;
+
+  const _TopCoachesSection({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final text = AppText.of(context);
+
+    return StreamBuilder<List<CoachProfileModel>>(
+      stream: CoachService().getTopCoachesStream(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.lg,
+              0,
+            ),
+            child: AppShimmer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppSkeletonBox(width: 140, height: 18),
+                  SizedBox(height: AppSpacing.sm),
+                  AppSkeletonBox(
+                    width: double.infinity,
+                    height: 100,
+                    radius: AppRadius.card,
+                  ),
+                  SizedBox(height: AppSpacing.sm),
+                  AppSkeletonBox(
+                    width: double.infinity,
+                    height: 100,
+                    radius: AppRadius.card,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final coaches = snap.data ?? [];
+        if (coaches.isEmpty) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.xs,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.emoji_events_rounded,
+                    size: 18,
+                    color: palette.warning,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    t.translate('coach.top_coaches_title'),
+                    style: text.titleM.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: palette.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ...coaches.asMap().entries.map(
+                (e) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: _TopCoachCard(
+                    coach: e.value,
+                    index: e.key,
+                    onTap: () => onTap(e.value),
+                    palette: palette,
+                    text: text,
+                    t: t,
+                  ),
+                ),
+              ),
+              Divider(
+                color: palette.divider,
+                thickness: 1,
+                height: AppSpacing.lg,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Top Coach Card (featured) ─────────────────────────────────────────────────
+
+class _TopCoachCard extends StatelessWidget {
+  final CoachProfileModel coach;
+  final int index;
+  final VoidCallback onTap;
+  final AppPalette palette;
+  final AppText text;
+  final AppLocalizations t;
+
+  const _TopCoachCard({
+    required this.coach,
+    required this.index,
+    required this.onTap,
+    required this.palette,
+    required this.text,
+    required this.t,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppGlassCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        children: [
+          AppInitialsAvatar(
+            photoUrl: coach.photoURL,
+            name: coach.displayName,
+            size: 48.r,
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        coach.displayName,
+                        style: text.titleM.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (coach.isVerified) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.verified_rounded,
+                        size: 14,
+                        color: Colors.blue.shade400,
+                      ),
+                    ],
+                  ],
+                ),
+                if (coach.avgRating > 0) ...[
+                  const SizedBox(height: AppSpacing.xxs),
+                  _RatingRow(
+                    rating: coach.avgRating,
+                    count: coach.ratingCount,
+                    palette: palette,
+                    text: text,
+                  ),
+                ],
+                if (coach.city != null) ...[
+                  const SizedBox(height: AppSpacing.xxs),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_rounded,
+                        size: 12,
+                        color: palette.textTertiary,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        coach.city!,
+                        style: text.labelS.copyWith(
+                          color: palette.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.xxs),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.people_outline_rounded,
+                      size: 12,
+                      color: palette.textTertiary,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${coach.clientCount}',
+                      style: text.labelS.copyWith(color: palette.textSecondary),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          // TOP RATED badge
+          _GradientPill(
+            label: t.translate('coach.badge_top_rated'),
+            colors: const [_rankGold, AppPalette.brand],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Gradient Pill Badge ──────────────────────────────────────────────────────
+
+class _GradientPill extends StatelessWidget {
+  final String label;
+  final List<Color> colors;
+
+  const _GradientPill({required this.label, required this.colors});
+
+  @override
+  Widget build(BuildContext context) {
+    final text = AppText.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xxs,
+      ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        gradient: LinearGradient(colors: colors),
+        boxShadow: [
+          BoxShadow(
+            color: colors.last.withValues(alpha: 0.35),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        label,
+        style: text.labelS.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontSize: 9.sp,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Trust Badge Row ──────────────────────────────────────────────────────────
+
+class _TrustBadgeRow extends StatelessWidget {
+  final CoachProfileModel coach;
+  final AppPalette palette;
+  final AppText text;
+
+  const _TrustBadgeRow({
+    required this.coach,
+    required this.palette,
+    required this.text,
+  });
+
+  bool get _isTopRated =>
+      coach.isVerified &&
+      coach.avgRating >= 4.8 &&
+      coach.ratingCount >= 5;
+
+  bool get _isRising =>
+      !coach.isVerified &&
+      coach.avgRating >= 4.0 &&
+      coach.ratingCount >= 2 &&
+      coach.clientCount >= 3;
+
+  bool get _isFastResponder => coach.clientCount >= 10;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final hasBadges = _isTopRated || _isRising || _isFastResponder;
+    if (!hasBadges) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      children: [
+        if (_isTopRated)
+          _InlineBadge(
+            icon: Icons.workspace_premium_rounded,
+            label: t.translate('coach.badge_top_rated'),
+            color: palette.warning,
+            palette: palette,
+            text: text,
+          ),
+        if (_isRising)
+          _GradientPill(
+            label: t.translate('coach.badge_rising'),
+            colors: const [AppPalette.energyLight, AppPalette.brand],
+          ),
+        if (_isFastResponder)
+          _InlineBadge(
+            icon: Icons.bolt_rounded,
+            label: t.translate('coach.badge_fast_responder'),
+            color: palette.success,
+            palette: palette,
+            text: text,
+          ),
+      ],
+    );
+  }
+}
+
+// ── Inline Badge (icon + label, solid fill) ──────────────────────────────────
+
+class _InlineBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final AppPalette palette;
+  final AppText text;
+
+  const _InlineBadge({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.palette,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xxs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: text.labelS.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 10.sp,
+            ),
+          ),
+        ],
       ),
     );
   }

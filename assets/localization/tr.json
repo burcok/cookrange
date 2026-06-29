@@ -343,6 +343,10 @@
       "error_title": "Plan oluşturulamadı",
       "error_msg": "Yapay zekamıza bağlanırken bir sorun oluştu. Bağlantını kontrol edip tekrar dene.",
       "skip": "Şimdilik atla"
+    },
+    "intro": {
+      "cta_meal_plan": "Yemek Planımı Oluştur",
+      "cta_find_gym": "Yakınımdaki Spor Salonunu Bul"
     }
   },
   "auth": {
@@ -566,7 +570,8 @@
     "report_title": "Gönderiyi Bildir",
     "report_reason_hint": "Bu gönderiyi bildirmek için bir neden seçin...",
     "add_comment_hint": "Yorum ekle...",
-    "submit": "Gönder"
+    "submit": "Gönder",
+    "copy_link": "Bağlantıyı Kopyala"
   },
   "recipe": {
     "shopping_added": "Malzemeler alışveriş listesine eklendi",
@@ -727,7 +732,14 @@
       "test_mode_subtitle": "Arayüz stres testi için uygulamayı maksimum hacimli sahte verilerle doldur"
     },
     "ai_credits_title": "AI ve Krediler",
-    "ai_credits_sub": "Günlük AI kullanımı ve yükseltme seçenekleri"
+    "ai_credits_sub": "Günlük AI kullanımı ve yükseltme seçenekleri",
+    "notif_prefs": {
+      "likes": "Beğeniler ve Tepkiler",
+      "comments": "Yorumlar",
+      "friends": "Arkadaş Aktivitesi",
+      "system": "Sistem ve Güncellemeler",
+      "referral": "Referans Ödülleri"
+    }
   },
   "sharing": {
     "recipe_title": "🍽️ {name}\n🔥 {calories} kcal\nProtein: {protein}g · Karb: {carbs}g · Yağ: {fat}g\n\nYapay zeka destekli Cookrange ile öğünlerini planla! {appTag}{link}",
@@ -1163,7 +1175,23 @@
       "meal": "Öğün"
     },
     "filter_following": "Takip Edilenler",
-    "following_empty": "Henüz kimseyi takip etmiyorsun. Takip etmek için kişileri keşfet."
+    "following_empty": "Henüz kimseyi takip etmiyorsun. Takip etmek için kişileri keşfet.",
+    "topic_all": "Tüm Konular",
+    "topic_fat_loss": "Yağ Yakımı",
+    "topic_muscle": "Kas Geliştirme",
+    "topic_vegetarian": "Vejetaryen",
+    "topic_endurance": "Dayanıklılık",
+    "topic_wellness": "Sağlıklı Yaşam",
+    "topic_label": "Konu",
+    "topic_empty": "Bu konuda henüz paylaşım yok. İlk sen ol!",
+    "weekly_highlights_title": "Haftalık Öne Çıkanlar",
+    "top_post_this_week": "En Beğenilen Gönderi",
+    "top_streak_label": "Seri Lideri",
+    "highlights_days": "gün",
+    "verified_coach": "Koç",
+    "verified_gym_owner": "Spor Salonu Sahibi",
+    "view_profile": "Profili Gör",
+    "view_gym_profile": "Spor Salonu Profilini Gör"
   },
   "menu": {
     "title": "Menü",
@@ -1804,7 +1832,13 @@
     "location_address_auto": "Tespit edilen adres",
     "location_city_required": "Lütfen şehir seçin.",
     "location_pin_required": "Lütfen harita üzerinde konum işaretleyin.",
-    "setup_submit_application": "Başvuru Gönder"
+    "setup_submit_application": "Başvuru Gönder",
+    "sort_near_me": "Yakınımda",
+    "location_denied": "Konum izni reddedildi. Mesafeye göre sıralama için Ayarlar'dan etkinleştirin.",
+    "location_error": "Konumunuz alınamadı. Lütfen tekrar deneyin.",
+    "toggle_map": "Harita görünümü",
+    "toggle_list": "Liste görünümü",
+    "map_view_gym": "Spor Salonu"
   },
   "coach": {
     "setup_title": "Antrenör Profili Kurulumu",
@@ -1932,7 +1966,13 @@
     "rate_title": "Antrenörü Değerlendir",
     "submit_review": "Yorumunuz gönderildi!",
     "review_placeholder": "Deneyiminizi paylaşın (isteğe bağlı)...",
-    "already_reviewed": "Bu antrenörü zaten değerlendirdiniz."
+    "already_reviewed": "Bu antrenörü zaten değerlendirdiniz.",
+    "top_coaches_title": "En İyi Koçlar",
+    "badge_top_rated": "EN İYİ",
+    "badge_rising": "YÜKSELİŞTE",
+    "badge_fast_responder": "Hızlı Yanıt",
+    "rate_coachmark_tip_title": "Değerlendirme Bırak",
+    "rate_coachmark_tip": "Bu antrenörle çalıştınız — deneyiminizi paylaşarak başkalarına yardımcı olun."
   },
   "ai": {
     "twin_title": "Yapay Zeka Vücut Projeksiyonu",
@@ -2404,5 +2444,26 @@
     "already_member": "Bu ekibin zaten bir üyesisiniz.",
     "join_error": "Ekibe katılırken hata oluştu. Tekrar deneyin.",
     "joined_msg": "Ekibe hoş geldiniz!"
+  },
+  "share": {
+    "coach_card_cta": "Cookrange'de mükemmel antrenörünü bul",
+    "coach_share_text": "{name} adlı antrenörü Cookrange'de incele — yapay zeka destekli beslenme & fitness koçun! 🍊 #Cookrange",
+    "coach_share_subject": "Cookrange'de Antrenör {name} ile Tanış",
+    "gym_card_cta": "Bu spor salonuna Cookrange'den katıl",
+    "gym_share_text": "{name} spor salonunu Cookrange'de incele — yapay zeka destekli fitness topluluğu! 🏋️ #Cookrange",
+    "gym_share_subject": "Cookrange'de {name}'e Katıl",
+    "share_profile": "Profili paylaş",
+    "share_gym": "Spor salonunu paylaş"
+  },
+  "report": {
+    "title": "Bildir",
+    "reason_spam": "Spam",
+    "reason_inappropriate": "Uygunsuz içerik",
+    "reason_misinformation": "Yanlış bilgi",
+    "reason_harassment": "Taciz veya zorbalık",
+    "reason_other": "Diğer",
+    "submit": "Raporu Gönder",
+    "submitted": "Teşekkürler. Raporunuz iletildi.",
+    "error": "Rapor gönderilemedi. Lütfen tekrar deneyin."
   }
 }

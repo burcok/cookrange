@@ -31,8 +31,44 @@ import '../legal/legal_screen.dart';
 import 'affiliate_earnings_screen.dart';
 import 'dietary_preferences_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  // ── Notification group toggle state ──
+  static const _notifGroups = ['likes', 'comments', 'friends', 'system', 'referral'];
+  Map<String, bool> _notifEnabled = {};
+  bool _notifLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifPrefs();
+  }
+
+  Future<void> _loadNotifPrefs() async {
+    final uid = AuthService().currentUser?.uid;
+    if (uid == null) {
+      if (mounted) setState(() => _notifLoading = false);
+      return;
+    }
+    final svc = NotificationPreferencesService();
+    final results = <String, bool>{};
+    for (final group in _notifGroups) {
+      final muted = await svc.isGroupMuted(uid, group);
+      results[group] = !muted; // enabled = !muted
+    }
+    if (mounted) {
+      setState(() {
+        _notifEnabled = results;
+        _notifLoading = false;
+      });
+    }
+  }
 
   Future<void> _openNotificationSettings() async {
     await openAppSettings();
@@ -399,6 +435,17 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Notifications section
+                    _buildNotificationsSection(
+                      context: context,
+                      appLoc: appLoc,
+                      palette: palette,
+                      primaryColor: primaryColor,
+                      uid: uid,
                     ),
 
                     const SizedBox(height: 24),
@@ -916,6 +963,86 @@ class SettingsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  // ── Notifications section ──────────────────────────────────────────────────
+
+  static const _notifGroupMeta = <String, (IconData, String)>{
+    'likes':    (Icons.thumb_up_outlined,          'settings.notif_prefs.likes'),
+    'comments': (Icons.comment_outlined,           'settings.notif_prefs.comments'),
+    'friends':  (Icons.people_outline_rounded,     'settings.notif_prefs.friends'),
+    'system':   (Icons.notifications_outlined,     'settings.notif_prefs.system'),
+    'referral': (Icons.card_giftcard_outlined,     'settings.notif_prefs.referral'),
+  };
+
+  Widget _buildNotificationsSection({
+    required BuildContext context,
+    required AppLocalizations appLoc,
+    required AppPalette palette,
+    required Color primaryColor,
+    required String uid,
+  }) {
+    final iconColor = primaryColor;
+    final iconBgColor = palette.isDark
+        ? primaryColor.withValues(alpha: 0.25)
+        : primaryColor.withValues(alpha: 0.12);
+
+    final children = <Widget>[];
+    for (final group in _notifGroups) {
+      final meta = _notifGroupMeta[group]!;
+      if (_notifLoading) {
+        children.add(
+          const Padding(
+            padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md, vertical: AppSpacing.md),
+            child: AppShimmer(
+              child: Row(
+                children: [
+                  AppSkeletonBox(width: 32, height: 32, radius: 32),
+                  SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: AppSkeletonBox(width: double.infinity, radius: AppRadius.card),
+                  ),
+                  SizedBox(width: AppSpacing.sm),
+                  AppSkeletonBox(width: 48, height: 28, radius: AppRadius.md),
+                ],
+              ),
+            ),
+          ),
+        );
+      } else {
+        final enabled = _notifEnabled[group] ?? true;
+        children.add(
+          _buildSettingsRow(
+            context,
+            icon: meta.$1,
+            iconColor: iconColor,
+            iconBgColor: iconBgColor,
+            title: appLoc.translate(meta.$2),
+            palette: palette,
+            trailing: Switch.adaptive(
+              value: enabled,
+              activeTrackColor: primaryColor,
+              activeThumbColor: Colors.white,
+              onChanged: (newValue) async {
+                setState(() => _notifEnabled[group] = newValue);
+                await NotificationPreferencesService()
+                    .setGroupMuted(uid, group, !newValue);
+                // No post-await mounted check needed — setGroupMuted is
+                // fire-and-forget; optimistic update already applied above.
+              },
+            ),
+          ),
+        );
+      }
+    }
+
+    return _buildGlassSection(
+      context: context,
+      title: appLoc.translate('settings.notifications'),
+      palette: palette,
+      children: children,
     );
   }
 

@@ -83,11 +83,13 @@ class CommunityService {
 
   /// [authorIds] — restrict to posts from these user IDs (Friends filter; max 30).
   /// [gymOnly] — restrict to posts tagged with gym-related tags.
+  /// [topic] — restrict to posts with this topic tag (arrayContains).
   /// Automatically filters out posts from blocked users (client-side).
   Stream<List<CommunityPost>> getPostsStream({
     int limit = 20,
     List<String>? authorIds,
     bool gymOnly = false,
+    String? topic,
   }) async* {
     final blockedIds = await getBlockedIds();
     final userId = _currentUserId;
@@ -99,6 +101,8 @@ class CommunityService {
     } else if (gymOnly) {
       query = query.where('tags',
           arrayContainsAny: ['gym', 'fitness', 'workout', 'training', 'crossfit', 'powerlifting']);
+    } else if (topic != null && topic.isNotEmpty) {
+      query = query.where('tags', arrayContains: topic);
     }
 
     yield* query
@@ -134,13 +138,14 @@ class CommunityService {
   }
 
   /// Cursor-based pagination. Returns posts and the last document for the next page.
-  /// Pass the same [authorIds]/[gymOnly] as the active stream filter.
+  /// Pass the same [authorIds]/[gymOnly]/[topic] as the active stream filter.
   Future<({List<CommunityPost> posts, DocumentSnapshot? lastDoc})>
       fetchPostsPage({
     int limit = 20,
     DocumentSnapshot? startAfter,
     List<String>? authorIds,
     bool gymOnly = false,
+    String? topic,
   }) async {
     try {
       Query<Map<String, dynamic>> query = _firestore.collection('posts');
@@ -150,6 +155,8 @@ class CommunityService {
       } else if (gymOnly) {
         query = query.where('tags',
             arrayContainsAny: ['gym', 'fitness', 'workout', 'training', 'crossfit', 'powerlifting']);
+      } else if (topic != null && topic.isNotEmpty) {
+        query = query.where('tags', arrayContains: topic);
       }
 
       query = query.orderBy('timestamp', descending: true).limit(limit);
@@ -180,6 +187,7 @@ class CommunityService {
     List<String> tags, {
     PostType postType = PostType.text,
     Map<String, dynamic> metadata = const {},
+    String? authorRole,
   }) async {
     await _checkContent(content);
     final user = await _getCurrentCommunityUser();
@@ -194,6 +202,7 @@ class CommunityService {
       tags: tags,
       postType: postType,
       metadata: metadata,
+      authorRole: authorRole,
     );
 
     final docRef = await _firestore.collection('posts').add({
@@ -204,12 +213,15 @@ class CommunityService {
       'likesCount': 0,
     });
 
+    final newPostId = docRef.id;
+
     await _logger.logActivity('post_create', {
-      'post_id': docRef.id,
+      'post_id': newPostId,
       'content_length': content.length,
       'has_images': imageUrls.isNotEmpty,
       'tags': tags,
       'post_type': postType.value,
+      if (authorRole != null) 'author_role': authorRole,
     });
     unawaited(AnalyticsService().logEvent(
       name: 'post_created',
@@ -219,6 +231,26 @@ class CommunityService {
         'post_type': postType.value,
       },
     ));
+
+    // Mention notification fan-out (fire-and-forget, never blocks post creation)
+    final mentions = metadata['mentions'];
+    if (mentions is List && mentions.isNotEmpty) {
+      final ns = NotificationService();
+      for (final raw in mentions) {
+        if (raw is! Map) continue;
+        final mentionedUid = raw['uid'] as String?;
+        if (mentionedUid == null || mentionedUid == user.id) continue;
+        unawaited(ns.sendNotification(
+          targetUserId: mentionedUid,
+          type: NotificationType.system,
+          actorUid: user.id,
+          actorName: user.name,
+          actorPhotoUrl: user.avatarUrl,
+          relatedId: newPostId,
+          metadata: {'postId': newPostId, 'subtype': 'mention'},
+        ));
+      }
+    }
   }
 
   Future<void> updatePost(String postId, String newContent,
@@ -853,6 +885,36 @@ class CommunityService {
     }
   }
 
+  /// Generic content reporter. Writes a `reports/{id}` doc for any content type.
+  /// [type] should be `'post'` or `'squad'`.
+  Future<void> reportContent({
+    required String type,
+    required String targetId,
+    required String targetAuthorUid,
+    required String reporterUid,
+    required String reason,
+  }) async {
+    if (reporterUid == 'guest' || reporterUid.isEmpty) return;
+    try {
+      await _firestore.collection('reports').add({
+        'type': type,
+        'targetId': targetId,
+        'targetAuthorUid': targetAuthorUid,
+        'reporterUid': reporterUid,
+        'reason': reason,
+        'status': 'pending',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      unawaited(_logger.logActivity('content_report', {
+        'type': type,
+        'target_id': targetId,
+        'reason': reason,
+      }));
+    } catch (e) {
+      _logger.error('reportContent failed', error: e);
+    }
+  }
+
   Future<void> reportComment(
       String postId, String commentId, String reason) async {
     final userId = _currentUserId;
@@ -953,6 +1015,69 @@ class CommunityService {
           .get();
     } catch (e) {
       // Ignore
+    }
+  }
+
+  // ── Weekly Highlights ─────────────────────────────────────────────────────
+
+  /// Returns the post with the highest [likesCount] created in the last 7 days,
+  /// or null when no posts exist in that window.
+  ///
+  /// Requires a composite index on `posts`: createdAt ASC + likesCount DESC.
+  /// The query uses `timestamp` (the field used everywhere else in this service)
+  /// and falls back to null on any error so the card simply hides itself.
+  Future<CommunityPost?> getTopPostThisWeek() async {
+    try {
+      final cutoff = Timestamp.fromDate(
+        DateTime.now().subtract(const Duration(days: 7)),
+      );
+      final snap = await _firestore
+          .collection('posts')
+          .where('timestamp', isGreaterThanOrEqualTo: cutoff)
+          .orderBy('timestamp', descending: false)
+          .orderBy('likesCount', descending: true)
+          .limit(1)
+          .get();
+
+      if (snap.docs.isEmpty) return null;
+      final doc = snap.docs.first;
+      final userId = _currentUserId;
+      return CommunityPost.fromMap(doc.data(), doc.id, currentUserId: userId);
+    } catch (e) {
+      _logger.error('getTopPostThisWeek failed', error: e);
+      return null;
+    }
+  }
+
+  /// Returns a map with uid, displayName, photoURL, and streak for the user
+  /// with the highest streak value, or null when the query fails.
+  ///
+  /// Uses the existing composite index on `users`: onboarding_data.streak DESC
+  /// (added for the leaderboard feature).
+  Future<Map<String, dynamic>?> getTopStreakUserThisWeek() async {
+    try {
+      final snap = await _firestore
+          .collection('users')
+          .orderBy('onboarding_data.streak', descending: true)
+          .limit(1)
+          .get();
+
+      if (snap.docs.isEmpty) return null;
+      final data = snap.docs.first.data();
+      final uid = snap.docs.first.id;
+      final onboarding = data['onboarding_data'] as Map<String, dynamic>? ?? {};
+      final streak = onboarding['streak'] as int? ?? 0;
+      if (streak <= 0) return null;
+
+      return {
+        'uid': uid,
+        'displayName': data['displayName'] as String? ?? '',
+        'photoURL': data['photoURL'] as String? ?? '',
+        'streak': streak,
+      };
+    } catch (e) {
+      _logger.error('getTopStreakUserThisWeek failed', error: e);
+      return null;
     }
   }
 

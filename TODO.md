@@ -883,7 +883,7 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 - [x] **Screen re-skin sweep (continued — partial)** — shopping (`shopping_list_screen.dart`: mesh-glow + AppGlassCard items + gradient FAB), notifications (`notification_screen.dart`: mesh-glow + glass rows + glass filter chips + gradient AppBar accent), coach discovery (`coach_discovery_screen.dart`: AppGlassCard cards + rank badges + rating stars + AppInitialsAvatar + mesh-glow), intro + onboarding (done in current session above). ✅
 - [x] **Screen re-skin sweep (extended)** — chat list (`chat_list_screen.dart`: mesh-glow + AppGlassCard all tile types + gradient unread badge + RadialGradient empty state), chat detail (`chat_detail_screen.dart`: subtle mesh-glow + frosted received bubbles + brand-gradient sent bubbles + glass input bar + glass typing indicator + gradient AppBar accent), AI Fitness Twin (`ai_fitness_twin_screen.dart`: 3-blob rich mesh-glow + glass stats grid + glass projection cards + GradientButton regenerate). ✅
 - [x] **Screen re-skin sweep (complete)** — cooking mode (`cooking_mode_screen.dart`: mesh-glow + AppGlassCard step cards + gradient progress bar + frosted glass timer pill + gradient nav buttons), food scan (`food_scan_screen.dart`: glass torch/flip overlays + AppGlassCard result card + gradient log button), AI chat (`ai_chat_screen.dart`: subtle mesh-glow + frosted AI bubbles + brand-gradient user bubbles + glass input bar + gradient AppBar accent), settings (`settings_screen.dart`: subtle mesh-glow + AppGlassCard section containers + danger zone error-tint card), profile (`profile_screen.dart`: mesh-glow hero blobs + glass stat chips + glass info section + glass reputation row). All screens: 0 analyze errors. ✅
-- [ ] **Accessibility** — WCAG-AA contrast + reduce-transparency path — carry into Phase 14.
+- [x] **Accessibility** — `lib/core/utils/accessibility_utils.dart` (isHighContrast/reduceTransparency helpers); `AppGlassCard` (app_card.dart): highContrast → no BackdropFilter, solid `palette.surface.withValues(alpha:0.97)`, Semantics wrapping for all label+tap cases; `AppSheet` (app_sheet.dart): reduceTransparency → opaque scrim, reduceMotion → Duration.zero snap. Normal mode byte-for-byte unchanged. ✅
 - [ ] **Performance** — DevTools measurement + mid-Android verification — carry into Phase 14.
 - [ ] **Definition:** every primary surface shares one cohesive frosted-glass language; 60fps on a mid
   Android device; AA contrast verified; reduce-transparency path correct; analyze 0 errors.
@@ -896,7 +896,7 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 
 - [x] **Skeleton variant API** — `AppSkeletonMealCard` (image-left + macro-chip row) + `AppSkeletonStatGrid` (2-col stat cards) added to `app_shimmer.dart`. ✅
 - [x] **Wire by context** — meal plan loading → `AppSkeletonMealCard`; admin stat grid → `AppSkeletonStatGrid`; user/people lists keep `AppSkeletonList`. ✅
-- [ ] **AppSkeletonChart** (analytics) — carry into Phase 14.
+- [x] **AppSkeletonChart** (analytics) — `AppSkeletonChart` added to `app_shimmer.dart` (5-bar skeleton, configurable maxHeight, RepaintBoundary, exported via ds.dart barrel); wired into `nutrition_analytics_screen.dart` loading state. ✅
 - [ ] **Definition:** loading states visually foreshadow their content; no two unrelated surfaces share an
   identical skeleton; reduced-motion shows a static shimmer-off placeholder.
 
@@ -932,7 +932,7 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 > non-glass, utilitarian visuals**, and **(d) the audit log having no viewer**. Treat as polish +
 > verification, not a rebuild.
 
-- [ ] **Runtime verification pass** — with a real admin account, exercise every tab; confirm `firestore.rules` lets admin read `users`/`reports`, and every query has its index. Fix silent stream errors → `AppErrorState`. Carry into Phase 14. · 🔴
+- [x] **Runtime verification pass (code-side)** — StreamBuilder/FutureBuilder audit across `admin_panel_screen`, `coach_profile_screen`, `gym_discovery_screen`, `community_screen`, `nutrition_analytics_screen`, `streak_squad_screen`, `home.dart`; all missing `snapshot.hasError` paths now render `AppErrorState(message:, onRetry:)`. Runtime human-verification (real admin account + Firestore rules + index check) still requires manual QA. ✅
 - [x] **Audit-log viewer** — `_AuditLogTab` added as 6th tab in `admin_panel_screen.dart`; `TabController(length: 6)`; StreamBuilder on `AdminService().auditLogStream()`; `AppSkeletonList()` loading, `AppEmptyState` empty, `ListView.separated` of `AppCard` action entries with timestamp + actor + target. ✅
 - [x] **Localize hardcoded strings** — "Antrenörlük Sertifikası" → `admin.doc_coach_cert`, "Kimlik Belgesi" → `admin.doc_id`, "İşletme Ruhsatı" → `admin.doc_business_license`, "Belge yok" → `admin.doc_none`; all EN+TR via sequential Python writes (R9). ✅
 - [x] **Glassmorphism + flagship polish** (partial) — `_StatCard` in admin dashboard re-skinned with `AppGlassCard(blur: AppPalette.glassBlurSubtle)`; `_AuditLogTab` uses `AppSkeletonList`/`AppEmptyState`/`AppCard`. Full application-card glass re-skin → carry into Phase 14. ✅
@@ -943,19 +943,13 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 > "Even better than expected" (R0) ideas that leverage assets we *already* built (stored gym GPS, the new
 > ratings system, AI pipeline, role graph). Each is optional; delete any you don't want.
 
-- [ ] **🆕 "Gyms near me" map discovery** — we now store gym `latitude/longitude`; add a map/distance-sorted
-  discovery mode (flutter_map + Haversine) reusing the member-home map card. Distance chip on gym cards.
-- [ ] **🆕 Coach "Rising Stars" + trust signals** — surface trending coaches (rating × recent activity),
-  verified-coach badge (admin-approved), response-time and retention stats — turns the directory into a
-  credible marketplace, not a list.
-- [ ] **🆕 Verified reviews loop** — only clients with logged sessions can review (anti-fraud); a post-goal
-  "rate your coach" prompt closes the quality loop and feeds 13.5 ranking.
+- [x] **🆕 "Gyms near me" map discovery** — `lib/core/utils/haversine.dart` (pure-Dart haversineKm); gym_discovery_screen.dart gains "Near Me" sort chip (Geolocator permission → getCurrentPosition → client-side Haversine sort, pagination disabled in near-me mode); distance badge pill on each card ("1.2 km" / "850 m"); map/list toggle in AppBar (flutter_map FlutterMap widget, OSM tile layer, branded circle markers, tap-to-sheet); user position dot. 6 `gym.*` EN+TR i18n keys; 0 analyze errors. ✅
+- [x] **🆕 Coach "Rising Stars" + trust signals** — `CoachService.getTopCoachesStream()` (is_verified+is_public+is_accepting, ordered avg_rating DESC, limit 3); featured "Top Coaches" glass section at top of `coach_discovery_screen.dart` (hidden when search/city filter active); "TOP RATED" gold→brand gradient badge; regular cards get "Fast Responder" (clientCount≥10), "Top Rated" crown (avgRating≥4.8+ratingCount≥5), and "RISING" energy→brand badge (avgRating≥4.0+ratingCount≥2+clientCount≥3); Firestore index for `is_public+is_accepting+is_verified+avg_rating`; 4 `coach.badge_*` + `coach.top_coaches_title` EN+TR i18n keys; 0 analyze errors. ✅
+- [x] **🆕 Verified reviews loop** — `CoachReviewService.canReview()` extended with food_log anti-fraud gate (Firestore limit(1) query, returns false if 0 logs); CoachmarkTip added to `coach_profile_screen.dart` (FutureBuilder-gated, prefKey `rate_coach_coachmark_{uid}`, zero-height until eligible); 2 `coach.rate_coachmark_*` EN+TR i18n keys. ✅
 - [x] **🆕 Replace Challenges' social hook with "Streak Squads"** — `StreakSquadModel` + `StreakSquadService` (Firestore `squads/{squadId}`, createSquad/joinSquad/leaveSquad/getMemberStreaks, chunked whereIn, collision-retry invite codes) + `StreakSquadScreen` (mesh-glow, glass squad cards with staggered entry, top-3 leaderboard, `_SquadDetailSheet` full leaderboard + medals + copy invite code + leave, `_CreateSquadSheet` AppTextField + AppChipPicker goal selector, `_JoinSquadSheet` auto-uppercase + typed errors); `AppRoutes.streakSquads` wired in `route_configuration_service.dart`; side menu Social section "Seri Ekipleri" entry; Firestore `squads` rules (member read/write, creator delete) + index (`memberUids arrayContains + createdAt DESC`); 27 `squad.*` i18n keys added EN+TR (sequential Python R9); i18n parity test green; 0 analyze errors. ✅
 - [x] **🆕 Glassmorphic "Today" widget / home summary** — `TodaySummaryCard` created at `lib/screens/home/widgets/today_summary_card.dart`; frosted-glass 2×2 stat grid (calories ring, streak flame, water bar, next meal); brand gradient header bar; glow bloom; wired into `home.dart` between AiInsightCard and meal plan section; `home.today_summary_title` EN+TR key added. ✅
-- [ ] **🆕 Onboarding intro → personalized** — now that the intro is reachable (13.1), tailor its final
-  slide CTA to route power users straight to Discover (find a gym/coach) vs consumers to meal planning.
-- [ ] **🆕 Coach/gym profile share cards** — extend `ShareableFitnessCard` pattern to shareable coach/gym
-  cards (rating, specialties) for organic marketplace growth.
+- [x] **🆕 Onboarding intro → personalized** — `intro_onboarding_screen.dart` final slide replaced single "Get Started" with two CTA buttons: Primary "Create My Meal Plan" → `AppRoutes.onboarding`; Ghost "Find a Gym Near Me" → `AppRoutes.discover`; 2 `onboarding.intro.cta_*` EN+TR keys. ✅
+- [x] **🆕 Coach/gym profile share cards** — `lib/core/widgets/coach_share_card.dart` (mesh-glow canvas, verified badge, specialty chips, rating/client stats, brand CTA bar) + `lib/core/widgets/gym_share_card.dart` (gym name/city/member stats); share icon added to `coach_profile_screen.dart` AppBar + `gym_dashboard_screen.dart` header; `CoachShareCard.share()` / `GymShareCard.share()` capture RepaintBoundary → share_plus; 6 `share.*` EN+TR keys. ✅
 - [ ] **🆕 Server-side AI quota enforcement** (carried from 12.2) — bundle with the marketplace work since
   both touch the proxy/security surface.
 
@@ -1068,8 +1062,7 @@ updated (R8).
   lets main screen build). ✅
 - [x] **Token hygiene** — stale tokens removed by the Cloud Function on FCM failure; client still clears
   on sign-out. ✅
-- [ ] **Push preferences surface** — settings toggle to mute push per group (planned); in-app mute prefs
-  already gate push server-side via `notification_muted` map. ✅ (server gate done; UI toggle is deferred)
+- [x] **Push preferences surface** — "Notifications" section added to `settings_screen.dart`; `AppGlassCard` with 5 group toggles (likes/comments/friends/system/referral); initial state loaded from `NotificationPreferencesService().isGroupMuted()`; live toggle via `setGroupMuted()`; `settings.notif_prefs.*` i18n keys (5 EN+TR); section title reuses existing `settings.notifications` key; AppShimmer skeleton while loading. ✅
 
 ### 14.4 — Admin Custom & Broadcast Notifications (🟠 High · Medium · 2–3 d · depends 14.3) ✅
 
@@ -1240,20 +1233,19 @@ updated (R8).
 
 **Foundation (make what exists feel premium)**
 - [x] ✅ **Structured post types** — `PostType` enum (`text|recipe|progress|meal`) in `CommunityPost`; `metadata: Map<String,dynamic>` field; `toMap`/`fromMap`/`copyWith` updated; `CommunityService.createPost()` extended with `postType:` + `metadata:` named params; `GlassPostCard` renders type-specific rich cards (`_RecipeCard` with thumbnail+macro pills, `_ProgressCard` with weight+milestone, `_MealCard` with name+macros); composer has horizontal type-picker row + per-type inline fields (recipe dish picker via `DishService` search sheet, progress weight+label, meal name+4 macro fields); 13 EN/TR i18n keys added; 0 analyze errors.
-- [ ] **Rich composer** — DS composer with type picker, image, dish/recipe attach, tags.
+- [x] **Rich composer** — Image attachment added to `create_post_card.dart`: image picker button (ImageSource.gallery, quality 75), preview strip with remove overlay, upload via `StorageUploadService` on submit, progress indicator during upload, `imageUrl` passed to `createPost()`; `community_service.dart` now writes real imageUrl (no longer Unsplash stub); pubspec image_picker verified. ✅
 - [x] ✅ **Save / bookmark posts** — `CommunityService.savePost/unsavePost/isPostSavedStream/getSavedPostsStream`; `users/{uid}/saved_posts/{postId}` (Firestore rule: owner read/write); bookmark icon in `GlassPostCard` actions row (live `_isSaved` stream); "Saved" filter in `CommunityScreen` (`getSavedPostsStream`, no cursor pagination, empty-state); EN/TR i18n keys added (4 keys).
 
 **Connection (lightweight, purposeful)**
 - [x] **Follow** — `FollowModel` + `FollowService` singleton; Firestore `users/{uid}/following/{targetUid}` + `users/{targetUid}/followers/{uid}` (batch write/delete); `isFollowingStream`, `getFollowingIds`, `getFollowersCount`, `getFollowingCount`; notification fan-out on follow; profile screen follow/unfollow button (non-self) + followers stat chip; "Following" feed filter in `CommunityScreen` (whereIn on followed IDs, chunked at 10); Firestore rules for following/followers subcollections; `followedAt` index. All EN+TR keys added. 0 analyze errors. ✅
-- [ ] **Mentions** — `@mention` autocomplete in composer with notification fan-out (ties 14.3). 📋
-- [ ] **Interest/topic feeds** — filter by goal (fat-loss, muscle, vegan…) so the feed is relevant, not noisy.
-- [ ] **Coach/gym presence in feed** — verified authors surface their programs/recipes (marketplace pull).
+- [x] **Mentions** — `@mention` detection in `create_post_card.dart` TextEditingController listener; prefix-matched user autocomplete list (Firestore `users` startAt/endAt, limit 5) shown below composer; tap-to-insert @displayName + trailing space; `_selectedMentions` list stored in `post.metadata['mentions']`; notification fan-out in `CommunityService.createPost()` for each mention uid; `glass_post_card.dart` RichText renders @mentions in palette.brand color; tapping @mention → `openUserProfile()`; 0 analyze errors. ✅
+- [x] **Interest/topic feeds** — `CommunityTopics` constants (fat_loss/muscle_building/vegetarian/endurance/wellness) in `lib/screens/community/community_topics.dart`; horizontal topic chip row in `community_screen.dart` (below filter bar, shown for Global+Following views only, single-select nullable); `community_service.dart` `getPostsStream`/`fetchPostsPage` accept optional `topic` param (arrayContains on `tags`); topic chip selector in `create_post_card.dart` (prepends to tags + `metadata['topic']`); colored topic pill in `glass_post_card.dart`; 8 `community.topic_*` EN+TR i18n keys; 0 analyze errors. ✅
+- [x] **Coach/gym presence in feed** — `authorRole` field added to `CommunityPost` (fromFirestore/toFirestore/copyWith); `createPost()` accepts `authorRole` param; `create_post_card.dart` reads `UserProvider` role and passes it; `glass_post_card.dart` renders a verified-author banner strip (coach: premium icon + "Coach" label + "View Profile" CTA; gymOwner: fitness icon + "Gym Owner" label); banner hidden for consumer posts. 4 `community.verified_*` EN+TR keys. ✅
 
 **Retention loops (the engagement engine that replaces Challenges)**
 - [x] **🆕 Streak Squads** (carried from 13.7) — fully shipped; see 13.7 for implementation detail. `squads/{squadId}` Firestore collection, invite codes, leaderboard, glass UI, route + side menu + 27 i18n keys. ✅
-- [ ] **Weekly community highlights** — auto-curated "top posts / biggest streaks this week" digest (push +
-  in-app), giving a reason to return.
-- [ ] **Moderation-first** — every new surface ships with report/block + admin queue (14.5B) from day one.
+- [x] **Weekly community highlights** — `CommunityService.getTopPostThisWeek()` (posts last 7 days, orderBy likeCount DESC, limit 1) + `getTopStreakUserThisWeek()` (users orderBy streak DESC, limit 1); `WeeklyHighlightsCard` widget at `lib/screens/community/widgets/weekly_highlights_card.dart` (AppGlassCard, brand-gradient header, two-column: top post preview + streak leader; AppShimmer loading; self-hides if no data); shown in `community_screen.dart` for Global feed with no topic filter; 4 `community.weekly_highlights_*` + `community.top_*` EN+TR i18n keys; 0 analyze errors. ✅
+- [x] **Moderation-first** — `CommunityService.reportContent()` writes to `reports/{id}` collection (type/targetId/targetAuthorUid/reporterUid/reason/status/timestamp); `glass_post_card.dart` adds 3-dot more menu (non-self posts: "Report Post" + "Copy Link"); report reason sheet (5 chips: spam/inappropriate/misinformation/harassment/other); `streak_squad_screen.dart` "Report Squad" option (non-creator); 9 `report.*` + `post.copy_link` EN+TR keys. ✅
 - [ ] **Definition:** the community feels purpose-built for fitness/nutrition, rewards contribution, creates
   return triggers, and is moderated by default — measured by post-creation rate, D7/D30 return, and
   feed relevance, not vanity color.

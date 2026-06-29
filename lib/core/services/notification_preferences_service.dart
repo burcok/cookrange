@@ -69,6 +69,30 @@ class NotificationPreferencesService {
     }
   }
 
+  /// Returns true if [group] is muted for [uid].
+  Future<bool> isGroupMuted(String uid, String group) async {
+    try {
+      final doc = await _db.collection('users').doc(uid).get();
+      final muted = doc.data()?[_field] as Map<String, dynamic>? ?? {};
+      return muted[group] as bool? ?? false;
+    } catch (e) {
+      debugPrint('NotificationPreferencesService.isGroupMuted error: $e');
+      return false;
+    }
+  }
+
+  /// Sets mute state for [group] for [uid].
+  Future<void> setGroupMuted(String uid, String group, bool muted) async {
+    try {
+      await _db.collection('users').doc(uid).set(
+        {_field: {group: muted}},
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      debugPrint('NotificationPreferencesService.setGroupMuted error: $e');
+    }
+  }
+
   /// Returns true if the type is muted for the current user.
   Future<bool> isMuted(NotificationType type) async {
     final uid = _uid;

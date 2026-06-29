@@ -146,6 +146,8 @@ class CommunityPost {
   final PostType postType;
   // Type-specific payload (recipe/progress/meal metadata)
   final Map<String, dynamic> metadata;
+  // Role of the author at post-creation time ('coach', 'gym_owner', null = consumer)
+  final String? authorRole;
 
   CommunityPost({
     required this.id,
@@ -165,6 +167,7 @@ class CommunityPost {
     this.isEdited = false,
     this.postType = PostType.text,
     this.metadata = const {},
+    this.authorRole,
   });
 
   CommunityPost copyWith({
@@ -185,6 +188,7 @@ class CommunityPost {
     bool? isEdited,
     PostType? postType,
     Map<String, dynamic>? metadata,
+    String? authorRole,
   }) {
     return CommunityPost(
       id: id ?? this.id,
@@ -204,6 +208,7 @@ class CommunityPost {
       isEdited: isEdited ?? this.isEdited,
       postType: postType ?? this.postType,
       metadata: metadata ?? this.metadata,
+      authorRole: authorRole ?? this.authorRole,
     );
   }
 
@@ -221,6 +226,7 @@ class CommunityPost {
       'recentLikers': likedByUsers.map((u) => u.toMap()).toList(),
       'post_type': postType.value,
       'metadata': metadata,
+      if (authorRole != null && authorRole!.isNotEmpty) 'author_role': authorRole,
     };
   }
 
@@ -273,6 +279,7 @@ class CommunityPost {
       isEdited: map['isEdited'] ?? false,
       postType: _postTypeFromString(map['post_type'] as String?),
       metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
+      authorRole: map['author_role'] as String?,
     );
   }
 }

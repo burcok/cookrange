@@ -9,9 +9,11 @@ import '../../core/services/follow_service.dart';
 import '../../core/services/friend_service.dart';
 
 import '../../core/models/community_post.dart';
+import 'community_topics.dart';
 import 'widgets/glass_post_card.dart';
 import 'widgets/create_post_card.dart';
 import 'widgets/glass_refresher.dart';
+import 'widgets/weekly_highlights_card.dart';
 import 'post_detail_screen.dart';
 
 import 'package:provider/provider.dart';
@@ -53,6 +55,9 @@ class _CommunityScreenState extends State<CommunityScreen>
   // Cached following IDs for the Following filter (reused by load-more)
   List<String> _cachedFollowingIds = [];
 
+  // Topic filter — null means "All Topics"
+  String? _selectedTopic;
+
   late Stream<List<CommunityPost>> _postsStream;
   List<CommunityPost> _additionalPosts = [];
   DocumentSnapshot? _lastDoc;
@@ -87,6 +92,10 @@ class _CommunityScreenState extends State<CommunityScreen>
                 ? _cachedFollowingIds
                 : null,
         gymOnly: _selectedFilter == 'Gym',
+        topic: (_selectedFilter == 'Global' || _selectedFilter == 'Following' ||
+                _selectedFilter == 'Latest Updates')
+            ? _selectedTopic
+            : null,
       );
       if (mounted) {
         setState(() {
@@ -134,6 +143,7 @@ class _CommunityScreenState extends State<CommunityScreen>
         _cachedFriendIds = ids;
         if (!mounted) return;
         setState(() {
+          _selectedTopic = null; // topic filter not available for Friends
           _additionalPosts = [];
           _lastDoc = null;
           _hasMorePosts = true;
@@ -145,6 +155,7 @@ class _CommunityScreenState extends State<CommunityScreen>
       case 'Gym':
         if (!mounted) return;
         setState(() {
+          _selectedTopic = null; // topic filter not available for Gym
           _additionalPosts = [];
           _lastDoc = null;
           _hasMorePosts = true;
@@ -163,7 +174,10 @@ class _CommunityScreenState extends State<CommunityScreen>
           _hasMorePosts = ids.isNotEmpty;
           _postsStream = ids.isEmpty
               ? Stream.value([])
-              : _service.getPostsStream(authorIds: ids.take(10).toList());
+              : _service.getPostsStream(
+                  authorIds: ids.take(10).toList(),
+                  topic: _selectedTopic,
+                );
         });
         break;
       case 'Saved':
@@ -171,6 +185,7 @@ class _CommunityScreenState extends State<CommunityScreen>
         setState(() {
           _cachedFriendIds = [];
           _cachedFollowingIds = [];
+          _selectedTopic = null; // topic filter not available for Saved
           _additionalPosts = [];
           _lastDoc = null;
           _hasMorePosts = false;
@@ -185,9 +200,20 @@ class _CommunityScreenState extends State<CommunityScreen>
           _additionalPosts = [];
           _lastDoc = null;
           _hasMorePosts = true;
-          _postsStream = _service.getPostsStream();
+          _postsStream = _service.getPostsStream(topic: _selectedTopic);
         });
     }
+  }
+
+  void _onTopicSelected(String? topic) {
+    setState(() {
+      _selectedTopic = topic;
+      _additionalPosts = [];
+      _lastDoc = null;
+      _hasMorePosts = true;
+    });
+    // Re-apply current filter with the updated topic
+    _applyFilter(_selectedFilter);
   }
 
   void _showFilterSheet(BuildContext context, List<String> filters,
@@ -458,6 +484,20 @@ class _CommunityScreenState extends State<CommunityScreen>
 
               const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
 
+              // Weekly Highlights — shown only in the unfiltered Global view
+              if (_selectedFilter == 'Global' && _selectedTopic == null)
+                const SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    0,
+                    AppSpacing.xl,
+                    AppSpacing.md,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: WeeklyHighlightsCard(),
+                  ),
+                ),
+
               // Feed Header (Filters)
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
@@ -496,6 +536,19 @@ class _CommunityScreenState extends State<CommunityScreen>
                   ),
                 ),
               ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
+
+              // Topic filter row — shown only for Global, Latest Updates, Following
+              if (_selectedFilter == 'Global' ||
+                  _selectedFilter == 'Latest Updates' ||
+                  _selectedFilter == 'Following')
+                SliverToBoxAdapter(
+                  child: _TopicFilterRow(
+                    selectedTopic: _selectedTopic,
+                    onTopicSelected: _onTopicSelected,
+                  ),
+                ),
 
               const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
 
@@ -538,24 +591,28 @@ class _CommunityScreenState extends State<CommunityScreen>
                   final posts = snapshot.data ?? [];
 
                   if (posts.isEmpty) {
-                    final emptyKey = _selectedFilter == 'Friends Only'
-                        ? 'community.filters.no_friends_posts'
-                        : _selectedFilter == 'Following'
-                            ? 'community.following_empty'
-                            : _selectedFilter == 'Gym'
-                                ? 'community.filters.no_gym_posts'
-                                : _selectedFilter == 'Saved'
-                                    ? 'community.filters.no_saved_posts'
-                                    : 'community.no_posts';
-                    final emptyIcon = _selectedFilter == 'Friends Only'
-                        ? Icons.people_outline
-                        : _selectedFilter == 'Following'
-                            ? Icons.person_search_rounded
-                            : _selectedFilter == 'Gym'
-                                ? Icons.fitness_center
-                                : _selectedFilter == 'Saved'
-                                    ? Icons.bookmark_border_rounded
-                                    : Icons.article_outlined;
+                    final emptyKey = _selectedTopic != null
+                        ? 'community.topic_empty'
+                        : _selectedFilter == 'Friends Only'
+                            ? 'community.filters.no_friends_posts'
+                            : _selectedFilter == 'Following'
+                                ? 'community.following_empty'
+                                : _selectedFilter == 'Gym'
+                                    ? 'community.filters.no_gym_posts'
+                                    : _selectedFilter == 'Saved'
+                                        ? 'community.filters.no_saved_posts'
+                                        : 'community.no_posts';
+                    final emptyIcon = _selectedTopic != null
+                        ? Icons.local_fire_department_outlined
+                        : _selectedFilter == 'Friends Only'
+                            ? Icons.people_outline
+                            : _selectedFilter == 'Following'
+                                ? Icons.person_search_rounded
+                                : _selectedFilter == 'Gym'
+                                    ? Icons.fitness_center
+                                    : _selectedFilter == 'Saved'
+                                        ? Icons.bookmark_border_rounded
+                                        : Icons.article_outlined;
                     return SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.all(AppSpacing.xxxl),
@@ -789,6 +846,106 @@ class _CommunityScreenState extends State<CommunityScreen>
               textAlign: TextAlign.center,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Topic filter chip row ────────────────────────────────────────────────────
+
+class _TopicFilterRow extends StatelessWidget {
+  final String? selectedTopic;
+  final ValueChanged<String?> onTopicSelected;
+
+  const _TopicFilterRow({
+    required this.selectedTopic,
+    required this.onTopicSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final appLoc = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+
+    return SizedBox(
+      height: 36,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        children: [
+          // "All Topics" chip
+          _TopicChip(
+            label: appLoc.translate('community.topic_all'),
+            isSelected: selectedTopic == null,
+            color: palette.textSecondary,
+            onTap: () => onTopicSelected(null),
+            palette: palette,
+            textStyles: textStyles,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          // One chip per topic constant
+          ...CommunityTopics.all.map((topic) {
+            final color = CommunityTopics.colorFor(topic, palette);
+            return Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.xs),
+              child: _TopicChip(
+                label: appLoc.translate(CommunityTopics.labelKeyFor(topic)),
+                isSelected: selectedTopic == topic,
+                color: color,
+                onTap: () => onTopicSelected(selectedTopic == topic ? null : topic),
+                palette: palette,
+                textStyles: textStyles,
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopicChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final Color color;
+  final VoidCallback onTap;
+  final AppPalette palette;
+  final AppText textStyles;
+
+  const _TopicChip({
+    required this.label,
+    required this.isSelected,
+    required this.color,
+    required this.onTap,
+    required this.palette,
+    required this.textStyles,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm + 2, vertical: AppSpacing.xxs + 2),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          border: Border.all(
+            color: isSelected ? color : palette.border,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: textStyles.labelS.copyWith(
+            color: isSelected ? color : palette.textSecondary,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          ),
         ),
       ),
     );

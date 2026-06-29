@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cookrange/core/models/dish_model.dart';
+import 'package:cookrange/core/models/user_model.dart';
 import 'package:cookrange/core/providers/user_provider.dart';
 import 'package:cookrange/core/services/dish_service.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +20,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/ds/app_avatar.dart';
 import '../../../../core/widgets/app_image.dart';
+import '../community_topics.dart';
 
 class CreatePostCard extends StatefulWidget {
   final VoidCallback onPostCreated;
@@ -40,6 +44,14 @@ class _CreatePostCardState extends State<CreatePostCard> {
   List<String> _selectedTags = [];
   PostType _postType = PostType.text;
   Map<String, dynamic> _metadata = {};
+  String? _selectedTopic; // nullable — user may post without a topic
+
+  // @mention state
+  String? _mentionQuery;
+  List<Map<String, String>> _selectedMentions = []; // [{uid, name}, ...]
+  List<Map<String, dynamic>> _mentionSuggestions = [];
+  bool _isLoadingMentions = false;
+  Timer? _mentionDebounce;
 
   // progress fields
   final TextEditingController _weightCtrl = TextEditingController();
@@ -64,6 +76,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
   void initState() {
     super.initState();
     _focusNode.addListener(_onFocusChange);
+    _controller.addListener(_onContentChanged);
   }
 
   void _onFocusChange() {
@@ -76,9 +89,106 @@ class _CreatePostCardState extends State<CreatePostCard> {
     }
   }
 
+  void _onContentChanged() {
+    final text = _controller.text;
+    // Extract @query: find the last @ and check if we're still typing it
+    final cursor = _controller.selection.baseOffset;
+    if (cursor < 0) return;
+
+    final beforeCursor = text.substring(0, cursor);
+    final atMatch = RegExp(r'@(\w*)$').firstMatch(beforeCursor);
+
+    if (atMatch != null) {
+      final query = atMatch.group(1) ?? '';
+      if (query.isNotEmpty && query != _mentionQuery) {
+        setState(() => _mentionQuery = query);
+        _mentionDebounce?.cancel();
+        _mentionDebounce = Timer(const Duration(milliseconds: 300), () {
+          _fetchMentionSuggestions(query);
+        });
+      } else if (query.isEmpty) {
+        // @typed but no query yet — clear suggestions
+        if (_mentionQuery != null || _mentionSuggestions.isNotEmpty) {
+          setState(() {
+            _mentionQuery = null;
+            _mentionSuggestions = [];
+          });
+        }
+      }
+    } else {
+      if (_mentionQuery != null || _mentionSuggestions.isNotEmpty) {
+        setState(() {
+          _mentionQuery = null;
+          _mentionSuggestions = [];
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchMentionSuggestions(String query) async {
+    if (!mounted) return;
+    setState(() => _isLoadingMentions = true);
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .orderBy('displayName')
+          .startAt([query])
+          .endAt(['$query'])
+          .limit(5)
+          .get();
+      if (!mounted) return;
+      setState(() {
+        _mentionSuggestions = snap.docs.map((d) {
+          final data = d.data();
+          return {
+            'uid': d.id,
+            'name': (data['displayName'] as String?) ?? '',
+            'photoUrl': (data['photoURL'] as String?) ?? '',
+          };
+        }).toList();
+        _isLoadingMentions = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingMentions = false);
+    }
+  }
+
+  void _selectMention(Map<String, dynamic> user) {
+    final uid = user['uid'] as String;
+    final name = user['name'] as String;
+    final text = _controller.text;
+    final cursor = _controller.selection.baseOffset;
+    if (cursor < 0) return;
+
+    final beforeCursor = text.substring(0, cursor);
+    final afterCursor = text.substring(cursor);
+
+    // Replace the @query with @displayName + space
+    final updated = beforeCursor.replaceAll(RegExp(r'@\w*$'), '@$name ');
+    final newText = updated + afterCursor;
+    final newCursor = updated.length;
+
+    _controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newCursor),
+    );
+
+    // Track in _selectedMentions (avoid duplicates)
+    if (!_selectedMentions.any((m) => m['uid'] == uid)) {
+      _selectedMentions.add({'uid': uid, 'name': name});
+    }
+
+    setState(() {
+      _mentionQuery = null;
+      _mentionSuggestions = [];
+    });
+  }
+
   @override
   void dispose() {
     _focusNode.removeListener(_onFocusChange);
+    _controller.removeListener(_onContentChanged);
+    _mentionDebounce?.cancel();
     _controller.dispose();
     _focusNode.dispose();
     _weightCtrl.dispose();
@@ -168,18 +278,41 @@ class _CreatePostCardState extends State<CreatePostCard> {
       return;
     }
 
-    // Build metadata from current type
-    final meta = _buildMetadata();
+    // Build metadata — always merge topic + mentions in when available
+    final meta = {
+      ..._buildMetadata(),
+      if (_selectedTopic != null) 'topic': _selectedTopic,
+      if (_selectedMentions.isNotEmpty)
+        'mentions': _selectedMentions
+            .map((m) => {'uid': m['uid'], 'name': m['name']})
+            .toList(),
+    };
+
+    // Prepend the topic constant to tags for arrayContains filtering
+    final tags = [
+      if (_selectedTopic != null && !_selectedTags.contains(_selectedTopic))
+        _selectedTopic!,
+      ..._selectedTags,
+    ];
 
     setState(() => _isPosting = true);
 
     try {
+      final userModel = context.read<UserProvider>().user;
+      final role = userModel?.userRole;
+      final authorRole = (role != null &&
+              role != UserRole.consumer &&
+              role != UserRole.admin)
+          ? role.firestoreValue
+          : null;
+
       await _service.createPost(
         content,
         _attachedImageUrls,
-        _selectedTags,
+        tags,
         postType: _postType,
         metadata: meta,
+        authorRole: authorRole,
       );
       _controller.clear();
       _focusNode.unfocus();
@@ -193,9 +326,13 @@ class _CreatePostCardState extends State<CreatePostCard> {
       setState(() {
         _attachedImageUrls = [];
         _selectedTags = [];
+        _selectedTopic = null;
         _postType = PostType.text;
         _metadata = {};
         _isExpanded = false;
+        _selectedMentions = [];
+        _mentionSuggestions = [];
+        _mentionQuery = null;
       });
       widget.onPostCreated();
     } catch (e) {
@@ -473,22 +610,112 @@ class _CreatePostCardState extends State<CreatePostCard> {
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: TextField(
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  maxLines: _isExpanded ? 4 : 1,
-                  decoration: InputDecoration(
-                    hintText: AppLocalizations.of(context)
-                        .translate('community.whats_cooking', variables: {
-                      'name': user?.displayName?.split(' ').first ?? 'Chef'
-                    }),
-                    hintStyle: textStyles.bodyM,
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: AppSpacing.xs + 2),
-                  ),
-                  style: textStyles.bodyL.copyWith(color: palette.textPrimary),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      maxLines: _isExpanded ? 4 : 1,
+                      decoration: InputDecoration(
+                        hintText: AppLocalizations.of(context)
+                            .translate('community.whats_cooking', variables: {
+                          'name': user?.displayName?.split(' ').first ?? 'Chef'
+                        }),
+                        hintStyle: textStyles.bodyM,
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.xs + 2),
+                      ),
+                      style:
+                          textStyles.bodyL.copyWith(color: palette.textPrimary),
+                    ),
+                    // @mention autocomplete suggestions
+                    AnimatedContainer(
+                      duration: AppMotion.fast,
+                      height: (_mentionSuggestions.isNotEmpty ||
+                              _isLoadingMentions)
+                          ? (_isLoadingMentions
+                              ? 40.0
+                              : _mentionSuggestions.length * 48.0)
+                          : 0.0,
+                      child: ClipRect(
+                        child: (_mentionSuggestions.isEmpty &&
+                                !_isLoadingMentions)
+                            ? const SizedBox.shrink()
+                            : Container(
+                                decoration: BoxDecoration(
+                                  color: palette.surfaceVariant,
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.sm),
+                                  border: Border.all(color: palette.border),
+                                ),
+                                child: _isLoadingMentions
+                                    ? Center(
+                                        child: SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 1.5,
+                                              color: primaryColor),
+                                        ),
+                                      )
+                                    : ListView.builder(
+                                        padding: EdgeInsets.zero,
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        itemCount:
+                                            _mentionSuggestions.length,
+                                        itemBuilder: (_, i) {
+                                          final u = _mentionSuggestions[i];
+                                          final name =
+                                              u['name'] as String? ?? '';
+                                          final photo =
+                                              u['photoUrl'] as String? ?? '';
+                                          return InkWell(
+                                            onTap: () =>
+                                                _selectMention(u),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal:
+                                                          AppSpacing.xs,
+                                                      vertical:
+                                                          AppSpacing.xxs),
+                                              child: Row(
+                                                children: [
+                                                  AppInitialsAvatar(
+                                                    name: name,
+                                                    photoUrl: photo.isNotEmpty
+                                                        ? photo
+                                                        : null,
+                                                    size: 28,
+                                                  ),
+                                                  const SizedBox(
+                                                      width: AppSpacing.xs),
+                                                  Expanded(
+                                                    child: Text(
+                                                      name,
+                                                      style: textStyles.labelM
+                                                          .copyWith(
+                                                              color: palette
+                                                                  .textPrimary),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                              ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -534,6 +761,13 @@ class _CreatePostCardState extends State<CreatePostCard> {
                 _postType == PostType.progress ||
                 _postType == PostType.meal)
               const SizedBox(height: AppSpacing.sm),
+
+            // Topic picker
+            _TopicPicker(
+              selectedTopic: _selectedTopic,
+              onTopicSelected: (t) => setState(() => _selectedTopic = t),
+            ),
+            const SizedBox(height: AppSpacing.sm),
 
             // Selected Tags
             if (_selectedTags.isNotEmpty)
@@ -950,6 +1184,74 @@ class _MealFields extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Topic picker row ─────────────────────────────────────────────────────────
+
+class _TopicPicker extends StatelessWidget {
+  final String? selectedTopic;
+  final ValueChanged<String?> onTopicSelected;
+
+  const _TopicPicker({
+    required this.selectedTopic,
+    required this.onTopicSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.translate('community.topic_label'),
+          style: textStyles.labelS.copyWith(color: palette.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.xxs + 2),
+        SizedBox(
+          height: 32,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            children: CommunityTopics.all.map((topic) {
+              final color = CommunityTopics.colorFor(topic, palette);
+              final isSelected = selectedTopic == topic;
+              return GestureDetector(
+                onTap: () => onTopicSelected(isSelected ? null : topic),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  margin: const EdgeInsets.only(right: AppSpacing.xs),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm, vertical: AppSpacing.xxs),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? color.withValues(alpha: 0.15)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                    border: Border.all(
+                      color: isSelected ? color : palette.border,
+                      width: isSelected ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Text(
+                    l10n.translate(CommunityTopics.labelKeyFor(topic)),
+                    style: textStyles.labelS.copyWith(
+                      color: isSelected ? color : palette.textSecondary,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ],
     );

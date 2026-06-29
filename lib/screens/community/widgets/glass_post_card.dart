@@ -1,19 +1,26 @@
 import 'dart:async';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../profile/profile_screen.dart';
 import 'package:cookrange/core/widgets/app_image.dart';
 import '../../../core/models/community_post.dart';
 import '../../community/widgets/community_widgets.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/community_service.dart';
+import '../../../core/utils/profile_navigation.dart';
 import 'draggable_reaction_button.dart';
 import '../../../../core/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/widgets/unified_action_sheet.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/widgets/ds/app_avatar.dart';
+import '../../../core/widgets/ds/app_sheet.dart';
+import '../../../core/widgets/ds/app_snackbar.dart';
+import '../../../core/widgets/ds/app_button.dart';
+import '../community_topics.dart';
 
 class GlassPostCard extends StatefulWidget {
   final CommunityPost post;
@@ -92,165 +99,85 @@ class _GlassPostCardState extends State<GlassPostCard> {
   void _showPostOptions(BuildContext context) {
     final appLoc = AppLocalizations.of(context);
     final service = CommunityService();
-    final isOwner = _post.author.id == service.currentUserId;
+    final currentUid =
+        AuthService().currentUser?.uid ?? '';
+    final isOwner = _post.author.id == currentUid;
 
-    showUnifiedActionSheet(
+    AppSheet.show<void>(
       context: context,
       title: appLoc.translate('community.menu.options'),
-      actions: [
-        ActionSheetItem(
-          label: appLoc.translate('community.menu.share'),
-          icon: Icons.share_outlined,
-          onTap: widget.onShare,
-        ),
-        if (!isOwner) ...[
-          ActionSheetItem(
-            label: appLoc.translate('community.menu.report'),
-            icon: Icons.report_gmailerrorred,
-            isDestructive: true,
-            onTap: () => _showReportSheet(context, service),
-          ),
-          ActionSheetItem(
-            label: appLoc.translate('community.menu.block'),
-            icon: Icons.block,
-            isDestructive: true,
-            onTap: () async {
-              await service.blockUser(_post.author.id);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(
-                        appLoc.translate('community.block_success'))));
+      child: _PostMoreMenuContent(
+        isOwner: isOwner,
+        appLoc: appLoc,
+        onShare: () {
+          Navigator.pop(context);
+          widget.onShare();
+        },
+        onCopyLink: () {
+          Navigator.pop(context);
+          Clipboard.setData(
+              ClipboardData(text: 'https://cookrange.app/post/${_post.id}'));
+          AppSnackBar.success(
+              context, appLoc.translate('post.link_copied'));
+        },
+        onReport: isOwner
+            ? null
+            : () {
+                Navigator.pop(context);
+                _showReportSheet(context, currentUid: currentUid);
+              },
+        onBlock: isOwner
+            ? null
+            : () async {
+                Navigator.pop(context);
+                await service.blockUser(_post.author.id);
+                if (context.mounted) {
+                  AppSnackBar.success(
+                      context, appLoc.translate('community.block_success'));
+                }
+              },
+        onDelete: isOwner
+            ? () {
+                Navigator.pop(context);
+                _showDeleteDialog(context, _post.id);
               }
-            },
-          ),
-        ],
-        if (isOwner)
-          ActionSheetItem(
-            label: appLoc.translate('community.menu.delete'),
-            icon: Icons.delete_outline,
-            isDestructive: true,
-            onTap: () => _showDeleteDialog(context, _post.id),
-          ),
-      ],
+            : null,
+      ),
     );
   }
 
-  void _showReportSheet(BuildContext context, CommunityService service) {
+  void _showReportSheet(BuildContext context, {required String currentUid}) {
     final l10n = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
     final textStyles = AppText.of(context);
+    final service = CommunityService();
 
     final reasons = [
-      ('spam', l10n.translate('community.report.reason_spam')),
-      ('harassment', l10n.translate('community.report.reason_harassment')),
-      ('inappropriate', l10n.translate('community.report.reason_inappropriate')),
-      ('misinformation', l10n.translate('community.report.reason_misinformation')),
-      ('other', l10n.translate('community.report.reason_other')),
+      ('spam', l10n.translate('report.reason_spam')),
+      ('inappropriate', l10n.translate('report.reason_inappropriate')),
+      ('misinformation', l10n.translate('report.reason_misinformation')),
+      ('harassment', l10n.translate('report.reason_harassment')),
+      ('other', l10n.translate('report.reason_other')),
     ];
 
-    showModalBottomSheet(
+    AppSheet.show<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        String? selectedReason;
-        bool submitting = false;
-
-        return StatefulBuilder(builder: (context, setModal) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: Colors.transparent,
-              borderRadius:
-                  BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
-            ),
-            child: Material(
-              color: palette.surface,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
-              clipBehavior: Clip.antiAlias,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                    AppSpacing.xl, AppSpacing.sm, AppSpacing.xl,
-                    MediaQuery.of(context).viewInsets.bottom + AppSpacing.xxl),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: AppSize.sheetHandleW,
-                        height: AppSize.sheetHandleH,
-                        margin: const EdgeInsets.only(bottom: AppSpacing.lg),
-                        decoration: BoxDecoration(
-                          color: palette.border,
-                          borderRadius: BorderRadius.circular(AppRadius.full),
-                        ),
-                      ),
-                    ),
-                    Text(
-                      l10n.translate('community.report.dialog_title'),
-                      style: textStyles.headlineS,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      l10n.translate('community.report.dialog_subtitle'),
-                      style: textStyles.bodyM,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    RadioGroup<String>(
-                      groupValue: selectedReason,
-                      onChanged: (v) => setModal(() => selectedReason = v),
-                      child: Column(
-                        children: reasons
-                            .map((r) => RadioListTile<String>(
-                                  value: r.$1,
-                                  title: Text(r.$2, style: textStyles.titleM),
-                                  activeColor: palette.error,
-                                  contentPadding: EdgeInsets.zero,
-                                ))
-                            .toList(),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: (selectedReason == null || submitting)
-                            ? null
-                            : () async {
-                                setModal(() => submitting = true);
-                                await service.reportPost(_post.id, selectedReason!);
-                                if (context.mounted) {
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content: Text(l10n.translate(
-                                              'community.report.submitted'))));
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: palette.error,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.md)),
-                        ),
-                        child: submitting
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2))
-                            : Text(l10n.translate('post.submit')),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+      title: l10n.translate('report.title'),
+      child: _ReportReasonContent(
+        reasons: reasons,
+        palette: palette,
+        textStyles: textStyles,
+        l10n: l10n,
+        onSubmit: (selectedReason) async {
+          await service.reportContent(
+            type: 'post',
+            targetId: _post.id,
+            targetAuthorUid: _post.author.id,
+            reporterUid: currentUid,
+            reason: selectedReason,
           );
-        });
-      },
+        },
+      ),
     );
   }
 
@@ -349,19 +276,26 @@ class _GlassPostCardState extends State<GlassPostCard> {
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(Icons.more_vert, color: palette.textTertiary),
-                    onPressed: () => _showPostOptions(context),
-                  )
+                  if (_post.author.id != (AuthService().currentUser?.uid ?? ''))
+                    IconButton(
+                      icon: Icon(Icons.more_horiz_rounded,
+                          color: palette.textTertiary),
+                      onPressed: () => _showPostOptions(context),
+                    ),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Content Text
+              // Content Text — supports #hashtags and tappable @mentions
               RichText(
                 text: TextSpan(
                   style: textStyles.bodyL,
-                  children: _parseContentFull(_post.content, _post.tags, primaryColor),
+                  children: _parseContentFull(
+                    _post.content,
+                    _post.tags,
+                    primaryColor,
+                    metadata: _post.metadata,
+                  ),
                 ),
               ),
 
@@ -388,6 +322,9 @@ class _GlassPostCardState extends State<GlassPostCard> {
                         .toList(),
                   ),
                 ),
+
+              // Topic pill — shown when metadata contains a topic key
+              _TopicPill(post: _post),
 
               const SizedBox(height: AppSpacing.md),
 
@@ -429,6 +366,13 @@ class _GlassPostCardState extends State<GlassPostCard> {
                         ),
                       ),
                   ],
+                ),
+
+              // Verified author banner (coach / gym_owner only)
+              if (_post.authorRole != null && _post.authorRole!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: _VerifiedAuthorBanner(post: _post),
                 ),
 
               const SizedBox(height: AppSpacing.md),
@@ -595,19 +539,67 @@ class _GlassPostCardState extends State<GlassPostCard> {
     return "${diff.inDays} ${diff.inDays == 1 ? appLoc.translate('community.time.day') : appLoc.translate('community.time.days')}";
   }
 
+  /// Parses content and renders #hashtags and @mentions with distinct styles.
+  /// @mentions are tappable — they open the mentioned user's profile if the uid
+  /// is found in post.metadata['mentions'].
   List<InlineSpan> _parseContentFull(
-      String content, List<String> tags, Color primaryColor) {
-    List<InlineSpan> spans = [];
-    final words = content.split(' ');
-    for (var word in words) {
-      if (word.startsWith('#')) {
+      String content, List<String> tags, Color primaryColor,
+      {Map<String, dynamic>? metadata}) {
+    final textStyles = AppText.of(context);
+    const mentionColor = AppPalette.brand;
+    final mentions =
+        (metadata?['mentions'] as List<dynamic>?) ?? <dynamic>[];
+
+    final List<InlineSpan> spans = [];
+    // Split by whitespace but keep delimiters to preserve spacing
+    final parts = content.split(RegExp(r'(?<=\s)|(?=\s)'));
+
+    for (final part in parts) {
+      final trimmed = part.trimRight();
+      if (trimmed.startsWith('#')) {
         spans.add(TextSpan(
-          text: "$word ",
-          style: TextStyle(
-              fontWeight: FontWeight.w600, color: primaryColor),
+          text: part,
+          style: textStyles.bodyL.copyWith(
+            fontWeight: FontWeight.w600,
+            color: primaryColor,
+          ),
         ));
+      } else if (trimmed.startsWith('@') && trimmed.length > 1) {
+        final handle = trimmed.substring(1); // name without @
+        // Find uid by matching name (case-insensitive)
+        String? uid;
+        for (final m in mentions) {
+          if (m is Map &&
+              (m['name'] as String?)?.toLowerCase() ==
+                  handle.toLowerCase()) {
+            uid = m['uid'] as String?;
+            break;
+          }
+        }
+        final trailing = part.substring(trimmed.length); // trailing whitespace
+        if (uid != null) {
+          final capturedUid = uid;
+          spans.add(TextSpan(
+            text: '@$handle$trailing',
+            style: textStyles.bodyL.copyWith(
+              fontWeight: FontWeight.w600,
+              color: mentionColor,
+            ),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () =>
+                  openUserProfile(context, userId: capturedUid),
+          ));
+        } else {
+          spans.add(TextSpan(
+            text: '@$handle$trailing',
+            style: textStyles.bodyL.copyWith(
+              fontWeight: FontWeight.w600,
+              color: mentionColor,
+            ),
+          ));
+        }
       } else {
-        spans.add(TextSpan(text: "$word "));
+        spans.add(TextSpan(text: part));
       }
     }
     return spans;
@@ -970,6 +962,113 @@ class _MealCard extends StatelessWidget {
   }
 }
 
+// ─── Topic pill shown on post cards ───────────────────────────────────────────
+
+class _TopicPill extends StatelessWidget {
+  final CommunityPost post;
+  const _TopicPill({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    final topic = post.metadata['topic'] as String?;
+    if (topic == null || topic.isEmpty) return const SizedBox.shrink();
+
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final l10n = AppLocalizations.of(context);
+    final color = CommunityTopics.colorFor(topic, palette);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppRadius.full),
+            ),
+            child: Text(
+              l10n.translate(CommunityTopics.labelKeyFor(topic)),
+              style: textStyles.labelS.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Verified author banner (coach / gym_owner) ───────────────────────────────
+
+class _VerifiedAuthorBanner extends StatelessWidget {
+  final CommunityPost post;
+  const _VerifiedAuthorBanner({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final l10n = AppLocalizations.of(context);
+    final role = (post.authorRole ?? '').toLowerCase();
+
+    final bool isCoach = role == 'coach';
+    final bool isGymOwner = role == 'gym_owner';
+
+    if (!isCoach && !isGymOwner) return const SizedBox.shrink();
+
+    final Color accentColor = isCoach ? AppPalette.brand : palette.energy;
+    final IconData icon = isCoach
+        ? Icons.workspace_premium_rounded
+        : Icons.fitness_center_rounded;
+    final String label = isCoach
+        ? l10n.translate('community.verified_coach')
+        : l10n.translate('community.verified_gym_owner');
+    final String ctaLabel = isCoach
+        ? l10n.translate('community.view_profile')
+        : l10n.translate('community.view_gym_profile');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: accentColor.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: AppSize.iconSm, color: accentColor),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            label,
+            style: textStyles.labelS.copyWith(
+              color: accentColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => openUserProfile(context, userId: post.author.id),
+            child: Text(
+              ctaLabel,
+              style: textStyles.labelS.copyWith(
+                color: accentColor,
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+                decorationColor: accentColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MacroPill extends StatelessWidget {
   final String label;
   final Color color;
@@ -988,6 +1087,234 @@ class _MacroPill extends StatelessWidget {
         style: AppText.of(context)
             .labelS
             .copyWith(color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+// ─── Post "more" menu content (runs inside AppSheet) ─────────────────────────
+
+class _PostMoreMenuContent extends StatelessWidget {
+  final bool isOwner;
+  final AppLocalizations appLoc;
+  final VoidCallback onShare;
+  final VoidCallback onCopyLink;
+  final VoidCallback? onReport;
+  final Future<void> Function()? onBlock;
+  final VoidCallback? onDelete;
+
+  const _PostMoreMenuContent({
+    required this.isOwner,
+    required this.appLoc,
+    required this.onShare,
+    required this.onCopyLink,
+    this.onReport,
+    this.onBlock,
+    this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screenH, 0, AppSpacing.screenH, AppSpacing.lg),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _MenuTile(
+            icon: Icons.share_outlined,
+            label: appLoc.translate('community.menu.share'),
+            color: palette.textPrimary,
+            textStyle: t.bodyM,
+            onTap: onShare,
+          ),
+          _MenuTile(
+            icon: Icons.link_rounded,
+            label: appLoc.translate('post.copy_link'),
+            color: palette.textSecondary,
+            textStyle: t.bodyM,
+            onTap: onCopyLink,
+          ),
+          if (onReport != null)
+            _MenuTile(
+              icon: Icons.flag_outlined,
+              label: appLoc.translate('community.menu.report'),
+              color: palette.error,
+              textStyle: t.bodyM.copyWith(color: palette.error),
+              onTap: onReport!,
+            ),
+          if (onBlock != null)
+            _MenuTile(
+              icon: Icons.block_rounded,
+              label: appLoc.translate('community.menu.block'),
+              color: palette.error,
+              textStyle: t.bodyM.copyWith(color: palette.error),
+              onTap: () => onBlock!(),
+            ),
+          if (onDelete != null)
+            _MenuTile(
+              icon: Icons.delete_outline_rounded,
+              label: appLoc.translate('community.menu.delete'),
+              color: palette.error,
+              textStyle: t.bodyM.copyWith(color: palette.error),
+              onTap: onDelete!,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MenuTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final TextStyle textStyle;
+  final VoidCallback onTap;
+
+  const _MenuTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.textStyle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.md, horizontal: AppSpacing.sm),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: AppSize.iconMd),
+            const SizedBox(width: AppSpacing.md),
+            Text(label, style: textStyle),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Shared report reason selector (AppSheet child) ──────────────────────────
+
+class _ReportReasonContent extends StatefulWidget {
+  final List<(String, String)> reasons;
+  final AppPalette palette;
+  final AppText textStyles;
+  final AppLocalizations l10n;
+  final Future<void> Function(String reason) onSubmit;
+
+  const _ReportReasonContent({
+    required this.reasons,
+    required this.palette,
+    required this.textStyles,
+    required this.l10n,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_ReportReasonContent> createState() => _ReportReasonContentState();
+}
+
+class _ReportReasonContentState extends State<_ReportReasonContent> {
+  String? _selectedReason;
+  bool _submitting = false;
+
+  Future<void> _submit() async {
+    final reason = _selectedReason;
+    if (reason == null || _submitting) return;
+    setState(() => _submitting = true);
+    try {
+      await widget.onSubmit(reason);
+      if (!mounted) return;
+      Navigator.pop(context);
+      AppSnackBar.success(context, widget.l10n.translate('report.submitted'));
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackBar.error(context, widget.l10n.translate('report.error'));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = widget.palette;
+    final t = widget.textStyles;
+    final l10n = widget.l10n;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.screenH,
+        0,
+        AppSpacing.screenH,
+        MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ...widget.reasons.map((r) {
+            final isSelected = _selectedReason == r.$1;
+            return InkWell(
+              onTap: () => setState(() => _selectedReason = r.$1),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: Container(
+                margin:
+                    const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? palette.error.withValues(alpha: 0.08)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(
+                    color: isSelected
+                        ? palette.error.withValues(alpha: 0.4)
+                        : Colors.transparent,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected
+                          ? Icons.radio_button_checked_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      size: AppSize.iconMd,
+                      color: isSelected
+                          ? palette.error
+                          : palette.textTertiary,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                        child: Text(r.$2,
+                            style: t.titleM.copyWith(
+                              color: isSelected
+                                  ? palette.error
+                                  : palette.textPrimary,
+                            ))),
+                  ],
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: AppSpacing.md),
+          AppButton(
+            label: l10n.translate('report.submit'),
+            onPressed: (_selectedReason == null || _submitting) ? null : _submit,
+            loading: _submitting,
+            variant: AppButtonVariant.destructive,
+          ),
+        ],
       ),
     );
   }

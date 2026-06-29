@@ -699,6 +699,28 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "coach_profiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_public",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_accepting_clients",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_verified",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "avg_rating",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

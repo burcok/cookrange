@@ -25,21 +25,36 @@ class AppSheet {
     EdgeInsetsGeometry? padding,
   }) {
     final palette = AppPalette.of(context);
+    final mq = MediaQuery.of(context);
+    final reduceTransparency = mq.highContrast;
+    final reduceMotion = mq.disableAnimations;
+
     return showModalBottomSheet<T>(
       context: context,
       isScrollControlled: isScrollControlled,
       backgroundColor: Colors.transparent,
-      barrierColor: palette.scrim,
-      sheetAnimationStyle: const AnimationStyle(
-        curve: _enterCurve,
-        duration: Duration(milliseconds: 350),
-        reverseCurve: _exitCurve,
-        reverseDuration: Duration(milliseconds: 260),
-      ),
+      // When reduce-transparency is on, use a solid scrim instead of the
+      // semi-transparent one so the background content is fully obscured.
+      barrierColor:
+          reduceTransparency ? palette.scrim.withValues(alpha: 1.0) : palette.scrim,
+      // When reduce-motion is on, collapse all animation durations to zero so
+      // the sheet appears and disappears instantly.
+      sheetAnimationStyle: reduceMotion
+          ? const AnimationStyle(
+              duration: Duration.zero,
+              reverseDuration: Duration.zero,
+            )
+          : const AnimationStyle(
+              curve: _enterCurve,
+              duration: Duration(milliseconds: 350),
+              reverseCurve: _exitCurve,
+              reverseDuration: Duration(milliseconds: 260),
+            ),
       builder: (ctx) => _SheetShell(
         title: title,
         showHandle: showHandle,
         padding: padding,
+        reduceTransparency: reduceTransparency,
         child: child,
       ),
     );
@@ -51,12 +66,14 @@ class _SheetShell extends StatelessWidget {
   final String? title;
   final bool showHandle;
   final EdgeInsetsGeometry? padding;
+  final bool reduceTransparency;
 
   const _SheetShell({
     required this.child,
     this.title,
     this.showHandle = true,
     this.padding,
+    this.reduceTransparency = false,
   });
 
   @override
@@ -65,18 +82,23 @@ class _SheetShell extends StatelessWidget {
     final t = AppText.of(context);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
+    // When reduce-transparency is active the barrier is already fully opaque,
+    // so a shadow on the sheet itself would be redundant. Keep it in normal
+    // mode for the elevation cue.
     return Container(
       decoration: BoxDecoration(
         color: Colors.transparent,
         borderRadius:
             BorderRadius.vertical(top: Radius.circular(AppRadius.sheet.r)),
-        boxShadow: [
-          BoxShadow(
-            color: palette.shadow.withValues(alpha: 0.2),
-            blurRadius: AppElevation.blurLg.r,
-            offset: const Offset(0, -4),
-          ),
-        ],
+        boxShadow: reduceTransparency
+            ? null
+            : [
+                BoxShadow(
+                  color: palette.shadow.withValues(alpha: 0.2),
+                  blurRadius: AppElevation.blurLg.r,
+                  offset: const Offset(0, -4),
+                ),
+              ],
       ),
       child: Material(
         color: palette.surface,

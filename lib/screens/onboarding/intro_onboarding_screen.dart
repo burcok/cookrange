@@ -77,6 +77,22 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen>
     }
   }
 
+  void _finishWithDiscover() {
+    unawaited(AnalyticsService().logEvent(
+        name: 'intro_completed',
+        parameters: {
+          'page': _page,
+          'is_replay': widget.isReplay.toString(),
+          'cta': 'find_gym',
+        }));
+    if (widget.isReplay) {
+      Navigator.of(context).pop();
+    } else {
+      _markIntroSeen();
+      unawaited(Navigator.pushReplacementNamed(context, AppRoutes.discover));
+    }
+  }
+
   void _markIntroSeen() {
     SharedPreferences.getInstance()
         .then((prefs) => prefs.setBool('intro_seen', true));
@@ -192,6 +208,7 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen>
                       page: _page,
                       total: _total,
                       onNext: _next,
+                      onDiscover: _finishWithDiscover,
                       reduceMotion: reduceMotion,
                     ),
                   ],
@@ -504,12 +521,14 @@ class _NavRow extends StatelessWidget {
   final int page;
   final int total;
   final VoidCallback onNext;
+  final VoidCallback onDiscover;
   final bool reduceMotion;
 
   const _NavRow({
     required this.page,
     required this.total,
     required this.onNext,
+    required this.onDiscover,
     required this.reduceMotion,
   });
 
@@ -518,12 +537,37 @@ class _NavRow extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
     final isLast = page == total - 1;
-    final label = isLast
-        ? l10n.translate('intro.get_started')
-        : l10n.translate('intro.next');
 
+    if (isLast) {
+      // Last slide: dual CTA — primary (meal plan) + ghost (find gym)
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppButton(
+            label: l10n.translate('onboarding.intro.cta_meal_plan'),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              onNext();
+            },
+          ),
+          SizedBox(height: 12.h),
+          AppButton(
+            label: l10n.translate('onboarding.intro.cta_find_gym'),
+            variant: AppButtonVariant.ghost,
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              onDiscover();
+            },
+          ),
+        ],
+      );
+    }
+
+    // Non-last slides: existing Next arrow button
+    final label = l10n.translate('intro.next');
     return Row(
-      mainAxisAlignment: isLast ? MainAxisAlignment.center : MainAxisAlignment.end,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Semantics(
           button: true,
@@ -537,28 +581,23 @@ class _NavRow extends StatelessWidget {
               duration: reduceMotion ? Duration.zero : AppMotion.fast,
               curve: AppMotion.standard,
               padding: EdgeInsets.symmetric(
-                horizontal: isLast ? 48.w : 28.w,
+                horizontal: 28.w,
                 vertical: 16.h,
               ),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppRadius.full.r),
-                gradient: isLast
-                    ? const LinearGradient(
-                        colors: [AppPalette.brand, AppPalette.sunsetC],
-                      )
-                    : LinearGradient(
-                        colors: palette.isDark
-                            ? [
-                                palette.surfaceElevated,
-                                palette.surfaceElevated,
-                              ]
-                            : [AppPalette.brand, AppPalette.sunsetA],
-                      ),
+                gradient: LinearGradient(
+                  colors: palette.isDark
+                      ? [
+                          palette.surfaceElevated,
+                          palette.surfaceElevated,
+                        ]
+                      : [AppPalette.brand, AppPalette.sunsetA],
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: AppPalette.brand.withValues(
-                        alpha: isLast ? 0.38 : 0.18),
-                    blurRadius: isLast ? 24.r : 12.r,
+                    color: AppPalette.brand.withValues(alpha: 0.18),
+                    blurRadius: 12.r,
                     offset: const Offset(0, 6),
                   ),
                 ],
@@ -566,7 +605,7 @@ class _NavRow extends StatelessWidget {
               child: Text(
                 label,
                 style: AppText.of(context).labelL.copyWith(
-                      color: palette.isDark && !isLast
+                      color: palette.isDark
                           ? AppPalette.brand
                           : palette.textInverse,
                       fontWeight: FontWeight.w700,

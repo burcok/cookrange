@@ -343,6 +343,10 @@
       "error_title": "Couldn't generate your plan",
       "error_msg": "Something went wrong connecting to our AI. Please check your connection and try again.",
       "skip": "Skip for now"
+    },
+    "intro": {
+      "cta_meal_plan": "Create My Meal Plan",
+      "cta_find_gym": "Find a Gym Near Me"
     }
   },
   "auth": {
@@ -566,7 +570,8 @@
     "report_title": "Report Post",
     "report_reason_hint": "Select a reason to report this post...",
     "add_comment_hint": "Add a comment...",
-    "submit": "Submit"
+    "submit": "Submit",
+    "copy_link": "Copy Link"
   },
   "recipe": {
     "shopping_added": "Ingredients added to shopping list",
@@ -727,7 +732,14 @@
       "test_mode_subtitle": "Fill app with maximum-volume dummy data for UI stress testing"
     },
     "ai_credits_title": "AI & Credits",
-    "ai_credits_sub": "Daily AI usage and upgrade options"
+    "ai_credits_sub": "Daily AI usage and upgrade options",
+    "notif_prefs": {
+      "likes": "Likes & Reactions",
+      "comments": "Comments",
+      "friends": "Friend Activity",
+      "system": "System & Updates",
+      "referral": "Referral Rewards"
+    }
   },
   "sharing": {
     "recipe_title": "🍽️ {name}\n🔥 {calories} kcal\nProtein: {protein}g · Carbs: {carbs}g · Fat: {fat}g\n\nDiscover AI-powered meal plans on Cookrange! {appTag}{link}",
@@ -1163,7 +1175,23 @@
       "meal": "Meal"
     },
     "filter_following": "Following",
-    "following_empty": "You're not following anyone yet. Discover people to follow."
+    "following_empty": "You're not following anyone yet. Discover people to follow.",
+    "topic_all": "All Topics",
+    "topic_fat_loss": "Fat Loss",
+    "topic_muscle": "Muscle Building",
+    "topic_vegetarian": "Vegetarian",
+    "topic_endurance": "Endurance",
+    "topic_wellness": "Wellness",
+    "topic_label": "Topic",
+    "topic_empty": "No posts yet in this topic. Be the first!",
+    "weekly_highlights_title": "Weekly Highlights",
+    "top_post_this_week": "Top Post",
+    "top_streak_label": "Streak Leader",
+    "highlights_days": "days",
+    "verified_coach": "Coach",
+    "verified_gym_owner": "Gym Owner",
+    "view_profile": "View Profile",
+    "view_gym_profile": "View Gym Profile"
   },
   "menu": {
     "title": "Menu",
@@ -1804,7 +1832,13 @@
     "location_address_auto": "Detected address",
     "location_city_required": "Please select a city.",
     "location_pin_required": "Please place a pin on the map.",
-    "setup_submit_application": "Submit Application"
+    "setup_submit_application": "Submit Application",
+    "sort_near_me": "Near Me",
+    "location_denied": "Location permission denied. Enable it in Settings to sort by distance.",
+    "location_error": "Could not get your location. Please try again.",
+    "toggle_map": "Map view",
+    "toggle_list": "List view",
+    "map_view_gym": "View Gym"
   },
   "coach": {
     "setup_title": "Coach Profile Setup",
@@ -1932,7 +1966,13 @@
     "rate_title": "Rate This Coach",
     "submit_review": "Review submitted successfully!",
     "review_placeholder": "Share your experience (optional)...",
-    "already_reviewed": "You've already reviewed this coach."
+    "already_reviewed": "You've already reviewed this coach.",
+    "top_coaches_title": "Top Coaches",
+    "badge_top_rated": "TOP RATED",
+    "badge_rising": "RISING",
+    "badge_fast_responder": "Fast Responder",
+    "rate_coachmark_tip_title": "Leave a Review",
+    "rate_coachmark_tip": "You've worked with this coach — share your experience to help others."
   },
   "ai": {
     "twin_title": "AI Body Projection",
@@ -2404,5 +2444,26 @@
     "already_member": "You are already a member of this squad.",
     "join_error": "Failed to join squad. Please try again.",
     "joined_msg": "Welcome to the squad!"
+  },
+  "share": {
+    "coach_card_cta": "Find your perfect coach on Cookrange",
+    "coach_share_text": "Check out {name} on Cookrange — your AI-powered nutrition & fitness coach! 🍊 #Cookrange",
+    "coach_share_subject": "Meet Coach {name} on Cookrange",
+    "gym_card_cta": "Join this gym on Cookrange",
+    "gym_share_text": "Check out {name} on Cookrange — the AI-powered fitness community! 🏋️ #Cookrange",
+    "gym_share_subject": "Join {name} on Cookrange",
+    "share_profile": "Share profile",
+    "share_gym": "Share gym"
+  },
+  "report": {
+    "title": "Report",
+    "reason_spam": "Spam",
+    "reason_inappropriate": "Inappropriate content",
+    "reason_misinformation": "Misinformation",
+    "reason_harassment": "Harassment or bullying",
+    "reason_other": "Other",
+    "submit": "Submit Report",
+    "submitted": "Thank you. Your report has been submitted.",
+    "error": "Failed to submit report. Please try again."
   }
 }

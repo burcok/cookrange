@@ -8,6 +8,8 @@ import '../../core/models/coach_review_model.dart';
 import '../../core/services/coach_review_service.dart';
 import '../../core/services/coach_service.dart';
 import '../../core/models/coach_profile_model.dart';
+import '../../core/widgets/coach_share_card.dart';
+import '../../core/widgets/coachmark_tip.dart';
 import '../../core/widgets/ds/ds.dart';
 
 class CoachProfileScreen extends StatefulWidget {
@@ -80,6 +82,13 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
       body: StreamBuilder<CoachProfileModel?>(
         stream: CoachService().getCoachProfileStream(widget.coachUid),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return AppErrorState(
+              title: 'Something went wrong',
+              message: snapshot.error.toString(),
+              onRetry: () => setState(() {}),
+            );
+          }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -147,7 +156,26 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                           const SizedBox(height: 24),
                         ],
                         _buildStatsRow(context, profile, palette),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
+                        if (!_isSelf)
+                          FutureBuilder<bool>(
+                            future: CoachReviewService()
+                                .canReview(profile.uid, _currentUid),
+                            builder: (context, snap) {
+                              if (snap.data != true) {
+                                return const SizedBox.shrink();
+                              }
+                              return CoachmarkTip(
+                                prefKey:
+                                    'rate_coach_coachmark_${profile.uid}',
+                                title: l10n.translate(
+                                    'coach.rate_coachmark_tip_title'),
+                                body: l10n
+                                    .translate('coach.rate_coachmark_tip'),
+                              );
+                            },
+                          ),
+                        const SizedBox(height: 16),
                         if (_isSelf)
                           _InfoBanner(
                             message: l10n.translate('coach.request_self'),
@@ -159,6 +187,13 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                             stream: CoachService().getRequestStatusStream(
                                 widget.coachUid, _currentUid),
                             builder: (context, snap) {
+                              if (snap.hasError) {
+                                return AppErrorState(
+                                  title: 'Something went wrong',
+                                  message: snap.error.toString(),
+                                  onRetry: () => setState(() {}),
+                                );
+                              }
                               final status = snap.data;
                               if (status == 'accepted') {
                                 return _InfoBanner(
@@ -243,6 +278,14 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
             color: palette.textPrimary, size: 20),
         onPressed: () => Navigator.pop(context),
       ),
+      actions: [
+        IconButton(
+          icon: Icon(Icons.share_rounded,
+              color: palette.textSecondary, size: 22),
+          tooltip: l10n.translate('share.share_profile'),
+          onPressed: () => CoachShareCard.share(context, profile),
+        ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
@@ -550,6 +593,13 @@ class _ReviewsSection extends StatelessWidget {
         StreamBuilder<List<CoachReviewModel>>(
           stream: CoachReviewService().getReviewsStream(coachUid),
           builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return AppErrorState(
+                title: 'Something went wrong',
+                message: snapshot.error.toString(),
+                onRetry: () {},
+              );
+            }
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const AppSkeletonList(itemCount: 3);
             }
