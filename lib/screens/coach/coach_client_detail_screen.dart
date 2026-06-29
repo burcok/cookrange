@@ -1,7 +1,12 @@
+import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/coach_client_model.dart';
+import '../../core/models/coach_review_model.dart';
 import '../../core/services/ai/ai_service.dart';
+import '../../core/services/coach_review_service.dart';
 import '../../core/services/coach_service.dart';
 import '../../core/widgets/ds/ds.dart';
 
@@ -22,6 +27,14 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
   bool _isGeneratingReport = false;
   Map<String, dynamic>? _aiReport;
 
+  // Nullable bool: null = loading, true = can review, false = already reviewed
+  bool? _canReview;
+
+  String get _currentUid => FirebaseAuth.instance.currentUser?.uid ?? '';
+
+  bool get _isViewingOwnRecord =>
+      widget.client.clientUid == _currentUid;
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +43,17 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
     _fadeAnimation =
         CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     _fadeController.forward();
+
+    if (_isViewingOwnRecord) {
+      _checkCanReview();
+    }
+  }
+
+  Future<void> _checkCanReview() async {
+    final can = await CoachReviewService()
+        .canReview(widget.client.coachUid, _currentUid);
+    if (!mounted) return;
+    setState(() => _canReview = can);
   }
 
   @override
@@ -123,6 +147,31 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
     }
   }
 
+  Future<void> _showRateSheet() async {
+    final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final primary = Theme.of(context).primaryColor;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await AppSheet.show(
+      context: context,
+      title: l10n.translate('coach.rate_title'),
+      child: _RateCoachSheetContent(
+        coachUid: widget.client.coachUid,
+        reviewerUid: user.uid,
+        reviewerName: user.displayName ?? '',
+        reviewerPhotoUrl: user.photoURL,
+        palette: palette,
+        primary: primary,
+        l10n: l10n,
+        onSubmitted: () {
+          _checkCanReview();
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
@@ -207,6 +256,46 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
                 ),
 
               const SizedBox(height: 24),
+
+              // Rate This Coach — only shown to the client themselves
+              if (_isViewingOwnRecord) ...[
+                if (_canReview == null)
+                  const SizedBox.shrink()
+                else if (_canReview == true)
+                  AppButton(
+                    label: l10n.translate('coach.rate_title'),
+                    variant: AppButtonVariant.tonal,
+                    icon: Icons.star_rounded,
+                    onPressed: _showRateSheet,
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: palette.info.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border:
+                          Border.all(color: palette.info.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_rounded,
+                            color: palette.info, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            l10n.translate('coach.already_reviewed'),
+                            style: AppText.of(context).bodyM.copyWith(
+                                color: palette.info,
+                                fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 16),
+              ],
 
               // Send Message
               AppButton(
@@ -465,6 +554,137 @@ class _AiReportCard extends StatelessWidget {
                   ),
                 )),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Rate Coach Sheet ─────────────────────────────────────────────────────────
+
+class _RateCoachSheetContent extends StatefulWidget {
+  final String coachUid;
+  final String reviewerUid;
+  final String reviewerName;
+  final String? reviewerPhotoUrl;
+  final AppPalette palette;
+  final Color primary;
+  final AppLocalizations l10n;
+  final VoidCallback onSubmitted;
+
+  const _RateCoachSheetContent({
+    required this.coachUid,
+    required this.reviewerUid,
+    required this.reviewerName,
+    required this.reviewerPhotoUrl,
+    required this.palette,
+    required this.primary,
+    required this.l10n,
+    required this.onSubmitted,
+  });
+
+  @override
+  State<_RateCoachSheetContent> createState() =>
+      _RateCoachSheetContentState();
+}
+
+class _RateCoachSheetContentState extends State<_RateCoachSheetContent> {
+  int _selectedRating = 0;
+  final TextEditingController _textController = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_selectedRating == 0 || _isSubmitting) return;
+    setState(() => _isSubmitting = true);
+
+    final review = CoachReviewModel(
+      coachUid: widget.coachUid,
+      reviewerUid: widget.reviewerUid,
+      reviewerName: widget.reviewerName,
+      reviewerPhotoUrl: widget.reviewerPhotoUrl,
+      rating: _selectedRating,
+      text: _textController.text.trim(),
+      createdAt: DateTime.now(),
+    );
+
+    try {
+      await CoachReviewService().addReview(widget.coachUid, review);
+      if (!mounted) return;
+      unawaited(HapticFeedback.mediumImpact());
+      AppSnackBar.success(
+          context, widget.l10n.translate('coach.submit_review'));
+      widget.onSubmitted();
+      Navigator.of(context).pop();
+    } catch (e) {
+      debugPrint('_RateCoachSheetContent._submit error: $e');
+      if (!mounted) return;
+      AppSnackBar.error(
+          context, widget.l10n.translate('coach.setup_error'));
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = widget.palette;
+    final primary = widget.primary;
+    final l10n = widget.l10n;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        top: 8,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Star selector
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(5, (i) {
+                final filled = i < _selectedRating;
+                return GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedRating = i + 1);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Icon(
+                      filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                      size: 40,
+                      color: filled ? primary : palette.textTertiary,
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 20),
+          AppTextField(
+            controller: _textController,
+            hintText: l10n.translate('coach.review_placeholder'),
+            maxLines: 4,
+            minLines: 3,
+            textInputAction: TextInputAction.newline,
+          ),
+          const SizedBox(height: 20),
+          AppButton(
+            label: l10n.translate('coach.submit_review'),
+            onPressed: _selectedRating > 0 && !_isSubmitting ? _submit : null,
+            loading: _isSubmitting,
+          ),
         ],
       ),
     );

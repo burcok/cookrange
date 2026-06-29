@@ -492,6 +492,35 @@ service cloud.firestore {
         && request.auth.uid == resource.data.creatorUid;
     }
 
+    // ─── Coach Reviews ────────────────────────────────────────────────────────
+    // Path: coach_profiles/{coachUid}/reviews/{reviewerUid}
+    // Linked clients create one review (doc id = reviewerUid); all authenticated
+    // users read; reviews are immutable once submitted (no update/delete).
+    match /coach_profiles/{coachUid}/reviews/{reviewerUid} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.auth.uid == reviewerUid
+        && request.resource.data.reviewerUid == reviewerUid
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+      allow update, delete: if false;
+    }
+
+    // ─── Follow relationships ─────────────────────────────────────────────────
+    // Following list: owner writes their own; any authenticated user reads.
+    match /users/{uid}/following/{targetUid} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isOwner(uid);
+      allow update: if false;
+    }
+
+    // Followers list: any authenticated user creates/deletes their own entry.
+    match /users/{uid}/followers/{sourceUid} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isAuthenticated() && request.auth.uid == sourceUid;
+      allow update: if false;
+    }
+
     // ─── Deny everything else ─────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

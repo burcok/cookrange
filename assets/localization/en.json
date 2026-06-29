@@ -546,7 +546,10 @@
     "user_reported": "User reported",
     "user_blocked": "User blocked",
     "search_failed": "Search failed: {error}",
-    "request_sent_to": "Request sent to {name}"
+    "request_sent_to": "Request sent to {name}",
+    "follow_action": "Follow",
+    "unfollow_action": "Unfollow",
+    "followers_count": "Followers"
   },
   "offline": {
     "title": "Offline Mode",
@@ -1158,7 +1161,9 @@
       "recipe": "Recipe",
       "progress": "Progress",
       "meal": "Meal"
-    }
+    },
+    "filter_following": "Following",
+    "following_empty": "You're not following anyone yet. Discover people to follow."
   },
   "menu": {
     "title": "Menu",
@@ -1920,7 +1925,14 @@
     "docs_required_warning": "Please upload all required documents.",
     "docs_count": "{n}/2 documents uploaded",
     "sort_top_rated": "Top Rated",
-    "sort_most_active": "Most Active"
+    "sort_most_active": "Most Active",
+    "reviews_title": "Reviews",
+    "no_reviews": "No reviews yet.",
+    "rating_count": "{count} ratings",
+    "rate_title": "Rate This Coach",
+    "submit_review": "Review submitted successfully!",
+    "review_placeholder": "Share your experience (optional)...",
+    "already_reviewed": "You've already reviewed this coach."
   },
   "ai": {
     "twin_title": "AI Body Projection",

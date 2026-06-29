@@ -546,7 +546,10 @@
     "user_reported": "Kullanıcı bildirildi",
     "user_blocked": "Kullanıcı engellendi",
     "search_failed": "Arama başarısız: {error}",
-    "request_sent_to": "{name} kullanıcısına istek gönderildi"
+    "request_sent_to": "{name} kullanıcısına istek gönderildi",
+    "follow_action": "Takip Et",
+    "unfollow_action": "Takibi Bırak",
+    "followers_count": "Takipçi"
   },
   "offline": {
     "title": "Çevrimdışı Mod",
@@ -1158,7 +1161,9 @@
       "recipe": "Tarif",
       "progress": "İlerleme",
       "meal": "Öğün"
-    }
+    },
+    "filter_following": "Takip Edilenler",
+    "following_empty": "Henüz kimseyi takip etmiyorsun. Takip etmek için kişileri keşfet."
   },
   "menu": {
     "title": "Menü",
@@ -1920,7 +1925,14 @@
     "docs_required_warning": "Lütfen gerekli belgeleri yükleyin.",
     "docs_count": "{n}/2 belge yüklendi",
     "sort_top_rated": "En Yüksek Puan",
-    "sort_most_active": "En Aktif"
+    "sort_most_active": "En Aktif",
+    "reviews_title": "Yorumlar",
+    "no_reviews": "Henüz yorum yok.",
+    "rating_count": "{count} değerlendirme",
+    "rate_title": "Antrenörü Değerlendir",
+    "submit_review": "Yorumunuz gönderildi!",
+    "review_placeholder": "Deneyiminizi paylaşın (isteğe bağlı)...",
+    "already_reviewed": "Bu antrenörü zaten değerlendirdiniz."
   },
   "ai": {
     "twin_title": "Yapay Zeka Vücut Projeksiyonu",

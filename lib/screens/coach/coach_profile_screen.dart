@@ -2,7 +2,10 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/models/coach_review_model.dart';
+import '../../core/services/coach_review_service.dart';
 import '../../core/services/coach_service.dart';
 import '../../core/models/coach_profile_model.dart';
 import '../../core/widgets/ds/ds.dart';
@@ -207,6 +210,15 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                               ],
                             ),
                           ),
+                        const SizedBox(height: 32),
+                        _ReviewsSection(
+                          coachUid: widget.coachUid,
+                          avgRating: profile.avgRating,
+                          ratingCount: profile.ratingCount,
+                          palette: palette,
+                          l10n: l10n,
+                          primary: primary,
+                        ),
                         const SizedBox(height: 32),
                       ],
                     ),
@@ -487,6 +499,224 @@ class _StatCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Reviews Section ──────────────────────────────────────────────────────────
+
+class _ReviewsSection extends StatelessWidget {
+  final String coachUid;
+  final double avgRating;
+  final int ratingCount;
+  final AppPalette palette;
+  final AppLocalizations l10n;
+  final Color primary;
+
+  const _ReviewsSection({
+    required this.coachUid,
+    required this.avgRating,
+    required this.ratingCount,
+    required this.palette,
+    required this.l10n,
+    required this.primary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section title
+        Text(
+          l10n.translate('coach.reviews_title'),
+          style: AppText.of(context).titleM.copyWith(
+              color: palette.textPrimary, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        // Rating summary
+        if (ratingCount > 0) ...[
+          _RatingSummary(
+            avgRating: avgRating,
+            ratingCount: ratingCount,
+            palette: palette,
+            l10n: l10n,
+            primary: primary,
+          ),
+          const SizedBox(height: 16),
+        ],
+        // Review list
+        StreamBuilder<List<CoachReviewModel>>(
+          stream: CoachReviewService().getReviewsStream(coachUid),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const AppSkeletonList(itemCount: 3);
+            }
+            final reviews = snapshot.data ?? [];
+            if (reviews.isEmpty) {
+              return AppEmptyState(
+                title: l10n.translate('coach.no_reviews'),
+                icon: Icons.star_border_rounded,
+              );
+            }
+            return Column(
+              children: reviews
+                  .map((r) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _ReviewRow(
+                            review: r, palette: palette, primary: primary),
+                      ))
+                  .toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _RatingSummary extends StatelessWidget {
+  final double avgRating;
+  final int ratingCount;
+  final AppPalette palette;
+  final AppLocalizations l10n;
+  final Color primary;
+
+  const _RatingSummary({
+    required this.avgRating,
+    required this.ratingCount,
+    required this.palette,
+    required this.l10n,
+    required this.primary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          avgRating.toStringAsFixed(1),
+          style: AppText.of(context).displayL.copyWith(
+              color: palette.textPrimary, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: List.generate(5, (i) {
+                final filled = i < avgRating.round();
+                return Icon(
+                  filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                  size: 20,
+                  color: filled ? primary : palette.textTertiary,
+                );
+              }),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l10n
+                  .translate('coach.rating_count')
+                  .replaceAll('{count}', ratingCount.toString()),
+              style: AppText.of(context)
+                  .labelS
+                  .copyWith(color: palette.textSecondary),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ReviewRow extends StatelessWidget {
+  final CoachReviewModel review;
+  final AppPalette palette;
+  final Color primary;
+
+  const _ReviewRow({
+    required this.review,
+    required this.palette,
+    required this.primary,
+  });
+
+  String _relativeTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inDays >= 365) {
+      return DateFormat('MMM yyyy').format(dt);
+    }
+    if (diff.inDays >= 30) return '${(diff.inDays / 30).floor()}mo ago';
+    if (diff.inDays >= 1) return '${diff.inDays}d ago';
+    if (diff.inHours >= 1) return '${diff.inHours}h ago';
+    return '${diff.inMinutes}m ago';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppGlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                AppInitialsAvatar(
+                  photoUrl: review.reviewerPhotoUrl,
+                  name: review.reviewerName,
+                  size: 36,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        review.reviewerName,
+                        style: AppText.of(context).bodyM.copyWith(
+                            color: palette.textPrimary,
+                            fontWeight: FontWeight.w600),
+                      ),
+                      Row(
+                        children: [
+                          Row(
+                            children: List.generate(5, (i) {
+                              final filled = i < review.rating;
+                              return Icon(
+                                filled
+                                    ? Icons.star_rounded
+                                    : Icons.star_outline_rounded,
+                                size: 14,
+                                color: filled ? primary : palette.textTertiary,
+                              );
+                            }),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _relativeTime(review.createdAt),
+                            style: AppText.of(context)
+                                .labelS
+                                .copyWith(color: palette.textTertiary),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (review.text.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                review.text,
+                style: AppText.of(context)
+                    .bodyM
+                    .copyWith(color: palette.textSecondary),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

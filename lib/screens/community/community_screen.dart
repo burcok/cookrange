@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:cookrange/core/widgets/app_image.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/community_service.dart';
+import '../../core/services/follow_service.dart';
 import '../../core/services/friend_service.dart';
 
 import '../../core/models/community_post.dart';
@@ -14,6 +15,7 @@ import 'widgets/glass_refresher.dart';
 import 'post_detail_screen.dart';
 
 import 'package:provider/provider.dart';
+import '../../core/providers/user_provider.dart';
 import '../../core/widgets/main_header.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/services/sharing_service.dart';
@@ -39,6 +41,7 @@ class _CommunityScreenState extends State<CommunityScreen>
     "Latest Updates",
     "Global",
     "Friends Only",
+    "Following",
     "Gym",
     "Saved",
   ];
@@ -46,6 +49,9 @@ class _CommunityScreenState extends State<CommunityScreen>
 
   // Cached friend IDs for the Friends Only filter (reused by load-more)
   List<String> _cachedFriendIds = [];
+
+  // Cached following IDs for the Following filter (reused by load-more)
+  List<String> _cachedFollowingIds = [];
 
   late Stream<List<CommunityPost>> _postsStream;
   List<CommunityPost> _additionalPosts = [];
@@ -75,7 +81,11 @@ class _CommunityScreenState extends State<CommunityScreen>
     try {
       final result = await _service.fetchPostsPage(
         startAfter: _lastDoc,
-        authorIds: _selectedFilter == 'Friends Only' ? _cachedFriendIds : null,
+        authorIds: _selectedFilter == 'Friends Only'
+            ? _cachedFriendIds
+            : _selectedFilter == 'Following'
+                ? _cachedFollowingIds
+                : null,
         gymOnly: _selectedFilter == 'Gym',
       );
       if (mounted) {
@@ -141,10 +151,26 @@ class _CommunityScreenState extends State<CommunityScreen>
           _postsStream = _service.getPostsStream(gymOnly: true);
         });
         break;
+      case 'Following':
+        final uid = context.read<UserProvider>().user?.uid;
+        final ids = uid != null ? await FollowService().getFollowingIds(uid) : <String>[];
+        _cachedFollowingIds = ids;
+        if (!mounted) return;
+        setState(() {
+          _cachedFriendIds = [];
+          _additionalPosts = [];
+          _lastDoc = null;
+          _hasMorePosts = ids.isNotEmpty;
+          _postsStream = ids.isEmpty
+              ? Stream.value([])
+              : _service.getPostsStream(authorIds: ids.take(10).toList());
+        });
+        break;
       case 'Saved':
         if (!mounted) return;
         setState(() {
           _cachedFriendIds = [];
+          _cachedFollowingIds = [];
           _additionalPosts = [];
           _lastDoc = null;
           _hasMorePosts = false;
@@ -155,6 +181,7 @@ class _CommunityScreenState extends State<CommunityScreen>
         if (!mounted) return;
         setState(() {
           _cachedFriendIds = [];
+          _cachedFollowingIds = [];
           _additionalPosts = [];
           _lastDoc = null;
           _hasMorePosts = true;
@@ -335,6 +362,8 @@ class _CommunityScreenState extends State<CommunityScreen>
         return Icons.public;
       case "Friends Only":
         return Icons.people;
+      case "Following":
+        return Icons.person_search_rounded;
       case "Gym":
         return Icons.fitness_center;
       case "Saved":
@@ -365,6 +394,7 @@ class _CommunityScreenState extends State<CommunityScreen>
       "Latest Updates": "community.filters.latest",
       "Global": "community.filters.global",
       "Friends Only": "community.filters.friends",
+      "Following": "community.filter_following",
       "Gym": "community.filters.gym",
       "Saved": "community.filters.saved",
     };
@@ -510,18 +540,22 @@ class _CommunityScreenState extends State<CommunityScreen>
                   if (posts.isEmpty) {
                     final emptyKey = _selectedFilter == 'Friends Only'
                         ? 'community.filters.no_friends_posts'
-                        : _selectedFilter == 'Gym'
-                            ? 'community.filters.no_gym_posts'
-                            : _selectedFilter == 'Saved'
-                                ? 'community.filters.no_saved_posts'
-                                : 'community.no_posts';
+                        : _selectedFilter == 'Following'
+                            ? 'community.following_empty'
+                            : _selectedFilter == 'Gym'
+                                ? 'community.filters.no_gym_posts'
+                                : _selectedFilter == 'Saved'
+                                    ? 'community.filters.no_saved_posts'
+                                    : 'community.no_posts';
                     final emptyIcon = _selectedFilter == 'Friends Only'
                         ? Icons.people_outline
-                        : _selectedFilter == 'Gym'
-                            ? Icons.fitness_center
-                            : _selectedFilter == 'Saved'
-                                ? Icons.bookmark_border_rounded
-                                : Icons.article_outlined;
+                        : _selectedFilter == 'Following'
+                            ? Icons.person_search_rounded
+                            : _selectedFilter == 'Gym'
+                                ? Icons.fitness_center
+                                : _selectedFilter == 'Saved'
+                                    ? Icons.bookmark_border_rounded
+                                    : Icons.article_outlined;
                     return SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.all(AppSpacing.xxxl),

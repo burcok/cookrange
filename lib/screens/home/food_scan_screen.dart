@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -13,7 +14,7 @@ import '../../core/widgets/ds/ds.dart';
 import 'barcode_scan_screen.dart';
 
 /// AI nutrition analysis — describe a food, get an estimate, log it.
-/// Reference implementation of the Cookrange Design System (Rule R7).
+/// Glassmorphism v2 update — visual layer only; all logic unchanged.
 class FoodScanScreen extends StatefulWidget {
   const FoodScanScreen({super.key});
 
@@ -121,68 +122,79 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     final l10n = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
     final t = AppText.of(context);
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
 
     return Scaffold(
       backgroundColor: palette.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: Text(l10n.translate('food_scan.title'), style: t.headlineS),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: palette.textPrimary),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.qr_code_scanner_rounded,
-                color: palette.textPrimary),
-            tooltip: l10n.translate('barcode.scan_btn'),
-            onPressed: () => unawaited(Navigator.of(context).push(
-              AppTransitions.slideUp(const BarcodeScanScreen()),
-            )),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.screenH.w, vertical: AppSpacing.xs.h),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.translate('food_scan.subtitle'), style: t.bodyM),
-            SizedBox(height: AppSpacing.lg.h),
-            _buildInputCard(l10n, palette, t),
-            SizedBox(height: AppSpacing.md.h),
-            if (!_analysisService.isAvailable)
-              _buildNotConfiguredBanner(l10n, palette, t),
-            if (_isAnalyzing) _buildAnalyzing(l10n, palette, t),
-            if (_errorMessage != null && !_isAnalyzing)
-              AppErrorState(
-                title: l10n.translate('common.error'),
-                message: _errorMessage,
-                retryLabel: l10n.translate('food_scan.analyze_btn'),
-                onRetry: _analyze,
-                compact: true,
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        children: [
+          // ── Ambient mesh-glow background ──
+          ...AppGradients.meshGlow(palette, primaryColor),
+
+          // ── Main content ──
+          Column(
+            children: [
+              // ── Glass AppBar ──
+              _FoodScanAppBar(
+                palette: palette,
+                primaryColor: primaryColor,
+                title: l10n.translate('food_scan.title'),
+                onBack: () => Navigator.of(context).pop(),
+                onBarcode: () => unawaited(Navigator.of(context).push(
+                  AppTransitions.slideUp(const BarcodeScanScreen()),
+                )),
+                barcodeTooltip: l10n.translate('barcode.scan_btn'),
               ),
-            if (_estimate != null)
-              SlideTransition(
-                position: _resultSlide,
-                child: FadeTransition(
-                  opacity: _resultFade,
-                  child: _buildResultCard(l10n, palette, t),
+
+              // ── Scrollable body ──
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screenH.w,
+                      vertical: AppSpacing.xs.h),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(l10n.translate('food_scan.subtitle'), style: t.bodyM),
+                      SizedBox(height: AppSpacing.lg.h),
+                      _buildInputCard(l10n, palette, t, primaryColor),
+                      SizedBox(height: AppSpacing.md.h),
+                      if (!_analysisService.isAvailable)
+                        _buildNotConfiguredBanner(l10n, palette, t),
+                      if (_isAnalyzing) _buildAnalyzing(l10n, palette, t),
+                      if (_errorMessage != null && !_isAnalyzing)
+                        AppErrorState(
+                          title: l10n.translate('common.error'),
+                          message: _errorMessage,
+                          retryLabel: l10n.translate('food_scan.analyze_btn'),
+                          onRetry: _analyze,
+                          compact: true,
+                        ),
+                      if (_estimate != null)
+                        SlideTransition(
+                          position: _resultSlide,
+                          child: FadeTransition(
+                            opacity: _resultFade,
+                            child: _buildResultCard(
+                                l10n, palette, t, primaryColor),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInputCard(
-      AppLocalizations l10n, AppPalette palette, AppText t) {
-    final primary = context.watch<ThemeProvider>().primaryColor;
-    return AppCard(
+  Widget _buildInputCard(AppLocalizations l10n, AppPalette palette, AppText t,
+      Color primaryColor) {
+    return AppGlassCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -196,30 +208,81 @@ class _FoodScanScreenState extends State<FoodScanScreen>
               hintText: l10n.translate('food_scan.input_hint'),
               hintStyle: t.bodyM.copyWith(color: palette.textTertiary),
               filled: true,
-              fillColor: palette.surfaceVariant,
+              fillColor: palette.surfaceVariant.withValues(alpha: 0.7),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadius.input.r),
-                borderSide: BorderSide(color: palette.border),
+                borderSide: BorderSide(color: palette.glassStroke),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadius.input.r),
-                borderSide: BorderSide(color: palette.border),
+                borderSide: BorderSide(color: palette.glassStroke),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadius.input.r),
-                borderSide: BorderSide(color: primary, width: 2),
+                borderSide: BorderSide(color: primaryColor, width: 2),
               ),
               contentPadding: EdgeInsets.all(AppSpacing.sm.r),
             ),
           ),
           SizedBox(height: AppSpacing.sm.h),
-          AppButton(
-            label: _isAnalyzing
-                ? l10n.translate('food_scan.analyzing')
-                : l10n.translate('food_scan.analyze_btn'),
-            icon: Icons.auto_awesome,
-            loading: _isAnalyzing,
-            onPressed: _analysisService.isAvailable ? _analyze : null,
+          // Gradient brand Analyze button
+          GestureDetector(
+            onTap: _analysisService.isAvailable
+                ? (_isAnalyzing ? null : _analyze)
+                : null,
+            child: AnimatedContainer(
+              duration: AppMotion.fast,
+              height: AppSize.buttonHeight.h,
+              decoration: BoxDecoration(
+                gradient: _analysisService.isAvailable && !_isAnalyzing
+                    ? AppGradients.brand(primaryColor)
+                    : null,
+                color: !_analysisService.isAvailable || _isAnalyzing
+                    ? palette.surfaceVariant
+                    : null,
+                borderRadius: BorderRadius.circular(AppRadius.button.r),
+                boxShadow: _analysisService.isAvailable && !_isAnalyzing
+                    ? [
+                        BoxShadow(
+                          color: primaryColor.withValues(alpha: 0.4),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (!_isAnalyzing)
+                    Icon(Icons.auto_awesome,
+                        color: _analysisService.isAvailable
+                            ? palette.textInverse
+                            : palette.textTertiary,
+                        size: AppSize.iconSm.r),
+                  if (!_isAnalyzing) SizedBox(width: AppSpacing.xs.w),
+                  if (_isAnalyzing)
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: primaryColor),
+                    )
+                  else
+                    Text(
+                      _isAnalyzing
+                          ? l10n.translate('food_scan.analyzing')
+                          : l10n.translate('food_scan.analyze_btn'),
+                      style: t.labelL.copyWith(
+                        color: _analysisService.isAvailable
+                            ? palette.textInverse
+                            : palette.textTertiary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -228,26 +291,34 @@ class _FoodScanScreenState extends State<FoodScanScreen>
 
   Widget _buildNotConfiguredBanner(
       AppLocalizations l10n, AppPalette palette, AppText t) {
-    return Container(
-      margin: EdgeInsets.only(bottom: AppSpacing.sm.h),
-      padding: EdgeInsets.all(AppSpacing.sm.r),
-      decoration: BoxDecoration(
-        color: palette.warning.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-        border: Border.all(color: palette.warning.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline_rounded,
-              color: palette.warning, size: AppSize.iconMd.r),
-          SizedBox(width: AppSpacing.xs.w),
-          Expanded(
-            child: Text(
-              l10n.translate('food_scan.not_configured'),
-              style: t.bodyM.copyWith(color: palette.warning),
-            ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+            sigmaX: AppPalette.glassBlurSubtle,
+            sigmaY: AppPalette.glassBlurSubtle),
+        child: Container(
+          margin: EdgeInsets.only(bottom: AppSpacing.sm.h),
+          padding: EdgeInsets.all(AppSpacing.sm.r),
+          decoration: BoxDecoration(
+            color: palette.warning.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            border: Border.all(color: palette.warning.withValues(alpha: 0.35)),
           ),
-        ],
+          child: Row(
+            children: [
+              Icon(Icons.info_outline_rounded,
+                  color: palette.warning, size: AppSize.iconMd.r),
+              SizedBox(width: AppSpacing.xs.w),
+              Expanded(
+                child: Text(
+                  l10n.translate('food_scan.not_configured'),
+                  style: t.bodyM.copyWith(color: palette.warning),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -277,102 +348,199 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     );
   }
 
-  Widget _buildResultCard(
-      AppLocalizations l10n, AppPalette palette, AppText t) {
+  Widget _buildResultCard(AppLocalizations l10n, AppPalette palette, AppText t,
+      Color primaryColor) {
     final est = _estimate!;
-    final primary = context.watch<ThemeProvider>().primaryColor;
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+    return AppGlassCard(
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(AppSpacing.xs.r),
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppRadius.sm.r),
-                ),
-                child: Icon(Icons.restaurant_menu_rounded,
-                    color: primary, size: AppSize.iconMd.r),
+          // ── Gradient header bar ──
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(AppRadius.card)),
+            child: Container(
+              height: 3,
+              decoration: BoxDecoration(
+                gradient: AppGradients.brand(primaryColor),
               ),
-              SizedBox(width: AppSpacing.sm.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.all(AppSpacing.lg.r),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header row
+                Row(
                   children: [
-                    Text(est.foodName, style: t.titleL),
-                    if (est.servingSize.isNotEmpty)
-                      Text(est.servingSize, style: t.labelS),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                            sigmaX: AppPalette.glassBlurSubtle,
+                            sigmaY: AppPalette.glassBlurSubtle),
+                        child: Container(
+                          padding: EdgeInsets.all(AppSpacing.xs.r),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withValues(alpha: 0.15),
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.sm.r),
+                            border: Border.all(
+                                color:
+                                    primaryColor.withValues(alpha: 0.25)),
+                          ),
+                          child: Icon(Icons.restaurant_menu_rounded,
+                              color: primaryColor, size: AppSize.iconMd.r),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: AppSpacing.sm.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(est.foodName, style: t.titleL),
+                          if (est.servingSize.isNotEmpty)
+                            Text(est.servingSize, style: t.labelS),
+                        ],
+                      ),
+                    ),
+                    // Calorie badge — gradient fill
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm.w,
+                          vertical: AppSpacing.xxs.h),
+                      decoration: BoxDecoration(
+                        gradient: AppGradients.brand(primaryColor),
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryColor.withValues(alpha: 0.35),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '${est.calories.toInt()} kcal',
+                        style: t.labelM.copyWith(
+                            color: palette.textInverse,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm.w, vertical: AppSpacing.xxs.h),
-                decoration: BoxDecoration(
-                  color: primary,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
+                SizedBox(height: AppSpacing.lg.h),
+                // Macro chips — glass fill + glassStroke border
+                Row(
+                  children: [
+                    _glassMacroChip(l10n.translate('food_scan.protein'),
+                        est.protein, palette.protein, palette, t),
+                    SizedBox(width: AppSpacing.xs.w),
+                    _glassMacroChip(l10n.translate('food_scan.carbs'),
+                        est.carbs, palette.carbs, palette, t),
+                    SizedBox(width: AppSpacing.xs.w),
+                    _glassMacroChip(l10n.translate('food_scan.fat'), est.fat,
+                        palette.fat, palette, t),
+                  ],
                 ),
-                child: Text(
-                  '${est.calories.toInt()} kcal',
-                  style: t.labelM.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.bold),
+                SizedBox(height: AppSpacing.lg.h),
+                Text(l10n.translate('food_scan.meal_type_label'),
+                    style: t.titleM),
+                SizedBox(height: AppSpacing.sm.h),
+                _buildMealTypeSelector(l10n, palette, t, primaryColor),
+                SizedBox(height: AppSpacing.md.h),
+                // Log Food — gradient brand button
+                GestureDetector(
+                  onTap: _isLogging ? null : _logEstimate,
+                  child: AnimatedContainer(
+                    duration: AppMotion.fast,
+                    height: AppSize.buttonHeight.h,
+                    decoration: BoxDecoration(
+                      gradient: _isLogging
+                          ? null
+                          : AppGradients.brand(primaryColor),
+                      color: _isLogging ? palette.surfaceVariant : null,
+                      borderRadius: BorderRadius.circular(AppRadius.button.r),
+                      boxShadow: _isLogging
+                          ? null
+                          : [
+                              BoxShadow(
+                                color: primaryColor.withValues(alpha: 0.4),
+                                blurRadius: 14,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_isLogging)
+                          SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: primaryColor),
+                          )
+                        else ...[
+                          Icon(Icons.add_circle_outline_rounded,
+                              color: palette.textInverse,
+                              size: AppSize.iconSm.r),
+                          SizedBox(width: AppSpacing.xs.w),
+                          Text(
+                            l10n.translate('food_scan.log_btn'),
+                            style: t.labelL.copyWith(
+                                color: palette.textInverse,
+                                fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: AppSpacing.lg.h),
-          Row(
-            children: [
-              _macroChip(l10n.translate('food_scan.protein'), est.protein,
-                  palette.protein, t),
-              SizedBox(width: AppSpacing.xs.w),
-              _macroChip(l10n.translate('food_scan.carbs'), est.carbs,
-                  palette.carbs, t),
-              SizedBox(width: AppSpacing.xs.w),
-              _macroChip(l10n.translate('food_scan.fat'), est.fat, palette.fat, t),
-            ],
-          ),
-          SizedBox(height: AppSpacing.lg.h),
-          Text(l10n.translate('food_scan.meal_type_label'), style: t.titleM),
-          SizedBox(height: AppSpacing.sm.h),
-          _buildMealTypeSelector(l10n, palette, t, primary),
-          SizedBox(height: AppSpacing.md.h),
-          AppButton(
-            label: l10n.translate('food_scan.log_btn'),
-            icon: Icons.add_circle_outline_rounded,
-            loading: _isLogging,
-            onPressed: _logEstimate,
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _macroChip(String label, double value, Color color, AppText t) {
+  Widget _glassMacroChip(String label, double value, Color color,
+      AppPalette palette, AppText t) {
     return Expanded(
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(AppRadius.md.r),
-        ),
-        child: Column(
-          children: [
-            Text('${value.toInt()}g',
-                style: t.titleL.copyWith(color: color)),
-            SizedBox(height: AppSpacing.xxxs.h),
-            Text(label, style: t.labelS),
-          ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(
+              sigmaX: AppPalette.glassBlurSubtle,
+              sigmaY: AppPalette.glassBlurSubtle),
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
+            decoration: BoxDecoration(
+              color: palette.glassFill,
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
+              border: Border.all(color: palette.glassStroke, width: 0.8),
+            ),
+            child: Column(
+              children: [
+                Text('${value.toInt()}g',
+                    style: t.titleL.copyWith(
+                        color: color, fontWeight: FontWeight.bold)),
+                SizedBox(height: AppSpacing.xxxs.h),
+                Text(label, style: t.labelS),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildMealTypeSelector(
-      AppLocalizations l10n, AppPalette palette, AppText t, Color primary) {
+  Widget _buildMealTypeSelector(AppLocalizations l10n, AppPalette palette,
+      AppText t, Color primaryColor) {
     final types = <(String, String, IconData)>[
       ('breakfast', l10n.translate('food_scan.meal.breakfast'),
           Icons.wb_sunny_outlined),
@@ -395,24 +563,46 @@ class _FoodScanScreenState extends State<FoodScanScreen>
             child: AnimatedContainer(
               duration: AppMotion.fast,
               curve: AppMotion.standard,
-              margin: EdgeInsets.only(right: type.$1 != 'snack' ? AppSpacing.xs.w : 0),
+              margin: EdgeInsets.only(
+                  right: type.$1 != 'snack' ? AppSpacing.xs.w : 0),
               padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h),
               decoration: BoxDecoration(
-                color: isSelected ? primary : palette.surfaceVariant,
+                gradient:
+                    isSelected ? AppGradients.brand(primaryColor) : null,
+                color: isSelected ? null : palette.glassFill,
                 borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                border: Border.all(
+                  color: isSelected
+                      ? primaryColor.withValues(alpha: 0.5)
+                      : palette.glassStroke,
+                  width: 0.8,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: primaryColor.withValues(alpha: 0.35),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        )
+                      ]
+                    : null,
               ),
               child: Column(
                 children: [
                   Icon(
                     type.$3,
                     size: AppSize.iconSm.r,
-                    color: isSelected ? Colors.white : palette.textSecondary,
+                    color: isSelected
+                        ? palette.textInverse
+                        : palette.textSecondary,
                   ),
                   SizedBox(height: AppSpacing.xxxs.h),
                   Text(
                     type.$2,
                     style: t.labelS.copyWith(
-                      color: isSelected ? Colors.white : palette.textSecondary,
+                      color: isSelected
+                          ? palette.textInverse
+                          : palette.textSecondary,
                       fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.w500,
                     ),
@@ -425,6 +615,85 @@ class _FoodScanScreenState extends State<FoodScanScreen>
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+// ── Private sub-widget: glassmorphism AppBar ──────────────────────────────────
+
+class _FoodScanAppBar extends StatelessWidget {
+  final AppPalette palette;
+  final Color primaryColor;
+  final String title;
+  final VoidCallback onBack;
+  final VoidCallback onBarcode;
+  final String barcodeTooltip;
+
+  const _FoodScanAppBar({
+    required this.palette,
+    required this.primaryColor,
+    required this.title,
+    required this.onBack,
+    required this.onBarcode,
+    required this.barcodeTooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final topPad = MediaQuery.of(context).padding.top;
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+            sigmaX: AppPalette.glassBlurSubtle,
+            sigmaY: AppPalette.glassBlurSubtle),
+        child: Container(
+          color: palette.background.withValues(alpha: 0.82),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: topPad + AppSpacing.sm),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.arrow_back_ios_new,
+                          color: palette.textSecondary),
+                      onPressed: onBack,
+                    ),
+                    Expanded(
+                      child: Text(title,
+                          style: AppText.of(context).headlineS,
+                          textAlign: TextAlign.center),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.qr_code_scanner_rounded,
+                          color: palette.textSecondary),
+                      tooltip: barcodeTooltip,
+                      onPressed: onBarcode,
+                    ),
+                  ],
+                ),
+              ),
+              // Brand gradient accent line
+              Container(
+                height: 2,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppPalette.sunsetA,
+                      primaryColor,
+                      AppPalette.sunsetC,
+                    ],
+                    stops: const [0.0, 0.55, 1.0],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

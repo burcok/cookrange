@@ -881,7 +881,8 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 - [x] **Component upgrades** — `AppGlassCard` upgraded: uses palette glass tokens, adds `onTap`/`semanticLabel`/press-scale animation, fixes padding; `AppCard` padding bug fixed. ✅
 - [x] **Screen re-skin sweep (initial)** — discover hub (mesh-glow backdrop + glass cards), home NutritionHero (glass blur layer), admin stat cards (AppGlassCard). ✅
 - [x] **Screen re-skin sweep (continued — partial)** — shopping (`shopping_list_screen.dart`: mesh-glow + AppGlassCard items + gradient FAB), notifications (`notification_screen.dart`: mesh-glow + glass rows + glass filter chips + gradient AppBar accent), coach discovery (`coach_discovery_screen.dart`: AppGlassCard cards + rank badges + rating stars + AppInitialsAvatar + mesh-glow), intro + onboarding (done in current session above). ✅
-- [x] **Screen re-skin sweep (extended)** — chat list (`chat_list_screen.dart`: mesh-glow + AppGlassCard all tile types + gradient unread badge + RadialGradient empty state), chat detail (`chat_detail_screen.dart`: subtle mesh-glow + frosted received bubbles + brand-gradient sent bubbles + glass input bar + glass typing indicator + gradient AppBar accent), AI Fitness Twin (`ai_fitness_twin_screen.dart`: 3-blob rich mesh-glow + glass stats grid + glass projection cards + GradientButton regenerate). Remaining: cooking_mode, food_scan, profile, settings — carry into next phase. ✅ (partial)
+- [x] **Screen re-skin sweep (extended)** — chat list (`chat_list_screen.dart`: mesh-glow + AppGlassCard all tile types + gradient unread badge + RadialGradient empty state), chat detail (`chat_detail_screen.dart`: subtle mesh-glow + frosted received bubbles + brand-gradient sent bubbles + glass input bar + glass typing indicator + gradient AppBar accent), AI Fitness Twin (`ai_fitness_twin_screen.dart`: 3-blob rich mesh-glow + glass stats grid + glass projection cards + GradientButton regenerate). ✅
+- [x] **Screen re-skin sweep (complete)** — cooking mode (`cooking_mode_screen.dart`: mesh-glow + AppGlassCard step cards + gradient progress bar + frosted glass timer pill + gradient nav buttons), food scan (`food_scan_screen.dart`: glass torch/flip overlays + AppGlassCard result card + gradient log button), AI chat (`ai_chat_screen.dart`: subtle mesh-glow + frosted AI bubbles + brand-gradient user bubbles + glass input bar + gradient AppBar accent), settings (`settings_screen.dart`: subtle mesh-glow + AppGlassCard section containers + danger zone error-tint card), profile (`profile_screen.dart`: mesh-glow hero blobs + glass stat chips + glass info section + glass reputation row). All screens: 0 analyze errors. ✅
 - [ ] **Accessibility** — WCAG-AA contrast + reduce-transparency path — carry into Phase 14.
 - [ ] **Performance** — DevTools measurement + mid-Android verification — carry into Phase 14.
 - [ ] **Definition:** every primary surface shares one cohesive frosted-glass language; 60fps on a mid
@@ -913,11 +914,8 @@ EN+TR, all new UI light+dark on iOS+Android, 60fps, reduced-motion aware · ☑ 
 - [x] **CoachProfileModel fields** — `city`, `district`, `avgRating`, `ratingCount` added. ✅
 
 **Coach ratings & reviews (new subsystem — prerequisite for "competitive")**
-- [ ] **Reviews collection** — `coach_profiles/{coachUid}/reviews/{clientUid}` (rating 1–5, text,
-  createdAt); **only a linked/past client can review** (rules-enforced). On write, transactionally update
-  the coach's `avgRating`/`ratingCount` (or a Cloud Function aggregate). Rules + composite index.
-- [ ] **Review UI** — leave-a-review sheet from `CoachClientDetailScreen` / after a session; star display
-  + review list on `CoachProfileScreen`. Loading/empty/error states. EN+TR.
+- [x] **Reviews collection** — `CoachReviewModel` + `CoachReviewService` singleton; Firestore `coach_profiles/{coachUid}/reviews/{reviewerUid}`; `addReview` uses a Firestore transaction to atomically update `avgRating`/`ratingCount` on the coach doc; `getReviewsStream` ordered by `createdAt DESC`; `canReview` checks client linkage + no duplicate; `getUserReview` returns existing review. Rules: linked clients create (1–5 rating enforced), authenticated read, no update/delete. Index: COLLECTION_GROUP `reviews` on `coachUid+createdAt`. ✅
+- [x] **Review UI** — `CoachProfileScreen` shows avg star rating summary + AppGlassCard review rows (AppInitialsAvatar + stars + text + relative time); `CoachClientDetailScreen` "Rate This Coach" AppButton → AppSheet with 5-star selector + optional text + submit (loading + snackbar); `canReview` guards button; `already_reviewed` state. All EN+TR keys added. 0 analyze errors. ✅
 
 **Filtering, sorting & the competitive screen**
 - [x] **Gym discovery filters** — `_FilterBar` added to `gym_discovery_screen.dart`: city chip (AppSheet picker from TurkishLocations.provinces) → district chip (cascading), sort chips (A-Z/Popular/Newest); `GymService.searchGyms()` extended with `city`/`district`/`sortBy` params; Firestore equality filter applied. ✅
@@ -1246,7 +1244,8 @@ updated (R8).
 - [x] ✅ **Save / bookmark posts** — `CommunityService.savePost/unsavePost/isPostSavedStream/getSavedPostsStream`; `users/{uid}/saved_posts/{postId}` (Firestore rule: owner read/write); bookmark icon in `GlassPostCard` actions row (live `_isSaved` stream); "Saved" filter in `CommunityScreen` (`getSavedPostsStream`, no cursor pagination, empty-state); EN/TR i18n keys added (4 keys).
 
 **Connection (lightweight, purposeful)**
-- [ ] **Follow + mentions** — follow users/coaches; `@mention` with notification fan-out (ties 14.3).
+- [x] **Follow** — `FollowModel` + `FollowService` singleton; Firestore `users/{uid}/following/{targetUid}` + `users/{targetUid}/followers/{uid}` (batch write/delete); `isFollowingStream`, `getFollowingIds`, `getFollowersCount`, `getFollowingCount`; notification fan-out on follow; profile screen follow/unfollow button (non-self) + followers stat chip; "Following" feed filter in `CommunityScreen` (whereIn on followed IDs, chunked at 10); Firestore rules for following/followers subcollections; `followedAt` index. All EN+TR keys added. 0 analyze errors. ✅
+- [ ] **Mentions** — `@mention` autocomplete in composer with notification fan-out (ties 14.3). 📋
 - [ ] **Interest/topic feeds** — filter by goal (fat-loss, muscle, vegan…) so the feed is relevant, not noisy.
 - [ ] **Coach/gym presence in feed** — verified authors surface their programs/recipes (marketplace pull).
 

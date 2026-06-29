@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -269,69 +270,34 @@ class SettingsScreen extends StatelessWidget {
     final appLoc = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
     final uid = FirebaseAuth.instance.currentUser!.uid;
-
-    // Design specific colors
     final primaryColor = themeProvider.primaryColor;
+    final topPad = MediaQuery.of(context).padding.top;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: palette.background,
       body: Stack(
         children: [
-          // Background Glows
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 500,
-              height: 500,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    primaryColor.withValues(alpha: palette.isDark ? 0.2 : 0.15),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.7],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -100,
-            left: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    palette.info.withValues(alpha: 0.15),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.7],
-                ),
-              ),
-            ),
-          ),
+          // ── Mesh-glow ambient blobs ──
+          ...AppGradients.meshGlow(palette, primaryColor),
 
-          // Content
+          // ── Main content ──
           Column(
             children: [
+              // ── Frosted AppBar ──
+              _SettingsAppBar(
+                primaryColor: primaryColor,
+                palette: palette,
+                topPad: topPad,
+                onBack: () => Navigator.pop(context),
+              ),
+
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md, AppSpacing.md, AppSpacing.md, 40),
                   children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: Icon(Icons.arrow_back,
-                              color: palette.textPrimary),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.sm),
 
                     // Premium Section
                     _buildPremiumCard(context, primaryColor, appLoc, palette),
@@ -354,13 +320,14 @@ class SettingsScreen extends StatelessWidget {
                               : palette.info.withValues(alpha: 0.15),
                           title: appLoc.translate('settings.appearance.dark'),
                           palette: palette,
-                          trailing: Switch(
+                          trailing: Switch.adaptive(
                             value: themeProvider.themeMode == ThemeMode.dark,
                             onChanged: (val) {
                               themeProvider.setThemeMode(
                                   val ? ThemeMode.dark : ThemeMode.light);
                             },
-                            activeThumbColor: primaryColor,
+                            activeTrackColor: primaryColor,
+                            activeThumbColor: Colors.white,
                           ),
                         ),
                         // Theme Color
@@ -454,11 +421,12 @@ class SettingsScreen extends StatelessWidget {
                           subtitle: appLoc.translate(
                               'settings.privacy.account_privacy_subtitle'),
                           palette: palette,
-                          trailing: Switch(
+                          trailing: Switch.adaptive(
                             value: userProvider.user?.isPrivate ?? false,
                             onChanged: (val) =>
                                 unawaited(_togglePrivacy(context, val)),
-                            activeThumbColor: primaryColor,
+                            activeTrackColor: primaryColor,
+                            activeThumbColor: Colors.white,
                           ),
                         ),
                         _buildSettingsRow(
@@ -676,10 +644,11 @@ class SettingsScreen extends StatelessWidget {
                           subtitle: appLoc.translate(
                               'settings.developer.test_mode_subtitle'),
                           palette: palette,
-                          trailing: Switch(
+                          trailing: Switch.adaptive(
                             value: testModeProvider.isActive,
                             onChanged: (_) => testModeProvider.toggle(),
-                            activeThumbColor: palette.fat,
+                            activeTrackColor: palette.fat,
+                            activeThumbColor: Colors.white,
                           ),
                         ),
                       ],
@@ -852,6 +821,7 @@ class SettingsScreen extends StatelessWidget {
                       context: context,
                       title: appLoc.translate('settings.account.title'),
                       palette: palette,
+                      isDangerZone: true,
                       children: [
                         _buildSettingsRow(
                           context,
@@ -1061,52 +1031,75 @@ class SettingsScreen extends StatelessWidget {
     required String title,
     required AppPalette palette,
     required List<Widget> children,
+    bool isDangerZone = false,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: palette.surface.withValues(alpha: palette.isDark ? 0.9 : 0.95),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: palette.border,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: palette.shadow.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    final t = AppText.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.xs),
+          child: Text(
+            title.toUpperCase(),
+            style: t.labelS.copyWith(
+              color: palette.textTertiary,
+              letterSpacing: 1.1,
+            ),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(
+              sigmaX: AppPalette.glassBlurDefault,
+              sigmaY: AppPalette.glassBlurDefault,
+            ),
+            child: Container(
               decoration: BoxDecoration(
-                color: palette.surfaceVariant.withValues(alpha: 0.5),
-                border: Border(
-                  bottom: BorderSide(
-                    color: palette.divider,
-                  ),
+                color: palette.glassFill,
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                border: Border.all(
+                  color: isDangerZone
+                      ? palette.error.withValues(alpha: 0.3)
+                      : palette.glassStroke,
+                  width: isDangerZone ? 1.0 : 0.8,
+                ),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    palette.glassHighlight,
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.5],
                 ),
               ),
-              child: Text(
-                title.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                  color: palette.textPrimary,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: _intersperse(
+                  children,
+                  Divider(
+                    height: 1,
+                    thickness: 0.5,
+                    indent: AppSpacing.md,
+                    endIndent: AppSpacing.md,
+                    color: palette.border.withValues(alpha: 0.5),
+                  ),
+                ).toList(),
               ),
             ),
-            ...children,
-          ],
+          ),
         ),
-      ),
+      ],
     );
+  }
+
+  Iterable<Widget> _intersperse(
+      List<Widget> items, Widget separator) sync* {
+    for (var i = 0; i < items.length; i++) {
+      yield items[i];
+      if (i < items.length - 1) yield separator;
+    }
   }
 
   Widget _buildSettingsRow(
@@ -1121,58 +1114,58 @@ class SettingsScreen extends StatelessWidget {
     VoidCallback? onTap,
     double paddingLeft = 16,
   }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            if (icon != null) ...[
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: iconBgColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  size: 18,
-                  color: iconColor,
-                ),
-              ),
-              const SizedBox(width: 12),
-            ] else if (paddingLeft == 0)
-              const SizedBox(
-                  width: 0) // No indent if no icon and explicitly set
-            else
-              const SizedBox(width: 12), // Some indent if no icon but implicit
-
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: palette.textPrimary,
-                    ),
+    final t = AppText.of(context);
+    return Ink(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        splashColor: palette.glassStroke.withValues(alpha: 0.12),
+        highlightColor: palette.glassHighlight,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md, vertical: AppSpacing.md),
+          child: Row(
+            children: [
+              if (icon != null) ...[
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: iconBgColor,
+                    shape: BoxShape.circle,
                   ),
-                  if (subtitle != null)
+                  child: Icon(icon, size: AppSize.iconSm, color: iconColor),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+              ] else if (paddingLeft == 0)
+                const SizedBox(width: 0)
+              else
+                const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: palette.textSecondary,
+                      title,
+                      style: t.titleM.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: palette.textPrimary,
                       ),
                     ),
-                ],
+                    if (subtitle != null)
+                      Text(
+                        subtitle,
+                        style: t.bodyM.copyWith(
+                          fontSize: 12,
+                          color: palette.textSecondary,
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            if (trailing != null) trailing,
-          ],
+              if (trailing != null) trailing,
+            ],
+          ),
         ),
       ),
     );
@@ -1752,6 +1745,80 @@ class _AboutRow extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: palette.textPrimary)),
         ],
+      ),
+    );
+  }
+}
+
+// ── Frosted AppBar ────────────────────────────────────────────────────────────
+
+class _SettingsAppBar extends StatelessWidget {
+  final Color primaryColor;
+  final AppPalette palette;
+  final double topPad;
+  final VoidCallback onBack;
+
+  const _SettingsAppBar({
+    required this.primaryColor,
+    required this.palette,
+    required this.topPad,
+    required this.onBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: AppPalette.glassBlurSubtle,
+          sigmaY: AppPalette.glassBlurSubtle,
+        ),
+        child: Container(
+          color: palette.background.withValues(alpha: 0.82),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: topPad + AppSpacing.xs),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs, vertical: AppSpacing.xs),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.arrow_back,
+                          color: palette.textSecondary),
+                      onPressed: onBack,
+                    ),
+                    Expanded(
+                      child: Text(
+                        'Settings',
+                        style: AppText.of(context).labelL.copyWith(
+                              letterSpacing: 1.1,
+                              fontWeight: FontWeight.bold,
+                              color: palette.textPrimary,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Brand gradient accent line
+              Container(
+                height: 2,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppPalette.sunsetA,
+                      primaryColor,
+                      AppPalette.sunsetC,
+                    ],
+                    stops: const [0.0, 0.55, 1.0],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
