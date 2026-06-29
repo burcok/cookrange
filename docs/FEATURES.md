@@ -50,15 +50,13 @@ Legend: ✅ shipped · 🟡 partial/tracking-only · 🔗 entry point
 - ✅ **Gym community feed** — brand-colored, announcements.
 - ✅ **Gym leaderboard** — member rankings.
 - ✅ **Gym analytics** — active members, peak hours, retention (owner).
-- ✅ **Gym discovery** — city/district/sort filters + **"Near Me"** map view (flutter_map/OSM,
-  Haversine distance sort, distance badges). Location is **consent-gated (KVKK/GDPR)** and
-  **never stored** (in-memory only). 🔗 `gym_discovery_screen`.
+- ✅ **Gym discovery** — city + optional district location filters; 4 sort options: **Highest Rated** (avg_rating), **Popular** (member_count, default), **Newest** (created_at), **Nearest** (near_me — Haversine, KVKK consent-gated, in-memory only). Redesigned filter bar: single-row full-text pills with VerticalDivider between location and sort. Map view (flutter_map/OSM) includes a horizontal gym list panel; tapping shows name, address, description, tags and "View Gym" CTA. 🔗 `gym_discovery_screen`.
 - 🟡 **Gym Wars** — model + service exist; competition UI minimal.
 
 ## Coach Ecosystem
 - ✅ **Coach profiles** — bio, specializations, certs, rates, reviews, verification, vanity code.
 - ✅ **Coach application → admin approval → role flip**.
-- ✅ **Coach discovery** — Top Coaches/Rising Stars, rank badges, filters.
+- ✅ **Coach discovery** — Top Coaches/Rising Stars, rank badges; 4 sort options: **Highest Rated** (avg_rating), **Popular** (client_count, default), **Newest** (created_at), **Nearest** (near_me — KVKK consent-gated); city + optional district location filters; same redesigned filter bar as gym. 🔗 `coach_discovery_screen`.
 - ✅ **Client management** — link requests, roster, at-risk detection, client detail + AI report.
 - ✅ **Coach reviews** — immutable, transaction-updated avg rating.
 

@@ -30,11 +30,13 @@
 - **FoodAnalysisService** `food_analysis_service.dart` — Estimates nutrition from a food description.
 - **AiInsightService** `ai_insight_service.dart` — Daily accountability insight + 30/60/90-day fitness
   twin projection + risk detection. Caches daily insight in SharedPrefs (per date+locale); saves
-  projections to `users/{uid}/ai_twin_projections`. Streams latest + history.
+  projections to `users/{uid}/ai_twin_projections`. `getLatestProjectionStream` is **locale-agnostic**
+  (returns newest doc by `generatedAt` DESC regardless of language). Streams latest + history.
 - **AiCreditService** `ai_credit_service.dart` — Daily AI quota (free 2/day, premium 20/day, bonus
   credits from IAP never reset). `checkAndConsume` (burns bonus first; **skipped in proxy mode** —
-  server enforces), `rollbackCredit`/`rollbackBonusCredit`, `addBonusCredits`, `getCreditsStream`.
-  Authority is the `aiProxy` Cloud Function; client is read-only when proxied.
+  server enforces), `rollbackCredit`/`rollbackBonusCredit`, `addBonusCredits`, `getCreditsStream`
+  (**auto-resets** quota when `reset_at` is in the past — day-rollover detected on stream read, no
+  server-push needed). Authority is the `aiProxy` Cloud Function; client is read-only when proxied.
 
 ## Nutrition & Food
 - **DishService** `dish_service.dart` — `dishes/` CRUD + seed; streams; admin edit/delete.
@@ -73,9 +75,9 @@
 
 ## Coach & Gym
 - **CoachService** `coach_service.dart` — Coach profiles, client links, discovery/search, top coaches
-  (`getTopCoachesStream`: verified+accepting, avgRating DESC).
+  (`getTopCoachesStream`: verified+accepting, avgRating DESC). `searchCoaches(query, city:, district:, sortBy:)` — sortBy: `avg_rating` | `client_count` (default) | `created_at`. `CoachProfileModel` includes `latitude`/`longitude` for client-side near-me sorting.
 - **GymService** `gym_service.dart` — Gym CRUD, owner gym stream, member mgmt, discovery
-  (`searchGyms` w/ city/district/sortBy), QR token.
+  (`searchGyms(query, city:, district:, sortBy:, startAfter:, limit:)` — sortBy: `avg_rating` | `member_count` (default) | `created_at` | `name`), QR token.
 - **GymLeaderboardService**, **GymAnalyticsService**, **GymApplicationService**, **GymPostService**.
 - **CoachApplicationService**, **CoachReviewService** (transaction-updates avgRating/ratingCount).
 

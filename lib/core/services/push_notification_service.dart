@@ -141,7 +141,7 @@ class PushNotificationService {
     }
     var timeZoneName = 'UTC';
     try {
-      timeZoneName = await FlutterTimezone.getLocalTimezone();
+      timeZoneName = (await FlutterTimezone.getLocalTimezone()).identifier;
     } catch (e) {
       debugPrint(
           'PushNotificationService: getLocalTimezone failed, using UTC: $e');
