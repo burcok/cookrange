@@ -240,7 +240,15 @@ class AuthService {
         // Create user document via FirestoreService
         await _firestoreService.createUserDocumentOnRegister(
             result.user!, onboardingData);
-        await result.user?.sendEmailVerification();
+        // Non-blocking: if the verification email fails (e.g. App Check not
+        // configured for release, Dynamic Links missing on Android), the account
+        // is still usable and the verify-email screen offers a resend button.
+        try {
+          await result.user?.sendEmailVerification();
+        } catch (e) {
+          _log.error('sendEmailVerification failed (non-blocking): $e',
+              service: _serviceName);
+        }
         _log.info('Successfully registered user: ${result.user!.uid}',
             service: _serviceName);
         return result.user;

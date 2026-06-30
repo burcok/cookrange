@@ -182,11 +182,12 @@ class AppInitializationService {
         _log.info('Firebase already initialized in main()',
             service: _serviceName);
       }
-      // Activate App Check (debug tokens in debug/profile, platform attestation in release)
+      // App Check: Android uses debug provider until the app ships via Google
+      // Play Store — Play Integrity only works for Play-distributed builds and
+      // will fail (error: unknown) for sideloaded APKs.
+      // TODO: switch androidProvider back to playIntegrity before Play Store submission.
       await FirebaseAppCheck.instance.activate(
-        androidProvider: kReleaseMode
-            ? AndroidProvider.playIntegrity
-            : AndroidProvider.debug,
+        androidProvider: AndroidProvider.debug,
         appleProvider: kReleaseMode
             ? AppleProvider.deviceCheck
             : AppleProvider.debug,

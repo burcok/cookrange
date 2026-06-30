@@ -31,6 +31,14 @@
           }
         },
         {
+          "client_id": "624768719440-ssbk207orre91vabuu01adn348gumth9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cookrange_android.app",
+            "certificate_hash": "78c90f7cd255e8641c8bfa9d3a61aa9fa41f52db"
+          }
+        },
+        {
           "client_id": "624768719440-6acl7pqst25k3dgob310trvbdmitlhu1.apps.googleusercontent.com",
           "client_type": 3
         }
