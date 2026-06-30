@@ -174,7 +174,8 @@ class _CoachProfileSetupScreenState extends State<CoachProfileSetupScreen>
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: palette.textPrimary, size: 20),
-          onPressed: _currentStep > 0 ? _prevStep : () => Navigator.pop(context),
+          onPressed:
+              _currentStep > 0 ? _prevStep : () => Navigator.pop(context),
         ),
       ),
       body: FadeTransition(
@@ -207,15 +208,15 @@ class _CoachProfileSetupScreenState extends State<CoachProfileSetupScreen>
         children: [
           Text(
             l10n.translate('coach.step1_title'),
-            style: AppText.of(context)
-                .titleM
-                .copyWith(color: palette.textPrimary, fontWeight: FontWeight.bold),
+            style: AppText.of(context).titleM.copyWith(
+                color: palette.textPrimary, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
             l10n.translate('coach.step1_subtitle'),
-            style:
-                AppText.of(context).bodyM.copyWith(color: palette.textSecondary),
+            style: AppText.of(context)
+                .bodyM
+                .copyWith(color: palette.textSecondary),
           ),
           const SizedBox(height: 24),
           AppTextField(
@@ -227,9 +228,8 @@ class _CoachProfileSetupScreenState extends State<CoachProfileSetupScreen>
           const SizedBox(height: 24),
           Text(
             l10n.translate('coach.field_specializations'),
-            style: AppText.of(context)
-                .titleM
-                .copyWith(color: palette.textPrimary, fontWeight: FontWeight.w600),
+            style: AppText.of(context).titleM.copyWith(
+                color: palette.textPrimary, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -268,8 +268,7 @@ class _CoachProfileSetupScreenState extends State<CoachProfileSetupScreen>
                   child: Text(
                     spec,
                     style: AppText.of(context).labelS.copyWith(
-                          color:
-                              selected ? primary : palette.textSecondary,
+                          color: selected ? primary : palette.textSecondary,
                           fontWeight:
                               selected ? FontWeight.w700 : FontWeight.w500,
                         ),
@@ -281,9 +280,8 @@ class _CoachProfileSetupScreenState extends State<CoachProfileSetupScreen>
           const SizedBox(height: 24),
           Text(
             l10n.translate('coach.field_certifications'),
-            style: AppText.of(context)
-                .titleM
-                .copyWith(color: palette.textPrimary, fontWeight: FontWeight.w600),
+            style: AppText.of(context).titleM.copyWith(
+                color: palette.textPrimary, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
           Row(
@@ -345,15 +343,15 @@ class _CoachProfileSetupScreenState extends State<CoachProfileSetupScreen>
         children: [
           Text(
             l10n.translate('coach.step2_title'),
-            style: AppText.of(context)
-                .titleM
-                .copyWith(color: palette.textPrimary, fontWeight: FontWeight.bold),
+            style: AppText.of(context).titleM.copyWith(
+                color: palette.textPrimary, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
             l10n.translate('coach.step2_subtitle'),
-            style:
-                AppText.of(context).bodyM.copyWith(color: palette.textSecondary),
+            style: AppText.of(context)
+                .bodyM
+                .copyWith(color: palette.textSecondary),
           ),
           const SizedBox(height: 24),
           _ToggleTile(
@@ -425,9 +423,7 @@ class _StepIndicator extends StatelessWidget {
                 duration: AppMotion.normal,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: done || active
-                      ? primary
-                      : palette.border,
+                  color: done || active ? primary : palette.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -463,9 +459,8 @@ class _CertChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label,
-              style: AppText.of(ctx)
-                  .labelS
-                  .copyWith(color: palette.textPrimary)),
+              style:
+                  AppText.of(ctx).labelS.copyWith(color: palette.textPrimary)),
           const SizedBox(width: 4),
           GestureDetector(
             onTap: onRemove,
@@ -506,9 +501,8 @@ class _ToggleTile extends StatelessWidget {
         children: [
           Expanded(
             child: Text(title,
-                style: AppText.of(ctx)
-                    .bodyM
-                    .copyWith(color: palette.textPrimary, fontWeight: FontWeight.w500)),
+                style: AppText.of(ctx).bodyM.copyWith(
+                    color: palette.textPrimary, fontWeight: FontWeight.w500)),
           ),
           Switch(
             value: value,

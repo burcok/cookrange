@@ -56,13 +56,11 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
                       color: theme.colorScheme.error,
                     ),
               ),
-
               const SizedBox(height: 32),
-
               Text(
                 widget.customTitle ??
-                    (localizations?.translate(
-                            'error.initialization_failed_title') ??
+                    (localizations
+                            ?.translate('error.initialization_failed_title') ??
                         'Initialization Failed'),
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
@@ -70,9 +68,7 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
                 ),
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 16),
-
               Text(
                 widget.customMessage ??
                     (localizations?.translate(
@@ -83,7 +79,6 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
                 ),
                 textAlign: TextAlign.center,
               ),
-
               if (widget.error != null && kDebugMode) ...[
                 const SizedBox(height: 24),
                 Container(
@@ -117,9 +112,7 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
                   ),
                 ),
               ],
-
               const SizedBox(height: 32),
-
               if (widget.showRetryButton)
                 SizedBox(
                   width: double.infinity,
@@ -164,7 +157,8 @@ class _ErrorFallbackWidgetState extends State<ErrorFallbackWidget> {
     setState(() => _isRetrying = true);
     try {
       try {
-        await CrashlyticsService().log('User initiated retry from error screen');
+        await CrashlyticsService()
+            .log('User initiated retry from error screen');
       } catch (_) {}
       if (widget.onRetry != null) {
         await Future.delayed(const Duration(milliseconds: 500));

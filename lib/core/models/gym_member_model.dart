@@ -28,8 +28,7 @@ class GymMemberModel {
   factory GymMemberModel.fromFirestore(
       DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? {};
-    DateTime ts(dynamic v) =>
-        v is Timestamp ? v.toDate() : DateTime.now();
+    DateTime ts(dynamic v) => v is Timestamp ? v.toDate() : DateTime.now();
 
     return GymMemberModel(
       uid: doc.id,

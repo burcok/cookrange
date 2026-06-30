@@ -69,6 +69,19 @@ class NotificationPresenter {
         return l10n.translate('notifications.feed.gym_application_approved');
       case NotificationType.gymApplicationRejected:
         return l10n.translate('notifications.feed.gym_application_rejected');
+      case NotificationType.streakFreezeUsed:
+        return l10n.translate('notifications.feed.streak_freeze_used_title',
+            variables: {'days': days});
+      case NotificationType.achievementEarned:
+        final name = n.metadata?['achievementName']?.toString() ?? '';
+        return l10n.translate('notifications.feed.achievement_earned_title',
+            variables: {'name': name});
+      case NotificationType.mealReminder:
+        return l10n.translate('notifications.feed.meal_reminder_title');
+      case NotificationType.streakAtRisk:
+        return l10n.translate('notifications.feed.streak_at_risk_title');
+      case NotificationType.weeklyPlanReady:
+        return l10n.translate('notifications.feed.weekly_plan_ready_title');
     }
   }
 
@@ -94,6 +107,18 @@ class NotificationPresenter {
         return l10n.translate('notifications.feed.meal_plan_body');
       case NotificationType.system:
         return l10n.translate('notifications.feed.system_body');
+      case NotificationType.streakFreezeUsed:
+        return l10n.translate('notifications.feed.streak_freeze_used_body',
+            variables: {'days': days});
+      case NotificationType.achievementEarned:
+        final desc = n.metadata?['achievementDesc']?.toString() ?? '';
+        return desc.isNotEmpty ? desc : null;
+      case NotificationType.mealReminder:
+        return l10n.translate('notifications.feed.meal_reminder_body');
+      case NotificationType.streakAtRisk:
+        return l10n.translate('notifications.feed.streak_at_risk_body');
+      case NotificationType.weeklyPlanReady:
+        return l10n.translate('notifications.feed.weekly_plan_ready_body');
       default:
         return null;
     }
@@ -126,6 +151,14 @@ class NotificationPresenter {
       case NotificationType.gymApplicationApproved:
       case NotificationType.gymApplicationRejected:
         return l10n.translate('notifications.feed.cat_system');
+      case NotificationType.streakFreezeUsed:
+        return l10n.translate('notifications.feed.cat_streak');
+      case NotificationType.achievementEarned:
+        return l10n.translate('notifications.feed.cat_reward');
+      case NotificationType.mealReminder:
+      case NotificationType.streakAtRisk:
+      case NotificationType.weeklyPlanReady:
+        return l10n.translate('notifications.feed.cat_reminders');
     }
   }
 
@@ -158,6 +191,16 @@ class NotificationPresenter {
       case NotificationType.coachApplicationRejected:
       case NotificationType.gymApplicationRejected:
         return Icons.cancel_rounded;
+      case NotificationType.streakFreezeUsed:
+        return Icons.ac_unit_rounded;
+      case NotificationType.achievementEarned:
+        return Icons.emoji_events_rounded;
+      case NotificationType.mealReminder:
+        return Icons.restaurant_rounded;
+      case NotificationType.streakAtRisk:
+        return Icons.local_fire_department_rounded;
+      case NotificationType.weeklyPlanReady:
+        return Icons.calendar_today_rounded;
     }
   }
 
@@ -191,6 +234,16 @@ class NotificationPresenter {
       case NotificationType.coachApplicationRejected:
       case NotificationType.gymApplicationRejected:
         return palette.error;
+      case NotificationType.streakFreezeUsed:
+        return palette.info;
+      case NotificationType.achievementEarned:
+        return palette.calories;
+      case NotificationType.mealReminder:
+        return palette.success;
+      case NotificationType.streakAtRisk:
+        return palette.warning;
+      case NotificationType.weeklyPlanReady:
+        return primary;
     }
   }
 }

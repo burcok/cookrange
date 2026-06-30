@@ -33,12 +33,21 @@ class OnboardingTrustPage extends StatelessWidget {
     final name = context.read<OnboardingProvider>().firstName ?? '';
 
     final journeys = [
-      ('onboarding.v2.trust.j1_name', 'onboarding.v2.trust.j1_goal',
-          'onboarding.v2.trust.j1_quote'),
-      ('onboarding.v2.trust.j2_name', 'onboarding.v2.trust.j2_goal',
-          'onboarding.v2.trust.j2_quote'),
-      ('onboarding.v2.trust.j3_name', 'onboarding.v2.trust.j3_goal',
-          'onboarding.v2.trust.j3_quote'),
+      (
+        'onboarding.v2.trust.j1_name',
+        'onboarding.v2.trust.j1_goal',
+        'onboarding.v2.trust.j1_quote'
+      ),
+      (
+        'onboarding.v2.trust.j2_name',
+        'onboarding.v2.trust.j2_goal',
+        'onboarding.v2.trust.j2_quote'
+      ),
+      (
+        'onboarding.v2.trust.j3_name',
+        'onboarding.v2.trust.j3_goal',
+        'onboarding.v2.trust.j3_quote'
+      ),
     ];
 
     final badges = [
@@ -56,8 +65,8 @@ class OnboardingTrustPage extends StatelessWidget {
         padding: EdgeInsets.only(top: AppSpacing.lg.h, bottom: AppSpacing.xl.h),
         children: [
           OnboardingSectionLabel(
-            title: l10n
-                .translate('onboarding.v2.trust.title', variables: {'name': name}),
+            title: l10n.translate('onboarding.v2.trust.title',
+                variables: {'name': name}),
             subtitle: l10n.translate('onboarding.v2.trust.subtitle'),
           ),
           SizedBox(height: AppSpacing.lg.h),
@@ -76,15 +85,14 @@ class OnboardingTrustPage extends StatelessWidget {
             spacing: AppSpacing.sm.w,
             runSpacing: AppSpacing.sm.h,
             children: badges
-                .map((b) => _Badge(
-                    icon: b.$1, label: l10n.translate(b.$2)))
+                .map((b) => _Badge(icon: b.$1, label: l10n.translate(b.$2)))
                 .toList(),
           ),
           SizedBox(height: AppSpacing.md.h),
           Text(
             l10n.translate('onboarding.v2.trust.examples_note'),
-            style: t.labelS
-                .copyWith(color: palette.textTertiary, fontStyle: FontStyle.italic),
+            style: t.labelS.copyWith(
+                color: palette.textTertiary, fontStyle: FontStyle.italic),
           ),
         ],
       ),
@@ -124,8 +132,8 @@ class _JourneyCard extends StatelessWidget {
                 backgroundColor: primary.withValues(alpha: 0.14),
                 child: Text(
                   name.isNotEmpty ? name.characters.first : '•',
-                  style: t.titleM.copyWith(
-                      color: primary, fontWeight: FontWeight.w700),
+                  style: t.titleM
+                      .copyWith(color: primary, fontWeight: FontWeight.w700),
                 ),
               ),
               SizedBox(width: AppSpacing.sm.w),
@@ -189,8 +197,8 @@ class _Badge extends StatelessWidget {
           Icon(icon, size: AppSize.iconSm.r, color: primary),
           SizedBox(width: AppSpacing.xs.w),
           Text(label,
-              style: t.labelM
-                  .copyWith(color: palette.textPrimary, fontWeight: FontWeight.w600)),
+              style: t.labelM.copyWith(
+                  color: palette.textPrimary, fontWeight: FontWeight.w600)),
         ],
       ),
     );

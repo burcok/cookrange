@@ -32,11 +32,13 @@ class OnboardingMetricsPage extends StatelessWidget {
     final result = await showModalBottomSheet<int>(
       context: context,
       builder: (_) => NumberPickerModal(
-        title: AppLocalizations.of(context).translate('onboarding.v2.metrics.age_label'),
+        title: AppLocalizations.of(context)
+            .translate('onboarding.v2.metrics.age_label'),
         min: AgeGate.kMinimumAgeYears,
         max: 100,
         initialValue: current.clamp(AgeGate.kMinimumAgeYears, 100),
-        unit: AppLocalizations.of(context).translate('onboarding.v2.units.years'),
+        unit:
+            AppLocalizations.of(context).translate('onboarding.v2.units.years'),
       ),
     );
     if (result != null) {
@@ -69,7 +71,8 @@ class OnboardingMetricsPage extends StatelessWidget {
     final ob = context.watch<OnboardingProvider>();
     final name = ob.firstName ?? '';
     final age = ob.ageYears;
-    final valid = ob.birthDate != null && ob.height != null && ob.weight != null;
+    final valid =
+        ob.birthDate != null && ob.height != null && ob.weight != null;
     final select = l10n.translate('common.select');
 
     return OnboardingScaffold(

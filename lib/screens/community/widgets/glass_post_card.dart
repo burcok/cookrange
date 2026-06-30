@@ -53,9 +53,8 @@ class _GlassPostCardState extends State<GlassPostCard> {
   void initState() {
     super.initState();
     _post = widget.post;
-    _saveSub = CommunityService()
-        .isPostSavedStream(widget.post.id)
-        .listen((saved) {
+    _saveSub =
+        CommunityService().isPostSavedStream(widget.post.id).listen((saved) {
       if (mounted) setState(() => _isSaved = saved);
     });
   }
@@ -99,8 +98,7 @@ class _GlassPostCardState extends State<GlassPostCard> {
   void _showPostOptions(BuildContext context) {
     final appLoc = AppLocalizations.of(context);
     final service = CommunityService();
-    final currentUid =
-        AuthService().currentUser?.uid ?? '';
+    final currentUid = AuthService().currentUser?.uid ?? '';
     final isOwner = _post.author.id == currentUid;
 
     AppSheet.show<void>(
@@ -117,8 +115,7 @@ class _GlassPostCardState extends State<GlassPostCard> {
           Navigator.pop(context);
           Clipboard.setData(
               ClipboardData(text: 'https://cookrange.app/post/${_post.id}'));
-          AppSnackBar.success(
-              context, appLoc.translate('post.link_copied'));
+          AppSnackBar.success(context, appLoc.translate('post.link_copied'));
         },
         onReport: isOwner
             ? null
@@ -231,7 +228,8 @@ class _GlassPostCardState extends State<GlassPostCard> {
           enableBlur: false, // OPTIMIZATION: Disable blur for list performance
           boxShadow: [
             BoxShadow(
-              color: palette.shadow.withValues(alpha: AppElevation.opacityLight),
+              color:
+                  palette.shadow.withValues(alpha: AppElevation.opacityLight),
               offset: AppElevation.offsetLg,
               blurRadius: AppElevation.blurLg,
             ),
@@ -308,10 +306,12 @@ class _GlassPostCardState extends State<GlassPostCard> {
                     children: _post.tags
                         .map((tag) => Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.xs + 2, vertical: AppSpacing.xxs),
+                                  horizontal: AppSpacing.xs + 2,
+                                  vertical: AppSpacing.xxs),
                               decoration: BoxDecoration(
                                 color: palette.surfaceVariant,
-                                borderRadius: BorderRadius.circular(AppRadius.full),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.full),
                                 border: Border.all(color: palette.border),
                               ),
                               child: Text(
@@ -325,6 +325,10 @@ class _GlassPostCardState extends State<GlassPostCard> {
 
               // Topic pill — shown when metadata contains a topic key
               _TopicPill(post: _post),
+
+              // "Cooked it" badge — shown when post was shared from cooking mode
+              if (_post.metadata['has_cooked_badge'] == true)
+                _CookedItBadge(post: _post),
 
               const SizedBox(height: AppSpacing.md),
 
@@ -392,7 +396,8 @@ class _GlassPostCardState extends State<GlassPostCard> {
                         onTap: () => _handleReaction(entry.key),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.xs, vertical: AppSpacing.xxs),
+                              horizontal: AppSpacing.xs,
+                              vertical: AppSpacing.xxs),
                           decoration: BoxDecoration(
                             color: isUserReaction
                                 ? primaryColor.withValues(alpha: 0.2)
@@ -428,9 +433,8 @@ class _GlassPostCardState extends State<GlassPostCard> {
                     onTap: _handleLike,
                     child: Icon(
                       _post.isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: _post.isLiked
-                          ? palette.error
-                          : palette.textSecondary,
+                      color:
+                          _post.isLiked ? palette.error : palette.textSecondary,
                       size: AppSize.iconLg,
                     ),
                   ),
@@ -495,8 +499,7 @@ class _GlassPostCardState extends State<GlassPostCard> {
                     child: Row(
                       children: [
                         Icon(Icons.chat_bubble_outline,
-                            color: palette.textSecondary,
-                            size: AppSize.iconMd),
+                            color: palette.textSecondary, size: AppSize.iconMd),
                         const SizedBox(width: 6),
                         Text(
                           "${_post.commentsCount}",
@@ -547,8 +550,7 @@ class _GlassPostCardState extends State<GlassPostCard> {
       {Map<String, dynamic>? metadata}) {
     final textStyles = AppText.of(context);
     const mentionColor = AppPalette.brand;
-    final mentions =
-        (metadata?['mentions'] as List<dynamic>?) ?? <dynamic>[];
+    final mentions = (metadata?['mentions'] as List<dynamic>?) ?? <dynamic>[];
 
     final List<InlineSpan> spans = [];
     // Split by whitespace but keep delimiters to preserve spacing
@@ -570,8 +572,7 @@ class _GlassPostCardState extends State<GlassPostCard> {
         String? uid;
         for (final m in mentions) {
           if (m is Map &&
-              (m['name'] as String?)?.toLowerCase() ==
-                  handle.toLowerCase()) {
+              (m['name'] as String?)?.toLowerCase() == handle.toLowerCase()) {
             uid = m['uid'] as String?;
             break;
           }
@@ -586,8 +587,7 @@ class _GlassPostCardState extends State<GlassPostCard> {
               color: mentionColor,
             ),
             recognizer: TapGestureRecognizer()
-              ..onTap = () =>
-                  openUserProfile(context, userId: capturedUid),
+              ..onTap = () => openUserProfile(context, userId: capturedUid),
           ));
         } else {
           spans.add(TextSpan(
@@ -920,8 +920,7 @@ class _MealCard extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 l10n.translate('community.post_type.meal'),
-                style:
-                    textStyles.labelS.copyWith(color: palette.textSecondary),
+                style: textStyles.labelS.copyWith(color: palette.textSecondary),
               ),
             ],
           ),
@@ -992,6 +991,44 @@ class _TopicPill extends StatelessWidget {
               l10n.translate(CommunityTopics.labelKeyFor(topic)),
               style: textStyles.labelS.copyWith(
                 color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── "Cooked it" badge ────────────────────────────────────────────────────────
+
+class _CookedItBadge extends StatelessWidget {
+  final CommunityPost post;
+  const _CookedItBadge({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final textStyles = AppText.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: palette.success.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(AppRadius.full),
+              border: Border.all(
+                  color: palette.success.withValues(alpha: 0.3), width: 0.8),
+            ),
+            child: Text(
+              l10n.translate('community.cooked_it_badge'),
+              style: textStyles.labelS.copyWith(
+                color: palette.success,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1268,8 +1305,7 @@ class _ReportReasonContentState extends State<_ReportReasonContent> {
               onTap: () => setState(() => _selectedReason = r.$1),
               borderRadius: BorderRadius.circular(AppRadius.md),
               child: Container(
-                margin:
-                    const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
+                margin: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
                 padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
                 decoration: BoxDecoration(
@@ -1290,9 +1326,7 @@ class _ReportReasonContentState extends State<_ReportReasonContent> {
                           ? Icons.radio_button_checked_rounded
                           : Icons.radio_button_unchecked_rounded,
                       size: AppSize.iconMd,
-                      color: isSelected
-                          ? palette.error
-                          : palette.textTertiary,
+                      color: isSelected ? palette.error : palette.textTertiary,
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
@@ -1310,7 +1344,8 @@ class _ReportReasonContentState extends State<_ReportReasonContent> {
           const SizedBox(height: AppSpacing.md),
           AppButton(
             label: l10n.translate('report.submit'),
-            onPressed: (_selectedReason == null || _submitting) ? null : _submit,
+            onPressed:
+                (_selectedReason == null || _submitting) ? null : _submit,
             loading: _submitting,
             variant: AppButtonVariant.destructive,
           ),

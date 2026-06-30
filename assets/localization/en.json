@@ -941,7 +941,21 @@
       "comments": "Comments",
       "friends": "Friend Activity",
       "system": "System & Updates",
-      "referral": "Referral Rewards"
+      "referral": "Referral Rewards",
+      "reminders": "Reminders & Alerts"
+    },
+    "reminders": {
+      "meal_title": "Meal reminders",
+      "meal_subtitle": "Get a daily nudge at breakfast, lunch and dinner time to log your meals",
+      "meal_enable": "Enable meal reminders",
+      "meal_on": "On",
+      "meal_off": "Off",
+      "meal_saved": "Meal reminders saved",
+      "meal_notif_title": "🍽 Time to log your meal!",
+      "meal_notif_body": "Tap to track what you ate and stay on target",
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "dinner": "Dinner"
     }
   },
   "sharing": {
@@ -957,7 +971,9 @@
     "shopping_list_prefix": "🛒 {title}\n\n",
     "shopping_list_default_prefix": "🛒 Shopping List {date}\n\n",
     "referral_text": "🎁 Join me on Cookrange — the AI-powered nutrition app!\n\nUse my invite code **{code}** and we both get {rewardDays} of Premium free.\n\n{link}\n\n{appTag}",
-    "referral_subject": "Join Cookrange — Free Premium Invite"
+    "referral_subject": "Join Cookrange — Free Premium Invite",
+    "weekly_recap_text": "My week score: {score}/100 🏆\nWins: {wins}\nFocus: {recommendation}\n{appTag}",
+    "weekly_recap_subject": "My Weekly Fitness Recap"
   },
   "error": {
     "initialization_failed_message": "Application failed to initialize. Please check your internet connection and try again.",
@@ -1012,7 +1028,18 @@
       "coach_application_approved": "Your coach application was approved! 🎉",
       "coach_application_rejected": "Your coach application was reviewed",
       "gym_application_approved": "Your gym application was approved! 🎉",
-      "gym_application_rejected": "Your gym application was reviewed"
+      "gym_application_rejected": "Your gym application was reviewed",
+      "streak_freeze_used_title": "Your streak was saved by a freeze ❄️",
+      "streak_freeze_used_body": "A freeze token protected your {days}-day streak.",
+      "achievement_earned_title": "New achievement: {name} 🏅",
+      "cat_achievement": "Achievement",
+      "meal_reminder_title": "🍽 Time to log your meal!",
+      "meal_reminder_body": "Track what you ate to stay on top of your nutrition goals",
+      "streak_at_risk_title": "🔥 Streak at risk!",
+      "streak_at_risk_body": "Log a meal today to keep your streak alive",
+      "weekly_plan_ready_title": "📅 New week, new plan!",
+      "weekly_plan_ready_body": "Your weekly meal plan is ready — let's make it count",
+      "cat_reminders": "Reminders"
     }
   },
   "common": {
@@ -1046,7 +1073,8 @@
     "retry_in_hours": "Retry in {hours} hours",
     "retry_in_days": "Retry in {days} days",
     "next": "Next",
-    "error": "Error"
+    "error": "Error",
+    "stale": "Stale"
   },
   "errors": {
     "general": "Something went wrong",
@@ -1189,6 +1217,22 @@
       "action": "Resend",
       "sent": "Verification email sent — check your inbox.",
       "send_failed": "Couldn't send right now. Please try again."
+    },
+    "freeze_count": "❄️ {count}",
+    "freeze_used_banner_title": "Streak Saved! ❄️",
+    "freeze_used_banner_body": "A freeze token protected your {days}-day streak.",
+    "streak_calendar_title": "Streak Calendar",
+    "streak_calendar_label": "Day Streak",
+    "streak_calendar_logged": "Logged",
+    "streak_calendar_today": "Today",
+    "recap": {
+      "title": "Last 7 Days",
+      "today_short": "Now",
+      "days_logged": "{count}/7 days",
+      "avg": "Avg",
+      "target": "Target",
+      "empty_title": "No logs yet",
+      "empty_subtitle": "Log your first meal and start building your streak!"
     }
   },
   "ai_chat": {
@@ -1438,7 +1482,8 @@
     "verified_coach": "Coach",
     "verified_gym_owner": "Gym Owner",
     "view_profile": "View Profile",
-    "view_gym_profile": "View Gym Profile"
+    "view_gym_profile": "View Gym Profile",
+    "cooked_it_badge": "🍳 Cooked it"
   },
   "menu": {
     "title": "Menu",
@@ -1676,7 +1721,11 @@
       },
       "log": "Log & Finish",
       "skip": "Skip"
-    }
+    },
+    "share_toggle": "Share to Community",
+    "share_caption_hint": "Add a caption (optional)...",
+    "share_success": "Shared to community!",
+    "share_error": "Could not share — meal still logged"
   },
   "leaderboard": {
     "screen_title": "Leaderboard",
@@ -1744,7 +1793,8 @@
     "history": "History",
     "history_empty_title": "No analyses yet",
     "history_empty_msg": "Your past food analyses will appear here.",
-    "photo_unavailable": "Photo analysis isn't available right now."
+    "photo_unavailable": "Photo analysis isn't available right now.",
+    "express_snap_btn": "Snap & Log"
   },
   "barcode": {
     "scan_btn": "Scan Barcode",
@@ -1861,7 +1911,8 @@
     "system": "System & Streaks",
     "challenges": "Challenges",
     "referral": "Referral Rewards",
-    "saved": "Preferences saved"
+    "saved": "Preferences saved",
+    "reminders": "Reminders & re-engagement"
   },
   "dietary_prefs": {
     "title": "Dietary Preferences",
@@ -2344,7 +2395,28 @@
     "paywall_processing": "Processing...",
     "paywall_not_available": "Purchases unavailable on this device.",
     "paywall_restore_success": "Purchases restored successfully!",
-    "paywall_restore_none": "No previous purchases found."
+    "paywall_restore_none": "No previous purchases found.",
+    "weekly_recap_title": "Weekly Coach Recap",
+    "weekly_recap_subtitle": "Your AI-powered week in review",
+    "weekly_recap_generate": "Generate Recap",
+    "weekly_recap_regenerate": "Regenerate",
+    "weekly_recap_generating": "Analyzing your week...",
+    "weekly_recap_score": "Week Score",
+    "weekly_recap_wins": "Wins",
+    "weekly_recap_challenges": "Challenges",
+    "weekly_recap_recommendation": "Focus for Next Week",
+    "weekly_recap_trend_improving": "Improving",
+    "weekly_recap_trend_steady": "Steady",
+    "weekly_recap_trend_declining": "Needs Work",
+    "weekly_recap_share": "Share Recap",
+    "weekly_recap_low_data": "Log more days for a full AI analysis",
+    "weekly_recap_no_recap": "No recap yet this week",
+    "weekly_recap_no_recap_sub": "Generate your weekly AI coach recap to see wins, challenges and your focus area.",
+    "weekly_recap_week_of": "Week of {date}",
+    "weekly_recap_error": "Could not generate recap. Please try again.",
+    "weekly_recap_card_title": "Weekly Recap",
+    "weekly_recap_card_cta": "Generate",
+    "weekly_recap_card_view": "View recap"
   },
   "ai_credits": {
     "unlimited": "Unlimited",
@@ -2934,5 +3006,55 @@
     "cat_diet": "Diet",
     "cat_sport": "Sport",
     "cat_turkish_classic": "Turkish Classics"
+  },
+  "achievements": {
+    "title": "Achievements",
+    "locked": "Locked",
+    "points": "pts",
+    "earned_on": "Earned on {date}",
+    "first_meal": {
+      "title": "First Bite",
+      "desc": "Logged your very first meal"
+    },
+    "first_photo": {
+      "title": "Food Cam",
+      "desc": "Logged a meal using a photo"
+    },
+    "first_post": {
+      "title": "First Post",
+      "desc": "Shared your first post in the community"
+    },
+    "first_cook": {
+      "title": "Home Chef",
+      "desc": "Cooked and logged a recipe from the app"
+    },
+    "streak_7": {
+      "title": "Week Streak",
+      "desc": "Logged in 7 days in a row"
+    },
+    "streak_30": {
+      "title": "Month Streak",
+      "desc": "Logged in 30 days in a row"
+    },
+    "streak_100": {
+      "title": "Century",
+      "desc": "Logged in 100 days in a row"
+    },
+    "tier_active": {
+      "title": "Active",
+      "desc": "Reached the Active reputation tier"
+    },
+    "tier_contributor": {
+      "title": "Contributor",
+      "desc": "Reached the Contributor tier"
+    },
+    "tier_expert": {
+      "title": "Expert",
+      "desc": "Reached the Expert reputation tier"
+    },
+    "tier_legend": {
+      "title": "Legend",
+      "desc": "Reached the Legend reputation tier"
+    }
   }
 }

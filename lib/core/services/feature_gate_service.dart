@@ -82,8 +82,8 @@ class _PaywallSheetState extends State<_PaywallSheet> {
 
   Future<void> _buyMonthly() async {
     if (!_billing.isAvailable) {
-      setState(() =>
-          _errorText = AppLocalizations.of(context).translate('billing.unavailable'));
+      setState(() => _errorText =
+          AppLocalizations.of(context).translate('billing.unavailable'));
       return;
     }
     setState(() {
@@ -104,8 +104,8 @@ class _PaywallSheetState extends State<_PaywallSheet> {
 
   Future<void> _buyYearly() async {
     if (!_billing.isAvailable) {
-      setState(() =>
-          _errorText = AppLocalizations.of(context).translate('billing.unavailable'));
+      setState(() => _errorText =
+          AppLocalizations.of(context).translate('billing.unavailable'));
       return;
     }
     setState(() {
@@ -178,8 +178,8 @@ class _PaywallSheetState extends State<_PaywallSheet> {
               ),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.workspace_premium,
-                color: Colors.white, size: 36.sp),
+            child:
+                Icon(Icons.workspace_premium, color: Colors.white, size: 36.sp),
           ),
           SizedBox(height: 16.h),
           Text(
@@ -212,8 +212,7 @@ class _PaywallSheetState extends State<_PaywallSheet> {
               child: Text(
                 _errorText!,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 12.sp, color: Colors.red.shade400),
+                style: TextStyle(fontSize: 12.sp, color: Colors.red.shade400),
               ),
             ),
           if (_isPurchasing)
@@ -236,8 +235,8 @@ class _PaywallSheetState extends State<_PaywallSheet> {
                   ),
                   child: Text(
                     '${l10n.translate('billing.yearly')} — ${yearlyProduct.price}',
-                    style: TextStyle(
-                        fontSize: 15.sp, fontWeight: FontWeight.bold),
+                    style:
+                        TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -274,8 +273,8 @@ class _PaywallSheetState extends State<_PaywallSheet> {
                   ),
                   child: Text(
                     l10n.translate('premium.upgrade_btn'),
-                    style: TextStyle(
-                        fontSize: 16.sp, fontWeight: FontWeight.bold),
+                    style:
+                        TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -350,9 +349,8 @@ class _PerksRow extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 11.sp,
-                        color: isDark
-                            ? Colors.white70
-                            : const Color(0xFF2E3A59),
+                        color:
+                            isDark ? Colors.white70 : const Color(0xFF2E3A59),
                       ),
                     ),
                   ),

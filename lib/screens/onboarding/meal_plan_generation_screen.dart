@@ -90,13 +90,11 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
     _stageSlide = Tween<double>(begin: 12.0, end: 0.0).animate(
       CurvedAnimation(parent: _stageCtrl, curve: Curves.easeOutCubic),
     );
-    _stageFade =
-        CurvedAnimation(parent: _stageCtrl, curve: Curves.easeIn);
+    _stageFade = CurvedAnimation(parent: _stageCtrl, curve: Curves.easeIn);
     _successScale = Tween<double>(begin: 0.7, end: 1.0).animate(
       CurvedAnimation(parent: _successCtrl, curve: Curves.elasticOut),
     );
-    _successFade =
-        CurvedAnimation(parent: _successCtrl, curve: Curves.easeIn);
+    _successFade = CurvedAnimation(parent: _successCtrl, curve: Curves.easeIn);
 
     _stageCtrl.forward();
     _startGeneration();
@@ -121,8 +119,7 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
     // the bar never appears frozen during a long generation.
     unawaited(_progressCtrl
         .animateTo(0.85,
-            duration: const Duration(milliseconds: 4500),
-            curve: Curves.easeIn)
+            duration: const Duration(milliseconds: 4500), curve: Curves.easeIn)
         .then((_) {
       if (!_done && !_hasError && mounted) {
         unawaited(_progressCtrl.animateTo(0.93,
@@ -167,7 +164,8 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
     _stageCtrl.reset();
     setState(() => _stage = next);
     await _stageCtrl.forward();
-    if (next < _stageDurations.length - 1) unawaited(HapticFeedback.selectionClick());
+    if (next < _stageDurations.length - 1)
+      unawaited(HapticFeedback.selectionClick());
   }
 
   Future<void> _finishSuccess() async {
@@ -364,8 +362,7 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
             builder: (_, child) => Opacity(
               opacity: reduceMotion ? 1.0 : _stageFade.value,
               child: Transform.translate(
-                offset:
-                    Offset(0, reduceMotion ? 0.0 : _stageSlide.value),
+                offset: Offset(0, reduceMotion ? 0.0 : _stageSlide.value),
                 child: child,
               ),
             ),
@@ -441,8 +438,7 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
   Widget _buildEta(AppPalette palette, AppLocalizations l10n) {
     return Text(
       l10n.translate('onboarding.generating.eta'),
-      style:
-          AppText.of(context).labelS.copyWith(color: palette.textTertiary),
+      style: AppText.of(context).labelS.copyWith(color: palette.textTertiary),
     );
   }
 

@@ -86,9 +86,7 @@ class CoachService {
     await batch.commit();
 
     unawaited(
-      FirestoreService()
-          .addUserRole(user.uid, UserRole.coach)
-          .catchError((e) {
+      FirestoreService().addUserRole(user.uid, UserRole.coach).catchError((e) {
         debugPrint('CoachService: failed to add coach role: $e');
       }),
     );
@@ -161,8 +159,9 @@ class CoachService {
         q = q.where('district', isEqualTo: district);
       }
 
-      final orderDesc =
-          sortBy == 'avg_rating' || sortBy == 'client_count' || sortBy == 'created_at';
+      final orderDesc = sortBy == 'avg_rating' ||
+          sortBy == 'client_count' ||
+          sortBy == 'created_at';
       q = q.orderBy(sortBy, descending: orderDesc).limit(limit);
 
       final snap = await q.get();
@@ -202,7 +201,8 @@ class CoachService {
           .where((c) => c.isVerified)
           .take(3)
           .toList();
-      debugPrint('CoachService.getTopCoachesStream: ${verified.length} verified top coaches');
+      debugPrint(
+          'CoachService.getTopCoachesStream: ${verified.length} verified top coaches');
       return verified;
     });
   }
@@ -223,7 +223,8 @@ class CoachService {
       'requestedAt': FieldValue.serverTimestamp(),
       'clientUid': clientUid,
     });
-    unawaited(AnalyticsService().logEvent(name: 'coach_requested', parameters: {'coach_uid': coachUid}));
+    unawaited(AnalyticsService().logEvent(
+        name: 'coach_requested', parameters: {'coach_uid': coachUid}));
     debugPrint('CoachService: coaching request written');
   }
 
@@ -237,9 +238,9 @@ class CoachService {
         .doc(clientUid)
         .snapshots()
         .map((doc) {
-          if (!doc.exists) return null;
-          return doc.data()?['status'] as String?;
-        });
+      if (!doc.exists) return null;
+      return doc.data()?['status'] as String?;
+    });
   }
 
   // ─── Client Requests ───────────────────────────────────────────────────────
@@ -322,16 +323,14 @@ class CoachService {
     return _clients(coachUid)
         .where('status', isEqualTo: CoachClientStatus.pending.firestoreValue)
         .snapshots()
-        .map((snap) =>
-            snap.docs.map(CoachClientModel.fromFirestore).toList());
+        .map((snap) => snap.docs.map(CoachClientModel.fromFirestore).toList());
   }
 
   Stream<List<CoachClientModel>> getActiveClientsStream(String coachUid) {
     return _clients(coachUid)
         .where('status', isEqualTo: CoachClientStatus.active.firestoreValue)
         .snapshots()
-        .map((snap) =>
-            snap.docs.map(CoachClientModel.fromFirestore).toList());
+        .map((snap) => snap.docs.map(CoachClientModel.fromFirestore).toList());
   }
 
   // ─── Cache Updates ─────────────────────────────────────────────────────────

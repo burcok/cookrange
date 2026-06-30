@@ -611,7 +611,8 @@ class AuthService {
           appleCredential.familyName,
         ].where((s) => s != null && s.isNotEmpty).join(' ');
 
-        if (fullName.isNotEmpty && (user.displayName == null || user.displayName!.isEmpty)) {
+        if (fullName.isNotEmpty &&
+            (user.displayName == null || user.displayName!.isEmpty)) {
           await user.updateDisplayName(fullName);
         }
 
@@ -680,8 +681,8 @@ class AuthService {
         // Email/password
         final email = user.email;
         if (email == null) throw AuthException('user-not-found');
-        final cred = EmailAuthProvider.credential(
-            email: email, password: password);
+        final cred =
+            EmailAuthProvider.credential(email: email, password: password);
         await user.reauthenticateWithCredential(cred);
       }
 

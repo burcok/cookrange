@@ -465,8 +465,7 @@ class _GymDashboardScreenState extends State<GymDashboardScreen>
                       ),
                       child: gym.logoUrl != null
                           ? ClipRRect(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.sm),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
                               child: Image.network(gym.logoUrl!,
                                   fit: BoxFit.cover),
                             )
@@ -864,8 +863,7 @@ class _AttendanceChart extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: List.generate(7, (i) {
         final count = counts[i] ?? 0;
-        final barHeight =
-            maxCount == 0 ? 4.0 : (count / maxCount) * maxHeight;
+        final barHeight = maxCount == 0 ? 4.0 : (count / maxCount) * maxHeight;
         return _DayBar(
           label: _labels[i],
           count: count,
@@ -916,9 +914,7 @@ class _DayBar extends StatelessWidget {
           width: 28,
           height: barHeight,
           decoration: BoxDecoration(
-            color: count > 0
-                ? primary
-                : palette.border.withValues(alpha: 0.4),
+            color: count > 0 ? primary : palette.border.withValues(alpha: 0.4),
             borderRadius: BorderRadius.circular(6),
           ),
         ),
@@ -935,4 +931,3 @@ class _DayBar extends StatelessWidget {
     );
   }
 }
-

@@ -131,9 +131,7 @@ class _AppTextFieldState extends State<AppTextField> {
           maxLength: widget.maxLength,
           cursorColor: primary,
           style: t.bodyL.copyWith(
-            color: widget.enabled
-                ? palette.textPrimary
-                : palette.textTertiary,
+            color: widget.enabled ? palette.textPrimary : palette.textTertiary,
           ),
           decoration: InputDecoration(
             hintText: widget.hintText,
@@ -146,9 +144,7 @@ class _AppTextFieldState extends State<AppTextField> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.input.r),
               borderSide: BorderSide(
-                color: hasError
-                    ? palette.error
-                    : palette.border,
+                color: hasError ? palette.error : palette.border,
                 width: 1.5,
               ),
             ),

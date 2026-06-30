@@ -61,8 +61,8 @@ class ConsentService {
       }
     } catch (e, st) {
       debugPrint('ConsentService.getConsents error: $e');
-      unawaited(CrashlyticsService().recordError(e, st,
-          reason: 'ConsentService.getConsents'));
+      unawaited(CrashlyticsService()
+          .recordError(e, st, reason: 'ConsentService.getConsents'));
     }
     return map;
   }
@@ -99,7 +99,9 @@ class ConsentService {
         batch.set(
           _col(uid).doc(p.docId),
           ConsentModel(
-                  purpose: p, granted: granted, policyVersion: kLegalPolicyVersion)
+                  purpose: p,
+                  granted: granted,
+                  policyVersion: kLegalPolicyVersion)
               .toFirestore(),
         );
       }
@@ -115,8 +117,8 @@ class ConsentService {
       unawaited(CrashlyticsService().log('consent.initial_recorded'));
     } catch (e, st) {
       debugPrint('ConsentService.recordInitialConsents error: $e');
-      unawaited(CrashlyticsService().recordError(e, st,
-          reason: 'ConsentService.recordInitialConsents'));
+      unawaited(CrashlyticsService()
+          .recordError(e, st, reason: 'ConsentService.recordInitialConsents'));
     }
   }
 
@@ -134,8 +136,8 @@ class ConsentService {
       await _col(uid).doc(purpose.docId).set(model.toFirestore());
       debugPrint(
           'Consent ${granted ? "granted" : "withdrawn"}: ${purpose.docId} @ $kLegalPolicyVersion');
-      unawaited(CrashlyticsService().log(
-          'consent.${granted ? "grant" : "withdraw"}.${purpose.docId}'));
+      unawaited(CrashlyticsService()
+          .log('consent.${granted ? "grant" : "withdraw"}.${purpose.docId}'));
     } catch (e, st) {
       debugPrint('ConsentService.setConsent error: $e');
       unawaited(CrashlyticsService()

@@ -63,7 +63,8 @@ class _AccountSuspendedScreenState extends State<AccountSuspendedScreen>
   Future<void> _handleLogout() async {
     unawaited(AuthService().signOut());
     if (mounted) {
-      unawaited(Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false));
+      unawaited(Navigator.of(context)
+          .pushNamedAndRemoveUntil('/login', (route) => false));
     }
   }
 

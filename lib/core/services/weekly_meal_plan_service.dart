@@ -101,7 +101,8 @@ class WeeklyMealPlanService {
 
       final rawDays = jsonResponse['days'];
       if (rawDays is! List || rawDays.isEmpty) {
-        debugPrint('WeeklyMealPlanService: invalid or empty days in AI response');
+        debugPrint(
+            'WeeklyMealPlanService: invalid or empty days in AI response');
         return null;
       }
 
@@ -117,8 +118,8 @@ class WeeklyMealPlanService {
               : <String, String>{};
           final rawMacros = d['macros'];
           final macros = rawMacros is Map
-              ? rawMacros.map((k, v) =>
-                  MapEntry(k.toString(), (v as num? ?? 0).toDouble()))
+              ? rawMacros.map(
+                  (k, v) => MapEntry(k.toString(), (v as num? ?? 0).toDouble()))
               : <String, double>{};
           daysList.add(DayMealPlan(
             date: weekStart.add(Duration(days: offset)),
@@ -133,14 +134,15 @@ class WeeklyMealPlanService {
       }
 
       if (daysList.isEmpty) {
-        debugPrint('WeeklyMealPlanService: no valid days parsed from AI response');
+        debugPrint(
+            'WeeklyMealPlanService: no valid days parsed from AI response');
         return null;
       }
 
       final rawAvgMacros = jsonResponse['avg_macros'];
       final avgMacros = rawAvgMacros is Map
-          ? rawAvgMacros.map((k, v) =>
-              MapEntry(k.toString(), (v as num? ?? 0).toDouble()))
+          ? rawAvgMacros.map(
+              (k, v) => MapEntry(k.toString(), (v as num? ?? 0).toDouble()))
           : <String, double>{};
 
       final plan = WeeklyMealPlanModel(
@@ -148,8 +150,7 @@ class WeeklyMealPlanService {
         userId: user.uid,
         weekStartDate: weekStart,
         days: daysList,
-        totalCalories:
-            (jsonResponse['total_calories'] as num? ?? 0).toDouble(),
+        totalCalories: (jsonResponse['total_calories'] as num? ?? 0).toDouble(),
         avgDailyCalories:
             (jsonResponse['avg_daily_calories'] as num? ?? 0).toDouble(),
         avgMacros: avgMacros,
@@ -174,8 +175,11 @@ class WeeklyMealPlanService {
           .doc(user.uid)
           .collection('meal_plan_history')
           .doc(historyKey)
-          .set({...plan.toJson(), 'id': historyKey, 'archivedAt': FieldValue.serverTimestamp()})
-          .catchError((e) => debugPrint('History archive error: $e')));
+          .set({
+        ...plan.toJson(),
+        'id': historyKey,
+        'archivedAt': FieldValue.serverTimestamp()
+      }).catchError((e) => debugPrint('History archive error: $e')));
 
       return plan;
     } catch (e) {
@@ -253,9 +257,11 @@ class WeeklyMealPlanService {
     final restrictions = [...p.dietaryRestrictionIds, ...p.allergyIds];
     final allDislikes = [...p.dislikedFoodKeys, ...p.avoidIngredients];
     return {
-      'goal': p.primaryGoals.isNotEmpty ? p.primaryGoals.first : 'maintain_weight',
+      'goal':
+          p.primaryGoals.isNotEmpty ? p.primaryGoals.first : 'maintain_weight',
       'activity_level': p.activityLevel,
-      'restrictions': restrictions.isNotEmpty ? restrictions.join(', ') : 'None',
+      'restrictions':
+          restrictions.isNotEmpty ? restrictions.join(', ') : 'None',
       'allergies': p.allergyIds.isNotEmpty ? p.allergyIds.join(', ') : 'None',
       'dislikes': allDislikes.isNotEmpty ? allDislikes.join(', ') : 'None',
     };
@@ -267,7 +273,8 @@ class WeeklyMealPlanService {
     final age = p.age ?? 30;
     final gender = p.gender ?? 'Male';
     final activity = p.activityLevel;
-    final goal = p.primaryGoals.isNotEmpty ? p.primaryGoals.first : 'maintain_weight';
+    final goal =
+        p.primaryGoals.isNotEmpty ? p.primaryGoals.first : 'maintain_weight';
 
     final bmr = CalorieCalculator.calculateBMR(
         weight: weight, height: height, age: age, gender: gender);
@@ -300,7 +307,9 @@ class WeeklyMealPlanService {
       if (lastDoc != null) query = query.startAfterDocument(lastDoc);
 
       final snap = await query.get();
-      return snap.docs.map((d) => WeeklyMealPlanModel.fromFirestore(d)).toList();
+      return snap.docs
+          .map((d) => WeeklyMealPlanModel.fromFirestore(d))
+          .toList();
     } catch (e) {
       debugPrint('WeeklyMealPlanService.getMealPlanHistory error: $e');
       return [];
@@ -326,7 +335,8 @@ class WeeklyMealPlanService {
     final restrictions = [...p.dietaryRestrictionIds, ...p.allergyIds];
     final prompt = _promptService.generatePlanAlternatesPrompt(
       dailyCalorieTarget: calories,
-      goal: p.primaryGoals.isNotEmpty ? p.primaryGoals.first : 'maintain_weight',
+      goal:
+          p.primaryGoals.isNotEmpty ? p.primaryGoals.first : 'maintain_weight',
       activityLevel: p.activityLevel,
       restrictions: restrictions.isNotEmpty ? restrictions.join(', ') : 'None',
       locale: locale,
@@ -335,7 +345,8 @@ class WeeklyMealPlanService {
     try {
       final json = await _aiService.generateJson(
         prompt: prompt,
-        jsonStructure: '{"alternates":[{"name":"","description":"","avg_daily_calories":0,"avg_macros":{"protein":0,"carbs":0,"fat":0}}]}',
+        jsonStructure:
+            '{"alternates":[{"name":"","description":"","avg_daily_calories":0,"avg_macros":{"protein":0,"carbs":0,"fat":0}}]}',
       );
       final list = json['alternates'] as List? ?? [];
       return list

@@ -74,8 +74,12 @@ class NotificationService {
   static const int _pageSize = 20;
 
   /// Paginated fetch — pass [lastDoc] for subsequent pages.
-  Future<({List<NotificationModel> items, DocumentSnapshot? lastDoc, bool hasMore})>
-      getNotificationsPage({DocumentSnapshot? lastDoc}) async {
+  Future<
+      ({
+        List<NotificationModel> items,
+        DocumentSnapshot? lastDoc,
+        bool hasMore
+      })> getNotificationsPage({DocumentSnapshot? lastDoc}) async {
     final uid = currentUserId;
     if (uid == null) {
       return (items: <NotificationModel>[], lastDoc: null, hasMore: false);
@@ -94,7 +98,8 @@ class NotificationService {
     final docs = hasMore ? snap.docs.sublist(0, _pageSize) : snap.docs;
 
     return (
-      items: docs.map((d) => NotificationModel.fromMap(d.id, d.data())).toList(),
+      items:
+          docs.map((d) => NotificationModel.fromMap(d.id, d.data())).toList(),
       lastDoc: docs.isNotEmpty ? docs.last : null,
       hasMore: hasMore,
     );

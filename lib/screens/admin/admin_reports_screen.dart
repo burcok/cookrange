@@ -43,8 +43,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
         ),
         title: Text(
           l10n.translate('admin.reports_title'),
-          style: t.titleM
-              .copyWith(color: palette.textPrimary, fontWeight: FontWeight.w800),
+          style: t.titleM.copyWith(
+              color: palette.textPrimary, fontWeight: FontWeight.w800),
         ),
         bottom: TabBar(
           controller: _tabs,
@@ -93,7 +93,8 @@ class _ReportListState extends State<_ReportList> {
   bool _bulkLoading = false;
 
   Future<void> _bulkDismiss(List<ReportModel> all) async {
-    final ids = all.where((r) => _selected.contains(r.id)).map((r) => r.id).toList();
+    final ids =
+        all.where((r) => _selected.contains(r.id)).map((r) => r.id).toList();
     if (ids.isEmpty) return;
     setState(() => _bulkLoading = true);
     try {
@@ -155,8 +156,9 @@ class _ReportListState extends State<_ReportList> {
           final title = widget.showActions
               ? l10n.translate('admin.reports_empty')
               : l10n.translate('admin.reports_reviewed_empty');
-          final message =
-              widget.showActions ? l10n.translate('admin.reports_empty_msg') : '';
+          final message = widget.showActions
+              ? l10n.translate('admin.reports_empty_msg')
+              : '';
 
           return AppEmptyState(
             icon: Icons.check_circle_outline_rounded,
@@ -194,8 +196,8 @@ class _ReportListState extends State<_ReportList> {
                 child: Row(
                   children: [
                     GestureDetector(
-                      onTap: () => setState(() =>
-                          _selected.addAll(reports.map((r) => r.id))),
+                      onTap: () => setState(
+                          () => _selected.addAll(reports.map((r) => r.id))),
                       child: Row(
                         children: [
                           Icon(Icons.check_box_outline_blank_rounded,
@@ -302,15 +304,14 @@ class _BulkActionBar extends StatelessWidget {
             TextButton(
               onPressed: onDismiss,
               child: Text(l10n.translate('admin.reports_bulk_dismiss'),
-                  style:
-                      t.labelM.copyWith(color: palette.textSecondary)),
+                  style: t.labelM.copyWith(color: palette.textSecondary)),
             ),
             SizedBox(width: 4.w),
             TextButton(
               onPressed: onRemove,
               child: Text(l10n.translate('admin.reports_bulk_remove'),
-                  style: t.labelM
-                      .copyWith(color: palette.error, fontWeight: FontWeight.w700)),
+                  style: t.labelM.copyWith(
+                      color: palette.error, fontWeight: FontWeight.w700)),
             ),
           ],
         ],
@@ -349,99 +350,98 @@ class _ReportCard extends StatelessWidget {
         report.status == 'pending' ? palette.error : palette.textSecondary;
 
     return GestureDetector(
-      onTap: onToggleSelect,
-      child: AppCard(
-      padding: EdgeInsets.zero,
-      child: Padding(
-        padding: EdgeInsets.all(14.r),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ──
-            Row(
+        onTap: onToggleSelect,
+        child: AppCard(
+          padding: EdgeInsets.zero,
+          child: Padding(
+            padding: EdgeInsets.all(14.r),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (onToggleSelect != null) ...[
-                  Icon(
-                    selected
-                        ? Icons.check_box_rounded
-                        : Icons.check_box_outline_blank_rounded,
-                    size: 18.r,
-                    color: selected
-                        ? palette.error
-                        : palette.textSecondary,
-                  ),
-                  SizedBox(width: 6.w),
-                ],
-                Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                  decoration: BoxDecoration(
-                    color: badgeColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6.r),
-                  ),
-                  child: Text(
-                    typeLabel,
-                    style: t.labelS.copyWith(
-                      color: badgeColor,
-                      fontWeight: FontWeight.w700,
+                // ── Header ──
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (onToggleSelect != null) ...[
+                      Icon(
+                        selected
+                            ? Icons.check_box_rounded
+                            : Icons.check_box_outline_blank_rounded,
+                        size: 18.r,
+                        color: selected ? palette.error : palette.textSecondary,
+                      ),
+                      SizedBox(width: 6.w),
+                    ],
+                    Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6.r),
+                      ),
+                      child: Text(
+                        typeLabel,
+                        style: t.labelS.copyWith(
+                          color: badgeColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                  ),
+                    const Spacer(),
+                    Text(
+                      _timeAgo(report.timestamp),
+                      style: t.labelS.copyWith(color: palette.textSecondary),
+                    ),
+                  ],
                 ),
-                const Spacer(),
-                Text(
-                  _timeAgo(report.timestamp),
-                  style: t.labelS.copyWith(color: palette.textSecondary),
+                SizedBox(height: 10.h),
+
+                // ── Content ──
+                _InfoRow(
+                  label: l10n.translate('admin.reports_author'),
+                  value: report.authorId ?? '—',
                 ),
+                SizedBox(height: 4.h),
+                _InfoRow(
+                  label: l10n.translate('admin.reports_reported_by'),
+                  value: report.reporterId,
+                ),
+                SizedBox(height: 4.h),
+                _InfoRow(
+                  label: l10n.translate('admin.reports_reason'),
+                  value: report.reason,
+                  valueItalic: true,
+                ),
+                SizedBox(height: 12.h),
+
+                // ── Actions / Status ──
+                if (showActions)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppButton(
+                          label: l10n.translate('admin.reports_dismiss'),
+                          variant: AppButtonVariant.ghost,
+                          onPressed: () => _dismiss(context, report, l10n),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: AppButton(
+                          label: l10n.translate('admin.reports_remove'),
+                          variant: AppButtonVariant.destructive,
+                          onPressed: () =>
+                              _confirmRemove(context, report, l10n),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  _StatusChip(status: report.status),
               ],
             ),
-            SizedBox(height: 10.h),
-
-            // ── Content ──
-            _InfoRow(
-              label: l10n.translate('admin.reports_author'),
-              value: report.authorId ?? '—',
-            ),
-            SizedBox(height: 4.h),
-            _InfoRow(
-              label: l10n.translate('admin.reports_reported_by'),
-              value: report.reporterId,
-            ),
-            SizedBox(height: 4.h),
-            _InfoRow(
-              label: l10n.translate('admin.reports_reason'),
-              value: report.reason,
-              valueItalic: true,
-            ),
-            SizedBox(height: 12.h),
-
-            // ── Actions / Status ──
-            if (showActions)
-              Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      label: l10n.translate('admin.reports_dismiss'),
-                      variant: AppButtonVariant.ghost,
-                      onPressed: () => _dismiss(context, report, l10n),
-                    ),
-                  ),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: AppButton(
-                      label: l10n.translate('admin.reports_remove'),
-                      variant: AppButtonVariant.destructive,
-                      onPressed: () => _confirmRemove(context, report, l10n),
-                    ),
-                  ),
-                ],
-              )
-            else
-              _StatusChip(status: report.status),
-          ],
-        ),
-      ),
-    ));
+          ),
+        ));
   }
 
   void _dismiss(
@@ -462,11 +462,12 @@ class _ReportCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: palette.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text(
           l10n.translate('admin.reports_remove_confirm'),
-          style:
-              t.titleM.copyWith(color: palette.textPrimary, fontWeight: FontWeight.w700),
+          style: t.titleM.copyWith(
+              color: palette.textPrimary, fontWeight: FontWeight.w700),
         ),
         content: Text(
           l10n
@@ -489,8 +490,8 @@ class _ReportCard extends StatelessWidget {
             },
             child: Text(
               l10n.translate('admin.reports_remove_yes'),
-              style: t.labelM.copyWith(
-                  color: palette.error, fontWeight: FontWeight.w700),
+              style: t.labelM
+                  .copyWith(color: palette.error, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -531,8 +532,7 @@ class _InfoRow extends StatelessWidget {
             text: value,
             style: t.labelS.copyWith(
               color: palette.textPrimary,
-              fontStyle:
-                  valueItalic ? FontStyle.italic : FontStyle.normal,
+              fontStyle: valueItalic ? FontStyle.italic : FontStyle.normal,
             ),
           ),
         ],

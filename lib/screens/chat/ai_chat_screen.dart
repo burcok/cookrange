@@ -44,7 +44,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
     _messages = _history.messages;
     final initial = widget.initialMessage;
     if (initial != null && initial.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _sendMessage(initial));
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _sendMessage(initial));
     }
   }
 
@@ -238,7 +239,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
                             child: Center(
                               child: AiCreditBadge(
                                 uid: user.uid,
-                                isPremium: user.subscriptionTier.isPremiumOrAbove,
+                                isPremium:
+                                    user.subscriptionTier.isPremiumOrAbove,
                               ),
                             ),
                           );
@@ -248,7 +250,9 @@ class _AIChatScreenState extends State<AIChatScreen> {
                       GestureDetector(
                         onTap: () {
                           Navigator.pop(context);
-                          context.read<NavigationProvider>().toggleVoiceAssistant(true);
+                          context
+                              .read<NavigationProvider>()
+                              .toggleVoiceAssistant(true);
                         },
                         child: Container(
                           margin: EdgeInsets.only(right: 16.w),
@@ -347,8 +351,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
   }
 
-  Widget _buildEmptyState(
-      AppLocalizations l10n, AppPalette palette, AppText appText, Color primary) {
+  Widget _buildEmptyState(AppLocalizations l10n, AppPalette palette,
+      AppText appText, Color primary) {
     final suggestions = l10n.translateArray('ai_chat.suggestions');
     return ListView(
       padding: EdgeInsets.fromLTRB(20.w, kToolbarHeight + 24.h, 20.w, 24.h),
@@ -369,7 +373,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 ),
               ],
             ),
-            child: Icon(Icons.smart_toy_outlined, size: 38.sp, color: Colors.white),
+            child: Icon(Icons.smart_toy_outlined,
+                size: 38.sp, color: Colors.white),
           ),
         ),
         SizedBox(height: 16.h),
@@ -406,8 +411,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
                     sigmaY: AppPalette.glassBlurSubtle,
                   ),
                   child: Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 16.w, vertical: 12.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                     decoration: BoxDecoration(
                       color: palette.glassFill,
                       borderRadius: BorderRadius.circular(14.r),
@@ -451,13 +456,11 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
   }
 
-  Widget _buildMessageList(
-      AppPalette palette, Color primary, ThemeData theme) {
+  Widget _buildMessageList(AppPalette palette, Color primary, ThemeData theme) {
     final l10n = AppLocalizations.of(context);
     return ListView.builder(
       controller: _scrollController,
-      padding: EdgeInsets.fromLTRB(
-          16.w, kToolbarHeight + 16.h, 16.w, 16.h),
+      padding: EdgeInsets.fromLTRB(16.w, kToolbarHeight + 16.h, 16.w, 16.h),
       itemCount: _messages.length,
       itemBuilder: (context, i) {
         final msg = _messages[i];
@@ -639,8 +642,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
   }
 
   // Sent bubble: brand gradient + glow shadow
-  Widget _buildSentBubble(AIChatMessage msg, BorderRadius br, AppPalette palette,
-      Color primary, ThemeData theme) {
+  Widget _buildSentBubble(AIChatMessage msg, BorderRadius br,
+      AppPalette palette, Color primary, ThemeData theme) {
     final appText = AppText.of(context);
     return Container(
       constraints: BoxConstraints(maxWidth: 0.72.sw),
@@ -669,9 +672,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
   }
 
-  // Received bubble: BackdropFilter + glassFill + brand-color left border
-  Widget _buildReceivedBubble(AIChatMessage msg, BorderRadius br,
-      AppPalette palette, Color primary) {
+  Widget _buildReceivedBubble(
+      AIChatMessage msg, BorderRadius br, AppPalette palette, Color primary) {
     final appText = AppText.of(context);
     return ClipRRect(
       borderRadius: br,
@@ -679,17 +681,12 @@ class _AIChatScreenState extends State<AIChatScreen> {
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           constraints: BoxConstraints(maxWidth: 0.72.sw),
-          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
           decoration: BoxDecoration(
             color: palette.glassFill,
             borderRadius: br,
-            border: Border(
-              top: BorderSide(color: palette.glassStroke, width: 0.5),
-              right: BorderSide(color: palette.glassStroke, width: 0.5),
-              bottom: BorderSide(color: palette.glassStroke, width: 0.5),
-              // Brand-color left border accent for AI messages
-              left: BorderSide(
-                  color: palette.info.withValues(alpha: 0.60), width: 2),
+            border: Border.all(
+              color: palette.glassStroke,
+              width: 0.5,
             ),
             boxShadow: [
               BoxShadow(
@@ -699,13 +696,29 @@ class _AIChatScreenState extends State<AIChatScreen> {
               ),
             ],
           ),
-          child: Text(
-            msg.content,
-            style: appText.bodyM.copyWith(
-              fontSize: 14.sp,
-              color: palette.textPrimary,
-              height: 1.45,
-            ),
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 2,
+                  color: palette.info.withValues(alpha: 0.60),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                child: Text(
+                  msg.content,
+                  style: appText.bodyM.copyWith(
+                    fontSize: 14.sp,
+                    color: palette.textPrimary,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -733,7 +746,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 ),
               ],
             ),
-            child: Icon(Icons.smart_toy_outlined, size: 14.sp, color: Colors.white),
+            child: Icon(Icons.smart_toy_outlined,
+                size: 14.sp, color: Colors.white),
           ),
           SizedBox(width: 8.w),
           ClipRRect(
@@ -777,8 +791,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
   // Input bar: ClipRect + BackdropFilter glass + glassStroke top border;
   // send button → brand gradient circle + glow
-  Widget _buildInputBar(AppLocalizations l10n, AppPalette palette, AppText appText,
-      Color primary, ThemeData theme) {
+  Widget _buildInputBar(AppLocalizations l10n, AppPalette palette,
+      AppText appText, Color primary, ThemeData theme) {
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(
@@ -877,8 +891,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
                             ),
                           ],
                   ),
-                  child:
-                      Icon(Icons.send_rounded, color: Colors.white, size: 20.sp),
+                  child: Icon(Icons.send_rounded,
+                      color: Colors.white, size: 20.sp),
                 ),
               ),
             ],

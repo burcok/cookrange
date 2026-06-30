@@ -92,7 +92,8 @@ class _CommunityScreenState extends State<CommunityScreen>
                 ? _cachedFollowingIds
                 : null,
         gymOnly: _selectedFilter == 'Gym',
-        topic: (_selectedFilter == 'Global' || _selectedFilter == 'Following' ||
+        topic: (_selectedFilter == 'Global' ||
+                _selectedFilter == 'Following' ||
                 _selectedFilter == 'Latest Updates')
             ? _selectedTopic
             : null,
@@ -164,7 +165,9 @@ class _CommunityScreenState extends State<CommunityScreen>
         break;
       case 'Following':
         final uid = context.read<UserProvider>().user?.uid;
-        final ids = uid != null ? await FollowService().getFollowingIds(uid) : <String>[];
+        final ids = uid != null
+            ? await FollowService().getFollowingIds(uid)
+            : <String>[];
         _cachedFollowingIds = ids;
         if (!mounted) return;
         setState(() {
@@ -217,25 +220,6 @@ class _CommunityScreenState extends State<CommunityScreen>
   }
 
 
-  IconData _getFilterIcon(String filter) {
-    switch (filter) {
-      case "Latest Updates":
-        return Icons.access_time;
-      case "Global":
-        return Icons.public;
-      case "Friends Only":
-        return Icons.people;
-      case "Following":
-        return Icons.person_search_rounded;
-      case "Gym":
-        return Icons.fitness_center;
-      case "Saved":
-        return Icons.bookmark_rounded;
-      default:
-        return Icons.circle;
-    }
-  }
-
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
@@ -276,7 +260,10 @@ class _CommunityScreenState extends State<CommunityScreen>
               // Standard Header with Menu and Notifications (like Home)
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
-                    AppSpacing.xl, MediaQuery.of(context).padding.top + AppSpacing.xl, AppSpacing.xl, AppSpacing.xl),
+                    AppSpacing.xl,
+                    MediaQuery.of(context).padding.top + AppSpacing.xl,
+                    AppSpacing.xl,
+                    AppSpacing.xl),
                 sliver: const SliverToBoxAdapter(
                   child: MainHeader(),
                 ),
@@ -302,9 +289,11 @@ class _CommunityScreenState extends State<CommunityScreen>
                   child: _isLoadingGroups
                       ? Center(
                           child: CircularProgressIndicator(
-                              color: context.watch<ThemeProvider>().primaryColor))
+                              color:
+                                  context.watch<ThemeProvider>().primaryColor))
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xl),
                           scrollDirection: Axis.horizontal,
                           physics: const BouncingScrollPhysics(),
                           itemCount: _groups.length + 1, // +1 for "New Group"
@@ -313,7 +302,8 @@ class _CommunityScreenState extends State<CommunityScreen>
                               return _buildNewGroupItem(appLoc);
                             }
                             final group = _groups[index - 1];
-                            return RepaintBoundary(child: _buildGroupItem(group));
+                            return RepaintBoundary(
+                                child: _buildGroupItem(group));
                           },
                         ),
                 ),
@@ -349,32 +339,28 @@ class _CommunityScreenState extends State<CommunityScreen>
 
               const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
 
-              // Inline feed-filter pills (canonical app-wide filter bar).
+              // ── Feed mode tabs ──────────────────────────────────────────────
+              // Text-only scrollable tabs — active = filled pill, inactive = ghost.
+              // Icons removed intentionally: pure text reads faster here.
               SliverToBoxAdapter(
-                child: AppFilterBar(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                  children: _filters
-                      .map((f) => AppFilterPill(
-                            label: appLoc.translate(filterKeys[f]!),
-                            icon: _getFilterIcon(f),
-                            active: _selectedFilter == f,
-                            onTap: () => _onFilterChanged(f),
-                          ))
-                      .toList(),
+                child: _FeedModeTabs(
+                  filters: _filters,
+                  filterKeys: filterKeys,
+                  selected: _selectedFilter,
+                  onChanged: _onFilterChanged,
                 ),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
-
-              // Topic filter row — shown only for Global, Latest Updates, Following
+              // ── Topic chips ─────────────────────────────────────────────────
+              // Visually distinct from feed tabs: smaller height, colored-dot
+              // accent, no icons — clearly a secondary refinement layer.
               if (_selectedFilter == 'Global' ||
                   _selectedFilter == 'Latest Updates' ||
                   _selectedFilter == 'Following')
                 SliverToBoxAdapter(
-                  child: _TopicFilterRow(
+                  child: _TopicChips(
                     selectedTopic: _selectedTopic,
-                    onTopicSelected: _onTopicSelected,
+                    onSelected: _onTopicSelected,
                   ),
                 ),
 
@@ -386,8 +372,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                   onPostCreated: () {
                     if (_scrollController.hasClients) {
                       _scrollController.animateTo(0,
-                          duration: AppMotion.slow,
-                          curve: Curves.easeOut);
+                          duration: AppMotion.slow, curve: Curves.easeOut);
                     }
                   },
                 ),
@@ -447,7 +432,8 @@ class _CommunityScreenState extends State<CommunityScreen>
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(emptyIcon, size: 48, color: palette.textTertiary),
+                            Icon(emptyIcon,
+                                size: 48, color: palette.textTertiary),
                             const SizedBox(height: AppSpacing.md),
                             Text(
                               appLoc.translate(emptyKey),
@@ -466,20 +452,29 @@ class _CommunityScreenState extends State<CommunityScreen>
                         final post = posts[index];
                         return Padding(
                           padding: const EdgeInsets.only(
-                              bottom: AppSpacing.lg, left: AppSpacing.xl, right: AppSpacing.xl),
+                              bottom: AppSpacing.lg,
+                              left: AppSpacing.xl,
+                              right: AppSpacing.xl),
                           child: RepaintBoundary(
                             child: GlassPostCard(
                               post: post,
-                              onTap: () => Navigator.push(context,
-                                  AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
+                              onTap: () => Navigator.push(
+                                  context,
+                                  AppTransitions.slideUp(
+                                      PostDetailScreen(postId: post.id))),
                               onLike: () async {
                                 await _service.likePost(post.id);
                               },
-                              onComment: () => Navigator.push(context,
-                                  AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
+                              onComment: () => Navigator.push(
+                                  context,
+                                  AppTransitions.slideUp(
+                                      PostDetailScreen(postId: post.id))),
                               onShare: () {
-                                final box = context.findRenderObject() as RenderBox?;
-                                final rect = box != null ? box.localToGlobal(Offset.zero) & box.size : null;
+                                final box =
+                                    context.findRenderObject() as RenderBox?;
+                                final rect = box != null
+                                    ? box.localToGlobal(Offset.zero) & box.size
+                                    : null;
                                 SharingService().sharePost(
                                   context,
                                   caption: post.content,
@@ -510,17 +505,23 @@ class _CommunityScreenState extends State<CommunityScreen>
                       return RepaintBoundary(
                         child: Padding(
                           padding: const EdgeInsets.only(
-                              bottom: AppSpacing.lg, left: AppSpacing.xl, right: AppSpacing.xl),
+                              bottom: AppSpacing.lg,
+                              left: AppSpacing.xl,
+                              right: AppSpacing.xl),
                           child: GlassPostCard(
                             post: post,
-                            onTap: () => Navigator.push(context,
-                                AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
+                            onTap: () => Navigator.push(
+                                context,
+                                AppTransitions.slideUp(
+                                    PostDetailScreen(postId: post.id))),
                             onLike: () => _service.likePost(post.id),
-                            onComment: () => Navigator.push(context,
-                                AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
+                            onComment: () => Navigator.push(
+                                context,
+                                AppTransitions.slideUp(
+                                    PostDetailScreen(postId: post.id))),
                             onShare: () {},
-                            onReaction: (emoji) =>
-                                _service.toggleReaction(postId: post.id, emoji: emoji),
+                            onReaction: (emoji) => _service.toggleReaction(
+                                postId: post.id, emoji: emoji),
                           ),
                         ),
                       );
@@ -531,8 +532,7 @@ class _CommunityScreenState extends State<CommunityScreen>
 
               // Pagination footer: skeleton while loading, end-state when done
               SliverToBoxAdapter(
-                child: _buildPaginationFooter(
-                    appLoc, palette, textStyles),
+                child: _buildPaginationFooter(appLoc, palette, textStyles),
               ),
 
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -543,8 +543,8 @@ class _CommunityScreenState extends State<CommunityScreen>
     );
   }
 
-  Widget _buildPaginationFooter(AppLocalizations appLoc, AppPalette palette,
-      AppText textStyles) {
+  Widget _buildPaginationFooter(
+      AppLocalizations appLoc, AppPalette palette, AppText textStyles) {
     if (_isLoadingMore) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(
@@ -677,44 +677,168 @@ class _CommunityScreenState extends State<CommunityScreen>
   }
 }
 
-// ─── Topic filter chip row ────────────────────────────────────────────────────
+// ─── Feed mode tabs ────────────────────────────────────────────────────────────
+// Text-only horizontal tabs; active = filled rounded pill, inactive = ghost text.
 
-class _TopicFilterRow extends StatelessWidget {
-  final String? selectedTopic;
-  final ValueChanged<String?> onTopicSelected;
+class _FeedModeTabs extends StatelessWidget {
+  final List<String> filters;
+  final Map<String, String> filterKeys;
+  final String selected;
+  final ValueChanged<String> onChanged;
 
-  const _TopicFilterRow({
-    required this.selectedTopic,
-    required this.onTopicSelected,
+  const _FeedModeTabs({
+    required this.filters,
+    required this.filterKeys,
+    required this.selected,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    final appLoc = AppLocalizations.of(context);
+    final primary = context.watch<ThemeProvider>().primaryColor;
     final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+    final l10n = AppLocalizations.of(context);
 
-    return AppFilterBar(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-      children: [
-        AppFilterPill(
-          label: appLoc.translate('community.topic_all'),
-          icon: Icons.tag_rounded,
-          active: selectedTopic == null,
-          accent: palette.textSecondary,
-          onTap: () => onTopicSelected(null),
-        ),
-        ...CommunityTopics.all.map((topic) {
-          final color = CommunityTopics.colorFor(topic, palette);
-          return AppFilterPill(
-            label: appLoc.translate(CommunityTopics.labelKeyFor(topic)),
-            icon: Icons.label_outline_rounded,
-            active: selectedTopic == topic,
-            accent: color,
-            onTap: () =>
-                onTopicSelected(selectedTopic == topic ? null : topic),
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+        physics: const BouncingScrollPhysics(),
+        itemCount: filters.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (context, i) {
+          final f = filters[i];
+          final isActive = selected == f;
+          return GestureDetector(
+            onTap: () => onChanged(f),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? primary
+                    : palette.surfaceVariant.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isActive
+                      ? primary
+                      : palette.border.withValues(alpha: 0.5),
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                l10n.translate(filterKeys[f]!),
+                style: t.labelM.copyWith(
+                  color: isActive
+                      ? Colors.white
+                      : palette.textSecondary,
+                  fontWeight:
+                      isActive ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
           );
-        }),
-      ],
+        },
+      ),
     );
   }
 }
+
+// ─── Topic chips ───────────────────────────────────────────────────────────────
+// Compact 28px chips with a colored dot indicator — visually subordinate to
+// the feed mode tabs so the two layers never look like the same control.
+
+class _TopicChips extends StatelessWidget {
+  final String? selectedTopic;
+  final ValueChanged<String?> onSelected;
+
+  const _TopicChips({
+    required this.selectedTopic,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    // "All" + topic list
+    final items = <(String?, Color, String)>[
+      (null, palette.textTertiary, l10n.translate('community.topic_all')),
+      ...CommunityTopics.all.map((topic) => (
+            topic,
+            CommunityTopics.colorFor(topic, palette),
+            l10n.translate(CommunityTopics.labelKeyFor(topic)),
+          )),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: SizedBox(
+        height: 28,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          physics: const BouncingScrollPhysics(),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 6),
+          itemBuilder: (context, i) {
+            final (topic, color, label) = items[i];
+            final isActive = selectedTopic == topic;
+
+            return GestureDetector(
+              onTap: () => onSelected(isActive && topic != null ? null : topic),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? color.withValues(alpha: 0.15)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isActive
+                        ? color.withValues(alpha: 0.55)
+                        : palette.border.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? color
+                            : palette.textTertiary.withValues(alpha: 0.5),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      label,
+                      style: t.labelS.copyWith(
+                        color: isActive ? color : palette.textSecondary,
+                        fontWeight:
+                            isActive ? FontWeight.w700 : FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+

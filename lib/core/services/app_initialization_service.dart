@@ -189,9 +189,8 @@ class AppInitializationService {
       // TODO: switch androidProvider back to playIntegrity before Play Store submission.
       await FirebaseAppCheck.instance.activate(
         androidProvider: AndroidProvider.debug,
-        appleProvider: kReleaseMode
-            ? AppleProvider.deviceCheck
-            : AppleProvider.debug,
+        appleProvider:
+            kReleaseMode ? AppleProvider.deviceCheck : AppleProvider.debug,
       );
 
       // Explicitly configure Firestore persistence + unlimited cache

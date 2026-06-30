@@ -409,9 +409,8 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay>
       scrollDirection: Axis.horizontal,
       padding: EdgeInsets.symmetric(horizontal: _scale(context, 20)),
       child: Row(
-        children: suggestions
-            .map((s) => _suggestionChip(context, s, nav))
-            .toList(),
+        children:
+            suggestions.map((s) => _suggestionChip(context, s, nav)).toList(),
       ),
     );
   }

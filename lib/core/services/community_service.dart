@@ -8,6 +8,7 @@ import 'analytics_service.dart';
 import 'firestore_service.dart';
 import 'log_service.dart';
 import 'notification_service.dart';
+import 'achievement_service.dart';
 
 class CommunityService {
   static final CommunityService _instance = CommunityService._internal();
@@ -57,12 +58,10 @@ class CommunityService {
     if (_keywordsCacheTime == null ||
         now.difference(_keywordsCacheTime!) > const Duration(minutes: 5)) {
       try {
-        final doc = await _firestore
-            .collection('admin_config')
-            .doc('global')
-            .get();
-        _cachedBlockedKeywords = List<String>.from(
-            doc.data()?['blocked_keywords'] as List? ?? []);
+        final doc =
+            await _firestore.collection('admin_config').doc('global').get();
+        _cachedBlockedKeywords =
+            List<String>.from(doc.data()?['blocked_keywords'] as List? ?? []);
         _keywordsCacheTime = now;
       } catch (_) {
         _cachedBlockedKeywords = [];
@@ -99,8 +98,14 @@ class CommunityService {
     if (authorIds != null && authorIds.isNotEmpty) {
       query = query.where('authorId', whereIn: authorIds.take(30).toList());
     } else if (gymOnly) {
-      query = query.where('tags',
-          arrayContainsAny: ['gym', 'fitness', 'workout', 'training', 'crossfit', 'powerlifting']);
+      query = query.where('tags', arrayContainsAny: [
+        'gym',
+        'fitness',
+        'workout',
+        'training',
+        'crossfit',
+        'powerlifting'
+      ]);
     } else if (topic != null && topic.isNotEmpty) {
       query = query.where('tags', arrayContains: topic);
     }
@@ -110,8 +115,8 @@ class CommunityService {
         .limit(limit)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) =>
-                CommunityPost.fromMap(doc.data(), doc.id, currentUserId: userId))
+            .map((doc) => CommunityPost.fromMap(doc.data(), doc.id,
+                currentUserId: userId))
             .where((p) => !blockedIds.contains(p.author.id))
             .toList());
   }
@@ -129,8 +134,8 @@ class CommunityService {
         .limit(limit)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) =>
-                CommunityPost.fromMap(doc.data(), doc.id, currentUserId: userId))
+            .map((doc) => CommunityPost.fromMap(doc.data(), doc.id,
+                currentUserId: userId))
             .where((p) => !blockedIds.contains(p.author.id))
             .toList());
   }
@@ -172,8 +177,14 @@ class CommunityService {
       if (authorIds != null && authorIds.isNotEmpty) {
         query = query.where('authorId', whereIn: authorIds.take(30).toList());
       } else if (gymOnly) {
-        query = query.where('tags',
-            arrayContainsAny: ['gym', 'fitness', 'workout', 'training', 'crossfit', 'powerlifting']);
+        query = query.where('tags', arrayContainsAny: [
+          'gym',
+          'fitness',
+          'workout',
+          'training',
+          'crossfit',
+          'powerlifting'
+        ]);
       } else if (topic != null && topic.isNotEmpty) {
         query = query.where('tags', arrayContains: topic);
       }
@@ -253,6 +264,13 @@ class CommunityService {
         'post_type': postType.value,
       },
     ));
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      unawaited(AchievementService().checkAndGrant(
+        currentUser.uid,
+        justPosted: true,
+      ));
+    }
 
     // Mention notification fan-out (fire-and-forget, never blocks post creation)
     final mentions = metadata['mentions'];
@@ -503,7 +521,8 @@ class CommunityService {
       if (likeDoc.exists) {
         // Unlike
         transaction.delete(likeRef);
-        transaction.update(commentRef, {'likesCount': FieldValue.increment(-1)});
+        transaction
+            .update(commentRef, {'likesCount': FieldValue.increment(-1)});
         return false;
       } else {
         // Like
@@ -520,9 +539,11 @@ class CommunityService {
     });
 
     if (liked) {
-      unawaited(_logger.logActivity('comment_like', {'post_id': postId, 'comment_id': commentId}));
+      unawaited(_logger.logActivity(
+          'comment_like', {'post_id': postId, 'comment_id': commentId}));
     } else {
-      unawaited(_logger.logActivity('comment_unlike', {'post_id': postId, 'comment_id': commentId}));
+      unawaited(_logger.logActivity(
+          'comment_unlike', {'post_id': postId, 'comment_id': commentId}));
     }
 
     // Notification fan-out (skip self-like)
@@ -588,11 +609,10 @@ class CommunityService {
   Future<void> _sendCommentNotification(
       String postId, CommunityUser commenter) async {
     try {
-      final postSnap =
-          await _firestore.collection('posts').doc(postId).get();
+      final postSnap = await _firestore.collection('posts').doc(postId).get();
       if (!postSnap.exists) return;
-      final authorId = (postSnap.data()?['author'] as Map<String, dynamic>?)?[
-          'id'] as String?;
+      final authorId = (postSnap.data()?['author']
+          as Map<String, dynamic>?)?['id'] as String?;
       final myId = _currentUserId;
       if (authorId == null || authorId == myId) return;
       await NotificationService().sendNotification(
@@ -648,7 +668,10 @@ class CommunityService {
       final items = snap.docs
           .map((d) => CommunityComment.fromMap(d.data(), d.id))
           .toList();
-      return (items: items, lastDoc: snap.docs.isNotEmpty ? snap.docs.last : null);
+      return (
+        items: items,
+        lastDoc: snap.docs.isNotEmpty ? snap.docs.last : null
+      );
     } catch (e) {
       debugPrint('getCommentsPage error: $e');
       return (items: <CommunityComment>[], lastDoc: null);
@@ -881,8 +904,8 @@ class CommunityService {
     if (userId == 'guest') return;
     try {
       final postSnap = await _firestore.collection('posts').doc(postId).get();
-      final authorId =
-          (postSnap.data()?['author'] as Map<String, dynamic>?)?['id'] as String?;
+      final authorId = (postSnap.data()?['author']
+          as Map<String, dynamic>?)?['id'] as String?;
       await _firestore.collection('reports').add({
         'reporterId': userId,
         'targetType': 'post',
@@ -893,7 +916,8 @@ class CommunityService {
         'status': 'pending',
         'timestamp': FieldValue.serverTimestamp(),
       });
-      unawaited(_logger.logActivity('post_report', {'post_id': postId, 'reason': reason}));
+      unawaited(_logger
+          .logActivity('post_report', {'post_id': postId, 'reason': reason}));
     } catch (e) {
       _logger.error('reportPost failed', error: e);
     }
@@ -940,8 +964,8 @@ class CommunityService {
           .collection('comments')
           .doc(commentId)
           .get();
-      final authorId =
-          (commentSnap.data()?['author'] as Map<String, dynamic>?)?['id'] as String?;
+      final authorId = (commentSnap.data()?['author']
+          as Map<String, dynamic>?)?['id'] as String?;
       await _firestore.collection('reports').add({
         'reporterId': userId,
         'targetType': 'comment',

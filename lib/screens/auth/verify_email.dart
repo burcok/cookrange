@@ -37,8 +37,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       return;
     }
     _startCountdown();
-    _timer =
-        Timer.periodic(const Duration(seconds: 5), (_) => _checkEmailVerified());
+    _timer = Timer.periodic(
+        const Duration(seconds: 5), (_) => _checkEmailVerified());
   }
 
   @override
@@ -206,7 +206,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                           width: 36.r,
                           height: 36.r,
                           decoration: BoxDecoration(
-                            color: palette.surfaceVariant.withValues(alpha: 0.6),
+                            color:
+                                palette.surfaceVariant.withValues(alpha: 0.6),
                             shape: BoxShape.circle,
                             border: Border.all(color: palette.border),
                           ),
@@ -222,8 +223,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                     bordered: true,
                     elevated: false,
                     padding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.lg.w,
-                        vertical: AppSpacing.xl.h),
+                        horizontal: AppSpacing.lg.w, vertical: AppSpacing.xl.h),
                     child: Column(
                       children: [
                         Image.asset(
@@ -310,8 +310,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                     child: AppButton(
                       label: l10n.translate('auth.resend_btn'),
                       loading: _isSending,
-                      onPressed:
-                          _canResend && !_isSending ? _sendVerificationEmail : null,
+                      onPressed: _canResend && !_isSending
+                          ? _sendVerificationEmail
+                          : null,
                     ),
                   ),
                   SizedBox(height: AppSpacing.md.h),

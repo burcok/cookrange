@@ -39,8 +39,9 @@ class AdminStatusService {
       }
 
       final firestoreMinVersion = await _firestoreMinVersion();
-      final minVersion =
-          (firestoreMinVersion?.isNotEmpty ?? false) ? firestoreMinVersion! : rc.minVersion;
+      final minVersion = (firestoreMinVersion?.isNotEmpty ?? false)
+          ? firestoreMinVersion!
+          : rc.minVersion;
       if (minVersion.isNotEmpty && await _isUpdateRequired(minVersion)) {
         _log.warning('App update required. Min: $minVersion',
             service: _serviceName);
@@ -97,7 +98,8 @@ class AdminStatusService {
 
   Future<bool?> _firestoreMaintenanceMode() async {
     try {
-      final doc = await _firestore.collection('admin_config').doc('global').get();
+      final doc =
+          await _firestore.collection('admin_config').doc('global').get();
       if (doc.exists) return doc.data()?['maintenance_mode'] as bool?;
     } catch (_) {}
     return null;
@@ -105,7 +107,8 @@ class AdminStatusService {
 
   Future<String?> _firestoreMinVersion() async {
     try {
-      final doc = await _firestore.collection('admin_config').doc('global').get();
+      final doc =
+          await _firestore.collection('admin_config').doc('global').get();
       if (doc.exists) return doc.data()?['min_version'] as String?;
     } catch (_) {}
     return null;

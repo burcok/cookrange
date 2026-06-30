@@ -133,9 +133,13 @@ class _GymAnalyticsScreenState extends State<GymAnalyticsScreen>
         csv,
         subject: '$_resolvedGymName — Analytics Export',
       );
-      if (mounted) AppSnackBar.success(context, l10n.translate('gym.analytics_export_success'));
+      if (mounted)
+        AppSnackBar.success(
+            context, l10n.translate('gym.analytics_export_success'));
     } catch (e) {
-      if (mounted) AppSnackBar.error(context, l10n.translate('gym.analytics_export_error'));
+      if (mounted)
+        AppSnackBar.error(
+            context, l10n.translate('gym.analytics_export_error'));
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -162,9 +166,8 @@ class _GymAnalyticsScreenState extends State<GymAnalyticsScreen>
           children: [
             Text(
               _resolvedGymName,
-              style: AppText.of(context)
-                  .titleM
-                  .copyWith(color: palette.textPrimary, fontWeight: FontWeight.w800),
+              style: AppText.of(context).titleM.copyWith(
+                  color: palette.textPrimary, fontWeight: FontWeight.w800),
             ),
             Text(
               l10n.translate('gym.analytics_title'),
@@ -230,28 +233,43 @@ class _GymAnalyticsScreenState extends State<GymAnalyticsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. Overview stats grid
-            _OverviewGrid(analytics: analytics, palette: palette, primary: primary, l10n: l10n),
+            _OverviewGrid(
+                analytics: analytics,
+                palette: palette,
+                primary: primary,
+                l10n: l10n),
             const SizedBox(height: 16),
 
             // 2. Weekly trend
             _WeeklyTrendCard(
-                analytics: analytics, palette: palette, primary: primary, l10n: l10n),
+                analytics: analytics,
+                palette: palette,
+                primary: primary,
+                l10n: l10n),
             const SizedBox(height: 16),
 
             // 3. Heatmap
             _HeatmapCard(
-                analytics: analytics, palette: palette, primary: primary, l10n: l10n),
+                analytics: analytics,
+                palette: palette,
+                primary: primary,
+                l10n: l10n),
             const SizedBox(height: 16),
 
             // 4. At-risk members
             if (analytics.atRiskMembers.isNotEmpty) ...[
-              _AtRiskSection(analytics: analytics, palette: palette, l10n: l10n),
+              _AtRiskSection(
+                  analytics: analytics, palette: palette, l10n: l10n),
               const SizedBox(height: 16),
             ],
 
             // 5. Top performers
             if (analytics.topMembers.isNotEmpty) ...[
-              _TopPerformersSection(analytics: analytics, palette: palette, primary: primary, l10n: l10n),
+              _TopPerformersSection(
+                  analytics: analytics,
+                  palette: palette,
+                  primary: primary,
+                  l10n: l10n),
             ],
           ],
         ),
@@ -452,8 +470,9 @@ class _BarChart extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: List.generate(data.length, (i) {
         final count = data[i];
-        final barHeight =
-            maxVal == 0 ? 4.0 : (count / maxVal * maxBarHeight).clamp(4.0, maxBarHeight);
+        final barHeight = maxVal == 0
+            ? 4.0
+            : (count / maxVal * maxBarHeight).clamp(4.0, maxBarHeight);
         final age = data.length - 1 - i; // 0 = newest
         final opacity = 0.4 + (1.0 - age / (data.length - 1)) * 0.6;
         final label = i == data.length - 1 ? '0w' : '$age$weeksAgoLabel';
@@ -546,17 +565,19 @@ class _HeatmapCard extends StatelessWidget {
           Row(
             children: [
               const SizedBox(width: 36), // day label column
-              ...List.generate(4, (s) => Expanded(
-                    child: Text(
-                      timeSlots[s],
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: palette.textTertiary,
-                      ),
-                    ),
-                  )),
+              ...List.generate(
+                  4,
+                  (s) => Expanded(
+                        child: Text(
+                          timeSlots[s],
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: palette.textTertiary,
+                          ),
+                        ),
+                      )),
             ],
           ),
           const SizedBox(height: 8),
@@ -660,8 +681,7 @@ class _AtRiskSectionState extends State<_AtRiskSection> {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: widget.palette.warning.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -750,8 +770,7 @@ class _AtRiskTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    member.displayName ??
-                        l10n.translate('gym.member_no_name'),
+                    member.displayName ?? l10n.translate('gym.member_no_name'),
                     style: AppText.of(context).bodyM.copyWith(
                           color: palette.textPrimary,
                           fontWeight: FontWeight.w600,

@@ -474,6 +474,16 @@ service cloud.firestore {
       allow read, write: if isAuthenticated() && request.auth.uid == uid;
     }
 
+    // ─── AI weekly recaps (owner-only) ────────────────────────────────────────
+    match /users/{uid}/ai_weekly_recaps/{doc} {
+      allow read, write: if isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // ─── Achievements / badges (owner-only) ───────────────────────────────────
+    match /users/{uid}/achievements/{achievementKey} {
+      allow read, write: if isAuthenticated() && request.auth.uid == uid;
+    }
+
     // ─── Consent records (KVKK/GDPR — demonstrable, versioned, owner-only) ─────
     match /users/{uid}/consents/{purpose} {
       allow read, write: if isAuthenticated() && request.auth.uid == uid;

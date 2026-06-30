@@ -25,7 +25,8 @@ class FavoritesScreen extends StatelessWidget {
         backgroundColor: palette.background,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: palette.textPrimary, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new,
+              color: palette.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -73,7 +74,8 @@ class FavoritesBody extends StatelessWidget {
           itemCount: recipes.length,
           separatorBuilder: (_, __) => SizedBox(height: AppSpacing.md.h),
           itemBuilder: (context, index) => RepaintBoundary(
-            child: _FavoriteRecipeCard(recipe: recipes[index], primary: primary),
+            child:
+                _FavoriteRecipeCard(recipe: recipes[index], primary: primary),
           ),
         );
       },
@@ -229,8 +231,9 @@ class _MacroPill extends StatelessWidget {
       ),
       child: Text(
         '$label: ${value}g',
-        style:
-            AppText.of(context).labelS.copyWith(color: color, fontWeight: FontWeight.w600),
+        style: AppText.of(context)
+            .labelS
+            .copyWith(color: color, fontWeight: FontWeight.w600),
       ),
     );
   }

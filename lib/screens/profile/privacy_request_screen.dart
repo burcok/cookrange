@@ -43,7 +43,8 @@ class _PrivacyRequestScreenState extends State<PrivacyRequestScreen> {
       AppSnackBar.success(context, l10n.translate('privacy_request.submitted'));
     } catch (_) {
       if (!mounted) return;
-      AppSnackBar.error(context, l10n.translate('privacy_request.submit_error'));
+      AppSnackBar.error(
+          context, l10n.translate('privacy_request.submit_error'));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -72,7 +73,8 @@ class _PrivacyRequestScreenState extends State<PrivacyRequestScreen> {
           AppGlassCard(
             child: Text(
               l10n.translate('privacy_request.intro'),
-              style: t.bodyM.copyWith(color: palette.textSecondary, height: 1.5),
+              style:
+                  t.bodyM.copyWith(color: palette.textSecondary, height: 1.5),
             ),
           ),
           SizedBox(height: 20.h),
@@ -187,8 +189,8 @@ class _RequestCard extends StatelessWidget {
                 ),
                 child: Text(
                   l10n.translate(request.status.labelKey),
-                  style: t.labelS
-                      .copyWith(color: statusColor, fontWeight: FontWeight.w700),
+                  style: t.labelS.copyWith(
+                      color: statusColor, fontWeight: FontWeight.w700),
                 ),
               ),
             ],

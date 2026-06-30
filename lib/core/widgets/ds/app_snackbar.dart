@@ -80,9 +80,7 @@ class AppSnackBar {
   static void info(BuildContext context, String message,
           {String? actionLabel, VoidCallback? onAction}) =>
       show(context,
-          message: message,
-          actionLabel: actionLabel,
-          onAction: onAction);
+          message: message, actionLabel: actionLabel, onAction: onAction);
 }
 
 class _AppSnackBarContent extends StatelessWidget {
@@ -101,7 +99,8 @@ class _AppSnackBarContent extends StatelessWidget {
     final palette = AppPalette.of(context);
     final t = AppText.of(context);
 
-    final (Color bg, Color iconBg, Color iconColor, IconData icon) = switch (variant) {
+    final (Color bg, Color iconBg, Color iconColor, IconData icon) =
+        switch (variant) {
       AppSnackBarVariant.success => (
           palette.success.withValues(alpha: palette.isDark ? 0.2 : 0.12),
           palette.success.withValues(alpha: 0.25),
@@ -136,8 +135,7 @@ class _AppSnackBarContent extends StatelessWidget {
         decoration: BoxDecoration(
           color: palette.surface,
           borderRadius: BorderRadius.circular(AppRadius.lg.r),
-          border: Border.all(
-              color: iconColor.withValues(alpha: 0.3)),
+          border: Border.all(color: iconColor.withValues(alpha: 0.3)),
           boxShadow: [
             BoxShadow(
               color: palette.shadow.withValues(alpha: 0.12),

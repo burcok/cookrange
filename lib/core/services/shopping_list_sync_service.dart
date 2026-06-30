@@ -16,8 +16,8 @@ class ShoppingListSyncService {
       _db.collection('users').doc(uid).collection('lists').doc('shopping');
 
   /// Load items and checked set from Firestore. Returns null if no data.
-  Future<({List<Ingredient> items, Set<String> checked})?>
-      load(String uid) async {
+  Future<({List<Ingredient> items, Set<String> checked})?> load(
+      String uid) async {
     try {
       final snap = await _docRef(uid).get();
       if (!snap.exists) return null;

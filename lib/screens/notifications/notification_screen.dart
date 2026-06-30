@@ -110,9 +110,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
     await _service.markMultipleAsRead(unread.map((n) => n.id).toList());
     if (mounted) {
       setState(() {
-        _notifications = _notifications
-            .map((n) => n.isRead ? n : n.copyWithRead())
-            .toList();
+        _notifications =
+            _notifications.map((n) => n.isRead ? n : n.copyWithRead()).toList();
       });
     }
   }
@@ -122,8 +121,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     await _service.deleteNotification(id);
   }
 
-  Future<void> _acceptRequest(
-      String senderId, String notificationId) async {
+  Future<void> _acceptRequest(String senderId, String notificationId) async {
     try {
       await _friendService.acceptFriendRequest(context, senderId);
       if (mounted) {
@@ -140,8 +138,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
-  Future<void> _rejectRequest(
-      String senderId, String notificationId) async {
+  Future<void> _rejectRequest(String senderId, String notificationId) async {
     try {
       await _friendService.rejectFriendRequest(senderId);
       await _delete(notificationId);
@@ -223,8 +220,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      palette.info.withValues(
-                          alpha: palette.isDark ? 0.07 : 0.05),
+                      palette.info
+                          .withValues(alpha: palette.isDark ? 0.07 : 0.05),
                       Colors.transparent,
                     ],
                   ),
@@ -252,8 +249,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 child: ListView(
                   physics: const BouncingScrollPhysics(),
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xl),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                   children: [
                     _GlassFilterChip(
                       filterId: 'all',
@@ -262,8 +259,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       selectedFilter: _selectedFilter,
                       primaryColor: primaryColor,
                       palette: palette,
-                      onTap: () =>
-                          setState(() => _selectedFilter = 'all'),
+                      onTap: () => setState(() => _selectedFilter = 'all'),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     _GlassFilterChip(
@@ -273,8 +269,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       selectedFilter: _selectedFilter,
                       primaryColor: primaryColor,
                       palette: palette,
-                      onTap: () =>
-                          setState(() => _selectedFilter = 'unread'),
+                      onTap: () => setState(() => _selectedFilter = 'unread'),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     _GlassFilterChip(
@@ -284,8 +279,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       selectedFilter: _selectedFilter,
                       primaryColor: primaryColor,
                       palette: palette,
-                      onTap: () =>
-                          setState(() => _selectedFilter = 'friends'),
+                      onTap: () => setState(() => _selectedFilter = 'friends'),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     _GlassFilterChip(
@@ -295,8 +289,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       selectedFilter: _selectedFilter,
                       primaryColor: primaryColor,
                       palette: palette,
-                      onTap: () =>
-                          setState(() => _selectedFilter = 'system'),
+                      onTap: () => setState(() => _selectedFilter = 'system'),
                     ),
                   ],
                 ),
@@ -312,19 +305,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         ? _buildEmptyState(context)
                         : GlassRefresher(
                             onRefresh: _loadInitialPage,
-                            topPadding:
-                                MediaQuery.of(context).padding.top + 24,
+                            topPadding: MediaQuery.of(context).padding.top + 24,
                             child: ListView.separated(
                               controller: _selectedFilter == 'all'
                                   ? _scrollController
                                   : null,
                               physics: const BouncingScrollPhysics(
                                   parent: AlwaysScrollableScrollPhysics()),
-                              padding: const EdgeInsets.fromLTRB(
-                                  AppSpacing.xl,
-                                  AppSpacing.lg,
-                                  AppSpacing.xl,
-                                  100),
+                              padding: const EdgeInsets.fromLTRB(AppSpacing.xl,
+                                  AppSpacing.lg, AppSpacing.xl, 100),
                               itemCount: _filteredNotifications.length +
                                   (_selectedFilter == 'all' &&
                                           (_isLoadingMore || _hasMore)
@@ -333,17 +322,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
                               separatorBuilder: (c, i) =>
                                   const SizedBox(height: AppSpacing.md),
                               itemBuilder: (context, index) {
-                                if (index ==
-                                    _filteredNotifications.length) {
+                                if (index == _filteredNotifications.length) {
                                   return _isLoadingMore
                                       ? Center(
                                           child: Padding(
                                             padding: const EdgeInsets.all(
                                                 AppSpacing.md),
-                                            child:
-                                                CircularProgressIndicator(
-                                                    color: primaryColor,
-                                                    strokeWidth: 2),
+                                            child: CircularProgressIndicator(
+                                                color: primaryColor,
+                                                strokeWidth: 2),
                                           ),
                                         )
                                       : const SizedBox.shrink();
@@ -438,8 +425,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
         NotificationPresenter.categoryFor(context, notification.type);
     final titleText = NotificationPresenter.titleFor(context, notification);
     final bodyText = NotificationPresenter.bodyFor(context, notification);
-    final hasActor = (notification.actorUid != null &&
-        notification.actorUid!.isNotEmpty);
+    final hasActor =
+        (notification.actorUid != null && notification.actorUid!.isNotEmpty);
     final isUnread = !notification.isRead;
 
     return Dismissible(
@@ -465,190 +452,204 @@ class _NotificationScreenState extends State<NotificationScreen> {
             decoration: BoxDecoration(
               color: isUnread
                   ? (palette.isDark
-                      ? palette.glassFill
-                          .withValues(alpha: 0.75)
+                      ? palette.glassFill.withValues(alpha: 0.75)
                       : palette.surface.withValues(alpha: 0.92))
                   : (palette.isDark
-                      ? palette.glassFill
-                          .withValues(alpha: 0.50)
+                      ? palette.glassFill.withValues(alpha: 0.50)
                       : palette.surface.withValues(alpha: 0.78)),
               borderRadius: BorderRadius.circular(AppRadius.card),
-              border: Border(
-                left: BorderSide(
-                  color: isUnread
-                      ? primaryColor
-                      : Colors.transparent,
-                  width: 3,
-                ),
-                top: BorderSide(color: palette.glassStroke, width: 0.5),
-                right: BorderSide(color: palette.glassStroke, width: 0.5),
-                bottom: BorderSide(color: palette.glassStroke, width: 0.5),
+              border: Border.all(
+                color: palette.glassStroke,
+                width: 0.5,
               ),
             ),
-            padding: const EdgeInsets.all(AppSpacing.md),
             child: Stack(
               children: [
                 if (isUnread)
                   Positioned(
+                    left: 0,
                     top: 0,
-                    right: 0,
+                    bottom: 0,
                     child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                          color: primaryColor,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                                color: primaryColor.withValues(alpha: 0.4),
-                                blurRadius: 6)
-                          ]),
+                      width: 3,
+                      color: primaryColor,
                     ),
                   ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GestureDetector(
-                      onTap: hasActor
-                          ? () => openUserProfile(context,
-                              userId: notification.actorUid)
-                          : null,
-                      child: _buildLeadingAvatar(
-                        notification: notification,
-                        iconBgColor: iconBgColor,
-                        iconColor: iconColor,
-                        iconData: iconData,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Stack(
+                    children: [
+                      if (isUnread)
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                                color: primaryColor,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                      color:
+                                          primaryColor.withValues(alpha: 0.4),
+                                      blurRadius: 6)
+                                ]),
+                          ),
+                        ),
+                      Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            headerText,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.6,
-                              color: iconColor,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
                           GestureDetector(
                             onTap: hasActor
                                 ? () => openUserProfile(context,
                                     userId: notification.actorUid)
                                 : null,
-                            child: Text(
-                              titleText,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: palette.textPrimary,
-                              ),
+                            child: _buildLeadingAvatar(
+                              notification: notification,
+                              iconBgColor: iconBgColor,
+                              iconColor: iconColor,
+                              iconData: iconData,
                             ),
                           ),
-                          if (bodyText != null && bodyText.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              bodyText,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                height: 1.4,
-                                color: palette.textSecondary,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            _formatRelativeTime(notification.timestamp),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: palette.textTertiary,
-                            ),
-                          ),
-                          if (notification.type ==
-                                  NotificationType.friendRequest &&
-                              notification.relatedId != null) ...[
-                            const SizedBox(height: AppSpacing.sm),
-                            Row(
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                GestureDetector(
-                                  onTap: () => _acceptRequest(
-                                      notification.relatedId!,
-                                      notification.id),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: AppSpacing.md,
-                                        vertical: AppSpacing.xs),
-                                    decoration: BoxDecoration(
-                                      color: primaryColor,
-                                      borderRadius:
-                                          BorderRadius.circular(AppRadius.sm),
-                                      boxShadow: [
-                                        BoxShadow(
-                                            color: primaryColor
-                                                .withValues(alpha: 0.35),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2))
-                                      ],
-                                    ),
-                                    child: Text(
-                                        AppLocalizations.of(context)
-                                            .translate('friend_actions.accept'),
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold)),
+                                Text(
+                                  headerText,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.6,
+                                    color: iconColor,
                                   ),
                                 ),
-                                const SizedBox(width: AppSpacing.xs),
+                                const SizedBox(height: 2),
                                 GestureDetector(
-                                  onTap: () => _rejectRequest(
-                                      notification.relatedId!,
-                                      notification.id),
-                                  child: ClipRRect(
-                                    borderRadius:
-                                        BorderRadius.circular(AppRadius.sm),
-                                    child: BackdropFilter(
-                                      filter: ImageFilter.blur(
-                                          sigmaX: 8, sigmaY: 8),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: AppSpacing.md,
-                                            vertical: AppSpacing.xs),
-                                        decoration: BoxDecoration(
-                                          color: palette.glassFill,
-                                          borderRadius:
-                                              BorderRadius.circular(AppRadius.sm),
-                                          border: Border.all(
-                                              color: palette.error
-                                                  .withValues(alpha: 0.5)),
+                                  onTap: hasActor
+                                      ? () => openUserProfile(context,
+                                          userId: notification.actorUid)
+                                      : null,
+                                  child: Text(
+                                    titleText,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: palette.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                if (bodyText != null &&
+                                    bodyText.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    bodyText,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      height: 1.4,
+                                      color: palette.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: AppSpacing.xs),
+                                Text(
+                                  _formatRelativeTime(notification.timestamp),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                    color: palette.textTertiary,
+                                  ),
+                                ),
+                                if (notification.type ==
+                                        NotificationType.friendRequest &&
+                                    notification.relatedId != null) ...[
+                                  const SizedBox(height: AppSpacing.sm),
+                                  Row(
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () => _acceptRequest(
+                                            notification.relatedId!,
+                                            notification.id),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: AppSpacing.md,
+                                              vertical: AppSpacing.xs),
+                                          decoration: BoxDecoration(
+                                            color: primaryColor,
+                                            borderRadius: BorderRadius.circular(
+                                                AppRadius.sm),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                  color: primaryColor
+                                                      .withValues(alpha: 0.35),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 2))
+                                            ],
+                                          ),
+                                          child: Text(
+                                              AppLocalizations.of(context)
+                                                  .translate(
+                                                      'friend_actions.accept'),
+                                              style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold)),
                                         ),
-                                        child: Text(
-                                            AppLocalizations.of(context)
-                                                .translate(
-                                                    'friend_actions.reject'),
-                                            style: TextStyle(
-                                                color: palette.error,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold)),
                                       ),
-                                    ),
-                                  ),
-                                ),
+                                      const SizedBox(width: AppSpacing.xs),
+                                      GestureDetector(
+                                        onTap: () => _rejectRequest(
+                                            notification.relatedId!,
+                                            notification.id),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                              AppRadius.sm),
+                                          child: BackdropFilter(
+                                            filter: ImageFilter.blur(
+                                                sigmaX: 8, sigmaY: 8),
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: AppSpacing.md,
+                                                      vertical: AppSpacing.xs),
+                                              decoration: BoxDecoration(
+                                                color: palette.glassFill,
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                        AppRadius.sm),
+                                                border: Border.all(
+                                                    color: palette.error
+                                                        .withValues(
+                                                            alpha: 0.5)),
+                                              ),
+                                              child: Text(
+                                                  AppLocalizations.of(context)
+                                                      .translate(
+                                                          'friend_actions.reject'),
+                                                  style: TextStyle(
+                                                      color: palette.error,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.bold)),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                ]
                               ],
-                            )
-                          ]
+                            ),
+                          )
                         ],
-                      ),
-                    )
-                  ],
-                )
+                      )
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -731,14 +732,13 @@ class _NotificationAppBar extends StatelessWidget {
             children: [
               SizedBox(height: topPad + AppSpacing.sm),
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      icon: Icon(Icons.arrow_back,
-                          color: palette.textSecondary),
+                      icon:
+                          Icon(Icons.arrow_back, color: palette.textSecondary),
                       onPressed: onBack,
                     ),
                     Text(
@@ -750,8 +750,7 @@ class _NotificationAppBar extends StatelessWidget {
                           ),
                     ),
                     IconButton(
-                      icon: Icon(Icons.done_all,
-                          color: palette.textSecondary),
+                      icon: Icon(Icons.done_all, color: palette.textSecondary),
                       onPressed: onMarkAllRead,
                       tooltip: AppLocalizations.of(context)
                           .translate('community.mark_all_read'),
@@ -842,8 +841,7 @@ class _GlassFilterChip extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.full),
         child: BackdropFilter(
-          filter:
-              ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
           child: Container(
             padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md, vertical: AppSpacing.xs),

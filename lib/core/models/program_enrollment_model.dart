@@ -60,8 +60,7 @@ class ProgramEnrollmentModel {
       currentSession: d['current_session'] as int? ?? 1,
       totalWeeks: d['total_weeks'] as int? ?? 4,
       enrolledAt: ts(d['enrolled_at']),
-      completedAt:
-          d['completed_at'] != null ? ts(d['completed_at']) : null,
+      completedAt: d['completed_at'] != null ? ts(d['completed_at']) : null,
     );
   }
 

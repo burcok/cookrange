@@ -52,8 +52,7 @@ class _UnlimitedBadge extends StatelessWidget {
     final textTheme = AppText.of(context);
 
     return StreamBuilder<AiCreditModel>(
-      stream: AiCreditService()
-          .getCreditsStream(uid, isPremium: isPremium),
+      stream: AiCreditService().getCreditsStream(uid, isPremium: isPremium),
       builder: (context, snapshot) {
         final credits = snapshot.data;
         final remaining = credits?.remaining ?? AiCreditModel.premiumDailyLimit;

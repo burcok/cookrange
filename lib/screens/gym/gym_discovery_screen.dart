@@ -478,8 +478,7 @@ class _GymMapView extends StatelessWidget {
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.cookrange_android.app',
               ),
               MarkerLayer(markers: gymMarkers),
@@ -496,8 +495,7 @@ class _GymMapView extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: palette.info,
                           shape: BoxShape.circle,
-                          border:
-                              Border.all(color: Colors.white, width: 2.5),
+                          border: Border.all(color: Colors.white, width: 2.5),
                           boxShadow: [
                             BoxShadow(
                               color: palette.info.withValues(alpha: 0.45),
@@ -631,8 +629,7 @@ class _GymMapList extends StatelessWidget {
                           Text(
                             gym.locationDisplay,
                             style: TextStyle(
-                                fontSize: 11,
-                                color: palette.textTertiary),
+                                fontSize: 11, color: palette.textTertiary),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1146,8 +1143,7 @@ class _FilterBar extends StatelessWidget {
                           : FontWeight.normal,
                     )),
                 trailing: selectedCity == city
-                    ? Icon(Icons.check_rounded,
-                        color: palette.info, size: 18.r)
+                    ? Icon(Icons.check_rounded, color: palette.info, size: 18.r)
                     : null,
                 onTap: () {
                   Navigator.pop(context);
@@ -1187,8 +1183,7 @@ class _FilterBar extends StatelessWidget {
                           : FontWeight.normal,
                     )),
                 trailing: selectedDistrict == d
-                    ? Icon(Icons.check_rounded,
-                        color: palette.info, size: 18.r)
+                    ? Icon(Icons.check_rounded, color: palette.info, size: 18.r)
                     : null,
                 onTap: () {
                   Navigator.pop(context);
@@ -1202,8 +1197,7 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasFilter =
-        selectedCity != null || sortBy != 'member_count';
+    final bool hasFilter = selectedCity != null || sortBy != 'member_count';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1251,8 +1245,7 @@ class _FilterBar extends StatelessWidget {
               active: sortBy == 'near_me',
               accent: palette.energy,
               loading: loadingLocation,
-              onTap:
-                  loadingLocation ? null : () => onSortChanged('near_me'),
+              onTap: loadingLocation ? null : () => onSortChanged('near_me'),
             ),
           ],
         ),
@@ -1440,9 +1433,8 @@ class _GymQrJoinPageState extends State<_GymQrJoinPage> {
 
     setState(() => _processing = true);
     if (!mounted) return;
-    Navigator.of(context)
-        .pop<({String gymId, String token})?>(
-            (gymId: widget.gym.id, token: parts[3]));
+    Navigator.of(context).pop<({String gymId, String token})?>(
+        (gymId: widget.gym.id, token: parts[3]));
   }
 
   @override

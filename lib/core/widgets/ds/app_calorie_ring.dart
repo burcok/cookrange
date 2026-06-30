@@ -49,8 +49,9 @@ class _AppCalorieRingState extends State<AppCalorieRing>
   late Animation<double> _anim;
   double _from = 0;
 
-  double get _progress =>
-      widget.target <= 0 ? 0 : (widget.consumed / widget.target).clamp(0.0, 1.0);
+  double get _progress => widget.target <= 0
+      ? 0
+      : (widget.consumed / widget.target).clamp(0.0, 1.0);
 
   @override
   void initState() {

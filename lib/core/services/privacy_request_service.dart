@@ -54,7 +54,6 @@ class PrivacyRequestService {
         .where('uid', isEqualTo: uid)
         .orderBy('created_at', descending: true)
         .snapshots()
-        .map((s) =>
-            s.docs.map(PrivacyRequestModel.fromFirestore).toList());
+        .map((s) => s.docs.map(PrivacyRequestModel.fromFirestore).toList());
   }
 }

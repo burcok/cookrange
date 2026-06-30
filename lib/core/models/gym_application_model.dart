@@ -106,7 +106,8 @@ class GymApplicationModel {
         'brandColor': brandColor,
         'status': status.value,
         'submittedAt': FieldValue.serverTimestamp(),
-        'reviewedAt': reviewedAt != null ? Timestamp.fromDate(reviewedAt!) : null,
+        'reviewedAt':
+            reviewedAt != null ? Timestamp.fromDate(reviewedAt!) : null,
         'reviewerNotes': reviewerNotes,
         'reviewerUid': reviewerUid,
       };

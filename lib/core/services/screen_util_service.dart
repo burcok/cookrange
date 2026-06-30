@@ -36,7 +36,7 @@ class ScreenUtilService {
   double getTextScaleFactor(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final systemScale = mediaQuery.textScaler.scale(1.0);
-    
+
     // Clamp the scale factor between min and max values
     return systemScale.clamp(minTextScale, maxTextScale);
   }
@@ -45,7 +45,7 @@ class ScreenUtilService {
   MediaQueryData createResponsiveMediaQuery(BuildContext context) {
     final originalMediaQuery = MediaQuery.of(context);
     final textScaleFactor = getTextScaleFactor(context);
-    
+
     return originalMediaQuery.copyWith(
       textScaler: TextScaler.linear(textScaleFactor),
     );
@@ -89,28 +89,30 @@ class ScreenUtilService {
   }
 
   /// Get responsive padding based on device type
-  EdgeInsets getResponsivePadding(BuildContext context, {
+  EdgeInsets getResponsivePadding(
+    BuildContext context, {
     double? phonePadding,
     double? tabletPadding,
   }) {
     final deviceType = getDeviceType(context);
-    final padding = deviceType == DeviceType.tablet 
+    final padding = deviceType == DeviceType.tablet
         ? (tabletPadding ?? 24.0)
         : (phonePadding ?? 16.0);
-    
+
     return EdgeInsets.all(padding.w);
   }
 
   /// Get responsive margin based on device type
-  EdgeInsets getResponsiveMargin(BuildContext context, {
+  EdgeInsets getResponsiveMargin(
+    BuildContext context, {
     double? phoneMargin,
     double? tabletMargin,
   }) {
     final deviceType = getDeviceType(context);
-    final margin = deviceType == DeviceType.tablet 
+    final margin = deviceType == DeviceType.tablet
         ? (tabletMargin ?? 24.0)
         : (phoneMargin ?? 16.0);
-    
+
     return EdgeInsets.all(margin.w);
   }
 }

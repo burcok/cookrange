@@ -49,7 +49,8 @@ class FoodLogRepository {
     required Recipe recipe,
   }) {
     if (TestModeService().isActive) return Future.value();
-    return _service.logRecipe(userId: userId, mealType: mealType, recipe: recipe);
+    return _service.logRecipe(
+        userId: userId, mealType: mealType, recipe: recipe);
   }
 
   /// Remove a previously logged meal entry.

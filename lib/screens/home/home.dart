@@ -18,6 +18,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/admin_status_service.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/food_analysis_service.dart';
 import '../../core/services/permission_service.dart';
 import '../ai/widgets/ai_credits_sheet.dart';
 import '../../core/localization/app_localizations.dart';
@@ -40,6 +41,9 @@ import '../../core/services/exercise_log_service.dart';
 import '../../core/services/meal_plan_calendar_service.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../../core/widgets/coachmark_tip.dart';
+import 'widgets/bugun_recap_card.dart';
+import 'widgets/streak_calendar_sheet.dart';
+import 'widgets/weekly_recap_card.dart';
 
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/test_mode_provider.dart';
@@ -158,8 +162,7 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       await AuthService().sendEmailVerification();
       if (mounted) {
-        AppSnackBar.success(
-            context, l10n.translate('home.verify_email.sent'));
+        AppSnackBar.success(context, l10n.translate('home.verify_email.sent'));
       }
     } catch (_) {
       if (mounted) {
@@ -201,7 +204,8 @@ class _HomeScreenState extends State<HomeScreen>
       });
     });
 
-    _exerciseSubscription = ExerciseLogService().todayLogsStream(uid).listen((logs) {
+    _exerciseSubscription =
+        ExerciseLogService().todayLogsStream(uid).listen((logs) {
       if (!mounted) return;
       setState(() => _burnedCalories = ExerciseLog.totalBurned(logs));
     });
@@ -215,8 +219,7 @@ class _HomeScreenState extends State<HomeScreen>
     return grouped.map((k, v) => MapEntry(k, FoodLog.sumLogs(v)));
   }
 
-  Future<void> _logMeal(
-      String userId, String mealType, DishModel dish) async {
+  Future<void> _logMeal(String userId, String mealType, DishModel dish) async {
     if (_loggingInProgress[mealType] == true) return;
     setState(() => _loggingInProgress[mealType] = true);
     try {
@@ -287,8 +290,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     final alternatives = await _dishRepo.getByMealType(mealType);
     final currentDishId = _weeklyPlan!.days[dayIndex].meals[mealType];
-    final choices =
-        alternatives.where((d) => d.id != currentDishId).toList();
+    final choices = alternatives.where((d) => d.id != currentDishId).toList();
 
     if (!mounted) return;
 
@@ -358,8 +360,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _loadWeeklyPlan() async {
     final user = context.read<UserProvider>().user;
     if (user == null) return;
-    final locale =
-        context.read<LanguageProvider>().currentLocale.languageCode;
+    final locale = context.read<LanguageProvider>().currentLocale.languageCode;
 
     setState(() => _isLoadingPlan = true);
 
@@ -413,13 +414,14 @@ class _HomeScreenState extends State<HomeScreen>
         mealTypeLabels: mealTypeLabels,
       );
     } catch (e) {
-      if (mounted) AppSnackBar.error(context, l10n.translate('calendar.export_error'));
+      if (mounted)
+        AppSnackBar.error(context, l10n.translate('calendar.export_error'));
     }
   }
 
-  Future<void> _generateWeeklyPlan(UserModel user, {bool forceRefresh = true}) async {
-    final locale =
-        context.read<LanguageProvider>().currentLocale.languageCode;
+  Future<void> _generateWeeklyPlan(UserModel user,
+      {bool forceRefresh = true}) async {
+    final locale = context.read<LanguageProvider>().currentLocale.languageCode;
     setState(() => _isLoadingPlan = true);
     unawaited(AnalyticsService().logEvent(name: 'ai_meal_plan_started'));
     try {
@@ -472,9 +474,7 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       final userId = userProvider.user?.uid;
       if (userId != null) {
-        await AdminStatusService()
-            .checkStatus(userId)
-            .then((status) {
+        await AdminStatusService().checkStatus(userId).then((status) {
           if (status == AdminStatus.banned) {
             AdminStatusService().notifyBanned(userId);
           }
@@ -771,10 +771,9 @@ class _HomeScreenState extends State<HomeScreen>
         tdee: tdee, primaryGoal: primaryGoal);
     final macros = CalorieCalculator.calculateMacros(adjustedTDEE);
 
-    final streak =
-        (userModel.onboardingData?['streak'] as num?)?.toInt() ?? 0;
-    final goalMet = adjustedTDEE > 0 &&
-        _consumed.calories >= adjustedTDEE * 0.85;
+    final streak = (userModel.onboardingData?['streak'] as num?)?.toInt() ?? 0;
+    final goalMet =
+        adjustedTDEE > 0 && _consumed.calories >= adjustedTDEE * 0.85;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -833,6 +832,19 @@ class _HomeScreenState extends State<HomeScreen>
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: AiInsightCard(user: userModel),
+        ),
+        SizedBox(height: 16.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: BugunRecapCard(
+            uid: userModel.uid,
+            calorieTarget: adjustedTDEE.round(),
+          ),
+        ),
+        SizedBox(height: 12.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: WeeklyRecapCard(uid: userModel.uid),
         ),
         SizedBox(height: 20.h),
         Padding(
@@ -895,56 +907,7 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
         ),
-        if (streak > 0)
-          AnimatedContainer(
-            duration: AppMotion.fast,
-            margin: EdgeInsets.only(top: AppSpacing.xxs.h),
-            padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm.w, vertical: AppSpacing.xs.h),
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.full.r),
-              border: Border.all(color: primary.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('🔥', style: TextStyle(fontSize: 15)),
-                SizedBox(width: AppSpacing.xxs.w),
-                Text(
-                  l10n.translate('home.streak_days',
-                      variables: {'count': '$streak'}),
-                  style: t.labelM
-                      .copyWith(fontWeight: FontWeight.bold, color: primary),
-                ),
-                if (userModel.streakFreezeCount > 0) ...[
-                  SizedBox(width: AppSpacing.xs.w),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 5.w, vertical: 2.h),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(AppRadius.xs.r),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.ac_unit_rounded,
-                            size: 10.sp, color: Colors.blue),
-                        SizedBox(width: 2.w),
-                        Text(
-                          '${userModel.streakFreezeCount}',
-                          style: t.labelS.copyWith(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+        if (streak > 0) StreakChip(streak: streak, userModel: userModel),
       ],
     );
   }
@@ -977,8 +940,8 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 Text(
                   l10n.translate('home.goal_met_sub'),
-                  style: t.labelS.copyWith(
-                      color: palette.success.withValues(alpha: 0.8)),
+                  style: t.labelS
+                      .copyWith(color: palette.success.withValues(alpha: 0.8)),
                 ),
               ],
             ),
@@ -988,8 +951,8 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildStreakMilestoneBanner(BuildContext context, int streak,
-      AppLocalizations l10n) {
+  Widget _buildStreakMilestoneBanner(
+      BuildContext context, int streak, AppLocalizations l10n) {
     final primary = context.watch<ThemeProvider>().primaryColor;
     final t = AppText.of(context);
     return AnimatedContainer(
@@ -1019,8 +982,8 @@ class _HomeScreenState extends State<HomeScreen>
                 Text(
                   l10n.translate('home.streak_milestone_subtitle',
                       variables: {'count': '$streak'}),
-                  style: t.labelS
-                      .copyWith(color: primary.withValues(alpha: 0.8)),
+                  style:
+                      t.labelS.copyWith(color: primary.withValues(alpha: 0.8)),
                 ),
               ],
             ),
@@ -1035,36 +998,64 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildScanFoodButton(BuildContext context, AppLocalizations l10n) {
-    return Row(
+    final photoAvailable = FoodAnalysisService().isPhotoAvailable;
+    return Column(
       children: [
-        Expanded(
-          child: AppButton(
-            label: l10n.translate('food_scan.scan_btn'),
-            icon: Icons.auto_awesome,
-            variant: AppButtonVariant.tonal,
-            size: AppButtonSize.medium,
-            onPressed: () async {
-              final successText = l10n.translate('food_scan.log_success');
-              final logged = await Navigator.of(context, rootNavigator: true)
-                  .push<bool>(AppTransitions.slideUp(const FoodScanScreen()));
-              if (!mounted) return;
-              // ignore: use_build_context_synchronously
-              if (logged == true) AppSnackBar.success(context, successText);
-            },
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: AppButton(
+                label: l10n.translate('food_scan.scan_btn'),
+                icon: Icons.auto_awesome,
+                variant: AppButtonVariant.tonal,
+                size: AppButtonSize.medium,
+                onPressed: () async {
+                  final successText = l10n.translate('food_scan.log_success');
+                  final logged =
+                      await Navigator.of(context, rootNavigator: true)
+                          .push<bool>(
+                              AppTransitions.slideUp(const FoodScanScreen()));
+                  if (!mounted) return;
+                  // ignore: use_build_context_synchronously
+                  if (logged == true) AppSnackBar.success(context, successText);
+                },
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: AppButton(
+                label: l10n.translate('exercise.log_button_short'),
+                icon: Icons.fitness_center_rounded,
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.medium,
+                onPressed: () async {
+                  await ExerciseLogSheet.show(context);
+                },
+              ),
+            ),
+          ],
         ),
-        SizedBox(width: 10.w),
-        Expanded(
-          child: AppButton(
-            label: l10n.translate('exercise.log_button_short'),
-            icon: Icons.fitness_center_rounded,
-            variant: AppButtonVariant.secondary,
-            size: AppButtonSize.medium,
-            onPressed: () async {
-              await ExerciseLogSheet.show(context);
-            },
+        if (photoAvailable) ...[
+          SizedBox(height: 8.h),
+          SizedBox(
+            width: double.infinity,
+            child: AppButton(
+              label: l10n.translate('food_scan.express_snap_btn'),
+              icon: Icons.camera_alt_rounded,
+              variant: AppButtonVariant.secondary,
+              size: AppButtonSize.medium,
+              onPressed: () async {
+                final successText = l10n.translate('food_scan.log_success');
+                final logged = await Navigator.of(context, rootNavigator: true)
+                    .push<bool>(AppTransitions.slideUp(
+                        const FoodScanScreen(expressPhoto: true)));
+                if (!mounted) return;
+                // ignore: use_build_context_synchronously
+                if (logged == true) AppSnackBar.success(context, successText);
+              },
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -1086,101 +1077,100 @@ class _HomeScreenState extends State<HomeScreen>
           sigmaY: AppPalette.glassBlurSubtle,
         ),
         child: Container(
-      padding: EdgeInsets.all(AppSpacing.xl.r),
-      decoration: BoxDecoration(
-        gradient: AppGradients.brandSoft(primary, dark: palette.isDark),
-        borderRadius: BorderRadius.circular(AppRadius.card.r),
-        border: Border.all(color: primary.withValues(alpha: 0.25)),
-        boxShadow: [
-          BoxShadow(
-            color: primary.withValues(alpha: palette.isDark ? 0.18 : 0.12),
-            blurRadius: AppElevation.blurLg.r,
-            offset: AppElevation.offsetLg,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          RepaintBoundary(
-            child: AppCalorieRing(
-              consumed: _consumed.calories,
-              target: targetCalories,
-              size: 188,
-              caption: l10n.translate('home.kcal',
-                  variables: {'target': targetCalInt.toString()}),
-            ),
-          ),
-          CoachmarkTip(
-            prefKey: 'coachmark_ring',
-            title: l10n.translate('coachmarks.ring_title'),
-            body: l10n.translate('coachmarks.ring_body'),
-          ),
-          SizedBox(height: AppSpacing.xl.h),
-          Row(
-            children: [
-              Expanded(
-                child: _macroBar(
-                    l10n.translate('home.macros.protein'),
-                    _consumed.protein,
-                    macros['protein'] ?? 0.0,
-                    palette.protein,
-                    t,
-                    palette),
-              ),
-              SizedBox(width: AppSpacing.sm.w),
-              Expanded(
-                child: _macroBar(
-                    l10n.translate('home.macros.carbs'),
-                    _consumed.carbs,
-                    macros['carbs'] ?? 0.0,
-                    palette.carbs,
-                    t,
-                    palette),
-              ),
-              SizedBox(width: AppSpacing.sm.w),
-              Expanded(
-                child: _macroBar(
-                    l10n.translate('home.macros.fat'),
-                    _consumed.fat,
-                    macros['fat'] ?? 0.0,
-                    palette.fat,
-                    t,
-                    palette),
+          padding: EdgeInsets.all(AppSpacing.xl.r),
+          decoration: BoxDecoration(
+            gradient: AppGradients.brandSoft(primary, dark: palette.isDark),
+            borderRadius: BorderRadius.circular(AppRadius.card.r),
+            border: Border.all(color: primary.withValues(alpha: 0.25)),
+            boxShadow: [
+              BoxShadow(
+                color: primary.withValues(alpha: palette.isDark ? 0.18 : 0.12),
+                blurRadius: AppElevation.blurLg.r,
+                offset: AppElevation.offsetLg,
               ),
             ],
           ),
-          if (_burnedCalories > 0) ...[
-            SizedBox(height: AppSpacing.md.h),
-            Container(
-              padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
-              decoration: BoxDecoration(
-                color: palette.success.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppRadius.button.r),
-                border: Border.all(
-                    color: palette.success.withValues(alpha: 0.3)),
+          child: Column(
+            children: [
+              RepaintBoundary(
+                child: AppCalorieRing(
+                  consumed: _consumed.calories,
+                  target: targetCalories,
+                  size: 188,
+                  caption: l10n.translate('home.kcal',
+                      variables: {'target': targetCalInt.toString()}),
+                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              CoachmarkTip(
+                prefKey: 'coachmark_ring',
+                title: l10n.translate('coachmarks.ring_title'),
+                body: l10n.translate('coachmarks.ring_body'),
+              ),
+              SizedBox(height: AppSpacing.xl.h),
+              Row(
                 children: [
-                  Icon(Icons.fitness_center_rounded,
-                      size: 14.sp, color: palette.success),
-                  SizedBox(width: 6.w),
-                  Text(
-                    l10n.translate('exercise.burned_today',
-                        variables: {
-                          'kcal': _burnedCalories.toInt().toString()
-                        }),
-                    style: t.labelM.copyWith(
-                        color: palette.success,
-                        fontWeight: FontWeight.w600),
+                  Expanded(
+                    child: _macroBar(
+                        l10n.translate('home.macros.protein'),
+                        _consumed.protein,
+                        macros['protein'] ?? 0.0,
+                        palette.protein,
+                        t,
+                        palette),
+                  ),
+                  SizedBox(width: AppSpacing.sm.w),
+                  Expanded(
+                    child: _macroBar(
+                        l10n.translate('home.macros.carbs'),
+                        _consumed.carbs,
+                        macros['carbs'] ?? 0.0,
+                        palette.carbs,
+                        t,
+                        palette),
+                  ),
+                  SizedBox(width: AppSpacing.sm.w),
+                  Expanded(
+                    child: _macroBar(
+                        l10n.translate('home.macros.fat'),
+                        _consumed.fat,
+                        macros['fat'] ?? 0.0,
+                        palette.fat,
+                        t,
+                        palette),
                   ),
                 ],
               ),
-            ),
-          ],
-        ],
-      ),
+              if (_burnedCalories > 0) ...[
+                SizedBox(height: AppSpacing.md.h),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
+                  decoration: BoxDecoration(
+                    color: palette.success.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.button.r),
+                    border: Border.all(
+                        color: palette.success.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.fitness_center_rounded,
+                          size: 14.sp, color: palette.success),
+                      SizedBox(width: 6.w),
+                      Text(
+                        l10n.translate('exercise.burned_today', variables: {
+                          'kcal': _burnedCalories.toInt().toString()
+                        }),
+                        style: t.labelM.copyWith(
+                            color: palette.success,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
         ), // Container
       ), // BackdropFilter
     ); // ClipRRect
@@ -1214,8 +1204,8 @@ class _HomeScreenState extends State<HomeScreen>
         SizedBox(height: AppSpacing.xs.h),
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: Text('${consumed.toInt()} / ${target.toInt()}g',
-              style: t.labelS),
+          child:
+              Text('${consumed.toInt()} / ${target.toInt()}g', style: t.labelS),
         ),
       ],
     );
@@ -1262,7 +1252,8 @@ class _HomeScreenState extends State<HomeScreen>
               final palette = AppPalette.of(context);
               final t = AppText.of(context);
               final primary = context.watch<ThemeProvider>().primaryColor;
-              return RepaintBoundary(child: GestureDetector(
+              return RepaintBoundary(
+                  child: GestureDetector(
                 onTap: () => setState(() => _selectedDayIndex = index),
                 child: AnimatedContainer(
                   duration: AppMotion.fast,
@@ -1270,9 +1261,8 @@ class _HomeScreenState extends State<HomeScreen>
                   decoration: BoxDecoration(
                     color: isSelected ? primary : palette.surface,
                     borderRadius: BorderRadius.circular(AppRadius.lg.r),
-                    border: isSelected
-                        ? null
-                        : Border.all(color: palette.border),
+                    border:
+                        isSelected ? null : Border.all(color: palette.border),
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
@@ -1289,9 +1279,8 @@ class _HomeScreenState extends State<HomeScreen>
                       Text(
                         dayNameShort,
                         style: t.labelM.copyWith(
-                          color: isSelected
-                              ? Colors.white
-                              : palette.textSecondary,
+                          color:
+                              isSelected ? Colors.white : palette.textSecondary,
                         ),
                       ),
                       SizedBox(height: AppSpacing.xxs.h),
@@ -1299,7 +1288,8 @@ class _HomeScreenState extends State<HomeScreen>
                         dayNum,
                         style: t.titleL.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: isSelected ? Colors.white : palette.textPrimary,
+                          color:
+                              isSelected ? Colors.white : palette.textPrimary,
                         ),
                       ),
                     ],
@@ -1334,9 +1324,8 @@ class _HomeScreenState extends State<HomeScreen>
 
         // Analytics — primary action, always visible
         GestureDetector(
-          onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                  builder: (_) => const NutritionAnalyticsScreen())),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const NutritionAnalyticsScreen())),
           child: Container(
             width: 36.w,
             height: 36.w,
@@ -1445,24 +1434,24 @@ class _HomeScreenState extends State<HomeScreen>
       final mealLabel = l10n.translate('home.meal_type_$mealType');
       return RepaintBoundary(
         child: _MealCard(
-        key: ValueKey('meal_${_selectedDayIndex}_$mealType'),
-        dish: dish,
-        mealLabel: mealLabel.isEmpty ? mealType : mealLabel,
-        isLogged: isLogged,
-        isLoggingNow: isLoggingNow,
-        isSwapping: isSwapping,
-        isToday: isToday,
-        userId: userId,
-        palette: palette,
-        t: t,
-        primary: primary,
-        l10n: l10n,
-        onTap: () => Navigator.push(
-          context,
-          AppTransitions.slideUp(RecipeDetailScreen(recipe: dish.toRecipe())),
-        ),
-        onLog: () => _logMeal(userId!, mealType, dish),
-        onSwap: () => _showSwapSheet(l10n, mealType, _selectedDayIndex),
+          key: ValueKey('meal_${_selectedDayIndex}_$mealType'),
+          dish: dish,
+          mealLabel: mealLabel.isEmpty ? mealType : mealLabel,
+          isLogged: isLogged,
+          isLoggingNow: isLoggingNow,
+          isSwapping: isSwapping,
+          isToday: isToday,
+          userId: userId,
+          palette: palette,
+          t: t,
+          primary: primary,
+          l10n: l10n,
+          onTap: () => Navigator.push(
+            context,
+            AppTransitions.slideUp(RecipeDetailScreen(recipe: dish.toRecipe())),
+          ),
+          onLog: () => _logMeal(userId!, mealType, dish),
+          onSwap: () => _showSwapSheet(l10n, mealType, _selectedDayIndex),
         ),
       );
     }).toList();
@@ -1557,9 +1546,7 @@ class _MealCard extends StatelessWidget {
         child: AnimatedContainer(
           duration: AppMotion.fast,
           decoration: BoxDecoration(
-            color: isLogged
-                ? primary.withValues(alpha: 0.06)
-                : palette.surface,
+            color: isLogged ? primary.withValues(alpha: 0.06) : palette.surface,
             borderRadius: BorderRadius.circular(AppRadius.card.r),
             border: Border.all(
               color: isLogged
@@ -1642,8 +1629,7 @@ class _MealCard extends StatelessWidget {
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md.w,
-                      vertical: AppSpacing.sm.h),
+                      horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1692,12 +1678,10 @@ class _MealCard extends StatelessWidget {
                         spacing: 4.w,
                         runSpacing: 4.h,
                         children: [
-                          _macroChip('${dish.protein.toInt()}g P',
-                              palette.protein),
-                          _macroChip('${dish.carbs.toInt()}g C',
-                              palette.carbs),
-                          _macroChip('${dish.fat.toInt()}g F',
-                              palette.fat),
+                          _macroChip(
+                              '${dish.protein.toInt()}g P', palette.protein),
+                          _macroChip('${dish.carbs.toInt()}g C', palette.carbs),
+                          _macroChip('${dish.fat.toInt()}g F', palette.fat),
                         ],
                       ),
                     ],
@@ -1722,9 +1706,8 @@ class _MealCard extends StatelessWidget {
                             width: 36.w,
                             height: 36.w,
                             decoration: BoxDecoration(
-                              color: isLogged
-                                  ? primary
-                                  : palette.surfaceVariant,
+                              color:
+                                  isLogged ? primary : palette.surfaceVariant,
                               shape: BoxShape.circle,
                               border: isLogged
                                   ? null
@@ -1775,8 +1758,8 @@ class _SwapSheet extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: palette.surface,
-        borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.sheet.r)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppRadius.sheet.r)),
       ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom +
@@ -1799,8 +1782,7 @@ class _SwapSheet extends StatelessWidget {
           ),
           // Title row
           Padding(
-            padding:
-                EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
             child: Row(
               children: [
                 Icon(Icons.swap_horiz_rounded,
@@ -1818,8 +1800,7 @@ class _SwapSheet extends StatelessWidget {
                       ),
                       Text(
                         l10n.translate('home.swap_meal_subtitle'),
-                        style: t.labelS
-                            .copyWith(color: palette.textSecondary),
+                        style: t.labelS.copyWith(color: palette.textSecondary),
                       ),
                     ],
                   ),
@@ -1838,21 +1819,18 @@ class _SwapSheet extends StatelessWidget {
                   padding: EdgeInsets.all(AppSpacing.xxl.r),
                   child: Text(
                     l10n.translate('home.no_alternatives'),
-                    style: t.bodyM
-                        .copyWith(color: palette.textTertiary),
+                    style: t.bodyM.copyWith(color: palette.textTertiary),
                     textAlign: TextAlign.center,
                   ),
                 )
               : ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxHeight:
-                        MediaQuery.of(context).size.height * 0.55,
+                    maxHeight: MediaQuery.of(context).size.height * 0.55,
                   ),
                   child: ListView.separated(
                     shrinkWrap: true,
                     padding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md.w,
-                        vertical: AppSpacing.xs.h),
+                        horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
                     itemCount: dishes.length,
                     separatorBuilder: (_, __) =>
                         SizedBox(height: AppSpacing.xs.h),
@@ -1874,29 +1852,25 @@ class _SwapSheet extends StatelessWidget {
                                         imageUrl: dish.imageUrl!,
                                         fit: BoxFit.cover,
                                         memCacheWidth: 120,
-                                        errorWidget: (_, __, ___) =>
-                                            Container(
-                                              color: palette.surfaceVariant,
-                                              child: Icon(
-                                                  Icons.restaurant_rounded,
-                                                  color: primary.withValues(
-                                                      alpha: 0.4)),
-                                            ),
+                                        errorWidget: (_, __, ___) => Container(
+                                          color: palette.surfaceVariant,
+                                          child: Icon(Icons.restaurant_rounded,
+                                              color: primary.withValues(
+                                                  alpha: 0.4)),
+                                        ),
                                       )
                                     : Container(
                                         color: palette.surfaceVariant,
-                                        child: Icon(
-                                            Icons.restaurant_rounded,
-                                            color: primary
-                                                .withValues(alpha: 0.4)),
+                                        child: Icon(Icons.restaurant_rounded,
+                                            color:
+                                                primary.withValues(alpha: 0.4)),
                                       ),
                               ),
                             ),
                             SizedBox(width: AppSpacing.sm.w),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     dish.name,
@@ -1909,8 +1883,8 @@ class _SwapSheet extends StatelessWidget {
                                   SizedBox(height: 2.h),
                                   Text(
                                     '${dish.calories.toInt()} kcal · ${dish.protein.toInt()}g P',
-                                    style: t.labelS.copyWith(
-                                        color: palette.textSecondary),
+                                    style: t.labelS
+                                        .copyWith(color: palette.textSecondary),
                                   ),
                                 ],
                               ),

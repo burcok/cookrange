@@ -88,8 +88,7 @@ class _QuickAddSheetState extends State<QuickAddSheet>
         unawaited(HapticFeedback.mediumImpact());
         AppSnackBar.success(
           context,
-          AppLocalizations.of(context)
-              .translate('food_scan.log_success'),
+          AppLocalizations.of(context).translate('food_scan.log_success'),
         );
       }
     } catch (e) {
@@ -127,26 +126,22 @@ class _QuickAddSheetState extends State<QuickAddSheet>
                       return Padding(
                         padding: EdgeInsets.only(right: 8.w),
                         child: GestureDetector(
-                          onTap: () =>
-                              setState(() => _selectedMealType = type),
+                          onTap: () => setState(() => _selectedMealType = type),
                           child: AnimatedContainer(
                             duration: AppMotion.fast,
                             padding: EdgeInsets.symmetric(
                                 horizontal: 14.w, vertical: 8.h),
                             decoration: BoxDecoration(
-                              color: isSelected
-                                  ? primary
-                                  : palette.surfaceVariant,
+                              color:
+                                  isSelected ? primary : palette.surfaceVariant,
                               borderRadius:
                                   BorderRadius.circular(AppRadius.button.r),
                               border: Border.all(
-                                color:
-                                    isSelected ? primary : palette.border,
+                                color: isSelected ? primary : palette.border,
                               ),
                             ),
                             child: Text(
-                              l10n.translate(
-                                  'food_scan.meal.$type'),
+                              l10n.translate('food_scan.meal.$type'),
                               style: t.labelM.copyWith(
                                 color: isSelected
                                     ? Colors.white

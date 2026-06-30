@@ -67,8 +67,7 @@ class DishImageService {
   Future<String?> fetchFromUnsplash(String query, {String? seed}) async {
     try {
       // Build a food-focused query, keeping it to ≤4 keywords for accuracy.
-      final keywords =
-          'food,dish,${query.split(' ').take(3).join(',')}';
+      final keywords = 'food,dish,${query.split(' ').take(3).join(',')}';
       // Stable numeric seed derived from the seed string
       final numericSeed = seed != null
           ? seed.codeUnits.fold(0, (p, e) => p + e) % 1000

@@ -58,8 +58,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
           children: [
             Text(
               l10n.translate('admin.panel_title'),
-              style: t.titleM
-                  .copyWith(color: palette.textPrimary, fontWeight: FontWeight.w800),
+              style: t.titleM.copyWith(
+                  color: palette.textPrimary, fontWeight: FontWeight.w800),
             ),
             StreamBuilder<int>(
               stream: AdminService().pendingCountStream(),
@@ -71,7 +71,10 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                   padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [palette.error, palette.error.withValues(alpha: 0.75)],
+                      colors: [
+                        palette.error,
+                        palette.error.withValues(alpha: 0.75)
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(10.r),
                   ),
@@ -101,7 +104,8 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                 isScrollable: true,
                 tabAlignment: TabAlignment.center,
                 labelStyle: t.labelM.copyWith(fontWeight: FontWeight.w700),
-                unselectedLabelStyle: t.labelM.copyWith(fontWeight: FontWeight.w500),
+                unselectedLabelStyle:
+                    t.labelM.copyWith(fontWeight: FontWeight.w500),
                 indicator: UnderlineTabIndicator(
                   borderSide: BorderSide(color: primary, width: 3),
                   insets: EdgeInsets.symmetric(horizontal: 8.w),
@@ -248,7 +252,8 @@ class _AdminOverviewTab extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -902,8 +907,7 @@ class _UsersTab extends StatelessWidget {
           final count = snap.data?.length ?? 0;
           return AppCard(
             onTap: () => Navigator.of(context).push(
-              AppTransitions.slideRight(
-                  const AdminUserManagementScreen()),
+              AppTransitions.slideRight(const AdminUserManagementScreen()),
             ),
             child: Row(
               children: [
@@ -911,9 +915,8 @@ class _UsersTab extends StatelessWidget {
                   width: 48.r,
                   height: 48.r,
                   decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .primaryColor
-                        .withValues(alpha: 0.12),
+                    color:
+                        Theme.of(context).primaryColor.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(Icons.people_outline_rounded,
@@ -926,8 +929,7 @@ class _UsersTab extends StatelessWidget {
                     children: [
                       Text(
                         l10n.translate('admin.users_title'),
-                        style: t.titleM
-                            .copyWith(fontWeight: FontWeight.w700),
+                        style: t.titleM.copyWith(fontWeight: FontWeight.w700),
                       ),
                       SizedBox(height: 2.h),
                       if (snap.connectionState == ConnectionState.waiting)
@@ -1089,8 +1091,8 @@ class _CoachHistoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<CoachApplicationModel>>(
-      stream: AdminService()
-          .coachApplicationHistoryStream(status: statusFilter),
+      stream:
+          AdminService().coachApplicationHistoryStream(status: statusFilter),
       builder: (context, snap) {
         if (snap.hasError) {
           return AppErrorState(
@@ -1116,8 +1118,7 @@ class _CoachHistoryList extends StatelessWidget {
           separatorBuilder: (_, __) => SizedBox(height: 8.h),
           itemBuilder: (ctx, i) {
             final app = apps[i];
-            final isApproved =
-                app.status == CoachApplicationStatus.approved;
+            final isApproved = app.status == CoachApplicationStatus.approved;
             return RepaintBoundary(
               child: _HistoryCard(
                 name: app.displayName,
@@ -1157,8 +1158,7 @@ class _GymHistoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<GymApplicationModel>>(
-      stream:
-          AdminService().gymApplicationHistoryStream(status: statusFilter),
+      stream: AdminService().gymApplicationHistoryStream(status: statusFilter),
       builder: (context, snap) {
         if (snap.hasError) {
           return AppErrorState(
@@ -1184,8 +1184,7 @@ class _GymHistoryList extends StatelessWidget {
           separatorBuilder: (_, __) => SizedBox(height: 8.h),
           itemBuilder: (ctx, i) {
             final app = apps[i];
-            final isApproved =
-                app.status == GymApplicationStatus.approved;
+            final isApproved = app.status == GymApplicationStatus.approved;
             return RepaintBoundary(
               child: _HistoryCard(
                 name: app.gymName,
@@ -1273,8 +1272,8 @@ class _HistoryCard extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 7.w, vertical: 2.h),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(6.r),
@@ -1392,7 +1391,9 @@ class _FilterChipButton extends StatelessWidget {
           curve: AppMotion.standard,
           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
           decoration: BoxDecoration(
-            color: selected ? primary.withValues(alpha: 0.12) : palette.surfaceVariant,
+            color: selected
+                ? primary.withValues(alpha: 0.12)
+                : palette.surfaceVariant,
             borderRadius: BorderRadius.circular(20.r),
             border: selected
                 ? Border.all(color: primary.withValues(alpha: 0.4))
@@ -1533,8 +1534,8 @@ class _CoachAppCard extends StatelessWidget {
                   ]
                 : [
                     Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 10.w, vertical: 5.h),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                       decoration: BoxDecoration(
                         color: palette.warning.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20.r),
@@ -1726,8 +1727,8 @@ class _GymAppCard extends StatelessWidget {
                   ]
                 : [
                     Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 10.w, vertical: 5.h),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
                       decoration: BoxDecoration(
                         color: palette.warning.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20.r),
@@ -1813,7 +1814,8 @@ class _AuditLogTab extends StatelessWidget {
               final dt = ts.toDate().toLocal();
               timeLabel = DateFormat('MMM d, y · HH:mm').format(dt);
             }
-            return RepaintBoundary(child: AppCard(
+            return RepaintBoundary(
+                child: AppCard(
               elevated: false,
               bordered: true,
               child: Column(
@@ -1839,15 +1841,14 @@ class _AuditLogTab extends StatelessWidget {
                       ),
                       const Spacer(),
                       Text(timeLabel,
-                          style: t.labelS
-                              .copyWith(color: palette.textTertiary)),
+                          style:
+                              t.labelS.copyWith(color: palette.textTertiary)),
                     ],
                   ),
                   SizedBox(height: 6.h),
                   Text(
                     '${l10n.translate('admin.audit_actor')}: $actorUid',
-                    style:
-                        t.labelS.copyWith(color: palette.textSecondary),
+                    style: t.labelS.copyWith(color: palette.textSecondary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1855,8 +1856,7 @@ class _AuditLogTab extends StatelessWidget {
                     SizedBox(height: 2.h),
                     Text(
                       '${l10n.translate('admin.audit_target')}: $targetUid',
-                      style:
-                          t.labelS.copyWith(color: palette.textSecondary),
+                      style: t.labelS.copyWith(color: palette.textSecondary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -2011,7 +2011,8 @@ class _BroadcastsTab extends StatelessWidget {
               separatorBuilder: (_, __) => SizedBox(height: 10.h),
               itemBuilder: (context, index) {
                 final b = broadcasts[index];
-                return _BroadcastCard(data: b, palette: palette, t: t, l10n: l10n);
+                return _BroadcastCard(
+                    data: b, palette: palette, t: t, l10n: l10n);
               },
             );
           },
@@ -2027,8 +2028,8 @@ class _BroadcastsTab extends StatelessWidget {
             icon: const Icon(Icons.add_rounded, color: Colors.white),
             label: Text(
               l10n.translate('admin.broadcast_compose'),
-              style: t.labelM.copyWith(
-                  color: Colors.white, fontWeight: FontWeight.w700),
+              style: t.labelM
+                  .copyWith(color: Colors.white, fontWeight: FontWeight.w700),
             ),
           ),
         ),
@@ -2121,8 +2122,7 @@ class _BroadcastCard extends StatelessWidget {
               ),
               SizedBox(width: 8.w),
               Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.full.r),
@@ -2179,10 +2179,14 @@ class _BroadcastCard extends StatelessWidget {
   }
 
   String _audienceLabel(String audience) {
-    if (audience == 'all') return l10n.translate('admin.broadcast_audience_all');
-    if (audience == 'coaches') return l10n.translate('admin.broadcast_audience_coaches');
-    if (audience == 'gymOwners') return l10n.translate('admin.broadcast_audience_gym_owners');
-    if (audience.startsWith('user:')) return l10n.translate('admin.broadcast_audience_single');
+    if (audience == 'all')
+      return l10n.translate('admin.broadcast_audience_all');
+    if (audience == 'coaches')
+      return l10n.translate('admin.broadcast_audience_coaches');
+    if (audience == 'gymOwners')
+      return l10n.translate('admin.broadcast_audience_gym_owners');
+    if (audience.startsWith('user:'))
+      return l10n.translate('admin.broadcast_audience_single');
     return audience;
   }
 }
@@ -2229,14 +2233,12 @@ class _ComposeBroadcastSheetState extends State<_ComposeBroadcastSheet> {
   Future<void> _send() async {
     final l10n = widget.l10n;
     if (_titleEnCtrl.text.trim().isEmpty || _bodyEnCtrl.text.trim().isEmpty) {
-      AppSnackBar.error(
-          context, 'Title (EN) and Message (EN) are required.');
+      AppSnackBar.error(context, 'Title (EN) and Message (EN) are required.');
       return;
     }
 
-    final audience = _audience == 'single'
-        ? 'user:${_uidCtrl.text.trim()}'
-        : _audience;
+    final audience =
+        _audience == 'single' ? 'user:${_uidCtrl.text.trim()}' : _audience;
     if (audience == 'user:') {
       AppSnackBar.error(context, 'Please enter a user UID.');
       return;
@@ -2258,7 +2260,8 @@ class _ComposeBroadcastSheetState extends State<_ComposeBroadcastSheet> {
       );
       if (!mounted) return;
       Navigator.pop(context);
-      AppSnackBar.success(context, l10n.translate('admin.broadcast_send_success'));
+      AppSnackBar.success(
+          context, l10n.translate('admin.broadcast_send_success'));
     } catch (e) {
       if (mounted) {
         AppSnackBar.error(
@@ -2283,7 +2286,8 @@ class _ComposeBroadcastSheetState extends State<_ComposeBroadcastSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── EN fields ────────────────────────────────────────────────────
-          _BroadcastLabel(l10n.translate('admin.broadcast_audience'), t, palette),
+          _BroadcastLabel(
+              l10n.translate('admin.broadcast_audience'), t, palette),
           _AudienceSelector(
             value: _audience,
             palette: palette,
@@ -2302,7 +2306,8 @@ class _ComposeBroadcastSheetState extends State<_ComposeBroadcastSheet> {
             ),
           ],
           SizedBox(height: 16.h),
-          _BroadcastLabel(l10n.translate('admin.broadcast_title_en'), t, palette),
+          _BroadcastLabel(
+              l10n.translate('admin.broadcast_title_en'), t, palette),
           _field(
             controller: _titleEnCtrl,
             hint: 'New feature alert!',
@@ -2310,7 +2315,8 @@ class _ComposeBroadcastSheetState extends State<_ComposeBroadcastSheet> {
             palette: palette,
           ),
           SizedBox(height: 10.h),
-          _BroadcastLabel(l10n.translate('admin.broadcast_body_en'), t, palette),
+          _BroadcastLabel(
+              l10n.translate('admin.broadcast_body_en'), t, palette),
           _field(
             controller: _bodyEnCtrl,
             hint: 'Check out the latest update…',
@@ -2321,7 +2327,8 @@ class _ComposeBroadcastSheetState extends State<_ComposeBroadcastSheet> {
           SizedBox(height: 16.h),
 
           // ── TR fields ────────────────────────────────────────────────────
-          _BroadcastLabel(l10n.translate('admin.broadcast_title_tr'), t, palette),
+          _BroadcastLabel(
+              l10n.translate('admin.broadcast_title_tr'), t, palette),
           _field(
             controller: _titleTrCtrl,
             hint: 'Yeni özellik!',
@@ -2329,7 +2336,8 @@ class _ComposeBroadcastSheetState extends State<_ComposeBroadcastSheet> {
             palette: palette,
           ),
           SizedBox(height: 10.h),
-          _BroadcastLabel(l10n.translate('admin.broadcast_body_tr'), t, palette),
+          _BroadcastLabel(
+              l10n.translate('admin.broadcast_body_tr'), t, palette),
           _field(
             controller: _bodyTrCtrl,
             hint: 'Son güncellemeye göz atın…',
@@ -2395,9 +2403,7 @@ class _ComposeBroadcastSheetState extends State<_ComposeBroadcastSheet> {
                 : l10n.translate('admin.broadcast_send_now'),
             onPressed: _sending ? null : _send,
             loading: _sending,
-            icon: _scheduleMode
-                ? Icons.schedule_rounded
-                : Icons.send_rounded,
+            icon: _scheduleMode ? Icons.schedule_rounded : Icons.send_rounded,
           ),
         ],
       ),
@@ -2424,8 +2430,7 @@ class _ComposeBroadcastSheetState extends State<_ComposeBroadcastSheet> {
           borderRadius: BorderRadius.circular(AppRadius.input.r),
           borderSide: BorderSide.none,
         ),
-        contentPadding:
-            EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
       ),
     );
   }
@@ -2503,8 +2508,7 @@ class _AudienceSelector extends StatelessWidget {
               opt.$2,
               style: t.labelM.copyWith(
                 color: selected ? primary : palette.textSecondary,
-                fontWeight:
-                    selected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ),
@@ -2651,8 +2655,8 @@ class _ConfigTabState extends State<_ConfigTab> {
         cfg['feature_voice_assistant'] as bool? ?? false;
     _flags['feature_nutrition_analytics'] =
         cfg['feature_nutrition_analytics'] as bool? ?? true;
-    _blockedKeywords = List<String>.from(
-        cfg['blocked_keywords'] as List? ?? []);
+    _blockedKeywords =
+        List<String>.from(cfg['blocked_keywords'] as List? ?? []);
     _populated = true;
     _hasChanges = false;
   }
@@ -2676,8 +2680,7 @@ class _ConfigTabState extends State<_ConfigTab> {
         'ai_proxy_url': _aiProxyUrlCtrl.text.trim(),
         'maintenance_message_en': _msgEnCtrl.text.trim(),
         'maintenance_message_tr': _msgTrCtrl.text.trim(),
-        'max_meal_retries':
-            int.tryParse(_maxRetriesCtrl.text.trim()) ?? 3,
+        'max_meal_retries': int.tryParse(_maxRetriesCtrl.text.trim()) ?? 3,
         'blocked_keywords': _blockedKeywords,
         ..._flags,
       });
@@ -2690,8 +2693,8 @@ class _ConfigTabState extends State<_ConfigTab> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -2856,23 +2859,21 @@ class _ConfigTabState extends State<_ConfigTab> {
                   Expanded(
                     child: TextField(
                       controller: _keywordCtrl,
-                      style:
-                          t.bodyM.copyWith(color: palette.textPrimary),
+                      style: t.bodyM.copyWith(color: palette.textPrimary),
                       decoration: InputDecoration(
-                        hintText: l10n
-                            .translate('admin.config_keyword_hint'),
-                        hintStyle: t.bodyM
-                            .copyWith(color: palette.textSecondary),
+                        hintText: l10n.translate('admin.config_keyword_hint'),
+                        hintStyle:
+                            t.bodyM.copyWith(color: palette.textSecondary),
                         contentPadding: EdgeInsets.symmetric(
                             horizontal: 12.w, vertical: 10.h),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                              AppRadius.input.r),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.input.r),
                           borderSide: BorderSide(color: palette.border),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                              AppRadius.input.r),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.input.r),
                           borderSide: BorderSide(color: palette.border),
                         ),
                         filled: true,
@@ -2899,14 +2900,11 @@ class _ConfigTabState extends State<_ConfigTab> {
                 SizedBox(height: 12.h),
                 Center(
                   child: Text(
-                    l10n
-                        .translate('admin.config_last_updated')
-                        .replaceFirst(
-                            '{at}',
-                            DateFormat('MMM d, HH:mm').format(
-                                (cfg['updated_at'] as Timestamp).toDate())),
-                    style:
-                        t.labelS.copyWith(color: palette.textTertiary),
+                    l10n.translate('admin.config_last_updated').replaceFirst(
+                        '{at}',
+                        DateFormat('MMM d, HH:mm')
+                            .format((cfg['updated_at'] as Timestamp).toDate())),
+                    style: t.labelS.copyWith(color: palette.textTertiary),
                   ),
                 ),
               ],
@@ -2983,7 +2981,8 @@ class _CreditsAndCodesTabState extends State<_CreditsAndCodesTab> {
     try {
       await AdminService().voidReferralCode(code);
     } finally {
-      if (mounted) setState(() => _voidingCodes = {..._voidingCodes}..remove(code));
+      if (mounted)
+        setState(() => _voidingCodes = {..._voidingCodes}..remove(code));
     }
   }
 
@@ -3071,8 +3070,7 @@ class _CreditsAndCodesTabState extends State<_CreditsAndCodesTab> {
               }
               return Column(
                 children: users
-                    .map((u) => _AiUsageRow(
-                        user: u, palette: palette, t: t))
+                    .map((u) => _AiUsageRow(user: u, palette: palette, t: t))
                     .toList(),
               );
             },
@@ -3168,8 +3166,7 @@ class _CreditsAndCodesTabState extends State<_CreditsAndCodesTab> {
             final d = codes[i];
             final code = d['id'] as String? ?? '';
             final maxUses = d['maxUses'] as int? ?? 10;
-            final usedCount =
-                (d['usedByUids'] as List<dynamic>?)?.length ?? 0;
+            final usedCount = (d['usedByUids'] as List<dynamic>?)?.length ?? 0;
             final isVoided = maxUses == 0;
             return _ReferralCodeCard(
               code: code,
@@ -3260,8 +3257,7 @@ class _ToggleRow extends StatelessWidget {
           Expanded(
             child: Text(label,
                 style: t.bodyM.copyWith(
-                    color: palette.textPrimary,
-                    fontWeight: FontWeight.w600)),
+                    color: palette.textPrimary, fontWeight: FontWeight.w600)),
           ),
           Switch(
             value: value,
@@ -3323,8 +3319,8 @@ class _CfgField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.r),
-              borderSide: BorderSide(
-                  color: Theme.of(context).primaryColor, width: 1.5),
+              borderSide:
+                  BorderSide(color: Theme.of(context).primaryColor, width: 1.5),
             ),
           ),
         ),
@@ -3374,14 +3370,12 @@ class _SectionToggleBtn extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon,
-                color: active ? accentColor : palette.textTertiary,
-                size: 16.r),
+                color: active ? accentColor : palette.textTertiary, size: 16.r),
             SizedBox(width: 6.w),
             Text(label,
                 style: t.labelM.copyWith(
                     color: active ? accentColor : palette.textSecondary,
-                    fontWeight:
-                        active ? FontWeight.w700 : FontWeight.w500)),
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500)),
           ],
         ),
       ),
@@ -3412,20 +3406,17 @@ class _AiUsageRow extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
         child: Row(
           children: [
-            Icon(Icons.person_rounded,
-                color: palette.textTertiary, size: 18.r),
+            Icon(Icons.person_rounded, color: palette.textTertiary, size: 18.r),
             SizedBox(width: 8.w),
             Expanded(
               child: Text(name,
                   style: t.bodyM.copyWith(
-                      color: palette.textPrimary,
-                      fontWeight: FontWeight.w600),
+                      color: palette.textPrimary, fontWeight: FontWeight.w600),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis),
             ),
             Container(
-              padding:
-                  EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
               decoration: BoxDecoration(
                 color: palette.warning.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6.r),
@@ -3436,8 +3427,7 @@ class _AiUsageRow extends StatelessWidget {
             if (bonus > 0) ...[
               SizedBox(width: 6.w),
               Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                 decoration: BoxDecoration(
                   color: palette.success.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6.r),
@@ -3498,8 +3488,7 @@ class _GrantUserRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis),
                   if (email.isNotEmpty)
                     Text(email,
-                        style: t.labelS.copyWith(
-                            color: palette.textTertiary),
+                        style: t.labelS.copyWith(color: palette.textTertiary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                 ],
@@ -3594,8 +3583,7 @@ class _ReferralCodeCard extends StatelessWidget {
           ),
           if (isVoided)
             Container(
-              padding:
-                  EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: palette.textTertiary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6.r),
@@ -3634,8 +3622,7 @@ class _ProgramReviewTab extends StatefulWidget {
 
 class _ProgramReviewTabState extends State<_ProgramReviewTab>
     with SingleTickerProviderStateMixin {
-  late final TabController _inner =
-      TabController(length: 2, vsync: this);
+  late final TabController _inner = TabController(length: 2, vsync: this);
 
   @override
   void dispose() {
@@ -3798,8 +3785,8 @@ class _ProgramCardState extends State<_ProgramCard> {
             TextField(
               controller: _rejectCtrl,
               decoration: InputDecoration(
-                hintText: widget.l10n
-                    .translate('admin.program_reject_reason_hint'),
+                hintText:
+                    widget.l10n.translate('admin.program_reject_reason_hint'),
                 filled: true,
                 fillColor: widget.palette.surfaceVariant,
                 border: OutlineInputBorder(
@@ -3808,8 +3795,7 @@ class _ProgramCardState extends State<_ProgramCard> {
                 ),
               ),
               maxLines: 3,
-              style: widget.t.bodyM
-                  .copyWith(color: widget.palette.textPrimary),
+              style: widget.t.bodyM.copyWith(color: widget.palette.textPrimary),
             ),
             SizedBox(height: 12.h),
             AppButton(
@@ -3820,8 +3806,8 @@ class _ProgramCardState extends State<_ProgramCard> {
                 setState(() => _rejecting = true);
                 Navigator.of(ctx).pop();
                 try {
-                  await AdminService().rejectProgram(
-                      widget.data['id'] as String, notes);
+                  await AdminService()
+                      .rejectProgram(widget.data['id'] as String, notes);
                 } finally {
                   if (mounted) setState(() => _rejecting = false);
                 }
@@ -3881,23 +3867,20 @@ class _ProgramCardState extends State<_ProgramCard> {
                       l10n
                           .translate('admin.program_by')
                           .replaceFirst('{coach}', coachName),
-                      style: t.labelS
-                          .copyWith(color: palette.textSecondary),
+                      style: t.labelS.copyWith(color: palette.textSecondary),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 decoration: BoxDecoration(
                   color: statusColor().withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6.r),
                 ),
                 child: Text(statusLabel(),
                     style: t.labelS.copyWith(
-                        color: statusColor(),
-                        fontWeight: FontWeight.w700)),
+                        color: statusColor(), fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -4047,13 +4030,14 @@ class _BillingTab extends StatelessWidget {
                                   u['display_name'] as String? ??
                                       u['uid'] as String? ??
                                       '—',
-                                  style: t.labelL.copyWith(
-                                      fontWeight: FontWeight.w700),
+                                  style: t.labelL
+                                      .copyWith(fontWeight: FontWeight.w700),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
-                                  (u['subscription_tier'] as String? ?? 'premium')
+                                  (u['subscription_tier'] as String? ??
+                                          'premium')
                                       .toUpperCase(),
                                   style: t.labelS.copyWith(
                                     color: primary,
@@ -4115,11 +4099,10 @@ class _BillingKpiCard extends StatelessWidget {
               const AppSkeletonBox(height: 24, width: 60)
             else
               Text(value,
-                  style: t.headlineM.copyWith(
-                      color: color, fontWeight: FontWeight.w800)),
+                  style: t.headlineM
+                      .copyWith(color: color, fontWeight: FontWeight.w800)),
             SizedBox(height: 4.r),
-            Text(label,
-                style: t.labelS.copyWith(color: palette.textSecondary)),
+            Text(label, style: t.labelS.copyWith(color: palette.textSecondary)),
           ],
         ),
       ),
@@ -4134,8 +4117,7 @@ class _AbuseTab extends StatefulWidget {
   final AppLocalizations l10n;
   final AppText t;
 
-  const _AbuseTab(
-      {required this.palette, required this.l10n, required this.t});
+  const _AbuseTab({required this.palette, required this.l10n, required this.t});
 
   @override
   State<_AbuseTab> createState() => _AbuseTabState();
@@ -4246,8 +4228,7 @@ class _BannedUsersList extends StatelessWidget {
                             overflow: TextOverflow.ellipsis),
                         Text(
                           l10n.translate('admin.abuse_banned_label'),
-                          style: t.labelS
-                              .copyWith(color: palette.error),
+                          style: t.labelS.copyWith(color: palette.error),
                         ),
                       ],
                     ),
@@ -4344,7 +4325,9 @@ class _AiUsageList extends StatelessWidget {
                             Text(
                               isPremium ? 'Premium' : 'Free',
                               style: t.labelS.copyWith(
-                                  color: isPremium ? primary : palette.textSecondary),
+                                  color: isPremium
+                                      ? primary
+                                      : palette.textSecondary),
                             ),
                           ],
                         ),
@@ -4355,15 +4338,15 @@ class _AiUsageList extends StatelessWidget {
                           Text(
                             '$used / $limit',
                             style: t.labelM.copyWith(
-                              color: isAbuse ? palette.error : palette.textPrimary,
+                              color:
+                                  isAbuse ? palette.error : palette.textPrimary,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                           if (bonus > 0)
                             Text(
                               '+$bonus bonus',
-                              style: t.labelS
-                                  .copyWith(color: palette.success),
+                              style: t.labelS.copyWith(color: palette.success),
                             ),
                         ],
                       ),
@@ -4375,8 +4358,8 @@ class _AiUsageList extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: pct,
                       minHeight: 5,
-                      backgroundColor:
-                          (isAbuse ? palette.error : primary).withValues(alpha: 0.15),
+                      backgroundColor: (isAbuse ? palette.error : primary)
+                          .withValues(alpha: 0.15),
                       color: isAbuse ? palette.error : primary,
                     ),
                   ),
@@ -4478,7 +4461,8 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
                       icon: Icons.people_rounded,
                       label: l10n.translate('admin.analytics_total_users'),
                       value: '$total',
-                      sub: '$coaches ${l10n.translate('admin.analytics_coaches_label')}'
+                      sub:
+                          '$coaches ${l10n.translate('admin.analytics_coaches_label')}'
                           ' · $gymOwners ${l10n.translate('admin.analytics_gyms_label')}',
                       color: primary,
                       palette: palette,
@@ -4498,7 +4482,8 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
                       icon: Icons.forum_rounded,
                       label: l10n.translate('admin.analytics_posts'),
                       value: '$posts',
-                      sub: '$squads ${l10n.translate('admin.analytics_squads_label')}',
+                      sub:
+                          '$squads ${l10n.translate('admin.analytics_squads_label')}',
                       color: palette.info,
                       palette: palette,
                       t: t,
@@ -4510,7 +4495,8 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
                       sub: openReports > 0
                           ? l10n.translate('admin.analytics_reports_action')
                           : l10n.translate('admin.analytics_reports_clear'),
-                      color: openReports > 0 ? palette.warning : palette.success,
+                      color:
+                          openReports > 0 ? palette.warning : palette.success,
                       palette: palette,
                       t: t,
                     ),
@@ -4693,12 +4679,11 @@ class _AnalyticsKpi extends StatelessWidget {
                 style: t.headlineM
                     .copyWith(color: color, fontWeight: FontWeight.w800)),
             SizedBox(height: 2.r),
-            Text(label,
-                style: t.labelS.copyWith(color: palette.textSecondary)),
+            Text(label, style: t.labelS.copyWith(color: palette.textSecondary)),
             SizedBox(height: 4.r),
             Text(sub,
-                style: t.labelS
-                    .copyWith(color: color.withValues(alpha: 0.7), fontSize: 10),
+                style: t.labelS.copyWith(
+                    color: color.withValues(alpha: 0.7), fontSize: 10),
                 maxLines: 2),
           ],
         ),
@@ -4759,8 +4744,7 @@ class _RoleBar extends StatelessWidget {
           width: 40.w,
           child: Text(
             '$count ($pctStr%)',
-            style: t.labelS
-                .copyWith(color: palette.textTertiary, fontSize: 10),
+            style: t.labelS.copyWith(color: palette.textTertiary, fontSize: 10),
             textAlign: TextAlign.right,
           ),
         ),
@@ -4768,6 +4752,3 @@ class _RoleBar extends StatelessWidget {
     );
   }
 }
-
-
-

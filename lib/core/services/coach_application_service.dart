@@ -37,8 +37,8 @@ class CoachApplicationService {
     // Upload evidence files first
     final evidenceUrls = <String>[];
     for (var i = 0; i < evidenceFiles.length; i++) {
-      final url = await _uploadEvidence(
-          applicantUid, evidenceFiles[i], 'evidence_$i');
+      final url =
+          await _uploadEvidence(applicantUid, evidenceFiles[i], 'evidence_$i');
       evidenceUrls.add(url);
     }
 
@@ -65,10 +65,8 @@ class CoachApplicationService {
     return ref.id;
   }
 
-  Future<String> _uploadEvidence(
-      String uid, File file, String name) async {
-    final ref = _storage
-        .ref('coach_applications/$uid/$name.jpg');
+  Future<String> _uploadEvidence(String uid, File file, String name) async {
+    final ref = _storage.ref('coach_applications/$uid/$name.jpg');
     await ref.putFile(file);
     return ref.getDownloadURL();
   }
@@ -98,8 +96,9 @@ class CoachApplicationService {
         .orderBy('submittedAt', descending: true)
         .limit(1)
         .snapshots()
-        .map((s) =>
-            s.docs.isEmpty ? null : CoachApplicationModel.fromFirestore(s.docs.first));
+        .map((s) => s.docs.isEmpty
+            ? null
+            : CoachApplicationModel.fromFirestore(s.docs.first));
   }
 
   // ── Admin streams ──────────────────────────────────────────────────────────
@@ -110,9 +109,7 @@ class CoachApplicationService {
         .where('status', isEqualTo: 'pending')
         .orderBy('submittedAt', descending: false)
         .snapshots()
-        .map((s) => s.docs
-            .map(CoachApplicationModel.fromFirestore)
-            .toList());
+        .map((s) => s.docs.map(CoachApplicationModel.fromFirestore).toList());
   }
 
   Stream<List<CoachApplicationModel>> getAllApplicationsStream() {
@@ -120,8 +117,6 @@ class CoachApplicationService {
         .collection(_col)
         .orderBy('submittedAt', descending: true)
         .snapshots()
-        .map((s) => s.docs
-            .map(CoachApplicationModel.fromFirestore)
-            .toList());
+        .map((s) => s.docs.map(CoachApplicationModel.fromFirestore).toList());
   }
 }

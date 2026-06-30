@@ -108,7 +108,8 @@ class CoachApplicationModel {
         'certDocUrl': certDocUrl,
         'idDocUrl': idDocUrl,
         'submittedAt': FieldValue.serverTimestamp(),
-        'reviewedAt': reviewedAt != null ? Timestamp.fromDate(reviewedAt!) : null,
+        'reviewedAt':
+            reviewedAt != null ? Timestamp.fromDate(reviewedAt!) : null,
         'reviewerNotes': reviewerNotes,
         'reviewerUid': reviewerUid,
       };

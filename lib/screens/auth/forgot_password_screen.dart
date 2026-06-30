@@ -233,8 +233,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               border: Border.all(
                   color: palette.success.withValues(alpha: 0.3), width: 2),
             ),
-            child:
-                Icon(Icons.mark_email_read_rounded, size: 42.r, color: palette.success),
+            child: Icon(Icons.mark_email_read_rounded,
+                size: 42.r, color: palette.success),
           ),
         ),
         SizedBox(height: AppSpacing.xl.h),
@@ -246,8 +246,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           child: Text(
             l10n.translate('auth.reset_link_sent'),
             textAlign: TextAlign.center,
-            style: t.bodyL.copyWith(
-                color: palette.textSecondary, height: 1.5),
+            style: t.bodyL.copyWith(color: palette.textSecondary, height: 1.5),
           ),
         ),
         SizedBox(height: AppSpacing.xl.h),

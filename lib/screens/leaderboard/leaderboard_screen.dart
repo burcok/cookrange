@@ -96,8 +96,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
             stream: _service.getGlobalLeaderboardStream(),
             builder: (context, snap) {
               if (snap.hasError) {
-                return Center(
-                    child: Text(l10n.translate('leaderboard.error')));
+                return Center(child: Text(l10n.translate('leaderboard.error')));
               }
               if (!snap.hasData) {
                 return const Center(child: CircularProgressIndicator());
@@ -112,8 +111,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
               : (_friendsEntries == null
                   ? Center(
                       child: Text(l10n.translate('leaderboard.tab_friends')))
-                  : _buildList(
-                      _friendsEntries!, palette, primary, l10n,
+                  : _buildList(_friendsEntries!, palette, primary, l10n,
                       emptyKey: 'leaderboard.empty_friends')),
         ],
       ),
@@ -134,16 +132,12 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.leaderboard_outlined,
-                  size: 64,
-                  color: palette.border),
+              Icon(Icons.leaderboard_outlined, size: 64, color: palette.border),
               const SizedBox(height: 16),
               Text(
                 l10n.translate(emptyKey ?? 'leaderboard.empty'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: palette.textSecondary,
-                    fontSize: 15),
+                style: TextStyle(color: palette.textSecondary, fontSize: 15),
               ),
             ],
           ),
@@ -212,91 +206,87 @@ class _LeaderboardRow extends StatelessWidget {
     return GestureDetector(
       onTap: () => openUserProfile(context, userId: entry.uid),
       child: Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: isMe
-            ? primary.withValues(alpha: 0.1)
-            : palette.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: isMe
-            ? Border.all(color: primary.withValues(alpha: 0.35))
-            : null,
-        boxShadow: [
-          BoxShadow(
-            color: palette.shadow.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Rank
-          SizedBox(
-            width: 40,
-            child: Text(
-              _rankEmoji,
-              style: TextStyle(
-                fontSize: entry.rank <= 3 ? 22 : 14,
-                fontWeight: FontWeight.bold,
-                color: entry.rank <= 3 ? _rankColor() : palette.textSecondary,
-              ),
-              textAlign: TextAlign.center,
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isMe ? primary.withValues(alpha: 0.1) : palette.surface,
+          borderRadius: BorderRadius.circular(14),
+          border:
+              isMe ? Border.all(color: primary.withValues(alpha: 0.35)) : null,
+          boxShadow: [
+            BoxShadow(
+              color: palette.shadow.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-          ),
-          const SizedBox(width: 12),
-
-          // Avatar
-          CircleAvatar(
-            radius: 20,
-            backgroundImage: entry.photoURL != null
-                ? NetworkImage(entry.photoURL!)
-                : null,
-            backgroundColor: palette.surfaceVariant,
-            child: entry.photoURL == null
-                ? Text(
-                    entry.displayName.isNotEmpty
-                        ? entry.displayName[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 12),
-
-          // Name
-          Expanded(
-            child: Text(
-              entry.displayName,
-              style: TextStyle(
-                fontWeight: isMe ? FontWeight.bold : FontWeight.w500,
-                fontSize: 14,
-                color: isMe ? primary : palette.textPrimary,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-
-          // Streak
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('🔥', style: TextStyle(fontSize: 16)),
-              const SizedBox(width: 4),
-              Text(
-                '${entry.streak}',
+          ],
+        ),
+        child: Row(
+          children: [
+            // Rank
+            SizedBox(
+              width: 40,
+              child: Text(
+                _rankEmoji,
                 style: TextStyle(
+                  fontSize: entry.rank <= 3 ? 22 : 14,
                   fontWeight: FontWeight.bold,
-                  fontSize: 15,
+                  color: entry.rank <= 3 ? _rankColor() : palette.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Avatar
+            CircleAvatar(
+              radius: 20,
+              backgroundImage:
+                  entry.photoURL != null ? NetworkImage(entry.photoURL!) : null,
+              backgroundColor: palette.surfaceVariant,
+              child: entry.photoURL == null
+                  ? Text(
+                      entry.displayName.isNotEmpty
+                          ? entry.displayName[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 12),
+
+            // Name
+            Expanded(
+              child: Text(
+                entry.displayName,
+                style: TextStyle(
+                  fontWeight: isMe ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 14,
                   color: isMe ? primary : palette.textPrimary,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+
+            // Streak
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🔥', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 4),
+                Text(
+                  '${entry.streak}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: isMe ? primary : palette.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

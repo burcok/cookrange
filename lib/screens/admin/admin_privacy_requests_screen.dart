@@ -118,15 +118,16 @@ class AdminPrivacyRequestsScreen extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(l10n.translate(r.type.titleKey),
-                              style:
-                                  t.titleM.copyWith(fontWeight: FontWeight.w700)),
+                              style: t.titleM
+                                  .copyWith(fontWeight: FontWeight.w700)),
                         ),
                         Container(
                           padding: EdgeInsets.symmetric(
                               horizontal: 8.w, vertical: 3.h),
                           decoration: BoxDecoration(
                             color: statusColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(AppRadius.full.r),
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.full.r),
                           ),
                           child: Text(l10n.translate(r.status.labelKey),
                               style: t.labelS.copyWith(

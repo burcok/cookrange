@@ -54,7 +54,8 @@ class CoachProfileModel {
       displayName: data['display_name'] as String? ?? '',
       photoURL: data['photo_url'] as String?,
       bio: data['bio'] as String?,
-      specializations: List<String>.from(data['specializations'] as List? ?? []),
+      specializations:
+          List<String>.from(data['specializations'] as List? ?? []),
       certifications: List<String>.from(data['certifications'] as List? ?? []),
       isAcceptingClients: data['is_accepting_clients'] as bool? ?? true,
       vanityCode: data['vanity_code'] as String?,

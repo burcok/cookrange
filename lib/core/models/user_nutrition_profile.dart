@@ -12,6 +12,7 @@ class UserNutritionProfile {
   final List<String> allergyIds;
   final List<String> dietaryRestrictionIds;
   final List<String> dislikedFoodKeys;
+
   /// Free-form ingredients/foods the user wants excluded from recipes/plans.
   final List<String> avoidIngredients;
   final String? cookingLevel;
@@ -123,10 +124,7 @@ class UserNutritionProfile {
 
   static List<String> _extractStringList(dynamic v) {
     if (v is! List) return const [];
-    return v
-        .whereType<String>()
-        .where((s) => s.isNotEmpty)
-        .toList();
+    return v.whereType<String>().where((s) => s.isNotEmpty).toList();
   }
 
   static List<String> _extractDislikedFoodKeys(dynamic v) {

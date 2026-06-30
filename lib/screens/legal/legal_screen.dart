@@ -6,7 +6,12 @@ import '../../core/widgets/ds/ds.dart';
 
 /// The legal documents Cookrange ships. Each maps to a pair of markdown assets
 /// under `assets/legal/<base>_<lang>.md` (en/tr), rendered by [_MarkdownView].
-enum LegalDocumentType { privacyPolicy, termsOfUse, kvkkClarification, explicitConsent }
+enum LegalDocumentType {
+  privacyPolicy,
+  termsOfUse,
+  kvkkClarification,
+  explicitConsent
+}
 
 extension LegalDocumentTypeX on LegalDocumentType {
   String get assetBase => switch (this) {
@@ -238,9 +243,7 @@ class _MarkdownView extends StatelessWidget {
           for (var i = 0; i < dataRows.length; i++)
             Container(
               decoration: BoxDecoration(
-                color: i == 0
-                    ? palette.surfaceVariant
-                    : Colors.transparent,
+                color: i == 0 ? palette.surfaceVariant : Colors.transparent,
                 border: i == dataRows.length - 1
                     ? null
                     : Border(

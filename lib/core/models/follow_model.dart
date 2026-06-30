@@ -16,11 +16,13 @@ class FollowModel {
     required this.followedAt,
   });
 
-  factory FollowModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory FollowModel.fromFirestore(
+      DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
     return FollowModel(
       uid: doc.id,
-      followedAt: (data['followedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      followedAt:
+          (data['followedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 

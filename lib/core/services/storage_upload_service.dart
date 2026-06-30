@@ -57,8 +57,8 @@ class StorageUploadService {
 
     if (onProgress != null) {
       task.snapshotEvents.listen((snap) {
-        final progress =
-            snap.bytesTransferred / (snap.totalBytes == 0 ? 1 : snap.totalBytes);
+        final progress = snap.bytesTransferred /
+            (snap.totalBytes == 0 ? 1 : snap.totalBytes);
         onProgress(progress);
       });
     }

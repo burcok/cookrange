@@ -38,9 +38,8 @@ class _ProgramMarketplaceScreenState extends State<ProgramMarketplaceScreen> {
         ),
         title: Text(
           l10n.translate('program.marketplace_title'),
-          style: AppText.of(context)
-              .titleL
-              .copyWith(color: palette.textPrimary),
+          style:
+              AppText.of(context).titleL.copyWith(color: palette.textPrimary),
         ),
         centerTitle: false,
       ),
@@ -265,11 +264,8 @@ class _ProgramCardState extends State<_ProgramCard>
                         padding: EdgeInsets.symmetric(
                             horizontal: 8.w, vertical: 4.h),
                         decoration: BoxDecoration(
-                          color: p.isFree
-                              ? const Color(0xFF10B981)
-                              : primary,
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.sm.r),
+                          color: p.isFree ? const Color(0xFF10B981) : primary,
+                          borderRadius: BorderRadius.circular(AppRadius.sm.r),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.25),
@@ -322,10 +318,10 @@ class _ProgramCardState extends State<_ProgramCard>
                                   height: 14.r,
                                   fit: BoxFit.cover,
                                   cacheWidth: 56,
-                                  errorBuilder: (_, __, ___) =>
-                                      Icon(Icons.person_rounded,
-                                          size: 14.r,
-                                          color: palette.textSecondary),
+                                  errorBuilder: (_, __, ___) => Icon(
+                                      Icons.person_rounded,
+                                      size: 14.r,
+                                      color: palette.textSecondary),
                                 ),
                               ),
                             )
@@ -333,14 +329,13 @@ class _ProgramCardState extends State<_ProgramCard>
                             Padding(
                               padding: EdgeInsets.only(right: 4.w),
                               child: Icon(Icons.person_rounded,
-                                  size: 12.r,
-                                  color: palette.textSecondary),
+                                  size: 12.r, color: palette.textSecondary),
                             ),
                           Expanded(
                             child: Text(
                               '${l10n.translate('program.by_coach')} ${p.coachName}',
-                              style: t.labelS.copyWith(
-                                  color: palette.textSecondary),
+                              style: t.labelS
+                                  .copyWith(color: palette.textSecondary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -359,10 +354,10 @@ class _ProgramCardState extends State<_ProgramCard>
                           Text(
                             l10n
                                 .translate('program.duration_weeks')
-                                .replaceFirst('{n}',
-                                    p.durationWeeks.toString()),
-                            style: t.labelS
-                                .copyWith(color: palette.textTertiary),
+                                .replaceFirst(
+                                    '{n}', p.durationWeeks.toString()),
+                            style:
+                                t.labelS.copyWith(color: palette.textTertiary),
                           ),
                           const Spacer(),
                           Icon(Icons.people_outline_rounded,
@@ -370,8 +365,8 @@ class _ProgramCardState extends State<_ProgramCard>
                           SizedBox(width: 3.w),
                           Text(
                             '${p.enrollmentCount}',
-                            style: t.labelS
-                                .copyWith(color: palette.textTertiary),
+                            style:
+                                t.labelS.copyWith(color: palette.textTertiary),
                           ),
                         ],
                       ),

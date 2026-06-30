@@ -80,13 +80,19 @@ class CommunityGroupService {
   }
 
   Stream<CommunityGroupModel?> getGroupStream(String groupId) {
-    return _groups.doc(groupId).snapshots().map((d) =>
-        d.exists ? CommunityGroupModel.fromFirestore(d) : null);
+    return _groups
+        .doc(groupId)
+        .snapshots()
+        .map((d) => d.exists ? CommunityGroupModel.fromFirestore(d) : null);
   }
 
   /// Groups the user belongs to (read off their own doc, then fetched).
   Stream<List<CommunityGroupModel>> getMyGroupsStream(String uid) {
-    return _db.collection('users').doc(uid).snapshots().asyncMap((userDoc) async {
+    return _db
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .asyncMap((userDoc) async {
       final ids = List<String>.from(
           (userDoc.data()?['group_memberships'] as List?) ?? const []);
       if (ids.isEmpty) return <CommunityGroupModel>[];
@@ -190,8 +196,8 @@ class CommunityGroupService {
 
     final batch = _db.batch();
     batch.delete(_members(groupId).doc(uid));
-    batch.update(_groups.doc(groupId),
-        {'member_count': FieldValue.increment(-1)});
+    batch.update(
+        _groups.doc(groupId), {'member_count': FieldValue.increment(-1)});
     batch.set(
       _db.collection('users').doc(uid),
       {
@@ -215,8 +221,9 @@ class CommunityGroupService {
   /// Touches `last_activity_at` (called when a member posts to the group).
   Future<void> touchActivity(String groupId) async {
     try {
-      await _groups.doc(groupId).update(
-          {'last_activity_at': Timestamp.fromDate(DateTime.now())});
+      await _groups
+          .doc(groupId)
+          .update({'last_activity_at': Timestamp.fromDate(DateTime.now())});
     } catch (e) {
       debugPrint('[CommunityGroupService] touchActivity error: $e');
     }

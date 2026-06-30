@@ -69,8 +69,10 @@ class AppPalette {
   // ── Glassmorphism tokens ──
   /// Semi-transparent frosted background fill for glass surfaces.
   final Color glassFill;
+
   /// Bright edge stroke that gives glass its luminous border.
   final Color glassStroke;
+
   /// Subtle inner top-edge highlight for depth on glass surfaces.
   final Color glassHighlight;
 
@@ -134,8 +136,8 @@ class AppPalette {
     scrim: Color(0x99000000),
     shimmerBase: Color(0xFFF0F1F6),
     shimmerHighlight: Color(0xFFFBFCFF),
-    glassFill: Color(0xB3FFFFFF),    // white 70%
-    glassStroke: Color(0xBFFFFFFF),  // white 75%
+    glassFill: Color(0xB3FFFFFF), // white 70%
+    glassStroke: Color(0xBFFFFFFF), // white 75%
     glassHighlight: Color(0x80FFFFFF), // white 50%
   );
 
@@ -164,8 +166,8 @@ class AppPalette {
     scrim: Color(0xB3000000),
     shimmerBase: Color(0xFF1C2430),
     shimmerHighlight: Color(0xFF273140),
-    glassFill: Color(0x8C1E2531),    // surfaceElevated 55%
-    glassStroke: Color(0x1AFFFFFF),  // white 10%
+    glassFill: Color(0x8C1E2531), // surfaceElevated 55%
+    glassStroke: Color(0x1AFFFFFF), // white 10%
     glassHighlight: Color(0x14FFFFFF), // white 8%
   );
 

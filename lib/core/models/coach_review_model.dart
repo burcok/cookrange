@@ -29,8 +29,7 @@ class CoachReviewModel {
       reviewerPhotoUrl: data['reviewer_photo_url'] as String?,
       rating: data['rating'] as int? ?? 0,
       text: data['text'] as String? ?? '',
-      createdAt:
-          (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 

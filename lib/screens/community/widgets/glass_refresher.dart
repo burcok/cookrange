@@ -137,7 +137,8 @@ class _GlassRefresherState extends State<GlassRefresher>
                   return Container(
                     width: 48,
                     height: 48,
-                    transform: Matrix4.identity()..scaleByDouble(currentScale, currentScale, 1.0, 1.0),
+                    transform: Matrix4.identity()
+                      ..scaleByDouble(currentScale, currentScale, 1.0, 1.0),
                     transformAlignment: Alignment.center,
                     child: Stack(
                       alignment: Alignment.center,

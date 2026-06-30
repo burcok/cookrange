@@ -45,8 +45,7 @@ class RecentFoodService {
             .orderBy('lastLoggedAt', descending: false)
             .limit(1)
             .get();
-        final count =
-            (await _ref(uid).count().get()).count ?? 0;
+        final count = (await _ref(uid).count().get()).count ?? 0;
         if (count >= _maxRecent && snap.docs.isNotEmpty) {
           await snap.docs.first.reference.delete();
         }

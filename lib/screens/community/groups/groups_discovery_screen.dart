@@ -248,12 +248,10 @@ class _GroupsDiscoveryScreenState extends State<GroupsDiscoveryScreen> {
                     : RefreshIndicator(
                         onRefresh: _load,
                         child: ListView.separated(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 4, 16, 96),
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
                           physics: const BouncingScrollPhysics(),
                           itemCount: _results.length,
-                          separatorBuilder: (_, __) =>
-                              SizedBox(height: 10.h),
+                          separatorBuilder: (_, __) => SizedBox(height: 10.h),
                           itemBuilder: (ctx, i) =>
                               _GroupCard(group: _results[i]),
                         ),

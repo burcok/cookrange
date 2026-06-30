@@ -66,8 +66,7 @@ class ProgramDayModel {
         dayNumber: m['day_number'] as int? ?? 1,
         title: m['title'] as String? ?? '',
         sessions: (m['sessions'] as List? ?? [])
-            .map((s) =>
-                ProgramSessionModel.fromMap(s as Map<String, dynamic>))
+            .map((s) => ProgramSessionModel.fromMap(s as Map<String, dynamic>))
             .toList(),
       );
 
@@ -103,8 +102,7 @@ class ProgramWeekModel {
       title: d['title'] as String? ?? '',
       description: d['description'] as String?,
       days: (d['days'] as List? ?? [])
-          .map((day) =>
-              ProgramDayModel.fromMap(day as Map<String, dynamic>))
+          .map((day) => ProgramDayModel.fromMap(day as Map<String, dynamic>))
           .toList(),
     );
   }

@@ -23,7 +23,8 @@ class AppInitialsAvatar extends StatelessWidget {
   String get _initials {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return '?';
-    final parts = trimmed.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+    final parts =
+        trimmed.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
     if (parts.length == 1) return parts[0][0].toUpperCase();
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
@@ -31,9 +32,15 @@ class AppInitialsAvatar extends StatelessWidget {
   // Deterministic hue from name — same name always gets the same color.
   Color _colorFromName() {
     const palette = [
-      Color(0xFFEF5350), Color(0xFFEC407A), Color(0xFFAB47BC),
-      Color(0xFF7E57C2), Color(0xFF42A5F5), Color(0xFF26C6DA),
-      Color(0xFF26A69A), Color(0xFF66BB6A), Color(0xFFFFA726),
+      Color(0xFFEF5350),
+      Color(0xFFEC407A),
+      Color(0xFFAB47BC),
+      Color(0xFF7E57C2),
+      Color(0xFF42A5F5),
+      Color(0xFF26C6DA),
+      Color(0xFF26A69A),
+      Color(0xFF66BB6A),
+      Color(0xFFFFA726),
       Color(0xFFFF7043),
     ];
     if (name.isEmpty) return palette[0];

@@ -46,7 +46,8 @@ class OnboardingFlowResolver {
     final goals = data['primary_goals'];
     final hasGoals = goals is List ? goals.isNotEmpty : goals != null;
     final equipment = data['kitchen_equipments'];
-    final hasEquipment = equipment is List ? equipment.isNotEmpty : equipment != null;
+    final hasEquipment =
+        equipment is List ? equipment.isNotEmpty : equipment != null;
     final personal = data['personal_info'] as Map<String, dynamic>?;
 
     return hasGoals &&

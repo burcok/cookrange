@@ -12,7 +12,8 @@ import '../utils/app_routes.dart';
 /// Background message handler — MUST be a top-level function.
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('PushNotificationService: background message: ${message.messageId}');
+  debugPrint(
+      'PushNotificationService: background message: ${message.messageId}');
 }
 
 /// Sets up Firebase Cloud Messaging for push notifications.
@@ -67,8 +68,7 @@ class PushNotificationService {
     // a branded rationale primer — NOT here during silent app startup.
 
     // Set up local notifications (for foreground display)
-    const androidInit =
-        AndroidInitializationSettings('@mipmap/launcher_icon');
+    const androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
     const iosInit = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -128,6 +128,11 @@ class PushNotificationService {
   // base id 7001, so [cancelWaterReminder] also clears it.)
   static const int _waterReminderIdBase = 7001;
   static const int _waterReminderMaxCount = 12; // ids 7001..7012
+
+  // Contiguous id block for meal-time reminders (breakfast/lunch/dinner).
+  // Max 8 slots to leave room for future extension (ids 8001..8008).
+  static const int _mealReminderIdBase = 8001;
+  static const int _mealReminderMaxCount = 8; // ids 8001..8008
 
   /// Loads the IANA timezone database and pins `tz.local` to the device's zone.
   /// Idempotent; safe to call repeatedly. Falls back to UTC on any failure so
@@ -208,6 +213,62 @@ class PushNotificationService {
           'scheduleDailyWaterReminder: ${times.length} reminders ($wakeTime–$sleepTime)');
     } catch (e) {
       debugPrint('scheduleDailyWaterReminder failed: $e');
+    }
+  }
+
+  /// Schedules daily meal-time reminders at the given clock times (HH:mm).
+  /// Any previously scheduled meal reminders are cancelled first (idempotent).
+  /// Uses inexact alarms — no exact-alarm permission required.
+  Future<void> scheduleDailyMealReminders({
+    required List<String> times,
+    required String title,
+    required String body,
+  }) async {
+    try {
+      await _configureLocalTimeZone();
+      await cancelMealReminders();
+      if (times.isEmpty) return;
+
+      final details = NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channel.id,
+          _channel.name,
+          channelDescription: _channel.description,
+        ),
+        iOS: const DarwinNotificationDetails(),
+      );
+
+      for (var i = 0; i < times.length && i < _mealReminderMaxCount; i++) {
+        final parsed = _parseMinutes(times[i]);
+        if (parsed == null) continue;
+        final hour = parsed ~/ 60;
+        final minute = parsed % 60;
+        await _localNotifications.zonedSchedule(
+          _mealReminderIdBase + i,
+          title,
+          body,
+          _nextInstanceOfTime(hour, minute),
+          details,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.time,
+        );
+      }
+      debugPrint('scheduleDailyMealReminders: ${times.length} reminders');
+    } catch (e) {
+      debugPrint('scheduleDailyMealReminders failed: $e');
+    }
+  }
+
+  /// Cancels every scheduled meal reminder in the reserved id block.
+  Future<void> cancelMealReminders() async {
+    try {
+      for (var i = 0; i < _mealReminderMaxCount; i++) {
+        await _localNotifications.cancel(_mealReminderIdBase + i);
+      }
+    } catch (e) {
+      debugPrint('cancelMealReminders failed: $e');
     }
   }
 

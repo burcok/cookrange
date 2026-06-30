@@ -44,9 +44,8 @@ class ExerciseLogService {
         .where('date', isEqualTo: today)
         .orderBy('loggedAt', descending: false)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => ExerciseLog.fromFirestore(d))
-            .toList())
+        .map((snap) =>
+            snap.docs.map((d) => ExerciseLog.fromFirestore(d)).toList())
         .handleError((Object e) {
       debugPrint('ExerciseLogService stream error: $e');
       return <ExerciseLog>[];

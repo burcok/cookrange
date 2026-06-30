@@ -239,71 +239,187 @@ class _SidePanel extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            _ProfileHeader(user: user, palette: palette, isDark: isDark, primary: primary, onTap: () => onTab(2)),
+            _ProfileHeader(
+                user: user,
+                palette: palette,
+                isDark: isDark,
+                primary: primary,
+                onTap: () => onTab(2)),
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── MAIN ────────────────────────────────────────────
                     _SectionLabel(l10n.translate('menu.section_pages')),
-                    _NavTile(icon: Icons.home_rounded, label: l10n.translate('menu.home'), onTap: () => onTab(NavigationProvider.homeTab), palette: palette, isDark: isDark, primary: primary),
-                    _NavTile(icon: Icons.groups_rounded, label: l10n.translate('menu.community'), onTap: () => onTab(NavigationProvider.communityTab), palette: palette, isDark: isDark, primary: primary),
-                    _NavTile(icon: Icons.restaurant_menu_rounded, label: l10n.translate('menu.foods_nutrition'), onTap: () => onPush(const NutritionHubScreen()), palette: palette, isDark: isDark, primary: primary),
-                    _NavTile(icon: Icons.groups_2_rounded, label: l10n.translate('menu.groups'), onTap: () => onPush(const GroupsDiscoveryScreen()), palette: palette, isDark: isDark, primary: primary),
+                    _NavTile(
+                        icon: Icons.home_rounded,
+                        label: l10n.translate('menu.home'),
+                        onTap: () => onTab(NavigationProvider.homeTab),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
+                    _NavTile(
+                        icon: Icons.groups_rounded,
+                        label: l10n.translate('menu.community'),
+                        onTap: () => onTab(NavigationProvider.communityTab),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
+                    _NavTile(
+                        icon: Icons.restaurant_menu_rounded,
+                        label: l10n.translate('menu.foods_nutrition'),
+                        onTap: () => onPush(const NutritionHubScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
+                    _NavTile(
+                        icon: Icons.groups_2_rounded,
+                        label: l10n.translate('menu.groups'),
+                        onTap: () => onPush(const GroupsDiscoveryScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
 
                     const SizedBox(height: 18),
 
                     // ── SOCIAL ──────────────────────────────────────────
                     _SectionLabel(l10n.translate('menu.section_social')),
-                    _NavTile(icon: Icons.explore_rounded, label: l10n.translate('menu.discover'), onTap: () => onPush(const DiscoverHubScreen()), palette: palette, isDark: isDark, primary: primary),
-                    _NavTile(icon: Icons.chat_bubble_rounded, label: l10n.translate('menu.chats'), onTap: () => onPush(const ChatListScreen()), palette: palette, isDark: isDark, primary: primary),
-                    _NavTile(icon: Icons.auto_awesome_rounded, label: l10n.translate('menu.ai_chat'), onTap: () => onPush(const AIChatScreen()), palette: palette, isDark: isDark, primary: primary),
-                    _NavTile(icon: Icons.leaderboard_rounded, label: l10n.translate('menu.leaderboard'), onTap: () => onPush(const LeaderboardScreen()), palette: palette, isDark: isDark, primary: primary),
-                    _NavTile(icon: Icons.groups_2_rounded, label: l10n.translate('squad.title'), onTap: () => onPush(const StreakSquadScreen()), palette: palette, isDark: isDark, primary: primary),
-                    _NavTile(icon: Icons.library_books_rounded, label: l10n.translate('program.my_programs'), onTap: () => onPush(const MyProgramsScreen()), palette: palette, isDark: isDark, primary: primary),
-                    _NavTile(icon: Icons.store_rounded, label: l10n.translate('menu.program_marketplace'), onTap: () => onPush(const ProgramMarketplaceScreen()), palette: palette, isDark: isDark, primary: primary),
-                    _NavTile(icon: Icons.fitness_center_rounded, label: l10n.translate('menu.find_gym'), onTap: () => onPush(const GymDiscoveryScreen()), palette: palette, isDark: isDark, primary: primary),
-                    _NavTile(icon: Icons.sports_rounded, label: l10n.translate('menu.find_coach'), onTap: () => onPush(const CoachDiscoveryScreen()), palette: palette, isDark: isDark, primary: primary),
+                    _NavTile(
+                        icon: Icons.explore_rounded,
+                        label: l10n.translate('menu.discover'),
+                        onTap: () => onPush(const DiscoverHubScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
+                    _NavTile(
+                        icon: Icons.chat_bubble_rounded,
+                        label: l10n.translate('menu.chats'),
+                        onTap: () => onPush(const ChatListScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
+                    _NavTile(
+                        icon: Icons.auto_awesome_rounded,
+                        label: l10n.translate('menu.ai_chat'),
+                        onTap: () => onPush(const AIChatScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
+                    _NavTile(
+                        icon: Icons.leaderboard_rounded,
+                        label: l10n.translate('menu.leaderboard'),
+                        onTap: () => onPush(const LeaderboardScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
+                    _NavTile(
+                        icon: Icons.groups_2_rounded,
+                        label: l10n.translate('squad.title'),
+                        onTap: () => onPush(const StreakSquadScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
+                    _NavTile(
+                        icon: Icons.library_books_rounded,
+                        label: l10n.translate('program.my_programs'),
+                        onTap: () => onPush(const MyProgramsScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
+                    _NavTile(
+                        icon: Icons.store_rounded,
+                        label: l10n.translate('menu.program_marketplace'),
+                        onTap: () => onPush(const ProgramMarketplaceScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
+                    _NavTile(
+                        icon: Icons.fitness_center_rounded,
+                        label: l10n.translate('menu.find_gym'),
+                        onTap: () => onPush(const GymDiscoveryScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
+                    _NavTile(
+                        icon: Icons.sports_rounded,
+                        label: l10n.translate('menu.find_coach'),
+                        onTap: () => onPush(const CoachDiscoveryScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
 
                     const SizedBox(height: 18),
 
                     // ── ROLE CARD ────────────────────────────────────────
-                    if (user != null)
-                      _buildRoleCard(context, user!, l10n),
+                    if (user != null) _buildRoleCard(context, user!, l10n),
 
                     const SizedBox(height: 18),
 
                     // ── ACCOUNT ──────────────────────────────────────────
                     _SectionLabel(l10n.translate('menu.section_account')),
-                    _NavTile(icon: Icons.restaurant_menu_rounded, label: l10n.translate('menu.dietary_preferences'), onTap: () => onPush(const DietaryPreferencesScreen()), palette: palette, isDark: isDark, primary: primary),
-                    _NavTile(icon: Icons.settings_rounded, label: l10n.translate('menu.settings'), onTap: () => onPush(const SettingsScreen()), palette: palette, isDark: isDark, primary: primary),
+                    _NavTile(
+                        icon: Icons.restaurant_menu_rounded,
+                        label: l10n.translate('menu.dietary_preferences'),
+                        onTap: () => onPush(const DietaryPreferencesScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
+                    _NavTile(
+                        icon: Icons.settings_rounded,
+                        label: l10n.translate('menu.settings'),
+                        onTap: () => onPush(const SettingsScreen()),
+                        palette: palette,
+                        isDark: isDark,
+                        primary: primary),
 
                     const SizedBox(height: 4),
                   ],
                 ),
               ),
             ),
-            _LogoutFooter(palette: palette, isDark: isDark, onLogout: onLogout, isLoggingOut: isLoggingOut, l10n: l10n),
+            _LogoutFooter(
+                palette: palette,
+                isDark: isDark,
+                onLogout: onLogout,
+                isLoggingOut: isLoggingOut,
+                l10n: l10n),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildRoleCard(BuildContext context, UserModel user, AppLocalizations l10n) {
+  Widget _buildRoleCard(
+      BuildContext context, UserModel user, AppLocalizations l10n) {
     final cards = <Widget>[];
 
     if (user.hasRole(UserRole.admin)) {
-      cards.add(_AdminCard(l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush));
+      cards.add(_AdminCard(
+          l10n: l10n,
+          palette: palette,
+          isDark: isDark,
+          primary: primary,
+          onPush: onPush));
     }
     if (user.hasRole(UserRole.gymOwner)) {
-      cards.add(_GymCard(l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush));
+      cards.add(_GymCard(
+          l10n: l10n,
+          palette: palette,
+          isDark: isDark,
+          primary: primary,
+          onPush: onPush));
     }
     if (user.hasRole(UserRole.coach)) {
-      cards.add(_CoachCard(l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush));
+      cards.add(_CoachCard(
+          l10n: l10n,
+          palette: palette,
+          isDark: isDark,
+          primary: primary,
+          onPush: onPush));
     }
 
     // Always show the "grow" card so any user (admin, gym owner, etc.) can still
@@ -314,13 +430,29 @@ class _SidePanel extends StatelessWidget {
     final needsGrowCard = !isGymOwner || !isCoach;
 
     if (cards.isEmpty && needsGrowCard) {
-      return _ConsumerCard(uid: user.uid, l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush, hideGym: isGymOwner, hideCoach: isCoach);
+      return _ConsumerCard(
+          uid: user.uid,
+          l10n: l10n,
+          palette: palette,
+          isDark: isDark,
+          primary: primary,
+          onPush: onPush,
+          hideGym: isGymOwner,
+          hideCoach: isCoach);
     }
     if (cards.isEmpty) return const SizedBox.shrink();
 
     final allCards = [...cards];
     if (needsGrowCard) {
-      allCards.add(_ConsumerCard(uid: user.uid, l10n: l10n, palette: palette, isDark: isDark, primary: primary, onPush: onPush, hideGym: isGymOwner, hideCoach: isCoach));
+      allCards.add(_ConsumerCard(
+          uid: user.uid,
+          l10n: l10n,
+          palette: palette,
+          isDark: isDark,
+          primary: primary,
+          onPush: onPush,
+          hideGym: isGymOwner,
+          hideCoach: isCoach));
     }
 
     if (allCards.length == 1) return allCards.first;
@@ -344,7 +476,12 @@ class _AdminCard extends StatelessWidget {
   final Color primary;
   final void Function(Widget) onPush;
 
-  const _AdminCard({required this.l10n, required this.palette, required this.isDark, required this.primary, required this.onPush});
+  const _AdminCard(
+      {required this.l10n,
+      required this.palette,
+      required this.isDark,
+      required this.primary,
+      required this.onPush});
 
   @override
   Widget build(BuildContext context) {
@@ -416,7 +553,12 @@ class _CoachCard extends StatelessWidget {
   final Color primary;
   final void Function(Widget) onPush;
 
-  const _CoachCard({required this.l10n, required this.palette, required this.isDark, required this.primary, required this.onPush});
+  const _CoachCard(
+      {required this.l10n,
+      required this.palette,
+      required this.isDark,
+      required this.primary,
+      required this.onPush});
 
   @override
   Widget build(BuildContext context) {
@@ -456,7 +598,12 @@ class _GymCard extends StatelessWidget {
   final Color primary;
   final void Function(Widget) onPush;
 
-  const _GymCard({required this.l10n, required this.palette, required this.isDark, required this.primary, required this.onPush});
+  const _GymCard(
+      {required this.l10n,
+      required this.palette,
+      required this.isDark,
+      required this.primary,
+      required this.onPush});
 
   @override
   Widget build(BuildContext context) {
@@ -506,7 +653,15 @@ class _ConsumerCard extends StatelessWidget {
   final bool hideGym;
   final bool hideCoach;
 
-  const _ConsumerCard({required this.uid, required this.l10n, required this.palette, required this.isDark, required this.primary, required this.onPush, this.hideGym = false, this.hideCoach = false});
+  const _ConsumerCard(
+      {required this.uid,
+      required this.l10n,
+      required this.palette,
+      required this.isDark,
+      required this.primary,
+      required this.onPush,
+      this.hideGym = false,
+      this.hideCoach = false});
 
   @override
   Widget build(BuildContext context) {
@@ -525,13 +680,25 @@ class _ConsumerCard extends StatelessWidget {
               final isPending = app?.status == GymApplicationStatus.pending;
               final isRejected = app?.status == GymApplicationStatus.rejected;
               return _CardTile(
-                icon: isPending ? Icons.hourglass_top_rounded : isRejected ? Icons.cancel_outlined : Icons.add_business_rounded,
-                label: isPending ? l10n.translate('menu.gym_app_pending') : isRejected ? l10n.translate('menu.gym_app_rejected') : l10n.translate('menu.register_gym'),
+                icon: isPending
+                    ? Icons.hourglass_top_rounded
+                    : isRejected
+                        ? Icons.cancel_outlined
+                        : Icons.add_business_rounded,
+                label: isPending
+                    ? l10n.translate('menu.gym_app_pending')
+                    : isRejected
+                        ? l10n.translate('menu.gym_app_rejected')
+                        : l10n.translate('menu.register_gym'),
                 palette: palette,
                 isDark: isDark,
                 primary: primary,
                 onTap: () => onPush(const GymDashboardScreen()),
-                statusColor: isPending ? palette.warning : isRejected ? palette.error : null,
+                statusColor: isPending
+                    ? palette.warning
+                    : isRejected
+                        ? palette.error
+                        : null,
               );
             },
           ),
@@ -540,16 +707,30 @@ class _ConsumerCard extends StatelessWidget {
             stream: CoachApplicationService().getMyApplicationStream(uid),
             builder: (context, snap) {
               final app = snap.data;
-              final isPending = app != null && (app.isPending || app.status == CoachApplicationStatus.needsMoreInfo);
+              final isPending = app != null &&
+                  (app.isPending ||
+                      app.status == CoachApplicationStatus.needsMoreInfo);
               final isRejected = app != null && app.isRejected;
               return _CardTile(
-                icon: isPending ? Icons.hourglass_top_rounded : isRejected ? Icons.cancel_outlined : Icons.sports_rounded,
-                label: isPending ? l10n.translate('menu.coach_app_pending') : isRejected ? l10n.translate('menu.coach_app_rejected') : l10n.translate('menu.become_coach'),
+                icon: isPending
+                    ? Icons.hourglass_top_rounded
+                    : isRejected
+                        ? Icons.cancel_outlined
+                        : Icons.sports_rounded,
+                label: isPending
+                    ? l10n.translate('menu.coach_app_pending')
+                    : isRejected
+                        ? l10n.translate('menu.coach_app_rejected')
+                        : l10n.translate('menu.become_coach'),
                 palette: palette,
                 isDark: isDark,
                 primary: primary,
                 onTap: () => onPush(const CoachDashboardScreen()),
-                statusColor: isPending ? palette.warning : isRejected ? palette.error : null,
+                statusColor: isPending
+                    ? palette.warning
+                    : isRejected
+                        ? palette.error
+                        : null,
               );
             },
           ),
@@ -626,7 +807,9 @@ class _RoleGlassCard extends StatelessWidget {
                 ),
               ),
               // Divider
-              Divider(height: 1, color: accentColor.withValues(alpha: isDark ? 0.12 : 0.1)),
+              Divider(
+                  height: 1,
+                  color: accentColor.withValues(alpha: isDark ? 0.12 : 0.1)),
               // Items
               Padding(
                 padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
@@ -728,7 +911,8 @@ class _CardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = statusColor ?? palette.textSecondary.withValues(alpha: 0.65);
+    final iconColor =
+        statusColor ?? palette.textSecondary.withValues(alpha: 0.65);
 
     return Material(
       color: Colors.transparent,
@@ -737,8 +921,7 @@ class _CardTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
-        overlayColor: WidgetStateProperty.all(
-            primary.withValues(alpha: 0.07)),
+        overlayColor: WidgetStateProperty.all(primary.withValues(alpha: 0.07)),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
           child: Row(
@@ -757,7 +940,8 @@ class _CardTile extends StatelessWidget {
               ),
               if (badge != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: palette.error,
                     borderRadius: BorderRadius.circular(20),
@@ -964,7 +1148,9 @@ class _ProfileHeader extends StatelessWidget {
                   ),
                   child: ClipOval(
                     child: photoUrl != null
-                        ? Image.network(photoUrl, fit: BoxFit.cover, cacheWidth: 208,
+                        ? Image.network(photoUrl,
+                            fit: BoxFit.cover,
+                            cacheWidth: 208,
                             errorBuilder: (_, __, ___) => _avatarFallback())
                         : _avatarFallback(),
                   ),
@@ -1009,9 +1195,11 @@ class _ProfileHeader extends StatelessWidget {
                     children: roles.map((role) {
                       final (roleName, roleColor) = _roleInfo(role, l10n);
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: roleColor.withValues(alpha: isDark ? 0.15 : 0.10),
+                          color:
+                              roleColor.withValues(alpha: isDark ? 0.15 : 0.10),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: roleColor.withValues(alpha: 0.2),
@@ -1041,7 +1229,8 @@ class _ProfileHeader extends StatelessWidget {
 
   Widget _avatarFallback() => Container(
         color: primary.withValues(alpha: 0.1),
-        child: Icon(Icons.person_rounded, size: 26, color: primary.withValues(alpha: 0.7)),
+        child: Icon(Icons.person_rounded,
+            size: 26, color: primary.withValues(alpha: 0.7)),
       );
 
   (String, Color) _roleInfo(UserRole role, AppLocalizations l10n) {
@@ -1100,8 +1289,8 @@ class _LogoutFooter extends StatelessWidget {
             child: InkWell(
               onTap: isLoggingOut ? null : onLogout,
               borderRadius: BorderRadius.circular(12),
-              overlayColor: WidgetStateProperty.all(
-                  Colors.red.withValues(alpha: 0.08)),
+              overlayColor:
+                  WidgetStateProperty.all(Colors.red.withValues(alpha: 0.08)),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 11),
                 child: Row(

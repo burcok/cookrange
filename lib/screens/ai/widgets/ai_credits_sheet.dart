@@ -38,8 +38,7 @@ class AiCreditsSheet extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     return StreamBuilder<AiCreditModel>(
-      stream: AiCreditService()
-          .getCreditsStream(uid, isPremium: isPremium),
+      stream: AiCreditService().getCreditsStream(uid, isPremium: isPremium),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return Padding(
@@ -188,15 +187,15 @@ class _SheetContentState extends State<_SheetContent> {
                   children: [
                     Text(
                       l10n.translate('ai.credits_sheet_title'),
-                      style: textTheme.titleM
-                          .copyWith(color: palette.textPrimary),
+                      style:
+                          textTheme.titleM.copyWith(color: palette.textPrimary),
                     ),
                     Text(
                       credits.isPremium
                           ? l10n.translate('ai.credits_premium_plan')
                           : l10n.translate('ai.credits_free_plan'),
-                      style:
-                          textTheme.labelS.copyWith(color: palette.textTertiary),
+                      style: textTheme.labelS
+                          .copyWith(color: palette.textTertiary),
                     ),
                   ],
                 ),
@@ -240,8 +239,7 @@ class _SheetContentState extends State<_SheetContent> {
               SizedBox(width: 8.w),
               Text(
                 resetText,
-                style:
-                    textTheme.labelS.copyWith(color: palette.textTertiary),
+                style: textTheme.labelS.copyWith(color: palette.textTertiary),
               ),
             ],
           ),
@@ -307,8 +305,7 @@ class _SheetContentState extends State<_SheetContent> {
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(AppRadius.card.r),
-                border:
-                    Border.all(color: primaryColor.withValues(alpha: 0.3)),
+                border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -328,8 +325,8 @@ class _SheetContentState extends State<_SheetContent> {
                   SizedBox(height: 6.h),
                   Text(
                     l10n.translate('ai.credits_premium_perks'),
-                    style: textTheme.labelS
-                        .copyWith(color: palette.textSecondary),
+                    style:
+                        textTheme.labelS.copyWith(color: palette.textSecondary),
                   ),
                   SizedBox(height: 14.h),
                   AppButton(
@@ -352,9 +349,8 @@ class _SheetContentState extends State<_SheetContent> {
             children: [
               AppButton(
                 label: l10n.translate('ai.credits_topup_title'),
-                onPressed: _buyingCredits
-                    ? null
-                    : () => _handleBuyCredits(context),
+                onPressed:
+                    _buyingCredits ? null : () => _handleBuyCredits(context),
                 variant: AppButtonVariant.tonal,
                 icon: Icons.add_rounded,
                 loading: _buyingCredits,
@@ -363,8 +359,7 @@ class _SheetContentState extends State<_SheetContent> {
               Center(
                 child: Text(
                   l10n.translate('ai.credits_topup_price'),
-                  style: textTheme.labelS
-                      .copyWith(color: palette.textTertiary),
+                  style: textTheme.labelS.copyWith(color: palette.textTertiary),
                 ),
               ),
             ],
@@ -397,8 +392,8 @@ class _PlanChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: textTheme.labelS.copyWith(
-            color: color, fontWeight: FontWeight.bold),
+        style: textTheme.labelS
+            .copyWith(color: color, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -422,8 +417,11 @@ class _UsageBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fraction = limit > 0 ? (used / limit).clamp(0.0, 1.0) : 1.0;
-    final color =
-        exhausted ? palette.error : fraction >= 0.75 ? palette.warning : primaryColor;
+    final color = exhausted
+        ? palette.error
+        : fraction >= 0.75
+            ? palette.warning
+            : primaryColor;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.full.r),
@@ -454,13 +452,10 @@ class _BonusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(Icons.card_giftcard_rounded,
-            color: palette.success, size: 14.r),
+        Icon(Icons.card_giftcard_rounded, color: palette.success, size: 14.r),
         SizedBox(width: 4.w),
         Text(
-          l10n
-              .translate('ai.credits_bonus_pool')
-              .replaceAll('{n}', '$bonus'),
+          l10n.translate('ai.credits_bonus_pool').replaceAll('{n}', '$bonus'),
           style: textTheme.labelS.copyWith(color: palette.success),
         ),
       ],

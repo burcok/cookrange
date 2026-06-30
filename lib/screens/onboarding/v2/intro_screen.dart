@@ -45,22 +45,34 @@ class _IntroScreenState extends State<IntroScreen> {
   bool _started = false;
 
   static const List<_Feature> _features = [
-    _Feature(Icons.auto_awesome_rounded, AppPalette.brand,
+    _Feature(
+        Icons.auto_awesome_rounded,
+        AppPalette.brand,
         'onboarding.v2.intro.features.ai_plan.title',
         'onboarding.v2.intro.features.ai_plan.subtitle'),
-    _Feature(Icons.qr_code_scanner_rounded, AppPalette.sunsetA,
+    _Feature(
+        Icons.qr_code_scanner_rounded,
+        AppPalette.sunsetA,
         'onboarding.v2.intro.features.scan.title',
         'onboarding.v2.intro.features.scan.subtitle'),
-    _Feature(Icons.fitness_center_rounded, AppPalette.energyLight,
+    _Feature(
+        Icons.fitness_center_rounded,
+        AppPalette.energyLight,
         'onboarding.v2.intro.features.gyms.title',
         'onboarding.v2.intro.features.gyms.subtitle'),
-    _Feature(Icons.sports_rounded, AppPalette.sunsetC,
+    _Feature(
+        Icons.sports_rounded,
+        AppPalette.sunsetC,
         'onboarding.v2.intro.features.coaches.title',
         'onboarding.v2.intro.features.coaches.subtitle'),
-    _Feature(Icons.groups_2_rounded, AppPalette.brandSoft,
+    _Feature(
+        Icons.groups_2_rounded,
+        AppPalette.brandSoft,
         'onboarding.v2.intro.features.community.title',
         'onboarding.v2.intro.features.community.subtitle'),
-    _Feature(Icons.visibility_rounded, Color(0xFFE8A317),
+    _Feature(
+        Icons.visibility_rounded,
+        Color(0xFFE8A317),
         'onboarding.v2.intro.features.gym_presence.title',
         'onboarding.v2.intro.features.gym_presence.subtitle',
         premium: true),
@@ -93,8 +105,7 @@ class _IntroScreenState extends State<IntroScreen> {
     _autoAdvance?.cancel();
     _autoAdvance = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted || !_pageCtrl.hasClients) return;
-      _pageCtrl.nextPage(
-          duration: AppMotion.slow, curve: AppMotion.emphasized);
+      _pageCtrl.nextPage(duration: AppMotion.slow, curve: AppMotion.emphasized);
     });
   }
 
@@ -143,7 +154,10 @@ class _IntroScreenState extends State<IntroScreen> {
                     gradient: RadialGradient(
                       center: Alignment.topCenter,
                       radius: 0.85,
-                      colors: [accent.withValues(alpha: 0.16), Colors.transparent],
+                      colors: [
+                        accent.withValues(alpha: 0.16),
+                        Colors.transparent
+                      ],
                     ),
                   ),
                 ),

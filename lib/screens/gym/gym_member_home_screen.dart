@@ -163,8 +163,8 @@ class _HeaderCard extends StatelessWidget {
                       const SizedBox(height: AppSpacing.xxs),
                       Text(
                         gym.locationDisplay,
-                        style: text.bodyM
-                            .copyWith(color: palette.textSecondary),
+                        style:
+                            text.bodyM.copyWith(color: palette.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -258,7 +258,8 @@ class _LocationCard extends StatelessWidget {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.cookrange.app',
                   ),
                   MarkerLayer(

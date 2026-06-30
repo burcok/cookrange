@@ -53,7 +53,9 @@ class PermissionService {
     final proceed = await _showPrimer(context, type: _PermType.photos);
     if (!proceed) return false;
     final result = await perm.request();
-    if (!result.isGranted && !result.isLimited && context.mounted &&
+    if (!result.isGranted &&
+        !result.isLimited &&
+        context.mounted &&
         result.isPermanentlyDenied) {
       _showSettingsSheet(context, _PermType.photos);
     }

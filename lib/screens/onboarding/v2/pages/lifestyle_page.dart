@@ -42,9 +42,9 @@ class OnboardingLifestylePage extends StatelessWidget {
     } else if (key == 'irregular_schedule') {
       ob.setScheduleType('irregular');
     } else {
-      final times = (OnboardingOptions.lifestyleProfiles[key]?['mealTimes']
-              as List?)
-          ?.cast<String>();
+      final times =
+          (OnboardingOptions.lifestyleProfiles[key]?['mealTimes'] as List?)
+              ?.cast<String>();
       ob.setScheduleType('fixed', mealTimes: times);
     }
   }
@@ -149,9 +149,8 @@ class _RotatingEditor extends StatelessWidget {
               final on = w == weeks;
               return Expanded(
                 child: GestureDetector(
-                  onTap: () => context
-                      .read<OnboardingProvider>()
-                      .updateRotationWeeks(w),
+                  onTap: () =>
+                      context.read<OnboardingProvider>().updateRotationWeeks(w),
                   child: AnimatedContainer(
                     duration: AppMotion.fast,
                     padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h),

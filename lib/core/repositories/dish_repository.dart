@@ -61,7 +61,8 @@ class DishRepository {
           .toList();
     }
     // Try cache first — only hit Firestore if cache is empty
-    final fromCache = _cache.values.where((d) => d.mealType == mealType).toList();
+    final fromCache =
+        _cache.values.where((d) => d.mealType == mealType).toList();
     if (fromCache.isNotEmpty) return fromCache;
     final all = await _service.getAllDishes();
     for (final d in all) {

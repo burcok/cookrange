@@ -189,15 +189,14 @@ class _PremiumUpgradeSheetState extends State<PremiumUpgradeSheet> {
                         color: _gold.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.check_rounded,
-                          size: 14.r, color: _gold),
+                      child:
+                          Icon(Icons.check_rounded, size: 14.r, color: _gold),
                     ),
                     SizedBox(width: 10.w),
                     Expanded(
                       child: Text(
                         l10n.translate(key),
-                        style:
-                            t.bodyM.copyWith(color: palette.textPrimary),
+                        style: t.bodyM.copyWith(color: palette.textPrimary),
                       ),
                     ),
                   ],
@@ -311,11 +310,9 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        isSelected ? _gold : palette.border;
-    final bgColor = isSelected
-        ? _gold.withValues(alpha: 0.08)
-        : palette.surfaceVariant;
+    final borderColor = isSelected ? _gold : palette.border;
+    final bgColor =
+        isSelected ? _gold.withValues(alpha: 0.08) : palette.surfaceVariant;
 
     return GestureDetector(
       onTap: () {
@@ -339,12 +336,10 @@ class _PlanCard extends StatelessWidget {
           children: [
             if (badge != null)
               Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
+                padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 3.h),
                 margin: EdgeInsets.only(bottom: 8.h),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                      colors: [_goldLight, _gold]),
+                  gradient: const LinearGradient(colors: [_goldLight, _gold]),
                   borderRadius: BorderRadius.circular(AppRadius.full.r),
                 ),
                 child: Text(
@@ -423,9 +418,7 @@ class _GoldButton extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-          color: onPressed == null
-              ? Colors.grey.withValues(alpha: 0.3)
-              : null,
+          color: onPressed == null ? Colors.grey.withValues(alpha: 0.3) : null,
           borderRadius: BorderRadius.circular(AppRadius.full.r),
           boxShadow: onPressed == null
               ? null

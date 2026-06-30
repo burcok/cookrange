@@ -96,8 +96,8 @@ class OnboardingReportPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(l10n.translate('onboarding.v2.report.bmi_title'),
-                          style: t.labelM
-                              .copyWith(color: palette.textTertiary)),
+                          style:
+                              t.labelM.copyWith(color: palette.textTertiary)),
                       SizedBox(height: AppSpacing.xxs.h),
                       Text(p.bmi!.toStringAsFixed(1),
                           style: t.displayM.copyWith(
@@ -157,10 +157,12 @@ class OnboardingReportPage extends StatelessWidget {
               padding: EdgeInsets.all(AppSpacing.md.r),
               child: Row(
                 children: [
-                  Icon(Icons.flag_rounded, color: primary, size: AppSize.iconMd.r),
+                  Icon(Icons.flag_rounded,
+                      color: primary, size: AppSize.iconMd.r),
                   SizedBox(width: AppSpacing.sm.w),
                   Expanded(
-                    child: Text(l10n.translate('onboarding.v2.report.eta_title'),
+                    child: Text(
+                        l10n.translate('onboarding.v2.report.eta_title'),
                         style: t.bodyM.copyWith(color: palette.textSecondary)),
                   ),
                   Text(
@@ -302,8 +304,8 @@ class _MacroChip extends StatelessWidget {
       child: Column(
         children: [
           Text('${grams}g',
-              style: t.titleM
-                  .copyWith(color: color, fontWeight: FontWeight.w800)),
+              style:
+                  t.titleM.copyWith(color: color, fontWeight: FontWeight.w800)),
           SizedBox(height: 2.h),
           Text(label, style: t.labelS.copyWith(color: palette.textSecondary)),
         ],

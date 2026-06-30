@@ -7,6 +7,7 @@ import '../models/recipe_model.dart';
 import 'food_analysis_service.dart';
 import 'barcode_lookup_service.dart';
 import 'recent_food_service.dart';
+import 'achievement_service.dart';
 
 /// Manages food/meal logging for a user.
 /// Collection: users/{uid}/food_logs/{logId}
@@ -89,6 +90,11 @@ class FoodLogService {
       carbs: c,
       fat: f,
     ));
+    unawaited(AchievementService().checkAndGrant(
+      userId,
+      justLoggedMeal: true,
+      justCookedAndLogged: true,
+    ));
   }
 
   /// Log an AI-analyzed food description as a meal entry.
@@ -110,6 +116,11 @@ class FoodLogService {
       'loggedAt': Timestamp.fromDate(now),
       'date': _todayKey(),
     });
+    unawaited(AchievementService().checkAndGrant(
+      userId,
+      justLoggedMeal: true,
+      justLoggedPhoto: estimate.fromPhoto,
+    ));
   }
 
   /// Log a food entry from quick-add (recent/frequent foods).
@@ -216,9 +227,7 @@ class FoodLogService {
   Future<NutritionTotals> getTodayTotals(String userId) async {
     try {
       final today = _todayKey();
-      final snap = await _logsRef(userId)
-          .where('date', isEqualTo: today)
-          .get();
+      final snap = await _logsRef(userId).where('date', isEqualTo: today).get();
       final logs = snap.docs.map((d) => FoodLog.fromFirestore(d)).toList();
       return FoodLog.sumLogs(logs);
     } catch (e) {
@@ -237,9 +246,7 @@ class FoodLogService {
     DateTime end,
   ) async {
     final result = <String, List<FoodLog>>{};
-    for (var d = start;
-        !d.isAfter(end);
-        d = d.add(const Duration(days: 1))) {
+    for (var d = start; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
       result[_dateKey(d)] = [];
     }
     try {

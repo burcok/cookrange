@@ -94,5 +94,6 @@ class ConsentModel {
   bool get isUnset => updatedAt == null && policyVersion.isEmpty;
 
   /// True if granted against an older policy version (needs re-consent).
-  bool get isStale => granted && !isUnset && policyVersion != kLegalPolicyVersion;
+  bool get isStale =>
+      granted && !isUnset && policyVersion != kLegalPolicyVersion;
 }

@@ -91,8 +91,11 @@ class UserProvider extends ChangeNotifier {
 
       // PII fields go to owner-only private subcollection.
       const privateKeys = {
-        'personal_info', 'allergies', 'dietary_restrictions',
-        'disliked_foods', 'avoid_ingredients',
+        'personal_info',
+        'allergies',
+        'dietary_restrictions',
+        'disliked_foods',
+        'avoid_ingredients',
       };
       final privateData = <String, dynamic>{};
       final publicData = <String, dynamic>{};
@@ -106,7 +109,8 @@ class UserProvider extends ChangeNotifier {
 
       final futures = <Future>[];
       if (privateData.isNotEmpty) {
-        futures.add(FirestoreService().savePrivateNutritionData(uid, privateData));
+        futures
+            .add(FirestoreService().savePrivateNutritionData(uid, privateData));
       }
       if (publicData.isNotEmpty || visibility.isNotEmpty) {
         futures.add(AuthService().updateUserOnboardingData({
@@ -143,10 +147,12 @@ class UserProvider extends ChangeNotifier {
         // Only reload when role/roles or subscription tier actually changed —
         // avoids noisy rebuilds on every field touch.
         final newRole = data['user_role'] as String?;
-        final newRoles = (data['user_roles'] as List<dynamic>?)?.join(',') ?? '';
+        final newRoles =
+            (data['user_roles'] as List<dynamic>?)?.join(',') ?? '';
         final newTier = data['subscription_tier'] as String?;
         final oldRole = _user?.userRole.firestoreValue;
-        final oldRoles = _user?.userRoles.map((r) => r.firestoreValue).join(',') ?? '';
+        final oldRoles =
+            _user?.userRoles.map((r) => r.firestoreValue).join(',') ?? '';
         final oldTier = _user?.subscriptionTier.name;
 
         if (newRole != oldRole || newRoles != oldRoles || newTier != oldTier) {
@@ -156,8 +162,7 @@ class UserProvider extends ChangeNotifier {
           notifyListeners();
         }
       },
-      onError: (e) =>
-          debugPrint('UserProvider live listener error: $e'),
+      onError: (e) => debugPrint('UserProvider live listener error: $e'),
     );
   }
 
@@ -169,8 +174,7 @@ class UserProvider extends ChangeNotifier {
   Future<void> _fetchAndMerge(String uid) async {
     final base = await AuthService().getUserData(uid);
     if (base != null) {
-      final privateData =
-          await FirestoreService().getPrivateNutritionData(uid);
+      final privateData = await FirestoreService().getPrivateNutritionData(uid);
       if (privateData != null && privateData.isNotEmpty) {
         _user = base.withPrivateNutrition(privateData);
       } else {

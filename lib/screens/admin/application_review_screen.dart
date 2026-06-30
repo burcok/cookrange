@@ -38,9 +38,8 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen>
 
   bool get _isCoach => widget.coachApp != null;
 
-  String get _displayName => _isCoach
-      ? widget.coachApp!.displayName
-      : widget.gymApp!.gymName;
+  String get _displayName =>
+      _isCoach ? widget.coachApp!.displayName : widget.gymApp!.gymName;
 
   @override
   void initState() {
@@ -71,8 +70,8 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen>
       Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context,
-            AppLocalizations.of(context).translate('errors.general'));
+        AppSnackBar.error(
+            context, AppLocalizations.of(context).translate('errors.general'));
       }
     } finally {
       if (mounted) setState(() => _actioning = false);
@@ -246,15 +245,15 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(_displayName,
-                                  style: t.titleL.copyWith(
-                                      fontWeight: FontWeight.w800)),
+                                  style: t.titleL
+                                      .copyWith(fontWeight: FontWeight.w800)),
                               const SizedBox(height: 4),
                               Text(
                                 _isCoach
                                     ? widget.coachApp!.applicantUid
                                     : widget.gymApp!.applicantUid,
-                                style: t.bodyM.copyWith(
-                                    color: palette.textSecondary),
+                                style: t.bodyM
+                                    .copyWith(color: palette.textSecondary),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -296,7 +295,8 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen>
             decoration: BoxDecoration(
               color: palette.surface.withValues(alpha: 0.85),
               border: Border(
-                  top: BorderSide(color: palette.border.withValues(alpha: 0.5))),
+                  top:
+                      BorderSide(color: palette.border.withValues(alpha: 0.5))),
             ),
             child: Row(
               children: [
@@ -324,8 +324,8 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen>
     );
   }
 
-  Widget _buildCoachDetails(AppPalette palette, AppLocalizations l10n,
-      AppText t, Color primary) {
+  Widget _buildCoachDetails(
+      AppPalette palette, AppLocalizations l10n, AppText t, Color primary) {
     final app = widget.coachApp!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,19 +380,24 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen>
             palette: palette,
             t: t,
             child: Column(
-              children: app.evidenceUrls.asMap().entries.map((e) => Padding(
-                    padding: EdgeInsets.only(
-                        bottom: e.key < app.evidenceUrls.length - 1 ? 8 : 0),
-                    child: _DocTile(
-                      label: app.evidenceLabels.length > e.key
-                          ? app.evidenceLabels[e.key]
-                          : 'Document ${e.key + 1}',
-                      url: e.value,
-                      primary: primary,
-                      palette: palette,
-                      t: t,
-                    ),
-                  )).toList(),
+              children: app.evidenceUrls
+                  .asMap()
+                  .entries
+                  .map((e) => Padding(
+                        padding: EdgeInsets.only(
+                            bottom:
+                                e.key < app.evidenceUrls.length - 1 ? 8 : 0),
+                        child: _DocTile(
+                          label: app.evidenceLabels.length > e.key
+                              ? app.evidenceLabels[e.key]
+                              : 'Document ${e.key + 1}',
+                          url: e.value,
+                          primary: primary,
+                          palette: palette,
+                          t: t,
+                        ),
+                      ))
+                  .toList(),
             ),
           ),
 
@@ -407,18 +412,21 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen>
                 final i = entry.key;
                 final ref = entry.value;
                 return Padding(
-                  padding:
-                      EdgeInsets.only(bottom: i < app.references.length - 1 ? 10 : 0),
+                  padding: EdgeInsets.only(
+                      bottom: i < app.references.length - 1 ? 10 : 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (i > 0)
-                        Divider(color: palette.border.withValues(alpha: 0.4),
+                        Divider(
+                            color: palette.border.withValues(alpha: 0.4),
                             height: 20),
                       Text(ref['name'] ?? '',
-                          style: t.labelL.copyWith(fontWeight: FontWeight.w700)),
+                          style:
+                              t.labelL.copyWith(fontWeight: FontWeight.w700)),
                       Text(ref['contact'] ?? '',
-                          style: t.bodyM.copyWith(color: palette.textSecondary)),
+                          style:
+                              t.bodyM.copyWith(color: palette.textSecondary)),
                       if ((ref['description'] ?? '').isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(ref['description'] ?? '', style: t.bodyM),
@@ -434,8 +442,8 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen>
     );
   }
 
-  Widget _buildGymDetails(AppPalette palette, AppLocalizations l10n,
-      AppText t, Color primary) {
+  Widget _buildGymDetails(
+      AppPalette palette, AppLocalizations l10n, AppText t, Color primary) {
     final app = widget.gymApp!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,7 +455,6 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen>
           child: Text(app.description, style: t.bodyM),
         ),
         const SizedBox(height: 12),
-
         _GlassSectionCard(
           title: l10n.translate('gym.address'),
           palette: palette,
@@ -463,7 +470,6 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen>
           ),
         ),
         const SizedBox(height: 12),
-
         _GlassSectionCard(
           title: l10n.translate('gym.contact'),
           palette: palette,
@@ -476,7 +482,6 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen>
             ],
           ),
         ),
-
         if (app.latitude != null && app.longitude != null) ...[
           const SizedBox(height: 12),
           _GlassSectionCard(
@@ -489,17 +494,16 @@ class _ApplicationReviewScreenState extends State<ApplicationReviewScreen>
             ),
           ),
         ],
-
         if (app.brandColor != null && app.brandColor!.isNotEmpty) ...[
           const SizedBox(height: 12),
           _GlassSectionCard(
             title: l10n.translate('gym.brand_color'),
             palette: palette,
             t: t,
-            child: _BrandColorSwatch(hex: app.brandColor!, palette: palette, t: t),
+            child:
+                _BrandColorSwatch(hex: app.brandColor!, palette: palette, t: t),
           ),
         ],
-
         const SizedBox(height: 12),
         _GlassSectionCard(
           title: l10n.translate('admin.evidence_docs'),
@@ -703,8 +707,8 @@ class _StatChip extends StatelessWidget {
           Icon(icon, size: 15, color: primary),
           const SizedBox(width: 6),
           Text(label,
-              style: t.labelM.copyWith(
-                  color: primary, fontWeight: FontWeight.w700)),
+              style: t.labelM
+                  .copyWith(color: primary, fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -809,9 +813,7 @@ class _DocTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
-                isImage
-                    ? Icons.image_rounded
-                    : Icons.insert_drive_file_rounded,
+                isImage ? Icons.image_rounded : Icons.insert_drive_file_rounded,
                 color: primary,
                 size: 18,
               ),

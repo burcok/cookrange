@@ -226,8 +226,7 @@ class AppChipPicker<T> extends StatelessWidget {
                   opt.label,
                   style: t.labelM.copyWith(
                     color: isSelected ? primary : palette.textSecondary,
-                    fontWeight:
-                        isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   ),
                 ),
                 if (isSelected && multiSelect) ...[

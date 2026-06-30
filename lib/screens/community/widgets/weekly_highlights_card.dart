@@ -416,9 +416,8 @@ class _StreakLeaderCell extends StatelessWidget {
 
     return _HighlightCell(
       palette: palette,
-      onTap: uid.isNotEmpty
-          ? () => openUserProfile(context, userId: uid)
-          : null,
+      onTap:
+          uid.isNotEmpty ? () => openUserProfile(context, userId: uid) : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

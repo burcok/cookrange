@@ -34,8 +34,11 @@ class OnboardingGoalGenderPage extends StatelessWidget {
   static const List<(String, String, IconData)> _genders = [
     ('Male', 'onboarding.profile.male', Icons.male_rounded),
     ('Female', 'onboarding.profile.female', Icons.female_rounded),
-    ('Prefer not to say', 'onboarding.profile.preferNotToSay',
-        Icons.do_not_disturb_alt_rounded),
+    (
+      'Prefer not to say',
+      'onboarding.profile.preferNotToSay',
+      Icons.do_not_disturb_alt_rounded
+    ),
   ];
 
   @override
@@ -56,8 +59,8 @@ class OnboardingGoalGenderPage extends StatelessWidget {
         padding: EdgeInsets.only(top: AppSpacing.lg.h, bottom: AppSpacing.xl.h),
         children: [
           OnboardingSectionLabel(
-            title: l10n
-                .translate('onboarding.v2.goal.title', variables: {'name': name}),
+            title: l10n.translate('onboarding.v2.goal.title',
+                variables: {'name': name}),
             subtitle: l10n.translate('onboarding.v2.goal.subtitle'),
           ),
           SizedBox(height: AppSpacing.lg.h),
@@ -67,7 +70,8 @@ class OnboardingGoalGenderPage extends StatelessWidget {
                   icon: g.$2,
                   title: l10n.translate('onboarding.v2.goal.options.${g.$1}'),
                   selected: onboarding.mainGoal == g.$1,
-                  onTap: () => context.read<OnboardingProvider>().setMainGoal(g.$1),
+                  onTap: () =>
+                      context.read<OnboardingProvider>().setMainGoal(g.$1),
                 ),
               )),
           SizedBox(height: AppSpacing.xl.h),
@@ -93,7 +97,8 @@ class OnboardingGoalGenderPage extends StatelessWidget {
                 .toList(),
           ),
           SizedBox(height: AppSpacing.md.h),
-          OnboardingInfoNote(text: l10n.translate('onboarding.v2.goal.why_gender')),
+          OnboardingInfoNote(
+              text: l10n.translate('onboarding.v2.goal.why_gender')),
         ],
       ),
     );

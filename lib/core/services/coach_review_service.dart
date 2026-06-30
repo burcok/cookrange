@@ -35,14 +35,13 @@ class CoachReviewService {
         final coachSnap = await tx.get(_coachDoc(coachUid));
         final currentAvg =
             (coachSnap.data()?['avg_rating'] as num?)?.toDouble() ?? 0.0;
-        final currentCount =
-            (coachSnap.data()?['rating_count'] as int?) ?? 0;
+        final currentCount = (coachSnap.data()?['rating_count'] as int?) ?? 0;
 
         final newCount = currentCount + 1;
-        final newAvg =
-            ((currentAvg * currentCount) + review.rating) / newCount;
+        final newAvg = ((currentAvg * currentCount) + review.rating) / newCount;
 
-        tx.set(_reviews(coachUid).doc(review.reviewerUid), review.toFirestore());
+        tx.set(
+            _reviews(coachUid).doc(review.reviewerUid), review.toFirestore());
         tx.update(_coachDoc(coachUid), {
           'avg_rating': double.parse(newAvg.toStringAsFixed(2)),
           'rating_count': newCount,

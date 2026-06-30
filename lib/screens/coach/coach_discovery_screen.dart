@@ -34,7 +34,8 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
   String _query = '';
   String? _selectedCity;
   String? _selectedDistrict;
-  String _sortBy = 'client_count'; // 'avg_rating'|'client_count'|'created_at'|'near_me'
+  String _sortBy =
+      'client_count'; // 'avg_rating'|'client_count'|'created_at'|'near_me'
 
   // Near Me state
   double? _userLat;
@@ -60,8 +61,7 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
       _error = false;
     });
     try {
-      final firestoreSort =
-          _sortBy == 'near_me' ? 'client_count' : _sortBy;
+      final firestoreSort = _sortBy == 'near_me' ? 'client_count' : _sortBy;
       var results = await CoachService().searchCoaches(
         _query,
         city: _selectedCity,
@@ -70,18 +70,14 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
       );
       if (!mounted) return;
       // Client-side distance sort when near_me is active
-      if (_sortBy == 'near_me' &&
-          _userLat != null &&
-          _userLon != null) {
+      if (_sortBy == 'near_me' && _userLat != null && _userLon != null) {
         results = List.from(results)
           ..sort((a, b) {
             final da = (a.latitude != null && a.longitude != null)
-                ? haversineKm(
-                    _userLat!, _userLon!, a.latitude!, a.longitude!)
+                ? haversineKm(_userLat!, _userLon!, a.latitude!, a.longitude!)
                 : double.infinity;
             final db = (b.latitude != null && b.longitude != null)
-                ? haversineKm(
-                    _userLat!, _userLon!, b.latitude!, b.longitude!)
+                ? haversineKm(_userLat!, _userLon!, b.latitude!, b.longitude!)
                 : double.infinity;
             return da.compareTo(db);
           });
@@ -137,8 +133,7 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
           _loadingLocation = false;
           _sortBy = 'client_count';
         });
-        AppSnackBar.warning(
-            context, l10n.translate('coach.location_denied'));
+        AppSnackBar.warning(context, l10n.translate('coach.location_denied'));
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
@@ -158,8 +153,8 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
         _loadingLocation = false;
         _sortBy = 'client_count';
       });
-      AppSnackBar.error(
-          context, AppLocalizations.of(context).translate('coach.location_error'));
+      AppSnackBar.error(context,
+          AppLocalizations.of(context).translate('coach.location_error'));
     }
   }
 
@@ -186,7 +181,9 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
   }
 
   bool get _showRankBadges =>
-      _sortBy == 'avg_rating' || _sortBy == 'client_count' || _sortBy == 'near_me';
+      _sortBy == 'avg_rating' ||
+      _sortBy == 'client_count' ||
+      _sortBy == 'near_me';
 
   @override
   Widget build(BuildContext context) {
@@ -251,7 +248,8 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
           Column(
             children: [
               // AppBar space
-              SizedBox(height: MediaQuery.of(context).padding.top + kToolbarHeight),
+              SizedBox(
+                  height: MediaQuery.of(context).padding.top + kToolbarHeight),
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.lg,
@@ -485,8 +483,8 @@ class _CoachCardState extends State<_CoachCard>
                                 Flexible(
                                   child: Text(
                                     coach.displayName,
-                                    style: text.titleM.copyWith(
-                                        fontWeight: FontWeight.w700),
+                                    style: text.titleM
+                                        .copyWith(fontWeight: FontWeight.w700),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -508,13 +506,12 @@ class _CoachCardState extends State<_CoachCard>
                                 text: text,
                               ),
                             ],
-                            if (coach.bio != null &&
-                                coach.bio!.isNotEmpty) ...[
+                            if (coach.bio != null && coach.bio!.isNotEmpty) ...[
                               const SizedBox(height: AppSpacing.xxs),
                               Text(
                                 coach.bio!,
-                                style: text.bodyM.copyWith(
-                                    color: palette.textSecondary),
+                                style: text.bodyM
+                                    .copyWith(color: palette.textSecondary),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -531,8 +528,7 @@ class _CoachCardState extends State<_CoachCard>
                       runSpacing: AppSpacing.xs,
                       children: [
                         for (final spec in specs)
-                          _SpecChip(
-                              label: spec, palette: palette, text: text),
+                          _SpecChip(label: spec, palette: palette, text: text),
                       ],
                     ),
                   ],
@@ -550,8 +546,8 @@ class _CoachCardState extends State<_CoachCard>
                       const SizedBox(width: AppSpacing.xxs),
                       Text(
                         '${coach.clientCount}',
-                        style: text.labelS
-                            .copyWith(color: palette.textSecondary),
+                        style:
+                            text.labelS.copyWith(color: palette.textSecondary),
                       ),
                       if (coach.hourlyRate != null) ...[
                         const Spacer(),
@@ -885,18 +881,18 @@ class _TopCoachesSection extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
               ...coaches.asMap().entries.map(
-                (e) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: _TopCoachCard(
-                    coach: e.value,
-                    index: e.key,
-                    onTap: () => onTap(e.value),
-                    palette: palette,
-                    text: text,
-                    t: t,
+                    (e) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: _TopCoachCard(
+                        coach: e.value,
+                        index: e.key,
+                        onTap: () => onTap(e.value),
+                        palette: palette,
+                        text: text,
+                        t: t,
+                      ),
+                    ),
                   ),
-                ),
-              ),
               Divider(
                 color: palette.divider,
                 thickness: 1,
@@ -1079,9 +1075,7 @@ class _TrustBadgeRow extends StatelessWidget {
   });
 
   bool get _isTopRated =>
-      coach.isVerified &&
-      coach.avgRating >= 4.8 &&
-      coach.ratingCount >= 5;
+      coach.isVerified && coach.avgRating >= 4.8 && coach.ratingCount >= 5;
 
   bool get _isRising =>
       !coach.isVerified &&
@@ -1227,8 +1221,7 @@ class _CoachFilterBar extends StatelessWidget {
                           : FontWeight.normal,
                     )),
                 trailing: selectedCity == city
-                    ? Icon(Icons.check_rounded,
-                        color: palette.info, size: 18.r)
+                    ? Icon(Icons.check_rounded, color: palette.info, size: 18.r)
                     : null,
                 onTap: () {
                   Navigator.pop(context);
@@ -1268,8 +1261,7 @@ class _CoachFilterBar extends StatelessWidget {
                           : FontWeight.normal,
                     )),
                 trailing: selectedDistrict == d
-                    ? Icon(Icons.check_rounded,
-                        color: palette.info, size: 18.r)
+                    ? Icon(Icons.check_rounded, color: palette.info, size: 18.r)
                     : null,
                 onTap: () {
                   Navigator.pop(context);

@@ -91,8 +91,8 @@ class _TrackingCardState extends State<TrackingCard> {
               SizedBox(width: AppSpacing.sm.w),
               Text(
                 l10n.translate('tracking.hydration.title'),
-                style:
-                    t.labelL.copyWith(fontWeight: FontWeight.bold, color: palette.textPrimary),
+                style: t.labelL.copyWith(
+                    fontWeight: FontWeight.bold, color: palette.textPrimary),
               ),
               const Spacer(),
               Text(
@@ -167,8 +167,8 @@ class _TrackingCardState extends State<TrackingCard> {
               SizedBox(width: AppSpacing.sm.w),
               Text(
                 l10n.translate('tracking.weight.title'),
-                style:
-                    t.labelL.copyWith(fontWeight: FontWeight.bold, color: palette.textPrimary),
+                style: t.labelL.copyWith(
+                    fontWeight: FontWeight.bold, color: palette.textPrimary),
               ),
               const Spacer(),
               GestureDetector(
@@ -219,9 +219,8 @@ class _TrackingCardState extends State<TrackingCard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: weights.map((w) {
-          final frac = (maxW - minW) < 0.1
-              ? 0.5
-              : ((w - minW) / range).clamp(0.1, 1.0);
+          final frac =
+              (maxW - minW) < 0.1 ? 0.5 : ((w - minW) / range).clamp(0.1, 1.0);
           return Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 2),

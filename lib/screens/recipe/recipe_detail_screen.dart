@@ -169,7 +169,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
               child: Container(
                 color: Colors.black.withValues(alpha: 0.2),
                 child: IconButton(
-                  icon: const Icon(Icons.edit_note_rounded, color: Colors.white),
+                  icon:
+                      const Icon(Icons.edit_note_rounded, color: Colors.white),
                   onPressed: () => _showNotesSheet(context),
                 ),
               ),
@@ -189,8 +190,11 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                   builder: (buttonContext) => IconButton(
                     icon: const Icon(Icons.share_rounded, color: Colors.white),
                     onPressed: () {
-                      final box = buttonContext.findRenderObject() as RenderBox?;
-                      final rect = box != null ? box.localToGlobal(Offset.zero) & box.size : null;
+                      final box =
+                          buttonContext.findRenderObject() as RenderBox?;
+                      final rect = box != null
+                          ? box.localToGlobal(Offset.zero) & box.size
+                          : null;
                       SharingService().shareRecipe(
                         buttonContext,
                         name: widget.recipe.title,
@@ -312,8 +316,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
           decoration: BoxDecoration(
             color: palette.surface.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(AppRadius.xl.r),
-            border:
-                Border.all(color: palette.border.withValues(alpha: 0.5)),
+            border: Border.all(color: palette.border.withValues(alpha: 0.5)),
             boxShadow: [
               BoxShadow(
                 color: palette.shadow.withValues(alpha: 0.03),
@@ -363,8 +366,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
     );
   }
 
-  Widget _buildMacroItem(
-      String label, String value, String unit, Color color, AppPalette palette) {
+  Widget _buildMacroItem(String label, String value, String unit, Color color,
+      AppPalette palette) {
     final t = AppText.of(context);
     return Column(
       children: [
@@ -435,8 +438,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
         ),
         labelColor: Colors.white,
         unselectedLabelColor: palette.textSecondary,
-        labelStyle: t.titleM.copyWith(
-            color: Colors.white, fontWeight: FontWeight.bold),
+        labelStyle:
+            t.titleM.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
         tabs: [
           Tab(text: l10n.translate('recipe.ingredients')),
           Tab(text: l10n.translate('recipe.instructions')),
@@ -517,8 +520,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                         width: 40.w,
                         height: 40.w,
                         decoration: BoxDecoration(
-                          color: themeProvider.primaryColor
-                              .withValues(alpha: 0.1),
+                          color:
+                              themeProvider.primaryColor.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.check,
@@ -551,8 +554,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
       AppLocalizations l10n, ThemeProvider themeProvider, AppPalette palette) {
     final t = AppText.of(context);
     return ListView.separated(
-      padding: EdgeInsets.fromLTRB(
-          AppSpacing.xl.w, 0, AppSpacing.xl.w, 120.h),
+      padding: EdgeInsets.fromLTRB(AppSpacing.xl.w, 0, AppSpacing.xl.w, 120.h),
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
       itemCount: widget.recipe.instructions.length,
@@ -578,8 +580,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
               ),
               child: Text(
                 "${index + 1}",
-                style: t.labelM.copyWith(
-                    color: Colors.white, fontWeight: FontWeight.bold),
+                style: t.labelM
+                    .copyWith(color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ),
             SizedBox(width: AppSpacing.md.w),
@@ -626,8 +628,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(l10n.translate('recipe.notes.hint'),
-                style: textStyle),
+            Text(l10n.translate('recipe.notes.hint'), style: textStyle),
             SizedBox(height: 12.h),
             AppTextField(
               controller: controller,
@@ -703,8 +704,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
               SizedBox(width: AppSpacing.sm.w),
               Text(
                 l10n.translate('recipe.start_cooking'),
-                style: t.labelL.copyWith(
-                    color: Colors.white, fontWeight: FontWeight.bold),
+                style: t.labelL
+                    .copyWith(color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ],
           ),

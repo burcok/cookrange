@@ -140,7 +140,8 @@ class FoodAnalysisService {
       fiber: (result['fiber_g'] as num?)?.toDouble() ?? 0,
       sugar: (result['sugar_g'] as num?)?.toDouble() ?? 0,
       sodiumMg: (result['sodium_mg'] as num?)?.toDouble() ?? 0,
-      healthScore: ((result['health_score'] as num?)?.toInt() ?? 0).clamp(0, 100),
+      healthScore:
+          ((result['health_score'] as num?)?.toInt() ?? 0).clamp(0, 100),
       confidence:
           ((result['confidence'] as num?)?.toDouble() ?? 0).clamp(0.0, 1.0),
       allergens: List<String>.from(result['allergens'] ?? const [])

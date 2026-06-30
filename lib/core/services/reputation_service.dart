@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'achievement_service.dart';
 
 enum ReputationTier { newcomer, active, contributor, expert, legend }
 
@@ -65,11 +67,11 @@ class ReputationService {
     required int streak,
     required int postCount,
   }) async {
-    final score = streak * _pointsPerStreakDay +
-        postCount * _pointsPerPost;
+    final score = streak * _pointsPerStreakDay + postCount * _pointsPerPost;
 
     final tier = _tierFromScore(score);
     await _cacheScore(uid, score);
+    unawaited(AchievementService().checkAndGrant(uid, tier: tier));
     return ReputationData(score: score, tier: tier);
   }
 

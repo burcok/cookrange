@@ -163,7 +163,6 @@ class _GlassCard extends StatelessWidget {
             color: isDark
                 ? const Color(0xFF0B1120).withValues(alpha: 0.93)
                 : Colors.white.withValues(alpha: 0.87),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             border: Border(
               top: BorderSide(
                 color: isDark
@@ -212,8 +211,7 @@ class _NavBarDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final inactive =
-        isDark ? const Color(0xFF6B7280) : const Color(0xFFB0B8C8);
+    final inactive = isDark ? const Color(0xFF6B7280) : const Color(0xFFB0B8C8);
 
     return Column(
       children: [
@@ -602,8 +600,8 @@ class _ActionTileState extends State<_ActionTile>
                 ? null
                 : [
                     BoxShadow(
-                      color: Colors.black.withValues(
-                          alpha: widget.isDark ? 0.20 : 0.07),
+                      color: Colors.black
+                          .withValues(alpha: widget.isDark ? 0.20 : 0.07),
                       blurRadius: 14,
                       offset: const Offset(0, 5),
                     ),

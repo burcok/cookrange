@@ -22,8 +22,7 @@ class DiscoverHubScreen extends StatelessWidget {
     final text = AppText.of(context);
     final primary = context.watch<ThemeProvider>().primaryColor;
     final user = context.watch<UserProvider>().user;
-    final isPremium =
-        user?.subscriptionTier.isPaid ?? false;
+    final isPremium = user?.subscriptionTier.isPaid ?? false;
 
     return Scaffold(
       backgroundColor: palette.background,
@@ -32,123 +31,123 @@ class DiscoverHubScreen extends StatelessWidget {
           // Ambient mesh-glow blobs so glass cards have visual depth behind them
           ...AppGradients.meshGlow(palette, primary),
           CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // ── AppBar ─────────────────────────────────────────────────────────
-          SliverAppBar(
-            backgroundColor: palette.background,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            floating: true,
-            automaticallyImplyLeading: false,
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back_ios_rounded,
-                  color: palette.textPrimary, size: 20),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            title: Text(
-              l10n.translate('discover.title'),
-              style: text.titleM.copyWith(
-                color: palette.textPrimary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          // ── Header subtitle ────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.screenH.w,
-                AppSpacing.xs.h,
-                AppSpacing.screenH.w,
-                AppSpacing.lg.h,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                    Text(
-                      l10n.translate('discover.subtitle'),
-                      style: text.bodyM.copyWith(
-                        color: palette.textSecondary,
-                      ),
-                    ),
-                  ],
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // ── AppBar ─────────────────────────────────────────────────────────
+              SliverAppBar(
+                backgroundColor: palette.background,
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
+                floating: true,
+                automaticallyImplyLeading: false,
+                leading: IconButton(
+                  icon: Icon(Icons.arrow_back_ios_rounded,
+                      color: palette.textPrimary, size: 20),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                title: Text(
+                  l10n.translate('discover.title'),
+                  style: text.titleM.copyWith(
+                    color: palette.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-
-            // ── 2×2 Category Grid ─────────────────────────────────────────
-            SliverPadding(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.screenH.w,
-              ),
-              sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12.w,
-                  mainAxisSpacing: 12.h,
-                ),
-                delegate: SliverChildListDelegate([
-                  _DiscoverCard(
-                    icon: Icons.fitness_center_rounded,
-                    title: l10n.translate('discover.gym'),
-                    tagline: l10n.translate('discover.gym_tagline'),
-                    accentColor: palette.info,
-                    onTap: () => Navigator.of(context).push(
-                      AppTransitions.slideRight(const GymDiscoveryScreen()),
-                    ),
-                  ),
-                  _DiscoverCard(
-                    icon: Icons.person_rounded,
-                    title: l10n.translate('discover.coach'),
-                    tagline: l10n.translate('discover.coach_tagline'),
-                    accentColor: const Color(0xFF6366F1),
-                    onTap: () => Navigator.of(context).push(
-                      AppTransitions.slideRight(const CoachDiscoveryScreen()),
-                    ),
-                  ),
-                  _DiscoverCard(
-                    icon: Icons.school_rounded,
-                    title: l10n.translate('discover.programs'),
-                    tagline: l10n.translate('discover.program_tagline'),
-                    accentColor: palette.success,
-                    onTap: () => Navigator.of(context).push(
-                      AppTransitions.slideRight(
-                          const ProgramMarketplaceScreen()),
-                    ),
-                  ),
-                  _DiscoverCard(
-                    icon: Icons.leaderboard_rounded,
-                    title: l10n.translate('discover.leaderboard'),
-                    tagline: l10n.translate('discover.leaderboard_tagline'),
-                    accentColor: palette.warning,
-                    onTap: () => Navigator.of(context).push(
-                      AppTransitions.slideRight(const LeaderboardScreen()),
-                    ),
-                  ),
-                ]),
-              ),
-            ),
-
-            // ── Premium banner (non-premium users only) ───────────────────
-            if (!isPremium)
+              // ── Header subtitle ────────────────────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
                     AppSpacing.screenH.w,
-                    AppSpacing.xl.h,
+                    AppSpacing.xs.h,
                     AppSpacing.screenH.w,
-                    AppSpacing.md.h,
+                    AppSpacing.lg.h,
                   ),
-                  child: _PremiumBanner(
-                    onTap: () => FeatureGateService().showPaywall(context),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.translate('discover.subtitle'),
+                        style: text.bodyM.copyWith(
+                          color: palette.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
 
-            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl.h)),
-          ],
-        ),
+              // ── 2×2 Category Grid ─────────────────────────────────────────
+              SliverPadding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenH.w,
+                ),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12.w,
+                    mainAxisSpacing: 12.h,
+                  ),
+                  delegate: SliverChildListDelegate([
+                    _DiscoverCard(
+                      icon: Icons.fitness_center_rounded,
+                      title: l10n.translate('discover.gym'),
+                      tagline: l10n.translate('discover.gym_tagline'),
+                      accentColor: palette.info,
+                      onTap: () => Navigator.of(context).push(
+                        AppTransitions.slideRight(const GymDiscoveryScreen()),
+                      ),
+                    ),
+                    _DiscoverCard(
+                      icon: Icons.person_rounded,
+                      title: l10n.translate('discover.coach'),
+                      tagline: l10n.translate('discover.coach_tagline'),
+                      accentColor: const Color(0xFF6366F1),
+                      onTap: () => Navigator.of(context).push(
+                        AppTransitions.slideRight(const CoachDiscoveryScreen()),
+                      ),
+                    ),
+                    _DiscoverCard(
+                      icon: Icons.school_rounded,
+                      title: l10n.translate('discover.programs'),
+                      tagline: l10n.translate('discover.program_tagline'),
+                      accentColor: palette.success,
+                      onTap: () => Navigator.of(context).push(
+                        AppTransitions.slideRight(
+                            const ProgramMarketplaceScreen()),
+                      ),
+                    ),
+                    _DiscoverCard(
+                      icon: Icons.leaderboard_rounded,
+                      title: l10n.translate('discover.leaderboard'),
+                      tagline: l10n.translate('discover.leaderboard_tagline'),
+                      accentColor: palette.warning,
+                      onTap: () => Navigator.of(context).push(
+                        AppTransitions.slideRight(const LeaderboardScreen()),
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
+
+              // ── Premium banner (non-premium users only) ───────────────────
+              if (!isPremium)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      AppSpacing.screenH.w,
+                      AppSpacing.xl.h,
+                      AppSpacing.screenH.w,
+                      AppSpacing.md.h,
+                    ),
+                    child: _PremiumBanner(
+                      onTap: () => FeatureGateService().showPaywall(context),
+                    ),
+                  ),
+                ),
+
+              SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl.h)),
+            ],
+          ),
         ], // Stack children
       ),
     );
@@ -191,10 +190,9 @@ class _DiscoverCard extends StatelessWidget {
             width: 48.r,
             height: 48.r,
             decoration: BoxDecoration(
-              color: accentColor.withValues(
-                  alpha: palette.isDark ? 0.18 : 0.12),
-              borderRadius:
-                  BorderRadius.circular(AppRadius.md.r),
+              color:
+                  accentColor.withValues(alpha: palette.isDark ? 0.18 : 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
             ),
             child: Icon(
               icon,

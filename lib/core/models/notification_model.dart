@@ -27,6 +27,12 @@ enum NotificationType {
   coachApplicationRejected,
   gymApplicationApproved,
   gymApplicationRejected,
+  // Phase 15
+  streakFreezeUsed,
+  achievementEarned,
+  mealReminder,
+  streakAtRisk,
+  weeklyPlanReady,
 }
 
 extension NotificationTypeX on NotificationType {
@@ -86,8 +92,7 @@ class NotificationModel {
     return NotificationModel(
       id: id,
       type: NotificationTypeX.fromName(data['type'] as String?),
-      timestamp:
-          (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isRead: data['isRead'] as bool? ?? false,
       actorUid: data['actorUid'] as String?,
       actorName: data['actorName'] as String?,

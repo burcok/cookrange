@@ -35,7 +35,8 @@ class ProviderInitializationService {
       ChangeNotifierProvider<NavigationProvider>(
           create: (_) => NavigationProvider()),
       ChangeNotifierProvider<UserProvider>(create: (_) => UserProvider()),
-      ChangeNotifierProvider<TestModeProvider>(create: (_) => TestModeProvider()),
+      ChangeNotifierProvider<TestModeProvider>(
+          create: (_) => TestModeProvider()),
     ];
   }
 

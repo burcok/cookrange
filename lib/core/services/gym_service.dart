@@ -20,8 +20,7 @@ class GymService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
 
-  CollectionReference<Map<String, dynamic>> get _gyms =>
-      _db.collection('gyms');
+  CollectionReference<Map<String, dynamic>> get _gyms => _db.collection('gyms');
 
   CollectionReference<Map<String, dynamic>> _members(String gymId) =>
       _gyms.doc(gymId).collection('members');
@@ -122,10 +121,7 @@ class GymService {
 
   /// Returns the gym owned by [uid], or null if none exists.
   Future<GymModel?> getOwnerGym(String uid) async {
-    final q = await _gyms
-        .where('owner_uid', isEqualTo: uid)
-        .limit(1)
-        .get();
+    final q = await _gyms.where('owner_uid', isEqualTo: uid).limit(1).get();
     if (q.docs.isEmpty) return null;
     return GymModel.fromFirestore(q.docs.first);
   }
@@ -144,7 +140,11 @@ class GymService {
   /// Streams the gyms the given user has JOINED as a member (not owned).
   /// Reads the membership list off the user's own doc, then fetches those gyms.
   Stream<List<GymModel>> getMemberGymsStream(String uid) {
-    return _db.collection('users').doc(uid).snapshots().asyncMap((userDoc) async {
+    return _db
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .asyncMap((userDoc) async {
       final ids = List<String>.from(
           (userDoc.data()?['gym_memberships'] as List?) ?? const []);
       if (ids.isEmpty) return <GymModel>[];
@@ -152,9 +152,8 @@ class GymService {
       final List<GymModel> gyms = [];
       for (var i = 0; i < ids.length; i += 30) {
         final chunk = ids.sublist(i, (i + 30).clamp(0, ids.length));
-        final snap = await _gyms
-            .where(FieldPath.documentId, whereIn: chunk)
-            .get();
+        final snap =
+            await _gyms.where(FieldPath.documentId, whereIn: chunk).get();
         gyms.addAll(snap.docs.map(GymModel.fromFirestore));
       }
       debugPrint('[GymService] Loaded ${gyms.length} member gyms for $uid');
@@ -172,7 +171,8 @@ class GymService {
     String? city,
     String? district,
     List<String>? tags,
-    String sortBy = 'member_count', // 'name' | 'member_count' | 'created_at' | 'avg_rating'
+    String sortBy =
+        'member_count', // 'name' | 'member_count' | 'created_at' | 'avg_rating'
     DocumentSnapshot? startAfter,
     int limit = 20,
   }) async {
@@ -190,9 +190,8 @@ class GymService {
         results = results.where((g) => g.city == city).toList();
       }
       if (tags != null && tags.isNotEmpty) {
-        results = results
-            .where((g) => tags.any((t) => g.tags.contains(t)))
-            .toList();
+        results =
+            results.where((g) => tags.any((t) => g.tags.contains(t))).toList();
       }
       if (sortBy == 'avg_rating') {
         results.sort((a, b) => b.memberCount.compareTo(a.memberCount));
@@ -202,8 +201,7 @@ class GymService {
       return results.take(limit).toList();
     }
 
-    Query<Map<String, dynamic>> q =
-        _gyms.where('is_public', isEqualTo: true);
+    Query<Map<String, dynamic>> q = _gyms.where('is_public', isEqualTo: true);
 
     if (city != null && city.isNotEmpty) {
       q = q.where('city', isEqualTo: city);
@@ -236,9 +234,7 @@ class GymService {
 
     // Client-side tag intersection
     if (tags != null && tags.isNotEmpty) {
-      all = all
-          .where((g) => tags.any((t) => g.tags.contains(t)))
-          .toList();
+      all = all.where((g) => tags.any((t) => g.tags.contains(t))).toList();
     }
 
     return all;
@@ -262,17 +258,19 @@ class GymService {
       ).toFirestore(),
     );
     // Increment member count atomically
-    batch.update(
-        _gyms.doc(gymId), {'member_count': FieldValue.increment(1)});
+    batch.update(_gyms.doc(gymId), {'member_count': FieldValue.increment(1)});
     // Track membership on the user's own doc (owner-writable, no index needed)
     batch.set(
       _db.collection('users').doc(uid),
-      {'gym_memberships': FieldValue.arrayUnion([gymId])},
+      {
+        'gym_memberships': FieldValue.arrayUnion([gymId])
+      },
       SetOptions(merge: true),
     );
 
     await batch.commit();
-    unawaited(AnalyticsService().logEvent(name: 'gym_joined', parameters: {'gym_id': gymId}));
+    unawaited(AnalyticsService()
+        .logEvent(name: 'gym_joined', parameters: {'gym_id': gymId}));
     debugPrint('[GymService] User $uid joined gym $gymId');
   }
 
@@ -282,12 +280,13 @@ class GymService {
 
     final batch = _db.batch();
     batch.delete(_members(gymId).doc(uid));
-    batch.update(
-        _gyms.doc(gymId), {'member_count': FieldValue.increment(-1)});
+    batch.update(_gyms.doc(gymId), {'member_count': FieldValue.increment(-1)});
     // Remove membership from the user's own doc
     batch.set(
       _db.collection('users').doc(uid),
-      {'gym_memberships': FieldValue.arrayRemove([gymId])},
+      {
+        'gym_memberships': FieldValue.arrayRemove([gymId])
+      },
       SetOptions(merge: true),
     );
     await batch.commit();
@@ -305,8 +304,7 @@ class GymService {
 
     final batch = _db.batch();
     batch.delete(_members(gymId).doc(memberUid));
-    batch.update(
-        _gyms.doc(gymId), {'member_count': FieldValue.increment(-1)});
+    batch.update(_gyms.doc(gymId), {'member_count': FieldValue.increment(-1)});
     await batch.commit();
     debugPrint('[GymService] Owner removed member $memberUid from gym $gymId');
   }
@@ -323,15 +321,13 @@ class GymService {
     DocumentSnapshot? startAfter,
     int pageSize = 20,
   }) async {
-    Query<Map<String, dynamic>> q = _members(gymId)
-        .orderBy('joined_at', descending: false)
-        .limit(pageSize);
+    Query<Map<String, dynamic>> q =
+        _members(gymId).orderBy('joined_at', descending: false).limit(pageSize);
 
     if (startAfter != null) q = q.startAfterDocument(startAfter);
 
     final snap = await q.get();
-    final members =
-        snap.docs.map(GymMemberModel.fromFirestore).toList();
+    final members = snap.docs.map(GymMemberModel.fromFirestore).toList();
     final lastDoc = snap.docs.isNotEmpty ? snap.docs.last : null;
 
     return (members: members, lastDoc: lastDoc);
@@ -341,8 +337,7 @@ class GymService {
     return _members(gymId)
         .orderBy('joined_at', descending: false)
         .snapshots()
-        .map((s) =>
-            s.docs.map(GymMemberModel.fromFirestore).toList());
+        .map((s) => s.docs.map(GymMemberModel.fromFirestore).toList());
   }
 
   // ── Haversine distance ────────────────────────────────────────────────────────
@@ -409,13 +404,11 @@ class GymService {
     double userLng,
     int radiusMeters,
   ) async {
-    final distanceM =
-        _haversineDistance(gymLat, gymLng, userLat, userLng);
+    final distanceM = _haversineDistance(gymLat, gymLng, userLat, userLng);
     if (distanceM <= radiusMeters) {
       await _recordCheckIn(gymId, CheckInMethod.gps);
     } else {
-      throw Exception(
-          'Too far from gym (${distanceM.toStringAsFixed(0)} m)');
+      throw Exception('Too far from gym (${distanceM.toStringAsFixed(0)} m)');
     }
   }
 
@@ -456,8 +449,7 @@ class GymService {
   Stream<Map<int, int>> getWeeklyAttendanceStream(String gymId) {
     final since = DateTime.now().subtract(const Duration(days: 7));
     return _checkins(gymId)
-        .where('timestamp',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(since))
+        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(since))
         .orderBy('timestamp')
         .snapshots()
         .map((s) {

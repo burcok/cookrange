@@ -94,7 +94,8 @@ class StreakSquadService {
       }
 
       final doc = query.docs.first;
-      final members = List<String>.from(doc.data()['memberUids'] as List? ?? []);
+      final members =
+          List<String>.from(doc.data()['memberUids'] as List? ?? []);
       if (members.contains(uid)) {
         debugPrint('StreakSquadService.joinSquad: already a member');
         throw StreakSquadAlreadyMemberException();
@@ -123,8 +124,8 @@ class StreakSquadService {
       final snap = await docRef.get();
       if (!snap.exists) return;
 
-      final members = List<String>.from(
-          snap.data()?['memberUids'] as List? ?? []);
+      final members =
+          List<String>.from(snap.data()?['memberUids'] as List? ?? []);
       members.remove(uid);
 
       if (members.isEmpty) {
@@ -150,8 +151,7 @@ class StreakSquadService {
         .where('memberUids', arrayContains: uid)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) =>
-            snap.docs.map(StreakSquadModel.fromFirestore).toList())
+        .map((snap) => snap.docs.map(StreakSquadModel.fromFirestore).toList())
         .handleError((Object e, StackTrace st) {
       debugPrint('StreakSquadService.getMySquadsStream error: $e\n$st');
     });
@@ -205,8 +205,8 @@ class StreakSquadService {
         }
       }
 
-      results.sort((a, b) =>
-          (b['streak'] as int).compareTo(a['streak'] as int));
+      results
+          .sort((a, b) => (b['streak'] as int).compareTo(a['streak'] as int));
       debugPrint(
           'StreakSquadService.getMemberStreaks: returned ${results.length} members');
       return results;
@@ -221,10 +221,12 @@ class StreakSquadService {
 
 class StreakSquadNotFoundException implements Exception {
   @override
-  String toString() => 'StreakSquadNotFoundException: No squad with that invite code.';
+  String toString() =>
+      'StreakSquadNotFoundException: No squad with that invite code.';
 }
 
 class StreakSquadAlreadyMemberException implements Exception {
   @override
-  String toString() => 'StreakSquadAlreadyMemberException: User is already a member.';
+  String toString() =>
+      'StreakSquadAlreadyMemberException: User is already a member.';
 }

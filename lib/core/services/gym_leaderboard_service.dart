@@ -22,8 +22,7 @@ class GymLeaderboardService {
 
   /// Streams the weekly leaderboard for [gymId].
   /// Combines real-time check-in counts (this week) with member list.
-  Stream<List<LeaderboardEntryModel>> getWeeklyLeaderboardStream(
-      String gymId) {
+  Stream<List<LeaderboardEntryModel>> getWeeklyLeaderboardStream(String gymId) {
     if (TestModeService().isActive) {
       return Stream.value(TestDataLibrary.gymLeaderboard());
     }
@@ -46,11 +45,8 @@ class GymLeaderboardService {
       }
 
       // Fetch the member list (single read per checkins emission)
-      final membersSnap = await _db
-          .collection('gyms')
-          .doc(gymId)
-          .collection('members')
-          .get();
+      final membersSnap =
+          await _db.collection('gyms').doc(gymId).collection('members').get();
 
       final members =
           membersSnap.docs.map(GymMemberModel.fromFirestore).toList();
@@ -72,9 +68,10 @@ class GymLeaderboardService {
       // Assign ranks — ties share the same rank
       final ranked = <LeaderboardEntryModel>[];
       for (int i = 0; i < entries.length; i++) {
-        final rank = (i > 0 && entries[i].checkInCount == entries[i - 1].checkInCount)
-            ? ranked[i - 1].rank
-            : i + 1;
+        final rank =
+            (i > 0 && entries[i].checkInCount == entries[i - 1].checkInCount)
+                ? ranked[i - 1].rank
+                : i + 1;
         ranked.add(entries[i].copyWith(rank: rank));
       }
 

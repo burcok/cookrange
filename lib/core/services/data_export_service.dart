@@ -59,8 +59,8 @@ class DataExportService {
       final snap = await _db.doc(path).get();
       return snap.data();
     } catch (e) {
-      unawaited(CrashlyticsService().recordError(e, null,
-          reason: 'data_export: _doc $path'));
+      unawaited(CrashlyticsService()
+          .recordError(e, null, reason: 'data_export: _doc $path'));
       return null;
     }
   }
@@ -70,18 +70,16 @@ class DataExportService {
       final snap = await _db.collection(path).get();
       return snap.docs.map((d) => {'id': d.id, ...d.data()}).toList();
     } catch (e) {
-      unawaited(CrashlyticsService().recordError(e, null,
-          reason: 'data_export: _collection $path'));
+      unawaited(CrashlyticsService()
+          .recordError(e, null, reason: 'data_export: _collection $path'));
       return [];
     }
   }
 
   Future<List<Map<String, dynamic>>> _posts(String uid) async {
     try {
-      final snap = await _db
-          .collection('posts')
-          .where('authorId', isEqualTo: uid)
-          .get();
+      final snap =
+          await _db.collection('posts').where('authorId', isEqualTo: uid).get();
       return snap.docs.map((d) => {'id': d.id, ...d.data()}).toList();
     } catch (e) {
       unawaited(CrashlyticsService()

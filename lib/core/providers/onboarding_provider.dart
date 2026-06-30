@@ -155,7 +155,8 @@ class OnboardingProvider with ChangeNotifier {
   bool get wantsPremiumIntent => _wantsPremiumIntent;
 
   /// Whole-year age derived from [birthDate], or null if unset.
-  int? get ageYears => birthDate == null ? null : AgeGate.ageInYears(birthDate!);
+  int? get ageYears =>
+      birthDate == null ? null : AgeGate.ageInYears(birthDate!);
 
   /// Non-PII payload for the public `users/{uid}.onboarding_data` map, written
   /// once at registration. Mirrors [_toPublicMap].
@@ -318,7 +319,8 @@ class OnboardingProvider with ChangeNotifier {
     _activityLevelId = _extractId(onboardingData['activity_level']);
     _dislikedFoods = _convertDislikedFoods(onboardingData['disliked_foods']);
     _allergyIds = _extractIds(onboardingData['allergies']);
-    _dietaryRestrictionIds = _extractIds(onboardingData['dietary_restrictions']);
+    _dietaryRestrictionIds =
+        _extractIds(onboardingData['dietary_restrictions']);
     _cookingLevelId = _extractId(onboardingData['cooking_level']);
     _kitchenEquipmentIds = _extractIds(onboardingData['kitchen_equipments']);
 
@@ -735,5 +737,4 @@ class OnboardingProvider with ChangeNotifier {
         _activityLevelId != null &&
         isOnboardingComplete;
   }
-
 }

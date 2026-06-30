@@ -36,8 +36,7 @@ class LeaderboardService {
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  Stream<List<LeaderboardEntry>> getGlobalLeaderboardStream(
-      {int limit = 50}) {
+  Stream<List<LeaderboardEntry>> getGlobalLeaderboardStream({int limit = 50}) {
     return _db
         .collection('users')
         .orderBy('onboarding_data.streak', descending: true)

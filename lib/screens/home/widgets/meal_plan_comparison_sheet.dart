@@ -22,8 +22,7 @@ class MealPlanComparisonSheet {
   }) async {
     // Credit gate — check before opening sheet
     final isPremium = user.subscriptionTier.isPremiumOrAbove;
-    final canUse =
-        await AiCreditService().checkAndConsume(user.uid, isPremium);
+    final canUse = await AiCreditService().checkAndConsume(user.uid, isPremium);
     if (!canUse) {
       if (context.mounted) {
         unawaited(
@@ -33,8 +32,7 @@ class MealPlanComparisonSheet {
     }
 
     if (!context.mounted) return;
-    final locale =
-        context.read<LanguageProvider>().currentLocale.languageCode;
+    final locale = context.read<LanguageProvider>().currentLocale.languageCode;
 
     unawaited(AppSheet.show(
       context: context,
@@ -96,7 +94,8 @@ class _MealPlanComparisonBodyState extends State<_MealPlanComparisonBody> {
       if (mounted) {
         setState(() => _isLoading = false);
         final isPremium = widget.user.subscriptionTier.isPremiumOrAbove;
-        unawaited(AiCreditsSheet.show(context, uid: widget.user.uid, isPremium: isPremium));
+        unawaited(AiCreditsSheet.show(context,
+            uid: widget.user.uid, isPremium: isPremium));
       }
     } catch (_) {
       unawaited(AiCreditService().rollbackCredit(widget.user.uid));
@@ -183,8 +182,7 @@ class _MealPlanComparisonBodyState extends State<_MealPlanComparisonBody> {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: _PlanCard(
-              label:
-                  '${l10n.translate('meal_compare.alt_label')} ${i + 1}',
+              label: '${l10n.translate('meal_compare.alt_label')} ${i + 1}',
               name: alt.name,
               description: alt.description,
               avgCalories: alt.avgCalories,
@@ -258,9 +256,7 @@ class _PlanCard extends StatelessWidget {
         curve: Curves.easeOutCubic,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected
-              ? primary.withValues(alpha: 0.08)
-              : palette.surface,
+          color: isSelected ? primary.withValues(alpha: 0.08) : palette.surface,
           borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(
             color: isSelected ? primary : palette.border,
@@ -296,8 +292,7 @@ class _PlanCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text(name,
-                style: t.titleM.copyWith(color: palette.textPrimary)),
+            Text(name, style: t.titleM.copyWith(color: palette.textPrimary)),
             const SizedBox(height: 4),
             Text(description,
                 style: t.bodyM.copyWith(color: palette.textSecondary),

@@ -17,6 +17,7 @@ The Cookrange knowledge base. Start at `../AGENTS.md` for *how to work*, then co
 | [`firebase-console-setup.md`](firebase-console-setup.md) | Firebase Console one-time steps | — |
 | [`roadmap/GO_LIVE.md`](roadmap/GO_LIVE.md) | Pre-launch / store submission roadmap | — |
 | [`roadmap/FUTURE_FEATURES.md`](roadmap/FUTURE_FEATURES.md) | Missing & future features + per-feature roadmaps | — |
+| [`roadmap/PHASE_15_ENGAGEMENT.md`](roadmap/PHASE_15_ENGAGEMENT.md) | **Phase 15 (planned)** — daily engagement loop + gamification: reminders, "Bugün" recap, one-tap photo log, weekly AI recap, achievements/streak-freeze, cook-share | — |
 | [`generated/db-schema.md`](generated/db-schema.md) | Flat Firestore schema quick-reference | derived from `DATA_MODEL.md` |
 
 **Also at root:** `CLAUDE.md` (rules R0–R9 + DoD) · `TODO.md` (status/roadmap) ·

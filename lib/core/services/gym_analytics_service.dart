@@ -49,10 +49,8 @@ class GymAnalyticsService {
     final membersSnap = results[0];
     final checkinsSnap = results[1];
 
-    final members =
-        membersSnap.docs.map(GymMemberModel.fromFirestore).toList();
-    final checkins =
-        checkinsSnap.docs.map(CheckInModel.fromFirestore).toList();
+    final members = membersSnap.docs.map(GymMemberModel.fromFirestore).toList();
+    final checkins = checkinsSnap.docs.map(CheckInModel.fromFirestore).toList();
 
     debugPrint(
         '[GymAnalyticsService] members=${members.length} checkins=${checkins.length}');
@@ -74,10 +72,8 @@ class GymAnalyticsService {
     final retention = uidsThisMonth.length / safeTotal * 100;
 
     // Engagement score (0–100 composite)
-    final avgCheckinsPerMember = checkins
-            .where((c) => c.timestamp.isAfter(since7))
-            .length /
-        safeTotal;
+    final avgCheckinsPerMember =
+        checkins.where((c) => c.timestamp.isAfter(since7)).length / safeTotal;
     final engagement = (uidsThisWeek.length / safeTotal * 50) +
         (uidsThisMonth.length / safeTotal * 30) +
         ((avgCheckinsPerMember / 5).clamp(0.0, 1.0) * 20);
@@ -143,8 +139,7 @@ class GymAnalyticsService {
 
     final snap =
         await _db.collection('gyms').doc(gymId).collection('checkins').get();
-    final checkins =
-        snap.docs.map(CheckInModel.fromFirestore).toList();
+    final checkins = snap.docs.map(CheckInModel.fromFirestore).toList();
 
     final counts = <String, int>{};
     final lastSeen = <String, DateTime>{};

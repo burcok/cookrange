@@ -52,8 +52,8 @@ class ATTConsentService {
     } catch (e, stack) {
       // Non-fatal; analytics just won't be enabled.
       _granted = false;
-      unawaited(CrashlyticsService().recordError(e, stack,
-          reason: 'ATTConsentService.requestIfNeeded'));
+      unawaited(CrashlyticsService()
+          .recordError(e, stack, reason: 'ATTConsentService.requestIfNeeded'));
     }
   }
 }

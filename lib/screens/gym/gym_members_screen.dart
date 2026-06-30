@@ -28,9 +28,7 @@ class _GymMembersScreenState extends State<GymMembersScreen> {
   @override
   void initState() {
     super.initState();
-    _sub = GymService()
-        .getMembersStream(widget.gymId)
-        .listen((members) {
+    _sub = GymService().getMembersStream(widget.gymId).listen((members) {
       if (!mounted) return;
       setState(() {
         _allMembers = members;
@@ -164,8 +162,7 @@ class _GymMembersScreenState extends State<GymMembersScreen> {
           // Stats row
           if (!_loading && _allMembers.isNotEmpty)
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
                 children: [
                   _StatChip(
@@ -176,7 +173,8 @@ class _GymMembersScreenState extends State<GymMembersScreen> {
                   const SizedBox(width: 8),
                   _StatChip(
                     icon: Icons.check_circle_rounded,
-                    label: '$activeToday ${l10n.translate('gym.stat_active_today')}',
+                    label:
+                        '$activeToday ${l10n.translate('gym.stat_active_today')}',
                     color: palette.success,
                   ),
                 ],
@@ -205,8 +203,7 @@ class _GymMembersScreenState extends State<GymMembersScreen> {
                         message: l10n.translate('gym.members_empty_sub'),
                       )
                     : ListView.builder(
-                        padding:
-                            const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                         physics: const BouncingScrollPhysics(),
                         itemCount: _filtered.length,
                         itemBuilder: (ctx, i) => _MemberTile(
@@ -300,8 +297,8 @@ class _MemberTile extends StatelessWidget {
             color: palette.error.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
-          child: Icon(Icons.person_remove_rounded,
-              color: palette.error, size: 22),
+          child:
+              Icon(Icons.person_remove_rounded, color: palette.error, size: 22),
         ),
         child: AppCard(
           onTap: onTap,
@@ -337,8 +334,8 @@ class _MemberTile extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: palette.success,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                              color: palette.surface, width: 1.5),
+                          border:
+                              Border.all(color: palette.surface, width: 1.5),
                         ),
                       ),
                     ),
@@ -372,8 +369,7 @@ class _MemberTile extends StatelessWidget {
               ),
               // Tier badge
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: member.tier == GymMemberTier.premium
                       ? const Color(0xFFF59E0B).withValues(alpha: 0.15)
@@ -381,9 +377,7 @@ class _MemberTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  member.tier == GymMemberTier.premium
-                      ? 'Premium'
-                      : 'Standard',
+                  member.tier == GymMemberTier.premium ? 'Premium' : 'Standard',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,

@@ -201,8 +201,7 @@ class _DraggableReactionButtonState extends State<DraggableReactionButton> {
           padding: const EdgeInsets.all(AppSpacing.xxs),
           decoration: widget.isSmall
               ? BoxDecoration(
-                  color: palette.surfaceVariant,
-                  shape: BoxShape.circle)
+                  color: palette.surfaceVariant, shape: BoxShape.circle)
               : null,
           child: Icon(Icons.add_reaction_outlined,
               size: widget.isSmall ? AppSize.iconXs : AppSize.iconMd,

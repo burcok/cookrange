@@ -71,8 +71,8 @@ class _AdminDishesScreenState extends State<AdminDishesScreen> {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Text(
           l10n.translate('admin.dishes_reseed_title'),
-          style: t.titleM
-              .copyWith(color: palette.textPrimary, fontWeight: FontWeight.w700),
+          style: t.titleM.copyWith(
+              color: palette.textPrimary, fontWeight: FontWeight.w700),
         ),
         content: Text(
           l10n.translate('admin.dishes_reseed_body'),
@@ -91,8 +91,8 @@ class _AdminDishesScreenState extends State<AdminDishesScreen> {
             },
             child: Text(
               l10n.translate('admin.dishes_reseed_btn'),
-              style: t.labelM
-                  .copyWith(color: palette.warning, fontWeight: FontWeight.w700),
+              style: t.labelM.copyWith(
+                  color: palette.warning, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -201,8 +201,7 @@ class _AdminDishesScreenState extends State<AdminDishesScreen> {
                       return _FilterChip(
                         label: l10n.translate('admin.dishes_all'),
                         selected: _categoryFilter == null,
-                        onTap: () =>
-                            setState(() => _categoryFilter = null),
+                        onTap: () => setState(() => _categoryFilter = null),
                         palette: palette,
                         t: t,
                       );
@@ -211,8 +210,8 @@ class _AdminDishesScreenState extends State<AdminDishesScreen> {
                     return _FilterChip(
                       label: l10n.translate('admin.dish_cat_$cat'),
                       selected: _categoryFilter == cat,
-                      onTap: () => setState(() =>
-                          _categoryFilter = _categoryFilter == cat ? null : cat),
+                      onTap: () => setState(() => _categoryFilter =
+                          _categoryFilter == cat ? null : cat),
                       palette: palette,
                       t: t,
                     );
@@ -236,8 +235,8 @@ class _AdminDishesScreenState extends State<AdminDishesScreen> {
                           dish: visible[i],
                           palette: palette,
                           t: t,
-                          catLabel:
-                              l10n.translate('admin.dish_cat_${visible[i].category}'),
+                          catLabel: l10n.translate(
+                              'admin.dish_cat_${visible[i].category}'),
                           onTap: () => _openEdit(context, visible[i]),
                         ),
                       ),
@@ -303,17 +302,14 @@ class _DishCard extends StatelessWidget {
                       _MacroPill(
                           '${dish.calories.toInt()} kcal', palette.calories),
                       SizedBox(width: 4.w),
-                      _MacroPill(
-                          'P ${dish.protein.toStringAsFixed(0)}g',
+                      _MacroPill('P ${dish.protein.toStringAsFixed(0)}g',
                           palette.protein),
                       SizedBox(width: 4.w),
                       _MacroPill(
-                          'C ${dish.carbs.toStringAsFixed(0)}g',
-                          palette.carbs),
+                          'C ${dish.carbs.toStringAsFixed(0)}g', palette.carbs),
                       SizedBox(width: 4.w),
                       _MacroPill(
-                          'F ${dish.fat.toStringAsFixed(0)}g',
-                          palette.fat),
+                          'F ${dish.fat.toStringAsFixed(0)}g', palette.fat),
                     ],
                   ),
                 ],
@@ -326,7 +322,8 @@ class _DishCard extends StatelessWidget {
               children: [
                 _CatBadge(label: catLabel, palette: palette, t: t),
                 SizedBox(height: 8.h),
-                Icon(Icons.edit_rounded, size: 16.r, color: palette.textTertiary),
+                Icon(Icons.edit_rounded,
+                    size: 16.r, color: palette.textTertiary),
               ],
             ),
           ],
@@ -394,10 +391,8 @@ class _DishEditSheetState extends State<_DishEditSheet> {
       await DishService().updateDish(widget.dish.id, {
         'name': _nameTrCtrl.text.trim(),
         'name_en': _nameEnCtrl.text.trim(),
-        'calories':
-            double.tryParse(_calCtrl.text) ?? widget.dish.calories,
-        'protein':
-            double.tryParse(_protCtrl.text) ?? widget.dish.protein,
+        'calories': double.tryParse(_calCtrl.text) ?? widget.dish.calories,
+        'protein': double.tryParse(_protCtrl.text) ?? widget.dish.protein,
         'carbs': double.tryParse(_carbCtrl.text) ?? widget.dish.carbs,
         'fat': double.tryParse(_fatCtrl.text) ?? widget.dish.fat,
         'fiber': double.tryParse(_fiberCtrl.text) ?? widget.dish.fiber,
@@ -407,9 +402,8 @@ class _DishEditSheetState extends State<_DishEditSheet> {
       });
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text(widget.l10n.translate('admin.dishes_saved'))));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(widget.l10n.translate('admin.dishes_saved'))));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -427,8 +421,15 @@ class _DishEditSheetState extends State<_DishEditSheet> {
     final l10n = widget.l10n;
 
     const cats = [
-      'chicken', 'red_meat', 'fish', 'breakfast',
-      'vegetarian', 'vegan', 'diet', 'sport', 'turkish_classic',
+      'chicken',
+      'red_meat',
+      'fish',
+      'breakfast',
+      'vegetarian',
+      'vegan',
+      'diet',
+      'sport',
+      'turkish_classic',
     ];
     const mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
     const difficulties = ['easy', 'medium', 'hard'];
@@ -461,7 +462,11 @@ class _DishEditSheetState extends State<_DishEditSheet> {
             palette: palette,
             t: t,
             onChanged: (v) {
-              if (v != null) setState(() { _category = v; _hasChanges = true; });
+              if (v != null)
+                setState(() {
+                  _category = v;
+                  _hasChanges = true;
+                });
             },
           ),
           SizedBox(height: 8.h),
@@ -475,7 +480,11 @@ class _DishEditSheetState extends State<_DishEditSheet> {
                 palette: palette,
                 t: t,
                 onChanged: (v) {
-                  if (v != null) setState(() { _mealType = v; _hasChanges = true; });
+                  if (v != null)
+                    setState(() {
+                      _mealType = v;
+                      _hasChanges = true;
+                    });
                 },
               ),
             ),
@@ -489,7 +498,11 @@ class _DishEditSheetState extends State<_DishEditSheet> {
                 palette: palette,
                 t: t,
                 onChanged: (v) {
-                  if (v != null) setState(() { _difficulty = v; _hasChanges = true; });
+                  if (v != null)
+                    setState(() {
+                      _difficulty = v;
+                      _hasChanges = true;
+                    });
                 },
               ),
             ),
@@ -499,17 +512,52 @@ class _DishEditSheetState extends State<_DishEditSheet> {
               style: t.labelM.copyWith(color: palette.textSecondary)),
           SizedBox(height: 6.h),
           Row(children: [
-            Expanded(child: _SheetField(ctrl: _calCtrl, label: 'kcal', palette: palette, t: t, keyboardType: TextInputType.number, onChanged: (_) => _markChanged())),
+            Expanded(
+                child: _SheetField(
+                    ctrl: _calCtrl,
+                    label: 'kcal',
+                    palette: palette,
+                    t: t,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => _markChanged())),
             SizedBox(width: 6.w),
-            Expanded(child: _SheetField(ctrl: _protCtrl, label: 'Protein g', palette: palette, t: t, keyboardType: TextInputType.number, onChanged: (_) => _markChanged())),
+            Expanded(
+                child: _SheetField(
+                    ctrl: _protCtrl,
+                    label: 'Protein g',
+                    palette: palette,
+                    t: t,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => _markChanged())),
           ]),
           SizedBox(height: 6.h),
           Row(children: [
-            Expanded(child: _SheetField(ctrl: _carbCtrl, label: 'Carbs g', palette: palette, t: t, keyboardType: TextInputType.number, onChanged: (_) => _markChanged())),
+            Expanded(
+                child: _SheetField(
+                    ctrl: _carbCtrl,
+                    label: 'Carbs g',
+                    palette: palette,
+                    t: t,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => _markChanged())),
             SizedBox(width: 6.w),
-            Expanded(child: _SheetField(ctrl: _fatCtrl, label: 'Fat g', palette: palette, t: t, keyboardType: TextInputType.number, onChanged: (_) => _markChanged())),
+            Expanded(
+                child: _SheetField(
+                    ctrl: _fatCtrl,
+                    label: 'Fat g',
+                    palette: palette,
+                    t: t,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => _markChanged())),
             SizedBox(width: 6.w),
-            Expanded(child: _SheetField(ctrl: _fiberCtrl, label: 'Fiber g', palette: palette, t: t, keyboardType: TextInputType.number, onChanged: (_) => _markChanged())),
+            Expanded(
+                child: _SheetField(
+                    ctrl: _fiberCtrl,
+                    label: 'Fiber g',
+                    palette: palette,
+                    t: t,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => _markChanged())),
           ]),
           SizedBox(height: 16.h),
           AppButton(
@@ -550,10 +598,9 @@ class _SearchField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: t.bodyM.copyWith(color: palette.textSecondary),
-        prefixIcon:
-            Icon(Icons.search_rounded, size: 18.r, color: palette.textSecondary),
-        contentPadding:
-            EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+        prefixIcon: Icon(Icons.search_rounded,
+            size: 18.r, color: palette.textSecondary),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.input.r),
           borderSide: BorderSide(color: palette.border),
@@ -601,9 +648,7 @@ class _FilterChip extends StatelessWidget {
               : palette.surfaceVariant,
           borderRadius: BorderRadius.circular(AppRadius.full.r),
           border: Border.all(
-            color: selected
-                ? Theme.of(context).primaryColor
-                : palette.border,
+            color: selected ? Theme.of(context).primaryColor : palette.border,
           ),
         ),
         child: Text(
@@ -766,8 +811,8 @@ class _SheetDropdown extends StatelessWidget {
                   .map((v) => DropdownMenuItem(
                         value: v,
                         child: Text(labelOf(v),
-                            style: t.bodyM
-                                .copyWith(color: palette.textPrimary)),
+                            style:
+                                t.bodyM.copyWith(color: palette.textPrimary)),
                       ))
                   .toList(),
             ),

@@ -77,9 +77,8 @@ class OnboardingCookingPage extends StatelessWidget {
                   icon: e.value['icon'] as IconData,
                   title: l10n.translate(e.value['label'] as String),
                   selected: selectedLevel == e.key,
-                  onTap: () => context
-                      .read<OnboardingProvider>()
-                      .setCookingLevel(e.key),
+                  onTap: () =>
+                      context.read<OnboardingProvider>().setCookingLevel(e.key),
                 ),
               )),
           SizedBox(height: AppSpacing.xl.h),

@@ -209,8 +209,7 @@ class _ProgressHeader extends StatelessWidget {
                       ),
                     ),
                     AnimatedContainer(
-                      duration:
-                          reduceMotion ? Duration.zero : AppMotion.normal,
+                      duration: reduceMotion ? Duration.zero : AppMotion.normal,
                       curve: AppMotion.emphasized,
                       width: constraints.maxWidth * progress,
                       height: 6.h,

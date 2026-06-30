@@ -33,8 +33,7 @@ class AdminService {
         .where('status', isEqualTo: 'pending')
         .orderBy('submittedAt')
         .snapshots()
-        .map((s) =>
-            s.docs.map(CoachApplicationModel.fromFirestore).toList());
+        .map((s) => s.docs.map(CoachApplicationModel.fromFirestore).toList());
   }
 
   Stream<List<GymApplicationModel>> pendingGymApplicationsStream() {
@@ -43,8 +42,7 @@ class AdminService {
         .where('status', isEqualTo: 'pending')
         .orderBy('submittedAt')
         .snapshots()
-        .map((s) =>
-            s.docs.map(GymApplicationModel.fromFirestore).toList());
+        .map((s) => s.docs.map(GymApplicationModel.fromFirestore).toList());
   }
 
   Stream<int> pendingCountStream() {
@@ -63,10 +61,7 @@ class AdminService {
 
   /// Total registered user count (approximate — reads first page of users stream).
   Stream<int> userCountStream() {
-    return _db
-        .collection('users')
-        .snapshots()
-        .map((s) => s.size);
+    return _db.collection('users').snapshots().map((s) => s.size);
   }
 
   /// Count of open/pending reports in the `reports` collection.
@@ -182,14 +177,12 @@ class AdminService {
       targetUid: report.authorId ?? '',
       metadata: {'reportId': report.id, 'targetId': report.targetId},
     ));
-    debugPrint(
-        'AdminService: removed ${report.targetType} ${report.targetId}');
+    debugPrint('AdminService: removed ${report.targetType} ${report.targetId}');
   }
 
   // ── Approve Coach ──────────────────────────────────────────────────────────
 
-  Future<void> approveCoachApplication(
-      CoachApplicationModel app) async {
+  Future<void> approveCoachApplication(CoachApplicationModel app) async {
     final adminUid = _auth.currentUser?.uid;
     if (adminUid == null) throw Exception('AdminService: not authenticated');
 
@@ -218,8 +211,7 @@ class AdminService {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
-    batch.set(
-        _db.collection('coach_profiles').doc(app.applicantUid),
+    batch.set(_db.collection('coach_profiles').doc(app.applicantUid),
         profile.toFirestore());
 
     // 3. Update user roles (additive — preserves existing roles)
@@ -250,8 +242,7 @@ class AdminService {
 
   // ── Approve Gym ─────────────────────────────────────────────────────────────
 
-  Future<void> approveGymApplication(
-      GymApplicationModel app) async {
+  Future<void> approveGymApplication(GymApplicationModel app) async {
     final adminUid = _auth.currentUser?.uid;
     if (adminUid == null) throw Exception('AdminService: not authenticated');
 
@@ -293,7 +284,11 @@ class AdminService {
 
     // 2a. Add owner as first member
     batch.set(
-      _db.collection('gyms').doc(gymId).collection('members').doc(app.applicantUid),
+      _db
+          .collection('gyms')
+          .doc(gymId)
+          .collection('members')
+          .doc(app.applicantUid),
       {
         'uid': app.applicantUid,
         'joined_at': FieldValue.serverTimestamp(),
@@ -461,12 +456,15 @@ class AdminService {
     debugPrint('AdminService: banUser uid=$uid reason="$reason"');
 
     final batch = _db.batch();
-    batch.set(_db.collection('admin').doc('status').collection(uid).doc('flags'), {
-      'is_banned': true,
-      'ban_reason': reason,
-      'banned_at': FieldValue.serverTimestamp(),
-      'banned_by': adminUid,
-    }, SetOptions(merge: true));
+    batch.set(
+        _db.collection('admin').doc('status').collection(uid).doc('flags'),
+        {
+          'is_banned': true,
+          'ban_reason': reason,
+          'banned_at': FieldValue.serverTimestamp(),
+          'banned_by': adminUid,
+        },
+        SetOptions(merge: true));
     batch.update(_db.collection('users').doc(uid), {'is_banned': true});
     await batch.commit();
 
@@ -485,9 +483,12 @@ class AdminService {
     debugPrint('AdminService: unbanUser uid=$uid');
 
     final batch = _db.batch();
-    batch.set(_db.collection('admin').doc('status').collection(uid).doc('flags'), {
-      'is_banned': false,
-    }, SetOptions(merge: true));
+    batch.set(
+        _db.collection('admin').doc('status').collection(uid).doc('flags'),
+        {
+          'is_banned': false,
+        },
+        SetOptions(merge: true));
     batch.update(_db.collection('users').doc(uid), {'is_banned': false});
     await batch.commit();
 
@@ -532,11 +533,7 @@ class AdminService {
     if (adminUid == null) throw Exception('AdminService: not authenticated');
 
     debugPrint('AdminService: sendNotificationToUser uid=$uid');
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('notifications')
-        .add({
+    await _db.collection('users').doc(uid).collection('notifications').add({
       'type': 'system',
       'title': title,
       'body': body,
@@ -888,11 +885,27 @@ class AdminService {
     try {
       final results = await Future.wait([
         _db.collection('users').count().get(),
-        _db.collection('users').where('subscription_tier', whereIn: ['premium', 'pro']).count().get(),
-        _db.collection('users').where('user_role', isEqualTo: 'coach').count().get(),
-        _db.collection('users').where('user_role', isEqualTo: 'gymOwner').count().get(),
+        _db
+            .collection('users')
+            .where('subscription_tier', whereIn: ['premium', 'pro'])
+            .count()
+            .get(),
+        _db
+            .collection('users')
+            .where('user_role', isEqualTo: 'coach')
+            .count()
+            .get(),
+        _db
+            .collection('users')
+            .where('user_role', isEqualTo: 'gymOwner')
+            .count()
+            .get(),
         _db.collection('posts').count().get(),
-        _db.collection('reports').where('status', isEqualTo: 'pending').count().get(),
+        _db
+            .collection('reports')
+            .where('status', isEqualTo: 'pending')
+            .count()
+            .get(),
         _db.collection('squads').count().get(),
       ]);
       return {
@@ -921,8 +934,8 @@ class AdminService {
         .snapshots()
         .map((s) => s.docs.map((d) => {'uid': d.id, ...d.data()}).toList())
         .handleError((Object e) {
-      debugPrint('AdminService: premiumUsersStream error — $e');
-    });
+          debugPrint('AdminService: premiumUsersStream error — $e');
+        });
   }
 
   /// Live stream of currently banned users.
@@ -975,7 +988,8 @@ class AdminService {
         if (r.targetType == 'post') {
           batch.delete(_db.collection('posts').doc(r.targetId));
         } else if (r.targetType == 'comment' && r.postId.isNotEmpty) {
-          batch.delete(_db.collection('posts')
+          batch.delete(_db
+              .collection('posts')
               .doc(r.postId)
               .collection('comments')
               .doc(r.targetId));

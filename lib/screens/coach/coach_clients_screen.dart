@@ -184,8 +184,7 @@ class _CoachClientsScreenState extends State<CoachClientsScreen>
                 l10n: l10n,
                 onTap: () => Navigator.push(
                   context,
-                  AppTransitions.slideRight(
-                      CoachClientDetailScreen(client: c)),
+                  AppTransitions.slideRight(CoachClientDetailScreen(client: c)),
                 ),
               )),
         ],
@@ -283,8 +282,7 @@ class _ClientTile extends StatelessWidget {
                       children: [
                         if (client.clientStreak != null) ...[
                           const Icon(Icons.local_fire_department_rounded,
-                              size: 14,
-                              color: Color(0xFFF97300)),
+                              size: 14, color: Color(0xFFF97300)),
                           const SizedBox(width: 3),
                           Text(
                             '${client.clientStreak}d streak',

@@ -40,13 +40,15 @@ ${localeInstruction(locale)}''';
   }) {
     final constraints = <String>[];
     if (maxTotalMinutes != null) {
-      constraints.add('Total cook + prep time MUST be under $maxTotalMinutes minutes.');
+      constraints.add(
+          'Total cook + prep time MUST be under $maxTotalMinutes minutes.');
     }
     if (difficulty != null) {
       constraints.add('Difficulty MUST be "$difficulty".');
     }
     if (avoidIngredients.isNotEmpty) {
-      constraints.add('MUST NOT contain these ingredients: ${avoidIngredients.join(', ')}.');
+      constraints.add(
+          'MUST NOT contain these ingredients: ${avoidIngredients.join(', ')}.');
     }
     final constraintBlock = constraints.isEmpty
         ? ''

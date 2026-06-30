@@ -18,8 +18,7 @@ class CoachApplicationScreen extends StatefulWidget {
   const CoachApplicationScreen({super.key});
 
   @override
-  State<CoachApplicationScreen> createState() =>
-      _CoachApplicationScreenState();
+  State<CoachApplicationScreen> createState() => _CoachApplicationScreenState();
 }
 
 class _CoachApplicationScreenState extends State<CoachApplicationScreen>
@@ -60,14 +59,32 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
       CurvedAnimation(parent: _fadeCtrl, curve: AppMotion.decelerate);
 
   static const _allSpecializations = [
-    'Weight Loss', 'Muscle Gain', 'Strength', 'Endurance', 'Nutrition',
-    'HIIT', 'Yoga', 'Rehabilitation', 'Sports Performance', 'Senior Fitness',
-    'Boxing', 'CrossFit', 'Pilates', 'Running', 'Cycling',
+    'Weight Loss',
+    'Muscle Gain',
+    'Strength',
+    'Endurance',
+    'Nutrition',
+    'HIIT',
+    'Yoga',
+    'Rehabilitation',
+    'Sports Performance',
+    'Senior Fitness',
+    'Boxing',
+    'CrossFit',
+    'Pilates',
+    'Running',
+    'Cycling',
   ];
 
   static const _evidenceLabelOptions = [
-    'PT License', 'NASM/ACE', 'CPD Certificate', 'IFBB Card',
-    'Reference Letter', 'Diploma / Degree', 'Experience Certificate', 'Other',
+    'PT License',
+    'NASM/ACE',
+    'CPD Certificate',
+    'IFBB Card',
+    'Reference Letter',
+    'Diploma / Degree',
+    'Experience Certificate',
+    'Other',
   ];
 
   static const _totalSteps = 5;
@@ -126,10 +143,9 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
 
   bool get _step4Valid => _certDocFile != null && _idDocFile != null;
 
-  bool get _step5Valid =>
-      _refCtrls.every((m) =>
-          m['name']!.text.trim().isNotEmpty &&
-          m['contact']!.text.trim().isNotEmpty);
+  bool get _step5Valid => _refCtrls.every((m) =>
+      m['name']!.text.trim().isNotEmpty &&
+      m['contact']!.text.trim().isNotEmpty);
 
   // ── Phone OTP ──────────────────────────────────────────────────────────────
 
@@ -142,19 +158,28 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
         phoneNumber: phone,
         verificationCompleted: (credential) async {
           await FirebaseAuth.instance.signInWithCredential(credential);
-          if (mounted) setState(() { _phoneVerified = true; _sendingOtp = false; });
+          if (mounted)
+            setState(() {
+              _phoneVerified = true;
+              _sendingOtp = false;
+            });
         },
         verificationFailed: (e) {
           if (mounted) {
             setState(() => _sendingOtp = false);
             AppSnackBar.error(
               context,
-              e.message ?? AppLocalizations.of(context).translate('gym.phone_error'),
+              e.message ??
+                  AppLocalizations.of(context).translate('gym.phone_error'),
             );
           }
         },
         codeSent: (verificationId, resendToken) {
-          if (mounted) setState(() { _verificationId = verificationId; _sendingOtp = false; });
+          if (mounted)
+            setState(() {
+              _verificationId = verificationId;
+              _sendingOtp = false;
+            });
         },
         codeAutoRetrievalTimeout: (_) {},
         timeout: const Duration(seconds: 60),
@@ -177,7 +202,11 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
         smsCode: _otpCtrl.text.trim(),
       );
       await FirebaseAuth.instance.signInWithCredential(credential);
-      if (mounted) setState(() { _phoneVerified = true; _verifyingOtp = false; });
+      if (mounted)
+        setState(() {
+          _phoneVerified = true;
+          _verifyingOtp = false;
+        });
     } catch (e) {
       debugPrint('CoachApplicationScreen: OTP verify error: $e');
       if (mounted) {
@@ -213,8 +242,8 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
     final granted = await PermissionService().requestPhotos(context);
     if (!mounted || !granted) return;
     final picker = ImagePicker();
-    final file = await picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 85);
+    final file =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (file == null || !mounted) return;
 
     final label = await _pickEvidenceLabel();
@@ -237,8 +266,7 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
         return Container(
           decoration: BoxDecoration(
             color: palette.surface,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SafeArea(
             top: false,
@@ -331,8 +359,8 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
           AppTransitions.slideUp(const CoachApplicationPendingScreen()));
     } catch (e) {
       if (mounted) {
-        AppSnackBar.error(context,
-            AppLocalizations.of(context).translate('errors.general'));
+        AppSnackBar.error(
+            context, AppLocalizations.of(context).translate('errors.general'));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -391,9 +419,8 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: palette.textPrimary, size: 20),
-          onPressed: _currentStep > 0
-              ? _prevPage
-              : () => Navigator.of(context).pop(),
+          onPressed:
+              _currentStep > 0 ? _prevPage : () => Navigator.of(context).pop(),
         ),
         title: Text(
           l10n.translate('coach.app_title'),
@@ -425,7 +452,8 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
                 final active = i == _currentStep;
                 return Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(right: i < _totalSteps - 1 ? 6 : 0),
+                    padding:
+                        EdgeInsets.only(right: i < _totalSteps - 1 ? 6 : 0),
                     child: AnimatedContainer(
                       duration: AppMotion.fast,
                       curve: AppMotion.emphasized,
@@ -467,8 +495,8 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
 
   // ── Step 1: Professional Info ────────────────────────────────────────────
 
-  Widget _buildStep1(AppPalette palette, AppLocalizations l10n,
-      AppText t, Color primary) {
+  Widget _buildStep1(
+      AppPalette palette, AppLocalizations l10n, AppText t, Color primary) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       child: Column(
@@ -528,7 +556,8 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
                     }
                   });
                 },
-                selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.15),
+                selectedColor:
+                    Theme.of(context).primaryColor.withValues(alpha: 0.15),
                 checkmarkColor: Theme.of(context).primaryColor,
                 labelStyle: t.labelM.copyWith(
                   color: sel
@@ -536,9 +565,8 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
                       : palette.textPrimary,
                 ),
                 side: BorderSide(
-                    color: sel
-                        ? Theme.of(context).primaryColor
-                        : palette.border),
+                    color:
+                        sel ? Theme.of(context).primaryColor : palette.border),
               );
             }).toList(),
           ),
@@ -599,8 +627,8 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
 
   // ── Step 2: Evidence Documents ────────────────────────────────────────────
 
-  Widget _buildStep2(AppPalette palette, AppLocalizations l10n,
-      AppText t, Color primary) {
+  Widget _buildStep2(
+      AppPalette palette, AppLocalizations l10n, AppText t, Color primary) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       child: Column(
@@ -612,7 +640,6 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
           Text(l10n.translate('coach.app_step2_sub'),
               style: t.bodyM.copyWith(color: palette.textSecondary)),
           const SizedBox(height: 24),
-
           ..._evidenceFiles.asMap().entries.map((e) {
             final i = e.key;
             return Padding(
@@ -636,8 +663,8 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
                         children: [
                           Text(
                             _evidenceLabels[i],
-                            style: t.labelL.copyWith(
-                                fontWeight: FontWeight.w700),
+                            style:
+                                t.labelL.copyWith(fontWeight: FontWeight.w700),
                           ),
                           Text(
                             l10n.translate('coach.app_doc_uploaded'),
@@ -659,7 +686,6 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
               ),
             );
           }),
-
           OutlinedButton.icon(
             onPressed: _pickEvidence,
             icon: const Icon(Icons.upload_file_rounded),
@@ -678,7 +704,6 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
             style: t.bodyM.copyWith(color: palette.textSecondary),
           ),
           const SizedBox(height: 32),
-
           SizedBox(
             width: double.infinity,
             child: AppButton(
@@ -693,8 +718,8 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
 
   // ── Step 3: Phone Verification ────────────────────────────────────────────
 
-  Widget _buildStep3Phone(AppPalette palette, AppLocalizations l10n,
-      AppText t, Color primary) {
+  Widget _buildStep3Phone(
+      AppPalette palette, AppLocalizations l10n, AppText t, Color primary) {
     final otpSent = _verificationId != null && !_phoneVerified;
 
     return SingleChildScrollView(
@@ -754,9 +779,9 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
                     child: Text(
                       l10n.translate('gym.phone_verified'),
                       style: t.bodyM.copyWith(
-                            color: palette.success,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: palette.success,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -781,7 +806,6 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
               loading: _sendingOtp,
               icon: Icons.send_rounded,
             ),
-
             if (otpSent) ...[
               const SizedBox(height: 24),
               AppTextField(
@@ -818,8 +842,8 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
 
   // ── Step 4: Certifications & ID ───────────────────────────────────────────
 
-  Widget _buildStep4Docs(AppPalette palette, AppLocalizations l10n,
-      AppText t, Color primary) {
+  Widget _buildStep4Docs(
+      AppPalette palette, AppLocalizations l10n, AppText t, Color primary) {
     final uploadedCount =
         (_certDocFile != null ? 1 : 0) + (_idDocFile != null ? 1 : 0);
 
@@ -874,7 +898,9 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
               ),
             ),
             child: Text(
-              l10n.translate('coach.docs_count').replaceAll('{n}', '$uploadedCount'),
+              l10n
+                  .translate('coach.docs_count')
+                  .replaceAll('{n}', '$uploadedCount'),
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -926,8 +952,8 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
 
   // ── Step 5: References ─────────────────────────────────────────────────────
 
-  Widget _buildStep5(AppPalette palette, AppLocalizations l10n,
-      AppText t, Color primary) {
+  Widget _buildStep5(
+      AppPalette palette, AppLocalizations l10n, AppText t, Color primary) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       child: Column(
@@ -939,7 +965,6 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
           Text(l10n.translate('coach.app_step3_sub'),
               style: t.bodyM.copyWith(color: palette.textSecondary)),
           const SizedBox(height: 24),
-
           ..._refCtrls.asMap().entries.map((e) {
             final i = e.key;
             final m = e.value;
@@ -990,14 +1015,12 @@ class _CoachApplicationScreenState extends State<CoachApplicationScreen>
               ),
             );
           }),
-
           TextButton.icon(
             onPressed: _addRefEntry,
             icon: const Icon(Icons.add_circle_outline),
             label: Text(l10n.translate('coach.app_add_ref')),
           ),
           const SizedBox(height: 32),
-
           SizedBox(
             width: double.infinity,
             child: AppButton(
@@ -1112,9 +1135,8 @@ class _DocUploadCard extends StatelessWidget {
                   Text(
                     isPicked ? (fileName ?? uploadedLabel) : tapLabel,
                     style: AppText.of(context).labelS.copyWith(
-                          color: isPicked
-                              ? palette.success
-                              : palette.textTertiary,
+                          color:
+                              isPicked ? palette.success : palette.textTertiary,
                         ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

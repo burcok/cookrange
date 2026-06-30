@@ -153,8 +153,7 @@ ${PromptService().localeInstruction(locale)}''';
           .getLogsForDateRange(user.uid, thirtyDaysAgo, now);
 
       final allLogs = foodLogs.values.expand((l) => l).toList();
-      final daysWithLogs =
-          foodLogs.values.where((l) => l.isNotEmpty).length;
+      final daysWithLogs = foodLogs.values.where((l) => l.isNotEmpty).length;
       final avgCalories = daysWithLogs > 0
           ? allLogs.fold(0.0, (acc, l) => acc + l.calories) / daysWithLogs
           : 0.0;
@@ -230,7 +229,8 @@ ${PromptService().localeInstruction(locale)}''';
         name: 'ai_generated',
         parameters: {'type': 'fitness_twin'},
       ));
-      debugPrint('AiInsightService: generated fitness twin projection ($locale)');
+      debugPrint(
+          'AiInsightService: generated fitness twin projection ($locale)');
       // Persist to Firestore — fire-and-forget, does not block UI
       unawaited(_saveTwinProjection(user.uid, locale, result));
       return result;
@@ -300,7 +300,8 @@ ${PromptService().localeInstruction(locale)}''';
         : 'general fitness';
     if (locale == 'tr') {
       return AiInsightModel.fromJson({
-        'message': 'Her adım hedefine giden yolda önemlidir — harika gidiyorsun!',
+        'message':
+            'Her adım hedefine giden yolda önemlidir — harika gidiyorsun!',
         'tips': [
           'Öğünlerini düzenli olarak kayıt et.',
           'Gün boyunca bol su iç.',
@@ -320,7 +321,8 @@ ${PromptService().localeInstruction(locale)}''';
   Map<String, dynamic> _fallbackProjection(UserModel user, String locale) {
     if (locale == 'tr') {
       return {
-        'currentStatus': 'Kişiselleştirilmiş projeksiyon için AI\'ı etkinleştirin.',
+        'currentStatus':
+            'Kişiselleştirilmiş projeksiyon için AI\'ı etkinleştirin.',
         'weeklyWeightChange': 0.0,
         'projection30days': 'AI projeksiyonu mevcut değil',
         'projection60days': 'AI projeksiyonu mevcut değil',
@@ -353,13 +355,246 @@ ${PromptService().localeInstruction(locale)}''';
     };
   }
 
+  // ─── Weekly AI Coach Recap ─────────────────────────────────────────────────
+
+  /// Returns the Monday-start key for the week containing [d].
+  static String weekKey(DateTime d) {
+    final monday = d.subtract(Duration(days: d.weekday - 1));
+    return '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Generates (or returns cached) weekly coach recap.
+  ///
+  /// If fewer than 3 days have food logs the recap is generated from local data
+  /// only (no AI call, no credit consumed) — `result['isLowData'] == true`.
+  /// Callers must consume a credit BEFORE calling this when `isLowData` would be
+  /// false — use [checkLowDataThisWeek] first if needed.
+  ///
+  /// Idempotent per week+locale: if a Firestore doc already exists for this
+  /// [weekKey] and [locale] it is returned directly without a new AI call.
+  Future<Map<String, dynamic>> generateWeeklyRecap(
+    UserModel user, {
+    String locale = 'en',
+  }) async {
+    final key = weekKey(DateTime.now());
+
+    // Check Firestore cache first
+    try {
+      final existing = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('ai_weekly_recaps')
+          .where('weekKey', isEqualTo: key)
+          .where('locale', isEqualTo: locale)
+          .orderBy('generatedAt', descending: true)
+          .limit(1)
+          .get();
+      if (existing.docs.isNotEmpty) {
+        debugPrint(
+            'AiInsightService: returning cached weekly recap $key ($locale)');
+        final data = Map<String, dynamic>.from(existing.docs.first.data());
+        data['isLowData'] = data['isLowData'] ?? false;
+        return data;
+      }
+    } catch (e) {
+      debugPrint('AiInsightService.generateWeeklyRecap cache read error: $e');
+    }
+
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final weekStartOnly =
+        DateTime(weekStart.year, weekStart.month, weekStart.day);
+    final todayOnly = DateTime(now.year, now.month, now.day);
+
+    Map<String, List<dynamic>> logs = {};
+    try {
+      logs = await FoodLogService()
+          .getLogsForDateRange(user.uid, weekStartOnly, todayOnly);
+    } catch (e) {
+      debugPrint('AiInsightService.generateWeeklyRecap fetch logs error: $e');
+    }
+
+    final daysWithLogs = logs.values.where((l) => l.isNotEmpty).length;
+    final isLowData = daysWithLogs < 3;
+
+    if (isLowData || !AIService().isConfigured) {
+      final result =
+          _fallbackWeeklyRecap(user, locale, daysWithLogs: daysWithLogs);
+      result['isLowData'] = true;
+      result['weekKey'] = key;
+      result['locale'] = locale;
+      unawaited(_saveWeeklyRecap(user.uid, result));
+      return result;
+    }
+
+    try {
+      final allLogs = logs.values.expand((l) => l).toList();
+      final avgCalories = daysWithLogs > 0
+          ? allLogs.fold(0.0, (acc, l) => acc + l.calories) / daysWithLogs
+          : 0.0;
+
+      final profile = user.profile;
+      double bmr = 1800;
+      if (profile.heightCm != null &&
+          profile.age != null &&
+          profile.gender != null) {
+        bmr = CalorieCalculator.calculateBMR(
+          weight: (profile.weightKg ?? 70).toDouble(),
+          height: profile.heightCm!.toDouble(),
+          age: profile.age!,
+          gender: profile.gender!,
+        );
+      }
+      final tdee = CalorieCalculator.calculateTDEE(
+          bmr: bmr, activityLevel: profile.activityLevel);
+
+      final calorieDiff = avgCalories - tdee;
+      final calorieContext = calorieDiff.abs() < 150
+          ? 'on target'
+          : calorieDiff > 0
+              ? 'in a surplus of ${calorieDiff.toStringAsFixed(0)} kcal/day'
+              : 'in a deficit of ${(-calorieDiff).toStringAsFixed(0)} kcal/day';
+
+      final prompt = '''
+You are a professional fitness & nutrition coach. Write a concise weekly recap for this user.
+
+User data this week (${_dateKey(weekStartOnly)} to ${_dateKey(todayOnly)}):
+- Name: ${user.displayName ?? 'User'}
+- Goal: ${profile.primaryGoals.join(', ')}
+- Days with food logs: $daysWithLogs / ${now.weekday}
+- Average daily calories: ${avgCalories.toStringAsFixed(0)} kcal (TDEE: ${tdee.toStringAsFixed(0)}, $calorieContext)
+- Current streak: ${user.onboardingData?['streak'] ?? 0} days
+
+Return ONLY valid JSON:
+{
+  "score": 78,
+  "wins": ["one specific win based on data", "another win"],
+  "challenges": ["one honest challenge or area to improve"],
+  "trend": "improving",
+  "recommendation": "One concise actionable recommendation for next week"
+}
+trend must be one of: "improving" | "steady" | "declining"
+${PromptService().localeInstruction(locale)}''';
+
+      const jsonStructure =
+          '{"score": 0, "wins": ["string"], "challenges": ["string"], "trend": "steady", "recommendation": "string"}';
+
+      final result = await AIService()
+          .generateJson(prompt: prompt, jsonStructure: jsonStructure);
+
+      result['isLowData'] = false;
+      result['weekKey'] = key;
+      result['locale'] = locale;
+
+      unawaited(AnalyticsService().logEvent(
+        name: 'ai_generated',
+        parameters: {'type': 'weekly_recap'},
+      ));
+      debugPrint('AiInsightService: generated weekly recap $key ($locale)');
+      unawaited(_saveWeeklyRecap(user.uid, result));
+      return result;
+    } catch (e) {
+      debugPrint('AiInsightService.generateWeeklyRecap error: $e');
+      final fallback =
+          _fallbackWeeklyRecap(user, locale, daysWithLogs: daysWithLogs);
+      fallback['isLowData'] = true;
+      fallback['weekKey'] = key;
+      fallback['locale'] = locale;
+      return fallback;
+    }
+  }
+
+  /// Whether this week has fewer than 3 logged days — callers can skip credit
+  /// consumption for low-data recaps.
+  Future<bool> checkLowDataThisWeek(String uid) async {
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final weekStartOnly =
+        DateTime(weekStart.year, weekStart.month, weekStart.day);
+    final todayOnly = DateTime(now.year, now.month, now.day);
+    try {
+      final logs = await FoodLogService()
+          .getLogsForDateRange(uid, weekStartOnly, todayOnly);
+      return logs.values.where((l) => l.isNotEmpty).length < 3;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<void> _saveWeeklyRecap(String uid, Map<String, dynamic> result) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('ai_weekly_recaps')
+          .add({
+        ...result,
+        'generatedAt': FieldValue.serverTimestamp(),
+      });
+      debugPrint(
+          'AiInsightService: saved weekly recap for $uid (week=${result['weekKey']})');
+    } catch (e) {
+      debugPrint('AiInsightService._saveWeeklyRecap error: $e');
+    }
+  }
+
+  /// Stream of the most recent weekly recap document for [uid].
+  Stream<DocumentSnapshot?> getLatestWeeklyRecapStream(String uid) {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('ai_weekly_recaps')
+        .orderBy('generatedAt', descending: true)
+        .limit(1)
+        .snapshots()
+        .map((s) => s.docs.isNotEmpty ? s.docs.first : null);
+  }
+
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+
+  Map<String, dynamic> _fallbackWeeklyRecap(
+    UserModel user,
+    String locale, {
+    int daysWithLogs = 0,
+  }) {
+    if (locale == 'tr') {
+      return {
+        'score': 50,
+        'wins': daysWithLogs > 0
+            ? [
+                'Bu hafta $daysWithLogs gün yemeklerini kayıt ettin — harika başlangıç!'
+              ]
+            : ['Haftaya daha fazla kayıt ekleyerek istatistiklerini gör.'],
+        'challenges': ['Daha fazla günde yemek kayıt ederek doğru analiz al.'],
+        'trend': 'steady',
+        'recommendation':
+            'Her gün en az 2 öğün kayıt et — bu haftanın en önemli hedefi.',
+      };
+    }
+    return {
+      'score': 50,
+      'wins': daysWithLogs > 0
+          ? ['You logged food on $daysWithLogs day(s) this week — great start!']
+          : ['Start logging meals to unlock your weekly insights.'],
+      'challenges': ['Log more days to get an accurate weekly analysis.'],
+      'trend': 'steady',
+      'recommendation':
+          'Aim to log at least 2 meals every day — your top goal this week.',
+    };
+  }
+
   String _dateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   String _weekdayName(int weekday) {
     const names = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-      'Friday', 'Saturday', 'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
     ];
     return names[(weekday - 1).clamp(0, 6)];
   }

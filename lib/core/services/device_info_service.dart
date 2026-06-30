@@ -85,9 +85,11 @@ class DeviceInfoService {
         },
       );
 
-      debugPrint('Detailed device info sent to Firebase Analytics successfully');
+      debugPrint(
+          'Detailed device info sent to Firebase Analytics successfully');
     } catch (e) {
-      debugPrint('Error sending detailed device info to Firebase Analytics: $e');
+      debugPrint(
+          'Error sending detailed device info to Firebase Analytics: $e');
     }
   }
 

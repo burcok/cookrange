@@ -46,8 +46,7 @@ class ShareableFitnessCard extends StatelessWidget {
       final boundary =
           key.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData =
-          await image.toByteData(format: ui.ImageByteFormat.png);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) return;
 
       final bytes = byteData.buffer.asUint8List();
@@ -110,7 +109,9 @@ class ShareableFitnessCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              userName != null ? "Hey, ${userName!.split(' ').first}!" : "Today's Progress",
+              userName != null
+                  ? "Hey, ${userName!.split(' ').first}!"
+                  : "Today's Progress",
               style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 13,

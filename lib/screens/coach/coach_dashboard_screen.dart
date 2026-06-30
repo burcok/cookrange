@@ -87,8 +87,7 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
               final pending = allClients
                   .where((c) => c.status == CoachClientStatus.pending)
                   .toList();
-              final atRisk =
-                  active.where((c) => c.isAtRisk).toList();
+              final atRisk = active.where((c) => c.isAtRisk).toList();
 
               return FadeTransition(
                 opacity: _fadeAnimation,
@@ -101,8 +100,7 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
                           pending.length, atRisk.length),
                       const SizedBox(height: 24),
                       if (atRisk.isNotEmpty) ...[
-                        _buildAtRiskSection(
-                            context, palette, l10n, atRisk),
+                        _buildAtRiskSection(context, palette, l10n, atRisk),
                         const SizedBox(height: 24),
                       ],
                       _buildActiveClientsSection(
@@ -132,8 +130,7 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
         final app = snap.data;
 
         // Pending or needs more info → show status screen
-        if (app != null &&
-            (app.isPending || app.needsMoreInfo)) {
+        if (app != null && (app.isPending || app.needsMoreInfo)) {
           return CoachApplicationPendingScreen(
             showBackButton: false,
             status: app.status,
@@ -253,8 +250,7 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
       children: [
         Row(
           children: [
-            Icon(Icons.warning_amber_rounded,
-                size: 16, color: palette.warning),
+            Icon(Icons.warning_amber_rounded, size: 16, color: palette.warning),
             const SizedBox(width: 6),
             Text(
               'At-Risk Clients',
@@ -269,8 +265,7 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
               child: AppCard(
                 onTap: () => Navigator.push(
                   context,
-                  AppTransitions.slideRight(
-                      CoachClientDetailScreen(client: c)),
+                  AppTransitions.slideRight(CoachClientDetailScreen(client: c)),
                 ),
                 child: Padding(
                   padding:
@@ -299,8 +294,9 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
                                     fontWeight: FontWeight.w600)),
                             Text(
                               '${c.daysSinceLastLog == 999 ? "Never" : c.daysSinceLastLog} days since last log',
-                              style: AppText.of(context).labelS.copyWith(
-                                  color: palette.warning),
+                              style: AppText.of(context)
+                                  .labelS
+                                  .copyWith(color: palette.warning),
                             ),
                           ],
                         ),
@@ -344,8 +340,7 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
                   AppTransitions.slideRight(const CoachClientsScreen()),
                 ),
                 child: Text('See all (${active.length})',
-                    style:
-                        AppText.of(context).labelS.copyWith(color: primary)),
+                    style: AppText.of(context).labelS.copyWith(color: primary)),
               ),
           ],
         ),

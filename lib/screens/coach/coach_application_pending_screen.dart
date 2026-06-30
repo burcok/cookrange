@@ -88,8 +88,8 @@ class CoachApplicationPendingScreen extends StatelessWidget {
               const SizedBox(height: 12),
               Text(
                 l10n.translate(bodyKey),
-                style: t.bodyL.copyWith(
-                    color: palette.textSecondary, height: 1.5),
+                style:
+                    t.bodyL.copyWith(color: palette.textSecondary, height: 1.5),
                 textAlign: TextAlign.center,
               ),
               if (reviewerNotes != null && reviewerNotes!.isNotEmpty) ...[
@@ -160,7 +160,8 @@ class CoachApplicationPendingScreen extends StatelessWidget {
                     label: l10n.translate('coach.app_reapply'),
                     onPressed: () {
                       Navigator.of(context).pushReplacement(
-                        AppTransitions.slideUp(const CoachApplicationPendingScreen()),
+                        AppTransitions.slideUp(
+                            const CoachApplicationPendingScreen()),
                       );
                     },
                     variant: AppButtonVariant.secondary,
@@ -205,8 +206,8 @@ class _InfoRow extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(text,
-              style: t.bodyM.copyWith(color: palette.textSecondary)),
+          child:
+              Text(text, style: t.bodyM.copyWith(color: palette.textSecondary)),
         ),
       ],
     );

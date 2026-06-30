@@ -23,7 +23,8 @@ class AiCreditService {
   AiCreditService._();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  CollectionReference<Map<String, dynamic>> get _users => _db.collection('users');
+  CollectionReference<Map<String, dynamic>> get _users =>
+      _db.collection('users');
 
   // ─── Public API ────────────────────────────────────────────────────────────
 
@@ -62,8 +63,7 @@ class AiCreditService {
     final credits = await getCredits(uid, isPremium: isPremium);
 
     if (credits.isExhausted) {
-      debugPrint(
-          '[AiCreditService] uid=$uid — limit reached '
+      debugPrint('[AiCreditService] uid=$uid — limit reached '
           '(used=${credits.used}, bonus=${credits.bonus}, '
           'isPremium=$isPremium)');
       unawaited(AnalyticsService().logEvent(
@@ -189,8 +189,7 @@ class AiCreditService {
 
   Future<void> _resetCredits(String uid) async {
     final nextMidnight = _nextMidnight();
-    debugPrint(
-        '[AiCreditService] resetting daily credits for uid=$uid; '
+    debugPrint('[AiCreditService] resetting daily credits for uid=$uid; '
         'next reset at $nextMidnight');
     await _users.doc(uid).set(
       {

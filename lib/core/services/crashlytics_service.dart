@@ -27,8 +27,7 @@ class CrashlyticsService {
             service: _serviceName);
       }
 
-      LogService()
-          .info('Crashlytics initialized.', service: _serviceName);
+      LogService().info('Crashlytics initialized.', service: _serviceName);
 
       // Listen to the log stream for severe errors.
       Logger.root.onRecord.listen((record) {

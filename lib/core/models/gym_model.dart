@@ -69,8 +69,7 @@ class GymModel {
 
   factory GymModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? {};
-    DateTime ts(dynamic v) =>
-        v is Timestamp ? v.toDate() : DateTime.now();
+    DateTime ts(dynamic v) => v is Timestamp ? v.toDate() : DateTime.now();
 
     return GymModel(
       id: doc.id,
@@ -84,8 +83,8 @@ class GymModel {
       country: d['country'] as String?,
       isPublic: d['is_public'] as bool? ?? true,
       memberCount: d['member_count'] as int? ?? 0,
-      subscriptionTier: GymSubscriptionTierX.fromString(
-          d['subscription_tier'] as String?),
+      subscriptionTier:
+          GymSubscriptionTierX.fromString(d['subscription_tier'] as String?),
       tags: List<String>.from(d['tags'] as List? ?? []),
       createdAt: ts(d['created_at']),
       updatedAt: ts(d['updated_at']),

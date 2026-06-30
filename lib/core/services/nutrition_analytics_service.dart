@@ -77,10 +77,14 @@ class NutritionAnalyticsService {
 
     if (loggedDays == 0) return WeeklyNutritionSummary.empty;
 
-    final avgCal = logged.map((d) => d.calories).reduce((a, b) => a + b) / loggedDays;
-    final avgProt = logged.map((d) => d.protein).reduce((a, b) => a + b) / loggedDays;
-    final avgCarbs = logged.map((d) => d.carbs).reduce((a, b) => a + b) / loggedDays;
-    final avgFat = logged.map((d) => d.fat).reduce((a, b) => a + b) / loggedDays;
+    final avgCal =
+        logged.map((d) => d.calories).reduce((a, b) => a + b) / loggedDays;
+    final avgProt =
+        logged.map((d) => d.protein).reduce((a, b) => a + b) / loggedDays;
+    final avgCarbs =
+        logged.map((d) => d.carbs).reduce((a, b) => a + b) / loggedDays;
+    final avgFat =
+        logged.map((d) => d.fat).reduce((a, b) => a + b) / loggedDays;
 
     final totalDays = days.length;
     final loggingRate = loggedDays / totalDays;
@@ -92,7 +96,8 @@ class NutritionAnalyticsService {
       calorieAccuracy = (1.0 - (deviation / 0.2)).clamp(0.0, 1.0);
     }
 
-    final score = ((loggingRate * 70) + (calorieAccuracy * 30)).round().clamp(0, 100);
+    final score =
+        ((loggingRate * 70) + (calorieAccuracy * 30)).round().clamp(0, 100);
 
     return WeeklyNutritionSummary(
       days: days,

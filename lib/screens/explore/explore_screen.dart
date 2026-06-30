@@ -53,8 +53,7 @@ class _ExploreScreenState extends State<ExploreScreen>
 
     // Credit gate — capture user/locale synchronously before any await
     final userProv = context.read<UserProvider>();
-    final locale =
-        context.read<LanguageProvider>().currentLocale.languageCode;
+    final locale = context.read<LanguageProvider>().currentLocale.languageCode;
     final uid = userProv.user?.uid;
     final isPremium = userProv.user?.subscriptionTier.isPremiumOrAbove ?? false;
     if (uid != null) {
@@ -136,7 +135,8 @@ class _ExploreScreenState extends State<ExploreScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(l10n.translate('explore.title'), style: t.headlineL),
+                        Text(l10n.translate('explore.title'),
+                            style: t.headlineL),
                         SizedBox(height: 4.h),
                         Text(l10n.translate('explore.subtitle'),
                             style: t.bodyM),
@@ -241,7 +241,8 @@ class _ExploreScreenState extends State<ExploreScreen>
               'explore.suggestion.salad',
               'explore.suggestion.smoothie',
             ]
-                .map((key) => _suggestionChip(l10n.translate(key), palette, primary))
+                .map((key) =>
+                    _suggestionChip(l10n.translate(key), palette, primary))
                 .toList(),
           ),
 
@@ -254,19 +255,18 @@ class _ExploreScreenState extends State<ExploreScreen>
             scrollDirection: Axis.horizontal,
             child: Row(
               children: _cookTimes.map((f) {
-                final selected = _selectedFilter == 'time_$f' || (f == 'all' && _selectedFilter == 'all');
+                final selected = _selectedFilter == 'time_$f' ||
+                    (f == 'all' && _selectedFilter == 'all');
                 return Padding(
                   padding: EdgeInsets.only(right: 8.w),
                   child: GestureDetector(
                     onTap: () => setState(
                         () => _selectedFilter = f == 'all' ? 'all' : 'time_$f'),
                     child: Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 16.w, vertical: 8.h),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                       decoration: BoxDecoration(
-                        color: selected
-                            ? primary
-                            : palette.surfaceVariant,
+                        color: selected ? primary : palette.surfaceVariant,
                         borderRadius: BorderRadius.circular(20.r),
                         border: Border.all(
                           color: selected ? primary : palette.border,
@@ -309,12 +309,13 @@ class _ExploreScreenState extends State<ExploreScreen>
                 child: Padding(
                   padding: EdgeInsets.only(right: d == 'hard' ? 0 : 8.w),
                   child: GestureDetector(
-                    onTap: () => setState(() =>
-                        _selectedFilter = d == 'all' ? 'all' : 'diff_$d'),
+                    onTap: () => setState(
+                        () => _selectedFilter = d == 'all' ? 'all' : 'diff_$d'),
                     child: _DifficultyCard(
                       label: label,
                       color: diffColor,
-                      isSelected: _selectedFilter == (d == 'all' ? 'all' : 'diff_$d'),
+                      isSelected:
+                          _selectedFilter == (d == 'all' ? 'all' : 'diff_$d'),
                       palette: palette,
                     ),
                   ),
@@ -329,18 +330,25 @@ class _ExploreScreenState extends State<ExploreScreen>
 
   int? _cookTimeMinutes(String filter) {
     switch (filter) {
-      case 'time_quick': return 20;
-      case 'time_medium': return 45;
-      default: return null;
+      case 'time_quick':
+        return 20;
+      case 'time_medium':
+        return 45;
+      default:
+        return null;
     }
   }
 
   String? _filterDifficulty(String filter) {
     switch (filter) {
-      case 'diff_easy': return 'Easy';
-      case 'diff_medium': return 'Medium';
-      case 'diff_hard': return 'Hard';
-      default: return null;
+      case 'diff_easy':
+        return 'Easy';
+      case 'diff_medium':
+        return 'Medium';
+      case 'diff_hard':
+        return 'Hard';
+      default:
+        return null;
     }
   }
 

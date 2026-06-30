@@ -28,10 +28,14 @@ class AIChatService {
 
   String _buildSystemPrompt(UserModel user) {
     final p = user.profile;
-    final goals = p.primaryGoals.isNotEmpty ? p.primaryGoals.join(', ') : 'maintain health';
+    final goals = p.primaryGoals.isNotEmpty
+        ? p.primaryGoals.join(', ')
+        : 'maintain health';
     final restrictions = [...p.allergyIds, ...p.dietaryRestrictionIds];
-    final restrictionStr = restrictions.isNotEmpty ? restrictions.join(', ') : 'none';
-    final dislikes = p.dislikedFoodKeys.isNotEmpty ? p.dislikedFoodKeys.join(', ') : 'none';
+    final restrictionStr =
+        restrictions.isNotEmpty ? restrictions.join(', ') : 'none';
+    final dislikes =
+        p.dislikedFoodKeys.isNotEmpty ? p.dislikedFoodKeys.join(', ') : 'none';
 
     return '''You are a friendly AI nutrition assistant for Cookrange.
 You help users with meal advice, nutrition questions, and healthy eating guidance.

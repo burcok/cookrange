@@ -41,8 +41,8 @@ class MealBreakdownCard extends StatelessWidget {
                   color: primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.pie_chart_rounded,
-                    color: primary, size: 16.sp),
+                child:
+                    Icon(Icons.pie_chart_rounded, color: primary, size: 16.sp),
               ),
               SizedBox(width: 10.w),
               Text(l10n.translate('home.meal_breakdown.title'),
@@ -83,10 +83,14 @@ class _MealRow extends StatelessWidget {
 
   IconData get _icon {
     switch (mealType) {
-      case 'breakfast': return Icons.wb_sunny_rounded;
-      case 'lunch': return Icons.light_mode_rounded;
-      case 'dinner': return Icons.nights_stay_rounded;
-      default: return Icons.cookie_rounded;
+      case 'breakfast':
+        return Icons.wb_sunny_rounded;
+      case 'lunch':
+        return Icons.light_mode_rounded;
+      case 'dinner':
+        return Icons.nights_stay_rounded;
+      default:
+        return Icons.cookie_rounded;
     }
   }
 
@@ -120,8 +124,7 @@ class _MealRow extends StatelessWidget {
                     Text(
                       '${totals.calories.toInt()} kcal',
                       style: t.labelM.copyWith(
-                          color: palette.calories,
-                          fontWeight: FontWeight.bold),
+                          color: palette.calories, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),

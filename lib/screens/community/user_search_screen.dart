@@ -104,7 +104,8 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
         backgroundColor: palette.background,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: palette.textPrimary, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new,
+              color: palette.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(l10n.translate('user_search.title'), style: t.headlineS),
@@ -118,7 +119,8 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
             child: AppTextField(
               controller: _controller,
               hintText: l10n.translate('user_search.hint'),
-              prefixIcon: Icon(Icons.search_rounded, color: palette.textSecondary),
+              prefixIcon:
+                  Icon(Icons.search_rounded, color: palette.textSecondary),
               suffixIcon: _isLoading
                   ? SizedBox(
                       width: 20,
@@ -152,8 +154,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
                         message: l10n.translate('user_search.empty_subtitle'),
                       )
                     : ListView.separated(
-                        padding:
-                            EdgeInsets.fromLTRB(20.w, 0, 20.w, 100.h),
+                        padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 100.h),
                         itemCount: _results.length,
                         separatorBuilder: (_, __) =>
                             SizedBox(height: AppSpacing.sm.h),
@@ -225,9 +226,8 @@ class _UserTile extends StatelessWidget {
             CircleAvatar(
               radius: 24.r,
               backgroundColor: primary.withValues(alpha: 0.15),
-              backgroundImage: user.photoURL != null
-                  ? NetworkImage(user.photoURL!)
-                  : null,
+              backgroundImage:
+                  user.photoURL != null ? NetworkImage(user.photoURL!) : null,
               child: user.photoURL == null
                   ? Text(
                       (user.displayName?.isNotEmpty == true)
@@ -282,8 +282,8 @@ class _UserTile extends StatelessWidget {
           ),
           child: Text(
             l10n.translate('user_search.already_friends'),
-            style: t.labelS.copyWith(
-                color: palette.success, fontWeight: FontWeight.w600),
+            style: t.labelS
+                .copyWith(color: palette.success, fontWeight: FontWeight.w600),
           ),
         );
       case FriendshipStatus.pendingSent:

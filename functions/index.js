@@ -250,6 +250,9 @@ const TYPE_TO_MUTE_GROUP = {
   gymApplicationApproved: 'system',
   gymApplicationRejected: 'system',
   referral: 'referral',
+  mealReminder: 'reminders',
+  streakAtRisk: 'reminders',
+  weeklyPlanReady: 'reminders',
 };
 
 /** Returns the English push title + body for a given notification type. */
@@ -289,6 +292,12 @@ function getPushText(type, actorName, metadata) {
       return { title: 'Application Approved ✅', body: 'Your gym is now live on Cookrange' };
     case 'gymApplicationRejected':
       return { title: 'Application Update', body: 'Check your gym application status' };
+    case 'mealReminder':
+      return { title: '🍽 Time to log your meal!', body: "Don't forget to track what you ate" };
+    case 'streakAtRisk':
+      return { title: '🔥 Streak At Risk!', body: 'Log a meal today to keep your streak alive' };
+    case 'weeklyPlanReady':
+      return { title: '📅 New Week, New Plan!', body: "Your weekly meal plan is ready — let's make it count" };
     default:
       return { title: 'Cookrange', body: 'You have a new notification' };
   }
@@ -599,4 +608,124 @@ exports.drainScheduledBroadcasts = functions
         await doc.ref.update({ status: 'failed' });
       }
     }));
+  });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Re-engagement Cron Producers (Phase 15)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Returns today's date as a YYYY-MM-DD string in UTC.
+ * Matches the format written by FoodLogService._todayKey() on the client.
+ */
+function todayKey() {
+  const d = new Date();
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Daily cron: 17:00 UTC (≈20:00 Turkey / 19:00 CET).
+ *
+ * Finds users whose streak > 0 but who haven't logged any food today, and
+ * sends them a "streak at risk" push notification. Respects the `reminders`
+ * mute preference.
+ *
+ * Capped at 500 users to stay within Cloud Function timeout for MVP.
+ */
+exports.streakAtRiskNotifier = functions
+  .pubsub
+  .schedule('0 17 * * *')
+  .timeZone('UTC')
+  .onRun(async (_context) => {
+    const db = admin.firestore();
+    const today = todayKey();
+
+    const usersSnap = await db.collection('users')
+      .where('streak', '>', 0)
+      .limit(500)
+      .get();
+
+    if (usersSnap.empty) {
+      functions.logger.info('streakAtRiskNotifier: no users with active streak');
+      return;
+    }
+
+    let sentCount = 0;
+
+    await Promise.all(usersSnap.docs.map(async (userDoc) => {
+      const uid = userDoc.id;
+      const userData = userDoc.data();
+      const token = userData.fcm_token;
+      if (!token) return;
+
+      // Respect reminders mute preference
+      const mutedMap = userData.notification_muted || {};
+      if (mutedMap['reminders'] === true) return;
+
+      // Check if user already logged food today
+      const logsSnap = await db.collection('users').doc(uid)
+        .collection('food_logs')
+        .where('date', '==', today)
+        .limit(1)
+        .get();
+
+      if (!logsSnap.empty) return; // Already logged today — streak is safe
+
+      const { title, body } = getPushText('streakAtRisk', '', {});
+      const sent = await sendFcm(uid, token, title, body, { type: 'streakAtRisk' });
+      if (sent) sentCount++;
+    }));
+
+    functions.logger.info('streakAtRiskNotifier: done', {
+      processed: usersSnap.size, sent: sentCount,
+    });
+  });
+
+/**
+ * Weekly cron: every Monday at 07:00 UTC.
+ *
+ * Notifies all users (up to 500 for MVP) that a new week has started and their
+ * weekly meal plan is ready to regenerate. Respects the `reminders` mute
+ * preference.
+ */
+exports.weeklyPlanReadyNotifier = functions
+  .pubsub
+  .schedule('0 7 * * 1')
+  .timeZone('UTC')
+  .onRun(async (_context) => {
+    const db = admin.firestore();
+
+    const usersSnap = await db.collection('users')
+      .where('onboarding_completed', '==', true)
+      .limit(500)
+      .get();
+
+    if (usersSnap.empty) {
+      functions.logger.info('weeklyPlanReadyNotifier: no users');
+      return;
+    }
+
+    let sentCount = 0;
+
+    await Promise.all(usersSnap.docs.map(async (userDoc) => {
+      const uid = userDoc.id;
+      const userData = userDoc.data();
+      const token = userData.fcm_token;
+      if (!token) return;
+
+      // Respect reminders mute preference
+      const mutedMap = userData.notification_muted || {};
+      if (mutedMap['reminders'] === true) return;
+
+      const { title, body } = getPushText('weeklyPlanReady', '', {});
+      const sent = await sendFcm(uid, token, title, body, { type: 'weeklyPlanReady' });
+      if (sent) sentCount++;
+    }));
+
+    functions.logger.info('weeklyPlanReadyNotifier: done', {
+      processed: usersSnap.size, sent: sentCount,
+    });
   });

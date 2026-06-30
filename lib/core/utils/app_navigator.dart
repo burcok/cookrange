@@ -30,6 +30,5 @@ class AppNavigator {
   static void pop() => _state?.pop();
 
   /// Pop all in-app routes back to the tab host.
-  static void popToTabHost() =>
-      _state?.popUntil((route) => route.isFirst);
+  static void popToTabHost() => _state?.popUntil((route) => route.isFirst);
 }

@@ -100,9 +100,8 @@ class _GymCommunityScreenState extends State<GymCommunityScreen>
           labelColor: primary,
           unselectedLabelColor: palette.textSecondary,
           indicatorColor: primary,
-          labelStyle: AppText.of(context)
-              .labelL
-              .copyWith(fontWeight: FontWeight.w700),
+          labelStyle:
+              AppText.of(context).labelL.copyWith(fontWeight: FontWeight.w700),
           unselectedLabelStyle: AppText.of(context).labelL,
           tabs: [
             Tab(text: l10n.translate('gym.community_feed_tab')),
@@ -284,8 +283,7 @@ class _GymPostCardState extends State<_GymPostCard>
   @override
   void initState() {
     super.initState();
-    _likedOptimistic =
-        widget.post.isLikedBy(widget.currentUid ?? '');
+    _likedOptimistic = widget.post.isLikedBy(widget.currentUid ?? '');
     _likeCountOptimistic = widget.post.likeCount;
 
     _entryCtrl = AnimationController(
@@ -308,8 +306,7 @@ class _GymPostCardState extends State<_GymPostCard>
   void didUpdateWidget(_GymPostCard old) {
     super.didUpdateWidget(old);
     if (!_likeInFlight) {
-      _likedOptimistic =
-          widget.post.isLikedBy(widget.currentUid ?? '');
+      _likedOptimistic = widget.post.isLikedBy(widget.currentUid ?? '');
       _likeCountOptimistic = widget.post.likeCount;
     }
   }
@@ -433,13 +430,10 @@ class _GymPostCardState extends State<_GymPostCard>
           // Delete
           if (widget.isOwner || post.authorUid == widget.currentUid)
             ListTile(
-              leading: Icon(Icons.delete_outline_rounded,
-                  color: palette.error),
+              leading: Icon(Icons.delete_outline_rounded, color: palette.error),
               title: Text(
                 l10n.translate('gym.community_delete_post'),
-                style: AppText.of(context)
-                    .bodyM
-                    .copyWith(color: palette.error),
+                style: AppText.of(context).bodyM.copyWith(color: palette.error),
               ),
               onTap: () async {
                 Navigator.of(context).pop();
@@ -471,17 +465,14 @@ class _GymPostCardState extends State<_GymPostCard>
                 );
                 if (confirmed == true) {
                   try {
-                    await GymPostService()
-                        .deletePost(widget.gymId, post.id);
+                    await GymPostService().deletePost(widget.gymId, post.id);
                     if (mounted) {
                       AppSnackBar.success(
-                          context,
-                          l10n.translate('gym.community_deleted'));
+                          context, l10n.translate('gym.community_deleted'));
                     }
                   } catch (_) {
                     if (mounted) {
-                      AppSnackBar.error(
-                          context, 'Could not delete post.');
+                      AppSnackBar.error(context, 'Could not delete post.');
                     }
                   }
                 }
@@ -516,8 +507,7 @@ class _GymPostCardState extends State<_GymPostCard>
                   children: [
                     CircleAvatar(
                       radius: 20,
-                      backgroundColor:
-                          primary.withValues(alpha: 0.15),
+                      backgroundColor: primary.withValues(alpha: 0.15),
                       backgroundImage: post.authorPhotoUrl != null
                           ? NetworkImage(post.authorPhotoUrl!)
                           : null,
@@ -561,8 +551,7 @@ class _GymPostCardState extends State<_GymPostCard>
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    l10n.translate(
-                                        'gym.community_owner_badge'),
+                                    l10n.translate('gym.community_owner_badge'),
                                     style: TextStyle(
                                       fontSize: 9,
                                       fontWeight: FontWeight.w800,
@@ -618,8 +607,7 @@ class _GymPostCardState extends State<_GymPostCard>
                 if (post.imageUrl != null) ...[
                   const SizedBox(height: AppSpacing.sm),
                   ClipRRect(
-                    borderRadius:
-                        BorderRadius.circular(AppRadius.sm),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                     child: Image.network(
                       post.imageUrl!,
                       fit: BoxFit.cover,
@@ -648,8 +636,7 @@ class _GymPostCardState extends State<_GymPostCard>
                           AnimatedSwitcher(
                             duration: AppMotion.fast,
                             transitionBuilder: (child, anim) =>
-                                ScaleTransition(
-                                    scale: anim, child: child),
+                                ScaleTransition(scale: anim, child: child),
                             child: Icon(
                               _likedOptimistic
                                   ? Icons.favorite_rounded
@@ -874,8 +861,8 @@ class _CommentsSheetState extends State<_CommentsSheet> {
             maxHeight: MediaQuery.of(context).size.height * 0.45,
           ),
           child: StreamBuilder<List<GymCommentModel>>(
-            stream: GymPostService()
-                .getCommentsStream(widget.gymId, widget.postId),
+            stream:
+                GymPostService().getCommentsStream(widget.gymId, widget.postId),
             builder: (ctx, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Padding(
@@ -901,8 +888,8 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                 itemCount: comments.length,
                 itemBuilder: (ctx, i) {
                   final c = comments[i];
-                  final canDelete = widget.isOwner ||
-                      c.authorUid == widget.currentUid;
+                  final canDelete =
+                      widget.isOwner || c.authorUid == widget.currentUid;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Row(
@@ -910,8 +897,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                       children: [
                         CircleAvatar(
                           radius: 16,
-                          backgroundColor:
-                              primary.withValues(alpha: 0.15),
+                          backgroundColor: primary.withValues(alpha: 0.15),
                           backgroundImage: c.authorPhotoUrl != null
                               ? NetworkImage(c.authorPhotoUrl!)
                               : null,
@@ -937,9 +923,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                                 children: [
                                   Text(
                                     c.authorName,
-                                    style: AppText.of(context)
-                                        .labelL
-                                        .copyWith(
+                                    style: AppText.of(context).labelL.copyWith(
                                           color: palette.textPrimary,
                                           fontWeight: FontWeight.w700,
                                         ),
@@ -947,17 +931,14 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                                   const SizedBox(width: 6),
                                   Text(
                                     _timeAgo(c.createdAt),
-                                    style: AppText.of(context)
-                                        .labelS
-                                        .copyWith(
+                                    style: AppText.of(context).labelS.copyWith(
                                           color: palette.textTertiary,
                                         ),
                                   ),
                                   if (canDelete) ...[
                                     const Spacer(),
                                     GestureDetector(
-                                      onTap: () =>
-                                          _deleteComment(c.id),
+                                      onTap: () => _deleteComment(c.id),
                                       child: Icon(
                                         Icons.delete_outline_rounded,
                                         size: 15,
@@ -970,9 +951,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                               const SizedBox(height: 2),
                               Text(
                                 c.content,
-                                style: AppText.of(context)
-                                    .bodyM
-                                    .copyWith(
+                                style: AppText.of(context).bodyM.copyWith(
                                       color: palette.textPrimary,
                                       height: 1.4,
                                     ),
@@ -1020,8 +999,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                   : IconButton(
                       onPressed: _sendComment,
                       icon: Icon(Icons.send_rounded, color: primary),
-                      tooltip:
-                          l10n.translate('gym.community_comment_btn'),
+                      tooltip: l10n.translate('gym.community_comment_btn'),
                     ),
             ),
           ],

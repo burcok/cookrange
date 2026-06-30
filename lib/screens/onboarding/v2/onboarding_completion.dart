@@ -102,8 +102,7 @@ class OnboardingCompletion {
     final destination = user.emailVerified
         ? AppRoutes.mealPlanGeneration
         : AppRoutes.verifyEmail;
-    unawaited(navigator.pushNamedAndRemoveUntil(
-        destination, (route) => false));
+    unawaited(navigator.pushNamedAndRemoveUntil(destination, (route) => false));
 
     // Release the guard one frame later, once the generation route has built —
     // by then onboarding_completed:true is in UserProvider, so normal routing

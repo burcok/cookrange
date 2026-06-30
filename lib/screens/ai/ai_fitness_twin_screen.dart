@@ -68,23 +68,36 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
     final uid = user.uid;
     final isPremium = user.subscriptionTier.isPremiumOrAbove;
 
-    if (mounted) setState(() { _isGenerating = true; _generateError = null; _limitReached = false; });
+    if (mounted)
+      setState(() {
+        _isGenerating = true;
+        _generateError = null;
+        _limitReached = false;
+      });
 
     final canUse = await AiCreditService().checkAndConsume(uid, isPremium);
     if (!canUse) {
       if (!mounted) return;
-      setState(() { _isGenerating = false; _limitReached = true; });
+      setState(() {
+        _isGenerating = false;
+        _limitReached = true;
+      });
       return;
     }
 
     try {
       await AiInsightService().generateFitnessTwin(user, locale: locale);
       if (!mounted) return;
-      setState(() { _isGenerating = false; });
+      setState(() {
+        _isGenerating = false;
+      });
       unawaited(_fadeController.forward(from: 0));
     } on AIQuotaExceededException {
       if (!mounted) return;
-      setState(() { _isGenerating = false; _limitReached = true; });
+      setState(() {
+        _isGenerating = false;
+        _limitReached = true;
+      });
       unawaited(AiCreditsSheet.show(context, uid: uid, isPremium: isPremium));
     } catch (e) {
       unawaited(AiCreditService().rollbackCredit(uid));
@@ -106,7 +119,8 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
 
     return Scaffold(
       backgroundColor: palette.background,
-      appBar: _buildAppBar(context, l10n, palette, textTheme, primaryColor, user),
+      appBar:
+          _buildAppBar(context, l10n, palette, textTheme, primaryColor, user),
       body: Stack(
         children: [
           // ── Ambient mesh-glow background ──────────────────────────────────
@@ -250,7 +264,8 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
     return StreamBuilder<DocumentSnapshot?>(
       stream: AiInsightService().getLatestProjectionStream(user.uid, _locale),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting && !_isGenerating) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !_isGenerating) {
           return Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
             child: const AppSkeletonList(itemCount: 5),
@@ -420,8 +435,8 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
           if (generatedAt != null) ...[
             Center(
               child: Text(
-                l10n.translate('ai.twin_last_generated').replaceAll(
-                    '{date}', DateFormat('d MMM yyyy, HH:mm').format(generatedAt)),
+                l10n.translate('ai.twin_last_generated').replaceAll('{date}',
+                    DateFormat('d MMM yyyy, HH:mm').format(generatedAt)),
                 style: textTheme.labelS.copyWith(color: palette.textTertiary),
               ),
             ),
@@ -626,15 +641,24 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
   ) {
     final primaryColor = context.watch<ThemeProvider>().primaryColor;
     final items = [
-      (l10n.translate('ai.twin_30d'),
-          data['projection30days'] as String? ?? '',
-          primaryColor, 1.0),
-      (l10n.translate('ai.twin_60d'),
-          data['projection60days'] as String? ?? '',
-          primaryColor, 0.65),
-      (l10n.translate('ai.twin_90d'),
-          data['projection90days'] as String? ?? '',
-          primaryColor, 0.40),
+      (
+        l10n.translate('ai.twin_30d'),
+        data['projection30days'] as String? ?? '',
+        primaryColor,
+        1.0
+      ),
+      (
+        l10n.translate('ai.twin_60d'),
+        data['projection60days'] as String? ?? '',
+        primaryColor,
+        0.65
+      ),
+      (
+        l10n.translate('ai.twin_90d'),
+        data['projection90days'] as String? ?? '',
+        primaryColor,
+        0.40
+      ),
     ];
 
     return Column(
@@ -682,12 +706,8 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
     final absGap = calorieGap.abs();
 
     final text = isDeficit
-        ? l10n
-            .translate('ai.twin_calorie_below')
-            .replaceAll('{n}', '$absGap')
-        : l10n
-            .translate('ai.twin_calorie_above')
-            .replaceAll('{n}', '$absGap');
+        ? l10n.translate('ai.twin_calorie_below').replaceAll('{n}', '$absGap')
+        : l10n.translate('ai.twin_calorie_above').replaceAll('{n}', '$absGap');
 
     return Padding(
       padding: EdgeInsets.only(top: 16.h),
@@ -716,13 +736,12 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
                 children: [
                   Text(
                     l10n.translate('ai.twin_calorie_gap'),
-                    style: textTheme.labelS
-                        .copyWith(color: palette.textTertiary),
+                    style:
+                        textTheme.labelS.copyWith(color: palette.textTertiary),
                   ),
                   Text(
                     text,
-                    style:
-                        textTheme.bodyM.copyWith(color: palette.textPrimary),
+                    style: textTheme.bodyM.copyWith(color: palette.textPrimary),
                   ),
                 ],
               ),
@@ -827,15 +846,15 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
 
             final docs = snapshot.data ?? [];
             // Skip the first (latest) if there are multiple — it's already shown
-            final historyDocs = docs.length > 1 ? docs.sublist(1) : <QueryDocumentSnapshot>[];
+            final historyDocs =
+                docs.length > 1 ? docs.sublist(1) : <QueryDocumentSnapshot>[];
 
             if (historyDocs.isEmpty) {
               return Padding(
                 padding: EdgeInsets.symmetric(vertical: 8.h),
                 child: Text(
                   l10n.translate('ai.twin_history_empty'),
-                  style:
-                      textTheme.bodyM.copyWith(color: palette.textSecondary),
+                  style: textTheme.bodyM.copyWith(color: palette.textSecondary),
                 ),
               );
             }
@@ -844,16 +863,11 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
               children: historyDocs.map((doc) {
                 final data = doc.data() as Map<String, dynamic>;
                 final ts = (data['generatedAt'] as Timestamp?)?.toDate();
-                final score =
-                    (data['motivationScore'] as num?)?.toInt() ?? 70;
-                final goalDate =
-                    data['goalDateEstimate'] as String? ?? '—';
+                final score = (data['motivationScore'] as num?)?.toInt() ?? 70;
+                final goalDate = data['goalDateEstimate'] as String? ?? '—';
                 final dateStr = ts != null
-                    ? l10n
-                        .translate('ai.twin_history_date')
-                        .replaceAll(
-                            '{date}',
-                            DateFormat('d MMM yyyy').format(ts))
+                    ? l10n.translate('ai.twin_history_date').replaceAll(
+                        '{date}', DateFormat('d MMM yyyy').format(ts))
                     : '';
 
                 return Padding(
@@ -1065,8 +1079,8 @@ class _GlassProjectionCard extends StatelessWidget {
             ),
             child: Text(
               label,
-              style: textTheme.labelS.copyWith(
-                  color: accentColor, fontWeight: FontWeight.bold),
+              style: textTheme.labelS
+                  .copyWith(color: accentColor, fontWeight: FontWeight.bold),
             ),
           ),
           SizedBox(height: 8.h),

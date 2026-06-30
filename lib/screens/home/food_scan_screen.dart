@@ -14,6 +14,7 @@ import '../../core/services/ai_credit_service.dart';
 import '../../core/services/food_analysis_service.dart';
 import '../../core/services/food_analysis_history_service.dart';
 import '../../core/services/food_log_service.dart';
+import '../../core/utils/meal_time_util.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../ai/widgets/ai_credit_badge.dart';
 import '../ai/widgets/ai_credits_sheet.dart';
@@ -21,8 +22,14 @@ import 'barcode_scan_screen.dart';
 
 /// AI nutrition analysis — describe a food, get an estimate, log it.
 /// Glassmorphism v2 update — visual layer only; all logic unchanged.
+///
+/// [expressPhoto] — when true the camera opens immediately on mount so the
+/// user goes straight from home → camera → result with zero extra taps.
+/// Meal type is auto-detected from the current hour via [MealTimeUtil].
 class FoodScanScreen extends StatefulWidget {
-  const FoodScanScreen({super.key});
+  final bool expressPhoto;
+
+  const FoodScanScreen({super.key, this.expressPhoto = false});
 
   @override
   State<FoodScanScreen> createState() => _FoodScanScreenState();
@@ -50,8 +57,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
   double _portionFactor = 1.0;
 
   /// The estimate as displayed, after applying the portion multiplier.
-  NutritionEstimate? get _displayEstimate =>
-      _estimate?.scaled(_portionFactor);
+  NutritionEstimate? get _displayEstimate => _estimate?.scaled(_portionFactor);
 
   late final AnimationController _resultAnimController;
   late final Animation<double> _resultFade;
@@ -71,6 +77,18 @@ class _FoodScanScreenState extends State<FoodScanScreen>
       end: Offset.zero,
     ).animate(CurvedAnimation(
         parent: _resultAnimController, curve: AppMotion.standard));
+
+    if (widget.expressPhoto && _analysisService.isPhotoAvailable) {
+      // Auto-select photo mode and set meal type by hour, then open camera.
+      _inputMode = 'photo';
+      _selectedMealType = MealTimeUtil.mealTypeForHour(DateTime.now().hour);
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        await _pickPhoto(ImageSource.camera);
+        // After picking, auto-trigger analysis if a photo was selected.
+        if (mounted && _photoBytes != null) unawaited(_analyzePhoto());
+      });
+    }
   }
 
   @override
@@ -91,8 +109,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     // AI credit gate — capture user synchronously before any await.
     final userProv = context.read<UserProvider>();
     final uid = userProv.user?.uid;
-    final isPremium =
-        userProv.user?.subscriptionTier.isPremiumOrAbove ?? false;
+    final isPremium = userProv.user?.subscriptionTier.isPremiumOrAbove ?? false;
     if (uid != null) {
       final canUse = await AiCreditService().checkAndConsume(uid, isPremium);
       if (!mounted) return;
@@ -171,8 +188,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
 
     final userProv = context.read<UserProvider>();
     final uid = userProv.user?.uid;
-    final isPremium =
-        userProv.user?.subscriptionTier.isPremiumOrAbove ?? false;
+    final isPremium = userProv.user?.subscriptionTier.isPremiumOrAbove ?? false;
     if (uid != null) {
       final canUse = await AiCreditService().checkAndConsume(uid, isPremium);
       if (!mounted) return;
@@ -280,7 +296,8 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(l10n.translate('food_scan.subtitle'), style: t.bodyM),
+                      Text(l10n.translate('food_scan.subtitle'),
+                          style: t.bodyM),
                       SizedBox(height: AppSpacing.lg.h),
                       if (_analysisService.isPhotoAvailable) ...[
                         _buildModeToggle(l10n, palette, t, primaryColor),
@@ -342,7 +359,8 @@ class _FoodScanScreenState extends State<FoodScanScreen>
               children: [
                 Icon(icon,
                     size: AppSize.iconSm.r,
-                    color: active ? palette.textInverse : palette.textSecondary),
+                    color:
+                        active ? palette.textInverse : palette.textSecondary),
                 SizedBox(width: AppSpacing.xxs.w),
                 Text(label,
                     style: t.labelM.copyWith(
@@ -689,11 +707,9 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                           padding: EdgeInsets.all(AppSpacing.xs.r),
                           decoration: BoxDecoration(
                             color: primaryColor.withValues(alpha: 0.15),
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.sm.r),
+                            borderRadius: BorderRadius.circular(AppRadius.sm.r),
                             border: Border.all(
-                                color:
-                                    primaryColor.withValues(alpha: 0.25)),
+                                color: primaryColor.withValues(alpha: 0.25)),
                           ),
                           child: Icon(Icons.restaurant_menu_rounded,
                               color: primaryColor, size: AppSize.iconMd.r),
@@ -759,8 +775,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                 if (est.fiber > 0 || est.sugar > 0 || est.sodiumMg > 0) ...[
                   SizedBox(height: AppSpacing.md.h),
                   Text(l10n.translate('food_scan.micros_title'),
-                      style: t.labelM
-                          .copyWith(color: palette.textSecondary)),
+                      style: t.labelM.copyWith(color: palette.textSecondary)),
                   SizedBox(height: AppSpacing.xs.h),
                   Row(
                     children: [
@@ -779,8 +794,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                 if (est.allergens.isNotEmpty) ...[
                   SizedBox(height: AppSpacing.md.h),
                   Text(l10n.translate('food_scan.allergens_title'),
-                      style: t.labelM
-                          .copyWith(color: palette.textSecondary)),
+                      style: t.labelM.copyWith(color: palette.textSecondary)),
                   SizedBox(height: AppSpacing.xs.h),
                   Wrap(
                     spacing: 6.w,
@@ -788,8 +802,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                     children: est.allergens
                         .map((a) => Container(
                               padding: EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.sm.w,
-                                  vertical: 3.h),
+                                  horizontal: AppSpacing.sm.w, vertical: 3.h),
                               decoration: BoxDecoration(
                                 color: palette.warning.withValues(alpha: 0.12),
                                 borderRadius:
@@ -830,9 +843,8 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                     duration: AppMotion.fast,
                     height: AppSize.buttonHeight.h,
                     decoration: BoxDecoration(
-                      gradient: _isLogging
-                          ? null
-                          : AppGradients.brand(primaryColor),
+                      gradient:
+                          _isLogging ? null : AppGradients.brand(primaryColor),
                       color: _isLogging ? palette.surfaceVariant : null,
                       borderRadius: BorderRadius.circular(AppRadius.button.r),
                       boxShadow: _isLogging
@@ -879,8 +891,8 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     );
   }
 
-  Widget _glassMacroChip(String label, double value, Color color,
-      AppPalette palette, AppText t) {
+  Widget _glassMacroChip(
+      String label, double value, Color color, AppPalette palette, AppText t) {
     return Expanded(
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.md.r),
@@ -898,8 +910,8 @@ class _FoodScanScreenState extends State<FoodScanScreen>
             child: Column(
               children: [
                 Text('${value.toInt()}g',
-                    style: t.titleL.copyWith(
-                        color: color, fontWeight: FontWeight.bold)),
+                    style: t.titleL
+                        .copyWith(color: color, fontWeight: FontWeight.bold)),
                 SizedBox(height: AppSpacing.xxxs.h),
                 Text(label, style: t.labelS),
               ],
@@ -955,9 +967,8 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                     style: t.titleM.copyWith(color: palette.textPrimary)),
                 if (est.confidence > 0)
                   Text(
-                    l10n
-                        .translate('food_scan.confidence')
-                        .replaceAll('{pct}', '${(est.confidence * 100).round()}'),
+                    l10n.translate('food_scan.confidence').replaceAll(
+                        '{pct}', '${(est.confidence * 100).round()}'),
                     style: t.labelS.copyWith(color: palette.textTertiary),
                   ),
               ],
@@ -968,8 +979,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     );
   }
 
-  Widget _microChip(
-      String label, String value, AppPalette palette, AppText t) {
+  Widget _microChip(String label, String value, AppPalette palette, AppText t) {
     return Expanded(
       child: Container(
         padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h),
@@ -984,8 +994,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                 style: t.labelL.copyWith(
                     color: palette.textPrimary, fontWeight: FontWeight.w700)),
             SizedBox(height: 2.h),
-            Text(label,
-                style: t.labelS.copyWith(color: palette.textTertiary)),
+            Text(label, style: t.labelS.copyWith(color: palette.textTertiary)),
           ],
         ),
       ),
@@ -1033,12 +1042,21 @@ class _FoodScanScreenState extends State<FoodScanScreen>
   Widget _buildMealTypeSelector(AppLocalizations l10n, AppPalette palette,
       AppText t, Color primaryColor) {
     final types = <(String, String, IconData)>[
-      ('breakfast', l10n.translate('food_scan.meal.breakfast'),
-          Icons.wb_sunny_outlined),
-      ('lunch', l10n.translate('food_scan.meal.lunch'),
-          Icons.lunch_dining_outlined),
-      ('dinner', l10n.translate('food_scan.meal.dinner'),
-          Icons.dinner_dining_outlined),
+      (
+        'breakfast',
+        l10n.translate('food_scan.meal.breakfast'),
+        Icons.wb_sunny_outlined
+      ),
+      (
+        'lunch',
+        l10n.translate('food_scan.meal.lunch'),
+        Icons.lunch_dining_outlined
+      ),
+      (
+        'dinner',
+        l10n.translate('food_scan.meal.dinner'),
+        Icons.dinner_dining_outlined
+      ),
       ('snack', l10n.translate('food_scan.meal.snack'), Icons.apple_outlined),
     ];
 
@@ -1058,8 +1076,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                   right: type.$1 != 'snack' ? AppSpacing.xs.w : 0),
               padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h),
               decoration: BoxDecoration(
-                gradient:
-                    isSelected ? AppGradients.brand(primaryColor) : null,
+                gradient: isSelected ? AppGradients.brand(primaryColor) : null,
                 color: isSelected ? null : palette.glassFill,
                 borderRadius: BorderRadius.circular(AppRadius.sm.r),
                 border: Border.all(
@@ -1150,8 +1167,7 @@ class _FoodScanAppBar extends StatelessWidget {
             children: [
               SizedBox(height: topPad + AppSpacing.sm),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 child: Row(
                   children: [
                     IconButton(

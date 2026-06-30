@@ -200,6 +200,8 @@ lib/
 | `NotificationPreferencesService` | `notification_preferences_service.dart` | Per-group mute prefs in `users/{uid}.notification_muted`; groups: likes/comments/friends/system/referral |
 | `WeeklyMealPlanService` (extended) | `weekly_meal_plan_service.dart` | Added `getMealPlanHistory`, `restorePlan`, auto-archive to `meal_plan_history/{key}` on every save |
 | `AiCreditService` | `ai_credit_service.dart` | Daily AI credit quotas (free=2/day, premium=20/day); `checkAndConsume(uid, isPremium)` burns bonus credits first; `rollbackCredit(uid)` / `rollbackBonusCredit(uid)` for failed AI calls; `addBonusCredits(uid, count)` for IAP top-ups; `getCreditsStream(uid)` **auto-resets** quota when `reset_at` is in the past (day-rollover detected on stream read) |
+| `AchievementService` | `achievement_service.dart` | 11-badge system; `earn(uid, key)` idempotent Firestore write; `checkAndGrant(uid, {streak, tier, justLoggedMeal, justLoggedPhoto, justPosted, justCookedAndLogged})` fires from all success paths; `backfillForUser(uid)` for existing accounts; `getAchievementsStream(uid)` live stream. Catalog in `achievement_model.dart` (`kAchievementCatalog`). |
+| `AchievementsGrid` | `screens/profile/widgets/achievements_grid.dart` | Profile badge grid; earned/locked tiles; bounce unlock animation (reduced-motion aware); tap → `AppSheet` detail. Shown after reputation badge in `profile_screen.dart`. |
 | `WhatsNewService` | `whats_new_service.dart` | Singleton; `shouldShow()` → true once per version bump (SharedPrefs `whats_new_last_version`); skips first install |
 | `WhatsNewSheetContent` | `core/widgets/whats_new_sheet.dart` | DS bottom sheet for version changelogs; `WhatsNewSheetContent.show(context)` static method |
 | `CoachmarkTip` | `core/widgets/coachmark_tip.dart` | One-time contextual tooltip (SharedPrefs-gated); `prefKey` param; dismiss-on-tap; reduced-motion aware |
@@ -207,7 +209,9 @@ lib/
 | `DiscoverHubScreen` | `screens/discover/discover_hub_screen.dart` | Unified 2×2 discovery grid (Gyms/Coaches/Programs/Challenges) + premium banner; `AppRoutes.discover` |
 | `GymJoinPromptSheet` | `screens/gym/gym_join_prompt_sheet.dart` | Shown when non-member scans gym QR; join + check-in flow; `GymJoinPromptSheet.show(context, gymId:, gymName:, uid:)` |
 | `RoleQuickCard` | `screens/home/widgets/role_quick_card.dart` | Role-aware home dashboard card (gymOwner/coach/admin); quick-entry to role dashboards; hidden for consumers |
-| `AiInsightService` (extended) | `ai_insight_service.dart` | `generateFitnessTwin(user, locale:)` → persists to `users/{uid}/ai_twin_projections`; `getLatestProjectionStream(uid, locale)` is **locale-agnostic** (no `.where('locale')` filter — returns newest doc regardless of language); locale-tagged SharedPrefs cache for daily insight |
+| `AiInsightService` (extended) | `ai_insight_service.dart` | `generateFitnessTwin(user, locale:)` → persists to `users/{uid}/ai_twin_projections`; `getLatestProjectionStream(uid, locale)` is **locale-agnostic** (no `.where('locale')` filter — returns newest doc regardless of language); locale-tagged SharedPrefs cache for daily insight. **15.4**: `generateWeeklyRecap(user, locale:)` (idempotent per week+locale via Firestore cache, low-data <3 days is free), `checkLowDataThisWeek(uid)`, `getLatestWeeklyRecapStream(uid)`, `static weekKey(DateTime)` → `users/{uid}/ai_weekly_recaps/{doc}` |
+| `WeeklyRecapScreen` | `screens/ai/weekly_recap_screen.dart` | Score ring, wins/challenges sections, trend chip, recommendation, Share sheet. Credit-gated (free for low-data recaps). Entry via `WeeklyRecapCard` on home. |
+| `WeeklyRecapCard` | `screens/home/widgets/weekly_recap_card.dart` | Home teaser: shows week score + trend when recap exists for current week; "Generate" CTA otherwise. Streams from `ai_weekly_recaps`. |
 | `AdminService` (extended) | `admin_service.dart` | Added `searchUsers`, `getUsersStream`, `banUser`, `unbanUser`, `setUserRole`, `coachApplicationHistoryStream`, `gymApplicationHistoryStream`, `logAuditAction`, `auditLogStream`, `pendingCountStream` |
 | `AiCreditsSheet` | `screens/ai/widgets/ai_credits_sheet.dart` | Bottom sheet: usage bar, reset countdown, plan chip, upgrade CTA (shows SnackBar placeholder — `ai.premium_coming_soon`); `AiCreditsSheet.show(context, uid:, isPremium:)` |
 | `AiCreditBadge` | `screens/ai/widgets/ai_credit_badge.dart` | Tappable badge → opens `AiCreditsSheet`; live credit stream |
@@ -219,10 +223,19 @@ lib/
 | Collection | Purpose |
 |---|---|
 | `users/{uid}/ai_twin_projections/{id}` | Persisted AI fitness projections; fields: `locale`, `generatedAt`, payload, `inputsHash` |
+| `users/{uid}/ai_weekly_recaps/{id}` | Weekly AI coach recaps (owner-only); fields: `weekKey` (YYYY-MM-DD Monday), `locale`, `score`, `wins[]`, `challenges[]`, `trend`, `recommendation`, `isLowData`, `generatedAt` |
 | `admin_audit/{id}` | Append-only audit log for every admin action (who/what/when/target); admin-only rules |
 | `ai_credits/{uid}` | Daily AI quota: `used_today`, `reset_at`, `is_premium`, `bonus_credits` (IAP top-ups, not reset at midnight) |
 | `reports/{id}` | Moderation reports; `status` (pending/reviewed), `targetType`, `reason`; indexes on `status+timestamp` |
 | `seeds/{docId}` | Idempotent seed gates (e.g. `demo.demo_programs_v1`); authenticated read/write |
+
+### Phase 15 additions (engagement & gamification)
+`PushNotificationService` extended with `scheduleDailyMealReminders({times, title, body})` + `cancelMealReminders()` (ID block 8001–8008, mirrors water reminder pattern). `NotificationPreferencesService.preferencePairs` has new `reminders` group covering `mealReminder`, `streakAtRisk`, `weeklyPlanReady`. `settings_screen.dart` has `_showMealReminderSheet()` with breakfast/lunch/dinner pickers; stores `onboarding_data.meal_reminder{enabled, times[]}`. `functions/index.js` has `streakAtRiskNotifier` (daily 17:00 UTC, checks `food_logs.date == today`) and `weeklyPlanReadyNotifier` (Mon 07:00 UTC) cron producers; both respect `notification_muted.reminders`, cap at 500 users.
+
+### Firestore collections (Phase 15 additions)
+| Collection | Purpose |
+|---|---|
+| `users/{uid}/achievements/{key}` | Earned badges — owner-only; `key` = `AchievementKey.name`; fields: `earned_at`. Rules: owner R/W. |
 
 ### Firestore collections (Phase 13 additions)
 | Collection | Purpose |

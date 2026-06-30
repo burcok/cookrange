@@ -74,7 +74,8 @@ class TodaySummaryCard extends StatelessWidget {
                   AppSpacing.xs.h,
                 ),
                 child: Text(
-                  AppLocalizations.of(context).translate('home.today_summary_title'),
+                  AppLocalizations.of(context)
+                      .translate('home.today_summary_title'),
                   style: txt.titleM.copyWith(
                     color: palette.textPrimary,
                     fontWeight: FontWeight.w700,

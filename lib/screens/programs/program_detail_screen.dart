@@ -79,30 +79,29 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                     _buildSliverAppBar(context, palette, primary, t),
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                            AppSpacing.screenH.w,
-                            AppSpacing.md.h,
-                            AppSpacing.screenH.w,
-                            100.h),
+                        padding: EdgeInsets.fromLTRB(AppSpacing.screenH.w,
+                            AppSpacing.md.h, AppSpacing.screenH.w, 100.h),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildTitleSection(context, palette, primary, t, l10n),
+                            _buildTitleSection(
+                                context, palette, primary, t, l10n),
                             SizedBox(height: AppSpacing.md.h),
                             _buildMetaRow(context, palette, t, l10n),
                             SizedBox(height: AppSpacing.lg.h),
                             _buildCoachCard(context, palette, primary, t, l10n),
                             if (_p.highlights.isNotEmpty) ...[
                               SizedBox(height: AppSpacing.lg.h),
-                              _buildHighlights(context, palette, primary, t, l10n),
+                              _buildHighlights(
+                                  context, palette, primary, t, l10n),
                             ],
                             SizedBox(height: AppSpacing.lg.h),
-                            _buildDescription(context, palette, primary, t, l10n),
+                            _buildDescription(
+                                context, palette, primary, t, l10n),
                             SizedBox(height: AppSpacing.lg.h),
                             _buildContentSection(
                                 context, palette, primary, t, l10n,
-                                isEnrolled: isEnrolled,
-                                enrollment: enrollment),
+                                isEnrolled: isEnrolled, enrollment: enrollment),
                           ],
                         ),
                       ),
@@ -262,8 +261,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     );
   }
 
-  Widget _metaChip(
-      IconData icon, String label, AppPalette palette, AppText t) {
+  Widget _metaChip(IconData icon, String label, AppPalette palette, AppText t) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
       decoration: BoxDecoration(
@@ -276,8 +274,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
         children: [
           Icon(icon, size: 12.r, color: palette.textSecondary),
           SizedBox(width: 4.w),
-          Text(label,
-              style: t.labelS.copyWith(color: palette.textSecondary)),
+          Text(label, style: t.labelS.copyWith(color: palette.textSecondary)),
         ],
       ),
     );
@@ -298,8 +295,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () =>
-                openUserProfile(context, userId: _p.coachUid),
+            onTap: () => openUserProfile(context, userId: _p.coachUid),
             child: ClipOval(
               child: _p.coachPhotoUrl != null
                   ? Image.network(
@@ -321,25 +317,22 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
               children: [
                 Text(
                   l10n.translate('program.coach_section'),
-                  style:
-                      t.labelS.copyWith(color: palette.textSecondary),
+                  style: t.labelS.copyWith(color: palette.textSecondary),
                 ),
                 Text(
                   _p.coachName,
-                  style: t.titleM
-                      .copyWith(fontWeight: FontWeight.w700),
+                  style: t.titleM.copyWith(fontWeight: FontWeight.w700),
                 ),
               ],
             ),
           ),
           TextButton(
-            onPressed: () =>
-                openUserProfile(context, userId: _p.coachUid),
+            onPressed: () => openUserProfile(context, userId: _p.coachUid),
             style: TextButton.styleFrom(foregroundColor: primary),
             child: Text(
               'View Profile',
-              style:
-                  t.labelM.copyWith(color: primary, fontWeight: FontWeight.w600),
+              style: t.labelM
+                  .copyWith(color: primary, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -370,8 +363,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
       children: [
         Text(
           l10n.translate('program.highlights'),
-          style:
-              t.titleM.copyWith(fontWeight: FontWeight.w700),
+          style: t.titleM.copyWith(fontWeight: FontWeight.w700),
         ),
         SizedBox(height: 10.h),
         ..._p.highlights.map((h) => Padding(
@@ -387,13 +379,12 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                       color: primary.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.check_rounded,
-                        size: 12.r, color: primary),
+                    child:
+                        Icon(Icons.check_rounded, size: 12.r, color: primary),
                   ),
                   Expanded(
                     child: Text(h,
-                        style: t.bodyM
-                            .copyWith(color: palette.textPrimary)),
+                        style: t.bodyM.copyWith(color: palette.textPrimary)),
                   ),
                 ],
               ),
@@ -416,8 +407,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
       children: [
         Text(
           l10n.translate('program.description'),
-          style:
-              t.titleM.copyWith(fontWeight: FontWeight.w700),
+          style: t.titleM.copyWith(fontWeight: FontWeight.w700),
         ),
         SizedBox(height: 8.h),
         AnimatedCrossFade(
@@ -442,8 +432,8 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
           child: Text(
             l10n.translate(
                 _descExpanded ? 'program.read_less' : 'program.read_more'),
-            style: t.labelM.copyWith(
-                color: primary, fontWeight: FontWeight.w600),
+            style:
+                t.labelM.copyWith(color: primary, fontWeight: FontWeight.w600),
           ),
         ),
       ],
@@ -585,8 +575,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
           ),
           SizedBox(height: 16.h),
           Container(
-            padding:
-                EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
             decoration: BoxDecoration(
               color: primary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(AppRadius.full.r),
@@ -599,8 +588,8 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                 SizedBox(width: 6.w),
                 Text(
                   'v2.0',
-                  style: t.labelM.copyWith(
-                      color: primary, fontWeight: FontWeight.w700),
+                  style: t.labelM
+                      .copyWith(color: primary, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -633,8 +622,8 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
             ),
             Text(
               '${(enrollment.progressPercent * 100).toInt()}%',
-              style:
-                  t.labelM.copyWith(color: primary, fontWeight: FontWeight.w700),
+              style: t.labelM
+                  .copyWith(color: primary, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -677,8 +666,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
       child: ExpansionTile(
         initiallyExpanded: isCurrentWeek,
         tilePadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-        childrenPadding:
-            EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
+        childrenPadding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
         leading: Container(
           width: 36.r,
           height: 36.r,
@@ -710,16 +698,15 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
             ),
             if (isCurrentWeek)
               Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
                 decoration: BoxDecoration(
                   color: primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.full.r),
                 ),
                 child: Text(
                   l10n.translate('program.continue_label'),
-                  style: t.labelS.copyWith(
-                      color: primary, fontWeight: FontWeight.w700),
+                  style: t.labelS
+                      .copyWith(color: primary, fontWeight: FontWeight.w700),
                 ),
               ),
           ],
@@ -758,14 +745,12 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                 padding: EdgeInsets.only(left: 8.w, bottom: 4.h),
                 child: Row(
                   children: [
-                    Text(s.type.emoji,
-                        style: TextStyle(fontSize: 13.sp)),
+                    Text(s.type.emoji, style: TextStyle(fontSize: 13.sp)),
                     SizedBox(width: 6.w),
                     Expanded(
                       child: Text(
                         s.title,
-                        style:
-                            t.bodyM.copyWith(color: palette.textSecondary),
+                        style: t.bodyM.copyWith(color: palette.textSecondary),
                       ),
                     ),
                     if (s.durationMinutes != null)
@@ -816,9 +801,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                   _p.priceDisplay,
                   style: t.titleL.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: _p.isFree
-                        ? const Color(0xFF10B981)
-                        : primary,
+                    color: _p.isFree ? const Color(0xFF10B981) : primary,
                   ),
                 ),
                 if (_p.isFree)

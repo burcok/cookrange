@@ -27,8 +27,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
 
   bool _isSending = false;
 
-  String get _currentUid =>
-      FirebaseAuth.instance.currentUser?.uid ?? '';
+  String get _currentUid => FirebaseAuth.instance.currentUser?.uid ?? '';
 
   bool get _isSelf => widget.coachUid == _currentUid;
 
@@ -58,16 +57,14 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
       if (!mounted) return;
       setState(() => _isSending = false);
       unawaited(HapticFeedback.mediumImpact());
-      AppSnackBar.success(
-          context,
-          AppLocalizations.of(context)
-              .translate('coach.profile_request_sent'));
+      AppSnackBar.success(context,
+          AppLocalizations.of(context).translate('coach.profile_request_sent'));
     } catch (e) {
       debugPrint('CoachProfileScreen._sendRequest error: $e');
       if (!mounted) return;
       setState(() => _isSending = false);
-      AppSnackBar.error(context,
-          AppLocalizations.of(context).translate('coach.setup_error'));
+      AppSnackBar.error(
+          context, AppLocalizations.of(context).translate('coach.setup_error'));
     }
   }
 
@@ -124,8 +121,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (profile.bio != null &&
-                            profile.bio!.isNotEmpty) ...[
+                        if (profile.bio != null && profile.bio!.isNotEmpty) ...[
                           Text(profile.bio!,
                               style: AppText.of(context)
                                   .bodyM
@@ -179,12 +175,11 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                                 return const SizedBox.shrink();
                               }
                               return CoachmarkTip(
-                                prefKey:
-                                    'rate_coach_coachmark_${profile.uid}',
+                                prefKey: 'rate_coach_coachmark_${profile.uid}',
                                 title: l10n.translate(
                                     'coach.rate_coachmark_tip_title'),
-                                body: l10n
-                                    .translate('coach.rate_coachmark_tip'),
+                                body:
+                                    l10n.translate('coach.rate_coachmark_tip'),
                               );
                             },
                           ),
@@ -210,23 +205,23 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                               final status = snap.data;
                               if (status == 'accepted') {
                                 return _InfoBanner(
-                                  message: l10n.translate(
-                                      'coach.request_accepted'),
+                                  message:
+                                      l10n.translate('coach.request_accepted'),
                                   color: palette.success,
                                   palette: palette,
                                 );
                               }
                               if (status == 'pending') {
                                 return _InfoBanner(
-                                  message: l10n.translate(
-                                      'coach.request_pending'),
+                                  message:
+                                      l10n.translate('coach.request_pending'),
                                   color: palette.warning,
                                   palette: palette,
                                 );
                               }
                               return AppButton(
-                                label: l10n
-                                    .translate('coach.profile_request_btn'),
+                                label:
+                                    l10n.translate('coach.profile_request_btn'),
                                 onPressed: _isSending ? null : _sendRequest,
                                 loading: _isSending,
                               );
@@ -238,8 +233,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                                 horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
                               color: palette.warning.withValues(alpha: 0.1),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.md),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                               border: Border.all(
                                   color:
                                       palette.warning.withValues(alpha: 0.3)),
@@ -293,8 +287,8 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
       ),
       actions: [
         IconButton(
-          icon: Icon(Icons.share_rounded,
-              color: palette.textSecondary, size: 22),
+          icon:
+              Icon(Icons.share_rounded, color: palette.textSecondary, size: 22),
           tooltip: l10n.translate('share.share_profile'),
           onPressed: () => CoachShareCard.share(context, profile),
         ),
@@ -320,7 +314,8 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                 height: 80,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: primary.withValues(alpha: 0.4), width: 2.5),
+                  border: Border.all(
+                      color: primary.withValues(alpha: 0.4), width: 2.5),
                   boxShadow: [
                     BoxShadow(
                         color: primary.withValues(alpha: 0.25),
@@ -481,8 +476,9 @@ class _SpecChip extends StatelessWidget {
         border: Border.all(color: primary.withValues(alpha: 0.3)),
       ),
       child: Text(label,
-          style: AppText.of(context).labelS.copyWith(
-              color: primary, fontWeight: FontWeight.w600)),
+          style: AppText.of(context)
+              .labelS
+              .copyWith(color: primary, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -546,8 +542,7 @@ class _StatCard extends StatelessWidget {
             children: [
               Text(value,
                   style: AppText.of(context).titleM.copyWith(
-                      color: palette.textPrimary,
-                      fontWeight: FontWeight.bold)),
+                      color: palette.textPrimary, fontWeight: FontWeight.bold)),
               Text(label,
                   style: AppText.of(context)
                       .labelS

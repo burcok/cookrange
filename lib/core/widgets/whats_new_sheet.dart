@@ -162,8 +162,8 @@ class _ChangeItem extends StatelessWidget {
               children: [
                 Text(
                   item.title,
-                  style: t.labelM
-                      .copyWith(fontWeight: FontWeight.w700, color: palette.textPrimary),
+                  style: t.labelM.copyWith(
+                      fontWeight: FontWeight.w700, color: palette.textPrimary),
                 ),
                 SizedBox(height: 2.h),
                 Text(item.body,

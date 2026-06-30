@@ -37,6 +37,11 @@ class NotificationPreferencesService {
       NotificationType.mealPlan,
     ],
     'referral': [NotificationType.referral],
+    'reminders': [
+      NotificationType.mealReminder,
+      NotificationType.streakAtRisk,
+      NotificationType.weeklyPlanReady,
+    ],
   };
 
   Future<Map<String, bool>> getPreferences() async {
@@ -61,7 +66,9 @@ class NotificationPreferencesService {
     if (uid == null) return;
     try {
       await _db.collection('users').doc(uid).set(
-        {_field: {groupKey: muted}},
+        {
+          _field: {groupKey: muted}
+        },
         SetOptions(merge: true),
       );
     } catch (e) {
@@ -85,7 +92,9 @@ class NotificationPreferencesService {
   Future<void> setGroupMuted(String uid, String group, bool muted) async {
     try {
       await _db.collection('users').doc(uid).set(
-        {_field: {group: muted}},
+        {
+          _field: {group: muted}
+        },
         SetOptions(merge: true),
       );
     } catch (e) {

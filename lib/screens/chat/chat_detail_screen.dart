@@ -102,7 +102,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   Future<void> _pickAndSendImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final picked =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked == null || !mounted) return;
 
     setState(() => _isUploadingImage = true);
@@ -157,8 +158,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
-  void _showMoreOptions(BuildContext context, AppPalette palette,
-      AppLocalizations l10n) {
+  void _showMoreOptions(
+      BuildContext context, AppPalette palette, AppLocalizations l10n) {
     AppSheet.show(
       context: context,
       title: l10n.translate('chat.more_options'),
@@ -167,8 +168,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         children: [
           if (_otherUserId.isNotEmpty)
             ListTile(
-              leading:
-                  Icon(Icons.person_outline_rounded, color: palette.textPrimary),
+              leading: Icon(Icons.person_outline_rounded,
+                  color: palette.textPrimary),
               title: Text(l10n.translate('chat.view_profile'),
                   style: AppText.of(context)
                       .bodyM
@@ -179,12 +180,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               },
             ),
           ListTile(
-            leading:
-                Icon(Icons.flag_outlined, color: palette.error),
+            leading: Icon(Icons.flag_outlined, color: palette.error),
             title: Text(l10n.translate('community.menu.report'),
-                style: AppText.of(context)
-                    .bodyM
-                    .copyWith(color: palette.error)),
+                style:
+                    AppText.of(context).bodyM.copyWith(color: palette.error)),
             onTap: () {
               Navigator.pop(context);
               if (_otherUserId.isNotEmpty) {
@@ -198,8 +197,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
-  void _showReportDialog(BuildContext context, AppPalette palette,
-      AppLocalizations l10n) {
+  void _showReportDialog(
+      BuildContext context, AppPalette palette, AppLocalizations l10n) {
     final reasons = [
       l10n.translate('community.report.reason_spam'),
       l10n.translate('community.report.reason_harassment'),
@@ -214,8 +213,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: palette.surface,
           title: Text(l10n.translate('community.report.dialog_title'),
-              style:
-                  AppText.of(context).titleM.copyWith(color: palette.textPrimary)),
+              style: AppText.of(context)
+                  .titleM
+                  .copyWith(color: palette.textPrimary)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: reasons.map((r) {
@@ -228,8 +228,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         .bodyM
                         .copyWith(color: palette.textPrimary)),
                 trailing: isSelected
-                    ? Icon(Icons.check_rounded,
-                        color: palette.info, size: 20)
+                    ? Icon(Icons.check_rounded, color: palette.info, size: 20)
                     : null,
                 onTap: () => setDialogState(() => selectedReason = r),
               );
@@ -262,8 +261,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         if (mounted) {
                           messenger.showSnackBar(
                             SnackBar(
-                              content: Text(l10n
-                                  .translate('community.report.submitted')),
+                              content: Text(
+                                  l10n.translate('community.report.submitted')),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
@@ -354,7 +353,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           return GestureDetector(
                             onTap: (widget.chat.type == ChatType.private &&
                                     _otherUserId.isNotEmpty)
-                                ? () => openUserProfile(context, userId: _otherUserId)
+                                ? () => openUserProfile(context,
+                                    userId: _otherUserId)
                                 : null,
                             child: Row(
                               children: [
@@ -376,7 +376,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         chatTitle,
@@ -421,7 +422,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     actions: [
                       IconButton(
                         icon: Icon(Icons.more_vert, color: palette.textPrimary),
-                        onPressed: () => _showMoreOptions(context, palette, localizations),
+                        onPressed: () =>
+                            _showMoreOptions(context, palette, localizations),
                       ),
                     ],
                   ),
@@ -546,9 +548,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                             if (isMe) ...[
                               const SizedBox(width: 4),
                               Icon(
-                                message.isRead
-                                    ? Icons.done_all
-                                    : Icons.done,
+                                message.isRead ? Icons.done_all : Icons.done,
                                 size: 14,
                                 color: message.isRead
                                     ? palette.info
@@ -637,7 +637,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: palette.shadow.withValues(alpha: 0.05),
+                                      color: palette.shadow
+                                          .withValues(alpha: 0.05),
                                       blurRadius: 4,
                                       offset: const Offset(0, 2),
                                     ),
@@ -705,7 +706,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                 child: SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 ),
                               )
                             : IconButton(
@@ -723,7 +725,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               ),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: palette.surfaceVariant.withValues(alpha: 0.7),
+                                  color: palette.surfaceVariant
+                                      .withValues(alpha: 0.7),
                                   borderRadius: BorderRadius.circular(24),
                                   border: Border.all(
                                     color: palette.glassStroke,
@@ -735,7 +738,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   decoration: InputDecoration(
                                     hintText: localizations.translate(
                                         'chat.actions.placeholder_message_input'),
-                                    hintStyle: TextStyle(color: palette.textTertiary),
+                                    hintStyle:
+                                        TextStyle(color: palette.textTertiary),
                                     border: InputBorder.none,
                                     contentPadding: const EdgeInsets.symmetric(
                                         horizontal: 16, vertical: 12),
@@ -757,7 +761,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: theme.primaryColor.withValues(alpha: 0.35),
+                                  color: theme.primaryColor
+                                      .withValues(alpha: 0.35),
                                   blurRadius: 8,
                                   offset: const Offset(0, 3),
                                 ),

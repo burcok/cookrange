@@ -81,9 +81,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           .toList();
       await CommunityGroupService().createGroup(
         name: name,
-        description: _descCtrl.text.trim().isEmpty
-            ? null
-            : _descCtrl.text.trim(),
+        description:
+            _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
         city: _city,
         district: _district,
         tags: tags,
@@ -194,8 +193,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
   Widget _label(String text, AppText t, AppPalette palette) => Padding(
         padding: EdgeInsets.only(bottom: 6.h),
-        child: Text(text,
-            style: t.labelM.copyWith(color: palette.textSecondary)),
+        child:
+            Text(text, style: t.labelM.copyWith(color: palette.textSecondary)),
       );
 }
 

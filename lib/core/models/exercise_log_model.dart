@@ -22,7 +22,8 @@ class ExerciseType {
   ];
 
   /// Estimated calories burned: MET × weight(kg) × duration(hours)
-  double estimateCalories({required double weightKg, required int durationMinutes}) {
+  double estimateCalories(
+      {required double weightKg, required int durationMinutes}) {
     return met * weightKg * (durationMinutes / 60.0);
   }
 }
@@ -44,7 +45,8 @@ class ExerciseLog {
     required this.date,
   });
 
-  factory ExerciseLog.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory ExerciseLog.fromFirestore(
+      DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
     return ExerciseLog(
       id: doc.id,

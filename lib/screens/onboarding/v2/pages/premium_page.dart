@@ -108,7 +108,8 @@ class OnboardingPremiumPage extends StatelessWidget {
           SizedBox(height: AppSpacing.lg.h),
           _LockedFeature(
             icon: Icons.edit_note_rounded,
-            title: l10n.translate('onboarding.v2.premium.locked_requests_title'),
+            title:
+                l10n.translate('onboarding.v2.premium.locked_requests_title'),
             desc: l10n.translate('onboarding.v2.premium.locked_requests_desc'),
           ),
           SizedBox(height: AppSpacing.md.h),

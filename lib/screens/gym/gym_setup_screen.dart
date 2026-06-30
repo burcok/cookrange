@@ -65,8 +65,16 @@ class _GymSetupScreenState extends State<GymSetupScreen>
   File? _taxDocFile;
 
   static const _gymTags = [
-    'CrossFit', 'Yoga', 'Boxing', 'Pilates', 'Powerlifting',
-    'Bodybuilding', 'Cardio', 'HIIT', 'Martial Arts', 'Swimming',
+    'CrossFit',
+    'Yoga',
+    'Boxing',
+    'Pilates',
+    'Powerlifting',
+    'Bodybuilding',
+    'Cardio',
+    'HIIT',
+    'Martial Arts',
+    'Swimming',
   ];
 
   bool get _isEditMode => widget.existingGym != null;
@@ -110,17 +118,20 @@ class _GymSetupScreenState extends State<GymSetupScreen>
     switch (_currentStep) {
       case 0: // Basic info — both modes
         if (_nameCtrl.text.trim().isEmpty) {
-          AppSnackBar.warning(context, l10n.translate('gym.setup_name_required'));
+          AppSnackBar.warning(
+              context, l10n.translate('gym.setup_name_required'));
           return;
         }
       case 1: // Location — both modes
         if (_selectedCity == null) {
-          AppSnackBar.warning(context, l10n.translate('gym.location_city_required'));
+          AppSnackBar.warning(
+              context, l10n.translate('gym.location_city_required'));
           return;
         }
         // New gyms must pin a location; edit mode already has coords from existing gym
         if (!_isEditMode && _selectedLat == null) {
-          AppSnackBar.warning(context, l10n.translate('gym.location_pin_required'));
+          AppSnackBar.warning(
+              context, l10n.translate('gym.location_pin_required'));
           return;
         }
       case 2:
@@ -131,12 +142,14 @@ class _GymSetupScreenState extends State<GymSetupScreen>
         }
         // Create mode: step 2 = Phone verification
         if (!_phoneVerified) {
-          AppSnackBar.warning(context, l10n.translate('gym.step_phone_subtitle'));
+          AppSnackBar.warning(
+              context, l10n.translate('gym.step_phone_subtitle'));
           return;
         }
       case 3: // Documents — create mode only
         if (_businessLicenseFile == null || _idDocFile == null) {
-          AppSnackBar.warning(context, l10n.translate('gym.docs_required_warning'));
+          AppSnackBar.warning(
+              context, l10n.translate('gym.docs_required_warning'));
           return;
         }
       case 4: // Settings — create mode only → save
@@ -187,7 +200,8 @@ class _GymSetupScreenState extends State<GymSetupScreen>
       final url = Uri.parse(
         'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&accept-language=tr',
       );
-      final response = await http.get(url, headers: {'User-Agent': 'CookrangeApp/1.0'});
+      final response =
+          await http.get(url, headers: {'User-Agent': 'CookrangeApp/1.0'});
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
         return data['display_name'] as String?;
@@ -219,7 +233,8 @@ class _GymSetupScreenState extends State<GymSetupScreen>
             setState(() => _sendingOtp = false);
             AppSnackBar.error(
               context,
-              e.message ?? AppLocalizations.of(context).translate('gym.phone_error'),
+              e.message ??
+                  AppLocalizations.of(context).translate('gym.phone_error'),
             );
           }
         },
@@ -399,7 +414,8 @@ class _GymSetupScreenState extends State<GymSetupScreen>
             color: palette.textPrimary,
             size: 20,
           ),
-          onPressed: _currentStep > 0 ? _prevStep : () => Navigator.pop(context),
+          onPressed:
+              _currentStep > 0 ? _prevStep : () => Navigator.pop(context),
         ),
         title: Text(
           _isEditMode
@@ -445,7 +461,8 @@ class _GymSetupScreenState extends State<GymSetupScreen>
                   isDark: isDark,
                   l10n: l10n,
                   selectedBrandColor: _selectedBrandColor,
-                  onColorChanged: (c) => setState(() => _selectedBrandColor = c),
+                  onColorChanged: (c) =>
+                      setState(() => _selectedBrandColor = c),
                   logoFile: _logoFile,
                   uploadingLogo: _uploadingLogo,
                   existingLogoUrl: widget.existingGym?.logoUrl,
@@ -514,7 +531,8 @@ class _GymSetupScreenState extends State<GymSetupScreen>
                     businessLicenseFile: _businessLicenseFile,
                     idDocFile: _idDocFile,
                     taxDocFile: _taxDocFile,
-                    onBusinessLicensePicked: (f) => setState(() => _businessLicenseFile = f),
+                    onBusinessLicensePicked: (f) =>
+                        setState(() => _businessLicenseFile = f),
                     onIdDocPicked: (f) => setState(() => _idDocFile = f),
                     onTaxDocPicked: (f) => setState(() => _taxDocFile = f),
                     palette: palette,
@@ -936,14 +954,15 @@ class _LogoPickerSection extends StatelessWidget {
                     child: logoFile != null
                         ? Image.file(logoFile!, fit: BoxFit.cover)
                         : existingLogoUrl != null
-                            ? Image.network(existingLogoUrl!, fit: BoxFit.cover,
+                            ? Image.network(existingLogoUrl!,
+                                fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Center(
-                                  child: Icon(
-                                    Icons.add_a_photo_rounded,
-                                    color: palette.textTertiary,
-                                    size: 28,
-                                  ),
-                                ))
+                                      child: Icon(
+                                        Icons.add_a_photo_rounded,
+                                        color: palette.textTertiary,
+                                        size: 28,
+                                      ),
+                                    ))
                             : Center(
                                 child: Icon(
                                   Icons.add_a_photo_rounded,
@@ -1477,7 +1496,8 @@ class _Step4Documents extends StatelessWidget {
     required this.l10n,
   });
 
-  Future<void> _pickFile(BuildContext context, ValueChanged<File?> onPicked) async {
+  Future<void> _pickFile(
+      BuildContext context, ValueChanged<File?> onPicked) async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -1555,13 +1575,13 @@ class _Step4Documents extends StatelessWidget {
                   : palette.surfaceVariant,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: _requiredCount == 2
-                    ? palette.success
-                    : palette.border,
+                color: _requiredCount == 2 ? palette.success : palette.border,
               ),
             ),
             child: Text(
-              l10n.translate('gym.docs_count').replaceAll('{n}', '$_requiredCount'),
+              l10n
+                  .translate('gym.docs_count')
+                  .replaceAll('{n}', '$_requiredCount'),
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
@@ -1706,9 +1726,8 @@ class _DocUploadCard extends StatelessWidget {
                   Text(
                     isPicked ? (fileName ?? uploadedLabel) : tapLabel,
                     style: AppText.of(context).labelS.copyWith(
-                          color: isPicked
-                              ? palette.success
-                              : palette.textTertiary,
+                          color:
+                              isPicked ? palette.success : palette.textTertiary,
                         ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1789,7 +1808,9 @@ class _Step5Settings extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Icon(
-                    isPublic ? Icons.public_rounded : Icons.lock_outline_rounded,
+                    isPublic
+                        ? Icons.public_rounded
+                        : Icons.lock_outline_rounded,
                     color: primary,
                     size: 22,
                   ),
@@ -1847,8 +1868,8 @@ class _Step5Settings extends StatelessWidget {
                 },
                 child: AnimatedContainer(
                   duration: AppMotion.fast,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? primary.withValues(alpha: 0.15)
@@ -1864,8 +1885,7 @@ class _Step5Settings extends StatelessWidget {
                       fontSize: 13,
                       fontWeight:
                           isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color:
-                          isSelected ? primary : palette.textSecondary,
+                      color: isSelected ? primary : palette.textSecondary,
                     ),
                   ),
                 ),

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'analytics_service.dart';
 import 'log_service.dart';
 import 'notification_service.dart';
+import 'achievement_service.dart';
 import '../models/notification_model.dart';
 import '../models/user_profile_model.dart';
 import '../models/user_model.dart';
@@ -184,8 +185,10 @@ class FirestoreService {
               final freezeCount = data['streak_freeze_count'] as int? ?? 0;
               if (freezeCount > 0) {
                 loginData['streak_freeze_count'] = freezeCount - 1;
-                loginData['streak_freeze_used_at'] = FieldValue.serverTimestamp();
-                _log.info('Streak freeze consumed for ${user.uid}; remaining: ${freezeCount - 1}',
+                loginData['streak_freeze_used_at'] =
+                    FieldValue.serverTimestamp();
+                _log.info(
+                    'Streak freeze consumed for ${user.uid}; remaining: ${freezeCount - 1}',
                     service: _serviceName);
               } else {
                 currentStreak = 1;
@@ -196,6 +199,8 @@ class FirestoreService {
 
           // Use dot notation to update nested field without overwriting entire map
           loginData['onboarding_data.streak'] = currentStreak;
+          unawaited(AchievementService()
+              .checkAndGrant(user.uid, streak: currentStreak));
         } catch (e) {
           _log.error('Error calculating streak for ${user.uid}',
               service: _serviceName, error: e);
@@ -250,6 +255,7 @@ class FirestoreService {
       relatedId: 'streak_$streak',
       metadata: {'streakDays': streak},
     );
+    unawaited(AchievementService().checkAndGrant(uid, streak: streak));
   }
 
   /// Grants [count] streak freezes to [userId] (for referrals, rewards, etc.).
@@ -257,7 +263,8 @@ class FirestoreService {
     await _firestore.collection('users').doc(userId).update({
       'streak_freeze_count': FieldValue.increment(count),
     });
-    _log.info('Granted $count streak freeze(s) to $userId', service: _serviceName);
+    _log.info('Granted $count streak freeze(s) to $userId',
+        service: _serviceName);
   }
 
   /// Creates a user document during the initial registration process.
@@ -420,7 +427,8 @@ class FirestoreService {
 
   /// Removes [role] from the user's `user_roles` array.
   Future<void> removeUserRole(String uid, UserRole role) async {
-    _log.info('FirestoreService: removing role ${role.firestoreValue} from $uid',
+    _log.info(
+        'FirestoreService: removing role ${role.firestoreValue} from $uid',
         service: _serviceName);
     try {
       await _firestore.collection('users').doc(uid).update({
@@ -466,8 +474,13 @@ class FirestoreService {
 
       if (legacyOnboarding == null) return null;
 
-      final piiFields = ['personal_info', 'allergies', 'dietary_restrictions',
-          'disliked_foods', 'avoid_ingredients'];
+      final piiFields = [
+        'personal_info',
+        'allergies',
+        'dietary_restrictions',
+        'disliked_foods',
+        'avoid_ingredients'
+      ];
       final privateData = <String, dynamic>{};
       final removals = <String, dynamic>{};
 
@@ -520,7 +533,8 @@ class FirestoreService {
   /// Writes to the owner-only private/nutrition subcollection.
   Future<void> updateAvoidIngredients(
       String uid, List<String> ingredients) async {
-    _log.info('Updating avoid_ingredients for uid: $uid', service: _serviceName);
+    _log.info('Updating avoid_ingredients for uid: $uid',
+        service: _serviceName);
     try {
       await _firestore
           .collection('users')
@@ -907,13 +921,16 @@ class FirestoreService {
       final batch = _firestore.batch();
 
       // Delete known subcollections
-      for (final sub in ['friends', 'friend_requests', 'notifications',
-          'meal_plans', 'food_logs', 'private']) {
-        final snap = await _firestore
-            .collection('users')
-            .doc(uid)
-            .collection(sub)
-            .get();
+      for (final sub in [
+        'friends',
+        'friend_requests',
+        'notifications',
+        'meal_plans',
+        'food_logs',
+        'private'
+      ]) {
+        final snap =
+            await _firestore.collection('users').doc(uid).collection(sub).get();
         for (final doc in snap.docs) {
           batch.delete(doc.reference);
         }

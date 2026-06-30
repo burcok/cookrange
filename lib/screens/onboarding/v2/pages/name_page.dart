@@ -87,7 +87,8 @@ class _OnboardingNamePageState extends State<OnboardingNamePage> {
             SizedBox(height: AppSpacing.sm.h),
             Text(
               l10n.translate('onboarding.v2.name.subtitle'),
-              style: t.bodyL.copyWith(color: palette.textSecondary, height: 1.5),
+              style:
+                  t.bodyL.copyWith(color: palette.textSecondary, height: 1.5),
             ),
             SizedBox(height: AppSpacing.xxl.h),
             AppCard(

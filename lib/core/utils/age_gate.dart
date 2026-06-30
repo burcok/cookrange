@@ -20,8 +20,7 @@ class AgeGate {
   static int ageInYears(DateTime birthDate, [DateTime? now]) {
     final n = now ?? DateTime.now();
     var age = n.year - birthDate.year;
-    final hadBirthday =
-        (n.month > birthDate.month) ||
+    final hadBirthday = (n.month > birthDate.month) ||
         (n.month == birthDate.month && n.day >= birthDate.day);
     if (!hadBirthday) age--;
     return age;

@@ -139,8 +139,7 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.bar_chart_outlined,
-                size: 72.sp,
-                color: palette.textTertiary),
+                size: 72.sp, color: palette.textTertiary),
             SizedBox(height: AppSpacing.md.h),
             Text(
               l10n.translate('analytics.no_data'),
@@ -215,27 +214,27 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
         children: [
           RepaintBoundary(
             child: AnimatedBuilder(
-            animation: _barAnim,
-            builder: (_, __) => SizedBox(
-              width: 72.w,
-              height: 72.w,
-              child: CustomPaint(
-                painter: _ScoreRingPainter(
-                  progress: _barAnim.value * score / 100,
-                  color: scoreColor,
-                  backgroundColor: palette.surfaceVariant,
-                ),
-                child: Center(
-                  child: Text(
-                    '$score',
-                    style: t.headlineS.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: scoreColor,
+              animation: _barAnim,
+              builder: (_, __) => SizedBox(
+                width: 72.w,
+                height: 72.w,
+                child: CustomPaint(
+                  painter: _ScoreRingPainter(
+                    progress: _barAnim.value * score / 100,
+                    color: scoreColor,
+                    backgroundColor: palette.surfaceVariant,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$score',
+                      style: t.headlineS.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: scoreColor,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
             ),
           ),
           SizedBox(width: AppSpacing.md.w),
@@ -272,22 +271,30 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
     final kcal = l10n.translate('analytics.kcal');
     final g = l10n.translate('analytics.g');
     final items = [
-      (l10n.translate('analytics.avg_calories'),
-          '${summary.avgCalories.round()} $kcal',
-          Icons.local_fire_department,
-          primary),
-      (l10n.translate('analytics.avg_protein'),
-          '${summary.avgProtein.round()} $g',
-          Icons.fitness_center,
-          palette.protein),
-      (l10n.translate('analytics.avg_carbs'),
-          '${summary.avgCarbs.round()} $g',
-          Icons.grain,
-          palette.carbs),
-      (l10n.translate('analytics.avg_fat'),
-          '${summary.avgFat.round()} $g',
-          Icons.water_drop,
-          palette.fat),
+      (
+        l10n.translate('analytics.avg_calories'),
+        '${summary.avgCalories.round()} $kcal',
+        Icons.local_fire_department,
+        primary
+      ),
+      (
+        l10n.translate('analytics.avg_protein'),
+        '${summary.avgProtein.round()} $g',
+        Icons.fitness_center,
+        palette.protein
+      ),
+      (
+        l10n.translate('analytics.avg_carbs'),
+        '${summary.avgCarbs.round()} $g',
+        Icons.grain,
+        palette.carbs
+      ),
+      (
+        l10n.translate('analytics.avg_fat'),
+        '${summary.avgFat.round()} $g',
+        Icons.water_drop,
+        palette.fat
+      ),
     ];
 
     return GridView.count(
@@ -494,8 +501,7 @@ class _BarChartPainter extends CustomPainter {
       final barH = day.hasLogs ? (day.calories * scale * progress) : 0.0;
       final top = chartHeight - barH;
 
-      final barColor =
-          day.hasLogs ? primaryColor : palette.surfaceVariant;
+      final barColor = day.hasLogs ? primaryColor : palette.surfaceVariant;
 
       final rRect = RRect.fromRectAndCorners(
         Rect.fromLTWH(x, top, barWidth, barH),
@@ -515,9 +521,7 @@ class _BarChartPainter extends CustomPainter {
           text: label,
           style: TextStyle(
             fontSize: 10,
-            color: day.hasLogs
-                ? palette.textSecondary
-                : palette.textTertiary,
+            color: day.hasLogs ? palette.textSecondary : palette.textTertiary,
           ),
         ),
         textDirection: TextDirection.ltr,

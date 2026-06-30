@@ -300,8 +300,7 @@ class _DishCard extends StatelessWidget {
                     Flexible(
                       child: Text(
                         '${dish.prepTimeMinutes + dish.cookTimeMinutes} min',
-                        style:
-                            t.labelS.copyWith(color: palette.textTertiary),
+                        style: t.labelS.copyWith(color: palette.textTertiary),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),

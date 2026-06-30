@@ -32,8 +32,7 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
 
   String get _currentUid => FirebaseAuth.instance.currentUser?.uid ?? '';
 
-  bool get _isViewingOwnRecord =>
-      widget.client.clientUid == _currentUid;
+  bool get _isViewingOwnRecord => widget.client.clientUid == _currentUid;
 
   @override
   void initState() {
@@ -98,8 +97,7 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
 
   Future<void> _generateAiReport() async {
     if (!AIService().isConfigured) {
-      AppSnackBar.warning(
-          context, 'AI reports require AI configuration.');
+      AppSnackBar.warning(context, 'AI reports require AI configuration.');
       return;
     }
 
@@ -107,13 +105,11 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
     final l10n = AppLocalizations.of(context);
 
     try {
-      final clientName =
-          widget.client.clientDisplayName ?? 'the client';
+      final clientName = widget.client.clientDisplayName ?? 'the client';
       final streak = widget.client.clientStreak ?? 0;
       final daysSince = widget.client.daysSinceLastLog;
-      final linkedDays = DateTime.now()
-          .difference(widget.client.linkedAt)
-          .inDays;
+      final linkedDays =
+          DateTime.now().difference(widget.client.linkedAt).inDays;
 
       final prompt =
           'You are a fitness coach assistant. Generate a brief progress report for '
@@ -185,10 +181,10 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
         backgroundColor: palette.background,
         elevation: 0,
         title: Text(
-          client.clientDisplayName ?? l10n.translate('coach.client_detail_title'),
-          style: AppText.of(context)
-              .headlineS
-              .copyWith(color: palette.textPrimary, fontWeight: FontWeight.bold),
+          client.clientDisplayName ??
+              l10n.translate('coach.client_detail_title'),
+          style: AppText.of(context).headlineS.copyWith(
+              color: palette.textPrimary, fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded,
@@ -275,8 +271,8 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
                     decoration: BoxDecoration(
                       color: palette.info.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(AppRadius.md),
-                      border:
-                          Border.all(color: palette.info.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: palette.info.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -343,8 +339,8 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: palette.success.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
@@ -352,8 +348,7 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
                     child: Text(
                       'Active',
                       style: AppText.of(context).overline.copyWith(
-                          color: palette.success,
-                          fontWeight: FontWeight.w700),
+                          color: palette.success, fontWeight: FontWeight.w700),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -372,8 +367,8 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
     );
   }
 
-  Widget _buildStatsSection(BuildContext context, CoachClientModel client,
-      AppPalette palette) {
+  Widget _buildStatsSection(
+      BuildContext context, CoachClientModel client, AppPalette palette) {
     return Row(
       children: [
         Expanded(
@@ -483,20 +478,21 @@ class _AiReportCard extends StatelessWidget {
               Icon(Icons.auto_awesome_rounded, size: 16, color: primary),
               const SizedBox(width: 6),
               Text('AI Report',
-                  style: AppText.of(context).labelS.copyWith(
-                      color: primary, fontWeight: FontWeight.w700)),
+                  style: AppText.of(context)
+                      .labelS
+                      .copyWith(color: primary, fontWeight: FontWeight.w700)),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: motColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   'Motivation: ${(report['motivationLevel'] as String? ?? 'medium').toUpperCase()}',
-                  style: AppText.of(context).overline.copyWith(
-                      color: motColor, fontWeight: FontWeight.w700),
+                  style: AppText.of(context)
+                      .overline
+                      .copyWith(color: motColor, fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -584,8 +580,7 @@ class _RateCoachSheetContent extends StatefulWidget {
   });
 
   @override
-  State<_RateCoachSheetContent> createState() =>
-      _RateCoachSheetContentState();
+  State<_RateCoachSheetContent> createState() => _RateCoachSheetContentState();
 }
 
 class _RateCoachSheetContentState extends State<_RateCoachSheetContent> {
@@ -624,8 +619,7 @@ class _RateCoachSheetContentState extends State<_RateCoachSheetContent> {
     } catch (e) {
       debugPrint('_RateCoachSheetContent._submit error: $e');
       if (!mounted) return;
-      AppSnackBar.error(
-          context, widget.l10n.translate('coach.setup_error'));
+      AppSnackBar.error(context, widget.l10n.translate('coach.setup_error'));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

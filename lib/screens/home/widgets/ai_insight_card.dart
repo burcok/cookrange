@@ -61,7 +61,10 @@ class _AiInsightCardState extends State<AiInsightCard>
           '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}';
 
       if (dismissedDate == today) {
-        setState(() { _isDismissed = true; _isLoading = false; });
+        setState(() {
+          _isDismissed = true;
+          _isLoading = false;
+        });
         return;
       }
     } catch (e) {
@@ -74,9 +77,11 @@ class _AiInsightCardState extends State<AiInsightCard>
 
   Future<void> _loadInsight() async {
     if (!context.mounted) return;
-    final locale =
-        context.read<LanguageProvider>().currentLocale.languageCode;
-    setState(() { _isLoading = true; _hasError = false; });
+    final locale = context.read<LanguageProvider>().currentLocale.languageCode;
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
 
     try {
       final riskLevel =
@@ -105,7 +110,10 @@ class _AiInsightCardState extends State<AiInsightCard>
       unawaited(_fadeController.forward());
     } catch (e) {
       if (!context.mounted) return;
-      setState(() { _isLoading = false; _hasError = true; });
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
     }
   }
 
@@ -123,8 +131,7 @@ class _AiInsightCardState extends State<AiInsightCard>
 
   void _openProjection() {
     Navigator.of(context).push(
-      MaterialPageRoute(
-          builder: (_) => const AiFitnessTwinScreen()),
+      MaterialPageRoute(builder: (_) => const AiFitnessTwinScreen()),
     );
   }
 
@@ -244,8 +251,7 @@ class _AiInsightCardState extends State<AiInsightCard>
                 Expanded(
                   child: Text(
                     message,
-                    style:
-                        textTheme.bodyM.copyWith(color: palette.textPrimary),
+                    style: textTheme.bodyM.copyWith(color: palette.textPrimary),
                   ),
                 ),
                 GestureDetector(
@@ -272,8 +278,7 @@ class _AiInsightCardState extends State<AiInsightCard>
                 SizedBox(width: 12.w),
                 Text(
                   '✨ Powered by AI',
-                  style: textTheme.labelS.copyWith(
-                      color: palette.textTertiary),
+                  style: textTheme.labelS.copyWith(color: palette.textTertiary),
                 ),
               ],
             ),
@@ -283,8 +288,7 @@ class _AiInsightCardState extends State<AiInsightCard>
     );
   }
 
-  Widget _buildAccountabilityCard(
-      BuildContext context, AppLocalizations l10n) {
+  Widget _buildAccountabilityCard(BuildContext context, AppLocalizations l10n) {
     final palette = AppPalette.of(context);
     final textTheme = AppText.of(context);
     final primaryColor = context.watch<ThemeProvider>().primaryColor;
@@ -305,8 +309,7 @@ class _AiInsightCardState extends State<AiInsightCard>
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(AppRadius.card.r),
-          border: Border.all(
-              color: primaryColor.withValues(alpha: 0.25)),
+          border: Border.all(color: primaryColor.withValues(alpha: 0.25)),
         ),
         padding: EdgeInsets.all(16.r),
         child: Column(
@@ -329,8 +332,7 @@ class _AiInsightCardState extends State<AiInsightCard>
                 Expanded(
                   child: Text(
                     insight.message,
-                    style:
-                        textTheme.bodyM.copyWith(color: palette.textPrimary),
+                    style: textTheme.bodyM.copyWith(color: palette.textPrimary),
                   ),
                 ),
                 GestureDetector(
@@ -381,8 +383,7 @@ class _AiInsightCardState extends State<AiInsightCard>
                 SizedBox(width: 12.w),
                 Text(
                   '✨ Powered by AI',
-                  style: textTheme.labelS.copyWith(
-                      color: palette.textTertiary),
+                  style: textTheme.labelS.copyWith(color: palette.textTertiary),
                 ),
               ],
             ),

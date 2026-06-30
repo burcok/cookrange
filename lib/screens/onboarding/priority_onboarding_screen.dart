@@ -128,7 +128,8 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
     );
   }
 
-  Widget _buildHeader(AppLocalizations l10n, AppPalette palette, Color primary) {
+  Widget _buildHeader(
+      AppLocalizations l10n, AppPalette palette, Color primary) {
     final t = AppText.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,7 +190,8 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
     );
   }
 
-  Widget _buildGoalStep(AppLocalizations l10n, AppPalette palette, Color primary) {
+  Widget _buildGoalStep(
+      AppLocalizations l10n, AppPalette palette, Color primary) {
     return GridView.count(
       crossAxisCount: 2,
       mainAxisSpacing: 12,
@@ -210,7 +212,8 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
     );
   }
 
-  Widget _buildActivityStep(AppLocalizations l10n, AppPalette palette, Color primary) {
+  Widget _buildActivityStep(
+      AppLocalizations l10n, AppPalette palette, Color primary) {
     return ListView(
       children: OnboardingOptions.activityLevels.entries.map((entry) {
         final isSelected = _selectedActivity == entry.key;
@@ -286,9 +289,8 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
                       child: Text(
                         label,
                         style: t.bodyL.copyWith(
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
                           color: isSelected ? primary : palette.textPrimary,
                         ),
                       ),
@@ -311,9 +313,8 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
                       label,
                       textAlign: TextAlign.center,
                       style: t.labelL.copyWith(
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
                         color: isSelected ? primary : palette.textPrimary,
                       ),
                     ),
@@ -324,7 +325,8 @@ class _PriorityOnboardingScreenState extends State<PriorityOnboardingScreen>
     );
   }
 
-  Widget _buildFooter(AppLocalizations l10n, AppPalette palette, Color primary) {
+  Widget _buildFooter(
+      AppLocalizations l10n, AppPalette palette, Color primary) {
     final canProceed =
         _step == 0 ? _selectedGoal != null : _selectedActivity != null;
     final t = AppText.of(context);

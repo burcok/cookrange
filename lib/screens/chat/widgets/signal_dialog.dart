@@ -140,8 +140,8 @@ class _SignalDialogState extends State<SignalDialog> {
                 return ActionChip(
                   label: Text(
                     AppLocalizations.of(context).translate(preset),
-                    style: TextStyle(
-                        fontSize: 12, color: palette.textSecondary),
+                    style:
+                        TextStyle(fontSize: 12, color: palette.textSecondary),
                   ),
                   backgroundColor: palette.surfaceVariant,
                   onPressed: () {

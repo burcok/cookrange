@@ -31,9 +31,8 @@ class GymJoinPromptSheet extends StatefulWidget {
     final l10n = AppLocalizations.of(context);
     return AppSheet.show<void>(
       context: context,
-      title: l10n
-          .translate('gym.join_prompt_title')
-          .replaceAll('{gym}', gymName),
+      title:
+          l10n.translate('gym.join_prompt_title').replaceAll('{gym}', gymName),
       child: GymJoinPromptSheet(
         gymId: gymId,
         gymName: gymName,
@@ -61,9 +60,7 @@ class _GymJoinPromptSheetState extends State<GymJoinPromptSheet> {
       Navigator.of(context).pop();
       AppSnackBar.success(
         context,
-        l10n
-            .translate('gym.join_success')
-            .replaceAll('{gym}', widget.gymName),
+        l10n.translate('gym.join_success').replaceAll('{gym}', widget.gymName),
       );
     } catch (e) {
       if (!mounted) return;

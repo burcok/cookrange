@@ -104,13 +104,13 @@ class _AppButtonState extends State<AppButton>
     final t = AppText.of(context);
 
     final _ButtonStyle style = _resolveStyle(palette, primary);
-    final contentColor = _disabled
-        ? style.foreground.withValues(alpha: 0.45)
-        : style.foreground;
+    final contentColor =
+        _disabled ? style.foreground.withValues(alpha: 0.45) : style.foreground;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool canExpand = widget.expand && constraints.maxWidth != double.infinity;
+        final bool canExpand =
+            widget.expand && constraints.maxWidth != double.infinity;
 
         Widget content = widget.loading
             ? SizedBox(
@@ -126,7 +126,8 @@ class _AppButtonState extends State<AppButton>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (widget.icon != null) ...[
-                    Icon(widget.icon, size: AppSize.iconSm.r, color: contentColor),
+                    Icon(widget.icon,
+                        size: AppSize.iconSm.r, color: contentColor),
                     SizedBox(width: AppSpacing.xs.w),
                   ],
                   Flexible(
@@ -173,8 +174,8 @@ class _AppButtonState extends State<AppButton>
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: _disabled
-                      ? style.background.withValues(
-                          alpha: style.background.a == 0 ? 0 : 0.5)
+                      ? style.background
+                          .withValues(alpha: style.background.a == 0 ? 0 : 0.5)
                       : style.background,
                   borderRadius: BorderRadius.circular(AppRadius.button.r),
                   border: style.borderColor != null
@@ -220,8 +221,7 @@ class _AppButtonState extends State<AppButton>
         );
       case AppButtonVariant.tonal:
         return _ButtonStyle(
-          background:
-              primary.withValues(alpha: palette.isDark ? 0.20 : 0.10),
+          background: primary.withValues(alpha: palette.isDark ? 0.20 : 0.10),
           foreground: primary,
         );
       case AppButtonVariant.ghost:

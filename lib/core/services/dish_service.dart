@@ -57,8 +57,8 @@ class DishService {
         .collection('dishes')
         .orderBy('name_en')
         .snapshots()
-        .map((snap) =>
-            snap.docs.map((d) => DishModel.fromFirestore(d)).toList())
+        .map(
+            (snap) => snap.docs.map((d) => DishModel.fromFirestore(d)).toList())
         .handleError((e) {
       debugPrint('DishService: getAllDishesStream error — $e');
       return <DishModel>[];

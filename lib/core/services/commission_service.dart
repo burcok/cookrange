@@ -38,7 +38,8 @@ class CommissionService {
       debugPrint(
           '[CommissionService] Referral commission ₺$amount recorded for $ownerUid (referee: $refereeUid)');
     } catch (e) {
-      debugPrint('[CommissionService] Failed to record referral commission: $e');
+      debugPrint(
+          '[CommissionService] Failed to record referral commission: $e');
     }
   }
 
@@ -131,11 +132,7 @@ class CommissionService {
   Future<void> requestPayout(String uid) async {
     try {
       final summary = await getEarningsSummary(uid);
-      await _db
-          .collection('users')
-          .doc(uid)
-          .collection('payout_requests')
-          .add({
+      await _db.collection('users').doc(uid).collection('payout_requests').add({
         'requested_at': FieldValue.serverTimestamp(),
         'status': 'pending',
         'total': summary.pendingAmount,

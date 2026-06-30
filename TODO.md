@@ -1319,6 +1319,87 @@ query/trigger · ☑ `flutter analyze lib/` 0 errors · ☑ CLAUDE.md + this roa
 
 ---
 
+## Phase 15 — Daily Engagement Loop & Gamification 📋 Planned (2026-06-30)
+
+> **Scope (user-directed, 2026-06-30).** Six features that turn Cookrange from a passive
+> "set-and-forget" planner into an app users open every day, plus a gamification spine. **Most of the
+> backend already exists** (verified by a full-source audit) — this phase is mostly wiring, UX, and one
+> greenfield service, which makes it high-ROI and genuinely shippable. North-star: **D1/D7/D30
+> retention.** Full PM→Architect→Dev breakdown, Firestore shapes, indexes/rules, AI-credit metering,
+> and per-feature **theme/i18n/platform/60fps/reduced-motion + doc-update** lists live in
+> **`docs/roadmap/PHASE_15_ENGAGEMENT.md`** (single source of truth). R0–R9 apply to every item.
+
+> ### Reuse map (do NOT rebuild — confirmed in source)
+> - Scheduled local notifications + `spreadReminderTimes()` + ID-block reservation — `push_notification_service.dart` (water block `7001–7012`).
+> - In-app structured notifications + presenter + mute groups — `notification_service.dart`, `notification_presenter.dart`, `notification_preferences_service.dart`.
+> - Cloud Functions `broadcasts` + 5-min `drainScheduledBroadcasts` + mute-aware `sendNotificationOnCreate` — `functions/index.js` (server-side fan-out now exists).
+> - **Streak-freeze backend done** (`streak_freeze_count`, auto-consume on gap, `grantStreakFreeze`, 1-freeze welcome gift) — `firestore_service.dart`. Only UI + earn-rules missing.
+> - `TodaySummaryCard` (calories/streak/water/next-meal) — `home/widgets/today_summary_card.dart`. Enhance, don't replace.
+> - Photo→`NutritionEstimate`→`logScannedFood`, credit-metered — `food_scan_screen.dart` + `food_analysis_service.dart` + `food_log_service.dart`.
+> - Fitness-twin pattern (locale-aware, cached, persisted) — `ai_insight_service.dart`. Weekly recap follows it.
+> - `createPost(... postType, metadata ...)` + `PostType.meal` — `community_service.dart`, `community_post.dart`.
+> - Reputation (`streak×2 + posts×5`, 5 tiers) — `reputation_service.dart`. Achievements build on it.
+> - AI credit gate `checkAndConsume`/`rollbackCredit` — `ai_credit_service.dart`.
+
+**Recommended build order (dependencies first):** 15.5a → 15.1 → 15.2 → 15.3 → 15.4 → 15.6+15.5b.
+**Realistic effort:** ~3–4 focused weeks (one dev), given the reuse.
+
+### 15.1 — Smart Re-engagement Notifications · High · Medium ✅
+- [x] `NotificationType` += `mealReminder`, `streakAtRisk`, `weeklyPlanReady` (append-only; `streakFreezeUsed` done in 15.5a).
+- [x] New `reminders` mute group in `NotificationPreferencesService.preferencePairs` + mirrored in `functions/index.js` `TYPE_TO_MUTE_GROUP`.
+- [x] `PushNotificationService.scheduleDailyMealReminders({times, title, body})` + `cancelMealReminders()` (ID block `8001–8008`).
+- [x] `streakAtRiskNotifier` cron (daily 17:00 UTC) + `weeklyPlanReadyNotifier` cron (Mon 07:00 UTC) in `functions/index.js`; both respect `reminders` mute and cap at 500 users for MVP.
+- [x] Settings: `_showMealReminderSheet()` + row in notification section. Stores `onboarding_data.meal_reminder{enabled,times[]}`.
+- [x] `NotificationPresenter` cases (title/body/category/icon/color) for all 3 types.
+- [x] EN/TR `notifications.feed.{meal_reminder,streak_at_risk,weekly_plan_ready}_{title,body}`, `cat_reminders`, `settings.reminders.*`, `notification_prefs.reminders`.
+
+### 15.2 — Daily "Bugün" Recap Card · High · Low–Medium · 0 AI credits
+- [ ] New `home/widgets/bugun_recap_card.dart` (`AppGlassCard` + 7-bar sparkline, `RepaintBoundary`), inserted between `AiInsightCard` and `TodaySummaryCard`.
+- [ ] **Local-only** compute from one `getLogsForDateRange(uid, day-7, today)` call (no AI). SWR cache (SharedPrefs `bugun_recap_YYYY-MM-DD`).
+- [ ] States: skeleton / encouraging empty (new user) / success. EN/TR `home.recap.*`.
+
+### 15.3 — One-Tap Photo Food Logging · High · Low–Medium ✅
+- [x] Express photo path (`expressPhoto` param on `FoodScanScreen`): straight to camera, auto meal-type via `MealTimeUtil`, reuses analyze/log pipeline + credit gating.
+- [x] Shared `MealTimeUtil.mealTypeForHour(int)` in `lib/core/utils/meal_time_util.dart`.
+- [x] Home "Snap & Log" button gated by `FoodAnalysisService.isPhotoAvailable`. EN/TR `food_scan.express_snap_btn`.
+
+### 15.4 — Weekly AI Coach Recap · High · Medium · premium lever ✅
+- [x] `AiInsightService.generateWeeklyRecap(user, {locale})` + `checkLowDataThisWeek` + `getLatestWeeklyRecapStream` + `_fallbackWeeklyRecap`. Idempotent per week+locale (Firestore cache). Low-data recaps (<3 days) skip credit.
+- [x] `users/{uid}/ai_weekly_recaps/{doc}` owner-only Firestore rule added.
+- [x] `screens/ai/weekly_recap_screen.dart` — score ring, wins/challenges, trend chip, recommendation, Share sheet.
+- [x] `screens/home/widgets/weekly_recap_card.dart` — home teaser (score + trend if this week, CTA otherwise). Inserted after BugunRecapCard.
+- [x] EN/TR `ai.weekly_recap_*`, `sharing.weekly_recap_*`, `common.stale`.
+
+### 15.5 — Streak Freeze UI + Achievements / Badges · Med–High · Medium
+- [x] ✅ **(a)** Surface freeze count (snowflake chip — `palette.info` DS color) in welcome header. `streakFreezeUsed` NotificationType added. (Backend already works.)
+- [x] ✅ **(b)** Greenfield `achievement_model.dart` + `achievement_service.dart` (`earn` idempotent, `getAchievementsStream`, `checkAndGrant`, `backfillForUser`). 11-badge in-code catalog; earned → `users/{uid}/achievements/{key}` (owner rule in `firestore.rules`).
+- [x] ✅ Hook `unawaited(checkAndGrant(uid))` into: login streak (`firestore_service.dart`), `logRecipe`/`logScannedFood` (`food_log_service.dart`), `createPost` (`community_service.dart`), reputation recompute (`reputation_service.dart`). `backfillForUser` called on profile open.
+- [x] ✅ `screens/profile/widgets/achievements_grid.dart` — wrap grid (earned/locked), bounce animation (reduced-motion aware), tap→detail `AppSheet`. Inserted after reputation badge in `profile_screen.dart`. EN/TR `achievements.*`, `home.freeze_*`, `notifications.feed.*_freeze*`.
+
+### 15.6 — "Pişirdim / I Cooked This" Community Share · Med · Low ✅
+- [x] "Share to Community" toggle + optional caption `TextField` (AnimatedSize) in `cooking_mode_screen.dart` `_showFinishSheet` → `CommunityService.createPost(postType: PostType.meal, metadata{has_cooked_badge:true, recipe_title, recipe_id, image_url?})`. Fire-and-forget; existing recipe imageUrl reused (no re-upload).
+- [x] `_CookedItBadge` widget in `glass_post_card.dart` — green pill shown when `metadata['has_cooked_badge'] == true`. `first_cook` achievement already wired via `FoodLogService.logRecipe` → `checkAndGrant(justCookedAndLogged:true)`.
+- [x] EN/TR `cooking.share_*`, `community.cooked_it_badge`.
+
+### New Firestore surface (for `DATA_MODEL.md` + `firestore.rules`)
+| Path | Purpose | Rules | Index |
+|---|---|---|---|
+| `users/{uid}/ai_weekly_recaps/{weekKey}` | Weekly AI recaps | owner R/W | none |
+| `users/{uid}/achievements/{key}` | Earned badges | owner read; owner write (v1) | none |
+| `users/{uid}.onboarding_data.meal_reminder` / `.streak_reminder` | Reminder prefs | existing user-doc rule | — |
+| `broadcasts/{id}` (reuse) | Server weekly-plan / streak-at-risk fan-out | existing | existing |
+
+> **R9:** `firestore.rules`, `firestore.indexes.json`, `en.json`, `tr.json` are single-owner-per-turn — serialize writes when implementing in parallel; keep `test/i18n_parity_test.dart` green.
+
+### Definition of Done — Phase 15
+☑ Each 15.1–15.6 passes R0–R7 + the cross-cutting list in the roadmap doc · ☑ AI paths metered+rollback,
+local-calc paths cost 0 credits · ☑ New paths have owner rules; new queries have indexes · ☑ All new
+copy EN+TR (sequential, R9), parity test green · ☑ Loading/empty/error/success for every surface ·
+☑ iOS+Android, light+dark, 60fps, reduced-motion · ☑ `flutter analyze lib/` 0 errors · ☑ Owning
+`docs/` files + `CLAUDE.md` + `TODO.md` updated in the same task as the code (R8).
+
+---
+
 ## Recommended MVP Scope (ship first — public beta)
 
 **Theme: "The AI nutrition app that actually tracks you."** Drop the OS vision for v1.0.

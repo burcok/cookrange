@@ -54,8 +54,8 @@ class CoachShareCard extends StatelessWidget {
     await Future<void>.delayed(const Duration(milliseconds: 80));
 
     try {
-      final boundary =
-          captureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      final boundary = captureKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
       if (boundary == null) return;
 
       final image = await boundary.toImage(pixelRatio: 3.0);
@@ -99,7 +99,8 @@ class CoachShareCard extends StatelessWidget {
               child: Container(
                 decoration: const BoxDecoration(
                   color: Color(0xFF0D1117),
-                  borderRadius: BorderRadius.all(Radius.circular(AppRadius.card)),
+                  borderRadius:
+                      BorderRadius.all(Radius.circular(AppRadius.card)),
                 ),
               ),
             ),
@@ -266,9 +267,8 @@ class _AvatarSection extends StatelessWidget {
   }
 
   String _locationText(CoachProfileModel c) {
-    final parts = [c.district, c.city]
-        .where((p) => p != null && p.isNotEmpty)
-        .toList();
+    final parts =
+        [c.district, c.city].where((p) => p != null && p.isNotEmpty).toList();
     return parts.join(', ');
   }
 }
@@ -323,8 +323,7 @@ class _SpecializationsRow extends StatelessWidget {
       children: visible
           .map(
             (s) => Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: AppPalette.brand.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(AppRadius.full),
@@ -547,9 +546,15 @@ class _InitialsFallback extends StatelessWidget {
 
   Color get _bg {
     const palette = [
-      Color(0xFFEF5350), Color(0xFFEC407A), Color(0xFFAB47BC),
-      Color(0xFF7E57C2), Color(0xFF42A5F5), Color(0xFF26C6DA),
-      Color(0xFF26A69A), Color(0xFF66BB6A), Color(0xFFFFA726),
+      Color(0xFFEF5350),
+      Color(0xFFEC407A),
+      Color(0xFFAB47BC),
+      Color(0xFF7E57C2),
+      Color(0xFF42A5F5),
+      Color(0xFF26C6DA),
+      Color(0xFF26A69A),
+      Color(0xFF66BB6A),
+      Color(0xFFFFA726),
       Color(0xFFFF7043),
     ];
     if (name.isEmpty) return palette[0];

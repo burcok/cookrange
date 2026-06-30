@@ -47,8 +47,8 @@ class _MyProgramsScreenState extends State<MyProgramsScreen> {
           IconButton(
             icon: Icon(Icons.explore_outlined,
                 color: palette.textSecondary, size: 22),
-            onPressed: () => Navigator.of(context).push(AppTransitions.slideUp(
-                const ProgramMarketplaceScreen())),
+            onPressed: () => Navigator.of(context)
+                .push(AppTransitions.slideUp(const ProgramMarketplaceScreen())),
             tooltip: l10n.translate('program.my_programs_explore'),
           ),
         ],
@@ -56,11 +56,11 @@ class _MyProgramsScreenState extends State<MyProgramsScreen> {
       body: uid == null
           ? const AppErrorState(title: 'Sign in to view your programs')
           : StreamBuilder<
-                List<
-                    ({
-                      ProgramEnrollmentModel enrollment,
-                      ProgramModel? program
-                    })>>(
+              List<
+                  ({
+                    ProgramEnrollmentModel enrollment,
+                    ProgramModel? program
+                  })>>(
               stream: ProgramService().getEnrolledProgramsStream(uid),
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
@@ -84,11 +84,9 @@ class _MyProgramsScreenState extends State<MyProgramsScreen> {
                     icon: Icons.fitness_center_rounded,
                     title: l10n.translate('program.my_programs_empty'),
                     message: l10n.translate('program.my_programs_empty_msg'),
-                    actionLabel:
-                        l10n.translate('program.my_programs_explore'),
+                    actionLabel: l10n.translate('program.my_programs_explore'),
                     onAction: () => Navigator.of(context).pushReplacement(
-                      AppTransitions.slideUp(
-                          const ProgramMarketplaceScreen()),
+                      AppTransitions.slideUp(const ProgramMarketplaceScreen()),
                     ),
                   );
                 }

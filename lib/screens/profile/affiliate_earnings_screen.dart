@@ -38,7 +38,8 @@ class _AffiliateEarningsScreenState extends State<AffiliateEarningsScreen> {
       if (!mounted) return;
       await AppSheet.show(
         context: context,
-        title: AppLocalizations.of(context).translate('settings.earnings.payout_requested'),
+        title: AppLocalizations.of(context)
+            .translate('settings.earnings.payout_requested'),
         child: _PayoutComingSoonContent(pendingAmount: summary.pendingAmount),
       );
       // Refresh summary after payout request.
@@ -211,8 +212,7 @@ class _AffiliateEarningsScreenState extends State<AffiliateEarningsScreen> {
                       SizedBox(height: 6.h),
                       Text(
                         l.translate('settings.earnings.coming_soon'),
-                        style:
-                            t.bodyM.copyWith(color: palette.textSecondary),
+                        style: t.bodyM.copyWith(color: palette.textSecondary),
                       ),
                     ],
                   ),
@@ -246,7 +246,8 @@ class _AffiliateEarningsScreenState extends State<AffiliateEarningsScreen> {
               }
               return Column(
                 children: items
-                    .map((c) => _CommissionRow(commission: c, palette: palette, t: t))
+                    .map((c) =>
+                        _CommissionRow(commission: c, palette: palette, t: t))
                     .toList(),
               );
             },
@@ -402,8 +403,7 @@ class _CommissionRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    commission.description ??
-                        commission.type.displayName,
+                    commission.description ?? commission.type.displayName,
                     style: t.bodyM.copyWith(color: palette.textPrimary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -429,8 +429,7 @@ class _CommissionRow extends StatelessWidget {
                 ),
                 SizedBox(height: 4.h),
                 Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20.r),

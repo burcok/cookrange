@@ -56,10 +56,14 @@ class _OnboardingDietaryPageState extends State<OnboardingDietaryPage> {
     final q = _query.trim().toLowerCase();
     final matches = q.isEmpty
         ? <MapEntry<String, Map<String, dynamic>>>[]
-        : OnboardingOptions.predefinedIngredients.entries.where((e) {
-            final label = l10n.translate(e.value['label'] as String).toLowerCase();
-            return label.contains(q) && !dislikedValues.contains(e.key);
-          }).take(12).toList();
+        : OnboardingOptions.predefinedIngredients.entries
+            .where((e) {
+              final label =
+                  l10n.translate(e.value['label'] as String).toLowerCase();
+              return label.contains(q) && !dislikedValues.contains(e.key);
+            })
+            .take(12)
+            .toList();
     final hasExact = q.isNotEmpty &&
         OnboardingOptions.predefinedIngredients.entries.any((e) =>
             l10n.translate(e.value['label'] as String).toLowerCase() == q);
@@ -90,14 +94,16 @@ class _OnboardingDietaryPageState extends State<OnboardingDietaryPage> {
                       label: l10n.translate(e.value['label'] as String),
                       selected: selectedAllergies.contains(e.key),
                       selectedColor: palette.warning,
-                      onTap: () =>
-                          context.read<OnboardingProvider>().toggleAllergy(e.key),
+                      onTap: () => context
+                          .read<OnboardingProvider>()
+                          .toggleAllergy(e.key),
                     ))
                 .toList(),
           ),
           SizedBox(height: AppSpacing.xl.h),
           OnboardingGroupLabel(
-              title: l10n.translate('onboarding.v2.dietary.restrictions_title')),
+              title:
+                  l10n.translate('onboarding.v2.dietary.restrictions_title')),
           SizedBox(height: AppSpacing.sm.h),
           Wrap(
             spacing: AppSpacing.sm.w,

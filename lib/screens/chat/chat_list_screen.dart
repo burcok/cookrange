@@ -275,8 +275,8 @@ class _ChatListScreenState extends State<ChatListScreen>
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
-          padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 24),
+          padding:
+              EdgeInsets.only(top: MediaQuery.of(context).padding.top + 24),
           child: Column(
             children: [
               Padding(
@@ -372,12 +372,11 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildNutritionChatCard(
-      BuildContext context, ChatModel chat, AppPalette palette, String currentUserId) {
+  Widget _buildNutritionChatCard(BuildContext context, ChatModel chat,
+      AppPalette palette, String currentUserId) {
     final unread = chat.unreadCounts[currentUserId] ?? 0;
     return AppGlassCard(
       padding: const EdgeInsets.all(12),
-
       child: Row(
         children: [
           Container(
@@ -436,12 +435,11 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildGenericGroupChatCard(
-      BuildContext context, ChatModel chat, AppPalette palette, String currentUserId) {
+  Widget _buildGenericGroupChatCard(BuildContext context, ChatModel chat,
+      AppPalette palette, String currentUserId) {
     final unread = chat.unreadCounts[currentUserId] ?? 0;
     return AppGlassCard(
       padding: const EdgeInsets.all(12),
-
       child: Row(
         children: [
           Container(
@@ -508,7 +506,6 @@ class _ChatListScreenState extends State<ChatListScreen>
       BuildContext context, ChatModel chat, AppPalette palette) {
     return AppGlassCard(
       padding: const EdgeInsets.all(12),
-
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Text(
@@ -999,8 +996,8 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildGymChatCard(
-      BuildContext context, ChatModel chat, AppPalette palette, String currentUserId) {
+  Widget _buildGymChatCard(BuildContext context, ChatModel chat,
+      AppPalette palette, String currentUserId) {
     final unread = chat.unreadCounts[currentUserId] ?? 0;
     return AppGlassCard(
       padding: const EdgeInsets.all(16),
@@ -1016,8 +1013,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                      color: palette.success.withValues(alpha: 0.3),
-                      width: 2),
+                      color: palette.success.withValues(alpha: 0.3), width: 2),
                   color: palette.surface,
                 ),
                 child: ClipOval(
@@ -1027,8 +1023,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                           width: 56,
                           height: 56,
                         )
-                      : Icon(Icons.fitness_center,
-                          color: palette.textPrimary),
+                      : Icon(Icons.fitness_center, color: palette.textPrimary),
                 ),
               ),
               Positioned(
@@ -1120,7 +1115,6 @@ class _ChatListScreenState extends State<ChatListScreen>
     final unread = chat.unreadCounts[currentUserId] ?? 0;
     return AppGlassCard(
       padding: const EdgeInsets.all(16),
-
       child: Row(
         children: [
           Stack(
@@ -1146,8 +1140,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                           size: 30,
                         ),
                       )
-                    : Icon(Icons.person,
-                        color: palette.textTertiary, size: 30),
+                    : Icon(Icons.person, color: palette.textTertiary, size: 30),
               ),
               if (chat.metadata?['is_online'] ?? false)
                 Positioned(
@@ -1238,8 +1231,8 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildRecipeChatCard(
-      BuildContext context, ChatModel chat, AppPalette palette, String currentUserId) {
+  Widget _buildRecipeChatCard(BuildContext context, ChatModel chat,
+      AppPalette palette, String currentUserId) {
     final unread = chat.unreadCounts[currentUserId] ?? 0;
     return AppGlassCard(
       padding: const EdgeInsets.all(16),
@@ -1356,7 +1349,8 @@ class _ChatListScreenState extends State<ChatListScreen>
         if (chat.metadata?['subtype'] == 'nutrition') {
           return _buildNutritionChatCard(context, chat, palette, currentUserId);
         }
-        return _buildGenericGroupChatCard(context, chat, palette, currentUserId);
+        return _buildGenericGroupChatCard(
+            context, chat, palette, currentUserId);
       case ChatType.system:
         return _buildSystemChatCard(context, chat, palette);
     }
@@ -1400,5 +1394,4 @@ class _ChatListScreenState extends State<ChatListScreen>
       ],
     );
   }
-
 }

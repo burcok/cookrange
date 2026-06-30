@@ -53,8 +53,8 @@ class GymShareCard extends StatelessWidget {
     await Future<void>.delayed(const Duration(milliseconds: 80));
 
     try {
-      final boundary =
-          captureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      final boundary = captureKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
       if (boundary == null) return;
 
       final image = await boundary.toImage(pixelRatio: 3.0);
@@ -66,8 +66,8 @@ class GymShareCard extends StatelessWidget {
       final file = File('${dir.path}/cookrange_gym_card.png');
       await file.writeAsBytes(bytes);
 
-      final text = l10n.translate('share.gym_share_text',
-          variables: {'name': gym.name});
+      final text =
+          l10n.translate('share.gym_share_text', variables: {'name': gym.name});
 
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'image/png')],
@@ -216,8 +216,8 @@ class _LogoSection extends StatelessWidget {
                     height: 84,
                     fit: BoxFit.cover,
                     cacheWidth: 252,
-                    errorBuilder: (_, __, ___) =>
-                        _InitialsFallback(name: gym.name, size: 84, bg: brandColor),
+                    errorBuilder: (_, __, ___) => _InitialsFallback(
+                        name: gym.name, size: 84, bg: brandColor),
                   )
                 : _InitialsFallback(name: gym.name, size: 84, bg: brandColor),
           ),
@@ -322,8 +322,7 @@ class _TagsRow extends StatelessWidget {
       children: visible
           .map(
             (t) => Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: brandColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(AppRadius.full),

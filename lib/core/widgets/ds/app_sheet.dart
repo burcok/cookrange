@@ -35,8 +35,9 @@ class AppSheet {
       backgroundColor: Colors.transparent,
       // When reduce-transparency is on, use a solid scrim instead of the
       // semi-transparent one so the background content is fully obscured.
-      barrierColor:
-          reduceTransparency ? palette.scrim.withValues(alpha: 1.0) : palette.scrim,
+      barrierColor: reduceTransparency
+          ? palette.scrim.withValues(alpha: 1.0)
+          : palette.scrim,
       // When reduce-motion is on, collapse all animation durations to zero so
       // the sheet appears and disappears instantly.
       sheetAnimationStyle: reduceMotion
@@ -125,8 +126,8 @@ class _SheetShell extends StatelessWidget {
                   ),
                 if (title != null)
                   Padding(
-                    padding: EdgeInsets.fromLTRB(AppSpacing.xl.w,
-                        AppSpacing.sm.h, AppSpacing.xl.w, 0),
+                    padding: EdgeInsets.fromLTRB(
+                        AppSpacing.xl.w, AppSpacing.sm.h, AppSpacing.xl.w, 0),
                     child: Row(
                       children: [
                         Expanded(child: Text(title!, style: t.headlineS)),

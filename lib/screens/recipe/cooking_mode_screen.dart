@@ -5,7 +5,9 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import '../../core/models/community_post.dart';
 import '../../core/models/recipe_model.dart';
+import '../../core/services/community_service.dart';
 import '../../core/services/food_log_service.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/providers/theme_provider.dart';
@@ -87,6 +89,8 @@ class _CookingModeScreenState extends State<CookingModeScreen>
     final primaryColor = context.read<ThemeProvider>().primaryColor;
     String selectedMealType = 'dinner';
     bool isLogging = false;
+    bool shareToComm = false;
+    final captionCtrl = TextEditingController();
 
     final calories = (widget.recipe.macros['calories'] ?? 0).round();
     final protein = (widget.recipe.macros['protein'] ?? 0).round();
@@ -114,13 +118,9 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                     color: palette.glassFill,
                     borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(AppRadius.sheet)),
-                    border: Border(
-                      top: BorderSide(
-                          color: palette.glassStroke, width: 0.8),
-                      left: BorderSide(
-                          color: palette.glassStroke, width: 0.5),
-                      right: BorderSide(
-                          color: palette.glassStroke, width: 0.5),
+                    border: Border.all(
+                      color: palette.glassStroke,
+                      width: 0.5,
                     ),
                   ),
                   child: Column(
@@ -140,8 +140,7 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                           AppSpacing.xl,
                           AppSpacing.lg,
                           AppSpacing.xl,
-                          AppSpacing.xl +
-                              MediaQuery.of(ctx).viewInsets.bottom,
+                          AppSpacing.xl + MediaQuery.of(ctx).viewInsets.bottom,
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -165,8 +164,7 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color:
-                                        primaryColor.withValues(alpha: 0.35),
+                                    color: primaryColor.withValues(alpha: 0.35),
                                     blurRadius: 24,
                                     spreadRadius: 4,
                                   ),
@@ -219,8 +217,7 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                           palette),
                                       _glassMacroChip(
                                           ctx2,
-                                          l10n.translate(
-                                              'cooking.finish.fat'),
+                                          l10n.translate('cooking.finish.fat'),
                                           '${fat}g',
                                           palette.fat,
                                           palette),
@@ -229,8 +226,7 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                   const SizedBox(height: AppSpacing.lg),
                                   // Meal type selector
                                   Text(
-                                    l10n.translate(
-                                        'cooking.finish.meal_type'),
+                                    l10n.translate('cooking.finish.meal_type'),
                                     style: t.labelM,
                                   ),
                                   const SizedBox(height: AppSpacing.xs),
@@ -249,10 +245,9 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                             () => selectedMealType = type),
                                         child: AnimatedContainer(
                                           duration: AppMotion.fast,
-                                          padding:
-                                              const EdgeInsets.symmetric(
-                                                  horizontal: AppSpacing.md,
-                                                  vertical: AppSpacing.xs),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: AppSpacing.md,
+                                              vertical: AppSpacing.xs),
                                           decoration: BoxDecoration(
                                             gradient: isSelected
                                                 ? AppGradients.brand(
@@ -261,9 +256,8 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                             color: isSelected
                                                 ? null
                                                 : palette.glassFill,
-                                            borderRadius:
-                                                BorderRadius.circular(
-                                                    AppRadius.full),
+                                            borderRadius: BorderRadius.circular(
+                                                AppRadius.full),
                                             border: Border.all(
                                               color: isSelected
                                                   ? primaryColor.withValues(
@@ -299,15 +293,139 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                       );
                                     }).toList(),
                                   ),
+                                  const SizedBox(height: AppSpacing.md),
+
+                                  // ── Share to Community toggle ───────────
+                                  GestureDetector(
+                                    onTap: () => setSheetState(
+                                        () => shareToComm = !shareToComm),
+                                    child: AnimatedContainer(
+                                      duration: AppMotion.fast,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: AppSpacing.md,
+                                          vertical: AppSpacing.xs),
+                                      decoration: BoxDecoration(
+                                        color: shareToComm
+                                            ? primaryColor.withValues(
+                                                alpha: 0.12)
+                                            : palette.glassFill,
+                                        borderRadius:
+                                            BorderRadius.circular(AppRadius.md),
+                                        border: Border.all(
+                                          color: shareToComm
+                                              ? primaryColor.withValues(
+                                                  alpha: 0.4)
+                                              : palette.glassStroke,
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Text(
+                                            '🍳',
+                                            style: TextStyle(fontSize: 16),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              l10n.translate(
+                                                  'cooking.share_toggle'),
+                                              style: t.labelM.copyWith(
+                                                color: shareToComm
+                                                    ? primaryColor
+                                                    : palette.textSecondary,
+                                                fontWeight: shareToComm
+                                                    ? FontWeight.w700
+                                                    : FontWeight.w400,
+                                              ),
+                                            ),
+                                          ),
+                                          Switch.adaptive(
+                                            value: shareToComm,
+                                            onChanged: (v) => setSheetState(
+                                                () => shareToComm = v),
+                                            activeThumbColor: primaryColor,
+                                            activeTrackColor: primaryColor
+                                                .withValues(alpha: 0.5),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Caption field — slides in when toggle is ON
+                                  AnimatedSize(
+                                    duration: AppMotion.normal,
+                                    curve: AppMotion.standard,
+                                    child: shareToComm
+                                        ? Padding(
+                                            padding: const EdgeInsets.only(
+                                                top: AppSpacing.sm),
+                                            child: TextField(
+                                              controller: captionCtrl,
+                                              maxLines: 2,
+                                              maxLength: 200,
+                                              style: t.bodyM.copyWith(
+                                                  color: palette.textPrimary),
+                                              decoration: InputDecoration(
+                                                hintText: l10n.translate(
+                                                    'cooking.share_caption_hint'),
+                                                hintStyle: t.bodyM.copyWith(
+                                                    color:
+                                                        palette.textTertiary),
+                                                filled: true,
+                                                fillColor: palette.glassFill,
+                                                border: OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          AppRadius.md),
+                                                  borderSide: BorderSide(
+                                                      color:
+                                                          palette.glassStroke,
+                                                      width: 0.8),
+                                                ),
+                                                enabledBorder:
+                                                    OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          AppRadius.md),
+                                                  borderSide: BorderSide(
+                                                      color:
+                                                          palette.glassStroke,
+                                                      width: 0.8),
+                                                ),
+                                                focusedBorder:
+                                                    OutlineInputBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          AppRadius.md),
+                                                  borderSide: BorderSide(
+                                                      color: primaryColor,
+                                                      width: 1.2),
+                                                ),
+                                                contentPadding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal:
+                                                            AppSpacing.md,
+                                                        vertical:
+                                                            AppSpacing.sm),
+                                                counterStyle: t.labelS.copyWith(
+                                                    color:
+                                                        palette.textTertiary),
+                                              ),
+                                            ),
+                                          )
+                                        : const SizedBox.shrink(),
+                                  ),
+
                                   const SizedBox(height: AppSpacing.xl),
                                   Row(
                                     children: [
                                       // Skip button — glass style
                                       Expanded(
                                         child: ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(
-                                                  AppRadius.button),
+                                          borderRadius: BorderRadius.circular(
+                                              AppRadius.button),
                                           child: BackdropFilter(
                                             filter: ImageFilter.blur(
                                                 sigmaX:
@@ -334,7 +452,8 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                                       BorderRadius.circular(
                                                           AppRadius.button),
                                                   border: Border.all(
-                                                      color: palette.glassStroke,
+                                                      color:
+                                                          palette.glassStroke,
                                                       width: 0.8),
                                                 ),
                                                 child: Center(
@@ -365,6 +484,11 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                                       Navigator.of(context);
                                                   final sheetNav =
                                                       Navigator.of(sheetCtx);
+                                                  final caption =
+                                                      captionCtrl.text.trim();
+                                                  final shouldShare =
+                                                      shareToComm;
+                                                  final recipe = widget.recipe;
                                                   try {
                                                     final uid = FirebaseAuth
                                                         .instance
@@ -376,8 +500,42 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                                         userId: uid,
                                                         mealType:
                                                             selectedMealType,
-                                                        recipe: widget.recipe,
+                                                        recipe: recipe,
                                                       );
+                                                      if (shouldShare) {
+                                                        unawaited(
+                                                          CommunityService()
+                                                              .createPost(
+                                                            caption.isEmpty
+                                                                ? recipe.title
+                                                                : caption,
+                                                            recipe.imageUrl !=
+                                                                    null
+                                                                ? [
+                                                                    recipe
+                                                                        .imageUrl!
+                                                                  ]
+                                                                : [],
+                                                            ['food'],
+                                                            postType:
+                                                                PostType.meal,
+                                                            metadata: {
+                                                              'has_cooked_badge':
+                                                                  true,
+                                                              'recipe_title':
+                                                                  recipe.title,
+                                                              'recipe_id':
+                                                                  recipe.id,
+                                                              if (recipe
+                                                                      .imageUrl !=
+                                                                  null)
+                                                                'image_url':
+                                                                    recipe
+                                                                        .imageUrl,
+                                                            },
+                                                          ),
+                                                        );
+                                                      }
                                                     }
                                                     if (mounted &&
                                                         ctx.mounted) {
@@ -433,8 +591,8 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                                       l10n.translate(
                                                           'cooking.finish.log'),
                                                       style: t.labelL.copyWith(
-                                                          color:
-                                                              palette.textInverse,
+                                                          color: palette
+                                                              .textInverse,
                                                           fontWeight:
                                                               FontWeight.w700),
                                                     ),
@@ -459,6 +617,7 @@ class _CookingModeScreenState extends State<CookingModeScreen>
         );
       },
     );
+    captionCtrl.dispose();
   }
 
   // Glass macro chip for the finish sheet
@@ -483,8 +642,8 @@ class _CookingModeScreenState extends State<CookingModeScreen>
             children: [
               Text(
                 value,
-                style:
-                    t.titleL.copyWith(color: color, fontWeight: FontWeight.bold),
+                style: t.titleL
+                    .copyWith(color: color, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSpacing.xxxs),
               Text(label, style: t.labelS),
@@ -562,8 +721,8 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                 ),
                                 Text(
                                   'Step ${_currentStep + 1} of $totalSteps',
-                                  style: t.titleL.copyWith(
-                                      color: palette.textPrimary),
+                                  style: t.titleL
+                                      .copyWith(color: palette.textPrimary),
                                 ),
                                 // Timer toggle — glass pill
                                 ClipRRect(
@@ -805,10 +964,8 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                           decoration: BoxDecoration(
                             gradient: _currentStep < totalSteps - 1
                                 ? AppGradients.brand(primaryColor)
-                                : LinearGradient(colors: [
-                                    palette.success,
-                                    palette.energy
-                                  ]),
+                                : LinearGradient(
+                                    colors: [palette.success, palette.energy]),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(

@@ -78,8 +78,8 @@ class _ProfileCompletenessCardState extends State<ProfileCompletenessCard> {
 
   List<_Step> _buildSteps(BuildContext context) => [
         _Step(
-          done: widget.user.photoURL != null &&
-              widget.user.photoURL!.isNotEmpty,
+          done:
+              widget.user.photoURL != null && widget.user.photoURL!.isNotEmpty,
           labelKey: 'profile_meter.step_photo',
           ctaKey: 'profile_meter.cta_photo',
           onTap: (ctx) => widget.onAddPhoto?.call(),
@@ -138,16 +138,14 @@ class _ProfileCompletenessCardState extends State<ProfileCompletenessCard> {
                   children: [
                     Text(
                       l10n.translate('profile_meter.title'),
-                      style: t.titleM
-                          .copyWith(fontWeight: FontWeight.w700),
+                      style: t.titleM.copyWith(fontWeight: FontWeight.w700),
                     ),
                     SizedBox(height: 2.h),
                     Text(
                       l10n
                           .translate('profile_meter.subtitle')
                           .replaceAll('{pct}', '$pct'),
-                      style: t.labelM
-                          .copyWith(color: palette.textSecondary),
+                      style: t.labelM.copyWith(color: palette.textSecondary),
                     ),
                   ],
                 ),
@@ -161,8 +159,7 @@ class _ProfileCompletenessCardState extends State<ProfileCompletenessCard> {
                     value: completedCount / steps.length,
                     strokeWidth: 4,
                     backgroundColor: palette.border,
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(palette.success),
+                    valueColor: AlwaysStoppedAnimation<Color>(palette.success),
                   ),
                 ),
               ),
@@ -174,14 +171,12 @@ class _ProfileCompletenessCardState extends State<ProfileCompletenessCard> {
                   padding: EdgeInsets.only(bottom: 6.h),
                   child: Row(
                     children: [
-                      Icon(s.icon,
-                          size: 16.r, color: palette.textSecondary),
+                      Icon(s.icon, size: 16.r, color: palette.textSecondary),
                       SizedBox(width: 8.w),
                       Expanded(
                         child: Text(
                           l10n.translate(s.labelKey),
-                          style: t.bodyM
-                              .copyWith(color: palette.textSecondary),
+                          style: t.bodyM.copyWith(color: palette.textSecondary),
                         ),
                       ),
                       Semantics(

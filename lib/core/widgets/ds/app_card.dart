@@ -38,8 +38,7 @@ class AppCard extends StatefulWidget {
   State<AppCard> createState() => _AppCardState();
 }
 
-class _AppCardState extends State<AppCard>
-    with SingleTickerProviderStateMixin {
+class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
     duration: AppMotion.instant,
@@ -73,9 +72,7 @@ class _AppCardState extends State<AppCard>
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(widget.radius.r),
-          border: widget.bordered
-              ? Border.all(color: palette.border)
-              : null,
+          border: widget.bordered ? Border.all(color: palette.border) : null,
           boxShadow: widget.elevated
               ? [
                   BoxShadow(
@@ -156,7 +153,10 @@ class _AppGlassCardState extends State<AppGlassCard>
   EdgeInsets _scaleInsets(EdgeInsetsGeometry p) {
     if (p is EdgeInsets) {
       return EdgeInsets.fromLTRB(
-        p.left.w, p.top.h, p.right.w, p.bottom.h,
+        p.left.w,
+        p.top.h,
+        p.right.w,
+        p.bottom.h,
       );
     }
     return EdgeInsets.all(AppSpacing.lg.r);
@@ -199,8 +199,8 @@ class _AppGlassCardState extends State<AppGlassCard>
           : ClipRRect(
               borderRadius: borderRadius,
               child: BackdropFilter(
-                filter: ImageFilter.blur(
-                    sigmaX: widget.blur, sigmaY: widget.blur),
+                filter:
+                    ImageFilter.blur(sigmaX: widget.blur, sigmaY: widget.blur),
                 child: Container(
                   padding: _scaleInsets(widget.padding),
                   decoration: BoxDecoration(

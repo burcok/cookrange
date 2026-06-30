@@ -338,9 +338,8 @@ class OnboardingMetricTile extends StatelessWidget {
                   Text(
                     value,
                     style: t.titleM.copyWith(
-                      color: filled
-                          ? palette.textPrimary
-                          : palette.textTertiary,
+                      color:
+                          filled ? palette.textPrimary : palette.textTertiary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -389,7 +388,8 @@ class OnboardingInfoNote extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: t.bodyM.copyWith(color: palette.textSecondary, height: 1.4),
+              style:
+                  t.bodyM.copyWith(color: palette.textSecondary, height: 1.4),
             ),
           ),
         ],

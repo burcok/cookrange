@@ -58,7 +58,8 @@ class AppGradients {
         Positioned(
           top: -80,
           right: -60,
-          child: _Blob(color: primary, size: 280, opacity: p.isDark ? 0.22 : 0.16),
+          child:
+              _Blob(color: primary, size: 280, opacity: p.isDark ? 0.22 : 0.16),
         ),
         Positioned(
           bottom: -100,

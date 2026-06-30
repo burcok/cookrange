@@ -68,7 +68,8 @@ class OnboardingActivityPage extends StatelessWidget {
           ),
           SizedBox(height: AppSpacing.xxs.h),
           _Subtitle(
-              text: l10n.translate('onboarding.v2.activity.motivators_subtitle')),
+              text:
+                  l10n.translate('onboarding.v2.activity.motivators_subtitle')),
           SizedBox(height: AppSpacing.md.h),
           Wrap(
             spacing: AppSpacing.sm.w,

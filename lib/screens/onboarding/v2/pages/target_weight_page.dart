@@ -193,7 +193,8 @@ class _ProjectionCard extends StatelessWidget {
       child: isMaintain
           ? Row(
               children: [
-                Icon(Icons.balance_rounded, color: primary, size: AppSize.iconLg.r),
+                Icon(Icons.balance_rounded,
+                    color: primary, size: AppSize.iconLg.r),
                 SizedBox(width: AppSpacing.md.w),
                 Expanded(
                   child: Text(

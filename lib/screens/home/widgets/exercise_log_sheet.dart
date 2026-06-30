@@ -160,9 +160,7 @@ class _ExerciseLogSheetState extends State<ExerciseLogSheet> {
                     duration: AppMotion.fast,
                     width: 80.w,
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? primary
-                          : palette.surfaceVariant,
+                      color: isSelected ? primary : palette.surfaceVariant,
                       borderRadius: BorderRadius.circular(AppRadius.card.r),
                       border: Border.all(
                           color: isSelected
@@ -182,7 +180,8 @@ class _ExerciseLogSheetState extends State<ExerciseLogSheet> {
                       children: [
                         Icon(
                           _exerciseIcons[ex.key] ?? Icons.sports_rounded,
-                          color: isSelected ? Colors.white : palette.textSecondary,
+                          color:
+                              isSelected ? Colors.white : palette.textSecondary,
                           size: 28.sp,
                         ),
                         SizedBox(height: 6.h),
@@ -213,7 +212,8 @@ class _ExerciseLogSheetState extends State<ExerciseLogSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(l10n.translate('exercise.duration_label'), style: t.titleM),
+                Text(l10n.translate('exercise.duration_label'),
+                    style: t.titleM),
                 Container(
                   padding:
                       EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
@@ -223,8 +223,8 @@ class _ExerciseLogSheetState extends State<ExerciseLogSheet> {
                   ),
                   child: Text(
                     '$_durationMinutes ${l10n.translate('exercise.minutes')}',
-                    style: t.labelM.copyWith(
-                        color: primary, fontWeight: FontWeight.bold),
+                    style: t.labelM
+                        .copyWith(color: primary, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],

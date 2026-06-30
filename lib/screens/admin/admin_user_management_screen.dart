@@ -15,8 +15,7 @@ class AdminUserManagementScreen extends StatefulWidget {
       _AdminUserManagementScreenState();
 }
 
-class _AdminUserManagementScreenState
-    extends State<AdminUserManagementScreen> {
+class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   final _searchCtrl = TextEditingController();
   final _adminService = AdminService();
   String _query = '';
@@ -218,8 +217,7 @@ class _UserTile extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(name,
-                          style: t.bodyM
-                              .copyWith(color: palette.textPrimary),
+                          style: t.bodyM.copyWith(color: palette.textPrimary),
                           overflow: TextOverflow.ellipsis),
                     ),
                     SizedBox(width: 8.w),
@@ -233,15 +231,13 @@ class _UserTile extends StatelessWidget {
                 if (email.isNotEmpty) ...[
                   SizedBox(height: 2.h),
                   Text(email,
-                      style:
-                          t.labelM.copyWith(color: palette.textSecondary),
+                      style: t.labelM.copyWith(color: palette.textSecondary),
                       overflow: TextOverflow.ellipsis),
                 ],
                 if (memberSince.isNotEmpty) ...[
                   SizedBox(height: 2.h),
                   Text(memberSince,
-                      style: t.labelS
-                          .copyWith(color: palette.textTertiary)),
+                      style: t.labelS.copyWith(color: palette.textTertiary)),
                 ],
               ],
             ),
@@ -328,8 +324,7 @@ class _RoleChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.sm.r),
       ),
       child: Text(label,
-          style: t.labelS.copyWith(
-              color: color, fontWeight: FontWeight.w600)),
+          style: t.labelS.copyWith(color: color, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -354,8 +349,8 @@ class _BannedBadge extends StatelessWidget {
           Icon(Icons.block_rounded, color: palette.error, size: 10.r),
           SizedBox(width: 2.w),
           Text('Banned',
-              style: t.labelS.copyWith(
-                  color: palette.error, fontWeight: FontWeight.w600)),
+              style: t.labelS
+                  .copyWith(color: palette.error, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -407,8 +402,8 @@ class _UserActionSheetState extends State<_UserActionSheet> {
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              '${widget.l10n.translate('admin.action_change_role')} ✓')));
+          content:
+              Text('${widget.l10n.translate('admin.action_change_role')} ✓')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -429,8 +424,7 @@ class _UserActionSheetState extends State<_UserActionSheet> {
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text('${widget.l10n.translate('admin.action_ban')} ✓')));
+          content: Text('${widget.l10n.translate('admin.action_ban')} ✓')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -461,8 +455,7 @@ class _UserActionSheetState extends State<_UserActionSheet> {
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
               child: Text(l10n.translate('admin.action_ban'),
-                  style: TextStyle(
-                      color: AppPalette.of(context).error)),
+                  style: TextStyle(color: AppPalette.of(context).error)),
             ),
           ],
         ),
@@ -480,8 +473,7 @@ class _UserActionSheetState extends State<_UserActionSheet> {
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text('${widget.l10n.translate('admin.action_unban')} ✓')));
+          content: Text('${widget.l10n.translate('admin.action_unban')} ✓')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -504,8 +496,7 @@ class _UserActionSheetState extends State<_UserActionSheet> {
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(widget.l10n.translate('admin.action_unban'),
-                style:
-                    TextStyle(color: AppPalette.of(context).success)),
+                style: TextStyle(color: AppPalette.of(context).success)),
           ),
         ],
       ),
@@ -728,12 +719,10 @@ class _SheetUserHeader extends StatelessWidget {
             children: [
               Text(name,
                   style: t.bodyL.copyWith(
-                      color: palette.textPrimary,
-                      fontWeight: FontWeight.w600)),
+                      color: palette.textPrimary, fontWeight: FontWeight.w600)),
               if (email.isNotEmpty)
                 Text(email,
-                    style:
-                        t.labelM.copyWith(color: palette.textSecondary)),
+                    style: t.labelM.copyWith(color: palette.textSecondary)),
             ],
           ),
         ),
@@ -819,8 +808,8 @@ class _StatChip extends StatelessWidget {
         child: Column(
           children: [
             Text(value,
-                style: t.titleL
-                    .copyWith(color: palette.textPrimary, fontWeight: FontWeight.w700)),
+                style: t.titleL.copyWith(
+                    color: palette.textPrimary, fontWeight: FontWeight.w700)),
             SizedBox(height: 2.h),
             Text(label,
                 style: t.labelS.copyWith(color: palette.textSecondary),
@@ -839,7 +828,8 @@ class _SendNotificationDialog extends StatefulWidget {
   const _SendNotificationDialog({required this.l10n});
 
   @override
-  State<_SendNotificationDialog> createState() => _SendNotificationDialogState();
+  State<_SendNotificationDialog> createState() =>
+      _SendNotificationDialogState();
 }
 
 class _SendNotificationDialogState extends State<_SendNotificationDialog> {
@@ -902,4 +892,3 @@ class _SendNotificationDialogState extends State<_SendNotificationDialog> {
     );
   }
 }
-

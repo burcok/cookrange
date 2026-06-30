@@ -74,7 +74,8 @@ class DemoContentSeeder {
           batch.set(weekRef, week);
         }
         await batch.commit();
-        debugPrint('DemoContentSeeder: content seeded for "${progDoc.data()['title']}"');
+        debugPrint(
+            'DemoContentSeeder: content seeded for "${progDoc.data()['title']}"');
       }
 
       await _db.collection('seeds').doc('demo').set(
@@ -102,9 +103,8 @@ class DemoContentSeeder {
       'coach_uid': 'demo',
       'coach_name': 'Cookrange Team',
       'title': '30-Day Fat Burn Challenge',
-      'description':
-          'A science-backed 30-day program combining HIIT workouts with '
-              'calorie-controlled meal plans to maximize fat loss. Suitable for all levels.',
+      'description': 'A science-backed 30-day program combining HIIT workouts with '
+          'calorie-controlled meal plans to maximize fat loss. Suitable for all levels.',
       'difficulty': 'intermediate',
       'category': 'weightLoss',
       'duration_weeks': 4,
@@ -175,27 +175,53 @@ class DemoContentSeeder {
     {
       'week_number': 1,
       'title': 'Foundation Week',
-      'description': 'Build your base with introductory HIIT and calorie-aware meals.',
+      'description':
+          'Build your base with introductory HIIT and calorie-aware meals.',
       'days': [
         {
-          'day_number': 1, 'title': 'Kickoff HIIT',
+          'day_number': 1,
+          'title': 'Kickoff HIIT',
           'sessions': [
-            {'title': '20-min Full Body HIIT', 'type': 'workout', 'duration_minutes': 20, 'description': 'Jump squats, burpees, mountain climbers — 40s on / 20s off.'},
-            {'title': 'High-protein breakfast', 'type': 'meal', 'description': 'Eggs & avocado toast, 400 kcal.'},
+            {
+              'title': '20-min Full Body HIIT',
+              'type': 'workout',
+              'duration_minutes': 20,
+              'description':
+                  'Jump squats, burpees, mountain climbers — 40s on / 20s off.'
+            },
+            {
+              'title': 'High-protein breakfast',
+              'type': 'meal',
+              'description': 'Eggs & avocado toast, 400 kcal.'
+            },
           ]
         },
         {
-          'day_number': 2, 'title': 'Active Recovery',
+          'day_number': 2,
+          'title': 'Active Recovery',
           'sessions': [
             {'title': 'Rest & stretch', 'type': 'rest', 'duration_minutes': 15},
-            {'title': 'Meal prep guide', 'type': 'article', 'description': 'How to batch-cook proteins for the week.'},
+            {
+              'title': 'Meal prep guide',
+              'type': 'article',
+              'description': 'How to batch-cook proteins for the week.'
+            },
           ]
         },
         {
-          'day_number': 3, 'title': 'Cardio Blast',
+          'day_number': 3,
+          'title': 'Cardio Blast',
           'sessions': [
-            {'title': '25-min Cardio Circuit', 'type': 'workout', 'duration_minutes': 25},
-            {'title': 'Calorie counting basics', 'type': 'video', 'duration_minutes': 8},
+            {
+              'title': '25-min Cardio Circuit',
+              'type': 'workout',
+              'duration_minutes': 25
+            },
+            {
+              'title': 'Calorie counting basics',
+              'type': 'video',
+              'duration_minutes': 8
+            },
           ]
         },
       ],
@@ -206,20 +232,35 @@ class DemoContentSeeder {
       'description': 'Increase workout density and tighten up your nutrition.',
       'days': [
         {
-          'day_number': 1, 'title': 'Tabata Training',
+          'day_number': 1,
+          'title': 'Tabata Training',
           'sessions': [
-            {'title': '30-min Tabata', 'type': 'workout', 'duration_minutes': 30},
-            {'title': 'Low-carb dinner idea', 'type': 'meal', 'description': 'Grilled chicken & roasted vegetables, 500 kcal.'},
+            {
+              'title': '30-min Tabata',
+              'type': 'workout',
+              'duration_minutes': 30
+            },
+            {
+              'title': 'Low-carb dinner idea',
+              'type': 'meal',
+              'description': 'Grilled chicken & roasted vegetables, 500 kcal.'
+            },
           ]
         },
         {
-          'day_number': 2, 'title': 'Strength & Burn',
+          'day_number': 2,
+          'title': 'Strength & Burn',
           'sessions': [
-            {'title': 'Dumbbell circuit', 'type': 'workout', 'duration_minutes': 35},
+            {
+              'title': 'Dumbbell circuit',
+              'type': 'workout',
+              'duration_minutes': 35
+            },
           ]
         },
         {
-          'day_number': 3, 'title': 'Rest Day',
+          'day_number': 3,
+          'title': 'Rest Day',
           'sessions': [
             {'title': 'Full rest', 'type': 'rest'},
           ]
@@ -232,22 +273,41 @@ class DemoContentSeeder {
       'description': 'Unlock your metabolic rate with compound movements.',
       'days': [
         {
-          'day_number': 1, 'title': 'Compound HIIT',
+          'day_number': 1,
+          'title': 'Compound HIIT',
           'sessions': [
-            {'title': '35-min Compound Cardio', 'type': 'workout', 'duration_minutes': 35},
+            {
+              'title': '35-min Compound Cardio',
+              'type': 'workout',
+              'duration_minutes': 35
+            },
           ]
         },
         {
-          'day_number': 2, 'title': 'Nutrition Focus',
+          'day_number': 2,
+          'title': 'Nutrition Focus',
           'sessions': [
-            {'title': 'Macro tracking walkthrough', 'type': 'video', 'duration_minutes': 12},
-            {'title': 'Balanced lunch bowl', 'type': 'meal', 'description': 'Quinoa, chickpeas, greens — 550 kcal.'},
+            {
+              'title': 'Macro tracking walkthrough',
+              'type': 'video',
+              'duration_minutes': 12
+            },
+            {
+              'title': 'Balanced lunch bowl',
+              'type': 'meal',
+              'description': 'Quinoa, chickpeas, greens — 550 kcal.'
+            },
           ]
         },
         {
-          'day_number': 3, 'title': 'Active Rest',
+          'day_number': 3,
+          'title': 'Active Rest',
           'sessions': [
-            {'title': '20-min yoga flow', 'type': 'workout', 'duration_minutes': 20},
+            {
+              'title': '20-min yoga flow',
+              'type': 'workout',
+              'duration_minutes': 20
+            },
           ]
         },
       ],
@@ -258,22 +318,37 @@ class DemoContentSeeder {
       'description': 'Maximum intensity final week — see your transformation.',
       'days': [
         {
-          'day_number': 1, 'title': 'Max HIIT',
+          'day_number': 1,
+          'title': 'Max HIIT',
           'sessions': [
-            {'title': '40-min Max Effort HIIT', 'type': 'workout', 'duration_minutes': 40},
+            {
+              'title': '40-min Max Effort HIIT',
+              'type': 'workout',
+              'duration_minutes': 40
+            },
           ]
         },
         {
-          'day_number': 2, 'title': 'Celebration Meal',
+          'day_number': 2,
+          'title': 'Celebration Meal',
           'sessions': [
             {'title': 'Progress check & reflection', 'type': 'article'},
-            {'title': 'Celebration healthy meal', 'type': 'meal', 'description': 'Your favourite balanced meal — stay on track!'},
+            {
+              'title': 'Celebration healthy meal',
+              'type': 'meal',
+              'description': 'Your favourite balanced meal — stay on track!'
+            },
           ]
         },
         {
-          'day_number': 3, 'title': 'Final Push',
+          'day_number': 3,
+          'title': 'Final Push',
           'sessions': [
-            {'title': '30-min Cardio Finisher', 'type': 'workout', 'duration_minutes': 30},
+            {
+              'title': '30-min Cardio Finisher',
+              'type': 'workout',
+              'duration_minutes': 30
+            },
           ]
         },
       ],
@@ -287,29 +362,58 @@ class DemoContentSeeder {
       'description': 'Establish your base lifts and high-protein nutrition.',
       'days': [
         {
-          'day_number': 1, 'title': 'Push Day A',
+          'day_number': 1,
+          'title': 'Push Day A',
           'sessions': [
-            {'title': 'Bench press 4×8', 'type': 'workout', 'duration_minutes': 45, 'description': 'Rest 90s between sets.'},
-            {'title': 'High-protein post-workout shake', 'type': 'meal', 'description': '40g whey, banana, oat milk.'},
+            {
+              'title': 'Bench press 4×8',
+              'type': 'workout',
+              'duration_minutes': 45,
+              'description': 'Rest 90s between sets.'
+            },
+            {
+              'title': 'High-protein post-workout shake',
+              'type': 'meal',
+              'description': '40g whey, banana, oat milk.'
+            },
           ]
         },
         {
-          'day_number': 2, 'title': 'Pull Day A',
+          'day_number': 2,
+          'title': 'Pull Day A',
           'sessions': [
-            {'title': 'Pull-ups & rows 4×8', 'type': 'workout', 'duration_minutes': 45},
+            {
+              'title': 'Pull-ups & rows 4×8',
+              'type': 'workout',
+              'duration_minutes': 45
+            },
           ]
         },
         {
-          'day_number': 3, 'title': 'Rest',
+          'day_number': 3,
+          'title': 'Rest',
           'sessions': [
-            {'title': 'Active recovery walk', 'type': 'rest', 'duration_minutes': 20},
+            {
+              'title': 'Active recovery walk',
+              'type': 'rest',
+              'duration_minutes': 20
+            },
           ]
         },
         {
-          'day_number': 4, 'title': 'Leg Day A',
+          'day_number': 4,
+          'title': 'Leg Day A',
           'sessions': [
-            {'title': 'Squat 4×8 + Romanian deadlift', 'type': 'workout', 'duration_minutes': 50},
-            {'title': 'Post-leg meal', 'type': 'meal', 'description': 'Rice, chicken, broccoli — 700 kcal.'},
+            {
+              'title': 'Squat 4×8 + Romanian deadlift',
+              'type': 'workout',
+              'duration_minutes': 50
+            },
+            {
+              'title': 'Post-leg meal',
+              'type': 'meal',
+              'description': 'Rice, chicken, broccoli — 700 kcal.'
+            },
           ]
         },
       ],
@@ -320,27 +424,47 @@ class DemoContentSeeder {
       'description': 'Add 2.5 kg to each lift from Week 1.',
       'days': [
         {
-          'day_number': 1, 'title': 'Push Day B',
+          'day_number': 1,
+          'title': 'Push Day B',
           'sessions': [
-            {'title': 'Incline press & dips', 'type': 'workout', 'duration_minutes': 50},
+            {
+              'title': 'Incline press & dips',
+              'type': 'workout',
+              'duration_minutes': 50
+            },
           ]
         },
         {
-          'day_number': 2, 'title': 'Pull Day B',
+          'day_number': 2,
+          'title': 'Pull Day B',
           'sessions': [
-            {'title': 'Weighted pull-ups & seated cable row', 'type': 'workout', 'duration_minutes': 50},
+            {
+              'title': 'Weighted pull-ups & seated cable row',
+              'type': 'workout',
+              'duration_minutes': 50
+            },
           ]
         },
         {
-          'day_number': 3, 'title': 'Leg Day B',
+          'day_number': 3,
+          'title': 'Leg Day B',
           'sessions': [
-            {'title': 'Front squat & leg press', 'type': 'workout', 'duration_minutes': 55},
+            {
+              'title': 'Front squat & leg press',
+              'type': 'workout',
+              'duration_minutes': 55
+            },
           ]
         },
         {
-          'day_number': 4, 'title': 'Rest',
+          'day_number': 4,
+          'title': 'Rest',
           'sessions': [
-            {'title': 'Foam rolling & mobility', 'type': 'rest', 'duration_minutes': 25},
+            {
+              'title': 'Foam rolling & mobility',
+              'type': 'rest',
+              'duration_minutes': 25
+            },
           ]
         },
       ],
@@ -354,24 +478,47 @@ class DemoContentSeeder {
       'description': 'Track what you eat and move gently every day.',
       'days': [
         {
-          'day_number': 1, 'title': 'Start Strong',
+          'day_number': 1,
+          'title': 'Start Strong',
           'sessions': [
-            {'title': '10-min morning walk', 'type': 'workout', 'duration_minutes': 10},
-            {'title': 'Mindful eating intro', 'type': 'article', 'description': 'Eat without screens for one meal today.'},
-            {'title': 'Balanced breakfast', 'type': 'meal', 'description': 'Oats, berries, nuts — 350 kcal.'},
+            {
+              'title': '10-min morning walk',
+              'type': 'workout',
+              'duration_minutes': 10
+            },
+            {
+              'title': 'Mindful eating intro',
+              'type': 'article',
+              'description': 'Eat without screens for one meal today.'
+            },
+            {
+              'title': 'Balanced breakfast',
+              'type': 'meal',
+              'description': 'Oats, berries, nuts — 350 kcal.'
+            },
           ]
         },
         {
-          'day_number': 2, 'title': 'Hydration Day',
+          'day_number': 2,
+          'title': 'Hydration Day',
           'sessions': [
             {'title': 'Drink 8 glasses of water', 'type': 'article'},
-            {'title': 'Light stretching', 'type': 'workout', 'duration_minutes': 15},
+            {
+              'title': 'Light stretching',
+              'type': 'workout',
+              'duration_minutes': 15
+            },
           ]
         },
         {
-          'day_number': 3, 'title': 'Sleep Habits',
+          'day_number': 3,
+          'title': 'Sleep Habits',
           'sessions': [
-            {'title': 'Sleep hygiene tips', 'type': 'video', 'duration_minutes': 7},
+            {
+              'title': 'Sleep hygiene tips',
+              'type': 'video',
+              'duration_minutes': 7
+            },
             {'title': 'Rest day', 'type': 'rest'},
           ]
         },
@@ -383,23 +530,38 @@ class DemoContentSeeder {
       'description': 'Lock in your morning and evening rituals.',
       'days': [
         {
-          'day_number': 1, 'title': 'Morning Ritual',
+          'day_number': 1,
+          'title': 'Morning Ritual',
           'sessions': [
             {'title': '15-min yoga', 'type': 'workout', 'duration_minutes': 15},
-            {'title': 'Journaling prompt', 'type': 'article', 'description': 'Write 3 things you\'re grateful for.'},
+            {
+              'title': 'Journaling prompt',
+              'type': 'article',
+              'description': 'Write 3 things you\'re grateful for.'
+            },
           ]
         },
         {
-          'day_number': 2, 'title': 'Nutrition Audit',
+          'day_number': 2,
+          'title': 'Nutrition Audit',
           'sessions': [
             {'title': 'Review your food log', 'type': 'article'},
-            {'title': 'Prep healthy snacks', 'type': 'meal', 'description': 'Hummus, carrot sticks, apple with nut butter.'},
+            {
+              'title': 'Prep healthy snacks',
+              'type': 'meal',
+              'description': 'Hummus, carrot sticks, apple with nut butter.'
+            },
           ]
         },
         {
-          'day_number': 3, 'title': 'Evening Wind-down',
+          'day_number': 3,
+          'title': 'Evening Wind-down',
           'sessions': [
-            {'title': '10-min evening walk', 'type': 'workout', 'duration_minutes': 10},
+            {
+              'title': '10-min evening walk',
+              'type': 'workout',
+              'duration_minutes': 10
+            },
             {'title': 'Digital sunset hour', 'type': 'rest'},
           ]
         },
@@ -411,23 +573,37 @@ class DemoContentSeeder {
       'description': 'Solidify your habits and celebrate progress.',
       'days': [
         {
-          'day_number': 1, 'title': 'Habit Stacking',
+          'day_number': 1,
+          'title': 'Habit Stacking',
           'sessions': [
             {'title': 'Combine 2 habits from Week 1 & 2', 'type': 'article'},
-            {'title': 'Balanced lunch', 'type': 'meal', 'description': 'Salad with protein + whole grain roll.'},
+            {
+              'title': 'Balanced lunch',
+              'type': 'meal',
+              'description': 'Salad with protein + whole grain roll.'
+            },
           ]
         },
         {
-          'day_number': 2, 'title': 'Active Day',
+          'day_number': 2,
+          'title': 'Active Day',
           'sessions': [
-            {'title': '20-min light jog', 'type': 'workout', 'duration_minutes': 20},
+            {
+              'title': '20-min light jog',
+              'type': 'workout',
+              'duration_minutes': 20
+            },
           ]
         },
         {
-          'day_number': 3, 'title': 'Celebrate!',
+          'day_number': 3,
+          'title': 'Celebrate!',
           'sessions': [
             {'title': 'Reflect on 21-day journey', 'type': 'article'},
-            {'title': 'Treat yourself to a healthy reward meal', 'type': 'meal'},
+            {
+              'title': 'Treat yourself to a healthy reward meal',
+              'type': 'meal'
+            },
           ]
         },
       ],

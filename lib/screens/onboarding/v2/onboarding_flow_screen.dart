@@ -101,34 +101,62 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
     const total = 14;
     Widget at(int i, Widget Function(int step) build) => build(i);
     return [
-      at(0, (s) => OnboardingNamePage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(1, (s) => OnboardingGoalGenderPage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(2, (s) => OnboardingActivityPage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(3, (s) => OnboardingMetricsPage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(4, (s) => OnboardingTargetWeightPage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(5, (s) => OnboardingMotivationPage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(6, (s) => OnboardingTrustPage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(7, (s) => OnboardingDietaryPage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(8, (s) => OnboardingCookingPage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(9, (s) => OnboardingLifestylePage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(10, (s) => OnboardingWaterPage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(11, (s) => OnboardingHouseholdPage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(12, (s) => OnboardingPremiumPage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
-      at(13, (s) => OnboardingReportPage(
-          step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          0,
+          (s) => OnboardingNamePage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          1,
+          (s) => OnboardingGoalGenderPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          2,
+          (s) => OnboardingActivityPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          3,
+          (s) => OnboardingMetricsPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          4,
+          (s) => OnboardingTargetWeightPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          5,
+          (s) => OnboardingMotivationPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          6,
+          (s) => OnboardingTrustPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          7,
+          (s) => OnboardingDietaryPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          8,
+          (s) => OnboardingCookingPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          9,
+          (s) => OnboardingLifestylePage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          10,
+          (s) => OnboardingWaterPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          11,
+          (s) => OnboardingHouseholdPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          12,
+          (s) => OnboardingPremiumPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          13,
+          (s) => OnboardingReportPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
     ];
   }
 

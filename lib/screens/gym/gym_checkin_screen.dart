@@ -323,10 +323,8 @@ class _QrScannerPageState extends State<_QrScannerPage> {
         parts[1] != 'checkin' ||
         parts[2] != widget.gymId) {
       if (mounted) {
-        AppSnackBar.error(
-            context,
-            AppLocalizations.of(context)
-                .translate('gym.checkin_invalid_qr'));
+        AppSnackBar.error(context,
+            AppLocalizations.of(context).translate('gym.checkin_invalid_qr'));
       }
       return;
     }
@@ -341,10 +339,8 @@ class _QrScannerPageState extends State<_QrScannerPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _processing = false);
-        AppSnackBar.error(
-            context,
-            AppLocalizations.of(context)
-                .translate('gym.checkin_invalid_qr'));
+        AppSnackBar.error(context,
+            AppLocalizations.of(context).translate('gym.checkin_invalid_qr'));
       }
     }
   }
@@ -379,7 +375,8 @@ class _QrScannerPageState extends State<_QrScannerPage> {
         ),
         title: Text(
           l10n.translate('gym.checkin_scan_qr'),
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          style:
+              const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
         ),
       ),
       body: Stack(
@@ -407,7 +404,8 @@ class _QrScannerPageState extends State<_QrScannerPage> {
             child: SizedBox(
               width: 240,
               height: 240,
-              child: CustomPaint(painter: _CornerPainter(color: palette.success)),
+              child:
+                  CustomPaint(painter: _CornerPainter(color: palette.success)),
             ),
           ),
           if (_processing)
@@ -443,8 +441,7 @@ class _CornerPainter extends CustomPainter {
     // Top-right
     canvas.drawLine(
         Offset(size.width - r, 0), Offset(size.width - r - len, 0), paint);
-    canvas.drawLine(
-        Offset(size.width, r), Offset(size.width, r + len), paint);
+    canvas.drawLine(Offset(size.width, r), Offset(size.width, r + len), paint);
     // Bottom-left
     canvas.drawLine(
         Offset(r, size.height), Offset(r + len, size.height), paint);

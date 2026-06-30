@@ -29,9 +29,7 @@ void openUserProfile(
   Navigator.push(
     context,
     AppTransitions.slideUp(
-      user != null
-          ? ProfileScreen(viewUser: user)
-          : ProfileScreen(userId: id),
+      user != null ? ProfileScreen(viewUser: user) : ProfileScreen(userId: id),
     ),
   );
 }

@@ -62,8 +62,7 @@ class BillingService {
     try {
       final response = await _iap.queryProductDetails(BillingProducts.ids);
       _products = response.productDetails;
-      debugPrint(
-          'BillingService: loaded ${_products.length} products, '
+      debugPrint('BillingService: loaded ${_products.length} products, '
           'notFound=${response.notFoundIDs}');
     } catch (e) {
       debugPrint('BillingService: _loadProducts error: $e');
@@ -108,8 +107,7 @@ class BillingService {
     final product = _products.firstWhere(
       (p) => p.id == BillingProducts.aiCreditsTopUp10,
       orElse: () {
-        debugPrint(
-            'BillingService.buyAiCreditsTopUp: product '
+        debugPrint('BillingService.buyAiCreditsTopUp: product '
             '${BillingProducts.aiCreditsTopUp10} not found — '
             'ensure it is registered in App Store Connect / Play Console');
         throw StateError(
@@ -181,14 +179,12 @@ class BillingService {
   Future<void> _grantAiCreditsTopUp(PurchaseDetails purchase) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      debugPrint(
-          'BillingService._grantAiCreditsTopUp: no authenticated user');
+      debugPrint('BillingService._grantAiCreditsTopUp: no authenticated user');
       return;
     }
     // In production: verify the receipt server-side before granting credits.
     await AiCreditService().addBonusCredits(uid, 10);
-    debugPrint(
-        'BillingService: granted +10 AI credits to uid=$uid '
+    debugPrint('BillingService: granted +10 AI credits to uid=$uid '
         '(productID=${purchase.productID})');
   }
 
@@ -210,8 +206,7 @@ class BillingService {
         'subscription_purchase_token':
             purchase.verificationData.serverVerificationData,
       });
-      debugPrint(
-          'BillingService: granted premium to $uid until $expiresAt');
+      debugPrint('BillingService: granted premium to $uid until $expiresAt');
     } catch (e) {
       debugPrint('BillingService._grantPremium Firestore error: $e');
     }

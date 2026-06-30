@@ -226,7 +226,8 @@ class CommunityPost {
       'recentLikers': likedByUsers.map((u) => u.toMap()).toList(),
       'post_type': postType.value,
       'metadata': metadata,
-      if (authorRole != null && authorRole!.isNotEmpty) 'author_role': authorRole,
+      if (authorRole != null && authorRole!.isNotEmpty)
+        'author_role': authorRole,
     };
   }
 

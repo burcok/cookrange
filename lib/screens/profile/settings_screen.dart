@@ -44,7 +44,14 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   // ── Notification group toggle state ──
-  static const _notifGroups = ['likes', 'comments', 'friends', 'system', 'referral'];
+  static const _notifGroups = [
+    'likes',
+    'comments',
+    'friends',
+    'system',
+    'referral',
+    'reminders'
+  ];
   Map<String, bool> _notifEnabled = {};
   bool _notifLoading = true;
 
@@ -320,6 +327,171 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// Lets the user toggle meal-time reminders (breakfast/lunch/dinner) and adjust
+  /// the time for each. Persists under `onboarding_data.meal_reminder` and
+  /// reschedules (or cancels) the precise daily local notifications.
+  Future<void> _showMealReminderSheet(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final userProvider = context.read<UserProvider>();
+    final uid = AuthService().currentUser?.uid;
+    if (uid == null) return;
+
+    final meal = (userProvider.user?.onboardingData?['meal_reminder'] as Map?)
+            ?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
+    var enabled = meal['enabled'] == true;
+    final rawTimes = meal['times'] as List?;
+    var breakfast = rawTimes != null && rawTimes.isNotEmpty
+        ? rawTimes[0].toString()
+        : '08:00';
+    var lunch = rawTimes != null && rawTimes.length > 1
+        ? rawTimes[1].toString()
+        : '12:30';
+    var dinner = rawTimes != null && rawTimes.length > 2
+        ? rawTimes[2].toString()
+        : '19:00';
+    var saving = false;
+
+    final saved = await AppSheet.show<bool>(
+      context: context,
+      title: l10n.translate('settings.reminders.meal_title'),
+      child: StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final palette = AppPalette.of(ctx);
+          final t = AppText.of(ctx);
+          final primary = context.read<ThemeProvider>().primaryColor;
+
+          Future<void> pickTime(
+              String current, void Function(String) onPicked) async {
+            final parts = current.split(':');
+            final picked = await showTimePicker(
+              context: ctx,
+              initialTime: TimeOfDay(
+                hour: int.tryParse(parts.first) ?? 8,
+                minute: int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0,
+              ),
+            );
+            if (picked != null) {
+              onPicked(
+                  '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}');
+            }
+          }
+
+          Future<void> save() async {
+            setSheetState(() => saving = true);
+            if (enabled) {
+              final granted =
+                  await PermissionService().requestNotifications(ctx);
+              if (!granted) {
+                setSheetState(() {
+                  enabled = false;
+                  saving = false;
+                });
+                return;
+              }
+            }
+            final times = [breakfast, lunch, dinner];
+            final map = <String, dynamic>{
+              'enabled': enabled,
+              'times': times,
+            };
+            await FirestoreService().updateUserData(uid, {
+              'onboarding_data': {'meal_reminder': map},
+            });
+            final user = userProvider.user;
+            if (user != null) {
+              final merged = <String, dynamic>{
+                ...?user.onboardingData,
+                'meal_reminder': map,
+              };
+              userProvider.setUser(user.copyWith(onboardingData: merged));
+            }
+            if (enabled) {
+              await PushNotificationService().scheduleDailyMealReminders(
+                times: times,
+                title: l10n.translate('settings.reminders.meal_notif_title'),
+                body: l10n.translate('settings.reminders.meal_notif_body'),
+              );
+            } else {
+              await PushNotificationService().cancelMealReminders();
+            }
+            if (ctx.mounted) Navigator.of(ctx).pop(true);
+          }
+
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.translate('settings.reminders.meal_subtitle'),
+                  style: t.bodyM.copyWith(color: palette.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    l10n.translate('settings.reminders.meal_enable'),
+                    style: t.titleM,
+                  ),
+                  value: enabled,
+                  activeTrackColor: primary,
+                  onChanged: (v) => setSheetState(() => enabled = v),
+                ),
+                if (enabled) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _WaterTimeField(
+                          label: l10n.translate('settings.reminders.breakfast'),
+                          time: breakfast,
+                          onTap: () => pickTime(breakfast,
+                              (v) => setSheetState(() => breakfast = v)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _WaterTimeField(
+                          label: l10n.translate('settings.reminders.lunch'),
+                          time: lunch,
+                          onTap: () => pickTime(
+                              lunch, (v) => setSheetState(() => lunch = v)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _WaterTimeField(
+                          label: l10n.translate('settings.reminders.dinner'),
+                          time: dinner,
+                          onTap: () => pickTime(
+                              dinner, (v) => setSheetState(() => dinner = v)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 20),
+                AppButton(
+                  label: l10n.translate('common.save'),
+                  loading: saving,
+                  onPressed: saving ? null : save,
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    if (saved == true && context.mounted) {
+      AppSnackBar.success(
+          context, l10n.translate('settings.reminders.meal_saved'));
+    }
+  }
+
   Future<void> _showAboutSheet(BuildContext context) async {
     final info = await PackageInfo.fromPlatform();
     if (!context.mounted) return;
@@ -495,8 +667,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
             child: Container(
               margin: EdgeInsets.only(bottom: 10.h),
-              padding:
-                  EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
               decoration: BoxDecoration(
                 color: isSelected
                     ? primary.withValues(alpha: 0.10)
@@ -518,9 +689,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       name,
                       style: t.bodyM.copyWith(
                         color: isSelected ? primary : palette.textPrimary,
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w400,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w400,
                       ),
                     ),
                   ),
@@ -651,8 +821,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                _languageDisplayName(
-                                    languageProvider.currentLocale.languageCode),
+                                _languageDisplayName(languageProvider
+                                    .currentLocale.languageCode),
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: palette.textSecondary,
@@ -809,13 +979,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               : palette.info.withValues(alpha: 0.12),
                           title:
                               appLoc.translate('water_reminder.settings_title'),
-                          subtitle: ((userProvider.user?.onboardingData?[
-                                          'water_reminder'] as Map?)?['enabled'] ==
+                          subtitle: ((userProvider.user
+                                          ?.onboardingData?['water_reminder']
+                                      as Map?)?['enabled'] ==
                                   true)
                               ? appLoc.translate('water_reminder.settings_on')
                               : appLoc.translate('water_reminder.settings_off'),
                           palette: palette,
                           onTap: () => _showWaterReminderSheet(context),
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.restaurant_rounded,
+                          iconColor: palette.success,
+                          iconBgColor: palette.isDark
+                              ? palette.success.withValues(alpha: 0.3)
+                              : palette.success.withValues(alpha: 0.12),
+                          title:
+                              appLoc.translate('settings.reminders.meal_title'),
+                          subtitle: ((userProvider.user
+                                          ?.onboardingData?['meal_reminder']
+                                      as Map?)?['enabled'] ==
+                                  true)
+                              ? appLoc.translate('settings.reminders.meal_on')
+                              : appLoc.translate('settings.reminders.meal_off'),
+                          palette: palette,
+                          onTap: () => _showMealReminderSheet(context),
                           trailing: Icon(Icons.chevron_right,
                               color: palette.textSecondary),
                         ),
@@ -1045,15 +1236,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             iconBgColor: palette.isDark
                                 ? palette.warning.withValues(alpha: 0.2)
                                 : palette.warning.withValues(alpha: 0.15),
-                            title: appLoc.translate('settings.ai_credits_title'),
+                            title:
+                                appLoc.translate('settings.ai_credits_title'),
                             subtitle:
                                 appLoc.translate('settings.ai_credits_sub'),
                             palette: palette,
                             onTap: () => unawaited(AiCreditsSheet.show(
                               context,
                               uid: userProvider.user!.uid,
-                              isPremium: userProvider.user!.subscriptionTier
-                                  .isPremiumOrAbove,
+                              isPremium: userProvider
+                                  .user!.subscriptionTier.isPremiumOrAbove,
                             )),
                             trailing: Icon(Icons.chevron_right_rounded,
                                 color: palette.textSecondary),
@@ -1071,18 +1263,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       children: [
                         _buildSettingsRow(
                           context,
-                          icon: userProvider.user?.hasRole(UserRole.gymOwner) == true
+                          icon: userProvider.user?.hasRole(UserRole.gymOwner) ==
+                                  true
                               ? Icons.dashboard_rounded
                               : Icons.add_business_rounded,
                           iconColor: palette.info,
                           iconBgColor: palette.isDark
                               ? palette.info.withValues(alpha: 0.2)
                               : palette.info.withValues(alpha: 0.15),
-                          title: userProvider.user?.hasRole(UserRole.gymOwner) == true
+                          title: userProvider.user
+                                      ?.hasRole(UserRole.gymOwner) ==
+                                  true
                               ? appLoc.translate('settings.business.my_gym')
                               : appLoc
                                   .translate('settings.business.register_gym'),
-                          subtitle: userProvider.user?.hasRole(UserRole.gymOwner) == true
+                          subtitle: userProvider.user
+                                      ?.hasRole(UserRole.gymOwner) ==
+                                  true
                               ? appLoc.translate('settings.business.my_gym_sub')
                               : appLoc.translate(
                                   'settings.business.register_gym_sub'),
@@ -1101,7 +1298,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           iconBgColor: palette.isDark
                               ? const Color(0xFF6366F1).withValues(alpha: 0.2)
                               : const Color(0xFF6366F1).withValues(alpha: 0.15),
-                          title: userProvider.user?.hasRole(UserRole.coach) == true
+                          title: userProvider.user?.hasRole(UserRole.coach) ==
+                                  true
                               ? appLoc
                                   .translate('settings.business.my_coaching')
                               : appLoc
@@ -1141,7 +1339,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ? palette.error.withValues(alpha: 0.2)
                                 : palette.error.withValues(alpha: 0.15),
                             title: appLoc.translate('admin.panel_title'),
-                            subtitle: '${appLoc.translate('admin.tab_coaches')} & ${appLoc.translate('admin.tab_gyms')}',
+                            subtitle:
+                                '${appLoc.translate('admin.tab_coaches')} & ${appLoc.translate('admin.tab_gyms')}',
                             palette: palette,
                             onTap: () => Navigator.push(
                               context,
@@ -1292,11 +1491,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ── Notifications section ──────────────────────────────────────────────────
 
   static const _notifGroupMeta = <String, (IconData, String)>{
-    'likes':    (Icons.thumb_up_outlined,          'settings.notif_prefs.likes'),
-    'comments': (Icons.comment_outlined,           'settings.notif_prefs.comments'),
-    'friends':  (Icons.people_outline_rounded,     'settings.notif_prefs.friends'),
-    'system':   (Icons.notifications_outlined,     'settings.notif_prefs.system'),
-    'referral': (Icons.card_giftcard_outlined,     'settings.notif_prefs.referral'),
+    'likes': (Icons.thumb_up_outlined, 'settings.notif_prefs.likes'),
+    'comments': (Icons.comment_outlined, 'settings.notif_prefs.comments'),
+    'friends': (Icons.people_outline_rounded, 'settings.notif_prefs.friends'),
+    'system': (Icons.notifications_outlined, 'settings.notif_prefs.system'),
+    'referral': (Icons.card_giftcard_outlined, 'settings.notif_prefs.referral'),
+    'reminders': (Icons.alarm_on_rounded, 'settings.notif_prefs.reminders'),
   };
 
   Widget _buildNotificationsSection({
@@ -1325,7 +1525,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   AppSkeletonBox(width: 32, height: 32, radius: 32),
                   SizedBox(width: AppSpacing.sm),
                   Expanded(
-                    child: AppSkeletonBox(width: double.infinity, radius: AppRadius.card),
+                    child: AppSkeletonBox(
+                        width: double.infinity, radius: AppRadius.card),
                   ),
                   SizedBox(width: AppSpacing.sm),
                   AppSkeletonBox(width: 48, height: 28, radius: AppRadius.md),
@@ -1544,8 +1745,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Iterable<Widget> _intersperse(
-      List<Widget> items, Widget separator) sync* {
+  Iterable<Widget> _intersperse(List<Widget> items, Widget separator) sync* {
     for (var i = 0; i < items.length; i++) {
       yield items[i];
       if (i < items.length - 1) yield separator;
@@ -2235,8 +2435,8 @@ class _SettingsAppBar extends StatelessWidget {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: Icon(Icons.arrow_back,
-                          color: palette.textSecondary),
+                      icon:
+                          Icon(Icons.arrow_back, color: palette.textSecondary),
                       onPressed: onBack,
                     ),
                     Expanded(
@@ -2303,8 +2503,8 @@ class _WaterTimeField extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               time,
-              style:
-                  t.titleM.copyWith(color: primary, fontWeight: FontWeight.w700),
+              style: t.titleM
+                  .copyWith(color: primary, fontWeight: FontWeight.w700),
             ),
           ],
         ),

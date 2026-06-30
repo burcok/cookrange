@@ -941,7 +941,21 @@
       "comments": "Yorumlar",
       "friends": "Arkadaş Aktivitesi",
       "system": "Sistem ve Güncellemeler",
-      "referral": "Referans Ödülleri"
+      "referral": "Referans Ödülleri",
+      "reminders": "Hatırlatıcılar ve Uyarılar"
+    },
+    "reminders": {
+      "meal_title": "Öğün hatırlatıcıları",
+      "meal_subtitle": "Öğünlerinizi kaydetmek için sabah, öğle ve akşam yemeği saatlerinde günlük bir hatırlatıcı alın",
+      "meal_enable": "Öğün hatırlatıcılarını etkinleştir",
+      "meal_on": "Açık",
+      "meal_off": "Kapalı",
+      "meal_saved": "Öğün hatırlatıcıları kaydedildi",
+      "meal_notif_title": "🍽 Öğününü kaydetme zamanı!",
+      "meal_notif_body": "Yediklerini takip etmek için dokun",
+      "breakfast": "Kahvaltı",
+      "lunch": "Öğle",
+      "dinner": "Akşam"
     }
   },
   "sharing": {
@@ -957,7 +971,9 @@
     "shopping_list_prefix": "🛒 {title}\n\n",
     "shopping_list_default_prefix": "🛒 Alışveriş Listesi {date}\n\n",
     "referral_text": "🎁 Yapay zeka destekli beslenme uygulaması Cookrange'e katıl!\n\nDavet kodumu (**{code}**) kullanarak sen de ben de {rewardDays} ücretsiz Premium kazanalım.\n\n{link}\n\n{appTag}",
-    "referral_subject": "Cookrange'e Katıl — Ücretsiz Premium Daveti"
+    "referral_subject": "Cookrange'e Katıl — Ücretsiz Premium Daveti",
+    "weekly_recap_text": "Hafta puanım: {score}/100 🏆\nBaşarılar: {wins}\nOdak: {recommendation}\n{appTag}",
+    "weekly_recap_subject": "Haftalık Fitness Özetim"
   },
   "error": {
     "initialization_failed_message": "Uygulama başlatılamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.",
@@ -1012,7 +1028,18 @@
       "coach_application_approved": "Antrenör başvurun onaylandı! 🎉",
       "coach_application_rejected": "Antrenör başvurun incelendi",
       "gym_application_approved": "Salon başvurun onaylandı! 🎉",
-      "gym_application_rejected": "Salon başvurun incelendi"
+      "gym_application_rejected": "Salon başvurun incelendi",
+      "streak_freeze_used_title": "Seriniz bir dondurmayla kurtarıldı ❄️",
+      "streak_freeze_used_body": "Bir dondurma jetonu {days} günlük serini korudu.",
+      "achievement_earned_title": "Yeni başarım: {name} 🏅",
+      "cat_achievement": "Başarım",
+      "meal_reminder_title": "🍽 Öğününü kaydetme zamanı!",
+      "meal_reminder_body": "Beslenme hedeflerinde kalmak için yediklerini takip et",
+      "streak_at_risk_title": "🔥 Seriniz tehlikede!",
+      "streak_at_risk_body": "Serinizi korumak için bugün bir öğün kaydedin",
+      "weekly_plan_ready_title": "📅 Yeni hafta, yeni plan!",
+      "weekly_plan_ready_body": "Haftalık yemek planın hazır — hadi başlayalım",
+      "cat_reminders": "Hatırlatıcılar"
     }
   },
   "common": {
@@ -1046,7 +1073,8 @@
     "retry_in_hours": "Tekrar {hours} saat içinde denenecek",
     "retry_in_days": "Tekrar {days} gün içinde denenecek",
     "next": "İleri",
-    "error": "Hata"
+    "error": "Hata",
+    "stale": "Eski"
   },
   "errors": {
     "general": "Bir şeyler yanlış gitti",
@@ -1189,6 +1217,22 @@
       "action": "Tekrar gönder",
       "sent": "Doğrulama e-postası gönderildi — gelen kutunu kontrol et.",
       "send_failed": "Şu anda gönderilemedi. Lütfen tekrar dene."
+    },
+    "freeze_count": "❄️ {count}",
+    "freeze_used_banner_title": "Seri Kurtarıldı! ❄️",
+    "freeze_used_banner_body": "Bir dondurma jetonu {days} günlük serini korudu.",
+    "streak_calendar_title": "Seri Takvimi",
+    "streak_calendar_label": "Günlük Seri",
+    "streak_calendar_logged": "Kaydedildi",
+    "streak_calendar_today": "Bugün",
+    "recap": {
+      "title": "Son 7 Gün",
+      "today_short": "Bugün",
+      "days_logged": "{count}/7 gün",
+      "avg": "Ort.",
+      "target": "Hedef",
+      "empty_title": "Henüz kayıt yok",
+      "empty_subtitle": "İlk öğününü kaydet ve serine başla!"
     }
   },
   "ai_chat": {
@@ -1438,7 +1482,8 @@
     "verified_coach": "Koç",
     "verified_gym_owner": "Spor Salonu Sahibi",
     "view_profile": "Profili Gör",
-    "view_gym_profile": "Spor Salonu Profilini Gör"
+    "view_gym_profile": "Spor Salonu Profilini Gör",
+    "cooked_it_badge": "🍳 Pişirdim"
   },
   "menu": {
     "title": "Menü",
@@ -1676,7 +1721,11 @@
       },
       "log": "Kaydet & Bitir",
       "skip": "Geç"
-    }
+    },
+    "share_toggle": "Topluluğa Paylaş",
+    "share_caption_hint": "Bir açıklama ekle (isteğe bağlı)...",
+    "share_success": "Toplulukta paylaşıldı!",
+    "share_error": "Paylaşılamadı — öğün yine de kaydedildi"
   },
   "leaderboard": {
     "screen_title": "Sıralama",
@@ -1744,7 +1793,8 @@
     "history": "Geçmiş",
     "history_empty_title": "Henüz analiz yok",
     "history_empty_msg": "Geçmiş yemek analizleriniz burada görünecek.",
-    "photo_unavailable": "Fotoğraf analizi şu an kullanılamıyor."
+    "photo_unavailable": "Fotoğraf analizi şu an kullanılamıyor.",
+    "express_snap_btn": "Fotoğrafla Kaydet"
   },
   "barcode": {
     "scan_btn": "Barkod Tara",
@@ -1861,7 +1911,8 @@
     "system": "Sistem ve Seriler",
     "challenges": "Meydan Okumalar",
     "referral": "Referans Ödülleri",
-    "saved": "Tercihler kaydedildi"
+    "saved": "Tercihler kaydedildi",
+    "reminders": "Hatırlatıcılar ve yeniden etkileşim"
   },
   "dietary_prefs": {
     "title": "Beslenme Tercihleri",
@@ -2344,7 +2395,28 @@
     "paywall_processing": "İşleniyor...",
     "paywall_not_available": "Bu cihazda satın alma kullanılamıyor.",
     "paywall_restore_success": "Satın alımlar başarıyla geri yüklendi!",
-    "paywall_restore_none": "Önceki satın alım bulunamadı."
+    "paywall_restore_none": "Önceki satın alım bulunamadı.",
+    "weekly_recap_title": "Haftalık Koç Özeti",
+    "weekly_recap_subtitle": "AI destekli haftalık performans değerlendirmen",
+    "weekly_recap_generate": "Özet Oluştur",
+    "weekly_recap_regenerate": "Yeniden Oluştur",
+    "weekly_recap_generating": "Haftan analiz ediliyor...",
+    "weekly_recap_score": "Hafta Puanı",
+    "weekly_recap_wins": "Başarılar",
+    "weekly_recap_challenges": "Gelişim Alanları",
+    "weekly_recap_recommendation": "Gelecek Haftanın Odağı",
+    "weekly_recap_trend_improving": "Gelişiyor",
+    "weekly_recap_trend_steady": "Stabil",
+    "weekly_recap_trend_declining": "Dikkat",
+    "weekly_recap_share": "Özeti Paylaş",
+    "weekly_recap_low_data": "Tam AI analizi için daha fazla gün kayıt et",
+    "weekly_recap_no_recap": "Bu hafta için özet yok",
+    "weekly_recap_no_recap_sub": "Haftalık AI koç özetini oluştur: başarılar, gelişim alanları ve odak noktası.",
+    "weekly_recap_week_of": "{date} haftası",
+    "weekly_recap_error": "Özet oluşturulamadı. Lütfen tekrar dene.",
+    "weekly_recap_card_title": "Haftalık Özet",
+    "weekly_recap_card_cta": "Oluştur",
+    "weekly_recap_card_view": "Özeti gör"
   },
   "ai_credits": {
     "unlimited": "Sınırsız",
@@ -2934,5 +3006,55 @@
     "cat_diet": "Diyet",
     "cat_sport": "Sporcu",
     "cat_turkish_classic": "Türk Klasikleri"
+  },
+  "achievements": {
+    "title": "Başarımlar",
+    "locked": "Kilitli",
+    "points": "puan",
+    "earned_on": "{date} tarihinde kazanıldı",
+    "first_meal": {
+      "title": "İlk Lokma",
+      "desc": "İlk öğününü kayıt ettin"
+    },
+    "first_photo": {
+      "title": "Yemek Kamerası",
+      "desc": "Fotoğrafla öğün kaydetti"
+    },
+    "first_post": {
+      "title": "İlk Gönderi",
+      "desc": "Toplulukta ilk gönderini paylaştın"
+    },
+    "first_cook": {
+      "title": "Ev Aşçısı",
+      "desc": "Uygulamadan bir tarif pişirip kayıt ettin"
+    },
+    "streak_7": {
+      "title": "Haftalık Seri",
+      "desc": "7 gün arka arkaya giriş yaptın"
+    },
+    "streak_30": {
+      "title": "Aylık Seri",
+      "desc": "30 gün arka arkaya giriş yaptın"
+    },
+    "streak_100": {
+      "title": "Yüzlük",
+      "desc": "100 gün arka arkaya giriş yaptın"
+    },
+    "tier_active": {
+      "title": "Aktif",
+      "desc": "Aktif itibar seviyesine ulaştın"
+    },
+    "tier_contributor": {
+      "title": "Katkıcı",
+      "desc": "Katkıcı itibar seviyesine ulaştın"
+    },
+    "tier_expert": {
+      "title": "Uzman",
+      "desc": "Uzman itibar seviyesine ulaştın"
+    },
+    "tier_legend": {
+      "title": "Efsane",
+      "desc": "Efsane itibar seviyesine ulaştın"
+    }
   }
 }

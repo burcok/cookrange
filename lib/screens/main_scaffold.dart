@@ -161,8 +161,9 @@ class _MainScaffoldState extends State<MainScaffold>
             // ── Voice assistant overlay ──────────────────────────────────────
             Selector<NavigationProvider, bool>(
               selector: (_, nav) => nav.isVoiceAssistantOpen,
-              builder: (_, isOpen, __) =>
-                  isOpen ? const VoiceAssistantOverlay() : const SizedBox.shrink(),
+              builder: (_, isOpen, __) => isOpen
+                  ? const VoiceAssistantOverlay()
+                  : const SizedBox.shrink(),
             ),
 
             // ── Side menu — kept in tree (Offstage) for zero-rebuild opens ──

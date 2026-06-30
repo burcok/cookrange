@@ -39,7 +39,8 @@ class GymPostService {
     required bool isAnnouncement,
     required bool isOwner,
   }) async {
-    debugPrint('[GymPostService] createPost gymId=$gymId isAnnouncement=$isAnnouncement');
+    debugPrint(
+        '[GymPostService] createPost gymId=$gymId isAnnouncement=$isAnnouncement');
     try {
       final user = _auth.currentUser;
       if (user == null) throw Exception('Not authenticated');
@@ -164,9 +165,8 @@ class GymPostService {
         .orderBy('created_at', descending: true)
         .snapshots()
         .map((snap) {
-      final posts = snap.docs
-          .map((d) => GymPostModel.fromFirestore(d))
-          .toList();
+      final posts =
+          snap.docs.map((d) => GymPostModel.fromFirestore(d)).toList();
       // Sort client-side: pinned first, then by date DESC
       posts.sort((a, b) {
         if (a.isPinned && !b.isPinned) return -1;
@@ -187,9 +187,8 @@ class GymPostService {
         .orderBy('created_at', descending: true)
         .snapshots()
         .map((snap) {
-      final posts = snap.docs
-          .map((d) => GymPostModel.fromFirestore(d))
-          .toList();
+      final posts =
+          snap.docs.map((d) => GymPostModel.fromFirestore(d)).toList();
       posts.sort((a, b) {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
@@ -230,7 +229,8 @@ class GymPostService {
         'comment_count': FieldValue.increment(1),
       });
       await batch.commit();
-      debugPrint('[GymPostService] addComment success commentId=${commentRef.id}');
+      debugPrint(
+          '[GymPostService] addComment success commentId=${commentRef.id}');
     } catch (e, st) {
       debugPrint('[GymPostService] addComment error: $e\n$st');
       rethrow;
@@ -262,8 +262,7 @@ class GymPostService {
 
   // ── Comments stream ─────────────────────────────────────────────────────────
 
-  Stream<List<GymCommentModel>> getCommentsStream(
-      String gymId, String postId) {
+  Stream<List<GymCommentModel>> getCommentsStream(String gymId, String postId) {
     debugPrint(
         '[GymPostService] getCommentsStream gymId=$gymId postId=$postId');
     return _commentsRef(gymId, postId)

@@ -99,8 +99,7 @@ class ProgramModel {
       coachPhotoUrl: d['coach_photo_url'] as String?,
       title: d['title'] as String? ?? '',
       description: d['description'] as String? ?? '',
-      difficulty:
-          ProgramDifficultyX.fromString(d['difficulty'] as String?),
+      difficulty: ProgramDifficultyX.fromString(d['difficulty'] as String?),
       category: ProgramCategoryX.fromString(d['category'] as String?),
       durationWeeks: d['duration_weeks'] as int? ?? 4,
       sessionsPerWeek: d['sessions_per_week'] as int? ?? 3,

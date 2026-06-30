@@ -41,8 +41,7 @@ class GlassContainer extends StatelessWidget {
           color: color.withValues(
               alpha: opacity + 0.2 > 1.0 ? 1.0 : opacity + 0.2),
           borderRadius: borderRadius ?? BorderRadius.circular(AppRadius.xl),
-          border: border ??
-              Border.all(color: palette.border),
+          border: border ?? Border.all(color: palette.border),
           boxShadow: boxShadow,
         ),
         child: child,
@@ -63,8 +62,7 @@ class GlassContainer extends StatelessWidget {
             padding: padding,
             decoration: BoxDecoration(
               color: color.withValues(alpha: opacity),
-              border: border ??
-                  Border.all(color: palette.border),
+              border: border ?? Border.all(color: palette.border),
             ),
             child: child,
           ),
@@ -113,7 +111,9 @@ class StoryCircle extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isNew ? primaryColor.withValues(alpha: 0.12) : palette.surface,
+                color: isNew
+                    ? primaryColor.withValues(alpha: 0.12)
+                    : palette.surface,
                 image: imageUrl != null
                     ? DecorationImage(
                         image: NetworkImage(imageUrl!),
@@ -124,8 +124,7 @@ class StoryCircle extends StatelessWidget {
               child: isNew
                   ? Center(
                       child: Icon(Icons.add_rounded,
-                          color: primaryColor,
-                          size: 30),
+                          color: primaryColor, size: 30),
                     )
                   : null,
             ),
@@ -171,7 +170,8 @@ class MinimalCustomDropdown<T> extends StatelessWidget {
       child: PopupMenuButton<T>(
         onSelected: onChanged,
         offset: const Offset(0, 32),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md)),
         elevation: 4,
         surfaceTintColor: Colors.transparent,
         tooltip: '',
@@ -186,15 +186,15 @@ class MinimalCustomDropdown<T> extends StatelessWidget {
                     child: Text(
                       itemBuilder(item),
                       style: textStyles.titleM.copyWith(
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w500,
                         color: isSelected ? primaryColor : palette.textPrimary,
                       ),
                     ),
                   ),
                   if (isSelected)
                     Icon(Icons.check_rounded,
-                        size: AppSize.iconSm,
-                        color: primaryColor)
+                        size: AppSize.iconSm, color: primaryColor)
                 ],
               ),
             );

@@ -152,15 +152,15 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
     final l10n = AppLocalizations.of(context);
     final user = context.read<UserProvider>().user;
     if (user == null) return;
-    final locale =
-        context.read<LanguageProvider>().currentLocale.languageCode;
+    final locale = context.read<LanguageProvider>().currentLocale.languageCode;
 
     setState(() => _isGenerating = true);
     try {
       final plan =
           await WeeklyMealPlanService().getWeeklyMealPlan(user, locale: locale);
       if (plan == null || plan.days.isEmpty) {
-        if (mounted) AppSnackBar.warning(context, l10n.translate('shopping.no_plan'));
+        if (mounted)
+          AppSnackBar.warning(context, l10n.translate('shopping.no_plan'));
         return;
       }
 
@@ -209,7 +209,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
       }
 
       if (merged.isEmpty) {
-        if (mounted) AppSnackBar.warning(context, l10n.translate('shopping.no_ingredients'));
+        if (mounted)
+          AppSnackBar.warning(
+              context, l10n.translate('shopping.no_ingredients'));
         return;
       }
 
@@ -226,11 +228,14 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         _loadShoppingList();
         _syncToCloud();
         unawaited(HapticFeedback.mediumImpact());
-        AppSnackBar.success(context,
-            l10n.translate('shopping.generated', variables: {'count': '${merged.length}'}));
+        AppSnackBar.success(
+            context,
+            l10n.translate('shopping.generated',
+                variables: {'count': '${merged.length}'}));
       }
     } catch (e) {
-      if (mounted) AppSnackBar.error(context, '${l10n.translate('common.error')}: $e');
+      if (mounted)
+        AppSnackBar.error(context, '${l10n.translate('common.error')}: $e');
     } finally {
       if (mounted) setState(() => _isGenerating = false);
     }
@@ -612,16 +617,16 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
               title: AnimatedDefaultTextStyle(
                 duration: AppMotion.fast,
                 style: AppText.of(context).titleM.copyWith(
-                  decoration: isChecked
-                      ? TextDecoration.lineThrough
-                      : TextDecoration.none,
-                  decorationColor: palette.textTertiary,
-                  color: isChecked
-                      ? palette.textTertiary
-                      : palette.textPrimary,
-                  fontWeight:
-                      isChecked ? FontWeight.normal : FontWeight.w600,
-                ),
+                      decoration: isChecked
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
+                      decorationColor: palette.textTertiary,
+                      color: isChecked
+                          ? palette.textTertiary
+                          : palette.textPrimary,
+                      fontWeight:
+                          isChecked ? FontWeight.normal : FontWeight.w600,
+                    ),
                 child: Text(item.name),
               ),
               subtitle: item.sourceMeals.isEmpty
@@ -651,9 +656,9 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                 child: Text(
                   '${item.amount % 1 == 0 ? item.amount.toInt() : item.amount} ${item.unit}',
                   style: AppText.of(context).labelM.copyWith(
-                    color: isChecked ? palette.textTertiary : primary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                        color: isChecked ? palette.textTertiary : primary,
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
               ),
             ),
@@ -755,8 +760,7 @@ class _AddItemDialogState extends State<_AddItemDialog> {
                   final name = _nameController.text.trim();
                   if (name.isEmpty) return;
                   setState(() => _isAdding = true);
-                  final amount =
-                      double.tryParse(_amountController.text) ?? 1.0;
+                  final amount = double.tryParse(_amountController.text) ?? 1.0;
                   final unit = _unitController.text.trim().isEmpty
                       ? 'pcs'
                       : _unitController.text.trim();

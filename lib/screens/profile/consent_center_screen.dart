@@ -111,7 +111,8 @@ class _ConsentCenterScreenState extends State<ConsentCenterScreen> {
           for (final (type, key) in docs)
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.description_outlined, color: palette.textSecondary),
+              leading: Icon(Icons.description_outlined,
+                  color: palette.textSecondary),
               title: Text(l10n.translate(key), style: t.bodyL),
               trailing: Icon(Icons.chevron_right, color: palette.textTertiary),
               onTap: () {
@@ -168,8 +169,8 @@ class _ConsentCenterScreenState extends State<ConsentCenterScreen> {
                     model: consents[purpose] ?? ConsentModel.unset(purpose),
                     icon: _icon(purpose),
                     saving: _saving.contains(purpose),
-                    onChanged: (v) =>
-                        _toggle(consents[purpose] ?? ConsentModel.unset(purpose), v),
+                    onChanged: (v) => _toggle(
+                        consents[purpose] ?? ConsentModel.unset(purpose), v),
                   ),
                 ),
             ],
@@ -322,16 +323,15 @@ class _ConsentCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.full.r),
                 ),
                 child: Text(
                   statusText,
-                  style: t.labelS
-                      .copyWith(color: statusColor, fontWeight: FontWeight.w700),
+                  style: t.labelS.copyWith(
+                      color: statusColor, fontWeight: FontWeight.w700),
                 ),
               ),
               SizedBox(width: 8.w),
@@ -371,8 +371,8 @@ class _ConsentCard extends StatelessWidget {
         Icon(icon, size: 14.sp, color: color),
         SizedBox(width: 6.w),
         Expanded(
-          child: Text(text,
-              style: t.labelS.copyWith(color: color, height: 1.4)),
+          child:
+              Text(text, style: t.labelS.copyWith(color: color, height: 1.4)),
         ),
       ],
     );

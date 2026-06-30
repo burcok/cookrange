@@ -249,9 +249,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
                     selectedColor: primaryColor.withValues(alpha: 0.2),
                     checkmarkColor: primaryColor,
                     labelStyle: TextStyle(
-                      color: isSelected
-                          ? primaryColor
-                          : palette.textSecondary,
+                      color: isSelected ? primaryColor : palette.textSecondary,
                     ),
                     backgroundColor: palette.surfaceVariant,
                     shape: RoundedRectangleBorder(
@@ -273,7 +271,8 @@ class _CreatePostCardState extends State<CreatePostCard> {
 
   Future<void> _handlePost() async {
     final content = _controller.text.trim();
-    if (content.isEmpty && _attachedImageUrls.isEmpty &&
+    if (content.isEmpty &&
+        _attachedImageUrls.isEmpty &&
         _postType == PostType.text) {
       return;
     }
@@ -300,11 +299,10 @@ class _CreatePostCardState extends State<CreatePostCard> {
     try {
       final userModel = context.read<UserProvider>().user;
       final role = userModel?.userRole;
-      final authorRole = (role != null &&
-              role != UserRole.consumer &&
-              role != UserRole.admin)
-          ? role.firestoreValue
-          : null;
+      final authorRole =
+          (role != null && role != UserRole.consumer && role != UserRole.admin)
+              ? role.firestoreValue
+              : null;
 
       await _service.createPost(
         content,
@@ -486,14 +484,13 @@ class _CreatePostCardState extends State<CreatePostCard> {
                         controller: searchCtrl,
                         onChanged: onSearch,
                         decoration: InputDecoration(
-                          hintText:
-                              l10n.translate('community.create_post.search_recipe'),
+                          hintText: l10n
+                              .translate('community.create_post.search_recipe'),
                           prefixIcon: const Icon(Icons.search),
                           filled: true,
                           fillColor: palette.surfaceVariant,
                           border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.full),
+                            borderRadius: BorderRadius.circular(AppRadius.full),
                             borderSide: BorderSide.none,
                           ),
                           isDense: true,
@@ -511,8 +508,8 @@ class _CreatePostCardState extends State<CreatePostCard> {
                                 return ListTile(
                                   leading: dish.imageUrl != null
                                       ? ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(AppRadius.sm),
+                                          borderRadius: BorderRadius.circular(
+                                              AppRadius.sm),
                                           child: AppImage(
                                             imageUrl: dish.imageUrl!,
                                             width: 48,
@@ -524,8 +521,8 @@ class _CreatePostCardState extends State<CreatePostCard> {
                                           height: 48,
                                           decoration: BoxDecoration(
                                             color: palette.surfaceVariant,
-                                            borderRadius:
-                                                BorderRadius.circular(AppRadius.sm),
+                                            borderRadius: BorderRadius.circular(
+                                                AppRadius.sm),
                                           ),
                                           child: const Icon(
                                               Icons.restaurant_rounded),
@@ -634,12 +631,12 @@ class _CreatePostCardState extends State<CreatePostCard> {
                     // @mention autocomplete suggestions
                     AnimatedContainer(
                       duration: AppMotion.fast,
-                      height: (_mentionSuggestions.isNotEmpty ||
-                              _isLoadingMentions)
-                          ? (_isLoadingMentions
-                              ? 40.0
-                              : _mentionSuggestions.length * 48.0)
-                          : 0.0,
+                      height:
+                          (_mentionSuggestions.isNotEmpty || _isLoadingMentions)
+                              ? (_isLoadingMentions
+                                  ? 40.0
+                                  : _mentionSuggestions.length * 48.0)
+                              : 0.0,
                       child: ClipRect(
                         child: (_mentionSuggestions.isEmpty &&
                                 !_isLoadingMentions)
@@ -665,8 +662,7 @@ class _CreatePostCardState extends State<CreatePostCard> {
                                         padding: EdgeInsets.zero,
                                         physics:
                                             const NeverScrollableScrollPhysics(),
-                                        itemCount:
-                                            _mentionSuggestions.length,
+                                        itemCount: _mentionSuggestions.length,
                                         itemBuilder: (_, i) {
                                           final u = _mentionSuggestions[i];
                                           final name =
@@ -674,15 +670,12 @@ class _CreatePostCardState extends State<CreatePostCard> {
                                           final photo =
                                               u['photoUrl'] as String? ?? '';
                                           return InkWell(
-                                            onTap: () =>
-                                                _selectMention(u),
+                                            onTap: () => _selectMention(u),
                                             child: Padding(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                      horizontal:
-                                                          AppSpacing.xs,
-                                                      vertical:
-                                                          AppSpacing.xxs),
+                                                      horizontal: AppSpacing.xs,
+                                                      vertical: AppSpacing.xxs),
                                               child: Row(
                                                 children: [
                                                   AppInitialsAvatar(
@@ -777,14 +770,12 @@ class _CreatePostCardState extends State<CreatePostCard> {
                   spacing: AppSpacing.xs,
                   children: _selectedTags
                       .map((tag) => Chip(
-                            label: Text(tag,
-                                style: textStyles.labelS),
+                            label: Text(tag, style: textStyles.labelS),
                             backgroundColor:
                                 primaryColor.withValues(alpha: 0.1),
                             labelStyle: TextStyle(color: primaryColor),
                             deleteIcon: Icon(Icons.close,
-                                size: AppSize.iconXs,
-                                color: primaryColor),
+                                size: AppSize.iconXs, color: primaryColor),
                             onDeleted: () {
                               setState(() {
                                 _selectedTags.remove(tag);
@@ -865,8 +856,8 @@ class _CreatePostCardState extends State<CreatePostCard> {
                             ),
                           )
                         : IconButton(
-                            icon: Icon(Icons.image_outlined,
-                                color: primaryColor),
+                            icon:
+                                Icon(Icons.image_outlined, color: primaryColor),
                             onPressed: _pickImage,
                             tooltip: AppLocalizations.of(context)
                                 .translate('community.create_post.add_image'),
@@ -929,14 +920,26 @@ class _PostTypePicker extends StatelessWidget {
     final textStyles = AppText.of(context);
 
     final types = [
-      (PostType.text, Icons.article_outlined,
-          l10n.translate('community.post_type.text')),
-      (PostType.recipe, Icons.menu_book_rounded,
-          l10n.translate('community.post_type.recipe')),
-      (PostType.progress, Icons.trending_up_rounded,
-          l10n.translate('community.post_type.progress')),
-      (PostType.meal, Icons.restaurant_rounded,
-          l10n.translate('community.post_type.meal')),
+      (
+        PostType.text,
+        Icons.article_outlined,
+        l10n.translate('community.post_type.text')
+      ),
+      (
+        PostType.recipe,
+        Icons.menu_book_rounded,
+        l10n.translate('community.post_type.recipe')
+      ),
+      (
+        PostType.progress,
+        Icons.trending_up_rounded,
+        l10n.translate('community.post_type.progress')
+      ),
+      (
+        PostType.meal,
+        Icons.restaurant_rounded,
+        l10n.translate('community.post_type.meal')
+      ),
     ];
 
     return SingleChildScrollView(
@@ -977,11 +980,9 @@ class _PostTypePicker extends StatelessWidget {
                   Text(
                     t.$3,
                     style: textStyles.labelS.copyWith(
-                      color:
-                          isSelected ? primaryColor : palette.textSecondary,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.normal,
+                      color: isSelected ? primaryColor : palette.textSecondary,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
                 ],
@@ -1060,8 +1061,7 @@ class _RecipeAttachmentPreview extends StatelessWidget {
 class _ProgressFields extends StatelessWidget {
   final TextEditingController weightCtrl;
   final TextEditingController labelCtrl;
-  const _ProgressFields(
-      {required this.weightCtrl, required this.labelCtrl});
+  const _ProgressFields({required this.weightCtrl, required this.labelCtrl});
 
   @override
   Widget build(BuildContext context) {
@@ -1299,8 +1299,8 @@ class _InlineField extends StatelessWidget {
               style: textStyles.bodyM,
               decoration: InputDecoration(
                 hintText: hint,
-                hintStyle: textStyles.bodyM
-                    .copyWith(color: palette.textTertiary),
+                hintStyle:
+                    textStyles.bodyM.copyWith(color: palette.textTertiary),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
@@ -1309,8 +1309,8 @@ class _InlineField extends StatelessWidget {
           ),
           if (suffix != null)
             Text(suffix!,
-                style: textStyles.labelS
-                    .copyWith(color: palette.textSecondary)),
+                style:
+                    textStyles.labelS.copyWith(color: palette.textSecondary)),
         ],
       ),
     );

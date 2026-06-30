@@ -215,8 +215,19 @@ class _WeekHeader extends StatelessWidget {
     final monday = now.subtract(Duration(days: now.weekday - 1));
     final sunday = monday.add(const Duration(days: 6));
     final months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     return '${months[monday.month]} ${monday.day} – ${months[sunday.month]} ${sunday.day}';
   }
@@ -283,7 +294,8 @@ class _PodiumSectionState extends State<_PodiumSection>
     _slide = Tween<Offset>(
       begin: const Offset(0, 0.08),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: AppMotion.emphasized));
+    ).animate(
+        CurvedAnimation(parent: _controller, curve: AppMotion.emphasized));
     _controller.forward();
   }
 
@@ -402,10 +414,12 @@ class _PodiumColumn extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: entry.rank == 1 ? 28 : 22,
-                backgroundColor:
-                    isCurrentUser ? primary.withValues(alpha: 0.2) : palette.surfaceVariant,
-                backgroundImage:
-                    entry.photoURL != null ? NetworkImage(entry.photoURL!) : null,
+                backgroundColor: isCurrentUser
+                    ? primary.withValues(alpha: 0.2)
+                    : palette.surfaceVariant,
+                backgroundImage: entry.photoURL != null
+                    ? NetworkImage(entry.photoURL!)
+                    : null,
                 child: entry.photoURL == null
                     ? Text(
                         (entry.displayName?.isNotEmpty == true
@@ -414,7 +428,8 @@ class _PodiumColumn extends StatelessWidget {
                             .toUpperCase(),
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
-                          color: isCurrentUser ? primary : palette.textSecondary,
+                          color:
+                              isCurrentUser ? primary : palette.textSecondary,
                           fontSize: entry.rank == 1 ? 18 : 14,
                         ),
                       )
@@ -457,8 +472,7 @@ class _PodiumColumn extends StatelessWidget {
           const SizedBox(height: 4),
           // Count badge
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: medalColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
@@ -483,8 +497,8 @@ class _PodiumColumn extends StatelessWidget {
             width: entry.rank == 1 ? 36 : 28,
             decoration: BoxDecoration(
               color: medalColor.withValues(alpha: 0.7),
-              borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(6)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(6)),
             ),
           ),
         ],
@@ -516,9 +530,8 @@ class _LeaderboardTile extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 3),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isCurrentUser
-              ? primary.withValues(alpha: 0.07)
-              : palette.surface,
+          color:
+              isCurrentUser ? primary.withValues(alpha: 0.07) : palette.surface,
           borderRadius: BorderRadius.circular(AppRadius.sm),
           border: Border.all(
             color: isCurrentUser
@@ -571,8 +584,7 @@ class _LeaderboardTile extends StatelessWidget {
                     ? l10n.translate('gym.leaderboard_you')
                     : (entry.displayName ?? '—'),
                 style: AppText.of(context).bodyM.copyWith(
-                      color:
-                          isCurrentUser ? primary : palette.textPrimary,
+                      color: isCurrentUser ? primary : palette.textPrimary,
                       fontWeight:
                           isCurrentUser ? FontWeight.w700 : FontWeight.w500,
                     ),
@@ -581,8 +593,7 @@ class _LeaderboardTile extends StatelessWidget {
             ),
             // Check-in count
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: isCurrentUser
                     ? primary.withValues(alpha: 0.1)
@@ -641,8 +652,7 @@ class _WarsTabState extends State<_WarsTab> {
       _error = null;
     });
     try {
-      final wars =
-          await GymLeaderboardService().getActiveWars(widget.gymId);
+      final wars = await GymLeaderboardService().getActiveWars(widget.gymId);
       if (!mounted) return;
       setState(() {
         _wars = wars;
@@ -807,8 +817,7 @@ class _WarCardState extends State<_WarCard> {
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
@@ -969,8 +978,7 @@ class _WarCreationSheetState extends State<_WarCreationSheet> {
       final results = await GymService().searchGyms(query);
       if (!mounted) return;
       setState(() {
-        _results =
-            results.where((g) => g.id != widget.gymId).toList();
+        _results = results.where((g) => g.id != widget.gymId).toList();
         _searching = false;
       });
     } catch (_) {
@@ -1014,8 +1022,8 @@ class _WarCreationSheetState extends State<_WarCreationSheet> {
         borderRadius:
             const BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
       ),
-      padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         top: false,
         child: Column(
@@ -1067,10 +1075,8 @@ class _WarCreationSheetState extends State<_WarCreationSheet> {
                   children: [
                     // Search field
                     AppTextField(
-                      hintText:
-                          l10n.translate('gym.war_create_search_hint'),
-                      prefixIcon:
-                          const Icon(Icons.search_rounded, size: 20),
+                      hintText: l10n.translate('gym.war_create_search_hint'),
+                      prefixIcon: const Icon(Icons.search_rounded, size: 20),
                       controller: _searchCtrl,
                       onChanged: _onSearchChanged,
                     ),
@@ -1097,8 +1103,7 @@ class _WarCreationSheetState extends State<_WarCreationSheet> {
                               gym: gym,
                               primary: primary,
                               palette: palette,
-                              onTap: () => setState(
-                                  () => _selectedGym = gym),
+                              onTap: () => setState(() => _selectedGym = gym),
                             ),
                           ),
                     ],
@@ -1120,22 +1125,18 @@ class _WarCreationSheetState extends State<_WarCreationSheet> {
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: GestureDetector(
-                            onTap: () => setState(
-                                () => _durationDays = days),
+                            onTap: () => setState(() => _durationDays = days),
                             child: AnimatedContainer(
                               duration: AppMotion.normal,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 8),
                               decoration: BoxDecoration(
-                                color: selected
-                                    ? primary
-                                    : palette.surfaceVariant,
+                                color:
+                                    selected ? primary : palette.surfaceVariant,
                                 borderRadius:
                                     BorderRadius.circular(AppRadius.full),
                                 border: Border.all(
-                                  color: selected
-                                      ? primary
-                                      : palette.border,
+                                  color: selected ? primary : palette.border,
                                 ),
                               ),
                               child: Text(

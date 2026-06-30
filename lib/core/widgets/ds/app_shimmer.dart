@@ -64,26 +64,26 @@ class _AppShimmerState extends State<AppShimmer>
 
     return ExcludeSemantics(
       child: AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return ShaderMask(
-          blendMode: BlendMode.srcATop,
-          shaderCallback: (bounds) {
-            final dx = (_controller.value * 2 - 1) * bounds.width;
-            return LinearGradient(
-              colors: [
-                palette.shimmerBase,
-                palette.shimmerHighlight,
-                palette.shimmerBase,
-              ],
-              stops: const [0.35, 0.5, 0.65],
-              transform: _SlideGradient(dx),
-            ).createShader(bounds);
-          },
-          child: child,
-        );
-      },
-      child: widget.child,
+        animation: _controller,
+        builder: (context, child) {
+          return ShaderMask(
+            blendMode: BlendMode.srcATop,
+            shaderCallback: (bounds) {
+              final dx = (_controller.value * 2 - 1) * bounds.width;
+              return LinearGradient(
+                colors: [
+                  palette.shimmerBase,
+                  palette.shimmerHighlight,
+                  palette.shimmerBase,
+                ],
+                stops: const [0.35, 0.5, 0.65],
+                transform: _SlideGradient(dx),
+              ).createShader(bounds);
+            },
+            child: child,
+          );
+        },
+        child: widget.child,
       ),
     );
   }
@@ -169,17 +169,21 @@ class AppSkeletonMealCard extends StatelessWidget {
                         children: [
                           AppSkeletonBox(width: 56.w, height: 10),
                           SizedBox(height: AppSpacing.xs.h),
-                          const AppSkeletonBox(width: double.infinity, height: 15),
+                          const AppSkeletonBox(
+                              width: double.infinity, height: 15),
                           SizedBox(height: AppSpacing.xs.h),
                           AppSkeletonBox(width: 140.w, height: 13),
                           const Spacer(),
                           Row(
                             children: [
-                              AppSkeletonBox(width: 52.w, height: 20, radius: 20),
+                              AppSkeletonBox(
+                                  width: 52.w, height: 20, radius: 20),
                               SizedBox(width: AppSpacing.xs.w),
-                              AppSkeletonBox(width: 52.w, height: 20, radius: 20),
+                              AppSkeletonBox(
+                                  width: 52.w, height: 20, radius: 20),
                               SizedBox(width: AppSpacing.xs.w),
-                              AppSkeletonBox(width: 52.w, height: 20, radius: 20),
+                              AppSkeletonBox(
+                                  width: 52.w, height: 20, radius: 20),
                             ],
                           ),
                         ],

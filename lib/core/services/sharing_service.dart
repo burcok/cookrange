@@ -133,7 +133,6 @@ class SharingService {
     );
   }
 
-
   /// Share a referral invite link.
   Future<void> shareReferral(
     BuildContext context, {

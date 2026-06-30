@@ -34,7 +34,8 @@ class ProgramService {
     List<String> tags = const [],
     List<String> highlights = const [],
   }) async {
-    debugPrint('ProgramService: creating program "$title" for coach ${coach.uid}');
+    debugPrint(
+        'ProgramService: creating program "$title" for coach ${coach.uid}');
     final now = DateTime.now();
     final ref = _programs.doc();
     final program = ProgramModel(
@@ -113,10 +114,12 @@ class ProgramService {
 
     q = q.orderBy('enrollment_count', descending: true).limit(50);
 
-    return q.snapshots().map((snap) => snap.docs
-        .map((d) => ProgramModel.fromFirestore(
-            d as DocumentSnapshot<Map<String, dynamic>>))
-        .toList())
+    return q
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => ProgramModel.fromFirestore(
+                d as DocumentSnapshot<Map<String, dynamic>>))
+            .toList())
         .handleError((Object e) {
       debugPrint('ProgramService: getPublishedProgramsStream error — $e');
     });
@@ -124,8 +127,7 @@ class ProgramService {
 
   // ─── Enrollment ────────────────────────────────────────────────────────────
 
-  Future<void> enrollInProgram(
-      String userId, ProgramModel program) async {
+  Future<void> enrollInProgram(String userId, ProgramModel program) async {
     debugPrint(
         'ProgramService: enrolling user $userId in program ${program.id}');
     final enrollmentRef = _enrollments(userId).doc(program.id);
@@ -151,8 +153,7 @@ class ProgramService {
       'updated_at': FieldValue.serverTimestamp(),
     });
     await batch.commit();
-    debugPrint(
-        'ProgramService: enrollment committed for ${program.id}');
+    debugPrint('ProgramService: enrollment committed for ${program.id}');
   }
 
   Stream<List<ProgramEnrollmentModel>> getEnrollmentsStream(String userId) {
@@ -209,9 +210,8 @@ class ProgramService {
       final pairs = await Future.wait(enrollments.map((e) async {
         try {
           final programDoc = await _programs.doc(e.programId).get();
-          final program = programDoc.exists
-              ? ProgramModel.fromFirestore(programDoc)
-              : null;
+          final program =
+              programDoc.exists ? ProgramModel.fromFirestore(programDoc) : null;
           return (enrollment: e, program: program);
         } catch (_) {
           return (enrollment: e, program: null);
@@ -224,8 +224,8 @@ class ProgramService {
     // forever. Let it surface so the UI can show an error state with retry.
   }
 
-  Future<void> updateProgress(
-      String userId, String programId, int currentWeek, int currentSession) async {
+  Future<void> updateProgress(String userId, String programId, int currentWeek,
+      int currentSession) async {
     debugPrint(
         'ProgramService: updateProgress $programId week=$currentWeek session=$currentSession');
     await _enrollments(userId).doc(programId).update({

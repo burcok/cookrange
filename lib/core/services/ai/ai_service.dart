@@ -421,7 +421,8 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
         if (attempt < _maxRetries) await Future.delayed(_retryDelay);
       } on AIRetryableException catch (e) {
         lastError = e;
-        debugPrint('AIService: vision retryable error $attempt/$_maxRetries: $e');
+        debugPrint(
+            'AIService: vision retryable error $attempt/$_maxRetries: $e');
         if (attempt < _maxRetries) await Future.delayed(_retryDelay * attempt);
       } catch (e) {
         rethrow;
@@ -644,5 +645,6 @@ class AIJsonParseException implements Exception {
 class AIQuotaExceededException implements Exception {
   const AIQuotaExceededException();
   @override
-  String toString() => 'AIQuotaExceededException: daily AI generation limit reached';
+  String toString() =>
+      'AIQuotaExceededException: daily AI generation limit reached';
 }

@@ -65,8 +65,9 @@ class _MealPlanHistoryScreenState extends State<MealPlanHistoryScreen> {
         title: Text(l10n.translate('meal_history.load_plan'),
             style: AppText.of(context).titleL),
         content: Text(
-          l10n.translate('meal_history.load_confirm',
-              variables: {'week': DateFormat('MMM d').format(plan.weekStartDate)}),
+          l10n.translate('meal_history.load_confirm', variables: {
+            'week': DateFormat('MMM d').format(plan.weekStartDate)
+          }),
           style: AppText.of(context).bodyM,
         ),
         actions: [
@@ -86,8 +87,8 @@ class _MealPlanHistoryScreenState extends State<MealPlanHistoryScreen> {
       unawaited(HapticFeedback.mediumImpact());
       await _service.restorePlan(uid, plan);
       if (mounted) {
-        AppSnackBar.success(
-            context, AppLocalizations.of(context).translate('meal_history.loaded'));
+        AppSnackBar.success(context,
+            AppLocalizations.of(context).translate('meal_history.loaded'));
         Navigator.pop(context, true); // signal caller to reload
       }
     }
@@ -106,7 +107,8 @@ class _MealPlanHistoryScreenState extends State<MealPlanHistoryScreen> {
         backgroundColor: palette.background,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: palette.textPrimary, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new,
+              color: palette.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(l10n.translate('meal_history.title'), style: t.headlineS),
@@ -114,8 +116,7 @@ class _MealPlanHistoryScreenState extends State<MealPlanHistoryScreen> {
       ),
       body: _isLoading
           ? const Padding(
-              padding: EdgeInsets.all(24),
-              child: AppSkeletonList(itemCount: 4))
+              padding: EdgeInsets.all(24), child: AppSkeletonList(itemCount: 4))
           : _plans.isEmpty
               ? AppEmptyState(
                   icon: Icons.history_rounded,
@@ -128,7 +129,8 @@ class _MealPlanHistoryScreenState extends State<MealPlanHistoryScreen> {
                   child: ListView.separated(
                     padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 100.h),
                     itemCount: _plans.length + (_hasMore ? 1 : 0),
-                    separatorBuilder: (_, __) => SizedBox(height: AppSpacing.md.h),
+                    separatorBuilder: (_, __) =>
+                        SizedBox(height: AppSpacing.md.h),
                     itemBuilder: (context, index) {
                       if (index == _plans.length) {
                         return _isLoadingMore
@@ -195,8 +197,8 @@ class _PlanHistoryCard extends StatelessWidget {
     final t = AppText.of(context);
     final l10n = AppLocalizations.of(context);
     final weekLabel = DateFormat('MMMM d, yyyy').format(plan.weekStartDate);
-    final mealCount = plan.days.fold<int>(
-        0, (sum, day) => sum + day.meals.length);
+    final mealCount =
+        plan.days.fold<int>(0, (sum, day) => sum + day.meals.length);
 
     return AppCard(
       child: Column(

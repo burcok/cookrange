@@ -151,7 +151,8 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   Future<void> _showManualEntrySheet() async {
     final code = await AppSheet.show<String>(
       context: context,
-      title: AppLocalizations.of(context).translate('barcode.manual_entry_title'),
+      title:
+          AppLocalizations.of(context).translate('barcode.manual_entry_title'),
       child: const _ManualEntrySheetBody(),
     );
     if (code != null && code.isNotEmpty && mounted) {
@@ -186,8 +187,8 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
             SizedBox(height: AppSpacing.lg.h),
             Text(
               l10n.translate('barcode.not_found_body'),
-              style: t.bodyM.copyWith(
-                  color: palette.textSecondary, height: 1.5),
+              style:
+                  t.bodyM.copyWith(color: palette.textSecondary, height: 1.5),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: AppSpacing.xl.h),
@@ -264,16 +265,14 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
           // Permission granted, camera still initializing → branded loader.
           if (!_hasResult && !_cameraReady && !_camDenied && !_camError)
             _buildCameraLoading(l10n, t),
-          if (_hasResult)
-            Container(color: palette.background),
+          if (_hasResult) Container(color: palette.background),
 
           // Scanning overlay (only when camera is live and actively scanning)
           if (!_hasResult && !_isLookingUp && _cameraReady)
             _buildScanOverlay(l10n, palette, t, primary),
 
           // Looking-up overlay
-          if (_isLookingUp)
-            _buildLookingUpOverlay(l10n, palette, t),
+          if (_isLookingUp) _buildLookingUpOverlay(l10n, palette, t),
 
           // Result card (slides up)
           if (_hasResult && _product != null)
@@ -411,8 +410,8 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
               l10n.translate(denied
                   ? 'barcode.permission_denied_title'
                   : 'barcode.camera_unavailable_title'),
-              style: t.titleM.copyWith(
-                  color: Colors.white, fontWeight: FontWeight.w700),
+              style: t.titleM
+                  .copyWith(color: Colors.white, fontWeight: FontWeight.w700),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: AppSpacing.xs.h),
@@ -525,16 +524,14 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.38),
         borderRadius: BorderRadius.circular(AppRadius.full.r),
-        border: Border.all(
-            color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Active: Barcode pill
           Container(
-            padding:
-                EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
             decoration: BoxDecoration(
               color: primary,
               borderRadius: BorderRadius.circular(AppRadius.full.r),
@@ -565,8 +562,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
               ));
             },
             child: Container(
-              padding:
-                  EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -710,11 +706,10 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                           trackHeight: 4,
                           thumbShape: const RoundSliderThumbShape(
                               enabledThumbRadius: 8),
-                          overlayShape: const RoundSliderOverlayShape(
-                              overlayRadius: 16),
+                          overlayShape:
+                              const RoundSliderOverlayShape(overlayRadius: 16),
                           activeTrackColor: primary,
-                          inactiveTrackColor:
-                              primary.withValues(alpha: 0.2),
+                          inactiveTrackColor: primary.withValues(alpha: 0.2),
                           thumbColor: primary,
                           overlayColor: primary.withValues(alpha: 0.15),
                         ),
@@ -790,8 +785,8 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
               final isSelected = mt == _selectedMealType;
               return Expanded(
                 child: Padding(
-                  padding: EdgeInsets.only(
-                      right: mt != mealTypes.last ? 6.w : 0),
+                  padding:
+                      EdgeInsets.only(right: mt != mealTypes.last ? 6.w : 0),
                   child: GestureDetector(
                     onTap: () => setState(() => _selectedMealType = mt),
                     child: AnimatedContainer(
@@ -801,24 +796,18 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                         color: isSelected
                             ? primary.withValues(alpha: 0.15)
                             : palette.surfaceVariant,
-                        borderRadius:
-                            BorderRadius.circular(AppRadius.sm.r),
+                        borderRadius: BorderRadius.circular(AppRadius.sm.r),
                         border: Border.all(
-                          color: isSelected
-                              ? primary
-                              : palette.border,
+                          color: isSelected ? primary : palette.border,
                           width: isSelected ? 1.5 : 1,
                         ),
                       ),
                       child: Text(
                         l10n.translate('food_scan.meal.$mt'),
                         style: t.labelS.copyWith(
-                          color: isSelected
-                              ? primary
-                              : palette.textSecondary,
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
+                          color: isSelected ? primary : palette.textSecondary,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -871,15 +860,15 @@ class _MacroChip extends StatelessWidget {
           children: [
             Text(
               label,
-              style: t.labelS.copyWith(
-                  color: palette.textTertiary, fontSize: 9.sp),
+              style: t.labelS
+                  .copyWith(color: palette.textTertiary, fontSize: 9.sp),
               maxLines: 1,
             ),
             SizedBox(height: 2.h),
             Text(
               '$value$unit',
-              style: t.labelM.copyWith(
-                  color: color, fontWeight: FontWeight.w700),
+              style:
+                  t.labelM.copyWith(color: color, fontWeight: FontWeight.w700),
               maxLines: 1,
             ),
           ],
@@ -916,8 +905,8 @@ class _ScanFramePainter extends CustomPainter {
     // Bottom-left
     canvas.drawLine(
         Offset(r, size.height - r), Offset(len + r, size.height - r), paint);
-    canvas.drawLine(Offset(r, size.height - len - r),
-        Offset(r, size.height - r), paint);
+    canvas.drawLine(
+        Offset(r, size.height - len - r), Offset(r, size.height - r), paint);
     // Bottom-right
     canvas.drawLine(Offset(size.width - len - r, size.height - r),
         Offset(size.width - r, size.height - r), paint);
@@ -981,4 +970,3 @@ class _ManualEntrySheetBodyState extends State<_ManualEntrySheetBody> {
     );
   }
 }
-

@@ -93,8 +93,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         stream: _groupService.getGroupStream(widget.groupId),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return _scaffoldFrame(palette,
-                const Center(child: CircularProgressIndicator()));
+            return _scaffoldFrame(
+                palette, const Center(child: CircularProgressIndicator()));
           }
           final group = snap.data;
           if (group == null) {
@@ -150,7 +150,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                             ),
                             SizedBox(width: 8.w),
                             AppButton(
-                              label: l10n.translate('community.groups.post_btn'),
+                              label:
+                                  l10n.translate('community.groups.post_btn'),
                               size: AppButtonSize.small,
                               expand: false,
                               loading: _posting,
@@ -239,8 +240,8 @@ class _Header extends StatelessWidget {
                           SizedBox(width: 3.w),
                           Flexible(
                             child: Text(group.locationDisplay,
-                                style: t.labelM.copyWith(
-                                    color: palette.textSecondary),
+                                style: t.labelM
+                                    .copyWith(color: palette.textSecondary),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis),
                           ),
@@ -251,8 +252,7 @@ class _Header extends StatelessWidget {
                       l10n
                           .translate('community.groups.members_count')
                           .replaceAll('{n}', '${group.memberCount}'),
-                      style:
-                          t.labelS.copyWith(color: palette.textTertiary),
+                      style: t.labelS.copyWith(color: palette.textTertiary),
                     ),
                   ],
                 ),
@@ -266,11 +266,10 @@ class _Header extends StatelessWidget {
             builder: (context, snap) {
               final isMember = snap.data ?? false;
               return AppButton(
-                label: l10n.translate(
-                    isMember ? 'community.groups.leave' : 'community.groups.join'),
-                icon: isMember
-                    ? Icons.check_rounded
-                    : Icons.group_add_rounded,
+                label: l10n.translate(isMember
+                    ? 'community.groups.leave'
+                    : 'community.groups.join'),
+                icon: isMember ? Icons.check_rounded : Icons.group_add_rounded,
                 variant: isMember
                     ? AppButtonVariant.secondary
                     : AppButtonVariant.primary,
@@ -278,8 +277,7 @@ class _Header extends StatelessWidget {
               );
             },
           ),
-          if (group.description != null &&
-              group.description!.isNotEmpty) ...[
+          if (group.description != null && group.description!.isNotEmpty) ...[
             SizedBox(height: 16.h),
             Text(l10n.translate('community.groups.about'),
                 style: t.titleM.copyWith(fontWeight: FontWeight.w700)),
@@ -302,8 +300,7 @@ class _Header extends StatelessWidget {
                         ),
                         child: Text('#$tag',
                             style: t.labelS.copyWith(
-                                color: primary,
-                                fontWeight: FontWeight.w600)),
+                                color: primary, fontWeight: FontWeight.w600)),
                       ))
                   .toList(),
             ),
@@ -359,11 +356,15 @@ class _FeedSliver extends StatelessWidget {
                 return RepaintBoundary(
                   child: GlassPostCard(
                     post: post,
-                    onTap: () => Navigator.push(context,
-                        AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
+                    onTap: () => Navigator.push(
+                        context,
+                        AppTransitions.slideUp(
+                            PostDetailScreen(postId: post.id))),
                     onLike: () => service.likePost(post.id),
-                    onComment: () => Navigator.push(context,
-                        AppTransitions.slideUp(PostDetailScreen(postId: post.id))),
+                    onComment: () => Navigator.push(
+                        context,
+                        AppTransitions.slideUp(
+                            PostDetailScreen(postId: post.id))),
                     onShare: () {
                       final box = context.findRenderObject() as RenderBox?;
                       final rect = box != null

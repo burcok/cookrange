@@ -53,7 +53,8 @@ class GymApplicationService {
       submittedAt: DateTime.now(),
     );
     await ref.set(model.toFirestore());
-    debugPrint('GymApplicationService: submitted application ${ref.id} for $applicantUid');
+    debugPrint(
+        'GymApplicationService: submitted application ${ref.id} for $applicantUid');
     return ref.id;
   }
 
@@ -82,8 +83,9 @@ class GymApplicationService {
         .orderBy('submittedAt', descending: true)
         .limit(1)
         .snapshots()
-        .map((s) =>
-            s.docs.isEmpty ? null : GymApplicationModel.fromFirestore(s.docs.first));
+        .map((s) => s.docs.isEmpty
+            ? null
+            : GymApplicationModel.fromFirestore(s.docs.first));
   }
 
   // ── Admin streams ──────────────────────────────────────────────────────────

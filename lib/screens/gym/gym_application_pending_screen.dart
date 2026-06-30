@@ -27,17 +27,14 @@ class GymApplicationPendingScreen extends StatelessWidget {
     final isRejected = status == GymApplicationStatus.rejected;
 
     final iconColor = isRejected ? palette.error : primary;
-    final icon = isRejected
-        ? Icons.cancel_rounded
-        : Icons.hourglass_top_rounded;
+    final icon =
+        isRejected ? Icons.cancel_rounded : Icons.hourglass_top_rounded;
 
-    final titleKey = isRejected
-        ? 'gym.app_rejected_title'
-        : 'gym.app_pending_title';
+    final titleKey =
+        isRejected ? 'gym.app_rejected_title' : 'gym.app_pending_title';
 
-    final bodyKey = isRejected
-        ? 'gym.app_rejected_body'
-        : 'gym.app_pending_body';
+    final bodyKey =
+        isRejected ? 'gym.app_rejected_body' : 'gym.app_pending_body';
 
     return Scaffold(
       backgroundColor: palette.background,
@@ -188,8 +185,8 @@ class _InfoRow extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(text,
-              style: t.bodyM.copyWith(color: palette.textSecondary)),
+          child:
+              Text(text, style: t.bodyM.copyWith(color: palette.textSecondary)),
         ),
       ],
     );

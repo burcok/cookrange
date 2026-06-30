@@ -51,8 +51,7 @@ class _OnboardingWaterPageState extends State<OnboardingWaterPage> {
       // Auto-request notification permission since water reminder defaults to enabled.
       // PermissionService caches the primer — shows at most once per install.
       if (ob.waterReminderEnabled) {
-        final granted =
-            await PermissionService().requestNotifications(context);
+        final granted = await PermissionService().requestNotifications(context);
         if (mounted && !granted) {
           ob.setWaterReminder(enabled: false);
         }
@@ -152,9 +151,9 @@ class _OnboardingWaterPageState extends State<OnboardingWaterPage> {
                             color: palette.textPrimary,
                             fontWeight: FontWeight.w800)),
                     TextSpan(
-                        text: 'L  ·  $target ${l10n.translate('onboarding.v2.units.ml')}',
-                        style:
-                            t.titleM.copyWith(color: palette.textSecondary)),
+                        text:
+                            'L  ·  $target ${l10n.translate('onboarding.v2.units.ml')}',
+                        style: t.titleM.copyWith(color: palette.textSecondary)),
                   ]),
                 ),
               ],
@@ -258,12 +257,11 @@ class _TimeField extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
-                style: t.labelS.copyWith(color: palette.textTertiary)),
+            Text(label, style: t.labelS.copyWith(color: palette.textTertiary)),
             SizedBox(height: 2.h),
             Text(time,
-                style: t.titleM.copyWith(
-                    color: primary, fontWeight: FontWeight.w700)),
+                style: t.titleM
+                    .copyWith(color: primary, fontWeight: FontWeight.w700)),
           ],
         ),
       ),

@@ -57,8 +57,8 @@ class OnboardingMotivationPage extends StatelessWidget {
                   primary.withValues(alpha: 0.02),
                 ]),
               ),
-              child: Icon(Icons.auto_awesome_rounded,
-                  size: 56.sp, color: primary),
+              child:
+                  Icon(Icons.auto_awesome_rounded, size: 56.sp, color: primary),
             ),
           ),
           SizedBox(height: AppSpacing.xl.h),
@@ -83,7 +83,8 @@ class OnboardingMotivationPage extends StatelessWidget {
                         color: primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(AppRadius.md.r),
                       ),
-                      child: Icon(tip.$1, size: AppSize.iconMd.r, color: primary),
+                      child:
+                          Icon(tip.$1, size: AppSize.iconMd.r, color: primary),
                     ),
                     SizedBox(width: AppSpacing.md.w),
                     Expanded(
