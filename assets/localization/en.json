@@ -809,7 +809,10 @@
     "copy": "Copy to Clipboard",
     "copied": "Shopping list copied to clipboard.",
     "to_buy": "To Buy",
-    "in_cart": "In Cart"
+    "in_cart": "In Cart",
+    "filter_week": "This week",
+    "filter_today": "Today",
+    "source_prefix": "For"
   },
   "settings": {
     "title": "Settings",
@@ -1257,7 +1260,8 @@
     "voice_assistant": "Voice Assistant",
     "ai_assistant": "AI Assistant",
     "gym_dashboard": "My Gym",
-    "my_coaching": "My Coaching"
+    "my_coaching": "My Coaching",
+    "foods_nutrition": "Foods & Nutrition"
   },
   "community": {
     "title": "Community",
@@ -1340,6 +1344,42 @@
     },
     "report_success": "{type} reported successfully",
     "groups": {
+      "title": "Groups",
+      "discover": "Discover groups",
+      "discover_in": "Groups in {city}",
+      "my_groups": "My groups",
+      "create": "Create group",
+      "create_title": "New group",
+      "name_label": "Group name",
+      "name_hint": "e.g. İstanbul Runners",
+      "description_label": "Description",
+      "description_hint": "What's this group about?",
+      "city_label": "City",
+      "district_label": "District",
+      "tags_label": "Tags (comma separated)",
+      "tags_hint": "running, vegan, beginners",
+      "public_label": "Public group",
+      "public_sub": "Anyone can discover and join",
+      "members_count": "{n} members",
+      "join": "Join",
+      "joined": "Joined",
+      "leave": "Leave",
+      "about": "About",
+      "members": "Members",
+      "feed": "Feed",
+      "post_hint": "Share something with the group…",
+      "post_btn": "Post",
+      "feed_empty_title": "No posts yet",
+      "feed_empty_msg": "Be the first to post in this group.",
+      "members_only_post": "Join the group to post.",
+      "discover_empty_title": "No groups here yet",
+      "discover_empty_msg": "Be the first to create a group in your city.",
+      "sort_active": "Most active",
+      "sort_popular": "Most members",
+      "sort_newest": "Newest",
+      "created_success": "Group created!",
+      "join_success": "You joined {group}",
+      "not_found": "Group not found",
       "new": "New"
     },
     "no_posts": "No posts found. Be the first to share!",
@@ -1455,7 +1495,9 @@
     "coach_app_rejected": "Coach Application Rejected",
     "gym_app_rejected": "Gym Application Rejected",
     "discover": "Discover",
-    "admin_privacy": "Privacy Requests"
+    "admin_privacy": "Privacy Requests",
+    "foods_nutrition": "Foods & Nutrition",
+    "groups": "Groups"
   },
   "account_suspended": {
     "title_header": "ACCOUNT STATUS",
@@ -1682,7 +1724,27 @@
       "snack": "Snack"
     },
     "log_btn": "Log this meal",
-    "log_success": "Meal logged successfully!"
+    "log_success": "Meal logged successfully!",
+    "mode_describe": "Describe",
+    "mode_photo": "Photo",
+    "photo_prompt": "Snap or choose a meal photo",
+    "photo_take": "Take photo",
+    "photo_choose": "Choose from gallery",
+    "photo_retake": "Replace photo",
+    "photo_hint_field": "Optional note (e.g. large portion)",
+    "analyze_photo_btn": "Analyze photo",
+    "health_score": "Health score",
+    "fiber": "Fiber",
+    "sugar": "Sugar",
+    "sodium": "Sodium",
+    "micros_title": "Per serving",
+    "allergens_title": "Possible allergens",
+    "portion_title": "Portion",
+    "confidence": "AI confidence: {pct}%",
+    "history": "History",
+    "history_empty_title": "No analyses yet",
+    "history_empty_msg": "Your past food analyses will appear here.",
+    "photo_unavailable": "Photo analysis isn't available right now."
   },
   "barcode": {
     "scan_btn": "Scan Barcode",
@@ -1697,7 +1759,20 @@
     "macro_cal": "Cal",
     "macro_protein": "Protein",
     "macro_carbs": "Carbs",
-    "macro_fat": "Fat"
+    "macro_fat": "Fat",
+    "mode_barcode": "Barcode",
+    "mode_ai": "AI Analysis",
+    "camera_starting": "Starting camera…",
+    "camera_unavailable_title": "Camera unavailable",
+    "camera_unavailable_sub": "We couldn't start the camera on this device. You can enter the barcode number manually.",
+    "permission_denied_title": "Camera permission needed",
+    "permission_denied_sub": "Allow camera access to scan barcodes, or enter the number manually.",
+    "open_settings": "Open Settings",
+    "manual_entry": "Enter barcode manually",
+    "manual_entry_title": "Enter barcode",
+    "manual_entry_hint": "e.g. 8690000000000",
+    "manual_lookup": "Look up",
+    "close": "Close"
   },
   "calendar": {
     "export_btn": "Export to Calendar",
@@ -2048,7 +2123,11 @@
     "toggle_list": "List view",
     "map_view_gym": "View Gym",
     "nearby_consent_title": "Find Gyms Near You",
-    "nearby_consent_rationale": "Cookrange will use your device location only to sort gyms by distance. Your location is processed on your device for this screen and is NOT sent to or stored on our servers (KVKK / GDPR). You can decline and keep browsing by city instead."
+    "nearby_consent_rationale": "Cookrange will use your device location only to sort gyms by distance. Your location is processed on your device for this screen and is NOT sent to or stored on our servers (KVKK / GDPR). You can decline and keep browsing by city instead.",
+    "details_btn": "Details",
+    "join_qr_btn": "Scan QR to Join",
+    "join_qr_title": "Scan Invite QR",
+    "join_qr_subtitle": "Scan the gym's invite QR code to join as a member"
   },
   "coach": {
     "setup_title": "Coach Profile Setup",
@@ -2186,7 +2265,9 @@
     "location_denied": "Location permission denied. Enable it in Settings to sort by distance.",
     "location_error": "Could not get your location. Please try again.",
     "nearby_consent_title": "Find Coaches Near You",
-    "nearby_consent_rationale": "Cookrange will use your device location only to sort coaches by distance. Your location is processed on your device and is NOT sent to or stored on our servers (KVKK / GDPR)."
+    "nearby_consent_rationale": "Cookrange will use your device location only to sort coaches by distance. Your location is processed on your device and is NOT sent to or stored on our servers (KVKK / GDPR).",
+    "not_found_title": "Coach Not Found",
+    "not_found_body": "This coach profile does not exist."
   },
   "ai": {
     "twin_title": "AI Body Projection",
@@ -2246,7 +2327,24 @@
     "credits_topup_success": "10 AI credits added to your account!",
     "credits_topup_failed": "Purchase failed. Please try again.",
     "credits_bonus_label": "+{count} bonus",
-    "premium_coming_soon": "Premium subscription is coming soon! We'll notify you when it's available."
+    "premium_coming_soon": "Premium subscription is coming soon! We'll notify you when it's available.",
+    "paywall_title": "Unlock Premium",
+    "paywall_subtitle": "More AI, more features, more results.",
+    "paywall_monthly_label": "Monthly",
+    "paywall_yearly_label": "Yearly",
+    "paywall_yearly_badge": "Best Value",
+    "paywall_yearly_save": "Save ~40%",
+    "paywall_buy_cta": "Get Premium",
+    "paywall_restore": "Restore Purchases",
+    "paywall_feature1": "20 AI generations per day",
+    "paywall_feature2": "Priority AI processing",
+    "paywall_feature3": "Advanced meal customization",
+    "paywall_feature4": "Detailed nutrition analytics",
+    "paywall_feature5": "Early access to new features",
+    "paywall_processing": "Processing...",
+    "paywall_not_available": "Purchases unavailable on this device.",
+    "paywall_restore_success": "Purchases restored successfully!",
+    "paywall_restore_none": "No previous purchases found."
   },
   "ai_credits": {
     "unlimited": "Unlimited",
@@ -2587,7 +2685,12 @@
     "analytics_top_ai_title": "Top AI Users Today",
     "privacy_requests": "Privacy Requests",
     "privacy_note": "Resolution note (optional)",
-    "privacy_note_hint": "Internal note / what action was taken."
+    "privacy_note_hint": "Internal note / what action was taken.",
+    "action_send_notification": "Send Notification",
+    "notif_title_hint": "Title",
+    "notif_body_hint": "Message",
+    "notif_sent": "Notification sent",
+    "notif_send": "Send"
   },
   "intro": {
     "skip": "Skip",
@@ -2669,7 +2772,9 @@
     "sort_popular": "Popular",
     "sort_newest": "Newest",
     "sort_top_rated": "Highest Rated",
-    "sort_near_me": "Nearest"
+    "sort_near_me": "Nearest",
+    "filter_all_cities": "All cities",
+    "filter_all_districts": "All districts"
   },
   "squad": {
     "title": "Streak Squads",
@@ -2809,5 +2914,25 @@
     "settings_on": "On",
     "settings_off": "Off",
     "settings_saved": "Water reminder updated"
+  },
+  "nutrition_hub": {
+    "title": "Foods & Nutrition",
+    "tab_browse": "Browse",
+    "tab_favorites": "Favorites",
+    "tab_analytics": "Insights",
+    "search_hint": "Search foods, dishes…",
+    "empty_title": "No foods found",
+    "empty_msg": "Try a different category or search term.",
+    "results_count": "{n} foods",
+    "cat_all": "All",
+    "cat_chicken": "Chicken",
+    "cat_red_meat": "Red Meat",
+    "cat_fish": "Fish",
+    "cat_breakfast": "Breakfast",
+    "cat_vegetarian": "Vegetarian",
+    "cat_vegan": "Vegan",
+    "cat_diet": "Diet",
+    "cat_sport": "Sport",
+    "cat_turkish_classic": "Turkish Classics"
   }
 }

@@ -12,8 +12,8 @@ import '../../core/services/barcode_lookup_service.dart';
 import '../../core/services/food_log_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../../core/services/permission_service.dart';
 import '../../core/widgets/ds/ds.dart';
+import 'food_scan_screen.dart';
 
 class BarcodeScanScreen extends StatefulWidget {
   const BarcodeScanScreen({super.key});
@@ -38,6 +38,11 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
   double _servingG = 100;
   bool _isLogging = false;
   bool _cameraReady = false;
+  // Permission denied (not permanently) — show in-screen prompt + manual entry
+  // instead of silently popping the screen.
+  bool _camDenied = false;
+  // Camera hardware failed to start (e.g. simulator / no camera).
+  bool _camError = false;
 
   // Scanning animation
   late final AnimationController _lineAnim;
@@ -67,18 +72,30 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     if (!mounted) return;
 
     if (status.isGranted) {
-      setState(() {
-        _cameraCtrl = MobileScannerController(
+      try {
+        final ctrl = MobileScannerController(
           detectionSpeed: DetectionSpeed.noDuplicates,
         );
-        _cameraReady = true;
-      });
-    } else if (status.isPermanentlyDenied) {
-      unawaited(PermissionService().requestCamera(context)); // shows settings sheet
-      Navigator.of(context).pop();
+        setState(() {
+          _cameraCtrl = ctrl;
+          _cameraReady = true;
+          _camDenied = false;
+          _camError = false;
+        });
+      } catch (e) {
+        debugPrint('BarcodeScanScreen: camera init failed — $e');
+        if (mounted) setState(() => _camError = true);
+      }
     } else {
-      Navigator.of(context).pop();
+      // Denied (temporarily or permanently): do NOT pop — show an in-screen
+      // prompt with a manual-entry fallback so the screen never appears to do
+      // "nothing". Permanently-denied also offers the settings shortcut.
+      if (mounted) setState(() => _camDenied = true);
     }
+  }
+
+  Future<void> _openSettings() async {
+    await openAppSettings();
   }
 
   @override
@@ -95,7 +112,11 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
 
     unawaited(HapticFeedback.mediumImpact());
     await _cameraCtrl?.stop();
+    await _lookupCode(code);
+  }
 
+  /// Shared lookup used by both the camera scanner and manual entry.
+  Future<void> _lookupCode(String code) async {
     setState(() {
       _isLookingUp = true;
       _errorMessage = null;
@@ -123,8 +144,18 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
         _isLookingUp = false;
         _errorMessage = e.toString();
       });
-      // Resume scanning after error
-      unawaited(_cameraCtrl?.start());
+      // Resume scanning after error (no-op if camera isn't running)
+    }
+  }
+
+  Future<void> _showManualEntrySheet() async {
+    final code = await AppSheet.show<String>(
+      context: context,
+      title: AppLocalizations.of(context).translate('barcode.manual_entry_title'),
+      child: const _ManualEntrySheetBody(),
+    );
+    if (code != null && code.isNotEmpty && mounted) {
+      await _lookupCode(code);
     }
   }
 
@@ -223,14 +254,21 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
             MobileScanner(
               controller: _cameraCtrl!,
               onDetect: _onBarcodeDetected,
+              errorBuilder: (context, error) =>
+                  _buildCameraFallback(l10n, palette, t),
             ),
-          if (!_hasResult && !_cameraReady)
-            const Center(child: SizedBox.shrink()),
+          // Permission denied or camera failed → actionable fallback (never a
+          // silent black screen).
+          if (!_hasResult && (_camDenied || _camError))
+            _buildCameraFallback(l10n, palette, t),
+          // Permission granted, camera still initializing → branded loader.
+          if (!_hasResult && !_cameraReady && !_camDenied && !_camError)
+            _buildCameraLoading(l10n, t),
           if (_hasResult)
             Container(color: palette.background),
 
-          // Scanning overlay (only when actively scanning)
-          if (!_hasResult && !_isLookingUp)
+          // Scanning overlay (only when camera is live and actively scanning)
+          if (!_hasResult && !_isLookingUp && _cameraReady)
             _buildScanOverlay(l10n, palette, t, primary),
 
           // Looking-up overlay
@@ -331,6 +369,81 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
     );
   }
 
+  Widget _buildCameraLoading(AppLocalizations l10n, AppText t) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(color: Colors.white),
+          SizedBox(height: AppSpacing.lg.h),
+          Text(
+            l10n.translate('barcode.camera_starting'),
+            style: t.bodyM.copyWith(color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Shown when permission is denied or the camera can't start. Always offers
+  /// manual barcode entry so the feature is usable without a working camera.
+  Widget _buildCameraFallback(
+    AppLocalizations l10n,
+    AppPalette palette,
+    AppText t,
+  ) {
+    final denied = _camDenied;
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              denied
+                  ? Icons.no_photography_rounded
+                  : Icons.videocam_off_rounded,
+              size: 56.r,
+              color: Colors.white70,
+            ),
+            SizedBox(height: AppSpacing.lg.h),
+            Text(
+              l10n.translate(denied
+                  ? 'barcode.permission_denied_title'
+                  : 'barcode.camera_unavailable_title'),
+              style: t.titleM.copyWith(
+                  color: Colors.white, fontWeight: FontWeight.w700),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: AppSpacing.xs.h),
+            Text(
+              l10n.translate(denied
+                  ? 'barcode.permission_denied_sub'
+                  : 'barcode.camera_unavailable_sub'),
+              style: t.bodyM.copyWith(color: Colors.white70, height: 1.4),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: AppSpacing.xl.h),
+            AppButton(
+              label: l10n.translate('barcode.manual_entry'),
+              icon: Icons.keyboard_rounded,
+              onPressed: _showManualEntrySheet,
+            ),
+            if (denied) ...[
+              SizedBox(height: AppSpacing.sm.h),
+              AppButton(
+                label: l10n.translate('barcode.open_settings'),
+                icon: Icons.settings_rounded,
+                variant: AppButtonVariant.secondary,
+                onPressed: _openSettings,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildScanOverlay(
     AppLocalizations l10n,
     AppPalette palette,
@@ -388,8 +501,91 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
           style: t.bodyM.copyWith(color: Colors.white70),
           textAlign: TextAlign.center,
         ),
+        SizedBox(height: AppSpacing.lg.h),
+        _buildModeSwitcher(l10n, t, primary),
+        SizedBox(height: AppSpacing.md.h),
+        // Manual entry escape hatch — works even if scanning struggles.
+        TextButton.icon(
+          onPressed: _showManualEntrySheet,
+          icon: const Icon(Icons.keyboard_rounded,
+              size: 16, color: Colors.white70),
+          label: Text(
+            l10n.translate('barcode.manual_entry'),
+            style: t.labelM.copyWith(color: Colors.white70),
+          ),
+        ),
         const Spacer(flex: 3),
       ],
+    );
+  }
+
+  Widget _buildModeSwitcher(AppLocalizations l10n, AppText t, Color primary) {
+    return Container(
+      padding: EdgeInsets.all(3.r),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(AppRadius.full.r),
+        border: Border.all(
+            color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Active: Barcode pill
+          Container(
+            padding:
+                EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+            decoration: BoxDecoration(
+              color: primary,
+              borderRadius: BorderRadius.circular(AppRadius.full.r),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.qr_code_scanner_rounded,
+                    size: 14.r, color: Colors.white),
+                SizedBox(width: 5.w),
+                Text(
+                  l10n.translate('barcode.mode_barcode'),
+                  style: t.labelM.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 3.w),
+          // Inactive: AI Analysis pill
+          GestureDetector(
+            onTap: () {
+              unawaited(HapticFeedback.selectionClick());
+              unawaited(Navigator.of(context).push(
+                AppTransitions.slideUp(const FoodScanScreen()),
+              ));
+            },
+            child: Container(
+              padding:
+                  EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.auto_awesome_rounded,
+                      size: 14.r, color: Colors.white70),
+                  SizedBox(width: 5.w),
+                  Text(
+                    l10n.translate('barcode.mode_ai'),
+                    style: t.labelM.copyWith(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -732,3 +928,57 @@ class _ScanFramePainter extends CustomPainter {
   @override
   bool shouldRepaint(_ScanFramePainter old) => old.color != color;
 }
+
+class _ManualEntrySheetBody extends StatefulWidget {
+  const _ManualEntrySheetBody();
+
+  @override
+  State<_ManualEntrySheetBody> createState() => _ManualEntrySheetBodyState();
+}
+
+class _ManualEntrySheetBodyState extends State<_ManualEntrySheetBody> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.xl.w, vertical: AppSpacing.md.h),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppTextField(
+            controller: _controller,
+            hintText: l10n.translate('barcode.manual_entry_hint'),
+            keyboardType: TextInputType.number,
+            autofocus: true,
+          ),
+          SizedBox(height: AppSpacing.lg.h),
+          AppButton(
+            label: l10n.translate('barcode.manual_lookup'),
+            icon: Icons.search_rounded,
+            onPressed: () {
+              final v = _controller.text.trim();
+              if (v.isNotEmpty) Navigator.of(context).pop(v);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:cookrange/core/widgets/app_image.dart';
@@ -10,6 +9,7 @@ import '../../core/services/friend_service.dart';
 
 import '../../core/models/community_post.dart';
 import 'community_topics.dart';
+import 'groups/groups_discovery_screen.dart';
 import 'widgets/glass_post_card.dart';
 import 'widgets/create_post_card.dart';
 import 'widgets/glass_refresher.dart';
@@ -216,169 +216,6 @@ class _CommunityScreenState extends State<CommunityScreen>
     _applyFilter(_selectedFilter);
   }
 
-  void _showFilterSheet(BuildContext context, List<String> filters,
-      Map<String, String> filterKeys) {
-    final appLoc = AppLocalizations.of(context);
-    final palette = AppPalette.of(context);
-    final textStyles = AppText.of(context);
-    final primaryColor = context.read<ThemeProvider>().primaryColor;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) {
-        String tempSelectedFilter = _selectedFilter;
-
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: palette.surface.withValues(alpha: 0.9),
-                    border: Border(
-                      top: BorderSide(color: palette.border),
-                    ),
-                  ),
-                  child: SafeArea(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(height: AppSpacing.xs),
-                        // Handle bar
-                        Container(
-                          width: AppSize.sheetHandleW,
-                          height: AppSize.sheetHandleH,
-                          decoration: BoxDecoration(
-                            color: palette.border,
-                            borderRadius: BorderRadius.circular(AppRadius.full),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-
-                        // Title
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.xl, vertical: AppSpacing.xs),
-                          child: Text(
-                            appLoc.translate("community.filter_title"),
-                            style: textStyles.headlineS,
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Divider(height: 1, color: palette.divider),
-
-                        Flexible(
-                          child: SingleChildScrollView(
-                            physics: const BouncingScrollPhysics(),
-                            child: Column(
-                              children: filters.map((filter) {
-                                final isSelected = tempSelectedFilter == filter;
-                                return InkWell(
-                                  onTap: () {
-                                    setModalState(() {
-                                      tempSelectedFilter = filter;
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: AppSpacing.xl, vertical: AppSpacing.md),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? primaryColor.withValues(alpha: 0.12)
-                                          : Colors.transparent,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(AppSpacing.xs),
-                                          decoration: BoxDecoration(
-                                            color: isSelected
-                                                ? primaryColor.withValues(alpha: 0.2)
-                                                : palette.surfaceVariant,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            _getFilterIcon(filter),
-                                            size: AppSize.iconMd,
-                                            color: isSelected
-                                                ? primaryColor
-                                                : palette.textPrimary,
-                                          ),
-                                        ),
-                                        const SizedBox(width: AppSpacing.md),
-                                        Expanded(
-                                          child: Text(
-                                            appLoc.translate(filterKeys[filter]!),
-                                            style: textStyles.titleL.copyWith(
-                                              fontWeight: isSelected
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w500,
-                                              color: isSelected
-                                                  ? primaryColor
-                                                  : palette.textPrimary,
-                                            ),
-                                          ),
-                                        ),
-                                        if (isSelected)
-                                          Icon(Icons.check,
-                                              color: primaryColor, size: AppSize.iconMd),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: AppSpacing.xs),
-
-                        // Save Button
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                _onFilterChanged(tempSelectedFilter);
-                                Navigator.pop(context);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                                backgroundColor: primaryColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(AppRadius.button),
-                                ),
-                              ),
-                              child: Text(
-                                appLoc.translate("common.save"),
-                                style: textStyles.labelL.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   IconData _getFilterIcon(String filter) {
     switch (filter) {
@@ -498,42 +335,33 @@ class _CommunityScreenState extends State<CommunityScreen>
                   ),
                 ),
 
-              // Feed Header (Filters)
+              // Feed Header
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                 sliver: SliverToBoxAdapter(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          appLoc.translate("community.feed"),
-                          style: textStyles.headlineM,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      GestureDetector(
-                        onTap: () =>
-                            _showFilterSheet(context, _filters, filterKeys),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-                          child: Row(
-                            children: [
-                              Text(
-                                appLoc.translate(filterKeys[_selectedFilter]!),
-                                style: textStyles.titleM,
-                              ),
-                              const SizedBox(width: AppSpacing.xxs),
-                              Icon(Icons.keyboard_arrow_down,
-                                  size: AppSize.iconMd,
-                                  color: palette.textPrimary),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    appLoc.translate("community.feed"),
+                    style: textStyles.headlineM,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
+
+              // Inline feed-filter pills (canonical app-wide filter bar).
+              SliverToBoxAdapter(
+                child: AppFilterBar(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                  children: _filters
+                      .map((f) => AppFilterPill(
+                            label: appLoc.translate(filterKeys[f]!),
+                            icon: _getFilterIcon(f),
+                            active: _selectedFilter == f,
+                            onTap: () => _onFilterChanged(f),
+                          ))
+                      .toList(),
                 ),
               ),
 
@@ -760,10 +588,8 @@ class _CommunityScreenState extends State<CommunityScreen>
       width: 70,
       margin: const EdgeInsets.only(right: AppSpacing.md),
       child: GestureDetector(
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  appLoc.translate('community.group_feature_unavailable'))),
+        onTap: () => Navigator.of(context).push(
+          AppTransitions.slideRight(const GroupsDiscoveryScreen()),
         ),
         child: Column(
           children: [
@@ -790,7 +616,6 @@ class _CommunityScreenState extends State<CommunityScreen>
   }
 
   Widget _buildGroupItem(CommunityGroup group) {
-    final appLoc = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
     final primaryColor = context.watch<ThemeProvider>().primaryColor;
     final textStyles = AppText.of(context);
@@ -798,10 +623,8 @@ class _CommunityScreenState extends State<CommunityScreen>
       width: 70,
       margin: const EdgeInsets.only(right: AppSpacing.md),
       child: GestureDetector(
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  appLoc.translate('community.group_feature_unavailable'))),
+        onTap: () => Navigator.of(context).push(
+          AppTransitions.slideRight(const GroupsDiscoveryScreen()),
         ),
         child: Column(
           children: [
@@ -869,87 +692,29 @@ class _TopicFilterRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final appLoc = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
-    final textStyles = AppText.of(context);
 
-    return SizedBox(
-      height: 36,
-      child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        children: [
-          // "All Topics" chip
-          _TopicChip(
-            label: appLoc.translate('community.topic_all'),
-            isSelected: selectedTopic == null,
-            color: palette.textSecondary,
-            onTap: () => onTopicSelected(null),
-            palette: palette,
-            textStyles: textStyles,
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          // One chip per topic constant
-          ...CommunityTopics.all.map((topic) {
-            final color = CommunityTopics.colorFor(topic, palette);
-            return Padding(
-              padding: const EdgeInsets.only(right: AppSpacing.xs),
-              child: _TopicChip(
-                label: appLoc.translate(CommunityTopics.labelKeyFor(topic)),
-                isSelected: selectedTopic == topic,
-                color: color,
-                onTap: () => onTopicSelected(selectedTopic == topic ? null : topic),
-                palette: palette,
-                textStyles: textStyles,
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-class _TopicChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final Color color;
-  final VoidCallback onTap;
-  final AppPalette palette;
-  final AppText textStyles;
-
-  const _TopicChip({
-    required this.label,
-    required this.isSelected,
-    required this.color,
-    required this.onTap,
-    required this.palette,
-    required this.textStyles,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm + 2, vertical: AppSpacing.xxs + 2),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          border: Border.all(
-            color: isSelected ? color : palette.border,
-            width: isSelected ? 1.5 : 1.0,
-          ),
+    return AppFilterBar(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+      children: [
+        AppFilterPill(
+          label: appLoc.translate('community.topic_all'),
+          icon: Icons.tag_rounded,
+          active: selectedTopic == null,
+          accent: palette.textSecondary,
+          onTap: () => onTopicSelected(null),
         ),
-        child: Text(
-          label,
-          style: textStyles.labelS.copyWith(
-            color: isSelected ? color : palette.textSecondary,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ),
+        ...CommunityTopics.all.map((topic) {
+          final color = CommunityTopics.colorFor(topic, palette);
+          return AppFilterPill(
+            label: appLoc.translate(CommunityTopics.labelKeyFor(topic)),
+            icon: Icons.label_outline_rounded,
+            active: selectedTopic == topic,
+            accent: color,
+            onTap: () =>
+                onTopicSelected(selectedTopic == topic ? null : topic),
+          );
+        }),
+      ],
     );
   }
 }

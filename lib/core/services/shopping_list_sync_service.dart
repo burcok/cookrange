@@ -24,12 +24,14 @@ class ShoppingListSyncService {
       final data = snap.data()!;
       final rawItems = (data['items'] as List<dynamic>? ?? []);
       final items = rawItems.map((m) {
-        final map = m as Map<String, dynamic>;
+        final map = Map<String, dynamic>.from(m as Map);
         return Ingredient(
           name: map['name'] ?? '',
           amount: (map['amount'] as num?)?.toDouble() ?? 0,
           unit: map['unit'] ?? '',
           calories: (map['calories'] as num?)?.toDouble() ?? 0,
+          sourceMeals: List<String>.from(map['source_meals'] ?? const []),
+          sourceDates: List<String>.from(map['source_dates'] ?? const []),
         );
       }).toList();
       final checked =
@@ -45,14 +47,7 @@ class ShoppingListSyncService {
       String uid, List<Ingredient> items, Set<String> checked) async {
     try {
       await _docRef(uid).set({
-        'items': items
-            .map((i) => {
-                  'name': i.name,
-                  'amount': i.amount,
-                  'unit': i.unit,
-                  'calories': i.calories,
-                })
-            .toList(),
+        'items': items.map((i) => i.toJson()).toList(),
         'checkedNames': checked.toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       });

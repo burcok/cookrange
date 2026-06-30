@@ -116,6 +116,25 @@ class CommunityService {
             .toList());
   }
 
+  /// Group-scoped feed: posts whose top-level `groupId` matches [groupId],
+  /// newest first. Blocked authors are filtered client-side.
+  Stream<List<CommunityPost>> getGroupFeedStream(String groupId,
+      {int limit = 30}) async* {
+    final blockedIds = await getBlockedIds();
+    final userId = _currentUserId;
+    yield* _firestore
+        .collection('posts')
+        .where('groupId', isEqualTo: groupId)
+        .orderBy('timestamp', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) =>
+                CommunityPost.fromMap(doc.data(), doc.id, currentUserId: userId))
+            .where((p) => !blockedIds.contains(p.author.id))
+            .toList());
+  }
+
   Future<List<CommunityPost>> getPosts({int limit = 10}) async {
     try {
       final userId = _currentUserId;
@@ -188,6 +207,7 @@ class CommunityService {
     PostType postType = PostType.text,
     Map<String, dynamic> metadata = const {},
     String? authorRole,
+    String? groupId,
   }) async {
     await _checkContent(content);
     final user = await _getCurrentCommunityUser();
@@ -211,6 +231,8 @@ class CommunityService {
       'likedUserIds': [],
       'commentsCount': 0,
       'likesCount': 0,
+      // Top-level groupId enables group-scoped feeds (null = global feed).
+      if (groupId != null) 'groupId': groupId,
     });
 
     final newPostId = docRef.id;
@@ -848,17 +870,9 @@ class CommunityService {
     }
   }
 
-  List<CommunityGroup> getGroups() {
-    return [
-      CommunityGroup(
-        id: 'g1',
-        name: 'Cookrange',
-        imageUrl: '',
-        hasUpdate: true,
-        lastMessageTime: DateTime.now().subtract(const Duration(minutes: 5)),
-      ),
-    ];
-  }
+  /// Legacy stub retired — real groups now live in [CommunityGroupService]
+  /// and are reached via the community "Groups" carousel → GroupsDiscoveryScreen.
+  List<CommunityGroup> getGroups() => const [];
 
   // --- Reporting & Moderation ---
 

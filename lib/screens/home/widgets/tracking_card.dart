@@ -7,6 +7,7 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/widgets/ds/ds.dart';
+import 'weight_log_sheet.dart';
 
 /// Combined hydration + weight tracking card for the home screen.
 /// Uses local Hive storage (StorageService) — no Firestore dependency.
@@ -58,20 +59,7 @@ class _TrackingCardState extends State<TrackingCard> {
   }
 
   Future<void> _showWeightDialog() async {
-    final l10n = AppLocalizations.of(context);
-    await AppSheet.show(
-      context: context,
-      title: l10n.translate('tracking.weight.log_title'),
-      child: _WeightInputSheet(
-        initialWeight: _todayWeight,
-        weightHistory: _weightHistory,
-        l10n: l10n,
-        onSave: (val) async {
-          await _storage.saveWeight(DateTime.now(), val);
-          _load();
-        },
-      ),
-    );
+    await WeightLogSheet.show(context, onSaved: _load);
   }
 
   @override
@@ -299,130 +287,6 @@ class _TrackingCardState extends State<TrackingCard> {
                 color: onTap != null ? color : palette.textTertiary,
                 size: AppSize.iconSm),
       ),
-    );
-  }
-}
-
-class _WeightInputSheet extends StatefulWidget {
-  final double? initialWeight;
-  final List<dynamic> weightHistory;
-  final AppLocalizations l10n;
-  final Future<void> Function(double) onSave;
-
-  const _WeightInputSheet({
-    required this.initialWeight,
-    required this.weightHistory,
-    required this.l10n,
-    required this.onSave,
-  });
-
-  @override
-  State<_WeightInputSheet> createState() => _WeightInputSheetState();
-}
-
-class _WeightInputSheetState extends State<_WeightInputSheet> {
-  late final TextEditingController _controller;
-  bool _isSaving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(
-      text: widget.initialWeight?.toStringAsFixed(1) ?? '',
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = AppPalette.of(context);
-    final t = AppText.of(context);
-    final primary = context.watch<ThemeProvider>().primaryColor;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Input field
-        TextField(
-          controller: _controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          autofocus: true,
-          cursorColor: primary,
-          style: t.bodyL.copyWith(color: palette.textPrimary),
-          decoration: InputDecoration(
-            labelText: widget.l10n.translate('tracking.weight.field_label'),
-            labelStyle: TextStyle(color: palette.textSecondary),
-            suffixText: 'kg',
-            suffixStyle: t.bodyL.copyWith(color: palette.textSecondary),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.input.r),
-              borderSide: BorderSide(color: palette.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.input.r),
-              borderSide: BorderSide(color: primary, width: 2),
-            ),
-            filled: true,
-            fillColor: palette.surfaceVariant.withValues(alpha: 0.5),
-            contentPadding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.xl.w, vertical: AppSpacing.md.h),
-          ),
-        ),
-        if (widget.weightHistory.isNotEmpty) ...[
-          SizedBox(height: AppSpacing.lg.h),
-          Text(
-            widget.l10n.translate('tracking.weight.recent'),
-            style: t.labelM.copyWith(
-                fontWeight: FontWeight.w600, color: palette.textSecondary),
-          ),
-          SizedBox(height: AppSpacing.xs.h),
-          ...widget.weightHistory.take(5).map(
-                (e) => Padding(
-                  padding: EdgeInsets.symmetric(vertical: 5.h),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(e['date'] as String,
-                          style: t.labelS.copyWith(color: palette.textSecondary)),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm.w, vertical: 2.h),
-                        decoration: BoxDecoration(
-                          color: primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(AppRadius.xs.r),
-                        ),
-                        child: Text('${e['weight']} kg',
-                            style: t.labelS.copyWith(
-                                fontWeight: FontWeight.w700, color: primary)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-        ],
-        SizedBox(height: AppSpacing.xl.h),
-        AppButton(
-          label: widget.l10n.translate('common.save'),
-          loading: _isSaving,
-          onPressed: _isSaving
-              ? null
-              : () async {
-                  final val = double.tryParse(_controller.text.trim());
-                  if (val == null || val <= 0) return;
-                  final nav = Navigator.of(context);
-                  setState(() => _isSaving = true);
-                  await widget.onSave(val);
-                  if (!mounted) return;
-                  nav.pop();
-                },
-        ),
-      ],
     );
   }
 }

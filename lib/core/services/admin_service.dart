@@ -11,7 +11,9 @@ import '../models/coach_profile_model.dart';
 import '../models/gym_application_model.dart';
 import '../models/gym_model.dart';
 import '../models/user_model.dart';
+import '../data/test_data_library.dart';
 import 'firestore_service.dart';
+import 'test_mode_service.dart';
 
 /// Admin-only service for reviewing and actioning coach/gym applications.
 /// All write methods require the caller to be admin — enforced in Firestore rules.
@@ -415,7 +417,19 @@ class AdminService {
 
   Future<List<Map<String, dynamic>>> searchUsers(String query) async {
     debugPrint('AdminService: searchUsers query="$query"');
-    final end = query.isEmpty ? query : '\$query\uf8ff';
+    if (TestModeService().isActive) {
+      final lower = query.toLowerCase();
+      return TestDataLibrary.adminUsers()
+          .where((u) =>
+              query.isEmpty ||
+              (u['display_name'] as String? ?? '')
+                  .toLowerCase()
+                  .contains(lower) ||
+              (u['email'] as String? ?? '').toLowerCase().contains(lower))
+          .toList();
+    }
+    // Prefix range search on display_name (\uf8ff is the high-codepoint cap).
+    final end = query.isEmpty ? query : '$query\uf8ff';
     final snap = await _db
         .collection('users')
         .where('display_name', isGreaterThanOrEqualTo: query)
@@ -426,9 +440,15 @@ class AdminService {
   }
 
   Stream<List<Map<String, dynamic>>> getUsersStream() {
+    if (TestModeService().isActive) {
+      return Stream.value(TestDataLibrary.adminUsers());
+    }
+    // NOTE: user docs store the snake_case `created_at` \u2014 ordering by
+    // `createdAt` (camelCase) silently returned ZERO docs (Firestore excludes
+    // docs missing the orderBy field), which is why the list looked empty.
     return _db
         .collection('users')
-        .orderBy('createdAt', descending: true)
+        .orderBy('created_at', descending: true)
         .limit(50)
         .snapshots()
         .map((s) => s.docs.map((d) => {'uid': d.id, ...d.data()}).toList());
@@ -497,6 +517,37 @@ class AdminService {
       action: 'set_user_role',
       targetUid: uid,
       metadata: {'role': role},
+    );
+  }
+
+  /// Sends a direct (admin → single user) notification. Written as a legacy
+  /// title/body doc so `NotificationPresenter` shows the custom message
+  /// verbatim (no actorUid/metadata → renders stored title/body).
+  Future<void> sendNotificationToUser({
+    required String uid,
+    required String title,
+    required String body,
+  }) async {
+    final adminUid = _auth.currentUser?.uid;
+    if (adminUid == null) throw Exception('AdminService: not authenticated');
+
+    debugPrint('AdminService: sendNotificationToUser uid=$uid');
+    await _db
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .add({
+      'type': 'system',
+      'title': title,
+      'body': body,
+      'timestamp': FieldValue.serverTimestamp(),
+      'isRead': false,
+    });
+
+    await logAuditAction(
+      action: 'send_notification',
+      targetUid: uid,
+      metadata: {'title': title},
     );
   }
 

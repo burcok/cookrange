@@ -10,6 +10,29 @@
 
 ---
 
+## 🆕 Phase 13 — QA fixes & feature upgrades (2026-06-30) ✅
+
+- ✅ **Bug fixes:** self-profile shown as a stranger; "save first weight" dismissing the profile;
+  My Programs infinite spinner (missing `program_enrollments` composite index + swallowed stream
+  error + dead retry); barcode scanner silent black screen → loading/denied/unavailable states +
+  manual entry; onboarding water reminder now defaults ON.
+- ✅ **AI credit metering** on food analysis (was unmetered) + live credit badge.
+- ✅ **Food analysis v2:** photo/vision analysis (`OPENROUTER_VISION_MODEL`, graceful degrade),
+  enriched results (health score, micros, allergens, confidence, portion stepper), analysis history.
+- ✅ **Foods & Nutrition hub:** unified Browse-all-foods + Favorites + Insights (fixes "empty/buried").
+- ✅ **Shared `AppFilterBar`** — marketplace + community migrated to the canonical gym/coach pill bar.
+- ✅ **Shopping list:** per-ingredient source meal ("for: …") + This-week/Today filters. (Market data
+  dropped — no data source.)
+- ✅ **Admin:** users list now populates (field-name fix) + search fix + per-user notification send + test-mode users.
+- ✅ **Community Groups MVP** (location-based: discover by city/district, join, group feed) +
+  detailed roadmap → `docs/roadmap/COMMUNITY_GROUPS.md` (P2 engagement / P3 moderation planned).
+- ✅ **All four discovery surfaces** (gym, coach, marketplace, community) now consume the shared
+  `AppFilterBar` — single source of truth, no drift.
+- ⚠️ **Follow-ups:** deploy `firestore.indexes.json` + `firestore.rules` before testing programs &
+  groups; group `member_count` is client-incremented (P2: Cloud Function reconcile).
+
+---
+
 ## 0. Executive Summary (The Brutal Truth)
 
 Cookrange today is a **single-user AI meal-planning app with social features** — a genuinely solid one. It is **not yet** the "Fitness Operating System" described in the README. The gap between vision and code is large but the foundation is real.

@@ -92,6 +92,11 @@ service cloud.firestore {
         allow read, write: if isOwner(uid);
       }
 
+      // AI food-analysis history: strictly owner-only
+      match /food_analyses/{analysisId} {
+        allow read, write: if isOwner(uid);
+      }
+
       // Saved/bookmarked community posts
       match /saved_posts/{postId} {
         allow read, write: if isOwner(uid);
@@ -274,6 +279,34 @@ service cloud.firestore {
     }
 
     // ─── Gyms ────────────────────────────────────────────────────────────────
+    // ─── Community Groups ─────────────────────────────────────────────────────
+    match /community_groups/{groupId} {
+      // Any authenticated user can read groups (discovery).
+      allow read: if isAuthenticated();
+      // Creator must own the group.
+      allow create: if isAuthenticated()
+        && request.resource.data.owner_uid == request.auth.uid;
+      // Owner/admin can edit freely; any member may bump only the counter
+      // fields (member_count / last_activity_at) on join/leave/post.
+      allow update: if isAuthenticated()
+        && (resource.data.owner_uid == request.auth.uid
+            || isAdmin()
+            || request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['member_count', 'last_activity_at', 'updated_at']));
+      allow delete: if isAuthenticated()
+        && (resource.data.owner_uid == request.auth.uid || isAdmin());
+
+      // Members subcollection: a user manages their own membership doc;
+      // the group owner (and admin) may manage any.
+      match /members/{memberId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated()
+          && (request.auth.uid == memberId
+              || get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
+              || isAdmin());
+      }
+    }
+
     match /gyms/{gymId} {
       // Any authenticated user can read gym profiles (for search/discovery)
       allow read: if isAuthenticated();

@@ -7,8 +7,10 @@ import '../models/gym_model.dart';
 import '../models/gym_member_model.dart';
 import '../models/checkin_model.dart';
 import '../models/user_model.dart';
+import '../data/test_data_library.dart';
 import 'analytics_service.dart';
 import 'firestore_service.dart';
+import 'test_mode_service.dart';
 
 class GymService {
   static final GymService _instance = GymService._internal();
@@ -174,6 +176,32 @@ class GymService {
     DocumentSnapshot? startAfter,
     int limit = 20,
   }) async {
+    if (TestModeService().isActive) {
+      var results = TestDataLibrary.gyms();
+      if (query.isNotEmpty) {
+        final lower = query.toLowerCase();
+        results = results
+            .where((g) =>
+                g.name.toLowerCase().contains(lower) ||
+                (g.city?.toLowerCase().contains(lower) ?? false))
+            .toList();
+      }
+      if (city != null && city.isNotEmpty) {
+        results = results.where((g) => g.city == city).toList();
+      }
+      if (tags != null && tags.isNotEmpty) {
+        results = results
+            .where((g) => tags.any((t) => g.tags.contains(t)))
+            .toList();
+      }
+      if (sortBy == 'avg_rating') {
+        results.sort((a, b) => b.memberCount.compareTo(a.memberCount));
+      } else {
+        results.sort((a, b) => b.memberCount.compareTo(a.memberCount));
+      }
+      return results.take(limit).toList();
+    }
+
     Query<Map<String, dynamic>> q =
         _gyms.where('is_public', isEqualTo: true);
 

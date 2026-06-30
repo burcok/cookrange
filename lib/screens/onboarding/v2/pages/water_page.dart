@@ -36,7 +36,8 @@ class _OnboardingWaterPageState extends State<OnboardingWaterPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       final ob = context.read<OnboardingProvider>();
       if (ob.waterDailyTargetMl == null && ob.weight != null) {
         ob.setWaterReminder(
@@ -46,6 +47,15 @@ class _OnboardingWaterPageState extends State<OnboardingWaterPage> {
             activityLevel: ob.activityLevel?['value'] as String?,
           ),
         );
+      }
+      // Auto-request notification permission since water reminder defaults to enabled.
+      // PermissionService caches the primer — shows at most once per install.
+      if (ob.waterReminderEnabled) {
+        final granted =
+            await PermissionService().requestNotifications(context);
+        if (mounted && !granted) {
+          ob.setWaterReminder(enabled: false);
+        }
       }
     });
   }

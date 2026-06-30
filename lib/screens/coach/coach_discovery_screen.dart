@@ -102,19 +102,27 @@ class _CoachDiscoveryScreenState extends State<CoachDiscoveryScreen> {
 
   Future<void> _activateNearMe() async {
     final l10n = AppLocalizations.of(context);
-    final consent = await PermissionPrimer.show(
-      context,
-      icon: Icons.location_on_rounded,
-      iconColor: AppPalette.of(context).warning,
-      title: l10n.translate('coach.nearby_consent_title'),
-      rationale: l10n.translate('coach.nearby_consent_rationale'),
-      allowLabel: l10n.translate('permission.allow'),
-      notNowLabel: l10n.translate('permission.not_now'),
-    );
+
+    // Skip KVKK primer if location permission is already granted.
+    final existing = await Geolocator.checkPermission();
     if (!mounted) return;
-    if (!consent) {
-      setState(() => _sortBy = 'client_count');
-      return;
+
+    if (existing != LocationPermission.whileInUse &&
+        existing != LocationPermission.always) {
+      final consent = await PermissionPrimer.show(
+        context,
+        icon: Icons.location_on_rounded,
+        iconColor: AppPalette.of(context).warning,
+        title: l10n.translate('coach.nearby_consent_title'),
+        rationale: l10n.translate('coach.nearby_consent_rationale'),
+        allowLabel: l10n.translate('permission.allow'),
+        notNowLabel: l10n.translate('permission.not_now'),
+      );
+      if (!mounted) return;
+      if (!consent) {
+        setState(() => _sortBy = 'client_count');
+        return;
+      }
     }
     setState(() => _loadingLocation = true);
     try {
@@ -1275,7 +1283,6 @@ class _CoachFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).primaryColor;
     final hasFilter = selectedCity != null || sortBy != 'client_count';
 
     return Padding(
@@ -1283,64 +1290,53 @@ class _CoachFilterBar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            height: 40.h,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-              children: [
-                // ── Location ─────────────────────────────────────────
-                _locationPill(
-                  context,
-                  icon: Icons.location_city_rounded,
-                  value: selectedCity,
-                  placeholder: l10n.translate('discovery.filter_city'),
-                  primary: primary,
-                  onTap: () => _showCityPicker(context),
+          AppFilterBar(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+            children: [
+              // ── Location ─────────────────────────────────────────
+              AppFilterPill.picker(
+                icon: Icons.location_city_rounded,
+                label: selectedCity ?? l10n.translate('discovery.filter_city'),
+                active: selectedCity != null,
+                onTap: () => _showCityPicker(context),
+              ),
+              if (selectedCity != null)
+                AppFilterPill.picker(
+                  icon: Icons.map_outlined,
+                  label: selectedDistrict ??
+                      l10n.translate('discovery.filter_district'),
+                  active: selectedDistrict != null,
+                  onTap: () => _showDistrictPicker(context),
                 ),
-                if (selectedCity != null) ...[
-                  SizedBox(width: 6.w),
-                  _locationPill(
-                    context,
-                    icon: Icons.map_outlined,
-                    value: selectedDistrict,
-                    placeholder:
-                        l10n.translate('discovery.filter_district'),
-                    primary: primary,
-                    onTap: () => _showDistrictPicker(context),
-                  ),
-                ],
-                // ── Divider ──────────────────────────────────────────
-                SizedBox(width: 10.w),
-                VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  indent: 6.h,
-                  endIndent: 6.h,
-                  color: palette.border,
-                ),
-                SizedBox(width: 10.w),
-                // ── Sort ─────────────────────────────────────────────
-                _sortPill(context, 'avg_rating', Icons.star_rounded,
-                    l10n.translate('discovery.sort_top_rated'), primary),
-                SizedBox(width: 6.w),
-                _sortPill(
-                    context,
-                    'client_count',
-                    Icons.local_fire_department_rounded,
-                    l10n.translate('discovery.sort_popular'),
-                    primary),
-                SizedBox(width: 6.w),
-                _sortPill(
-                    context,
-                    'created_at',
-                    Icons.new_releases_rounded,
-                    l10n.translate('discovery.sort_newest'),
-                    primary),
-                SizedBox(width: 6.w),
-                _nearMePill(context, primary),
-              ],
-            ),
+              const AppFilterDivider(),
+              // ── Sort ─────────────────────────────────────────────
+              AppFilterPill(
+                icon: Icons.star_rounded,
+                label: l10n.translate('discovery.sort_top_rated'),
+                active: sortBy == 'avg_rating',
+                onTap: () => onSortChanged('avg_rating'),
+              ),
+              AppFilterPill(
+                icon: Icons.local_fire_department_rounded,
+                label: l10n.translate('discovery.sort_popular'),
+                active: sortBy == 'client_count',
+                onTap: () => onSortChanged('client_count'),
+              ),
+              AppFilterPill(
+                icon: Icons.new_releases_rounded,
+                label: l10n.translate('discovery.sort_newest'),
+                active: sortBy == 'created_at',
+                onTap: () => onSortChanged('created_at'),
+              ),
+              AppFilterPill(
+                icon: Icons.near_me_rounded,
+                label: l10n.translate('discovery.sort_near_me'),
+                active: sortBy == 'near_me',
+                accent: palette.energy,
+                loading: loadingLocation,
+                onTap: loadingLocation ? null : () => onSortChanged('near_me'),
+              ),
+            ],
           ),
           if (hasFilter)
             Padding(
@@ -1369,166 +1365,6 @@ class _CoachFilterBar extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _locationPill(
-    BuildContext context, {
-    required IconData icon,
-    required String? value,
-    required String placeholder,
-    required Color primary,
-    required VoidCallback onTap,
-  }) {
-    final active = value != null;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        height: 34.h,
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
-        decoration: BoxDecoration(
-          color: active
-              ? primary.withValues(alpha: 0.1)
-              : palette.surfaceVariant,
-          borderRadius: BorderRadius.circular(AppRadius.full.r),
-          border: Border.all(
-            color: active
-                ? primary.withValues(alpha: 0.45)
-                : palette.border,
-            width: active ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon,
-                size: 13.r,
-                color: active ? primary : palette.textSecondary),
-            SizedBox(width: 5.w),
-            Text(
-              value ?? placeholder,
-              style: AppText.of(context).labelM.copyWith(
-                    fontSize: 12.sp,
-                    color: active ? primary : palette.textSecondary,
-                    fontWeight:
-                        active ? FontWeight.w600 : FontWeight.w500,
-                  ),
-            ),
-            SizedBox(width: 4.w),
-            Icon(
-              active
-                  ? Icons.check_rounded
-                  : Icons.keyboard_arrow_down_rounded,
-              size: 13.r,
-              color: active ? primary : palette.textTertiary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _sortPill(BuildContext context, String value, IconData icon,
-      String label, Color primary) {
-    final active = sortBy == value;
-    return GestureDetector(
-      onTap: () => onSortChanged(value),
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        height: 34.h,
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
-        decoration: BoxDecoration(
-          color: active
-              ? primary.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.full.r),
-          border: Border.all(
-            color: active
-                ? primary.withValues(alpha: 0.45)
-                : palette.border,
-            width: active ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (active) ...[
-              Icon(Icons.check_rounded, size: 11.r, color: primary),
-              SizedBox(width: 4.w),
-            ] else ...[
-              Icon(icon, size: 12.r, color: palette.textTertiary),
-              SizedBox(width: 4.w),
-            ],
-            Text(
-              label,
-              style: AppText.of(context).labelM.copyWith(
-                    fontSize: 12.sp,
-                    color: active ? primary : palette.textSecondary,
-                    fontWeight:
-                        active ? FontWeight.w600 : FontWeight.w500,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _nearMePill(BuildContext context, Color primary) {
-    final active = sortBy == 'near_me';
-    final energyColor = palette.energy;
-    return GestureDetector(
-      onTap: loadingLocation ? null : () => onSortChanged('near_me'),
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        height: 34.h,
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
-        decoration: BoxDecoration(
-          color: active
-              ? energyColor.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.full.r),
-          border: Border.all(
-            color: active
-                ? energyColor.withValues(alpha: 0.45)
-                : palette.border,
-            width: active ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (loadingLocation)
-              SizedBox(
-                width: 12.r,
-                height: 12.r,
-                child: CircularProgressIndicator(
-                    strokeWidth: 1.5, color: primary),
-              )
-            else if (active) ...[
-              Icon(Icons.check_rounded,
-                  size: 11.r, color: energyColor),
-              SizedBox(width: 4.w),
-            ] else ...[
-              Icon(Icons.near_me_rounded,
-                  size: 12.r, color: palette.textTertiary),
-              SizedBox(width: 4.w),
-            ],
-            if (!loadingLocation)
-              Text(
-                l10n.translate('discovery.sort_near_me'),
-                style: AppText.of(context).labelM.copyWith(
-                      fontSize: 12.sp,
-                      color:
-                          active ? energyColor : palette.textSecondary,
-                      fontWeight:
-                          active ? FontWeight.w600 : FontWeight.w500,
-                    ),
-              ),
-          ],
-        ),
       ),
     );
   }

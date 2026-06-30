@@ -4,13 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/app_localizations.dart';
 import '../../core/providers/theme_provider.dart';
+import '../../core/providers/user_provider.dart';
+import '../../core/services/ai_credit_service.dart';
 import '../../core/services/food_analysis_service.dart';
+import '../../core/services/food_analysis_history_service.dart';
 import '../../core/services/food_log_service.dart';
 import '../../core/widgets/ds/ds.dart';
+import '../ai/widgets/ai_credit_badge.dart';
+import '../ai/widgets/ai_credits_sheet.dart';
 import 'barcode_scan_screen.dart';
 
 /// AI nutrition analysis — describe a food, get an estimate, log it.
@@ -25,15 +31,27 @@ class FoodScanScreen extends StatefulWidget {
 class _FoodScanScreenState extends State<FoodScanScreen>
     with SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
+  final _hintController = TextEditingController();
   final _focusNode = FocusNode();
   final _analysisService = FoodAnalysisService();
   final _logService = FoodLogService();
+  final _picker = ImagePicker();
 
   NutritionEstimate? _estimate;
   bool _isAnalyzing = false;
   bool _isLogging = false;
   String _selectedMealType = 'snack';
   String? _errorMessage;
+
+  // Input mode: 'text' (describe) | 'photo' (vision analysis).
+  String _inputMode = 'text';
+  Uint8List? _photoBytes;
+  // Portion multiplier applied to the result (stepper). Reset on each analysis.
+  double _portionFactor = 1.0;
+
+  /// The estimate as displayed, after applying the portion multiplier.
+  NutritionEstimate? get _displayEstimate =>
+      _estimate?.scaled(_portionFactor);
 
   late final AnimationController _resultAnimController;
   late final Animation<double> _resultFade;
@@ -58,6 +76,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
   @override
   void dispose() {
     _controller.dispose();
+    _hintController.dispose();
     _focusNode.dispose();
     _resultAnimController.dispose();
     super.dispose();
@@ -69,6 +88,20 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     _focusNode.unfocus();
     unawaited(HapticFeedback.lightImpact());
 
+    // AI credit gate — capture user synchronously before any await.
+    final userProv = context.read<UserProvider>();
+    final uid = userProv.user?.uid;
+    final isPremium =
+        userProv.user?.subscriptionTier.isPremiumOrAbove ?? false;
+    if (uid != null) {
+      final canUse = await AiCreditService().checkAndConsume(uid, isPremium);
+      if (!mounted) return;
+      if (!canUse) {
+        unawaited(AiCreditsSheet.show(context, uid: uid, isPremium: isPremium));
+        return;
+      }
+    }
+
     setState(() {
       _isAnalyzing = true;
       _errorMessage = null;
@@ -79,12 +112,95 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     try {
       final result = await _analysisService.analyzeFood(text);
       if (!mounted) return;
-      setState(() {
-        _estimate = result;
-        _isAnalyzing = false;
-      });
-      if (result != null) unawaited(_resultAnimController.forward());
+      // No usable result → refund the credit we just consumed.
+      if (result == null && uid != null) {
+        unawaited(AiCreditService().rollbackCredit(uid));
+      }
+      _onAnalysisResult(result, uid);
     } catch (e) {
+      if (uid != null) unawaited(AiCreditService().rollbackCredit(uid));
+      if (!mounted) return;
+      setState(() {
+        _isAnalyzing = false;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  /// Shared success handler for text + photo analysis.
+  void _onAnalysisResult(NutritionEstimate? result, String? uid) {
+    setState(() {
+      _estimate = result;
+      _portionFactor = 1.0;
+      _isAnalyzing = false;
+    });
+    if (result != null) {
+      unawaited(_resultAnimController.forward());
+      if (uid != null) {
+        unawaited(FoodAnalysisHistoryService().save(uid, result));
+      }
+    }
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    try {
+      final file = await _picker.pickImage(
+        source: source,
+        maxWidth: 1280,
+        imageQuality: 80,
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _photoBytes = bytes;
+        _estimate = null;
+        _errorMessage = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _errorMessage = e.toString());
+    }
+  }
+
+  Future<void> _analyzePhoto() async {
+    final bytes = _photoBytes;
+    if (bytes == null) return;
+    _focusNode.unfocus();
+    unawaited(HapticFeedback.lightImpact());
+
+    final userProv = context.read<UserProvider>();
+    final uid = userProv.user?.uid;
+    final isPremium =
+        userProv.user?.subscriptionTier.isPremiumOrAbove ?? false;
+    if (uid != null) {
+      final canUse = await AiCreditService().checkAndConsume(uid, isPremium);
+      if (!mounted) return;
+      if (!canUse) {
+        unawaited(AiCreditsSheet.show(context, uid: uid, isPremium: isPremium));
+        return;
+      }
+    }
+
+    setState(() {
+      _isAnalyzing = true;
+      _errorMessage = null;
+      _estimate = null;
+    });
+    _resultAnimController.reset();
+
+    try {
+      final result = await _analysisService.analyzeFoodPhoto(
+        bytes,
+        hint: _hintController.text,
+      );
+      if (!mounted) return;
+      if (result == null && uid != null) {
+        unawaited(AiCreditService().rollbackCredit(uid));
+      }
+      _onAnalysisResult(result, uid);
+    } catch (e) {
+      if (uid != null) unawaited(AiCreditService().rollbackCredit(uid));
       if (!mounted) return;
       setState(() {
         _isAnalyzing = false;
@@ -94,7 +210,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
   }
 
   Future<void> _logEstimate() async {
-    final estimate = _estimate;
+    final estimate = _displayEstimate;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (estimate == null || uid == null) return;
 
@@ -123,6 +239,9 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     final palette = AppPalette.of(context);
     final t = AppText.of(context);
     final primaryColor = context.watch<ThemeProvider>().primaryColor;
+    final user = context.watch<UserProvider>().user;
+    final uid = user?.uid;
+    final isPremium = user?.subscriptionTier.isPremiumOrAbove ?? false;
 
     return Scaffold(
       backgroundColor: palette.background,
@@ -145,6 +264,11 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                   AppTransitions.slideUp(const BarcodeScanScreen()),
                 )),
                 barcodeTooltip: l10n.translate('barcode.scan_btn'),
+                onHistory: uid != null ? () => _openHistory(uid) : null,
+                historyTooltip: l10n.translate('food_scan.history'),
+                creditBadge: uid != null
+                    ? AiCreditBadge(uid: uid, isPremium: isPremium)
+                    : null,
               ),
 
               // ── Scrollable body ──
@@ -158,7 +282,14 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                     children: [
                       Text(l10n.translate('food_scan.subtitle'), style: t.bodyM),
                       SizedBox(height: AppSpacing.lg.h),
-                      _buildInputCard(l10n, palette, t, primaryColor),
+                      if (_analysisService.isPhotoAvailable) ...[
+                        _buildModeToggle(l10n, palette, t, primaryColor),
+                        SizedBox(height: AppSpacing.md.h),
+                      ],
+                      (_inputMode == 'photo' &&
+                              _analysisService.isPhotoAvailable)
+                          ? _buildPhotoCard(l10n, palette, t, primaryColor)
+                          : _buildInputCard(l10n, palette, t, primaryColor),
                       SizedBox(height: AppSpacing.md.h),
                       if (!_analysisService.isAvailable)
                         _buildNotConfiguredBanner(l10n, palette, t),
@@ -168,7 +299,8 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                           title: l10n.translate('common.error'),
                           message: _errorMessage,
                           retryLabel: l10n.translate('food_scan.analyze_btn'),
-                          onRetry: _analyze,
+                          onRetry:
+                              _inputMode == 'photo' ? _analyzePhoto : _analyze,
                           compact: true,
                         ),
                       if (_estimate != null)
@@ -189,6 +321,178 @@ class _FoodScanScreenState extends State<FoodScanScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildModeToggle(AppLocalizations l10n, AppPalette palette, AppText t,
+      Color primaryColor) {
+    Widget seg(String mode, IconData icon, String label) {
+      final active = _inputMode == mode;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => setState(() => _inputMode = mode),
+          child: AnimatedContainer(
+            duration: AppMotion.fast,
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
+            decoration: BoxDecoration(
+              color: active ? primaryColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.full.r),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon,
+                    size: AppSize.iconSm.r,
+                    color: active ? palette.textInverse : palette.textSecondary),
+                SizedBox(width: AppSpacing.xxs.w),
+                Text(label,
+                    style: t.labelM.copyWith(
+                        color: active
+                            ? palette.textInverse
+                            : palette.textSecondary,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: EdgeInsets.all(3.r),
+      decoration: BoxDecoration(
+        color: palette.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppRadius.full.r),
+        border: Border.all(color: palette.border),
+      ),
+      child: Row(
+        children: [
+          seg('text', Icons.edit_note_rounded,
+              l10n.translate('food_scan.mode_describe')),
+          seg('photo', Icons.photo_camera_rounded,
+              l10n.translate('food_scan.mode_photo')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoCard(AppLocalizations l10n, AppPalette palette, AppText t,
+      Color primaryColor) {
+    final hasPhoto = _photoBytes != null;
+    return AppGlassCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (hasPhoto)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.md.r),
+              child: AspectRatio(
+                aspectRatio: 16 / 10,
+                child: Image.memory(_photoBytes!, fit: BoxFit.cover),
+              ),
+            )
+          else
+            GestureDetector(
+              onTap: () => _pickPhoto(ImageSource.camera),
+              child: Container(
+                height: 150.h,
+                decoration: BoxDecoration(
+                  color: palette.surfaceVariant.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(AppRadius.md.r),
+                  border: Border.all(color: palette.glassStroke),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_a_photo_rounded,
+                        size: 36.r, color: primaryColor),
+                    SizedBox(height: AppSpacing.xs.h),
+                    Text(l10n.translate('food_scan.photo_prompt'),
+                        style: t.bodyM.copyWith(color: palette.textSecondary)),
+                  ],
+                ),
+              ),
+            ),
+          SizedBox(height: AppSpacing.sm.h),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton(
+                  label: l10n.translate(hasPhoto
+                      ? 'food_scan.photo_retake'
+                      : 'food_scan.photo_take'),
+                  icon: Icons.photo_camera_rounded,
+                  variant: AppButtonVariant.secondary,
+                  size: AppButtonSize.small,
+                  onPressed: () => _pickPhoto(ImageSource.camera),
+                ),
+              ),
+              SizedBox(width: AppSpacing.xs.w),
+              Expanded(
+                child: AppButton(
+                  label: l10n.translate('food_scan.photo_choose'),
+                  icon: Icons.photo_library_rounded,
+                  variant: AppButtonVariant.ghost,
+                  size: AppButtonSize.small,
+                  onPressed: () => _pickPhoto(ImageSource.gallery),
+                ),
+              ),
+            ],
+          ),
+          if (hasPhoto) ...[
+            SizedBox(height: AppSpacing.sm.h),
+            TextField(
+              controller: _hintController,
+              style: t.bodyM.copyWith(color: palette.textPrimary),
+              decoration: InputDecoration(
+                hintText: l10n.translate('food_scan.photo_hint_field'),
+                hintStyle: t.bodyM.copyWith(color: palette.textTertiary),
+                filled: true,
+                fillColor: palette.surfaceVariant.withValues(alpha: 0.7),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.input.r),
+                  borderSide: BorderSide(color: palette.glassStroke),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.input.r),
+                  borderSide: BorderSide(color: palette.glassStroke),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.input.r),
+                  borderSide: BorderSide(color: primaryColor, width: 2),
+                ),
+                contentPadding: EdgeInsets.all(AppSpacing.sm.r),
+              ),
+            ),
+            SizedBox(height: AppSpacing.sm.h),
+            AppButton(
+              label: l10n.translate('food_scan.analyze_photo_btn'),
+              icon: Icons.auto_awesome_rounded,
+              loading: _isAnalyzing,
+              onPressed: _isAnalyzing ? null : _analyzePhoto,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openHistory(String uid) async {
+    final selected = await AppSheet.show<NutritionEstimate>(
+      context: context,
+      title: AppLocalizations.of(context).translate('food_scan.history'),
+      child: _HistorySheet(uid: uid),
+    );
+    if (selected != null && mounted) {
+      setState(() {
+        _estimate = selected;
+        _portionFactor = 1.0;
+        _errorMessage = null;
+        _isAnalyzing = false;
+      });
+      _resultAnimController.reset();
+      unawaited(_resultAnimController.forward());
+    }
   }
 
   Widget _buildInputCard(AppLocalizations l10n, AppPalette palette, AppText t,
@@ -350,7 +654,7 @@ class _FoodScanScreenState extends State<FoodScanScreen>
 
   Widget _buildResultCard(AppLocalizations l10n, AppPalette palette, AppText t,
       Color primaryColor) {
-    final est = _estimate!;
+    final est = _displayEstimate!;
     return AppGlassCard(
       padding: EdgeInsets.zero,
       child: Column(
@@ -446,6 +750,73 @@ class _FoodScanScreenState extends State<FoodScanScreen>
                         palette.fat, palette, t),
                   ],
                 ),
+                // ── Health score + confidence ──
+                if (est.healthScore > 0) ...[
+                  SizedBox(height: AppSpacing.md.h),
+                  _buildHealthScore(l10n, palette, t, est),
+                ],
+                // ── Micros (fiber / sugar / sodium) ──
+                if (est.fiber > 0 || est.sugar > 0 || est.sodiumMg > 0) ...[
+                  SizedBox(height: AppSpacing.md.h),
+                  Text(l10n.translate('food_scan.micros_title'),
+                      style: t.labelM
+                          .copyWith(color: palette.textSecondary)),
+                  SizedBox(height: AppSpacing.xs.h),
+                  Row(
+                    children: [
+                      _microChip(l10n.translate('food_scan.fiber'),
+                          '${est.fiber.toStringAsFixed(1)}g', palette, t),
+                      SizedBox(width: AppSpacing.xs.w),
+                      _microChip(l10n.translate('food_scan.sugar'),
+                          '${est.sugar.toStringAsFixed(1)}g', palette, t),
+                      SizedBox(width: AppSpacing.xs.w),
+                      _microChip(l10n.translate('food_scan.sodium'),
+                          '${est.sodiumMg.round()}mg', palette, t),
+                    ],
+                  ),
+                ],
+                // ── Allergen chips ──
+                if (est.allergens.isNotEmpty) ...[
+                  SizedBox(height: AppSpacing.md.h),
+                  Text(l10n.translate('food_scan.allergens_title'),
+                      style: t.labelM
+                          .copyWith(color: palette.textSecondary)),
+                  SizedBox(height: AppSpacing.xs.h),
+                  Wrap(
+                    spacing: 6.w,
+                    runSpacing: 6.h,
+                    children: est.allergens
+                        .map((a) => Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.sm.w,
+                                  vertical: 3.h),
+                              decoration: BoxDecoration(
+                                color: palette.warning.withValues(alpha: 0.12),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.full.r),
+                                border: Border.all(
+                                    color: palette.warning
+                                        .withValues(alpha: 0.35)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.warning_amber_rounded,
+                                      size: 12.r, color: palette.warning),
+                                  SizedBox(width: 4.w),
+                                  Text(a,
+                                      style: t.labelS.copyWith(
+                                          color: palette.warning,
+                                          fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ],
+                // ── Portion stepper ──
+                SizedBox(height: AppSpacing.lg.h),
+                _buildPortionStepper(l10n, palette, t, primaryColor),
                 SizedBox(height: AppSpacing.lg.h),
                 Text(l10n.translate('food_scan.meal_type_label'),
                     style: t.titleM),
@@ -539,6 +910,126 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     );
   }
 
+  Color _scoreColor(int score, AppPalette palette) {
+    if (score >= 70) return palette.success;
+    if (score >= 40) return palette.warning;
+    return palette.error;
+  }
+
+  Widget _buildHealthScore(AppLocalizations l10n, AppPalette palette, AppText t,
+      NutritionEstimate est) {
+    final color = _scoreColor(est.healthScore, palette);
+    return Container(
+      padding: EdgeInsets.all(AppSpacing.sm.r),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 44.r,
+            height: 44.r,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CircularProgressIndicator(
+                  value: est.healthScore / 100,
+                  strokeWidth: 4,
+                  backgroundColor: color.withValues(alpha: 0.15),
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
+                ),
+                Text('${est.healthScore}',
+                    style: t.labelM
+                        .copyWith(color: color, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          SizedBox(width: AppSpacing.sm.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.translate('food_scan.health_score'),
+                    style: t.titleM.copyWith(color: palette.textPrimary)),
+                if (est.confidence > 0)
+                  Text(
+                    l10n
+                        .translate('food_scan.confidence')
+                        .replaceAll('{pct}', '${(est.confidence * 100).round()}'),
+                    style: t.labelS.copyWith(color: palette.textTertiary),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _microChip(
+      String label, String value, AppPalette palette, AppText t) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h),
+        decoration: BoxDecoration(
+          color: palette.surfaceVariant.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(AppRadius.sm.r),
+          border: Border.all(color: palette.border),
+        ),
+        child: Column(
+          children: [
+            Text(value,
+                style: t.labelL.copyWith(
+                    color: palette.textPrimary, fontWeight: FontWeight.w700)),
+            SizedBox(height: 2.h),
+            Text(label,
+                style: t.labelS.copyWith(color: palette.textTertiary)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPortionStepper(AppLocalizations l10n, AppPalette palette,
+      AppText t, Color primaryColor) {
+    void step(double delta) {
+      setState(() {
+        _portionFactor = (_portionFactor + delta).clamp(0.25, 5.0);
+      });
+      unawaited(HapticFeedback.selectionClick());
+    }
+
+    Widget btn(IconData icon, VoidCallback onTap) => GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 34.r,
+            height: 34.r,
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18.r, color: primaryColor),
+          ),
+        );
+
+    return Row(
+      children: [
+        Text(l10n.translate('food_scan.portion_title'),
+            style: t.titleM.copyWith(color: palette.textPrimary)),
+        const Spacer(),
+        btn(Icons.remove_rounded, () => step(-0.25)),
+        SizedBox(width: AppSpacing.sm.w),
+        Text('${_portionFactor.toStringAsFixed(2)}×',
+            style: t.titleM.copyWith(
+                color: palette.textPrimary, fontWeight: FontWeight.w700)),
+        SizedBox(width: AppSpacing.sm.w),
+        btn(Icons.add_rounded, () => step(0.25)),
+      ],
+    );
+  }
+
   Widget _buildMealTypeSelector(AppLocalizations l10n, AppPalette palette,
       AppText t, Color primaryColor) {
     final types = <(String, String, IconData)>[
@@ -628,6 +1119,9 @@ class _FoodScanAppBar extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onBarcode;
   final String barcodeTooltip;
+  final Widget? creditBadge;
+  final VoidCallback? onHistory;
+  final String? historyTooltip;
 
   const _FoodScanAppBar({
     required this.palette,
@@ -636,6 +1130,9 @@ class _FoodScanAppBar extends StatelessWidget {
     required this.onBack,
     required this.onBarcode,
     required this.barcodeTooltip,
+    this.creditBadge,
+    this.onHistory,
+    this.historyTooltip,
   });
 
   @override
@@ -667,6 +1164,17 @@ class _FoodScanAppBar extends StatelessWidget {
                           style: AppText.of(context).headlineS,
                           textAlign: TextAlign.center),
                     ),
+                    if (creditBadge != null) ...[
+                      creditBadge!,
+                      const SizedBox(width: AppSpacing.xs),
+                    ],
+                    if (onHistory != null)
+                      IconButton(
+                        icon: Icon(Icons.history_rounded,
+                            color: palette.textSecondary),
+                        tooltip: historyTooltip,
+                        onPressed: onHistory,
+                      ),
                     IconButton(
                       icon: Icon(Icons.qr_code_scanner_rounded,
                           color: palette.textSecondary),
@@ -694,6 +1202,81 @@ class _FoodScanAppBar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Analysis history sheet ─────────────────────────────────────────────────
+
+class _HistorySheet extends StatelessWidget {
+  final String uid;
+  const _HistorySheet({required this.uid});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+
+    return StreamBuilder<List<NutritionEstimate>>(
+      stream: FoodAnalysisHistoryService().streamRecent(uid),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: AppSkeletonList(itemCount: 4),
+          );
+        }
+        final items = snap.data ?? const <NutritionEstimate>[];
+        if (items.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: AppEmptyState(
+              icon: Icons.history_rounded,
+              title: l10n.translate('food_scan.history_empty_title'),
+              message: l10n.translate('food_scan.history_empty_msg'),
+            ),
+          );
+        }
+        return ListView.separated(
+          shrinkWrap: true,
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => SizedBox(height: 8.h),
+          itemBuilder: (ctx, i) {
+            final e = items[i];
+            return AppCard(
+              padding: const EdgeInsets.all(12),
+              onTap: () => Navigator.of(context).pop(e),
+              child: Row(
+                children: [
+                  Icon(
+                    e.fromPhoto
+                        ? Icons.photo_camera_rounded
+                        : Icons.edit_note_rounded,
+                    size: 18.r,
+                    color: palette.textTertiary,
+                  ),
+                  SizedBox(width: 10.w),
+                  Expanded(
+                    child: Text(
+                      e.foodName.isEmpty ? '—' : e.foodName,
+                      style: t.bodyM.copyWith(
+                          color: palette.textPrimary,
+                          fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Text('${e.calories.round()} kcal',
+                      style: t.labelM.copyWith(color: palette.calories)),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

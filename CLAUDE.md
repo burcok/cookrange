@@ -224,6 +224,48 @@ lib/
 | `reports/{id}` | Moderation reports; `status` (pending/reviewed), `targetType`, `reason`; indexes on `status+timestamp` |
 | `seeds/{docId}` | Idempotent seed gates (e.g. `demo.demo_programs_v1`); authenticated read/write |
 
+### Firestore collections (Phase 13 additions)
+| Collection | Purpose |
+|---|---|
+| `community_groups/{groupId}` | Location-based community groups: `name, description, city, district, owner_uid, member_count, is_public, tags[], last_activity_at`. Members at `.../members/{uid}` (`role`). Discovery indexes on `is_public`(+`city`(+`district`)) × sort field. See `docs/roadmap/COMMUNITY_GROUPS.md`. |
+| `users/{uid}/food_analyses/{id}` | AI food-analysis history (owner-only): full `NutritionEstimate` JSON + `created_at` |
+| `posts/{postId}.groupId` | Optional top-level field — group-scoped feed (null = global). Index `groupId+timestamp` |
+| `users/{uid}.group_memberships[]` | Array of joined group ids (mirrors `gym_memberships`) for "My groups" |
+
+### Phase 13 — features & fixes (current)
+- **Shared filter bar** — `AppFilterBar` / `AppFilterPill` (`core/widgets/ds/app_filter_bar.dart`,
+  exported from `ds.dart`): canonical 34h pill bar. **All four discovery surfaces now consume it** —
+  gym & coach discovery, program marketplace, and community feed/topics. `AppFilterPill` has `sort`
+  (label + check) and `.picker` (value + chevron) styles + per-pill `accent` (e.g. energy "Near me")
+  and `loading` (spinner, hides label).
+- **Foods & Nutrition hub** — `NutritionHubScreen` (`screens/nutrition_hub/`): tabbed Browse Foods
+  (DishService catalog + category filter + search) · Favorites (`FavoritesBody`) · Insights
+  (`NutritionAnalyticsScreen(showChrome:false)`). Route `AppRoutes.nutritionHub`; entry from quick
+  actions + side menu. Repointed the old Favorites/Analytics quick-actions here.
+- **Food analysis v2** (`food_scan_screen.dart`) — Describe **or Photo** input. `AIService.generateJsonFromImage`
+  (vision; `.env OPENROUTER_VISION_MODEL`, `isVisionAvailable` gates the photo option).
+  `FoodAnalysisService.analyzeFoodPhoto` + enriched `NutritionEstimate` (fiber/sugar/sodium, health
+  score, allergens, confidence, portion). Portion stepper rescales live. **AI credits now metered**
+  (checkAndConsume + rollback) with live `AiCreditBadge`; analysis history via `FoodAnalysisHistoryService`.
+- **Barcode scanner** — explicit initializing / permission-denied / camera-unavailable states +
+  **manual entry** fallback (no more silent black screen, e.g. on simulator).
+- **Shopping list** — items now carry `sourceMeals`/`sourceDates` (which dish/day needs each
+  ingredient); "for: …" subtitle + This-week/Today filters. (Market data dropped — no source.)
+- **Admin** — fixed empty users list (`getUsersStream` ordered by camelCase `createdAt` → snake_case
+  `created_at`), fixed `searchUsers` escaped `\$query`, added `AdminService.sendNotificationToUser`
+  (+ action-sheet UI), wired `TestDataLibrary.adminUsers()` for test mode.
+- **Bug fixes** — self-profile-as-stranger (`profile_screen` `_isSelf`), weight-save dismissing the
+  profile (`WeightLogSheet`), My Programs infinite spinner (composite index + un-swallowed stream
+  error + StatefulWidget retry), onboarding water reminder defaults to ON.
+
+| Service / Widget | File | Notes |
+|---|---|---|
+| `CommunityGroupService` | `community_group_service.dart` | Groups CRUD + membership + discovery; `CommunityService.getGroupFeedStream` for the group feed |
+| `FoodAnalysisHistoryService` | `food_analysis_history_service.dart` | Owner-only `users/{uid}/food_analyses`; `save`, `streamRecent` |
+| `AppFilterBar` / `AppFilterPill` | `core/widgets/ds/app_filter_bar.dart` | Canonical pill filter bar (sort + picker styles, per-pill accent) |
+| `NutritionHubScreen` | `screens/nutrition_hub/nutrition_hub_screen.dart` | Browse Foods / Favorites / Insights tabs |
+| `WeightLogSheet` | `screens/home/widgets/weight_log_sheet.dart` | Shared weight-log sheet (home card + profile completeness card) |
+
 ### Notifications (architecture)
 - **Never store display text.** Call `NotificationService.sendNotification(type:, actorUid:, actorName:, actorPhotoUrl:, relatedId:, metadata:)`. Text is rendered on the reader's device by `NotificationPresenter` so it's always in their language with the real actor name.
 - Add new notification copy as `notifications.feed.*` keys (EN+TR) with `{actor}`/`{emoji}`/`{days}` vars.

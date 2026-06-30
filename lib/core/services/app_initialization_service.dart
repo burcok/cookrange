@@ -127,7 +127,8 @@ class AppInitializationService {
 
       // Initialize AI Service
       final apiKey = dotenv.env['OPENROUTER_API_KEY'] ?? '';
-      AIService().initialize(apiKey: apiKey);
+      final visionModel = dotenv.env['OPENROUTER_VISION_MODEL'];
+      AIService().initialize(apiKey: apiKey, visionModel: visionModel);
 
       _log.info('Core Flutter services initialized', service: _serviceName);
       _initializationResults['core'] = true;

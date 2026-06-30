@@ -18,6 +18,7 @@ export 'app_button.dart';
 export 'app_selectors.dart';
 export 'app_calorie_ring.dart';
 export 'app_card.dart';
+export 'app_filter_bar.dart';
 export 'app_sheet.dart';
 export 'app_shimmer.dart';
 export 'app_snackbar.dart';

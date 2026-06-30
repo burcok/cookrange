@@ -2,10 +2,12 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import '../data/test_data_library.dart';
 import '../models/gym_war_model.dart';
 import '../models/leaderboard_entry_model.dart';
 import '../models/checkin_model.dart';
 import '../models/gym_member_model.dart';
+import 'test_mode_service.dart';
 
 class GymLeaderboardService {
   static final GymLeaderboardService _instance =
@@ -22,6 +24,10 @@ class GymLeaderboardService {
   /// Combines real-time check-in counts (this week) with member list.
   Stream<List<LeaderboardEntryModel>> getWeeklyLeaderboardStream(
       String gymId) {
+    if (TestModeService().isActive) {
+      return Stream.value(TestDataLibrary.gymLeaderboard());
+    }
+
     final weekStart = _currentWeekStart();
 
     return _db

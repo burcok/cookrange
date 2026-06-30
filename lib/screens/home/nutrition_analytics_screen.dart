@@ -14,7 +14,11 @@ import '../../core/utils/calorie_calculator.dart';
 import '../../core/widgets/ds/ds.dart';
 
 class NutritionAnalyticsScreen extends StatefulWidget {
-  const NutritionAnalyticsScreen({super.key});
+  /// When false, renders just the analytics body (no Scaffold/AppBar) so it can
+  /// be embedded as a tab inside the Foods & Nutrition hub.
+  final bool showChrome;
+
+  const NutritionAnalyticsScreen({super.key, this.showChrome = true});
 
   @override
   State<NutritionAnalyticsScreen> createState() =>
@@ -93,6 +97,19 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
     final t = AppText.of(context);
     final primary = context.watch<ThemeProvider>().primaryColor;
 
+    final body = _loading
+        ? Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
+              child: const AppSkeletonChart(maxHeight: 160),
+            ),
+          )
+        : _summary == null || _summary!.loggedDays == 0
+            ? _buildEmptyState(l10n, palette, t)
+            : _buildContent(l10n, palette, t, primary);
+
+    if (!widget.showChrome) return body;
+
     return Scaffold(
       backgroundColor: palette.background,
       appBar: AppBar(
@@ -109,16 +126,7 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
         ),
         centerTitle: false,
       ),
-      body: _loading
-          ? Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg.w),
-                child: const AppSkeletonChart(maxHeight: 160),
-              ),
-            )
-          : _summary == null || _summary!.loggedDays == 0
-              ? _buildEmptyState(l10n, palette, t)
-              : _buildContent(l10n, palette, t, primary),
+      body: body,
     );
   }
 

@@ -72,7 +72,8 @@ class _StreakSquadScreenState extends State<StreakSquadScreen> {
                 _SquadAppBar(
                   title: loc.translate('squad.title'),
                   primaryColor: primary,
-                  onCreateTap: uid.isNotEmpty ? () => _showCreateSheet(uid) : null,
+                  onCreateTap:
+                      uid.isNotEmpty ? () => _showCreateSheet(uid) : null,
                 ),
                 // Body stream
                 Expanded(
@@ -92,7 +93,8 @@ class _StreakSquadScreenState extends State<StreakSquadScreen> {
                                 onRetry: () => setState(() {}),
                               );
                             }
-                            if (snap.connectionState == ConnectionState.waiting) {
+                            if (snap.connectionState ==
+                                ConnectionState.waiting) {
                               return const Padding(
                                 padding: EdgeInsets.only(top: AppSpacing.lg),
                                 child: AppSkeletonList(itemCount: 4),
@@ -189,7 +191,8 @@ class _SquadAppBar extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
-              if (Navigator.of(context).canPop()) SizedBox(width: AppSpacing.sm.w),
+              if (Navigator.of(context).canPop())
+                SizedBox(width: AppSpacing.sm.w),
               Expanded(
                 child: Text(title, style: t.headlineM),
               ),
@@ -270,8 +273,7 @@ class _SquadCardState extends State<_SquadCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _entryCtrl = AnimationController(
     vsync: this,
-    duration: AppMotion.normal +
-        Duration(milliseconds: widget.index * 60),
+    duration: AppMotion.normal + Duration(milliseconds: widget.index * 60),
   );
 
   late final Animation<double> _fade =
@@ -428,8 +430,7 @@ class _SquadCardState extends State<_SquadCard>
                     return Row(
                       children: [
                         ...members.map((m) => Padding(
-                              padding:
-                                  EdgeInsets.only(right: AppSpacing.xs.w),
+                              padding: EdgeInsets.only(right: AppSpacing.xs.w),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -442,8 +443,7 @@ class _SquadCardState extends State<_SquadCard>
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text('🔥',
-                                          style:
-                                              TextStyle(fontSize: 10.sp)),
+                                          style: TextStyle(fontSize: 10.sp)),
                                       Text(
                                         '${m['streak']}',
                                         style: t.labelS.copyWith(
@@ -460,8 +460,8 @@ class _SquadCardState extends State<_SquadCard>
                           SizedBox(width: AppSpacing.xxs.w),
                           Text(
                             '+${squad.memberUids.length - 3}',
-                            style: t.labelS
-                                .copyWith(color: palette.textTertiary),
+                            style:
+                                t.labelS.copyWith(color: palette.textTertiary),
                           ),
                         ],
                       ],
@@ -561,8 +561,7 @@ class _SquadDetailSheetState extends State<_SquadDetailSheet> {
 
     setState(() => _leaving = true);
     try {
-      await widget.service.leaveSquad(
-          widget.squad.squadId, widget.currentUid);
+      await widget.service.leaveSquad(widget.squad.squadId, widget.currentUid);
       if (!mounted) return;
       Navigator.of(context).pop();
       AppSnackBar.success(
@@ -615,29 +614,46 @@ class _SquadDetailSheetState extends State<_SquadDetailSheet> {
                 children: [
                   Icon(Icons.link_rounded, size: 16.r, color: primary),
                   SizedBox(width: AppSpacing.xs.w),
-                  Text(
-                    loc.translate('squad.invite_code'),
-                    style: t.labelM.copyWith(color: palette.textSecondary),
+                  Expanded(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            loc.translate('squad.invite_code'),
+                            style:
+                                t.labelM.copyWith(color: palette.textSecondary),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                        SizedBox(width: AppSpacing.xs.w),
+                        Text(
+                          widget.squad.inviteCode,
+                          style: t.labelL.copyWith(
+                            color: primary,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   SizedBox(width: AppSpacing.xs.w),
-                  Text(
-                    widget.squad.inviteCode,
-                    style: t.labelL.copyWith(
-                        color: primary,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 2),
-                  ),
-                  const Spacer(),
                   GestureDetector(
                     onTap: () {
                       Clipboard.setData(
                           ClipboardData(text: widget.squad.inviteCode));
                       HapticFeedback.lightImpact();
-                      AppSnackBar.success(context,
-                          loc.translate('squad.code_copied'));
+                      AppSnackBar.success(
+                          context, loc.translate('squad.code_copied'));
                     },
-                    child: Icon(Icons.copy_rounded,
-                        size: 16.r, color: primary),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: EdgeInsets.all(8.r),
+                      child:
+                          Icon(Icons.copy_rounded, size: 16.r, color: primary),
+                    ),
                   ),
                 ],
               ),
@@ -646,8 +662,7 @@ class _SquadDetailSheetState extends State<_SquadDetailSheet> {
             // Leaderboard
             if (isLoading)
               Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenH.w),
+                padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH.w),
                 child: const AppSkeletonList(itemCount: 4, itemHeight: 56),
               )
             else
@@ -655,8 +670,8 @@ class _SquadDetailSheetState extends State<_SquadDetailSheet> {
                 constraints: BoxConstraints(maxHeight: 340.h),
                 child: ListView.separated(
                   shrinkWrap: true,
-                  padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.screenH.w),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: AppSpacing.screenH.w),
                   itemCount: members.length,
                   separatorBuilder: (_, __) =>
                       Divider(color: palette.divider, height: 1),
@@ -669,8 +684,7 @@ class _SquadDetailSheetState extends State<_SquadDetailSheet> {
                         color: isMe
                             ? primary.withValues(alpha: 0.06)
                             : Colors.transparent,
-                        borderRadius:
-                            BorderRadius.circular(AppRadius.sm.r),
+                        borderRadius: BorderRadius.circular(AppRadius.sm.r),
                       ),
                       child: Row(
                         children: [
@@ -702,12 +716,9 @@ class _SquadDetailSheetState extends State<_SquadDetailSheet> {
                             child: Text(
                               m['displayName'] as String? ?? '',
                               style: t.bodyM.copyWith(
-                                fontWeight: isMe
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                                color: isMe
-                                    ? primary
-                                    : palette.textPrimary,
+                                fontWeight:
+                                    isMe ? FontWeight.w700 : FontWeight.w500,
+                                color: isMe ? primary : palette.textPrimary,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -716,8 +727,7 @@ class _SquadDetailSheetState extends State<_SquadDetailSheet> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text('🔥',
-                                  style: TextStyle(fontSize: 14.sp)),
+                              Text('🔥', style: TextStyle(fontSize: 14.sp)),
                               SizedBox(width: 4.w),
                               Text(
                                 '${m['streak']}',
@@ -826,8 +836,8 @@ class _CreateSquadSheetState extends State<_CreateSquadSheet> {
     });
 
     try {
-      final squad = await widget.service.createSquad(
-          name, widget.uid, _selectedGoal);
+      final squad =
+          await widget.service.createSquad(name, widget.uid, _selectedGoal);
       if (!mounted) return;
       Navigator.of(context).pop();
       // Show the invite code in a success snackbar
@@ -845,8 +855,7 @@ class _CreateSquadSheetState extends State<_CreateSquadSheet> {
       );
     } catch (e) {
       if (!mounted) return;
-      AppSnackBar.error(
-          context, loc.translate('squad.create_error'));
+      AppSnackBar.error(context, loc.translate('squad.create_error'));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -954,8 +963,7 @@ class _JoinSquadSheetState extends State<_JoinSquadSheet> {
       await widget.service.joinSquad(code, widget.uid);
       if (!mounted) return;
       Navigator.of(context).pop();
-      AppSnackBar.success(
-          context, loc.translate('squad.joined_msg'));
+      AppSnackBar.success(context, loc.translate('squad.joined_msg'));
     } on StreakSquadNotFoundException {
       if (!mounted) return;
       setState(() => _codeError = loc.translate('squad.code_not_found'));
@@ -964,8 +972,7 @@ class _JoinSquadSheetState extends State<_JoinSquadSheet> {
       setState(() => _codeError = loc.translate('squad.already_member'));
     } catch (e) {
       if (!mounted) return;
-      AppSnackBar.error(
-          context, loc.translate('squad.join_error'));
+      AppSnackBar.error(context, loc.translate('squad.join_error'));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -1050,8 +1057,7 @@ class _SquadReportContentState extends State<_SquadReportContent> {
       await widget.onSubmit(reason);
       if (!mounted) return;
       Navigator.pop(context);
-      AppSnackBar.success(
-          context, widget.l10n.translate('report.submitted'));
+      AppSnackBar.success(context, widget.l10n.translate('report.submitted'));
     } catch (_) {
       if (!mounted) return;
       AppSnackBar.error(context, widget.l10n.translate('report.error'));
@@ -1083,11 +1089,9 @@ class _SquadReportContentState extends State<_SquadReportContent> {
               onTap: () => setState(() => _selectedReason = r.$1),
               borderRadius: BorderRadius.circular(AppRadius.md.r),
               child: Container(
-                margin:
-                    EdgeInsets.symmetric(vertical: AppSpacing.xxs.h),
+                margin: EdgeInsets.symmetric(vertical: AppSpacing.xxs.h),
                 padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm.w,
-                    vertical: AppSpacing.sm.h),
+                    horizontal: AppSpacing.sm.w, vertical: AppSpacing.sm.h),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? palette.error.withValues(alpha: 0.08)
@@ -1106,18 +1110,15 @@ class _SquadReportContentState extends State<_SquadReportContent> {
                           ? Icons.radio_button_checked_rounded
                           : Icons.radio_button_unchecked_rounded,
                       size: AppSize.iconMd.r,
-                      color: isSelected
-                          ? palette.error
-                          : palette.textTertiary,
+                      color: isSelected ? palette.error : palette.textTertiary,
                     ),
                     SizedBox(width: AppSpacing.sm.w),
                     Expanded(
                       child: Text(
                         r.$2,
                         style: t.titleM.copyWith(
-                          color: isSelected
-                              ? palette.error
-                              : palette.textPrimary,
+                          color:
+                              isSelected ? palette.error : palette.textPrimary,
                         ),
                       ),
                     ),

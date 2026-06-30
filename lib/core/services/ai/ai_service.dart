@@ -16,6 +16,12 @@ class AIService {
   static const String _baseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
   static const String _model = 'openrouter/free';
+  // Default free vision-capable model. Override via [initialize] `visionModel`
+  // or [setVisionModel] (e.g. from `.env` OPENROUTER_VISION_MODEL). An empty
+  // value disables photo analysis (the UI hides the camera option).
+  static const String _defaultVisionModel =
+      'meta-llama/llama-3.2-11b-vision-instruct:free';
+  String _visionModel = _defaultVisionModel;
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(seconds: 2);
 
@@ -25,7 +31,11 @@ class AIService {
   // API key stays server-side. Populated from Remote Config `ai_proxy_url`.
   String? _proxyUrl;
 
-  void initialize({required String apiKey, String? proxyUrl}) {
+  void initialize({
+    required String apiKey,
+    String? proxyUrl,
+    String? visionModel,
+  }) {
     final trimmed = apiKey.trim();
     _apiKey = (trimmed.isEmpty ||
             trimmed.contains('your_') ||
@@ -34,10 +44,19 @@ class AIService {
         : trimmed;
     final proxyTrimmed = proxyUrl?.trim() ?? '';
     _proxyUrl = proxyTrimmed.isEmpty ? null : proxyTrimmed;
+    if (visionModel != null) _visionModel = visionModel.trim();
     unawaited(CrashlyticsService().setCustomKeys(aiModel: _model));
   }
 
   bool get isConfigured => _proxyUrl != null || _apiKey != null;
+
+  /// True when photo/vision analysis can run (configured + a vision model set).
+  bool get isVisionAvailable => isConfigured && _visionModel.isNotEmpty;
+
+  /// Override the vision model at runtime (e.g. from Remote Config).
+  void setVisionModel(String? model) {
+    _visionModel = model?.trim() ?? '';
+  }
 
   /// True when an AI proxy URL is configured — credits are enforced server-side.
   bool get hasProxy => _proxyUrl != null;
@@ -366,7 +385,133 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
             'Failed to parse JSON after $_maxRetries attempts');
   }
 
+  /// Generate and parse JSON from an image + prompt using a vision model.
+  /// Retries on transient network errors AND malformed JSON.
+  Future<Map<String, dynamic>> generateJsonFromImage({
+    required String prompt,
+    required String jsonStructure,
+    required Uint8List imageBytes,
+    String mimeType = 'image/jpeg',
+  }) async {
+    if (!isVisionAvailable) {
+      throw const AIFatalException('AIService: vision model not configured');
+    }
+
+    final systemPrompt = '''
+You are a JSON generator. Output ONLY valid JSON matching this structure:
+$jsonStructure
+Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
+''';
+    final dataUrl = 'data:$mimeType;base64,${base64Encode(imageBytes)}';
+
+    Exception? lastError;
+    for (int attempt = 1; attempt <= _maxRetries; attempt++) {
+      try {
+        final content = await _callVisionApi(
+          systemPrompt: systemPrompt,
+          userText: prompt,
+          imageDataUrl: dataUrl,
+          temperature: 0.2,
+        );
+        return _parseJson(content);
+      } on AIJsonParseException catch (e) {
+        lastError = e;
+        debugPrint(
+            'AIService: vision JSON parse failed $attempt/$_maxRetries: $e');
+        if (attempt < _maxRetries) await Future.delayed(_retryDelay);
+      } on AIRetryableException catch (e) {
+        lastError = e;
+        debugPrint('AIService: vision retryable error $attempt/$_maxRetries: $e');
+        if (attempt < _maxRetries) await Future.delayed(_retryDelay * attempt);
+      } catch (e) {
+        rethrow;
+      }
+    }
+    throw lastError ??
+        const AIJsonParseException(
+            'Failed to parse vision JSON after $_maxRetries attempts');
+  }
+
   // ─── Private ───────────────────────────────────────────────────────────────
+
+  Future<String> _callVisionApi({
+    required String systemPrompt,
+    required String userText,
+    required String imageDataUrl,
+    required double temperature,
+  }) async {
+    final messages = [
+      {'role': 'system', 'content': systemPrompt},
+      {
+        'role': 'user',
+        'content': [
+          {'type': 'text', 'text': userText},
+          {
+            'type': 'image_url',
+            'image_url': {'url': imageDataUrl},
+          },
+        ],
+      },
+    ];
+
+    final url = _proxyUrl ?? _baseUrl;
+    final metric = PerformanceService().newHttpMetric(url, HttpMethod.Post);
+    await metric.start();
+    final http.Response response;
+    try {
+      final Map<String, String> headers = {
+        'Content-Type': 'application/json',
+      };
+      if (_proxyUrl != null) {
+        final user = FirebaseAuth.instance.currentUser;
+        final token = await user?.getIdToken();
+        if (token != null) headers['Authorization'] = 'Bearer $token';
+        try {
+          final appCheckToken = await FirebaseAppCheck.instance.getToken();
+          if (appCheckToken != null) {
+            headers['X-Firebase-AppCheck'] = appCheckToken;
+          }
+        } catch (_) {}
+      } else {
+        headers['Authorization'] = 'Bearer $_apiKey';
+        headers['HTTP-Referer'] = 'https://cookrangeapp.com';
+        headers['X-Title'] = 'Cookrange';
+      }
+
+      response = await http
+          .post(
+            Uri.parse(url),
+            headers: headers,
+            body: jsonEncode({
+              'model': _visionModel,
+              'messages': messages,
+              'temperature': temperature,
+            }),
+          )
+          .timeout(const Duration(seconds: 60));
+      metric.httpResponseCode = response.statusCode;
+      metric.responsePayloadSize = response.bodyBytes.length;
+    } finally {
+      await metric.stop();
+    }
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final choices = data['choices'] as List<dynamic>?;
+      if (choices == null || choices.isEmpty) {
+        throw const AIFatalException('Empty choices in vision API response');
+      }
+      return choices[0]['message']['content'] as String;
+    }
+    if (response.statusCode == 402) {
+      throw const AIQuotaExceededException();
+    }
+    if (response.statusCode == 429 || response.statusCode >= 500) {
+      throw AIRetryableException(
+          'HTTP ${response.statusCode}: ${response.body}');
+    }
+    throw AIFatalException('HTTP ${response.statusCode}: ${response.body}');
+  }
 
   Future<String> _callApi({
     required String prompt,

@@ -45,6 +45,10 @@ class UserModel {
   final List<UserRole> userRoles;
   final List<String> gymMemberships;
   final bool introSeen;
+  // True once the first AI meal plan has been successfully generated and saved.
+  // RouteGuard uses this to redirect new users through meal_plan_generation
+  // before they can reach /main, regardless of how they completed email auth.
+  final bool mealPlanGenerated;
 
   UserModel({
     required this.uid,
@@ -69,6 +73,7 @@ class UserModel {
     this.userRoles = const [],
     this.gymMemberships = const [],
     this.introSeen = false,
+    this.mealPlanGenerated = false,
   });
 
   /// Primary role for display — highest priority in the hierarchy.
@@ -128,6 +133,7 @@ class UserModel {
       }(),
       gymMemberships: List<String>.from(data['gym_memberships'] as List? ?? []),
       introSeen: data['intro_seen'] as bool? ?? false,
+      mealPlanGenerated: data['meal_plan_generated'] as bool? ?? false,
     );
   }
 
@@ -174,6 +180,7 @@ class UserModel {
     List<UserRole>? userRoles,
     List<String>? gymMemberships,
     bool? introSeen,
+    bool? mealPlanGenerated,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -199,6 +206,7 @@ class UserModel {
       userRoles: userRoles ?? this.userRoles,
       gymMemberships: gymMemberships ?? this.gymMemberships,
       introSeen: introSeen ?? this.introSeen,
+      mealPlanGenerated: mealPlanGenerated ?? this.mealPlanGenerated,
     );
   }
 }

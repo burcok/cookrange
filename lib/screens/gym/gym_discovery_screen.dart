@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 import '../../core/data/turkish_locations.dart';
 import '../../core/localization/app_localizations.dart';
@@ -15,6 +17,7 @@ import '../../core/services/gym_service.dart';
 import '../../core/utils/haversine.dart';
 import '../../core/widgets/ds/ds.dart';
 import 'gym_dashboard_screen.dart';
+import 'gym_join_prompt_sheet.dart';
 import 'gym_member_home_screen.dart';
 
 /// Gym discovery screen — search and join public gyms.
@@ -47,8 +50,6 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
 
   // Map view state
   bool _mapView = false;
-
-  final Set<String> _joiningIds = {};
 
   @override
   void initState() {
@@ -129,21 +130,27 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
   Future<void> _activateNearMe() async {
     final l10n = AppLocalizations.of(context);
 
-    // KVKK / GDPR: explain the purpose and that location is NOT stored, and get
-    // informed consent BEFORE touching the OS location permission dialog.
-    final consent = await PermissionPrimer.show(
-      context,
-      icon: Icons.location_on_rounded,
-      iconColor: AppPalette.of(context).warning,
-      title: l10n.translate('gym.nearby_consent_title'),
-      rationale: l10n.translate('gym.nearby_consent_rationale'),
-      allowLabel: l10n.translate('permission.allow'),
-      notNowLabel: l10n.translate('permission.not_now'),
-    );
+    // Check permission first — skip the KVKK primer entirely if already granted.
+    final existing = await Geolocator.checkPermission();
     if (!mounted) return;
-    if (!consent) {
-      setState(() => _sortBy = 'member_count'); // revert chip; keep browsing by city
-      return;
+
+    if (existing != LocationPermission.whileInUse &&
+        existing != LocationPermission.always) {
+      // Permission not yet granted — show KVKK/GDPR primer before OS dialog.
+      final consent = await PermissionPrimer.show(
+        context,
+        icon: Icons.location_on_rounded,
+        iconColor: AppPalette.of(context).warning,
+        title: l10n.translate('gym.nearby_consent_title'),
+        rationale: l10n.translate('gym.nearby_consent_rationale'),
+        allowLabel: l10n.translate('permission.allow'),
+        notNowLabel: l10n.translate('permission.not_now'),
+      );
+      if (!mounted) return;
+      if (!consent) {
+        setState(() => _sortBy = 'member_count');
+        return;
+      }
     }
 
     setState(() => _loadingLocation = true);
@@ -160,7 +167,7 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
           permission == LocationPermission.deniedForever) {
         setState(() {
           _loadingLocation = false;
-          _sortBy = 'member_count'; // revert chip selection
+          _sortBy = 'member_count';
         });
         AppSnackBar.warning(
           context,
@@ -198,30 +205,25 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
     }
   }
 
-  Future<void> _toggleJoin(GymModel gym) async {
-    if (_joiningIds.contains(gym.id)) return;
-    setState(() => _joiningIds.add(gym.id));
-    unawaited(HapticFeedback.mediumImpact());
+  void _openGymDetails(GymModel gym) {
+    _showGymPublicSheet(context, gym, onQrJoin: () => _startQrJoin(gym));
+  }
 
-    try {
-      final isMember = await GymService().isMember(
-          gym.id, gym.ownerUid /* won't match, just checking existence */);
-      if (isMember) {
-        await GymService().leaveGym(gym.id);
-      } else {
-        await GymService().joinGym(gym.id);
-      }
-      if (!mounted) return;
-      await _load();
-    } catch (e) {
-      if (!mounted) return;
-      AppSnackBar.error(
-        context,
-        AppLocalizations.of(context).translate('gym.join_error'),
-      );
-    } finally {
-      if (mounted) setState(() => _joiningIds.remove(gym.id));
-    }
+  Future<void> _startQrJoin(GymModel gym) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (!mounted) return;
+    final result = await Navigator.push<({String gymId, String token})?>(
+      context,
+      AppTransitions.slideUp(_GymQrJoinPage(gym: gym)),
+    );
+    if (!mounted || result == null) return;
+    await GymJoinPromptSheet.show(
+      context,
+      gymId: result.gymId,
+      gymName: gym.name,
+      uid: uid,
+      qrToken: result.token,
+    );
   }
 
   // Distance label string for a gym when Near Me is active.
@@ -346,8 +348,7 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
                       gyms: _gyms,
                       userLat: _userLat,
                       userLon: _userLon,
-                      onJoin: _toggleJoin,
-                      joiningIds: _joiningIds,
+                      onQrJoin: _startQrJoin,
                     )
                   : RefreshIndicator(
                       key: const ValueKey('list'),
@@ -397,8 +398,7 @@ class _GymDiscoveryScreenState extends State<GymDiscoveryScreen> {
         }
         return _GymCard(
           gym: _gyms[i],
-          isJoining: _joiningIds.contains(_gyms[i].id),
-          onJoin: () => _toggleJoin(_gyms[i]),
+          onDetails: () => _openGymDetails(_gyms[i]),
           distanceLabel: _distanceLabel(_gyms[i]),
         );
       },
@@ -412,16 +412,14 @@ class _GymMapView extends StatelessWidget {
   final List<GymModel> gyms;
   final double? userLat;
   final double? userLon;
-  final Future<void> Function(GymModel) onJoin;
-  final Set<String> joiningIds;
+  final Future<void> Function(GymModel)? onQrJoin;
 
   const _GymMapView({
     super.key,
     required this.gyms,
     required this.userLat,
     required this.userLon,
-    required this.onJoin,
-    required this.joiningIds,
+    this.onQrJoin,
   });
 
   @override
@@ -518,8 +516,6 @@ class _GymMapView extends StatelessWidget {
         // ── Gym list panel ──────────────────────────────────────────
         _GymMapList(
           gyms: gyms,
-          joiningIds: joiningIds,
-          onJoin: onJoin,
           onTap: (g) => _showGymSheet(context, g, palette, l10n),
           palette: palette,
           l10n: l10n,
@@ -534,84 +530,8 @@ class _GymMapView extends StatelessWidget {
     AppPalette palette,
     AppLocalizations l10n,
   ) {
-    final primary = Theme.of(context).primaryColor;
-    AppSheet.show(
-      context: context,
-      title: gym.name,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Info rows ─────────────────────────────────────────────
-          if (gym.address != null && gym.address!.isNotEmpty)
-            _SheetInfoRow(
-              icon: Icons.location_on_rounded,
-              text: gym.address!,
-              palette: palette,
-            ),
-          if (gym.locationDisplay.isNotEmpty)
-            _SheetInfoRow(
-              icon: Icons.location_city_rounded,
-              text: gym.locationDisplay,
-              palette: palette,
-            ),
-          _SheetInfoRow(
-            icon: Icons.people_rounded,
-            text:
-                '${gym.memberCount} ${l10n.translate('gym.stat_members')}',
-            palette: palette,
-            color: palette.textTertiary,
-          ),
-          if (gym.description != null && gym.description!.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              gym.description!,
-              style: AppText.of(context)
-                  .bodyM
-                  .copyWith(color: palette.textSecondary),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          if (gym.tags.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: gym.tags
-                  .take(4)
-                  .map((t) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        child: Text(t,
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: primary,
-                                fontWeight: FontWeight.w600)),
-                      ))
-                  .toList(),
-            ),
-          ],
-          const SizedBox(height: 20),
-          AppButton(
-            label: l10n.translate('gym.map_view_gym'),
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                AppTransitions.slideRight(GymMemberHomeScreen(gym: gym)),
-              );
-            },
-            icon: Icons.arrow_forward_rounded,
-            size: AppButtonSize.medium,
-          ),
-        ],
-      ),
-    );
+    _showGymPublicSheet(context, gym,
+        onQrJoin: onQrJoin != null ? () => onQrJoin!(gym) : null);
   }
 }
 
@@ -619,16 +539,12 @@ class _GymMapView extends StatelessWidget {
 
 class _GymMapList extends StatelessWidget {
   final List<GymModel> gyms;
-  final Set<String> joiningIds;
-  final Future<void> Function(GymModel) onJoin;
   final void Function(GymModel) onTap;
   final AppPalette palette;
   final AppLocalizations l10n;
 
   const _GymMapList({
     required this.gyms,
-    required this.joiningIds,
-    required this.onJoin,
     required this.onTap,
     required this.palette,
     required this.l10n,
@@ -963,14 +879,12 @@ class _MyGymChip extends StatelessWidget {
 
 class _GymCard extends StatelessWidget {
   final GymModel gym;
-  final bool isJoining;
-  final VoidCallback onJoin;
+  final VoidCallback onDetails;
   final String? distanceLabel;
 
   const _GymCard({
     required this.gym,
-    required this.isJoining,
-    required this.onJoin,
+    required this.onDetails,
     this.distanceLabel,
   });
 
@@ -1063,36 +977,48 @@ class _GymCard extends StatelessWidget {
                       Icon(Icons.people_rounded,
                           size: 12, color: palette.textTertiary),
                       const SizedBox(width: 3),
-                      Text(
-                        '${gym.memberCount} ${l10n.translate('gym.stat_members')}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: palette.textTertiary,
+                      Flexible(
+                        child: Text(
+                          '${gym.memberCount} ${l10n.translate('gym.stat_members')}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: palette.textTertiary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (gym.tags.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        ...gym.tags.take(2).map(
-                              (t) => Padding(
-                                padding: const EdgeInsets.only(right: 4),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: primary.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    t,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: primary,
-                                      fontWeight: FontWeight.w600,
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: gym.tags
+                                .take(2)
+                                .map(
+                                  (t) => Padding(
+                                    padding: const EdgeInsets.only(right: 4),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: primary.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        t,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                            ),
+                                )
+                                .toList(),
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -1101,9 +1027,9 @@ class _GymCard extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             AppButton(
-              label: l10n.translate('gym.join_btn'),
-              onPressed: onJoin,
-              loading: isJoining,
+              label: l10n.translate('gym.details_btn'),
+              onPressed: onDetails,
+              variant: AppButtonVariant.tonal,
               size: AppButtonSize.small,
               expand: false,
             ),
@@ -1276,63 +1202,59 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).primaryColor;
     final bool hasFilter =
         selectedCity != null || sortBy != 'member_count';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          height: 40.h,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
-            children: [
-              // ── Location filters ─────────────────────────────────────
-              _locationPill(
-                context,
-                icon: Icons.location_city_rounded,
-                value: selectedCity,
-                placeholder: l10n.translate('discovery.filter_city'),
-                primary: primary,
-                onTap: () => _showCityPicker(context),
+        AppFilterBar(
+          children: [
+            // ── Location filters ─────────────────────────────────────
+            AppFilterPill.picker(
+              icon: Icons.location_city_rounded,
+              label: selectedCity ?? l10n.translate('discovery.filter_city'),
+              active: selectedCity != null,
+              onTap: () => _showCityPicker(context),
+            ),
+            if (selectedCity != null)
+              AppFilterPill.picker(
+                icon: Icons.map_outlined,
+                label: selectedDistrict ??
+                    l10n.translate('discovery.filter_district'),
+                active: selectedDistrict != null,
+                onTap: () => _showDistrictPicker(context),
               ),
-              if (selectedCity != null) ...[
-                SizedBox(width: 6.w),
-                _locationPill(
-                  context,
-                  icon: Icons.map_outlined,
-                  value: selectedDistrict,
-                  placeholder: l10n.translate('discovery.filter_district'),
-                  primary: primary,
-                  onTap: () => _showDistrictPicker(context),
-                ),
-              ],
-              // ── Divider ──────────────────────────────────────────────
-              SizedBox(width: 10.w),
-              VerticalDivider(
-                width: 1,
-                thickness: 1,
-                indent: 6.h,
-                endIndent: 6.h,
-                color: palette.border,
-              ),
-              SizedBox(width: 10.w),
-              // ── Sort chips ───────────────────────────────────────────
-              _sortPill(context, 'avg_rating', Icons.star_rounded,
-                  l10n.translate('discovery.sort_top_rated'), primary),
-              SizedBox(width: 6.w),
-              _sortPill(context, 'member_count',
-                  Icons.local_fire_department_rounded,
-                  l10n.translate('discovery.sort_popular'), primary),
-              SizedBox(width: 6.w),
-              _sortPill(context, 'created_at', Icons.new_releases_rounded,
-                  l10n.translate('discovery.sort_newest'), primary),
-              SizedBox(width: 6.w),
-              _nearMePill(context, primary),
-            ],
-          ),
+            const AppFilterDivider(),
+            // ── Sort chips ───────────────────────────────────────────
+            AppFilterPill(
+              icon: Icons.star_rounded,
+              label: l10n.translate('discovery.sort_top_rated'),
+              active: sortBy == 'avg_rating',
+              onTap: () => onSortChanged('avg_rating'),
+            ),
+            AppFilterPill(
+              icon: Icons.local_fire_department_rounded,
+              label: l10n.translate('discovery.sort_popular'),
+              active: sortBy == 'member_count',
+              onTap: () => onSortChanged('member_count'),
+            ),
+            AppFilterPill(
+              icon: Icons.new_releases_rounded,
+              label: l10n.translate('discovery.sort_newest'),
+              active: sortBy == 'created_at',
+              onTap: () => onSortChanged('created_at'),
+            ),
+            AppFilterPill(
+              icon: Icons.near_me_rounded,
+              label: l10n.translate('discovery.sort_near_me'),
+              active: sortBy == 'near_me',
+              accent: palette.energy,
+              loading: loadingLocation,
+              onTap:
+                  loadingLocation ? null : () => onSortChanged('near_me'),
+            ),
+          ],
         ),
         if (hasFilter)
           Padding(
@@ -1362,169 +1284,220 @@ class _FilterBar extends StatelessWidget {
       ],
     );
   }
+}
 
-  /// Location pill: shows placeholder + ▼ when empty; selected value + ✓ when set.
-  Widget _locationPill(
-    BuildContext context, {
-    required IconData icon,
-    required String? value,
-    required String placeholder,
-    required Color primary,
-    required VoidCallback onTap,
-  }) {
-    final active = value != null;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        height: 34.h,
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
-        decoration: BoxDecoration(
-          color: active
-              ? primary.withValues(alpha: 0.1)
-              : palette.surfaceVariant,
-          borderRadius: BorderRadius.circular(AppRadius.full.r),
-          border: Border.all(
-            color: active
-                ? primary.withValues(alpha: 0.45)
-                : palette.border,
-            width: active ? 1.5 : 1,
+// ── Gym public detail sheet ───────────────────────────────────────────────────
+
+/// Shows a public-facing gym detail bottom sheet.
+/// [onQrJoin] is called (after the sheet closes) when the user taps the QR join
+/// button; leave null to hide the join option.
+void _showGymPublicSheet(
+  BuildContext context,
+  GymModel gym, {
+  VoidCallback? onQrJoin,
+}) {
+  final palette = AppPalette.of(context);
+  final l10n = AppLocalizations.of(context);
+  final primary = Theme.of(context).primaryColor;
+
+  AppSheet.show(
+    context: context,
+    title: gym.name,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (gym.address != null && gym.address!.isNotEmpty)
+          _SheetInfoRow(
+            icon: Icons.location_on_rounded,
+            text: gym.address!,
+            palette: palette,
           ),
+        if (gym.locationDisplay.isNotEmpty)
+          _SheetInfoRow(
+            icon: Icons.location_city_rounded,
+            text: gym.locationDisplay,
+            palette: palette,
+          ),
+        _SheetInfoRow(
+          icon: Icons.people_rounded,
+          text: '${gym.memberCount} ${l10n.translate('gym.stat_members')}',
+          palette: palette,
+          color: palette.textTertiary,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon,
-                size: 13.r,
-                color: active ? primary : palette.textSecondary),
-            SizedBox(width: 5.w),
-            Text(
-              value ?? placeholder,
-              style: AppText.of(context).labelM.copyWith(
-                    fontSize: 12.sp,
-                    color: active ? primary : palette.textSecondary,
-                    fontWeight:
-                        active ? FontWeight.w600 : FontWeight.w500,
-                  ),
-            ),
-            SizedBox(width: 4.w),
-            Icon(
-              active
-                  ? Icons.check_rounded
-                  : Icons.keyboard_arrow_down_rounded,
-              size: 13.r,
-              color: active ? primary : palette.textTertiary,
-            ),
-          ],
+        if (gym.description != null && gym.description!.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(
+            gym.description!,
+            style: AppText.of(context)
+                .bodyM
+                .copyWith(color: palette.textSecondary),
+          ),
+        ],
+        if (gym.tags.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: gym.tags
+                .take(5)
+                .map((t) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: Text(
+                        t,
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: primary,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ))
+                .toList(),
+          ),
+        ],
+        const SizedBox(height: 20),
+        if (onQrJoin != null)
+          AppButton(
+            label: l10n.translate('gym.join_qr_btn'),
+            onPressed: () {
+              Navigator.of(context).pop();
+              onQrJoin();
+            },
+            icon: Icons.qr_code_scanner_rounded,
+          ),
+        if (onQrJoin != null) const SizedBox(height: 8),
+        AppButton(
+          label: l10n.translate('gym.map_view_gym'),
+          onPressed: () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              AppTransitions.slideRight(GymMemberHomeScreen(gym: gym)),
+            );
+          },
+          icon: Icons.arrow_forward_rounded,
+          variant: onQrJoin != null
+              ? AppButtonVariant.secondary
+              : AppButtonVariant.primary,
+          size: AppButtonSize.medium,
         ),
-      ),
-    );
+      ],
+    ),
+  );
+}
+
+// ── QR Join Page ──────────────────────────────────────────────────────────────
+
+/// Full-screen QR scanner for joining a gym via invite QR code.
+/// Pops with `({gymId, token})` on a valid scan, or null on cancel.
+class _GymQrJoinPage extends StatefulWidget {
+  final GymModel gym;
+  const _GymQrJoinPage({required this.gym});
+
+  @override
+  State<_GymQrJoinPage> createState() => _GymQrJoinPageState();
+}
+
+class _GymQrJoinPageState extends State<_GymQrJoinPage> {
+  late MobileScannerController _ctrl;
+  bool _processing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = MobileScannerController();
   }
 
-  /// Sort pill: always shows full label; active = primary-tinted fill.
-  Widget _sortPill(BuildContext context, String value, IconData icon,
-      String label, Color primary) {
-    final active = sortBy == value;
-    return GestureDetector(
-      onTap: () => onSortChanged(value),
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        height: 34.h,
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
-        decoration: BoxDecoration(
-          color: active
-              ? primary.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.full.r),
-          border: Border.all(
-            color: active
-                ? primary.withValues(alpha: 0.45)
-                : palette.border,
-            width: active ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (active) ...[
-              Icon(Icons.check_rounded, size: 11.r, color: primary),
-              SizedBox(width: 4.w),
-            ] else ...[
-              Icon(icon, size: 12.r, color: palette.textTertiary),
-              SizedBox(width: 4.w),
-            ],
-            Text(
-              label,
-              style: AppText.of(context).labelM.copyWith(
-                    fontSize: 12.sp,
-                    color: active ? primary : palette.textSecondary,
-                    fontWeight:
-                        active ? FontWeight.w600 : FontWeight.w500,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
   }
 
-  /// Near Me sort pill with location loading indicator.
-  Widget _nearMePill(BuildContext context, Color primary) {
-    final active = sortBy == 'near_me';
-    final energyColor = palette.energy;
-    final activeColor = active ? energyColor : null;
-    final pillColor = activeColor ?? primary;
+  Future<void> _onDetect(BarcodeCapture capture) async {
+    if (_processing) return;
+    final raw = capture.barcodes.firstOrNull?.rawValue;
+    if (raw == null) return;
 
-    return GestureDetector(
-      onTap: loadingLocation ? null : () => onSortChanged('near_me'),
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        height: 34.h,
-        padding: EdgeInsets.symmetric(horizontal: 10.w),
-        decoration: BoxDecoration(
-          color: active
-              ? energyColor.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.full.r),
-          border: Border.all(
-            color: active
-                ? energyColor.withValues(alpha: 0.45)
-                : palette.border,
-            width: active ? 1.5 : 1,
-          ),
+    // Expected: cookrange:checkin:{gymId}:{token}
+    final parts = raw.split(':');
+    if (parts.length != 4 ||
+        parts[0] != 'cookrange' ||
+        parts[1] != 'checkin' ||
+        parts[2] != widget.gym.id) {
+      if (mounted) {
+        AppSnackBar.error(
+          context,
+          AppLocalizations.of(context).translate('gym.checkin_invalid_qr'),
+        );
+      }
+      return;
+    }
+
+    setState(() => _processing = true);
+    if (!mounted) return;
+    Navigator.of(context)
+        .pop<({String gymId, String token})?>(
+            (gymId: widget.gym.id, token: parts[3]));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final t = AppText.of(context);
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (loadingLocation)
-              SizedBox(
-                width: 12.r,
-                height: 12.r,
-                child: CircularProgressIndicator(
-                    strokeWidth: 1.5, color: pillColor),
-              )
-            else if (active) ...[
-              Icon(Icons.check_rounded,
-                  size: 11.r, color: energyColor),
-              SizedBox(width: 4.w),
-            ] else ...[
-              Icon(Icons.near_me_rounded,
-                  size: 12.r, color: palette.textTertiary),
-              SizedBox(width: 4.w),
-            ],
-            if (!loadingLocation) ...[
-              Text(
-                l10n.translate('discovery.sort_near_me'),
-                style: AppText.of(context).labelM.copyWith(
-                      fontSize: 12.sp,
-                      color: active ? energyColor : palette.textSecondary,
-                      fontWeight:
-                          active ? FontWeight.w600 : FontWeight.w500,
-                    ),
+        title: Text(
+          l10n.translate('gym.join_qr_title'),
+          style: t.titleM.copyWith(color: Colors.white),
+        ),
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          MobileScanner(
+            controller: _ctrl,
+            onDetect: _onDetect,
+          ),
+          // Scan frame overlay
+          Center(
+            child: Container(
+              width: 240,
+              height: 240,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white, width: 2),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
-            ],
-          ],
-        ),
+            ),
+          ),
+          // Subtitle
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 80,
+            child: Text(
+              l10n.translate('gym.join_qr_subtitle'),
+              textAlign: TextAlign.center,
+              style: t.bodyM.copyWith(color: Colors.white70),
+            ),
+          ),
+          if (_processing)
+            const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+        ],
       ),
     );
   }

@@ -159,18 +159,20 @@ class _RouteGuardState extends State<RouteGuard> {
         _hasRedirected = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            // Email verification is a SOFT reminder (not a hard gate) — see
-            // docs/roadmap/ONBOARDING_V2.md §3. We never block on it here.
-            // A logged-in but unfinished account finishes onboarding via the V2
-            // flow in logged-in mode (persists against its own uid).
             final completed = userModel?.onboardingCompleted == true;
+            final hasPlan = userModel?.mealPlanGenerated == true;
+            final dest = !completed
+                ? AppRoutes.onboardingV2
+                : !hasPlan
+                    ? AppRoutes.mealPlanGeneration
+                    : AppRoutes.main;
             Navigator.pushNamedAndRemoveUntil(
               context,
-              completed ? AppRoutes.main : AppRoutes.onboardingV2,
+              dest,
               (route) => false,
-              arguments: completed
-                  ? null
-                  : OnboardingFlowScreen.loggedInCompletionArgs,
+              arguments: !completed
+                  ? OnboardingFlowScreen.loggedInCompletionArgs
+                  : null,
             );
           }
         });
@@ -219,7 +221,29 @@ class _RouteGuardState extends State<RouteGuard> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    // E. All checks passed, render the child
+    // E. Meal plan gate — onboarding is complete but the first AI plan hasn't
+    //    been generated yet. This catches every login path including the
+    //    "exit verify_email → verify from email client → login" flow.
+    //    mealPlanGenerated is set to true by MealPlanGenerationScreen on
+    //    success, so this gate fires at most once per account.
+    if (userModel != null &&
+        userModel.onboardingCompleted &&
+        !userModel.mealPlanGenerated &&
+        routeName != AppRoutes.mealPlanGeneration &&
+        routeName != AppRoutes.verifyEmail) {
+      if (!_hasRedirected) {
+        _hasRedirected = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, AppRoutes.mealPlanGeneration, (route) => false);
+          }
+        });
+      }
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    // F. All checks passed, render the child
     return widget.child;
   }
 

@@ -1,6 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/coach_profile_model.dart';
 import '../models/dish_model.dart';
 import '../models/food_log_model.dart';
+import '../models/gym_model.dart';
 import '../models/ingredient_model.dart';
+import '../models/leaderboard_entry_model.dart';
 import '../models/weekly_meal_plan_model.dart';
 
 /// Static dummy data for Test Mode — max volume stress-test scenarios.
@@ -80,7 +84,7 @@ class TestDataLibrary {
       );
     });
 
-    final totalCal = days.fold(0.0, (sum, d) => sum + d.totalCalories);
+    final totalCal = days.fold(0.0, (acc, d) => acc + d.totalCalories);
 
     return WeeklyMealPlanModel(
       id: 'test_plan',
@@ -226,6 +230,50 @@ class TestDataLibrary {
         Ingredient(name: 'Ton Balığı (Konserve)', amount: 4, unit: 'kutu', calories: 128),
         Ingredient(name: 'Yunan Yoğurdu', amount: 500, unit: 'g', calories: 97),
         Ingredient(name: 'Limon', amount: 4, unit: 'adet', calories: 29),
+      ];
+
+  // ─── Discovery mock data ─────────────────────────────────────────────────────
+
+  static List<GymModel> gyms() {
+    final now = DateTime(2025);
+    return [
+      GymModel(id: 'gym_01', ownerUid: 'test_owner_1', name: 'Iron Palace Gym', description: 'İstanbul\'un en modern fitness merkezi. 1500 m² alan, olimpik havuz ve 3 group ders salonu.', address: 'Bağcılar Mahallesi, Bağcılar Cad. No:12', city: 'İstanbul', district: 'Bağcılar', country: 'TR', isPublic: true, memberCount: 842, subscriptionTier: GymSubscriptionTier.premium, tags: ['powerlifting', 'cardio', 'pool', 'group_classes'], createdAt: now, updatedAt: now, latitude: 41.0389, longitude: 28.8559, isVerified: true),
+      GymModel(id: 'gym_02', ownerUid: 'test_owner_2', name: 'FitZone Kadıköy', description: 'Kadıköy\'ün kalbinde 24 saat açık profesyonel spor merkezi. CrossFit ve yoga ağırlıklı program.', address: 'Moda Cad. No:45', city: 'İstanbul', district: 'Kadıköy', country: 'TR', isPublic: true, memberCount: 637, subscriptionTier: GymSubscriptionTier.standard, tags: ['crossfit', 'yoga', 'open_24h'], createdAt: now, updatedAt: now, latitude: 40.9890, longitude: 29.0264, isVerified: true),
+      GymModel(id: 'gym_03', ownerUid: 'test_owner_3', name: 'Ankara Sport Club', description: 'Başkentin prestijli spor kulübü. 2 olimpik yüzme havuzu, tenis kortları ve kapalı atletizm pisti.', address: 'Çankaya Bul. No:88', city: 'Ankara', district: 'Çankaya', country: 'TR', isPublic: true, memberCount: 1240, subscriptionTier: GymSubscriptionTier.premium, tags: ['pool', 'tennis', 'athletics', 'sauna'], createdAt: now, updatedAt: now, latitude: 39.9208, longitude: 32.8541, isVerified: true),
+      GymModel(id: 'gym_04', ownerUid: 'test_owner_4', name: 'Pulse Fitness Beşiktaş', description: 'Boğaz manzaralı butik spor salonu. Özel antrenman programları ve beslenme danışmanlığı.', address: 'Barbaros Bul. No:67', city: 'İstanbul', district: 'Beşiktaş', country: 'TR', isPublic: true, memberCount: 389, subscriptionTier: GymSubscriptionTier.standard, tags: ['boutique', 'personal_training', 'nutrition'], createdAt: now, updatedAt: now, latitude: 41.0438, longitude: 29.0073),
+      GymModel(id: 'gym_05', ownerUid: 'test_owner_5', name: 'SmartFit İzmir', description: 'İzmir\'in en hızlı büyüyen fitness zinciri. AI destekli antrenman takibi ve akıllı ekipmanlar.', address: 'Alsancak Mah. No:23', city: 'İzmir', district: 'Konak', country: 'TR', isPublic: true, memberCount: 520, subscriptionTier: GymSubscriptionTier.premium, tags: ['ai_training', 'smart_equipment', 'cardio'], createdAt: now, updatedAt: now, latitude: 38.4189, longitude: 27.1287, isVerified: true),
+      GymModel(id: 'gym_06', ownerUid: 'test_owner_6', name: 'BodyCraft Gym Şişli', description: 'Vücut geliştirme ve powerlifting odaklı profesyonel salon. 500+ makine ve serbest ağırlık alanı.', address: 'Halaskargazi Cad. No:102', city: 'İstanbul', district: 'Şişli', country: 'TR', isPublic: true, memberCount: 478, subscriptionTier: GymSubscriptionTier.standard, tags: ['bodybuilding', 'powerlifting', 'heavy_weights'], createdAt: now, updatedAt: now, latitude: 41.0579, longitude: 28.9931),
+      GymModel(id: 'gym_07', ownerUid: 'test_owner_7', name: 'Zen Wellness Nişantaşı', description: 'Pilates, yoga ve meditasyon odaklı bütünsel wellness merkezi. Sauna ve spa hizmetleri dahil.', address: 'Teşvikiye Cad. No:18', city: 'İstanbul', district: 'Nişantaşı', country: 'TR', isPublic: true, memberCount: 215, subscriptionTier: GymSubscriptionTier.premium, tags: ['yoga', 'pilates', 'meditation', 'spa', 'sauna'], createdAt: now, updatedAt: now, latitude: 41.0490, longitude: 28.9972, isVerified: true),
+      GymModel(id: 'gym_08', ownerUid: 'test_owner_8', name: 'Champion Bursa', description: 'Bursa\'nın şampiyonlar salonu. Profesyonel boks, güreş ve mücadele sanatları ekipmanları.', address: 'Osmangazi Cad. No:55', city: 'Bursa', district: 'Osmangazi', country: 'TR', isPublic: true, memberCount: 310, subscriptionTier: GymSubscriptionTier.standard, tags: ['boxing', 'wrestling', 'martial_arts', 'mma'], createdAt: now, updatedAt: now, latitude: 40.1826, longitude: 29.0669),
+    ];
+  }
+
+  static List<CoachProfileModel> coaches() {
+    final now = DateTime(2025);
+    return [
+      CoachProfileModel(uid: 'coach_01', displayName: 'Ahmet Yılmaz', bio: 'NASM sertifikalı kişisel antrenör. 10 yıllık deneyimle vücut geliştirme ve fonksiyonel antrenman uzmanlığı.', specializations: ['bodybuilding', 'functional_training', 'nutrition'], certifications: ['NASM-CPT', 'PN1'], isAcceptingClients: true, clientCount: 48, hourlyRate: 350, isPublic: true, createdAt: now, updatedAt: now, city: 'İstanbul', district: 'Kadıköy', avgRating: 4.9, ratingCount: 127, isVerified: true, latitude: 40.9897, longitude: 29.0280),
+      CoachProfileModel(uid: 'coach_02', displayName: 'Zeynep Kaya', bio: 'Kadın antrenmanı ve pre/post natal fitness uzmanı. ACE ve AFAA sertifikalı. Online ve yüz yüze program.', specializations: ['womens_fitness', 'prenatal', 'yoga', 'pilates'], certifications: ['ACE-CPT', 'AFAA-PFT'], isAcceptingClients: true, clientCount: 62, hourlyRate: 400, isPublic: true, createdAt: now, updatedAt: now, city: 'İstanbul', district: 'Beşiktaş', avgRating: 4.8, ratingCount: 94, isVerified: true),
+      CoachProfileModel(uid: 'coach_03', displayName: 'Mehmet Demir', bio: 'Eski milli güreşçi, şimdi CrossFit Level 2 antrenör. Kondisyon, güç ve dayanıklılık programları.', specializations: ['crossfit', 'strength', 'conditioning', 'wrestling'], certifications: ['CF-L2', 'CSCS'], isAcceptingClients: true, clientCount: 35, hourlyRate: 500, isPublic: true, createdAt: now, updatedAt: now, city: 'Ankara', district: 'Çankaya', avgRating: 4.7, ratingCount: 56, isVerified: true),
+      CoachProfileModel(uid: 'coach_04', displayName: 'Selin Arslan', bio: 'Beslenme bilimi mezunu sporcu diyetisyen & fitness koç. Kilo yönetimi ve spor performansı odaklı.', specializations: ['nutrition', 'weight_loss', 'sports_performance'], certifications: ['RD', 'CISSN', 'ACE-CHC'], isAcceptingClients: true, clientCount: 87, hourlyRate: 450, isPublic: true, createdAt: now, updatedAt: now, city: 'İstanbul', district: 'Şişli', avgRating: 4.9, ratingCount: 203, isVerified: true),
+      CoachProfileModel(uid: 'coach_05', displayName: 'Burak Şahin', bio: 'Powerlifting ve olimpik halter uzmanı. IPF milli takım antrenörü, 3 kez Türkiye şampiyonu.', specializations: ['powerlifting', 'olympic_weightlifting', 'strength'], certifications: ['NSCA-CSCS', 'USAW-L2'], isAcceptingClients: false, clientCount: 24, hourlyRate: 600, isPublic: true, createdAt: now, updatedAt: now, city: 'İzmir', district: 'Konak', avgRating: 5.0, ratingCount: 41, isVerified: true),
+      CoachProfileModel(uid: 'coach_06', displayName: 'Elif Bozkurt', bio: 'Yoga ve meditasyon rehberi. Hatha, Vinyasa ve Restoratif yoga öğretmeni. Stres yönetimi programları.', specializations: ['yoga', 'meditation', 'mindfulness', 'flexibility'], certifications: ['RYT-500', 'YACEP'], isAcceptingClients: true, clientCount: 71, hourlyRate: 300, isPublic: true, createdAt: now, updatedAt: now, city: 'İstanbul', district: 'Nişantaşı', avgRating: 4.8, ratingCount: 118, isVerified: true),
+      CoachProfileModel(uid: 'coach_07', displayName: 'Kerem Doğan', bio: 'Bisiklet ve koşu antrenörü. Triatlon bitirme garantisi programı. Online ve yüz yüze coaching.', specializations: ['cycling', 'running', 'triathlon', 'endurance'], certifications: ['USA-T', 'USAC-L2'], isAcceptingClients: true, clientCount: 29, hourlyRate: 380, isPublic: true, createdAt: now, updatedAt: now, city: 'Ankara', district: 'Keçiören', avgRating: 4.6, ratingCount: 37),
+      CoachProfileModel(uid: 'coach_08', displayName: 'Ayşe Güven', bio: 'Pilates ve rehabilitasyon uzmanı. Sakatlık sonrası geri dönüş ve postür düzeltme programları.', specializations: ['pilates', 'rehabilitation', 'posture', 'injury_recovery'], certifications: ['STOTT-PILATES', 'PMA-CPT'], isAcceptingClients: true, clientCount: 53, hourlyRate: 420, isPublic: true, createdAt: now, updatedAt: now, city: 'Bursa', district: 'Nilüfer', avgRating: 4.7, ratingCount: 79, isVerified: true),
+    ];
+  }
+
+  /// 10-entry leaderboard for a test gym — stress-tests the leaderboard display.
+  static List<LeaderboardEntryModel> gymLeaderboard() => const [
+        LeaderboardEntryModel(uid: 'member_01', displayName: 'Elif Kaya', checkInCount: 28, streak: 14, rank: 1),
+        LeaderboardEntryModel(uid: 'member_02', displayName: 'Ahmet Çelik', checkInCount: 24, streak: 12, rank: 2),
+        LeaderboardEntryModel(uid: 'member_03', displayName: 'Zeynep Demir', checkInCount: 21, streak: 10, rank: 3),
+        LeaderboardEntryModel(uid: 'member_04', displayName: 'Mert Yıldız', checkInCount: 19, streak: 8, rank: 4),
+        LeaderboardEntryModel(uid: 'member_05', displayName: 'Selin Arslan', checkInCount: 17, streak: 7, rank: 5),
+        LeaderboardEntryModel(uid: 'member_06', displayName: 'Burak Öztürk', checkInCount: 15, streak: 5, rank: 6),
+        LeaderboardEntryModel(uid: 'member_07', displayName: 'Ayşe Güneş', checkInCount: 13, streak: 4, rank: 7),
+        LeaderboardEntryModel(uid: 'member_08', displayName: 'Kerem Yılmaz', checkInCount: 11, streak: 3, rank: 8),
+        LeaderboardEntryModel(uid: 'member_09', displayName: 'Fatma Şahin', checkInCount: 9, streak: 2, rank: 9),
+        LeaderboardEntryModel(uid: 'member_10', displayName: 'Ali Koç', checkInCount: 7, streak: 1, rank: 10),
       ];
 
   // --- Private helpers ---
@@ -405,4 +453,33 @@ class TestDataLibrary {
       'tags': ['fiber', 'antioxidant', 'quick'], 'prep': 5, 'cook': 5,
     },
   };
+
+  // ── Admin: mock users (Test Mode) ─────────────────────────────────────────
+  /// User maps shaped like Firestore `users/{uid}` docs for the admin panel.
+  static List<Map<String, dynamic>> adminUsers() {
+    final base = DateTime(2025, 3);
+    final rows = <List<dynamic>>[
+      // [name, email, role, banned, daysAgo]
+      ['Ayşe Yılmaz', 'ayse@example.com', 'consumer', false, 3],
+      ['Mehmet Demir', 'mehmet@example.com', 'coach', false, 12],
+      ['Zeynep Kaya', 'zeynep@example.com', 'gym_owner', false, 25],
+      ['Can Öztürk', 'can@example.com', 'consumer', true, 40],
+      ['Elif Şahin', 'elif@example.com', 'admin', false, 60],
+      ['Burak Aydın', 'burak@example.com', 'consumer', false, 70],
+      ['Deniz Arslan', 'deniz@example.com', 'coach', false, 95],
+      ['Selin Doğan', 'selin@example.com', 'consumer', false, 110],
+    ];
+    return [
+      for (var i = 0; i < rows.length; i++)
+        {
+          'uid': 'test_user_$i',
+          'display_name': rows[i][0],
+          'email': rows[i][1],
+          'user_role': rows[i][2],
+          'is_banned': rows[i][3],
+          'created_at':
+              Timestamp.fromDate(base.subtract(Duration(days: rows[i][4] as int))),
+        },
+    ];
+  }
 }

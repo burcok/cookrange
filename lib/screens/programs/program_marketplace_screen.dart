@@ -50,8 +50,6 @@ class _ProgramMarketplaceScreenState extends State<ProgramMarketplaceScreen> {
           _CategoryFilterRow(
             selectedCategory: _selectedCategory,
             onSelected: (c) => setState(() => _selectedCategory = c),
-            palette: palette,
-            primary: primary,
             l10n: l10n,
           ),
           Expanded(
@@ -117,97 +115,50 @@ class _ProgramMarketplaceScreenState extends State<ProgramMarketplaceScreen> {
 class _CategoryFilterRow extends StatelessWidget {
   final ProgramCategory? selectedCategory;
   final ValueChanged<ProgramCategory?> onSelected;
-  final AppPalette palette;
-  final Color primary;
   final AppLocalizations l10n;
 
   const _CategoryFilterRow({
     required this.selectedCategory,
     required this.onSelected,
-    required this.palette,
-    required this.primary,
     required this.l10n,
   });
+
+  IconData _iconFor(ProgramCategory cat) {
+    switch (cat) {
+      case ProgramCategory.weightLoss:
+        return Icons.monitor_weight_rounded;
+      case ProgramCategory.muscleGain:
+        return Icons.fitness_center_rounded;
+      case ProgramCategory.endurance:
+        return Icons.directions_run_rounded;
+      case ProgramCategory.flexibility:
+        return Icons.sports_gymnastics_rounded;
+      case ProgramCategory.nutrition:
+        return Icons.restaurant_rounded;
+      case ProgramCategory.lifestyle:
+        return Icons.self_improvement_rounded;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     const categories = ProgramCategory.values;
 
-    return SizedBox(
-      height: 44.h,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
-        children: [
-          // "All" chip
-          Padding(
-            padding: EdgeInsets.only(right: 8.w),
-            child: _FilterChip(
-              label: l10n.translate('program.all_categories'),
-              isSelected: selectedCategory == null,
-              onTap: () => onSelected(null),
-              palette: palette,
-              primary: primary,
-            ),
-          ),
-          ...categories.map((cat) => Padding(
-                padding: EdgeInsets.only(right: 8.w),
-                child: _FilterChip(
-                  label: l10n.translate(cat.locKey),
-                  isSelected: selectedCategory == cat,
-                  onTap: () => onSelected(cat == selectedCategory ? null : cat),
-                  palette: palette,
-                  primary: primary,
-                ),
-              )),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final AppPalette palette;
-  final Color primary;
-
-  const _FilterChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-    required this.palette,
-    required this.primary,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        curve: AppMotion.standard,
-        padding:
-            EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
-        decoration: BoxDecoration(
-          color: isSelected ? primary : palette.surfaceVariant,
-          borderRadius: BorderRadius.circular(AppRadius.full.r),
-          border: Border.all(
-            color: isSelected
-                ? primary
-                : palette.border.withValues(alpha: 0.5),
-          ),
+    return AppFilterBar(
+      children: [
+        AppFilterPill(
+          label: l10n.translate('program.all_categories'),
+          icon: Icons.apps_rounded,
+          active: selectedCategory == null,
+          onTap: () => onSelected(null),
         ),
-        child: Text(
-          label,
-          style: AppText.of(context).labelM.copyWith(
-                color: isSelected ? Colors.white : palette.textSecondary,
-                fontWeight:
-                    isSelected ? FontWeight.w700 : FontWeight.w500,
-              ),
-        ),
-      ),
+        ...categories.map((cat) => AppFilterPill(
+              label: l10n.translate(cat.locKey),
+              icon: _iconFor(cat),
+              active: selectedCategory == cat,
+              onTap: () => onSelected(cat == selectedCategory ? null : cat),
+            )),
+      ],
     );
   }
 }

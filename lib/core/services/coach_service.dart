@@ -5,8 +5,10 @@ import 'package:flutter/foundation.dart';
 import '../models/coach_profile_model.dart';
 import '../models/coach_client_model.dart';
 import '../models/user_model.dart';
+import '../data/test_data_library.dart';
 import 'analytics_service.dart';
 import 'firestore_service.dart';
+import 'test_mode_service.dart';
 
 class CoachService {
   static final CoachService _i = CoachService._internal();
@@ -125,6 +127,28 @@ class CoachService {
     String sortBy = 'client_count',
     int limit = 25,
   }) async {
+    if (TestModeService().isActive) {
+      var results = TestDataLibrary.coaches();
+      if (query.isNotEmpty) {
+        final lower = query.toLowerCase();
+        results = results
+            .where((c) =>
+                c.displayName.toLowerCase().contains(lower) ||
+                c.bio?.toLowerCase().contains(lower) == true ||
+                c.specializations.any((s) => s.contains(lower)))
+            .toList();
+      }
+      if (city != null && city.isNotEmpty) {
+        results = results.where((c) => c.city == city).toList();
+      }
+      if (sortBy == 'avg_rating') {
+        results.sort((a, b) => b.avgRating.compareTo(a.avgRating));
+      } else {
+        results.sort((a, b) => b.clientCount.compareTo(a.clientCount));
+      }
+      return results.take(limit).toList();
+    }
+
     try {
       Query<Map<String, dynamic>> q = _coaches
           .where('is_public', isEqualTo: true)

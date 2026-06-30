@@ -13,9 +13,8 @@ import '../../screens/gym/gym_dashboard_screen.dart';
 import '../../screens/gym/gym_discovery_screen.dart';
 import '../../screens/home/food_scan_screen.dart';
 import '../../screens/home/barcode_scan_screen.dart';
-import '../../screens/home/nutrition_analytics_screen.dart';
+import '../../screens/nutrition_hub/nutrition_hub_screen.dart';
 import '../../screens/shopping/shopping_list_screen.dart';
-import '../../screens/recipe/favorites_screen.dart';
 
 class QuickActionsSheet extends StatefulWidget {
   const QuickActionsSheet({super.key});
@@ -475,12 +474,12 @@ class _QuickActionsGrid extends StatelessWidget {
                 onTap: () => onInner(const ShoppingListScreen()),
               ),
               _ActionTile(
-                icon: Icons.bar_chart_rounded,
-                color: const Color(0xFFF59E0B),
-                label: l10n.translate('quick_actions.nutrition_analytics'),
+                icon: Icons.restaurant_menu_rounded,
+                color: const Color(0xFF10B981),
+                label: l10n.translate('quick_actions.foods_nutrition'),
                 isDark: isDark,
                 palette: palette,
-                onTap: () => onInner(const NutritionAnalyticsScreen()),
+                onTap: () => onInner(const NutritionHubScreen()),
               ),
               _ActionTile(
                 icon: Icons.favorite_rounded,
@@ -488,7 +487,7 @@ class _QuickActionsGrid extends StatelessWidget {
                 label: l10n.translate('quick_actions.favorites'),
                 isDark: isDark,
                 palette: palette,
-                onTap: () => onInner(const FavoritesScreen()),
+                onTap: () => onInner(const NutritionHubScreen(initialTab: 1)),
               ),
               // Role-aware 6th tile: gym owner → My Gym, coach → My Coaching,
               // everyone else → Find a Gym

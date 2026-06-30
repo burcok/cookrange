@@ -33,6 +33,8 @@ import '../../core/services/auth_service.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../../screens/profile/settings_screen.dart';
+import '../../screens/nutrition_hub/nutrition_hub_screen.dart';
+import '../../screens/community/groups/groups_discovery_screen.dart';
 
 class SideMenu extends StatefulWidget {
   final NavigationProvider navProvider;
@@ -249,6 +251,8 @@ class _SidePanel extends StatelessWidget {
                     _SectionLabel(l10n.translate('menu.section_pages')),
                     _NavTile(icon: Icons.home_rounded, label: l10n.translate('menu.home'), onTap: () => onTab(NavigationProvider.homeTab), palette: palette, isDark: isDark, primary: primary),
                     _NavTile(icon: Icons.groups_rounded, label: l10n.translate('menu.community'), onTap: () => onTab(NavigationProvider.communityTab), palette: palette, isDark: isDark, primary: primary),
+                    _NavTile(icon: Icons.restaurant_menu_rounded, label: l10n.translate('menu.foods_nutrition'), onTap: () => onPush(const NutritionHubScreen()), palette: palette, isDark: isDark, primary: primary),
+                    _NavTile(icon: Icons.groups_2_rounded, label: l10n.translate('menu.groups'), onTap: () => onPush(const GroupsDiscoveryScreen()), palette: palette, isDark: isDark, primary: primary),
 
                     const SizedBox(height: 18),
 

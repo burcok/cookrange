@@ -192,7 +192,11 @@ class _UserTile extends StatelessWidget {
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
 
     Timestamp? ts;
-    if (user['createdAt'] is Timestamp) ts = user['createdAt'] as Timestamp;
+    if (user['created_at'] is Timestamp) {
+      ts = user['created_at'] as Timestamp;
+    } else if (user['createdAt'] is Timestamp) {
+      ts = user['createdAt'] as Timestamp;
+    }
     final memberSince = ts != null
         ? l10n
             .translate('admin.user_since')
@@ -526,6 +530,37 @@ class _UserActionSheetState extends State<_UserActionSheet> {
     }
   }
 
+  Future<void> _sendNotification() async {
+    final l10n = widget.l10n;
+    final result = await showDialog<({String title, String body})>(
+      context: context,
+      builder: (ctx) => _SendNotificationDialog(l10n: l10n),
+    );
+    if (result == null || !mounted) return;
+
+    final title = result.title;
+    final body = result.body;
+
+    setState(() => _loading = true);
+    try {
+      await widget.adminService.sendNotificationToUser(
+        uid: widget.uid,
+        title: title.isEmpty ? l10n.translate('admin.role_admin') : title,
+        body: body,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.translate('admin.notif_sent'))));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _sendPasswordReset() async {
     if (widget.email.isEmpty) return;
     setState(() => _loading = true);
@@ -628,6 +663,14 @@ class _UserActionSheetState extends State<_UserActionSheet> {
               ],
             );
           },
+        ),
+        SizedBox(height: 8.h),
+        AppButton(
+          label: l10n.translate('admin.action_send_notification'),
+          variant: AppButtonVariant.tonal,
+          icon: Icons.notifications_active_rounded,
+          onPressed: _loading ? null : _sendNotification,
+          loading: _loading,
         ),
         SizedBox(height: 8.h),
         AppButton(
@@ -790,3 +833,73 @@ class _StatChip extends StatelessWidget {
     );
   }
 }
+
+class _SendNotificationDialog extends StatefulWidget {
+  final AppLocalizations l10n;
+  const _SendNotificationDialog({required this.l10n});
+
+  @override
+  State<_SendNotificationDialog> createState() => _SendNotificationDialogState();
+}
+
+class _SendNotificationDialogState extends State<_SendNotificationDialog> {
+  late final TextEditingController _titleCtrl;
+  late final TextEditingController _bodyCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleCtrl = TextEditingController();
+    _bodyCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _bodyCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.l10n.translate('admin.action_send_notification')),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _titleCtrl,
+            autofocus: true,
+            decoration: InputDecoration(
+                hintText: widget.l10n.translate('admin.notif_title_hint')),
+          ),
+          SizedBox(height: 8.h),
+          TextField(
+            controller: _bodyCtrl,
+            maxLines: 3,
+            decoration: InputDecoration(
+                hintText: widget.l10n.translate('admin.notif_body_hint')),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            final title = _titleCtrl.text.trim();
+            final body = _bodyCtrl.text.trim();
+            if (title.isEmpty && body.isEmpty) {
+              return;
+            }
+            Navigator.of(context).pop((title: title, body: body));
+          },
+          child: Text(widget.l10n.translate('admin.notif_send')),
+        ),
+      ],
+    );
+  }
+}
+

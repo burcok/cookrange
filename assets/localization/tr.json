@@ -809,7 +809,10 @@
     "copy": "Panoya Kopyala",
     "copied": "Alışveriş listesi panoya kopyalandı.",
     "to_buy": "Alınacaklar",
-    "in_cart": "Sepette"
+    "in_cart": "Sepette",
+    "filter_week": "Bu hafta",
+    "filter_today": "Bugün",
+    "source_prefix": "Şunun için"
   },
   "settings": {
     "title": "Ayarlar",
@@ -1257,7 +1260,8 @@
     "voice_assistant": "Sesli Asistan",
     "ai_assistant": "AI Asistan",
     "gym_dashboard": "Salonum",
-    "my_coaching": "Antrenörlüğüm"
+    "my_coaching": "Antrenörlüğüm",
+    "foods_nutrition": "Yemekler & Beslenme"
   },
   "community": {
     "title": "Topluluk",
@@ -1340,6 +1344,42 @@
     },
     "report_success": "{type} başarıyla bildirildi",
     "groups": {
+      "title": "Gruplar",
+      "discover": "Grupları keşfet",
+      "discover_in": "{city} grupları",
+      "my_groups": "Gruplarım",
+      "create": "Grup oluştur",
+      "create_title": "Yeni grup",
+      "name_label": "Grup adı",
+      "name_hint": "örn. İstanbul Koşucuları",
+      "description_label": "Açıklama",
+      "description_hint": "Bu grup ne hakkında?",
+      "city_label": "Şehir",
+      "district_label": "İlçe",
+      "tags_label": "Etiketler (virgülle ayır)",
+      "tags_hint": "koşu, vegan, başlangıç",
+      "public_label": "Herkese açık grup",
+      "public_sub": "Herkes keşfedip katılabilir",
+      "members_count": "{n} üye",
+      "join": "Katıl",
+      "joined": "Katıldın",
+      "leave": "Ayrıl",
+      "about": "Hakkında",
+      "members": "Üyeler",
+      "feed": "Akış",
+      "post_hint": "Grupla bir şeyler paylaş…",
+      "post_btn": "Paylaş",
+      "feed_empty_title": "Henüz gönderi yok",
+      "feed_empty_msg": "Bu grupta ilk gönderiyi sen paylaş.",
+      "members_only_post": "Paylaşmak için gruba katıl.",
+      "discover_empty_title": "Burada henüz grup yok",
+      "discover_empty_msg": "Şehrinde ilk grubu sen oluştur.",
+      "sort_active": "En aktif",
+      "sort_popular": "En çok üye",
+      "sort_newest": "En yeni",
+      "created_success": "Grup oluşturuldu!",
+      "join_success": "{group} grubuna katıldın",
+      "not_found": "Grup bulunamadı",
       "new": "Yeni"
     },
     "no_posts": "Gönderi bulunamadı. İlk paylaşan sen ol!",
@@ -1455,7 +1495,9 @@
     "coach_app_rejected": "Antrenör Başvurusu Reddedildi",
     "gym_app_rejected": "Salon Başvurusu Reddedildi",
     "discover": "Keşfet",
-    "admin_privacy": "Gizlilik Talepleri"
+    "admin_privacy": "Gizlilik Talepleri",
+    "foods_nutrition": "Yemekler & Beslenme",
+    "groups": "Gruplar"
   },
   "account_suspended": {
     "title_header": "HESAP DURUMU",
@@ -1682,7 +1724,27 @@
       "snack": "Ara Öğün"
     },
     "log_btn": "Bu öğünü kaydet",
-    "log_success": "Öğün başarıyla kaydedildi!"
+    "log_success": "Öğün başarıyla kaydedildi!",
+    "mode_describe": "Açıkla",
+    "mode_photo": "Fotoğraf",
+    "photo_prompt": "Yemek fotoğrafı çek veya seç",
+    "photo_take": "Fotoğraf çek",
+    "photo_choose": "Galeriden seç",
+    "photo_retake": "Fotoğrafı değiştir",
+    "photo_hint_field": "İsteğe bağlı not (örn. büyük porsiyon)",
+    "analyze_photo_btn": "Fotoğrafı analiz et",
+    "health_score": "Sağlık puanı",
+    "fiber": "Lif",
+    "sugar": "Şeker",
+    "sodium": "Sodyum",
+    "micros_title": "Porsiyon başına",
+    "allergens_title": "Olası alerjenler",
+    "portion_title": "Porsiyon",
+    "confidence": "Yapay zeka güveni: %{pct}",
+    "history": "Geçmiş",
+    "history_empty_title": "Henüz analiz yok",
+    "history_empty_msg": "Geçmiş yemek analizleriniz burada görünecek.",
+    "photo_unavailable": "Fotoğraf analizi şu an kullanılamıyor."
   },
   "barcode": {
     "scan_btn": "Barkod Tara",
@@ -1697,7 +1759,20 @@
     "macro_cal": "Kal",
     "macro_protein": "Protein",
     "macro_carbs": "Karb",
-    "macro_fat": "Yağ"
+    "macro_fat": "Yağ",
+    "mode_barcode": "Barkod",
+    "mode_ai": "AI Analizi",
+    "camera_starting": "Kamera başlatılıyor…",
+    "camera_unavailable_title": "Kamera kullanılamıyor",
+    "camera_unavailable_sub": "Bu cihazda kamerayı başlatamadık. Barkod numarasını elle girebilirsiniz.",
+    "permission_denied_title": "Kamera izni gerekli",
+    "permission_denied_sub": "Barkod taramak için kamera erişimine izin verin veya numarayı elle girin.",
+    "open_settings": "Ayarları Aç",
+    "manual_entry": "Barkodu elle gir",
+    "manual_entry_title": "Barkod gir",
+    "manual_entry_hint": "örn. 8690000000000",
+    "manual_lookup": "Ara",
+    "close": "Kapat"
   },
   "calendar": {
     "export_btn": "Takvime Aktar",
@@ -2048,7 +2123,11 @@
     "toggle_list": "Liste görünümü",
     "map_view_gym": "Spor Salonu",
     "nearby_consent_title": "Yakınındaki Salonları Bul",
-    "nearby_consent_rationale": "Cookrange, konumunu yalnızca salonları mesafeye göre sıralamak için kullanır. Konum bilgin bu ekran için cihazında işlenir; sunucularımıza gönderilmez ve saklanmaz (KVKK / GDPR). Reddedip şehre göre aramaya devam edebilirsin."
+    "nearby_consent_rationale": "Cookrange, konumunu yalnızca salonları mesafeye göre sıralamak için kullanır. Konum bilgin bu ekran için cihazında işlenir; sunucularımıza gönderilmez ve saklanmaz (KVKK / GDPR). Reddedip şehre göre aramaya devam edebilirsin.",
+    "details_btn": "Detaylar",
+    "join_qr_btn": "QR ile Katıl",
+    "join_qr_title": "Davet QR'ı Tara",
+    "join_qr_subtitle": "Üye olmak için spor salonunun davet QR kodunu tara"
   },
   "coach": {
     "setup_title": "Antrenör Profili Kurulumu",
@@ -2186,7 +2265,9 @@
     "location_denied": "Konum izni reddedildi. Mesafeye göre sıralamak için Ayarlar'dan etkinleştirin.",
     "location_error": "Konumunuz alınamadı. Lütfen tekrar deneyin.",
     "nearby_consent_title": "Yakınındaki Antrenörleri Bul",
-    "nearby_consent_rationale": "Cookrange, antrenörleri mesafeye göre sıralamak için yalnızca cihazınızdaki konumu kullanır. Konumunuz sunucularımıza gönderilmez ve depolanmaz (KVKK / GDPR)."
+    "nearby_consent_rationale": "Cookrange, antrenörleri mesafeye göre sıralamak için yalnızca cihazınızdaki konumu kullanır. Konumunuz sunucularımıza gönderilmez ve depolanmaz (KVKK / GDPR).",
+    "not_found_title": "Antrenör Bulunamadı",
+    "not_found_body": "Bu antrenör profili mevcut değil."
   },
   "ai": {
     "twin_title": "Yapay Zeka Vücut Projeksiyonu",
@@ -2246,7 +2327,24 @@
     "credits_topup_success": "Hesabınıza 10 AI kredisi eklendi!",
     "credits_topup_failed": "Satın alma başarısız. Lütfen tekrar deneyin.",
     "credits_bonus_label": "+{count} bonus",
-    "premium_coming_soon": "Premium abonelik çok yakında geliyor! Hazır olduğunda sizi bilgilendireceğiz."
+    "premium_coming_soon": "Premium abonelik çok yakında geliyor! Hazır olduğunda sizi bilgilendireceğiz.",
+    "paywall_title": "Premium'a Geç",
+    "paywall_subtitle": "Daha fazla AI, daha fazla özellik, daha fazla sonuç.",
+    "paywall_monthly_label": "Aylık",
+    "paywall_yearly_label": "Yıllık",
+    "paywall_yearly_badge": "En İyi Değer",
+    "paywall_yearly_save": "~%40 Tasarruf",
+    "paywall_buy_cta": "Premium'u Al",
+    "paywall_restore": "Satın Alımları Geri Yükle",
+    "paywall_feature1": "Günde 20 AI kullanımı",
+    "paywall_feature2": "Öncelikli AI işleme",
+    "paywall_feature3": "Gelişmiş öğün özelleştirme",
+    "paywall_feature4": "Detaylı beslenme analitiği",
+    "paywall_feature5": "Yeni özelliklere erken erişim",
+    "paywall_processing": "İşleniyor...",
+    "paywall_not_available": "Bu cihazda satın alma kullanılamıyor.",
+    "paywall_restore_success": "Satın alımlar başarıyla geri yüklendi!",
+    "paywall_restore_none": "Önceki satın alım bulunamadı."
   },
   "ai_credits": {
     "unlimited": "Sınırsız",
@@ -2587,7 +2685,12 @@
     "analytics_top_ai_title": "Bugünkü En Çok AI Kullananlar",
     "privacy_requests": "Gizlilik Talepleri",
     "privacy_note": "Çözüm notu (isteğe bağlı)",
-    "privacy_note_hint": "Dahili not / yapılan işlem."
+    "privacy_note_hint": "Dahili not / yapılan işlem.",
+    "action_send_notification": "Bildirim Gönder",
+    "notif_title_hint": "Başlık",
+    "notif_body_hint": "Mesaj",
+    "notif_sent": "Bildirim gönderildi",
+    "notif_send": "Gönder"
   },
   "intro": {
     "skip": "Atla",
@@ -2669,7 +2772,9 @@
     "sort_popular": "Popüler",
     "sort_newest": "En yeni",
     "sort_top_rated": "En Yüksek Puan",
-    "sort_near_me": "En Yakın"
+    "sort_near_me": "En Yakın",
+    "filter_all_cities": "Tüm şehirler",
+    "filter_all_districts": "Tüm ilçeler"
   },
   "squad": {
     "title": "Seri Ekipleri",
@@ -2809,5 +2914,25 @@
     "settings_on": "Açık",
     "settings_off": "Kapalı",
     "settings_saved": "Su hatırlatıcısı güncellendi"
+  },
+  "nutrition_hub": {
+    "title": "Yemekler & Beslenme",
+    "tab_browse": "Keşfet",
+    "tab_favorites": "Favoriler",
+    "tab_analytics": "Analiz",
+    "search_hint": "Yemek, tarif ara…",
+    "empty_title": "Yemek bulunamadı",
+    "empty_msg": "Farklı bir kategori veya arama terimi deneyin.",
+    "results_count": "{n} yemek",
+    "cat_all": "Tümü",
+    "cat_chicken": "Tavuk",
+    "cat_red_meat": "Kırmızı Et",
+    "cat_fish": "Balık",
+    "cat_breakfast": "Kahvaltı",
+    "cat_vegetarian": "Vejetaryen",
+    "cat_vegan": "Vegan",
+    "cat_diet": "Diyet",
+    "cat_sport": "Sporcu",
+    "cat_turkish_classic": "Türk Klasikleri"
   }
 }

@@ -94,9 +94,22 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
           }
           final profile = snapshot.data;
           if (profile == null) {
-            return const AppErrorState(
-              title: 'Coach not found',
-              message: 'This coach profile does not exist.',
+            return Scaffold(
+              backgroundColor: palette.background,
+              appBar: AppBar(
+                backgroundColor: palette.background,
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
+                leading: IconButton(
+                  icon: Icon(Icons.arrow_back_ios_rounded,
+                      color: palette.textPrimary, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              body: AppErrorState(
+                title: l10n.translate('coach.not_found_title'),
+                message: l10n.translate('coach.not_found_body'),
+              ),
             );
           }
 

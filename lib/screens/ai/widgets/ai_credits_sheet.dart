@@ -10,6 +10,7 @@ import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/ai_credit_service.dart';
 import '../../../core/services/billing_service.dart';
 import '../../../core/widgets/ds/ds.dart';
+import 'premium_upgrade_sheet.dart';
 
 /// Modal bottom sheet showing the user's daily AI credit status, reset
 /// countdown, and upgrade/purchase CTAs.
@@ -331,19 +332,11 @@ class _SheetContentState extends State<_SheetContent> {
                         .copyWith(color: palette.textSecondary),
                   ),
                   SizedBox(height: 14.h),
-                  // TODO(billing): wire to dedicated premium purchase screen once built.
                   AppButton(
                     label: l10n.translate('ai.credits_upgrade_cta'),
                     onPressed: () {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            l10n.translate('ai.premium_coming_soon'),
-                          ),
-                          backgroundColor: primaryColor,
-                        ),
-                      );
+                      PremiumUpgradeSheet.show(context);
                     },
                     icon: Icons.workspace_premium_rounded,
                   ),

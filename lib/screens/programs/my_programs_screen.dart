@@ -11,9 +11,14 @@ import '../../core/widgets/ds/ds.dart';
 import 'program_detail_screen.dart';
 import 'program_marketplace_screen.dart';
 
-class MyProgramsScreen extends StatelessWidget {
+class MyProgramsScreen extends StatefulWidget {
   const MyProgramsScreen({super.key});
 
+  @override
+  State<MyProgramsScreen> createState() => _MyProgramsScreenState();
+}
+
+class _MyProgramsScreenState extends State<MyProgramsScreen> {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -109,8 +114,6 @@ class MyProgramsScreen extends StatelessWidget {
             ),
     );
   }
-
-  void setState(VoidCallback fn) {} // suppress lint; not a StatefulWidget
 }
 
 // ── Program card ──────────────────────────────────────────────────────────────

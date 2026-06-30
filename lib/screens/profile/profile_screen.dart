@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth;
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:cookrange/core/constants/onboarding_options.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
@@ -66,13 +67,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   late Stream<List<UserModel>> _friendsStream; // Optimization
 
-  bool get _isPublicMode => widget.viewUser != null || widget.userId != null;
+  /// The target user being viewed (may be self).
+  String? get _targetUid => widget.viewUser?.uid ?? widget.userId;
+
+  /// True when this profile is the currently-signed-in user — even if it was
+  /// opened via [userId]/[viewUser] (e.g. tapping your own avatar on a post).
+  /// Self must always render the owner/private view, never the stranger view.
+  bool get _isSelf {
+    final self = FirebaseAuth.instance.currentUser?.uid;
+    return self != null && _targetUid == self;
+  }
+
+  bool get _isPublicMode =>
+      !_isSelf && (widget.viewUser != null || widget.userId != null);
 
   @override
   void initState() {
     super.initState();
     _friendsStream = FriendService().getFriendsStream();
-    if (widget.viewUser == null && widget.userId != null) {
+    if (_isSelf) {
+      // Viewing our own profile (even if reached via userId from a post) →
+      // owner/private mode reading from UserProvider. No fetch, no friend check.
+      _initializePrivateData();
+    } else if (widget.viewUser == null && widget.userId != null) {
       _isFetchingUser = true;
       _fetchUser();
     } else if (!_isPublicMode) {
@@ -529,7 +546,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _buildStatsRow(isDark),
                         if (!isPublic) ...[
                           const SizedBox(height: 16),
-                          ProfileCompletenessCard(user: user),
+                          ProfileCompletenessCard(
+                            user: user,
+                            onAddPhoto: _pickAndUploadAvatar,
+                          ),
                         ],
                         _buildStreakTierBadge(isDark),
                         if (_reputationData != null)

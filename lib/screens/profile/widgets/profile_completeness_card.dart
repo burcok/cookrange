@@ -6,6 +6,7 @@ import '../../../core/services/food_log_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/widgets/ds/ds.dart';
 import '../../home/food_scan_screen.dart';
+import '../../home/widgets/weight_log_sheet.dart';
 
 class _Step {
   final bool done;
@@ -26,7 +27,15 @@ class _Step {
 class ProfileCompletenessCard extends StatefulWidget {
   final UserModel user;
 
-  const ProfileCompletenessCard({super.key, required this.user});
+  /// Invoked when the user taps the "add photo" step. Wired by the profile
+  /// screen to its avatar picker so the step never pops the screen.
+  final VoidCallback? onAddPhoto;
+
+  const ProfileCompletenessCard({
+    super.key,
+    required this.user,
+    this.onAddPhoto,
+  });
 
   @override
   State<ProfileCompletenessCard> createState() =>
@@ -73,7 +82,7 @@ class _ProfileCompletenessCardState extends State<ProfileCompletenessCard> {
               widget.user.photoURL!.isNotEmpty,
           labelKey: 'profile_meter.step_photo',
           ctaKey: 'profile_meter.cta_photo',
-          onTap: (ctx) => Navigator.of(ctx).pop(),
+          onTap: (ctx) => widget.onAddPhoto?.call(),
           icon: Icons.add_a_photo_rounded,
         ),
         _Step(
@@ -88,8 +97,11 @@ class _ProfileCompletenessCardState extends State<ProfileCompletenessCard> {
           done: _hasWeightLog,
           labelKey: 'profile_meter.step_weight',
           ctaKey: 'profile_meter.cta_weight',
-          // Pop back to home where TrackingCard handles weight logging
-          onTap: (ctx) => Navigator.of(ctx).pop(),
+          // Open the weight sheet in place — never pop the profile screen.
+          onTap: (ctx) async {
+            final saved = await WeightLogSheet.show(ctx);
+            if (saved && mounted) await _checkLogs();
+          },
           icon: Icons.monitor_weight_rounded,
         ),
       ];

@@ -33,6 +33,22 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
   bool _isGenerating = false;
   late AnimationController _fabController;
 
+  // Date filter: 'all' (this week) | 'today'.
+  String _dateFilter = 'all';
+
+  String get _todayStr {
+    final d = DateTime.now();
+    return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  bool _matchesDateFilter(Ingredient i) {
+    if (_dateFilter == 'all') return true;
+    return i.sourceDates.contains(_todayStr); // 'today'
+  }
+
+  /// True when any generated item carries day provenance (enables the filter).
+  bool get _hasDatedItems => _shoppingList.any((i) => i.sourceDates.isNotEmpty);
+
   @override
   void initState() {
     super.initState();
@@ -148,35 +164,48 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
         return;
       }
 
-      // Collect all unique dish names from the plan
-      final allDishNames = <String>{};
-      for (final day in plan.days) {
-        allDishNames.addAll(day.meals.values);
-      }
-
       // Fetch all dishes and build an ID lookup
       final dishes = await DishService().getAllDishes();
       final idMap = {for (final d in dishes) d.id: d};
 
-      // Aggregate ingredients, merging duplicates by name
+      String fmtDate(DateTime d) =>
+          '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+      // Aggregate ingredients across the week, recording which dishes/days
+      // require each one (per-occurrence, so a dish used on 3 days counts 3×).
       final merged = <String, Ingredient>{};
-      for (final dishId in allDishNames) {
-        final dish = idMap[dishId];
-        if (dish == null) continue;
-        for (final ingredient in dish.ingredients) {
-          final key = ingredient.name.toLowerCase();
-          if (merged.containsKey(key)) {
-            final existing = merged[key]!;
-            merged[key] = Ingredient(
-              name: existing.name,
-              amount: existing.amount + ingredient.amount,
-              unit: existing.unit,
-              calories: existing.calories + ingredient.calories,
-            );
-          } else {
-            merged[key] = ingredient;
+      final mealsByKey = <String, Set<String>>{};
+      final datesByKey = <String, Set<String>>{};
+
+      for (final day in plan.days) {
+        final dateStr = fmtDate(day.date);
+        for (final dishId in day.meals.values) {
+          final dish = idMap[dishId];
+          if (dish == null) continue;
+          final dishLabel = (locale == 'en' && dish.nameEn.isNotEmpty)
+              ? dish.nameEn
+              : dish.name;
+          for (final ingredient in dish.ingredients) {
+            final key = ingredient.name.toLowerCase();
+            final existing = merged[key];
+            merged[key] = existing == null
+                ? ingredient
+                : existing.copyWith(
+                    amount: existing.amount + ingredient.amount,
+                    calories: existing.calories + ingredient.calories,
+                  );
+            (mealsByKey[key] ??= <String>{}).add(dishLabel);
+            (datesByKey[key] ??= <String>{}).add(dateStr);
           }
         }
+      }
+
+      // Attach provenance to each merged ingredient.
+      for (final key in merged.keys.toList()) {
+        merged[key] = merged[key]!.copyWith(
+          sourceMeals: (mealsByKey[key] ?? const <String>{}).toList(),
+          sourceDates: (datesByKey[key] ?? const <String>{}).toList(),
+        );
       }
 
       if (merged.isEmpty) {
@@ -259,10 +288,12 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
     final palette = AppPalette.of(context);
     final primary = context.watch<ThemeProvider>().primaryColor;
 
+    final filtered =
+        _shoppingList.where(_matchesDateFilter).toList(growable: false);
     final unchecked =
-        _shoppingList.where((i) => !_checkedItems.contains(i.name)).toList();
+        filtered.where((i) => !_checkedItems.contains(i.name)).toList();
     final checked =
-        _shoppingList.where((i) => _checkedItems.contains(i.name)).toList();
+        filtered.where((i) => _checkedItems.contains(i.name)).toList();
 
     return Scaffold(
       backgroundColor: palette.background,
@@ -274,7 +305,35 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
           // Main content
           _shoppingList.isEmpty
               ? _buildEmptyState(l10n, palette, primary)
-              : _buildList(l10n, palette, primary, unchecked, checked),
+              : Column(
+                  children: [
+                    if (_hasDatedItems)
+                      Padding(
+                        padding: EdgeInsets.only(top: AppSpacing.xs.h),
+                        child: AppFilterBar(
+                          children: [
+                            AppFilterPill(
+                              label: l10n.translate('shopping.filter_week'),
+                              icon: Icons.calendar_view_week_rounded,
+                              active: _dateFilter == 'all',
+                              onTap: () => setState(() => _dateFilter = 'all'),
+                            ),
+                            AppFilterPill(
+                              label: l10n.translate('shopping.filter_today'),
+                              icon: Icons.today_rounded,
+                              active: _dateFilter == 'today',
+                              onTap: () =>
+                                  setState(() => _dateFilter = 'today'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Expanded(
+                      child: _buildList(
+                          l10n, palette, primary, unchecked, checked),
+                    ),
+                  ],
+                ),
         ],
       ),
       floatingActionButton: _buildFab(l10n, primary),
@@ -565,6 +624,19 @@ class _ShoppingListScreenState extends State<ShoppingListScreen>
                 ),
                 child: Text(item.name),
               ),
+              subtitle: item.sourceMeals.isEmpty
+                  ? null
+                  : Padding(
+                      padding: EdgeInsets.only(top: 2.h),
+                      child: Text(
+                        '${AppLocalizations.of(context).translate('shopping.source_prefix')}: ${item.sourceMeals.join(', ')}',
+                        style: AppText.of(context).labelS.copyWith(
+                              color: palette.textTertiary,
+                            ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
               trailing: Container(
                 padding: EdgeInsets.symmetric(
                   horizontal: AppSpacing.xs.w,

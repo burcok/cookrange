@@ -218,9 +218,10 @@ class ProgramService {
         }
       }));
       return pairs.toList();
-    }).handleError((Object e) {
-      debugPrint('ProgramService: getEnrolledProgramsStream error — $e');
     });
+    // NOTE: errors are intentionally NOT swallowed here — a swallowed error on
+    // this stream leaves the My Programs StreamBuilder stuck in `waiting`
+    // forever. Let it surface so the UI can show an error state with retry.
   }
 
   Future<void> updateProgress(

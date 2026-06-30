@@ -36,7 +36,7 @@ class OnboardingProvider with ChangeNotifier {
   String? _mainGoal;
 
   /// Water reminder (page 11). [_waterDailyTargetMl] is computed but user-adjustable.
-  bool _waterReminderEnabled = false;
+  bool _waterReminderEnabled = true;
   int? _waterDailyTargetMl;
   String _waterWakeTime = '08:00';
   String _waterSleepTime = '23:00';

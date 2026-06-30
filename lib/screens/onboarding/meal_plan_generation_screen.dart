@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -46,8 +48,18 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
   // doesn't race with _finishSuccess on the shared animation controllers.
   bool _finishing = false;
 
+  // Captured in didChangeDependencies so _markMealPlanGenerated can call it
+  // after the widget is unmounted (post-navigation).
+  UserProvider? _userProvider;
+
   // Minimum stage durations (ms) — total ~3.5 s minimum visual time
   static const _stageDurations = [600, 700, 700, 600, 500, 400];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _userProvider ??= context.read<UserProvider>();
+  }
 
   @override
   void initState() {
@@ -167,10 +179,35 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
     await _successCtrl.forward();
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
+
+    // Mark meal_plan_generated=true so RouteGuard allows /main entry for all
+    // login paths (including email-verify-separately → login flows).
+    _markMealPlanGenerated();
+
     unawaited(Navigator.pushNamedAndRemoveUntil(
         context, AppRoutes.main, (route) => false));
     unawaited(AnalyticsService()
         .logEvent(name: 'onboarding_plan_generated', parameters: {}));
+  }
+
+  void _markMealPlanGenerated() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    // Firestore write — best-effort, non-blocking.
+    unawaited(FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .update({'meal_plan_generated': true}).catchError((e) {
+      debugPrint('MealPlanGeneration: failed to set meal_plan_generated: $e');
+    }));
+    // Update in-memory UserProvider so RouteGuard sees the change immediately
+    // without waiting for a Firestore round-trip.
+    try {
+      final up = _userProvider;
+      if (up?.user != null) {
+        up!.setUser(up.user!.copyWith(mealPlanGenerated: true));
+      }
+    } catch (_) {}
   }
 
   Future<void> _retry() async {
