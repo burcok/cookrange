@@ -151,10 +151,10 @@ class _GymQrScreenState extends State<GymQrScreen>
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
                 child: _gym == null
-                    ? const AppEmptyState(
+                    ? AppEmptyState(
                         icon: Icons.qr_code_rounded,
-                        title: 'Gym not found',
-                        message: 'Could not load gym data.',
+                        title: l10n.translate('gym.qr.error.not_found'),
+                        message: l10n.translate('gym.qr.error.load_failed'),
                       )
                     : _buildContent(context, palette, primary, l10n),
               ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -42,11 +43,13 @@ class _CoachClientsScreenState extends State<CoachClientsScreen>
       unawaited(HapticFeedback.mediumImpact());
       await CoachService().acceptClient(clientUid);
       if (!mounted) return;
-      AppSnackBar.success(context, 'Client accepted!');
+      AppSnackBar.success(context,
+          AppLocalizations.of(context).translate('coach.clients.success.accepted'));
     } catch (e) {
       debugPrint('CoachClientsScreen._acceptClient error: $e');
       if (!mounted) return;
-      AppSnackBar.error(context, 'Could not accept client.');
+      AppSnackBar.error(context,
+          AppLocalizations.of(context).translate('coach.clients.error.accept_failed'));
     }
   }
 
@@ -55,11 +58,13 @@ class _CoachClientsScreenState extends State<CoachClientsScreen>
       unawaited(HapticFeedback.lightImpact());
       await CoachService().rejectClient(clientUid);
       if (!mounted) return;
-      AppSnackBar.warning(context, 'Request declined.');
+      AppSnackBar.warning(context,
+          AppLocalizations.of(context).translate('coach.clients.warning.declined'));
     } catch (e) {
       debugPrint('CoachClientsScreen._rejectClient error: $e');
       if (!mounted) return;
-      AppSnackBar.error(context, 'Could not decline request.');
+      AppSnackBar.error(context,
+          AppLocalizations.of(context).translate('coach.clients.error.decline_failed'));
     }
   }
 
@@ -239,7 +244,7 @@ class _ClientTile extends StatelessWidget {
                 radius: 22,
                 backgroundColor: primary.withValues(alpha: 0.15),
                 backgroundImage: client.clientPhotoURL != null
-                    ? NetworkImage(client.clientPhotoURL!)
+                    ? CachedNetworkImageProvider(client.clientPhotoURL!)
                     : null,
                 child: client.clientPhotoURL == null
                     ? Icon(Icons.person_rounded, color: primary, size: 22)
@@ -346,7 +351,7 @@ class _PendingTile extends StatelessWidget {
                 radius: 22,
                 backgroundColor: primary.withValues(alpha: 0.15),
                 backgroundImage: client.clientPhotoURL != null
-                    ? NetworkImage(client.clientPhotoURL!)
+                    ? CachedNetworkImageProvider(client.clientPhotoURL!)
                     : null,
                 child: client.clientPhotoURL == null
                     ? Icon(Icons.person_rounded, color: primary, size: 22)

@@ -7,6 +7,7 @@ import '../models/weekly_meal_plan_model.dart';
 import '../models/user_model.dart';
 import '../models/user_nutrition_profile.dart';
 import '../utils/calorie_calculator.dart';
+import '../utils/allergen_safety.dart';
 import 'dish_service.dart';
 import 'ai/ai_service.dart';
 import 'ai/prompt_service.dart';
@@ -81,11 +82,28 @@ class WeeklyMealPlanService {
       final userProfile = _extractUserProfile(nutritionProfile);
       final tdee = _calculateUserCalories(nutritionProfile);
 
+      // Deterministic life-safety filter: remove every dish containing a
+      // declared allergen / avoid-ingredient BEFORE the AI sees the pool, so the
+      // model can only ever select safe dishes (it picks by ID from this list).
+      // This backstops the prompt's allergy instruction, which an LLM may ignore.
+      final poolForAi = AllergenSafety.filterSafe(
+        dishes,
+        allergyIds: nutritionProfile.allergyIds,
+        avoidIngredients: nutritionProfile.avoidIngredients,
+      );
+      if (poolForAi.isEmpty) {
+        // Refuse to generate rather than risk serving an allergen-containing
+        // plan. Caller surfaces the empty/error state.
+        debugPrint('WeeklyMealPlan: no allergen-safe dishes for user '
+            '${user.uid} — refusing to generate a potentially unsafe plan');
+        return null;
+      }
+
       // 2. Create Prompt
       final prompt = _promptService.generateWeeklyMealPlanPrompt(
         userProfile: userProfile,
         dailyCalorieTarget: tdee,
-        availableDishes: dishes,
+        availableDishes: poolForAi,
         locale: locale,
       );
 

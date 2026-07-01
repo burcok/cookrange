@@ -145,12 +145,18 @@
 - **What:** `firebase functions:secrets:set OPENROUTER_API_KEY` then `firebase deploy --only functions`.
   Set Remote Config `ai_proxy_url` to the deployed `aiProxy` URL.
 - **Why:** This is what hides your AI key and enforces server-side quota. Until deployed, the app
-  falls back to the (dev-only) local key.
-- 🤖 Code ready (`functions/index.js`, `AIService.setProxyUrl`).
+  falls back to the local key.
+- 🤖 Code ready and **hardened** (`functions/index.js`): model allowlist, `max_tokens`/payload caps,
+  **fail-closed** quota, **mandatory App Check** (`APP_CHECK_ENFORCE`), per-uid rate limit,
+  `maxInstances`, no wildcard CORS. Credits/premium read from server-only `ai_credits/{uid}` +
+  `entitlements/{uid}`, never the user doc. **See Phase 5S for the full security gate.**
 
 ### 5.3 👤 Deploy rules + indexes
 - **What:** `firebase deploy --only firestore:rules,firestore:indexes,storage:rules`.
 - **Why:** Your security model and query indexes must be live in prod, not just in the repo.
+- ⚠️ Deploy the **field-locked** `users/{uid}` rule and the server-only collection rules (Phase 5S
+  §S1/§S5) **only after** the server-side write paths (purchase validation, economy, credit ledger)
+  are deployed — otherwise legitimate client writes break. Order matters; see Phase 5S.
 
 ### 5.4 👤 Load test the proxy
 - **What:** 🤖 `PROXY_URL=… ID_TOKEN=… node scripts/load_test.js` (tune CONCURRENCY/TOTAL).
@@ -170,6 +176,227 @@
   browser instead of the app.
 
 ---
+
+## Phase 5S — Security Remediation (audit-driven; **release blockers**)
+
+> From the full security audit (Flutter + Firebase, 13 domains). The app is currently **not
+> production-ready** for payments/economy/health-data until the **P0** items below are done; **P1**
+> are pre-public-traffic blockers; **P2** is hardening. Status legend adds: ✅ code done · 🔲 code
+> pending · 👤 your console/account action. **Root cause to keep in mind:** the app must stop
+> trusting the client for entitlements, economy, identity, and moderation — every fix below moves a
+> trust decision server-side.
+>
+> **Ordering rule (critical):** deploy the *server-side write paths first* (S2 ledger, S3 purchase
+> validation, S4 economy), **then** lock the rules (S1, S5). Locking rules before the server can
+> write the now-forbidden fields will break live flows.
+>
+> **🔧 Implementation progress (code committed, NOT yet deployed):**
+> - ✅ **Code-complete in repo:** S2 (server credit/entitlement ledger + owner-read/deny-write rules),
+>   S3 (`validatePurchase` + App Store/Play verification + dedupe + refund/expiry notification handlers),
+>   S4 (`applyReferral` + server commission ledger), S6 (hardened proxy + App Check release providers +
+>   **client direct-key fallback removed** in release), S1 (field-locked `users/{uid}` + server-only
+>   `commissions`/`referrals`-update rules), plus Hive **at-rest encryption** (S14, key in secure
+>   storage) and a **safe URL launcher** for applicant-document links (injection/H17).
+> - ✅ **Injection / secure-coding hardening (code-complete):** null-safe parsing of attacker-controlled
+>   docs (chat/signal/chat-meta — stored-DoS, H28); a **deterministic allergen safety filter** that
+>   strips unsafe dishes from the meal-plan candidate pool before the AI sees it, refusing to generate
+>   if none remain (life-safety); a **prompt-injection guard** (user free-text fenced + treated as data)
+>   across ingredient/recipe/meal-plan/food-analysis prompts; and **content-length caps** in rules
+>   (posts/comments/chat/signals), with AI payload caps already enforced in the proxy (H27).
+> - ✅ **Compliance / privacy (code-complete):** S7 **server-side account erasure** (`deleteUserAccount`
+>   Cloud Function recursively deletes the whole user subtree + server docs + authored content + all
+>   Storage prefixes + the Auth user; client reauths → calls it → signs out); S11 **complete GDPR export**
+>   (now includes private nutrition PII + every owner subcollection + authored comments + a Storage
+>   manifest); **analytics/Crashlytics gated on consent** (privacy-by-default OFF until the analytics
+>   consent is applied; S17); **email removed from Analytics events**; **`failed_login_attempts`
+>   locked** to server-only (was unauthenticated-writable).
+> - ✅ **Dev/prod env gating:** `functions/config.js` + `functions/.env` `APP_ENV` — in `development`
+>   App Check is NOT enforced and purchase validation is inert, so functions **deploy & run with no
+>   Apple/Google/App Check setup**. Flip to `production` (+ fill the store/AI creds in `functions/.env`)
+>   at go-live. Client mirrors `APP_ENV` in root `.env` (informational; client security gates use the
+>   compiled `kReleaseMode`).
+> - 🔲 **Still required to ACTIVATE (go-live):** rotate the SA key (S0), provision store credentials +
+>   sandbox-test S3, deploy Functions/rules, register Play Integrity/App Attest + enable App Check
+>   enforcement, set the OpenRouter spend cap. Run the rules-emulator tests before deploying S1.
+> - ✅ **Storage hardening (S9, code-complete + deployed):** chat images scoped to participants
+>   (1:1 pair path enforced in storage.rules; group fallback) with unguessable random filenames;
+>   client-side EXIF/GPS stripping on every image upload (chat/post/profile/gym); server `scanImage`
+>   Cloud Function runs Cloud Vision SafeSearch and deletes unsafe uploads (best-effort until the
+>   Vision API is enabled — enable it in production).
+> - 🔲 **Deferred (need broader refactor; tracked):** S5 full server-authored notifications/friends;
+>   S8 point-of-use consent enforcement for AI/photo processing (the analytics half is done); S10
+>   minimize the world-readable user doc (move email/IP/fcm_token off it); and moving
+>   `streak`/`reputation` server-side. NSFW enforcement requires enabling the **Cloud Vision API**.
+> - ✅ **Text moderation now live for all users** *(audit M7)*: the blocked-keyword list is mirrored
+>   to the **public-read** `settings/content_filter` doc (admins write it via `admin_config/global`);
+>   `CommunityService._checkContent` reads it there, so the filter no longer fails open for non-admins.
+> - 🔲 **Deferred (anti-fraud follow-up; tracked):** a per-uid **UGC rate limiter** (posts/comments/
+>   friend-requests/signals). Interim barriers are in place — App Check (blocks scripted/bot clients
+>   once enforced) + content-length caps + the reports pipeline. A true sliding-window limiter needs
+>   the UGC creates to route through a callable (or a rules-based cooldown counter); scope it before
+>   the community economy GA.
+
+### P0 — Critical (do not deploy to production without these)
+
+#### S0 👤 Rotate the leaked Firebase Admin service-account key — **DO THIS FIRST** *(audit C6)*
+- **What:** A live Admin SDK private key was found at `secret/…adminsdk….json`. In Firebase Console →
+  IAM & Admin → Service Accounts → Keys: **delete the old key, create a new one.** Then delete the
+  `secret/` directory from every machine. Cloud Functions use Application Default Credentials —
+  `admin.initializeApp()` needs no key file.
+- **Why:** This key bypasses all rules + Auth. Anyone who copied it has full backend control until
+  rotated. Deleting the file alone is *not* enough — it must be rotated.
+- 🔲 Add a **gitleaks/trufflehog** pre-commit + CI gate that fails on any `service_account` JSON / PEM.
+
+#### S1 🤖+👤 Lock the `users/{uid}` rule (field whitelist) *(audit C1, C2)*
+- **What:** `users/{uid}` update must allow only safe profile fields; **forbid** `subscription_tier`,
+  `user_roles`, `ai_credits_*`, `is_banned`, `streak`, `reputation` from any client write.
+- **Why:** Today any user can self-grant premium/admin/credits and self-unban. This is the single
+  biggest hole. Deploy **after** S2/S3/S4. ⚠️ Move ban state to `admin/status/{uid}` + a custom claim
+  + `revokeRefreshTokens` (server-side), not the user doc.
+
+#### S2 ✅ Server-authoritative AI credit + entitlement ledger *(audit C1-prereq, C3)*
+- ✅ Done in `functions/index.js`: credits live in server-only `ai_credits/{uid}`; premium read from
+  server-only `entitlements/{uid}`. 🔲 Add rules: both `allow read: if isOwner(uid); allow write: if
+  false;` (owner-read for the badge, server-write only).
+
+#### S3 🤖+👤 Server-side purchase validation (native store APIs) *(audit C7, H30, H31)*
+- **What:** A Cloud Function validates every purchase against the **App Store Server API** (JWS) and
+  **Google Play Developer API**, dedupes the purchase token, then writes `entitlements/{uid}`
+  tier+expiry and `ai_credits` bonus via Admin SDK. RTDN / App Store Server Notifications → revoke on
+  refund/chargeback/expiry. **Never grant premium/credits client-side.**
+- 👤 Needs: Apple `.p8` key + Key ID/Issuer ID/Bundle ID; Google Play service-account JSON
+  (`androidpublisher` scope); registered product IDs (Phase 4). Store as Function secrets.
+- ✅ Read enforcement is already server-side (S2). 🔲 The validation Functions + client rewire pending.
+- **Gate:** must pass a **sandbox purchase → entitlement → credit** test before S1 rules lock.
+
+#### S4 🤖 Server-authoritative economy (commissions / payouts / referrals) *(audit C8)*
+- **What:** `applyReferral` callable (no self-referral, one-per-account, `max_uses`, append-only
+  `used_by_uids`); commissions/payouts written **only** by Functions after validation. Lock those
+  collections to read-own / deny client write.
+- **Why:** Today commissions are forgeable at any amount and payouts pay a self-computed balance —
+  direct fraud once payouts launch.
+
+#### S5 🤖+👤 Close the open Firestore create rules *(audit C9)*
+- **What:** `notifications/{uid}/items`, `users/{uid}/friends`, `friend_requests`,
+  `failed_login_attempts` → **server-authored only** (`create: if false` + Cloud Function that derives
+  the actor from `request.auth` and verifies the underlying edge). Re-fetch `actorName` server-side.
+- **Why:** Any user can currently push-spam/impersonate any other user and write into anyone's
+  friend/notification subcollections.
+
+#### S6 ✅+👤 Hardened AI proxy + App Check enforcement *(audit C3, C4, C5)*
+- ✅ Done: model allowlist, payload/token caps, fail-closed quota, per-uid rate limit, mandatory
+  App Check (`APP_CHECK_ENFORCE`), `maxInstances`, no wildcard CORS (`functions/index.js`).
+- ✅ Done client-side: real App Check providers in release — Play Integrity / App Attest
+  (`app_initialization_service.dart`). 🔲 Remove the client **direct-key fallback** in `ai_service.dart`
+  so a missing `ai_proxy_url` returns the not-configured path instead of calling OpenRouter with the
+  bundled key (do this once the proxy is deployed).
+- 👤 Register **Play Integrity** + **App Attest** (Phase 1.4 / 2.4) and **enable App Check enforcement**
+  for Functions/Firestore/Storage in the console. 👤 Set a **hard spend cap** on the OpenRouter account.
+- 👤 Stop writing the real `OPENROUTER_API_KEY` into the bundled `.env` for distributed builds — only
+  the proxy URL needs to reach the client.
+
+#### S7 🤖+👤 Server-side account deletion + Storage cleanup (right to erasure) *(audit C10)*
+- **What:** A Cloud Function recursively deletes **all** subcollections (food_analyses, achievements,
+  consents, ai_*, exercise_logs, recipe_notes, favorites, lists, recent_foods, commissions,
+  payout_requests, following/followers, program_enrollments) + Storage prefixes (`profile_photos/`,
+  `post_images/`, `chat_images/`, `*_applications/`) and anonymizes authored posts/comments/chats.
+  Current `firestore_service.deleteUserData` deletes only 6 subcollections and no Storage.
+- **Why:** GDPR Art.17 / KVKK Art.7 — leaving health PII + ID documents behind is a reportable breach.
+
+#### S8 🤖+👤 Enforce consent at runtime + disclose cross-border AI transfer *(audit C11)*
+- **What:** Gate AI calls, photo analysis, and Analytics/Crashlytics on a checked, versioned consent
+  record. Add point-of-use disclosure before health data/meal photos leave the device. Document
+  **OpenRouter as a sub-processor** with a DPA/SCC (cross-border transfer). Add an **age gate** before
+  collecting DOB + body metrics.
+- **Why:** GDPR Art.9/44 + KVKK Art.6/9 explicit-consent + cross-border rules; the project's own
+  "legal-first / KVKK is a release blocker" mandate.
+
+### P1 — High (before public traffic / scale)
+
+- **S9 🤖+👤 Storage access control** *(H1, H2, H3)* — scope `chat_images`/`post_images` to chat/owner
+  membership with unguessable filenames; stop minting public download tokens for ID/business docs
+  (serve admins a short-lived signed URL via an `isAdmin` callable); add an `onObjectFinalized`
+  scanner (Cloud Vision SafeSearch + CSAM/NCMEC) + **EXIF/GPS stripping**.
+- **S10 🤖 Minimize the readable user doc** *(H24)* — move email, last-login **IP**, device history,
+  `fcm_token` off the world-readable doc into an owner-only/server-only doc; expose only public
+  profile fields to other users.
+- **S11 🤖 Complete the GDPR data export** *(H21)* — include `private/nutrition` PII + all
+  subcollections + a Storage manifest (currently omits the most sensitive data).
+- **S12 🤖+👤 Auth abuse controls** *(H8, M1, H9)* — login throttle/lockout + reCAPTCHA/App Check on
+  auth; generic enumeration-safe error messages; enforce email-verification server-side in rules.
+- **S13 🤖 Economy/social integrity** *(H4–H7, H25, H26)* — counters via validated increments;
+  reviews require a real client relationship; check-ins need membership+geofence+rate-limit;
+  marketplace `coach_uid=='demo'` restricted to a server seeder; **server-side block enforcement**;
+  per-uid rate limits on all UGC; length caps on posts/chat/AI input.
+- **S14 👤🤖 Transport + at-rest hardening** *(H14, H15)* — `usesCleartextTraffic="false"` +
+  `network_security_config.xml`; encrypt Hive boxes (`HiveAesCipher` + key in `flutter_secure_storage`).
+- **S15 👤 Release build hygiene** *(H16)* — ship `flutter build appbundle --release --obfuscate
+  --split-debug-info=…`; **never** distribute the debug APK; remove the AI key from the bundled `.env`.
+- **S16 👤 Environment isolation + reproducible builds** *(H12, H13)* — separate `dev`/`staging`/`prod`
+  Firebase projects (`.firebaserc` aliases); **commit `pubspec.lock` + `functions/package-lock.json`**;
+  add Dependabot.
+- **S17 🤖+👤 Analytics privacy** *(H22, H23)* — gate Analytics/Crashlytics on consent; **remove email
+  from Analytics events** (`auth_service` password-reset/verify events); wire ATT after disclosure.
+
+### P2 — Hardening (defense-in-depth; post-launch acceptable)
+
+- **S18** FLAG_SECURE / iOS screenshot protection on sensitive screens (health PII, QR check-in, password).
+- **S19** Root/jailbreak/emulator/Frida detection; refuse payments on compromised devices.
+- **S20** PII-redacting logger; strip `debugPrint` PII in release.
+- **S21** Certificate/public-key pinning for Firebase + the AI proxy (once endpoints are stable).
+- **S22** Backups/PITR + budget alerts + monitoring + incident-response runbook (also Phase 5.5).
+- **S23** Tighten remaining rules (member_count/achievement/squad/challenge/referral counters), bound
+  unbounded listeners/queries (`.limit()` + aggregation), migrate Functions to gen2 + native fetch.
+
+### 5S.✓ Security go-live gate (all P0 + P1 must be ✅ before production)
+- [ ] S0 SA key rotated + secret-scan CI · [ ] S1 user-doc rule locked (after S2–S4) · [ ] S2 ledger rules deployed
+- [ ] S3 purchase validation sandbox-passed · [ ] S4 economy server-authored · [ ] S5 open creates closed
+- [ ] S6 proxy deployed + App Check enforced + key fallback removed + OpenRouter spend cap
+- [ ] S7 server-side erasure + Storage cleanup · [ ] S8 consent enforced + cross-border DPA + age gate
+- [ ] S9 storage scoped + scanned · [ ] S10 user doc minimized · [ ] S11 export complete · [ ] S12 auth abuse controls
+- [ ] S13 economy/social integrity · [ ] S14 cleartext off + Hive encrypted · [ ] S15 obfuscated release, no debug APK
+- [ ] S16 env isolation + lockfiles committed · [ ] S17 analytics consent-gated, no PII
+
+---
+
+## Phase 5T — Cloud Functions modernization (scheduled migration)
+
+> ✅ Done: `functions/package.json` `engines.node` bumped to **22** (Node 20 decommissions
+> 2026-10-30). 🔲 Scheduled (do as ONE tested migration, ideally after Phase 5S §S16 staging exists):
+> - **gen1 → gen2** (`firebase-functions` v6: `onRequest`/`onCall`/`onDocumentCreated`/`onObjectFinalized`/
+>   `onSchedule`). Removes the deprecation warning; better cold-start/concurrency.
+> - **Region collocation**: move the Firestore-trigger functions (`onInAppNotificationCreated`,
+>   `onChatMessageCreated`, `onBroadcastCreated`) to **`europe-west10`** (the DB region) to cut latency.
+>   ⚠️ Must delete the old `us-central1` versions in the SAME deploy or you get **duplicate triggers
+>   (double push)**. This is why it needs a tested, atomic migration — do NOT do it piecemeal on the
+>   flaky-deploy project. Verify in staging first.
+
+## Phase 5U — Reliability & Environments (infra runbook)
+
+> Mostly console/account actions (your side). `.firebaserc` currently has `default = cookrange-app`.
+
+**Environment separation (prod / staging / dev):**
+1. 👤 Create `cookrange-staging` (and optionally `cookrange-dev`) Firebase projects.
+2. 👤🤖 Add Flutter **flavors** (dev/staging/prod) with per-flavor application IDs + their own
+   `google-services.json` / `GoogleService-Info.plist` + generated `firebase_options`. Wire
+   `flutter run --flavor staging` etc.
+3. 👤 `firebase use --add` → map aliases `staging`/`prod`; deploy with `firebase deploy -P staging`.
+4. CI: deploy rules/functions to **staging on `develop`**, prod only on tagged release.
+
+**Backups & recovery:**
+- 👤 Firestore → **enable Point-in-time recovery (PITR)** (7-day window) — one click; covers most data-loss.
+- 👤 Firestore → **Backup schedule** → daily, 7–30 day retention (or scheduled GCS export).
+- 👤 Set **TTL policies** on ephemeral collections to cap storage cost: `signals.expiresAt`,
+  old `logs`, `processed_purchases` (dedupe rows can expire after the refund window).
+
+**Monitoring & alerting:**
+- 👤 Crashlytics → velocity alerts on; Performance → custom alert on **`aiProxy` P95 > 5s**.
+- 👤 **Cloud Billing → Budgets → budget + email/Pub/Sub alert** (critical for cost — pairs with the
+  in-app cost dashboard). Add a separate **OpenRouter hard spend cap**.
+- 👤 Cloud Monitoring uptime check on the `aiProxy` URL.
+
+**Incident response (levers already in code):** Remote Config `maintenance_mode` + `min_version`
+(force-update) — document the runbook for flipping them.
 
 ## Phase 6 — Internal/Beta Testing
 
@@ -209,8 +436,10 @@
   (10%→50%→100%) recommended.
 
 ### 7.3 👤 Launch checklist
-- [ ] Functions deployed + `ai_proxy_url` set · [ ] Rules/indexes deployed · [ ] API keys restricted
-- [ ] IAP products live + agreements signed · [ ] Privacy labels/data-safety accurate
+- [ ] **Phase 5S security gate fully green (all P0 + P1)** — see the 5S.✓ checklist; this is a hard blocker
+- [ ] Functions deployed + `ai_proxy_url` set · [ ] Rules/indexes deployed (field-locked) · [ ] API keys restricted
+- [ ] App Check **enforcement on** (Functions/Firestore/Storage) · [ ] SA key rotated · [ ] OpenRouter spend cap set
+- [ ] IAP products live + agreements signed · [ ] **Server-side receipt validation passing** · [ ] Privacy labels/data-safety accurate
 - [ ] Push works both platforms · [ ] Deep-link files hosted · [ ] Crashlytics/Performance alerts on
 - [ ] Backups scheduled · [ ] `min_version` set in Remote Config (force-update lever) · [ ] Monitoring dashboards
 
@@ -226,8 +455,15 @@
 
 ## Hard-blocker summary (sequence that gates everything)
 1. **Apple Developer ($99) + Google Play ($25)** accounts → 2. iOS App ID + signing & Android keystore
-→ 3. APNs + App Check → 4. IAP products + agreements → 5. Deploy Functions/rules + restrict keys →
-6. TestFlight + Play internal → 7. Store review → 8. Live.
+→ 3. APNs + App Check → 4. IAP products + agreements → **4.5. Phase 5S security remediation (rotate SA
+key, server-side entitlements/economy/erasure/consent, then lock rules) — release blocker** →
+5. Deploy Functions/rules + restrict keys → 6. TestFlight + Play internal → 7. Store review → 8. Live.
+
+> ⚠️ The single most important gate is **Phase 5S**: until the client-trust holes (premium/role/credit
+> self-grant, forgeable economy, open creates, incomplete erasure, unenforced consent) are closed,
+> the app must not process payments or go to public production. Code progress so far: aiProxy hardened,
+> server-side credit/entitlement ledger, real App Check providers (✅); purchase validation, economy
+> Functions, rules lock, erasure/consent (🔲 pending).
 
 Until Phase 0 accounts exist, the AI can keep code/config launch-ready (✅ done: bundle IDs matched,
 ExportOptions, CI workflows, load-test script, console checklist) but **cannot create accounts,

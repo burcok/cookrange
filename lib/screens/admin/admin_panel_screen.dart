@@ -15,6 +15,7 @@ import 'admin_dishes_screen.dart';
 import 'application_review_screen.dart';
 import 'admin_user_management_screen.dart';
 import 'admin_reports_screen.dart';
+import 'admin_cost_analytics_screen.dart';
 
 /// Admin-only screen for reviewing pending coach/gym applications,
 /// managing users, and viewing application history.
@@ -401,6 +402,17 @@ class _AdminOverviewTab extends StatelessWidget {
               ),
             ],
           ),
+          SizedBox(height: 8.h),
+          _QuickAccessCard(
+            label: l10n.translate('admin.cost_entry_title'),
+            description: l10n.translate('admin.cost_entry_subtitle'),
+            icon: Icons.attach_money_rounded,
+            accentColor: palette.calories,
+            onTap: () => Navigator.of(context).push(
+                AppTransitions.slideRight(const AdminCostAnalyticsScreen())),
+            palette: palette,
+            t: t,
+          ),
           SizedBox(height: 16.h),
           // ── All-clear banner ────────────────────────────────────
           StreamBuilder<int>(
@@ -782,7 +794,7 @@ class _CoachApplicationsList extends StatelessWidget {
       builder: (context, snap) {
         if (snap.hasError) {
           return AppErrorState(
-            title: 'Something went wrong',
+            title: l10n.translate('common.something_wrong'),
             message: snap.error.toString(),
             onRetry: () {},
           );
@@ -843,7 +855,7 @@ class _GymApplicationsList extends StatelessWidget {
       builder: (context, snap) {
         if (snap.hasError) {
           return AppErrorState(
-            title: 'Something went wrong',
+            title: l10n.translate('common.something_wrong'),
             message: snap.error.toString(),
             onRetry: () {},
           );
@@ -1096,7 +1108,7 @@ class _CoachHistoryList extends StatelessWidget {
       builder: (context, snap) {
         if (snap.hasError) {
           return AppErrorState(
-            title: 'Something went wrong',
+            title: l10n.translate('common.something_wrong'),
             message: snap.error.toString(),
             onRetry: () {},
           );
@@ -1162,7 +1174,7 @@ class _GymHistoryList extends StatelessWidget {
       builder: (context, snap) {
         if (snap.hasError) {
           return AppErrorState(
-            title: 'Something went wrong',
+            title: l10n.translate('common.something_wrong'),
             message: snap.error.toString(),
             onRetry: () {},
           );
@@ -1780,7 +1792,7 @@ class _AuditLogTab extends StatelessWidget {
       builder: (context, snap) {
         if (snap.hasError) {
           return AppErrorState(
-            title: 'Something went wrong',
+            title: l10n.translate('common.something_wrong'),
             message: snap.error.toString(),
             onRetry: () {},
           );
@@ -1980,7 +1992,7 @@ class _BroadcastsTab extends StatelessWidget {
           builder: (context, snap) {
             if (snap.hasError) {
               return AppErrorState(
-                title: 'Something went wrong',
+                title: l10n.translate('common.something_wrong'),
                 message: snap.error.toString(),
                 onRetry: () {},
               );
@@ -2233,14 +2245,15 @@ class _ComposeBroadcastSheetState extends State<_ComposeBroadcastSheet> {
   Future<void> _send() async {
     final l10n = widget.l10n;
     if (_titleEnCtrl.text.trim().isEmpty || _bodyEnCtrl.text.trim().isEmpty) {
-      AppSnackBar.error(context, 'Title (EN) and Message (EN) are required.');
+      AppSnackBar.error(
+          context, l10n.translate('admin.validation.title_message_required'));
       return;
     }
 
     final audience =
         _audience == 'single' ? 'user:${_uidCtrl.text.trim()}' : _audience;
     if (audience == 'user:') {
-      AppSnackBar.error(context, 'Please enter a user UID.');
+      AppSnackBar.error(context, l10n.translate('admin.validation.uid_required'));
       return;
     }
 
@@ -2693,8 +2706,9 @@ class _ConfigTabState extends State<_ConfigTab> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(widget.l10n.translate('common.error_with_details',
+                variables: {'details': e.toString()}))));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -2713,7 +2727,7 @@ class _ConfigTabState extends State<_ConfigTab> {
       builder: (context, snap) {
         if (snap.hasError) {
           return AppErrorState(
-            title: 'Something went wrong',
+            title: l10n.translate('common.something_wrong'),
             message: snap.error.toString(),
             onRetry: () => setState(() {}),
           );
@@ -2967,7 +2981,8 @@ class _CreditsAndCodesTabState extends State<_CreditsAndCodesTab> {
       await AdminService().grantBonusCredits(uid, count, 'admin_grant');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Granted $count credits'),
+          content: Text(widget.l10n.translate('admin.credits.granted',
+              variables: {'count': count.toString()})),
           backgroundColor: widget.palette.success,
         ));
       }
@@ -3053,7 +3068,7 @@ class _CreditsAndCodesTabState extends State<_CreditsAndCodesTab> {
             builder: (context, snap) {
               if (snap.hasError) {
                 return AppErrorState(
-                  title: 'Something went wrong',
+                  title: l10n.translate('common.something_wrong'),
                   message: snap.error.toString(),
                   onRetry: () {},
                 );
@@ -3063,9 +3078,9 @@ class _CreditsAndCodesTabState extends State<_CreditsAndCodesTab> {
               }
               final users = snap.data ?? [];
               if (users.isEmpty) {
-                return const AppEmptyState(
+                return AppEmptyState(
                   icon: Icons.bolt_outlined,
-                  title: 'No heavy AI users today',
+                  title: l10n.translate('admin.ai_usage.no_heavy_users'),
                 );
               }
               return Column(
@@ -3143,7 +3158,7 @@ class _CreditsAndCodesTabState extends State<_CreditsAndCodesTab> {
       builder: (context, snap) {
         if (snap.hasError) {
           return AppErrorState(
-            title: 'Something went wrong',
+            title: l10n.translate('common.something_wrong'),
             message: snap.error.toString(),
             onRetry: () {},
           );
@@ -3153,9 +3168,9 @@ class _CreditsAndCodesTabState extends State<_CreditsAndCodesTab> {
         }
         final codes = snap.data ?? [];
         if (codes.isEmpty) {
-          return const AppEmptyState(
+          return AppEmptyState(
             icon: Icons.card_giftcard_outlined,
-            title: 'No referral codes yet',
+            title: l10n.translate('admin.referral.empty_state'),
           );
         }
         return ListView.separated(
@@ -3701,7 +3716,7 @@ class _ProgramList extends StatelessWidget {
       builder: (context, snap) {
         if (snap.hasError) {
           return AppErrorState(
-            title: 'Something went wrong',
+            title: l10n.translate('common.something_wrong'),
             message: snap.error.toString(),
             onRetry: () {},
           );

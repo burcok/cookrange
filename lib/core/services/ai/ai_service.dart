@@ -15,7 +15,14 @@ class AIService {
 
   static const String _baseUrl =
       'https://openrouter.ai/api/v1/chat/completions';
-  static const String _model = 'openrouter/free';
+  // Concrete, reliable free model by default (the `openrouter/free` meta-router
+  // is heavily rate-limited/queued and timed out on large meal-plan JSON).
+  // Override via [initialize] `model` (from `.env` OPENROUTER_MODEL).
+  static const String _defaultModel = 'deepseek/deepseek-chat-v3-0324:free';
+  String _model = _defaultModel;
+  // Text-generation HTTP timeout. Large plan JSON needs headroom; a slow free
+  // model can legitimately take >45 s. Override via `.env` OPENROUTER_TIMEOUT_S.
+  Duration _textTimeout = const Duration(seconds: 90);
   // Default free vision-capable model. Override via [initialize] `visionModel`
   // or [setVisionModel] (e.g. from `.env` OPENROUTER_VISION_MODEL). An empty
   // value disables photo analysis (the UI hides the camera option).
@@ -35,6 +42,8 @@ class AIService {
     required String apiKey,
     String? proxyUrl,
     String? visionModel,
+    String? model,
+    int? timeoutSeconds,
   }) {
     final trimmed = apiKey.trim();
     _apiKey = (trimmed.isEmpty ||
@@ -45,10 +54,19 @@ class AIService {
     final proxyTrimmed = proxyUrl?.trim() ?? '';
     _proxyUrl = proxyTrimmed.isEmpty ? null : proxyTrimmed;
     if (visionModel != null) _visionModel = visionModel.trim();
+    final modelTrimmed = model?.trim() ?? '';
+    if (modelTrimmed.isNotEmpty) _model = modelTrimmed;
+    if (timeoutSeconds != null && timeoutSeconds > 0) {
+      _textTimeout = Duration(seconds: timeoutSeconds);
+    }
     unawaited(CrashlyticsService().setCustomKeys(aiModel: _model));
   }
 
-  bool get isConfigured => _proxyUrl != null || _apiKey != null;
+  // Configured when a server proxy is set. The bundled local key is honoured
+  // ONLY in debug builds — release must never call OpenRouter directly with a
+  // shipped key (denial-of-wallet / key extraction). See the direct branches
+  // in _callApi*/_callVisionApi which hard-fail in release.
+  bool get isConfigured => _proxyUrl != null || (_apiKey != null && kDebugMode);
 
   /// True when photo/vision analysis can run (configured + a vision model set).
   bool get isVisionAvailable => isConfigured && _visionModel.isNotEmpty;
@@ -309,6 +327,11 @@ class AIService {
           }
         } catch (_) {}
       } else {
+        // DEV-ONLY: direct OpenRouter call with the bundled key. Release builds
+        // MUST route through the server proxy — never ship/use the key in prod.
+        if (kReleaseMode) {
+          throw const AIFatalException('AI proxy not configured');
+        }
         headers['Authorization'] = 'Bearer $_apiKey';
         headers['HTTP-Referer'] = 'https://cookrangeapp.com';
         headers['X-Title'] = 'Cookrange';
@@ -323,7 +346,7 @@ class AIService {
               'temperature': temperature,
             }),
           )
-          .timeout(const Duration(seconds: 45));
+          .timeout(_textTimeout);
       metric.httpResponseCode = response.statusCode;
       metric.responsePayloadSize = response.bodyBytes.length;
     } finally {
@@ -474,6 +497,11 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
           }
         } catch (_) {}
       } else {
+        // DEV-ONLY: direct OpenRouter call with the bundled key. Release builds
+        // MUST route through the server proxy — never ship/use the key in prod.
+        if (kReleaseMode) {
+          throw const AIFatalException('AI proxy not configured');
+        }
         headers['Authorization'] = 'Bearer $_apiKey';
         headers['HTTP-Referer'] = 'https://cookrangeapp.com';
         headers['X-Title'] = 'Cookrange';
@@ -545,6 +573,11 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
           }
         } catch (_) {}
       } else {
+        // DEV-ONLY: direct OpenRouter call with the bundled key. Release builds
+        // MUST route through the server proxy — never ship/use the key in prod.
+        if (kReleaseMode) {
+          throw const AIFatalException('AI proxy not configured');
+        }
         headers['Authorization'] = 'Bearer $_apiKey';
         headers['HTTP-Referer'] = 'https://cookrangeapp.com';
         headers['X-Title'] = 'Cookrange';
@@ -560,7 +593,7 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
               'temperature': temperature,
             }),
           )
-          .timeout(const Duration(seconds: 45));
+          .timeout(_textTimeout);
       metric.httpResponseCode = response.statusCode;
       metric.responsePayloadSize = response.bodyBytes.length;
     } finally {

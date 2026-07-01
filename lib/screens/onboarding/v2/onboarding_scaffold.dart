@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/widgets/ds/ds.dart';
 
@@ -117,7 +118,8 @@ class OnboardingScaffold extends StatelessWidget {
                       children: [
                         if (showContinue)
                           AppButton(
-                            label: continueLabel ?? 'Devam et',
+                            label: continueLabel ??
+                                AppLocalizations.of(context).translate('common.continue'),
                             loading: continueLoading,
                             onPressed: (onContinue != null && !continueLoading)
                                 ? () {

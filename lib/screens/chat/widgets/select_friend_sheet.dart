@@ -1,4 +1,5 @@
 import 'dart:async' show unawaited;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 import '../../../core/models/user_model.dart';
@@ -124,7 +125,7 @@ class _SelectFriendSheetState extends State<SelectFriendSheet> {
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundImage: friend.photoURL != null
-                                  ? NetworkImage(friend.photoURL!)
+                                  ? CachedNetworkImageProvider(friend.photoURL!)
                                   : null,
                               backgroundColor: palette.surfaceVariant,
                               child: friend.photoURL == null

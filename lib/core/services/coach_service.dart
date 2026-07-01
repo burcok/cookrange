@@ -313,8 +313,11 @@ class CoachService {
 
   // ─── Client Streams ────────────────────────────────────────────────────────
 
+  // Capped to avoid reading an unbounded client list on every change.
+  static const int _clientsLimit = 200;
+
   Stream<List<CoachClientModel>> getClientsStream(String coachUid) {
-    return _clients(coachUid).snapshots().map(
+    return _clients(coachUid).limit(_clientsLimit).snapshots().map(
           (snap) => snap.docs.map(CoachClientModel.fromFirestore).toList(),
         );
   }
@@ -322,6 +325,7 @@ class CoachService {
   Stream<List<CoachClientModel>> getPendingClientsStream(String coachUid) {
     return _clients(coachUid)
         .where('status', isEqualTo: CoachClientStatus.pending.firestoreValue)
+        .limit(_clientsLimit)
         .snapshots()
         .map((snap) => snap.docs.map(CoachClientModel.fromFirestore).toList());
   }
@@ -329,6 +333,7 @@ class CoachService {
   Stream<List<CoachClientModel>> getActiveClientsStream(String coachUid) {
     return _clients(coachUid)
         .where('status', isEqualTo: CoachClientStatus.active.firestoreValue)
+        .limit(_clientsLimit)
         .snapshots()
         .map((snap) => snap.docs.map(CoachClientModel.fromFirestore).toList());
   }

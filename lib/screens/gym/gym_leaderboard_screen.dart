@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -418,7 +419,7 @@ class _PodiumColumn extends StatelessWidget {
                     ? primary.withValues(alpha: 0.2)
                     : palette.surfaceVariant,
                 backgroundImage: entry.photoURL != null
-                    ? NetworkImage(entry.photoURL!)
+                    ? CachedNetworkImageProvider(entry.photoURL!)
                     : null,
                 child: entry.photoURL == null
                     ? Text(
@@ -560,8 +561,9 @@ class _LeaderboardTile extends StatelessWidget {
               backgroundColor: isCurrentUser
                   ? primary.withValues(alpha: 0.15)
                   : palette.surfaceVariant,
-              backgroundImage:
-                  entry.photoURL != null ? NetworkImage(entry.photoURL!) : null,
+              backgroundImage: entry.photoURL != null
+                  ? CachedNetworkImageProvider(entry.photoURL!)
+                  : null,
               child: entry.photoURL == null
                   ? Text(
                       (entry.displayName?.isNotEmpty == true
@@ -681,7 +683,7 @@ class _WarsTabState extends State<_WarsTab> {
     if (_error != null) {
       return AppEmptyState(
         icon: Icons.warning_amber_rounded,
-        title: 'Could not load wars',
+        title: l10n.translate('gym.leaderboard.error.load_wars'),
         message: _error,
         actionLabel: 'Retry',
         onAction: _loadWars,

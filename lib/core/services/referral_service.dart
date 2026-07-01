@@ -2,11 +2,9 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/notification_model.dart';
-import 'commission_service.dart';
 import 'crashlytics_service.dart';
-import 'notification_service.dart';
 import 'sharing_service.dart';
 
 /// Manages the friend-referral program.
@@ -25,7 +23,6 @@ class ReferralService {
   static final ReferralService _instance = ReferralService._internal();
   factory ReferralService() => _instance;
 
-  static const _rewardDays = 7;
   static const _maxUses = 10;
 
   final _db = FirebaseFirestore.instance;
@@ -76,6 +73,12 @@ class ReferralService {
 
   /// Apply another user's referral code. Returns an error string on failure,
   /// null on success.
+  ///
+  /// All validation + rewards happen SERVER-SIDE via the `applyReferral` Cloud
+  /// Function: it enforces no-self-referral, one-per-account, max-uses
+  /// (append-only), grants premium to both parties via the server-only
+  /// entitlements writer, and records the commission in a server-written ledger.
+  /// The client can no longer grant premium or write commissions itself.
   Future<String?> applyCode(String rawCode) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return 'Not authenticated';
@@ -84,74 +87,28 @@ class ReferralService {
     if (code.length < 4) return 'Invalid code';
 
     try {
-      final refRef = _db.doc('referrals/$code');
-      final refDoc = await refRef.get();
-      if (!refDoc.exists) return 'Code not found';
-
-      final data = refDoc.data()!;
-      final ownerUid = data['owner_uid'] as String;
-      final usedByUids =
-          List<String>.from(data['used_by_uids'] as List<dynamic>? ?? []);
-      final maxUses = (data['max_uses'] as int?) ?? _maxUses;
-
-      if (ownerUid == uid) return 'You cannot use your own code';
-      if (usedByUids.contains(uid)) return 'You have already used this code';
-      if (usedByUids.length >= maxUses) {
-        return 'This code has reached its usage limit';
-      }
-
-      // Also prevent a user from applying any code if they already used one.
-      final myDoc = await _db.doc('users/$uid').get();
-      if (myDoc.data()?['referral_used'] != null) {
-        return 'You have already used a referral code';
-      }
-
-      // Apply atomically.
-      final batch = _db.batch();
-      final expiry = Timestamp.fromDate(
-          DateTime.now().add(const Duration(days: _rewardDays)));
-
-      // Mark the code as used.
-      batch.update(refRef, {
-        'used_by_uids': FieldValue.arrayUnion([uid]),
-      });
-
-      // Reward the new user (B).
-      batch.update(_db.doc('users/$uid'), {
-        'referral_used': code,
-        'subscription_tier': 'premium',
-        'subscription_expires_at': expiry,
-      });
-
-      // Reward the referrer (A).
-      batch.update(_db.doc('users/$ownerUid'), {
-        'subscription_tier': 'premium',
-        'subscription_expires_at': expiry,
-      });
-
-      await batch.commit();
-
-      // Notify the referrer (structured — rendered in the referrer's language).
-      unawaited(
-        NotificationService().sendNotification(
-          targetUserId: ownerUid,
-          type: NotificationType.referral,
-          relatedId: code,
-          metadata: {'rewardDays': _rewardDays},
-        ),
-      );
-
-      // Record a ₺5 commission for the referral code owner.
-      unawaited(CommissionService().recordReferralCommission(
-        ownerUid: ownerUid,
-        refereeUid: uid,
-        refereeName:
-            FirebaseAuth.instance.currentUser?.displayName ?? 'New User',
-      ));
-
-      debugPrint(
-          'ReferralService: code $code applied by $uid → rewarded $ownerUid');
+      await FirebaseFunctions.instance
+          .httpsCallable('applyReferral')
+          .call({'code': code});
+      debugPrint('ReferralService: code $code applied by $uid (server)');
       return null; // success
+    } on FirebaseFunctionsException catch (e) {
+      switch (e.message) {
+        case 'code_not_found':
+          return 'Code not found';
+        case 'own_code':
+          return 'You cannot use your own code';
+        case 'already_used_this':
+          return 'You have already used this code';
+        case 'limit_reached':
+          return 'This code has reached its usage limit';
+        case 'already_used_any':
+          return 'You have already used a referral code';
+        case 'invalid_code':
+          return 'Invalid code';
+        default:
+          return 'Something went wrong. Please try again.';
+      }
     } catch (e, stack) {
       unawaited(CrashlyticsService()
           .recordError(e, stack, reason: 'ReferralService.applyCode $code'));

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/localization/app_localizations.dart';
@@ -225,7 +226,8 @@ class _CreateGroupChatSheetState extends State<CreateGroupChatSheet> {
                               secondary: CircleAvatar(
                                 radius: 20,
                                 backgroundImage: friend.photoURL != null
-                                    ? NetworkImage(friend.photoURL!)
+                                    ? CachedNetworkImageProvider(
+                                        friend.photoURL!)
                                     : null,
                                 child: friend.photoURL == null
                                     ? Text(

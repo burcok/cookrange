@@ -48,7 +48,15 @@ firebase-debug.*.log
 
 # Environment variables
 .env
+.env.*
+functions/.env
+functions/.env.*
 /lib/firebase_options.dart
+
+# Server
+functions/node_modules
+test/
+
 
 # Agent Telemetry Cache
 .agent/telemetry_cache.json

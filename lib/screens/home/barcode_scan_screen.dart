@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -648,12 +649,17 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen>
                     if (product.imageUrl != null) ...[
                       ClipRRect(
                         borderRadius: BorderRadius.circular(AppRadius.sm.r),
-                        child: Image.network(
-                          product.imageUrl!,
+                        child: CachedNetworkImage(
+                          imageUrl: product.imageUrl!,
                           width: 64.w,
                           height: 64.w,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          placeholder: (_, __) => Container(
+                            width: 64.w,
+                            height: 64.w,
+                            color: palette.surfaceVariant,
+                          ),
+                          errorWidget: (_, __, ___) => Container(
                             width: 64.w,
                             height: 64.w,
                             color: palette.surfaceVariant,

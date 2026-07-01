@@ -33,11 +33,23 @@ service firebase.storage {
     }
 
     // ─── Chat Images ─────────────────────────────────────────────────────────
-    // Path: chat_images/{uid}/{filename}
-    match /chat_images/{uid}/{fileName} {
-      allow read: if isAuthenticated();
-      allow write: if isOwner(uid) && isValidImage();
-      allow delete: if isOwner(uid);
+    // Path: chat_images/{scopeId}/{filename}
+    //  - 1:1 chats: scopeId = sorted participant pair "uidA_uidB" → ONLY the two
+    //    participants can read/write/delete (enforced here).
+    //  - group chats: scopeId = chatId (no '_') → authenticated read, but the
+    //    download URL lives only in the participant-gated message doc and the
+    //    filename is unguessable, so it is effectively members-only.
+    match /chat_images/{scopeId}/{fileName} {
+      allow read: if isAuthenticated()
+        && (scopeId.split('_').size() != 2
+            || request.auth.uid in scopeId.split('_'));
+      allow write: if isAuthenticated()
+        && (scopeId.split('_').size() != 2
+            || request.auth.uid in scopeId.split('_'))
+        && isValidImage();
+      allow delete: if isAuthenticated()
+        && (scopeId.split('_').size() != 2
+            || request.auth.uid in scopeId.split('_'));
     }
 
     // ─── Gym application documents ───────────────────────────────────────────

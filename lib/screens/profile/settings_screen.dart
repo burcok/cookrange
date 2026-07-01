@@ -519,14 +519,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Cookrange',
+            Text(l10n.translate('app.name'),
                 style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: palette.textPrimary,
                     fontFamily: 'Poppins')),
             const SizedBox(height: 4),
-            Text('AI-Powered Nutrition',
+            Text(l10n.translate('app.tagline'),
                 style: TextStyle(
                     fontSize: 13,
                     color: palette.textSecondary,
@@ -1715,15 +1715,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       : palette.glassStroke,
                   width: isDangerZone ? 1.0 : 0.8,
                 ),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    palette.glassHighlight,
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.5],
-                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2349,7 +2340,8 @@ class _ApplyCodeSheetState extends State<_ApplyCodeSheet> {
           controller: _ctrl,
           labelText:
               widget.appLoc.translate('settings.referral.enter_code_label'),
-          hintText: 'AB3X9K',
+          hintText:
+              widget.appLoc.translate('profile.settings.referral_code_placeholder'),
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
           ],

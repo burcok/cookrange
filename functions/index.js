@@ -3,6 +3,7 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const fetch = require('node-fetch');
+const { APP_CHECK_ENFORCE } = require('./config');
 
 admin.initializeApp();
 
@@ -10,107 +11,154 @@ const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MODEL = 'openrouter/free';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Server-Side AI Quota Enforcement
+// Server-Side AI Quota Enforcement, Cost Control & Abuse Limits
 // ─────────────────────────────────────────────────────────────────────────────
+//
+// SECURITY MODEL (do not regress):
+//  - Credits live in the SERVER-ONLY ledger `ai_credits/{uid}` (owner-read,
+//    deny client-write in rules; mutated here via the Admin SDK). They are NOT
+//    read from the client-writable user doc — that was self-grantable.
+//  - Premium is read from the SERVER-ONLY `entitlements/{uid}` doc, written only
+//    by the purchase-validation functions — never from `users/{uid}`.
+//  - The model is coerced to an allowlist so a caller cannot bill an expensive
+//    model. Output/input are capped. Quota FAILS CLOSED on infra errors.
+//  - App Check is mandatory (toggle APP_CHECK_ENFORCE=false only as a temporary
+//    rollout escape hatch while clients update).
 
 const FREE_DAILY_LIMIT = 2;
 const PREMIUM_DAILY_LIMIT = 20;
 
+// Allowlisted models. Anything else the client sends is coerced to DEFAULT_MODEL.
+const ALLOWED_MODELS = new Set(
+  [
+    'openrouter/free',
+    'meta-llama/llama-3.2-11b-vision-instruct:free',
+    process.env.OPENROUTER_VISION_MODEL,
+    process.env.OPENROUTER_MODEL,
+  ].filter(Boolean)
+);
+
+// Hard caps bounding per-request cost and resource use.
+const MAX_MESSAGES = 30;
+const MAX_TOTAL_CHARS = 24000; // serialized messages payload
+const MAX_OUTPUT_TOKENS = 1024;
+
+// Per-uid sliding-window rate limit (independent of the daily quota).
+const RATE_WINDOW_MS = 60 * 1000;
+const RATE_MAX_IN_WINDOW = 12;
+
+// App Check enforcement is decided by ./config (enforced in production, relaxed
+// in development) — see APP_CHECK_ENFORCE import above.
+
+function nextMidnightUtc(now) {
+  const d = new Date(now);
+  d.setUTCHours(24, 0, 0, 0);
+  return d;
+}
+
 /**
- * Atomically checks and consumes one AI credit for the given user.
- *
- * Returns:
- *   'daily'    — daily credit consumed successfully
- *   'bonus'    — bonus (IAP) credit consumed successfully
- *   'exceeded' — no credits available; caller should return 402
- *
- * Auto-resets the daily counter if the stored reset timestamp has passed.
- * Mirrors the client-side AiCreditModel logic so they stay in sync.
+ * Server-authoritative premium check. Reads `entitlements/{uid}` (written only
+ * by the purchase-validation functions). Fails CLOSED to free on any error.
  */
-async function enforceAndConsumeQuota(uid) {
-  const db = admin.firestore();
-  const userRef = db.collection('users').doc(uid);
-
+async function isPremium(uid) {
   try {
-    return await db.runTransaction(async (tx) => {
-      const snap = await tx.get(userRef);
-      if (!snap.exists) {
-        functions.logger.warn('enforceAndConsumeQuota: user doc not found', { uid });
-        return 'exceeded';
-      }
-
-      const data = snap.data();
-      const isPremium = data.subscription_tier === 'premium';
-      const dailyLimit = isPremium ? PREMIUM_DAILY_LIMIT : FREE_DAILY_LIMIT;
-
-      const now = new Date();
-      const resetAtRaw = data.ai_credits_reset_at;
-      const resetAt = resetAtRaw ? resetAtRaw.toDate() : null;
-
-      // Auto-reset if the day has rolled over
-      let used = data.ai_credits_used || 0;
-      if (!resetAt || now > resetAt) {
-        const nextMidnight = new Date(now);
-        nextMidnight.setHours(24, 0, 0, 0);
-        tx.update(userRef, {
-          ai_credits_used: 0,
-          ai_credits_reset_at: admin.firestore.Timestamp.fromDate(nextMidnight),
-        });
-        used = 0;
-      }
-
-      const bonus = data.ai_credits_bonus || 0;
-
-      // Deny if no bonus credits AND at/over daily limit
-      if (bonus <= 0 && used >= dailyLimit) {
-        functions.logger.info('enforceAndConsumeQuota: quota exceeded', {
-          uid, used, dailyLimit, bonus, isPremium,
-        });
-        return 'exceeded';
-      }
-
-      // Consume bonus credits first, then daily quota
-      if (bonus > 0) {
-        tx.update(userRef, {
-          ai_credits_bonus: admin.firestore.FieldValue.increment(-1),
-        });
-        return 'bonus';
-      } else {
-        tx.update(userRef, {
-          ai_credits_used: admin.firestore.FieldValue.increment(1),
-        });
-        return 'daily';
-      }
-    });
+    const snap = await admin.firestore().collection('entitlements').doc(uid).get();
+    if (!snap.exists) return false;
+    const d = snap.data() || {};
+    if (d.tier !== 'premium') return false;
+    const exp = d.expires_at && d.expires_at.toDate ? d.expires_at.toDate() : null;
+    return !exp || exp > new Date();
   } catch (e) {
-    functions.logger.error('enforceAndConsumeQuota transaction failed', { uid, error: e.message });
-    // Fail open on Firestore errors — don't block users due to quota infra issues
-    return 'open';
+    functions.logger.error('isPremium read failed — failing closed', { uid, error: e.message });
+    return false;
   }
 }
 
 /**
- * Rolls back a previously consumed credit. Called when the upstream AI request
- * fails after a credit was already consumed.
+ * Atomically enforces the per-uid rate limit AND the daily/bonus quota against
+ * the server-only ledger `ai_credits/{uid}`, consuming one unit on success.
+ *
+ * Returns { ok: true, consumed: 'daily'|'bonus' } or
+ *         { ok: false, reason: 'rate_limited'|'exceeded' }.
+ * THROWS on a transaction/infra failure — the caller MUST fail closed.
  */
-async function rollbackQuota(uid, consumedType) {
-  if (consumedType !== 'daily' && consumedType !== 'bonus') return;
+async function enforceRateLimitAndQuota(uid, premium) {
   const db = admin.firestore();
-  const userRef = db.collection('users').doc(uid);
-  try {
-    if (consumedType === 'bonus') {
-      await userRef.update({ ai_credits_bonus: admin.firestore.FieldValue.increment(1) });
-    } else {
-      await userRef.update({ ai_credits_used: admin.firestore.FieldValue.increment(-1) });
+  const ref = db.collection('ai_credits').doc(uid);
+  const dailyLimit = premium ? PREMIUM_DAILY_LIMIT : FREE_DAILY_LIMIT;
+  const now = new Date();
+
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.exists ? (snap.data() || {}) : {};
+
+    // ── Sliding-window rate limit ──
+    const winStart = data.rate_window_start && data.rate_window_start.toDate
+      ? data.rate_window_start.toDate() : null;
+    const windowExpired = !winStart || (now - winStart) > RATE_WINDOW_MS;
+    const reqCount = windowExpired ? 0 : (data.rate_count || 0);
+    if (reqCount >= RATE_MAX_IN_WINDOW) {
+      return { ok: false, reason: 'rate_limited' };
     }
-    functions.logger.info('rollbackQuota', { uid, consumedType });
+
+    // ── Daily reset ──
+    const resetAt = data.reset_at && data.reset_at.toDate ? data.reset_at.toDate() : null;
+    const dayRolled = !resetAt || now > resetAt;
+    const used = dayRolled ? 0 : (data.used_today || 0);
+    const bonus = data.bonus || 0;
+
+    // ── Quota check (bonus pool, then daily) ──
+    if (bonus <= 0 && used >= dailyLimit) {
+      return { ok: false, reason: 'exceeded' };
+    }
+
+    const update = {
+      rate_window_start: windowExpired
+        ? admin.firestore.Timestamp.fromDate(now)
+        : data.rate_window_start,
+      rate_count: reqCount + 1,
+    };
+    if (dayRolled) {
+      update.reset_at = admin.firestore.Timestamp.fromDate(nextMidnightUtc(now));
+    }
+
+    let consumed;
+    if (bonus > 0) {
+      update.bonus = admin.firestore.FieldValue.increment(-1);
+      if (dayRolled) update.used_today = 0;
+      consumed = 'bonus';
+    } else {
+      update.used_today = used + 1;
+      consumed = 'daily';
+    }
+
+    tx.set(ref, update, { merge: true });
+    return { ok: true, consumed };
+  });
+}
+
+/**
+ * Rolls back a previously consumed unit when the upstream AI request fails.
+ */
+async function rollbackConsume(uid, consumed) {
+  if (consumed !== 'daily' && consumed !== 'bonus') return;
+  const ref = admin.firestore().collection('ai_credits').doc(uid);
+  try {
+    const field = consumed === 'bonus' ? 'bonus' : 'used_today';
+    const delta = consumed === 'bonus' ? 1 : -1;
+    await ref.set(
+      { [field]: admin.firestore.FieldValue.increment(delta) },
+      { merge: true }
+    );
+    functions.logger.info('rollbackConsume', { uid, consumed });
   } catch (e) {
-    functions.logger.error('rollbackQuota failed', { uid, error: e.message });
+    functions.logger.error('rollbackConsume failed', { uid, error: e.message });
   }
 }
 
 /**
- * AI proxy endpoint — keeps OPENROUTER_API_KEY server-side.
+ * AI proxy endpoint — keeps OPENROUTER_API_KEY server-side and enforces
+ * attestation, auth, rate limits, quotas, model allowlist, and payload caps.
  *
  * Set the secret before deploying:
  *   firebase functions:secrets:set OPENROUTER_API_KEY
@@ -118,77 +166,105 @@ async function rollbackQuota(uid, consumedType) {
  * Request body (JSON):
  *   { messages: [...], model?: string, temperature?: number }
  *
- * Authorization:
- *   Bearer <Firebase ID token>
+ * Headers: Authorization: Bearer <Firebase ID token>, X-Firebase-AppCheck: <token>
  */
 exports.aiProxy = functions
-  .runWith({ secrets: ['OPENROUTER_API_KEY'] })
+  .runWith({
+    // OPENROUTER_API_KEY is read from process.env (functions/.env). For extra
+    // hardening in production you can instead bind it via Secret Manager:
+    //   secrets: ['OPENROUTER_API_KEY'],
+    maxInstances: 20,
+    memory: '256MB',
+    timeoutSeconds: 30,
+  })
   .https.onRequest(async (req, res) => {
-    // CORS headers (Flutter app uses HTTPS, not a browser, so this is minimal)
-    res.set('Access-Control-Allow-Origin', '*');
+    // No wildcard CORS — this is a mobile client, not a browser app.
+    res.set('Vary', 'Origin');
     if (req.method === 'OPTIONS') {
       res.set('Access-Control-Allow-Methods', 'POST');
-      res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+      res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Firebase-AppCheck');
       res.status(204).send('');
       return;
     }
-
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method not allowed' });
       return;
     }
 
-    // Verify Firebase ID token
+    // ── App Check (mandatory unless explicitly disabled for rollout) ──────────
+    const appCheckToken = req.headers['x-firebase-appcheck'];
+    if (APP_CHECK_ENFORCE && !appCheckToken) {
+      res.status(401).json({ error: 'App Check required' });
+      return;
+    }
+    if (appCheckToken) {
+      try {
+        await admin.appCheck().verifyToken(appCheckToken);
+      } catch (e) {
+        functions.logger.warn('App Check token verification failed', { error: e.message });
+        res.status(401).json({ error: 'Invalid App Check token' });
+        return;
+      }
+    }
+
+    // ── Auth: verify Firebase ID token ────────────────────────────────────────
     const authHeader = req.headers.authorization || '';
     const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
     if (!idToken) {
       res.status(401).json({ error: 'Missing Authorization header' });
       return;
     }
-
     let uid;
     try {
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
-      uid = decodedToken.uid;
+      uid = (await admin.auth().verifyIdToken(idToken)).uid;
     } catch (e) {
       res.status(401).json({ error: 'Invalid or expired ID token' });
       return;
     }
 
-    // Verify App Check token (if present — clients without App Check still work
-    // during rollout; enforce strictly once all clients are updated).
-    const appCheckToken = req.headers['x-firebase-appcheck'];
-    if (appCheckToken) {
-      try {
-        await admin.appCheck().verifyToken(appCheckToken);
-      } catch (e) {
-        functions.logger.warn('App Check token verification failed', e);
-        res.status(401).json({ error: 'Invalid App Check token' });
-        return;
-      }
-    }
-
-    // ── Server-side quota enforcement (atomic Firestore transaction) ──────────
-    const consumedType = await enforceAndConsumeQuota(uid);
-    if (consumedType === 'exceeded') {
-      functions.logger.info('aiProxy: quota exceeded', { uid });
-      res.status(402).json({ error: 'quota_exceeded' });
+    // ── Input validation & caps ───────────────────────────────────────────────
+    const body = req.body || {};
+    const messages = body.messages;
+    if (!Array.isArray(messages) || messages.length === 0) {
+      res.status(400).json({ error: 'messages array is required' });
       return;
     }
-    // consumedType is 'daily', 'bonus', or 'open' (fail-open on infra errors)
+    if (messages.length > MAX_MESSAGES) {
+      res.status(413).json({ error: 'too_many_messages' });
+      return;
+    }
+    if (JSON.stringify(messages).length > MAX_TOTAL_CHARS) {
+      res.status(413).json({ error: 'payload_too_large' });
+      return;
+    }
+    const requestedModel = typeof body.model === 'string' ? body.model : DEFAULT_MODEL;
+    const model = ALLOWED_MODELS.has(requestedModel) ? requestedModel : DEFAULT_MODEL;
+    const temperature = Math.min(Math.max(Number(body.temperature) || 0.7, 0), 1);
 
-    const { messages, model, temperature } = req.body || {};
-    if (!Array.isArray(messages) || messages.length === 0) {
-      // Rollback the consumed credit — request was invalid
-      await rollbackQuota(uid, consumedType);
-      res.status(400).json({ error: 'messages array is required' });
+    // ── Premium (server-authoritative) + rate limit + quota ──────────────────
+    const premium = await isPremium(uid);
+    let gate;
+    try {
+      gate = await enforceRateLimitAndQuota(uid, premium);
+    } catch (e) {
+      // FAIL CLOSED — never grant free AI because the quota store hiccuped.
+      functions.logger.error('quota tx failed — failing closed', { uid, error: e.message });
+      res.status(503).json({ error: 'quota_unavailable' });
+      return;
+    }
+    if (!gate.ok) {
+      if (gate.reason === 'rate_limited') {
+        res.status(429).json({ error: 'rate_limited' });
+        return;
+      }
+      res.status(402).json({ error: 'quota_exceeded' });
       return;
     }
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       functions.logger.error('OPENROUTER_API_KEY secret not set');
-      await rollbackQuota(uid, consumedType);
+      await rollbackConsume(uid, gate.consumed);
       res.status(500).json({ error: 'AI proxy not configured' });
       return;
     }
@@ -203,27 +279,27 @@ exports.aiProxy = functions
           'X-Title': 'Cookrange',
         },
         body: JSON.stringify({
-          model: model || DEFAULT_MODEL,
+          model,
           messages,
-          temperature: temperature ?? 0.7,
+          temperature,
+          max_tokens: MAX_OUTPUT_TOKENS,
         }),
       });
 
-      const data = await upstream.json();
-
       if (!upstream.ok) {
-        functions.logger.warn('OpenRouter error', { status: upstream.status, data });
-        // Roll back the credit — the AI call failed
-        await rollbackQuota(uid, consumedType);
-        res.status(upstream.status).json(data);
+        functions.logger.warn('OpenRouter error', { uid, status: upstream.status });
+        await rollbackConsume(uid, gate.consumed);
+        // Do not leak the upstream body/status to the client.
+        res.status(502).json({ error: 'ai_upstream_error' });
         return;
       }
 
-      functions.logger.info('aiProxy: success', { uid, consumedType });
+      const data = await upstream.json();
+      functions.logger.info('aiProxy: success', { uid, consumed: gate.consumed, model });
       res.status(200).json(data);
     } catch (e) {
       functions.logger.error('aiProxy fetch error', { uid, error: e.message });
-      await rollbackQuota(uid, consumedType);
+      await rollbackConsume(uid, gate.consumed);
       res.status(502).json({ error: 'Upstream AI request failed' });
     }
   });
@@ -729,3 +805,21 @@ exports.weeklyPlanReadyNotifier = functions
       processed: usersSnap.size, sent: sentCount,
     });
   });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Purchase validation + server-authoritative economy (modular)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const purchases = require('./purchases');
+exports.validatePurchase = purchases.validatePurchase;
+exports.appStoreNotifications = purchases.appStoreNotifications;
+exports.playRtdn = purchases.playRtdn;
+
+const economy = require('./economy');
+exports.applyReferral = economy.applyReferral;
+
+const account = require('./account');
+exports.deleteUserAccount = account.deleteUserAccount;
+
+const media = require('./media');
+exports.scanImage = media.scanImage;

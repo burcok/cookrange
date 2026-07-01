@@ -34,13 +34,38 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly(allowedFields);
     }
 
+    // Fields on the user doc that are SERVER-AUTHORITATIVE — clients may never
+    // write them. Entitlements, AI credits, ban state, and the referral marker
+    // are set ONLY by Cloud Functions (Admin SDK, which bypasses rules) or by an
+    // admin. This closes premium / AI-credit self-grant and ban-evasion via
+    // direct user-doc writes (audit C1, C2, C3, C7).
+    //
+    // NOTE: user_roles/user_role are intentionally NOT locked here. The app's
+    // self-service model lets a user become coach/gymOwner (coach_service /
+    // gym_service write their own roles), and coach/gym FEATURES are gated by
+    // ownership, not by this array. True admin power is gated server-side by
+    // admin/status/{uid} (deny-all to clients) — a self-written user_roles:
+    // ['admin'] only reveals client admin UI (cosmetic, M18), never real admin
+    // capability. Gating that UI on a server claim is a separate follow-up.
+    function touchesProtectedUserFields() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'subscription_tier', 'subscription_expires_at', 'subscription_product_id',
+        'subscription_purchase_token', 'ai_credits_used', 'ai_credits_reset_at',
+        'ai_credits_bonus', 'referral_used', 'is_banned'
+      ]);
+    }
+
     // ─── Users ──────────────────────────────────────────────────────────────
     match /users/{uid} {
       // Users can read any profile (needed for search, friend lists, chat presence)
       allow read: if isAuthenticated();
-      // Only the owner can create/update their own document
+      // Only the owner can create/update their own document.
       allow create: if isOwner(uid);
-      allow update: if isOwner(uid) || isAdmin();
+      // Owner may update only NON-privileged fields; privileged fields
+      // (entitlements/credits/roles/ban/referral) are server/admin-written and
+      // rejected here for clients. Admin (server) retains full update.
+      allow update: if (isOwner(uid) && !touchesProtectedUserFields())
+        || isAdmin();
       allow delete: if isOwner(uid);
 
       // Friends subcollection: owner reads; either party can create; owner can delete
@@ -133,10 +158,12 @@ service cloud.firestore {
 
     // ─── Failed login attempts (security monitoring) ────────────────────────
     match /failed_login_attempts/{docId} {
-      // Write-only: any authenticated state (written before auth succeeds)
-      allow create: if true;
-      // Admin read only — enforced by denying client reads
-      allow read, update, delete: if false;
+      // Server-only: an UNAUTHENTICATED `create: if true` let anyone spam this
+      // collection (write-amplification / billing abuse, audit C7). Failed-login
+      // monitoring must come from Identity Platform / an Auth blocking function,
+      // not unauthenticated client writes. The client writer is best-effort and
+      // tolerates this denial.
+      allow create, read, update, delete: if false;
     }
 
     // ─── Dishes (read-only catalog for users) ───────────────────────────────
@@ -145,17 +172,20 @@ service cloud.firestore {
       allow write: if isAuthenticated() && isAdmin();
     }
 
-    // ─── App Settings (read-only config) ────────────────────────────────────
+    // ─── App Settings (public-read config; admin-managed) ────────────────────
+    // e.g. settings/content_filter holds the moderation word-list, mirrored here
+    // from admin_config so the client filter (all users) can read it.
     match /settings/{docId} {
       allow read: if isAuthenticated();
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     // ─── Community Posts ─────────────────────────────────────────────────────
     match /posts/{postId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated()
-        && request.resource.data.authorId == request.auth.uid;
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.get('content', '').size() <= 5000;
       allow update: if isAuthenticated()
         && (isPostOwner(resource.data)
           // Allow like/reaction counter updates from any authenticated user
@@ -167,7 +197,8 @@ service cloud.firestore {
       match /comments/{commentId} {
         allow read: if isAuthenticated();
         allow create: if isAuthenticated()
-          && request.resource.data.authorId == request.auth.uid;
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.get('content', '').size() <= 2000;
         allow update: if isAuthenticated()
           && (resource.data.authorId == request.auth.uid
             || (!request.resource.data.diff(resource.data).affectedKeys()
@@ -208,7 +239,8 @@ service cloud.firestore {
           && isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data);
         allow create: if isAuthenticated()
           && isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data)
-          && request.resource.data.senderId == request.auth.uid;
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.get('text', '').size() <= 5000;
         allow update: if isAuthenticated()
           && isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data);
         allow delete: if false;
@@ -219,7 +251,8 @@ service cloud.firestore {
     match /signals/{signalId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated()
-        && request.resource.data.userId == request.auth.uid;
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.get('message', '').size() <= 2000;
       allow update: if isAuthenticated()
         && (isSignalOwner(resource.data)
           // Allow others to add themselves to ignoredBy list
@@ -270,11 +303,14 @@ service cloud.firestore {
       // Only the owner may create their own referral doc.
       allow create: if isAuthenticated()
         && request.resource.data.owner_uid == request.auth.uid;
-      // Any authenticated user may update used_by_uids (applying the code).
-      // max_uses and owner_uid cannot be changed.
+      // The applying user is added to used_by_uids ONLY by the applyReferral
+      // Cloud Function (Admin SDK, bypasses rules), and rewards are server-
+      // granted. A client may update a code doc only if it OWNS the code (coach
+      // vanity / settings) or is admin, and may never change owner_uid — so a
+      // non-owner can no longer rewrite usage or self-grant (audit C8).
       allow update: if isAuthenticated()
-        && request.resource.data.owner_uid == resource.data.owner_uid
-        && request.resource.data.max_uses == resource.data.max_uses;
+        && (resource.data.owner_uid == request.auth.uid || isAdmin())
+        && request.resource.data.owner_uid == resource.data.owner_uid;
       allow delete: if false;
     }
 
@@ -445,14 +481,11 @@ service cloud.firestore {
 
     // ─── Commission earnings (per-user subcollection) ─────────────────────────
     match /users/{uid}/commissions/{commissionId} {
-      // Only the owner can read their own commissions.
+      // Owner reads their own commissions. Writes are SERVER-ONLY — commissions
+      // are recorded by Cloud Functions after validation, never by clients
+      // (closes forgeable-earnings → payout fraud, audit C8).
       allow read: if isAuthenticated() && request.auth.uid == uid;
-      // Any authenticated user may create (e.g. service recording a referral commission
-      // for another user when a referral code is applied).
-      allow create: if isAuthenticated();
-      // Only the owner can update (e.g. status changes).
-      allow update: if isAuthenticated() && request.auth.uid == uid;
-      allow delete: if false;
+      allow write: if false;
     }
 
     // ─── Coaching requests (client→coach) ────────────────────────────────────
@@ -578,6 +611,29 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create, delete: if isAuthenticated() && request.auth.uid == sourceUid;
       allow update: if false;
+    }
+
+    // ─── AI credit ledger (server-authoritative) ─────────────────────────────
+    // Written by Cloud Functions (aiProxy / purchase validation) via the Admin
+    // SDK, or by an admin (panel comps; audited). Owner may READ for the credit
+    // badge; regular users can never write (audit C1/C3).
+    match /ai_credits/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isAdmin();
+    }
+
+    // ─── Entitlements (premium tier; server-authoritative) ────────────────────
+    // Written by the purchase-validation / referral Cloud Functions, or by an
+    // admin (comp premium; audited). Owner may READ; premium is never
+    // client-grantable by regular users (audit C7).
+    match /entitlements/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isAdmin();
+    }
+
+    // ─── Processed purchase tokens (replay/dedupe guard; fully server-only) ───
+    match /processed_purchases/{id} {
+      allow read, write: if false;
     }
 
     // ─── Deny everything else ─────────────────────────────────────────────────

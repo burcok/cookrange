@@ -9,8 +9,10 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../firebase_options.dart';
+import '../config/app_env.dart';
 import 'crashlytics_service.dart';
 import 'analytics_service.dart';
+import 'consent_service.dart';
 import 'auth_service.dart';
 import 'global_error_handler.dart';
 import 'log_service.dart';
@@ -124,11 +126,21 @@ class AppInitializationService {
 
       // Load environment variables (Fixed path from assets/.env to .env)
       await dotenv.load();
+      _log.info('App environment: ${AppEnv.name} (release=$kReleaseMode)',
+          service: _serviceName);
 
       // Initialize AI Service
       final apiKey = dotenv.env['OPENROUTER_API_KEY'] ?? '';
       final visionModel = dotenv.env['OPENROUTER_VISION_MODEL'];
-      AIService().initialize(apiKey: apiKey, visionModel: visionModel);
+      final model = dotenv.env['OPENROUTER_MODEL'];
+      final timeoutSeconds =
+          int.tryParse(dotenv.env['OPENROUTER_TIMEOUT_S'] ?? '');
+      AIService().initialize(
+        apiKey: apiKey,
+        visionModel: visionModel,
+        model: model,
+        timeoutSeconds: timeoutSeconds,
+      );
 
       _log.info('Core Flutter services initialized', service: _serviceName);
       _initializationResults['core'] = true;
@@ -183,14 +195,17 @@ class AppInitializationService {
         _log.info('Firebase already initialized in main()',
             service: _serviceName);
       }
-      // App Check: Android uses debug provider until the app ships via Google
-      // Play Store — Play Integrity only works for Play-distributed builds and
-      // will fail (error: unknown) for sideloaded APKs.
-      // TODO: switch androidProvider back to playIntegrity before Play Store submission.
+      // App Check: real attestation in release (Play Integrity on Android,
+      // App Attest on iOS); the debug provider is used only in debug builds for
+      // local/dev and CI. Release attestation is the anti-abuse gate for the AI
+      // proxy and all Firebase products — never ship the debug provider to prod.
+      // Prereqs before enforcing in console: register the app's Play Integrity
+      // (SHA-256) and Apple App Attest in the Firebase console.
       await FirebaseAppCheck.instance.activate(
-        androidProvider: AndroidProvider.debug,
+        androidProvider:
+            kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
         appleProvider:
-            kReleaseMode ? AppleProvider.deviceCheck : AppleProvider.debug,
+            kReleaseMode ? AppleProvider.appAttest : AppleProvider.debug,
       );
 
       // Explicitly configure Firestore persistence + unlimited cache
@@ -273,8 +288,10 @@ class AppInitializationService {
     try {
       _log.info('Starting services initialization...', service: _serviceName);
 
-      // Initialize independent services in parallel — hard cap of 15 s so a
+      // Initialize independent services in parallel — hard cap of 8 s so a
       // hanging network call (e.g. FCM getToken) can never freeze the splash.
+      // These run off the critical path (background init), so a fail-fast cap
+      // is safe: any service that times out simply finishes later or retries.
       await Future.wait([
         _initCrashlytics(),
         _initAnalytics(),
@@ -283,10 +300,10 @@ class AppInitializationService {
         _initRemoteConfig(),
         _initPerformance(),
       ]).timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 8),
         onTimeout: () {
           _log.warning(
-            'Services initialization timed out after 15s — continuing with partial init',
+            'Services initialization timed out after 8s — continuing with partial init',
             service: _serviceName,
           );
           return <void>[];
@@ -322,6 +339,9 @@ class AppInitializationService {
     try {
       await AnalyticsService().initialize();
       _initializationResults['analytics'] = true;
+      // Privacy-by-default: collection was initialized OFF. Apply the user's
+      // analytics consent (no user / no consent → stays off). Best-effort.
+      unawaited(ConsentService().applyCollectionConsent());
     } catch (e) {
       _initializationResults['analytics'] = false;
       _log.warning('Analytics service initialization failed',

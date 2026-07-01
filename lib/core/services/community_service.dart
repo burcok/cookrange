@@ -58,8 +58,12 @@ class CommunityService {
     if (_keywordsCacheTime == null ||
         now.difference(_keywordsCacheTime!) > const Duration(minutes: 5)) {
       try {
-        final doc =
-            await _firestore.collection('admin_config').doc('global').get();
+        // Read from the PUBLIC-read settings doc (admin_config is admin-only,
+        // so this read failed for normal users → the filter was silently dead).
+        final doc = await _firestore
+            .collection('settings')
+            .doc('content_filter')
+            .get();
         _cachedBlockedKeywords =
             List<String>.from(doc.data()?['blocked_keywords'] as List? ?? []);
         _keywordsCacheTime = now;

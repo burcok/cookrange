@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -68,7 +69,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     return Scaffold(
       backgroundColor: palette.background,
       body: uid == null
-          ? const AppErrorState(title: 'Sign in to view programs')
+          ? AppErrorState(title: l10n.translate('programs.error.signin_to_view'))
           : FutureBuilder<ProgramEnrollmentModel?>(
               future: ProgramService().getEnrollment(uid, _p.id),
               builder: (context, enrollSnap) {
@@ -148,11 +149,13 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
       ),
       flexibleSpace: FlexibleSpaceBar(
         background: _p.coverImageUrl != null
-            ? Image.network(
-                _p.coverImageUrl!,
+            ? CachedNetworkImage(
+                imageUrl: _p.coverImageUrl!,
                 fit: BoxFit.cover,
-                cacheWidth: 800,
-                errorBuilder: (_, __, ___) =>
+                memCacheWidth: 800,
+                placeholder: (_, __) =>
+                    _CoverGradient(category: _p.category),
+                errorWidget: (_, __, ___) =>
                     _CoverGradient(category: _p.category),
               )
             : _CoverGradient(category: _p.category),
@@ -298,13 +301,15 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
             onTap: () => openUserProfile(context, userId: _p.coachUid),
             child: ClipOval(
               child: _p.coachPhotoUrl != null
-                  ? Image.network(
-                      _p.coachPhotoUrl!,
+                  ? CachedNetworkImage(
+                      imageUrl: _p.coachPhotoUrl!,
                       width: 48.r,
                       height: 48.r,
                       fit: BoxFit.cover,
-                      cacheWidth: 192,
-                      errorBuilder: (_, __, ___) =>
+                      memCacheWidth: 192,
+                      placeholder: (_, __) =>
+                          _coachAvatarPlaceholder(primary),
+                      errorWidget: (_, __, ___) =>
                           _coachAvatarPlaceholder(primary),
                     )
                   : _coachAvatarPlaceholder(primary),

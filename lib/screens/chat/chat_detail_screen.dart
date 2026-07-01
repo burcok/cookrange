@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
 import 'package:cookrange/core/models/chat_model.dart';
@@ -100,6 +101,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+  /// Scope under which chat images are stored. For a 1:1 chat we use the sorted
+  /// participant pair (`uidA_uidB`) so the storage rule enforces participants-
+  /// only access; for group chats we fall back to the chat id.
+  String _chatImageScope() {
+    final c = widget.chat;
+    if (c.type == ChatType.private && c.participants.length == 2) {
+      final ids = [...c.participants]..sort();
+      return ids.join('_');
+    }
+    return c.id;
+  }
+
   Future<void> _pickAndSendImage() async {
     final picker = ImagePicker();
     final picked =
@@ -109,7 +122,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     setState(() => _isUploadingImage = true);
     try {
       final url = await StorageUploadService().uploadChatImage(
-        userId: _currentUserId,
+        chatScopeId: _chatImageScope(),
         imageFile: File(picked.path),
       );
       if (!mounted) return;
@@ -360,7 +373,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                               children: [
                                 if (chatImage != null)
                                   CircleAvatar(
-                                    backgroundImage: NetworkImage(chatImage),
+                                    backgroundImage:
+                                        CachedNetworkImageProvider(chatImage),
                                     radius: 16,
                                   )
                                 else
@@ -889,20 +903,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       borderRadius: br,
       child: Stack(
         children: [
-          Image.network(
-            message.text,
+          CachedNetworkImage(
+            imageUrl: message.text,
             fit: BoxFit.cover,
             width: 240,
-            loadingBuilder: (ctx, child, progress) => progress == null
-                ? child
-                : const SizedBox(
-                    width: 240,
-                    height: 180,
-                    child: Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
-            errorBuilder: (ctx, err, st) => SizedBox(
+            placeholder: (ctx, _) => const SizedBox(
+              width: 240,
+              height: 180,
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+            errorWidget: (ctx, _, __) => SizedBox(
               width: 240,
               height: 180,
               child: Center(

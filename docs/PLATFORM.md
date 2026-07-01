@@ -32,7 +32,7 @@ When you build or change anything, ask: **"Does this behave correctly on iOS *an
 |---|---|---|
 | Sign-in | Apple Sign-In (required by Apple if Google offered) + Google | Google + email |
 | Tracking | **ATT** prompt (`ATTConsentService`, `NSUserTrackingUsageDescription`, one-shot) | n/a |
-| App Check | DeviceCheck (release) / debug | Play Integrity (release) / debug |
+| App Check | **App Attest (release)** / debug provider only in debug builds | **Play Integrity (release)** / debug provider only in debug builds |
 | Push | APNs via FCM (needs APNs key in Firebase) | FCM direct |
 | Permissions | `Info.plist` usage strings (camera, mic, photos, location, tracking) | `AndroidManifest.xml` `<uses-permission>` + runtime requests |
 | Permission UX | Always precede the OS dialog with `PermissionPrimer.show()` **including a KVKK/GDPR disclosure** (purpose + whether stored + declinable) — see `docs/COMPLIANCE.md` §6 | same |
@@ -74,3 +74,22 @@ When you build or change anything, ask: **"Does this behave correctly on iOS *an
 - [ ] No iOS underscore in bundle ID; identifiers matched across code/config/console.
 
 See also `docs/firebase-console-setup.md` and `docs/roadmap/GO_LIVE.md` for store submission steps.
+
+## 7. Security Hardening (2026-06-30)
+**Done:**
+- **App Check — real providers in release.** Android uses **Play Integrity**, iOS uses **App Attest**.
+  The debug provider is wired **only in debug builds** (no longer forced everywhere).
+- **Cloud Functions backend deployed** (10 of 12 functions) to project `cookrange-app`. Config lives in
+  `firebase.json` + `.firebaserc`. Function environment via `functions/.env` with an **`APP_ENV`** switch:
+  `development` relaxes App Check enforcement and store-credential requirements so functions deploy without
+  them; `production` enforces both.
+- **Local data-at-rest encryption** — Hive boxes encrypted with **AES-256**; the key is stored in
+  `flutter_secure_storage` (Keychain / Keystore).
+
+**Still pending (platform hardening — NOT yet done):**
+- `android:usesCleartextTraffic` is **still `true`** in the production manifest (only Hive encryption
+  shipped — cleartext disable + `network_security_config` are not done).
+- No root / jailbreak / emulator / Frida detection.
+- No `FLAG_SECURE` (Android) / iOS screenshot/screen-recording protection.
+- No certificate pinning.
+- Release build is **not yet `--obfuscate`d**.

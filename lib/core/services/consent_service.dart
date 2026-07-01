@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/consent_model.dart';
+import 'analytics_service.dart';
 import 'auth_service.dart';
 import 'crashlytics_service.dart';
 
@@ -83,6 +84,16 @@ class ConsentService {
     }
   }
 
+  /// Applies the user's analytics consent to the Analytics + Crashlytics
+  /// collection flags (privacy-by-default: collection is OFF until granted).
+  /// Safe to call at startup and after every consent change. With no signed-in
+  /// user, [hasConsent] returns false, so collection stays off.
+  Future<void> applyCollectionConsent() async {
+    final granted = await hasConsent(ConsentPurpose.analytics);
+    await AnalyticsService().setConsentEnabled(granted);
+    await CrashlyticsService().setConsentEnabled(granted);
+  }
+
   /// Records the consent decisions captured at registration in one batch.
   /// Essential purposes (health data, AI, cross-border) are required to use the
   /// app and are granted here; analytics + marketing are optional opt-ins.
@@ -114,6 +125,8 @@ class ConsentService {
       await batch.commit();
       debugPrint('Initial consents recorded @ $kLegalPolicyVersion '
           '(analytics=$analytics, marketing=$marketing)');
+      // Apply the analytics decision to collection flags immediately.
+      unawaited(applyCollectionConsent());
       unawaited(CrashlyticsService().log('consent.initial_recorded'));
     } catch (e, st) {
       debugPrint('ConsentService.recordInitialConsents error: $e');
@@ -136,6 +149,10 @@ class ConsentService {
       await _col(uid).doc(purpose.docId).set(model.toFirestore());
       debugPrint(
           'Consent ${granted ? "granted" : "withdrawn"}: ${purpose.docId} @ $kLegalPolicyVersion');
+      // Re-apply collection flags when the analytics decision changes.
+      if (purpose == ConsentPurpose.analytics) {
+        unawaited(applyCollectionConsent());
+      }
       unawaited(CrashlyticsService()
           .log('consent.${granted ? "grant" : "withdraw"}.${purpose.docId}'));
     } catch (e, st) {

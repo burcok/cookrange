@@ -1,5 +1,6 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/recipe_model.dart';
 import '../models/meal_plan_model.dart';
 import '../models/ingredient_model.dart';
@@ -28,25 +29,101 @@ class StorageService {
 
   bool _isInitialized = false;
 
+  // AES-256 key for at-rest encryption of all local Hive boxes. The key itself
+  // lives in the platform secure enclave (iOS Keychain / Android Keystore-backed
+  // EncryptedSharedPreferences), never in a Hive box or SharedPreferences.
+  static const String _encKeyName = 'hive_enc_key_v1';
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
+
+  List<String> get _allBoxNames => [
+        _userBoxName,
+        _recipeBoxName,
+        _mealPlanBoxName,
+        _settingsBoxName,
+        _shoppingBoxName,
+        _hydrationBoxName,
+        _weightBoxName,
+      ];
+
   Future<void> init() async {
     if (_isInitialized) return;
 
     try {
       await Hive.initFlutter();
 
-      _userBox = await Hive.openBox(_userBoxName);
-      _recipeBox = await Hive.openBox(_recipeBoxName);
-      _mealPlanBox = await Hive.openBox(_mealPlanBoxName);
-      _settingsBox = await Hive.openBox(_settingsBoxName);
-      _shoppingBox = await Hive.openBox(_shoppingBoxName);
-      _hydrationBox = await Hive.openBox(_hydrationBoxName);
-      _weightBox = await Hive.openBox(_weightBoxName);
+      // Obtain (or create) the at-rest encryption key. If the secure enclave is
+      // unavailable we degrade to plaintext rather than bricking the app, but
+      // this is logged so it surfaces in monitoring.
+      final HiveAesCipher? cipher = await _resolveCipher();
+
+      _userBox = await Hive.openBox(_userBoxName, encryptionCipher: cipher);
+      _recipeBox = await Hive.openBox(_recipeBoxName, encryptionCipher: cipher);
+      _mealPlanBox =
+          await Hive.openBox(_mealPlanBoxName, encryptionCipher: cipher);
+      _settingsBox =
+          await Hive.openBox(_settingsBoxName, encryptionCipher: cipher);
+      _shoppingBox =
+          await Hive.openBox(_shoppingBoxName, encryptionCipher: cipher);
+      _hydrationBox =
+          await Hive.openBox(_hydrationBoxName, encryptionCipher: cipher);
+      _weightBox = await Hive.openBox(_weightBoxName, encryptionCipher: cipher);
 
       _isInitialized = true;
-      debugPrint('StorageService initialized successfully');
+      debugPrint('StorageService initialized (encrypted=${cipher != null})');
     } catch (e) {
       debugPrint('Error initializing StorageService: $e');
       rethrow;
+    }
+  }
+
+  /// Returns the AES cipher for box encryption, creating the key on first run
+  /// and migrating any pre-existing plaintext boxes to encrypted form. Returns
+  /// null only if the secure key store is unavailable (fail-soft).
+  Future<HiveAesCipher?> _resolveCipher() async {
+    try {
+      String? keyB64 = await _secureStorage.read(key: _encKeyName);
+      if (keyB64 == null) {
+        // First run with encryption enabled: mint a key, persist it, then
+        // migrate any plaintext data written by older builds.
+        final key = Hive.generateSecureKey();
+        keyB64 = base64Encode(key);
+        await _secureStorage.write(key: _encKeyName, value: keyB64);
+        await _migratePlaintextBoxes(HiveAesCipher(key));
+        return HiveAesCipher(key);
+      }
+      return HiveAesCipher(base64Decode(keyB64));
+    } catch (e) {
+      debugPrint('StorageService: secure key unavailable, '
+          'falling back to plaintext boxes: $e');
+      return null;
+    }
+  }
+
+  /// One-time migration: reads each existing plaintext box, deletes it on disk,
+  /// and rewrites it encrypted. Per-box best-effort so one failure can't strand
+  /// the rest. Safe on fresh installs (no boxes exist → no-op).
+  Future<void> _migratePlaintextBoxes(HiveAesCipher cipher) async {
+    for (final name in _allBoxNames) {
+      try {
+        if (!await Hive.boxExists(name)) continue;
+        final plain = await Hive.openBox(name); // plaintext
+        final entries = <dynamic, dynamic>{
+          for (final k in plain.keys) k: plain.get(k)
+        };
+        await plain.close();
+        await Hive.deleteBoxFromDisk(name);
+        final encrypted =
+            await Hive.openBox(name, encryptionCipher: cipher);
+        if (entries.isNotEmpty) await encrypted.putAll(entries);
+        await encrypted.close();
+        debugPrint('StorageService: migrated "$name" to encrypted '
+            '(${entries.length} entries)');
+      } catch (e) {
+        debugPrint('StorageService: migration of "$name" failed: $e');
+      }
     }
   }
 

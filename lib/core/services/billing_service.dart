@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io' show Platform;
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-
-import 'ai_credit_service.dart';
 
 /// Product IDs — must match what you register in App Store Connect + Google Play.
 class BillingProducts {
@@ -27,7 +25,6 @@ class BillingService {
   BillingService._internal();
 
   final InAppPurchase _iap = InAppPurchase.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   StreamSubscription<List<PurchaseDetails>>? _subscription;
   List<ProductDetails> _products = [];
@@ -162,11 +159,11 @@ class BillingService {
 
     if (purchase.status == PurchaseStatus.purchased ||
         purchase.status == PurchaseStatus.restored) {
-      if (purchase.productID == BillingProducts.aiCreditsTopUp10) {
-        await _grantAiCreditsTopUp(purchase);
-      } else {
-        await _grantPremium(purchase);
-      }
+      // Entitlement is granted SERVER-SIDE only after the store validates the
+      // receipt (Cloud Function `validatePurchase`). The client NEVER writes
+      // premium/credits itself — see audit C7. The server mirrors the resulting
+      // tier onto the user doc, which the app's UI reads.
+      await _validatePurchaseServerSide(purchase);
     }
 
     if (purchase.pendingCompletePurchase) {
@@ -176,39 +173,33 @@ class BillingService {
     statusNotifier.value = BillingStatus.idle;
   }
 
-  Future<void> _grantAiCreditsTopUp(PurchaseDetails purchase) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
-      debugPrint('BillingService._grantAiCreditsTopUp: no authenticated user');
-      return;
+  /// Sends the purchase to the server for receipt validation + entitlement
+  /// granting. Throws nothing fatal — surfaces an error status on failure.
+  Future<void> _validatePurchaseServerSide(PurchaseDetails purchase) async {
+    final platform = Platform.isIOS ? 'ios' : 'android';
+    final payload = <String, dynamic>{
+      'platform': platform,
+      'productId': purchase.productID,
+    };
+    if (platform == 'ios') {
+      // App Store Server API resolves the entitlement from the transaction id.
+      payload['transactionId'] = purchase.purchaseID;
+    } else {
+      payload['purchaseToken'] =
+          purchase.verificationData.serverVerificationData;
     }
-    // In production: verify the receipt server-side before granting credits.
-    await AiCreditService().addBonusCredits(uid, 10);
-    debugPrint('BillingService: granted +10 AI credits to uid=$uid '
-        '(productID=${purchase.productID})');
-  }
-
-  Future<void> _grantPremium(PurchaseDetails purchase) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
-    // Determine expiry based on product.
-    // In production: verify receipt server-side (use your Cloud Function or
-    // RevenueCat webhook) before writing to Firestore.
-    final expiryDays = purchase.productID == BillingProducts.yearly ? 365 : 31;
-    final expiresAt = DateTime.now().add(Duration(days: expiryDays));
-
     try {
-      await _db.collection('users').doc(uid).update({
-        'subscription_tier': 'premium',
-        'subscription_product_id': purchase.productID,
-        'subscription_expires_at': Timestamp.fromDate(expiresAt),
-        'subscription_purchase_token':
-            purchase.verificationData.serverVerificationData,
-      });
-      debugPrint('BillingService: granted premium to $uid until $expiresAt');
+      final res = await FirebaseFunctions.instance
+          .httpsCallable('validatePurchase')
+          .call(payload);
+      debugPrint('BillingService: validatePurchase → ${res.data}');
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('BillingService: validatePurchase failed: '
+          '${e.code} ${e.message}');
+      statusNotifier.value = BillingStatus.error;
     } catch (e) {
-      debugPrint('BillingService._grantPremium Firestore error: $e');
+      debugPrint('BillingService: validatePurchase error: $e');
+      statusNotifier.value = BillingStatus.error;
     }
   }
 

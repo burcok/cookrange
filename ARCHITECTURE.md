@@ -16,6 +16,8 @@ Cloud Functions** layer, with **OpenRouter** for LLM inference (proxied server-s
 - **Backend:** Firestore (source of truth) + Storage + Auth + Messaging + Remote Config +
   Crashlytics + Performance + App Check
 - **AI:** OpenRouter via a Cloud Function proxy (`aiProxy`) that enforces quota + hides the key
+- **Trust:** **server-authoritative** — the client is not trusted for entitlements, AI credits, the
+  economy, or moderation state (see §6.1)
 - **Locales:** EN + TR (parity-gated in CI)
 
 ---
@@ -96,8 +98,9 @@ lib/
 │   └── gym/ coach/ programs/ admin/   ← business + admin (role-gated)
 └── scripts/                   in-app one-off scripts
 
-functions/index.js             Cloud Functions: aiProxy (+ quota), onInAppNotificationCreated,
-                               onChatMessageCreated, executeBroadcast
+functions/                     Cloud Functions: index.js (aiProxy + quota, onInAppNotificationCreated,
+                               onChatMessageCreated, executeBroadcast); entitlements.js, purchases.js,
+                               economy.js, account.js (server-authoritative); config.js (APP_ENV)
 ```
 
 ---
@@ -156,15 +159,55 @@ writes **structured** data only → `onInAppNotificationCreated` Cloud Function 
   rules. Map in `docs/DATA_MODEL.md`.
 - **Storage** — profile photos, post/chat images, application docs, gym logos. Rules enforce
   owner-write + size/type limits.
-- **Cloud Functions** (`functions/index.js`):
-  - `aiProxy` — HTTPS; token + App Check validation, server-side AI quota, OpenRouter proxy.
+- **Cloud Functions** (`functions/`):
+  - `aiProxy` — HTTPS; token + App Check validation, model allowlist, `max_tokens`/payload caps,
+    fail-closed server-side AI quota + per-uid rate limit, no wildcard CORS, OpenRouter proxy.
   - `onInAppNotificationCreated` — Firestore trigger; push fan-out + mute prefs.
   - `onChatMessageCreated` — Firestore trigger; chat push.
   - `executeBroadcast` — internal helper for admin broadcasts.
+  - `entitlements.js` — server-only `grantPremium` / `revokePremium` / `grantBonusCredits` →
+    `entitlements/{uid}` + `ai_credits/{uid}`.
+  - `purchases.js` — `validatePurchase` (Apple App Store Server API + Google Play Developer API
+    receipt validation, token dedupe, fail-closed) + `appStoreNotifications` / `playRtdn` (revoke on
+    refund/expiry).
+  - `economy.js` — `applyReferral` (server-validated no-self-referral / one-per-account / max-uses,
+    server commission ledger).
+  - `account.js` — `deleteUserAccount` (recursive GDPR/KVKK erasure of the whole user subtree +
+    Storage + Auth user).
+  - `config.js` — `APP_ENV` (`development` | `production`); development relaxes App Check + store-cred
+    requirements so functions deploy without them.
 - **Remote Config** — `ai_proxy_url`, `ai_model`, `maintenance_mode`, `min_version`,
   feature flags, `max_meal_retries`. Read via `RemoteConfigService` (Firestore admin_config
   overrides RC for instant effect).
-- **App Check** — Play Integrity (Android) / DeviceCheck (iOS) / debug; soft-enforced at proxy.
+- **App Check** — Play Integrity (Android) / App Attest (iOS) / debug; enforced at the proxy
+  (gated by `APP_ENV`), real providers required in release.
+
+### 6.1 Server-authoritative trust boundary
+
+The client **renders** state but is never the authority for anything of value or safety-critical.
+Premium, AI credits, the referral/commission economy, purchase validation, and account erasure are
+**server-only** (the Cloud Functions above + locked Firestore rules — deployed to the `cookrange-app`
+project; app not yet publicly launched).
+
+- **Locked Firestore rules** — `users/{uid}` updates are field-locked: clients cannot write
+  `subscription_tier`, `ai_credits_*`, `referral_used`, or `is_banned` (server/admin only;
+  `user_roles` is intentionally not field-locked because admin power is gated server-side via
+  `admin/status`). `ai_credits` / `entitlements` are owner-read + server-write; `processed_purchases`,
+  `commissions` (write-only), and `failed_login_attempts` are server-only; `referrals` updates are
+  owner/admin-only; content-length caps apply to posts/comments/chat/signals.
+- **Client posture** — `AiCreditService` is **read-only** over the server credit ledger; billing and
+  referral flows call server callables; `AuthService.deleteAccount` calls the server erasure function;
+  the AI proxy is mandatory in release (bundled key is debug-only) with real App Check providers.
+- **Hardening on the data path** — Hive boxes are AES-256 encrypted (key in `flutter_secure_storage`);
+  Analytics/Crashlytics collection is privacy-by-default OFF, gated on consent; a complete GDPR data
+  export, deterministic allergen safety filter on meal plans, prompt-injection guard, null-safe
+  parsing of attacker-controlled docs, and a safe URL launcher round it out.
+- **Deferred to go-live** (tracked in `TODO.md`): Android cleartext traffic still enabled (only Hive
+  encryption done); no root/jailbreak detection, `FLAG_SECURE`, cert-pinning, or obfuscation; Storage
+  chat-image scoping + upload scanning/EXIF strip; minimizing the world-readable user doc; fully
+  server-authored notifications/friends; point-of-use AI consent; server-side streak/reputation.
+  Console/owner-only steps: rotate the leaked Admin SA key, App Check registration + enforcement,
+  store accounts + creds + iOS APNs, OpenRouter spend cap.
 
 ---
 

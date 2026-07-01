@@ -752,7 +752,10 @@
     "request_sent_to": "Request sent to {name}",
     "follow_action": "Follow",
     "unfollow_action": "Unfollow",
-    "followers_count": "Followers"
+    "followers_count": "Followers",
+    "settings": {
+      "referral_code_placeholder": "AB3X9K"
+    }
   },
   "offline": {
     "title": "Offline Mode",
@@ -1074,7 +1077,9 @@
     "retry_in_days": "Retry in {days} days",
     "next": "Next",
     "error": "Error",
-    "stale": "Stale"
+    "stale": "Stale",
+    "something_wrong": "Something went wrong",
+    "error_with_details": "Error: {details}"
   },
   "errors": {
     "general": "Something went wrong",
@@ -1233,6 +1238,10 @@
       "target": "Target",
       "empty_title": "No logs yet",
       "empty_subtitle": "Log your first meal and start building your streak!"
+    },
+    "error": {
+      "log_meal_failed": "Could not log meal: {details}",
+      "swap_meal_failed": "Could not swap meal: {details}"
     }
   },
   "ai_chat": {
@@ -1794,7 +1803,11 @@
     "history_empty_title": "No analyses yet",
     "history_empty_msg": "Your past food analyses will appear here.",
     "photo_unavailable": "Photo analysis isn't available right now.",
-    "express_snap_btn": "Snap & Log"
+    "express_snap_btn": "Snap & Log",
+    "ai_disclosure_title": "Photo analysis",
+    "ai_disclosure_body": "To estimate nutrition, your photo is sent to our AI provider (OpenRouter), which may process it on servers outside your country. It is used only for this analysis.",
+    "ai_disclosure_accept": "Accept & analyze",
+    "ai_disclosure_cancel": "Cancel"
   },
   "barcode": {
     "scan_btn": "Scan Barcode",
@@ -2178,7 +2191,32 @@
     "details_btn": "Details",
     "join_qr_btn": "Scan QR to Join",
     "join_qr_title": "Scan Invite QR",
-    "join_qr_subtitle": "Scan the gym's invite QR code to join as a member"
+    "join_qr_subtitle": "Scan the gym's invite QR code to join as a member",
+    "community": {
+      "dialog_comments_title": "Comments",
+      "error": {
+        "update_post_failed": "Could not update post.",
+        "delete_post_failed": "Could not delete post.",
+        "create_post_failed": "Could not create post. Try again.",
+        "send_comment_failed": "Could not send comment.",
+        "delete_comment_failed": "Could not delete comment."
+      },
+      "comments": {
+        "empty_title": "No comments yet",
+        "empty_message": "Be the first to comment."
+      }
+    },
+    "qr": {
+      "error": {
+        "not_found": "Gym not found",
+        "load_failed": "Could not load gym data."
+      }
+    },
+    "leaderboard": {
+      "error": {
+        "load_wars": "Could not load wars"
+      }
+    }
   },
   "coach": {
     "setup_title": "Coach Profile Setup",
@@ -2318,7 +2356,42 @@
     "nearby_consent_title": "Find Coaches Near You",
     "nearby_consent_rationale": "Cookrange will use your device location only to sort coaches by distance. Your location is processed on your device and is NOT sent to or stored on our servers (KVKK / GDPR).",
     "not_found_title": "Coach Not Found",
-    "not_found_body": "This coach profile does not exist."
+    "not_found_body": "This coach profile does not exist.",
+    "clients": {
+      "success": {
+        "accepted": "Client accepted!"
+      },
+      "error": {
+        "accept_failed": "Could not accept client.",
+        "decline_failed": "Could not decline request."
+      },
+      "warning": {
+        "declined": "Request declined."
+      }
+    },
+    "profile": {
+      "section_specializations": "Specializations",
+      "section_certifications": "Certifications",
+      "stat_clients": "Clients",
+      "stat_rate": "Rating"
+    },
+    "coaching": {
+      "error": {
+        "end_failed": "Could not end coaching. Try again."
+      },
+      "warning": {
+        "ai_not_configured": "AI reports require AI configuration."
+      }
+    },
+    "client_detail": {
+      "section_ai_report": "AI Report",
+      "section_focus_areas": "Focus Areas",
+      "section_next_steps": "Next Steps"
+    },
+    "dashboard": {
+      "see_all": "See all ({count})",
+      "action_edit_profile": "Edit Profile"
+    }
   },
   "ai": {
     "twin_title": "AI Body Projection",
@@ -2762,7 +2835,57 @@
     "notif_title_hint": "Title",
     "notif_body_hint": "Message",
     "notif_sent": "Notification sent",
-    "notif_send": "Send"
+    "notif_send": "Send",
+    "validation": {
+      "title_message_required": "Title (EN) and Message (EN) are required.",
+      "uid_required": "Please enter a user UID."
+    },
+    "credits": {
+      "granted": "Granted {count} credits"
+    },
+    "ai_usage": {
+      "no_heavy_users": "No heavy AI users today"
+    },
+    "referral": {
+      "empty_state": "No referral codes yet"
+    },
+    "dishes": {
+      "label_protein": "Protein g",
+      "label_carbs": "Carbs g",
+      "label_fat": "Fat g",
+      "label_fiber": "Fiber g"
+    },
+    "users": {
+      "status_banned": "Banned"
+    },
+    "cost_title": "Cost & Profit Analytics",
+    "cost_error_title": "Couldn't load analytics",
+    "cost_error": "Failed to compute the cost estimate. Tap retry.",
+    "cost_estimate_disclaimer": "Estimates only — based on your usage × unit prices, not actual invoices.",
+    "cost_monthly_profit": "Monthly Profit (est.)",
+    "cost_margin": "Margin",
+    "cost_revenue": "Revenue",
+    "cost_cost": "Cost",
+    "cost_breakdown": "Cost Breakdown",
+    "cost_line_firestore_ops": "Firestore operations",
+    "cost_line_firestore_storage": "Firestore storage",
+    "cost_line_storage": "Cloud Storage + egress",
+    "cost_line_functions": "Cloud Functions",
+    "cost_line_ai": "AI (OpenRouter)",
+    "cost_revenue_per_user": "Revenue & Per-User",
+    "cost_arpu": "ARPU (revenue/user)",
+    "cost_per_user": "Cost / user",
+    "cost_premium_users": "Premium users",
+    "cost_total_users": "Total users",
+    "cost_projection": "Projection (What-If)",
+    "cost_projection_hint": "Estimated monthly profit at scale",
+    "cost_assumptions": "Assumptions",
+    "cost_assumption_reads": "Reads / active user / day",
+    "cost_assumption_writes": "Writes / active user / day",
+    "cost_assumption_image": "Avg image size",
+    "cost_assumption_dau": "Daily active users",
+    "cost_entry_title": "Cost & Profit",
+    "cost_entry_subtitle": "Usage cost, revenue & profit estimate"
   },
   "intro": {
     "skip": "Skip",
@@ -3055,6 +3178,17 @@
     "tier_legend": {
       "title": "Legend",
       "desc": "Reached the Legend reputation tier"
+    }
+  },
+  "app": {
+    "name": "Cookrange",
+    "tagline": "AI-Powered Nutrition"
+  },
+  "programs": {
+    "error": {
+      "signin_to_view": "Sign in to view programs",
+      "signin_to_view_yours": "Sign in to view your programs",
+      "load_failed": "Failed to load programs"
     }
   }
 }

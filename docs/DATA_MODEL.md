@@ -12,7 +12,7 @@
 ### User-scoped (under `users/{uid}`)
 | Path | Purpose | Access (rules) |
 |---|---|---|
-| `users/{uid}` | Public profile + onboarding_data (streak, goals, activity, role, tier) | Read: any auth · Create/Update: owner or admin · Delete: owner |
+| `users/{uid}` | Public profile + onboarding_data (streak, goals, activity, role, tier) | Read: any auth · Create/Update: owner or admin · Delete: owner. **FIELD-LOCKED**: clients cannot write `subscription_tier`/`subscription_*`/`ai_credits_*`/`referral_used`/`is_banned` — these are server/admin-only (entitlements + economy are server-authoritative). |
 | `users/{uid}/private/nutrition` | **PII**: height/weight/gender/birth_date, allergies, dietary restrictions, disliked foods, avoid ingredients | Owner only |
 | `users/{uid}/meal_plans/current` | Current weekly meal plan (+ generationPromptHash) | Owner only |
 | `users/{uid}/meal_plan_history/{key}` | Archived weekly plans (key = `YYYY-MM-DD` week start) | Owner only |
@@ -26,7 +26,7 @@
 | `users/{uid}/notifications/{id}` | In-app notifications (structured, no stored text) | Owner read/write |
 | `users/{uid}/notification_preferences/{prefId}` | Per-group mute prefs | Owner only |
 | `users/{uid}/program_enrollments/{programId}` | Enrolled programs + progress | Owner only |
-| `users/{uid}/commissions/{id}` | Affiliate/coach commissions | Read owner · create any auth · update owner · no delete |
+| `users/{uid}/commissions/{id}` | Affiliate/coach commissions | Read owner · **write server-only** (economy is server-authoritative) · no delete |
 | `users/{uid}/payout_requests/{id}` | Payout requests | Owner only |
 | `users/{uid}/ai_twin_projections/{id}` | Saved AI fitness projections (locale-tagged) | Owner only |
 | `users/{uid}/consents/{purpose}` | KVKK/GDPR consent records (granted, policy_version, updated_at) per purpose | Owner only |
@@ -41,17 +41,17 @@
 | Path | Purpose | Access (rules) |
 |---|---|---|
 | `dishes/{id}` | Recipe/dish DB (seeded; TR + intl) | Read any auth · write admin only |
-| `posts/{id}` | Community posts | Read any auth · create author · update author/counters · delete author |
-| `posts/{id}/comments/{id}` | Post comments | Read any auth · create author · update author/counter · delete author |
+| `posts/{id}` | Community posts | Read any auth · create author · update author/counters · delete author. Content-length capped at rule level. |
+| `posts/{id}/comments/{id}` | Post comments | Read any auth · create author · update author/counter · delete author. Content-length capped. |
 | `posts/{id}/likes|reactions/{userId}` | Like/reaction toggles | Read any auth · write owner |
 | `chats/{id}` | Chat threads (private/group/system/gym) | Participants only |
-| `chats/{id}/messages/{id}` | Chat messages | Participants only |
-| `signals/{id}` | Ephemeral social broadcasts (TTL via expiresAt) | Read any auth · create owner · delete owner |
+| `chats/{id}/messages/{id}` | Chat messages | Participants only. Content-length capped. |
+| `signals/{id}` | Ephemeral social broadcasts (TTL via expiresAt) | Read any auth · create owner · delete owner. Content-length capped. |
 | `notifications/{uid}/items/{id}` | (legacy alias of user notifications) | Owner |
 | `reports/{id}` | Moderation reports | Create author only · read/update **admin backend only** |
 | `privacy_requests/{id}` | DSAR requests (uid, email, type, message, status, admin_note) | Create owner · read owner/admin · update admin · no delete |
 | `challenges/{id}` | Challenges (legacy; mostly sunset) | Read any auth · create/own |
-| `referrals/{code}` | Referral codes (owner, usedByUids, maxUses) | Read any auth · create owner · update used_by only |
+| `referrals/{code}` | Referral codes (owner, usedByUids, maxUses) | Read any auth · create owner · update owner/admin only with `owner_uid` pinned (immutable) |
 | `gyms/{id}` | Gym profiles | Read any auth · create owner · update owner/admin · delete owner |
 | `gyms/{id}/members/{id}` | Gym members | Read owner/member · write owner |
 | `gyms/{id}/posts/{id}` (+ `/comments`) | Gym community feed | Read any auth · create author · delete author/owner |
@@ -64,7 +64,9 @@
 | `coach_applications/{id}` | Coach applications | Read applicant/admin · create applicant · update admin |
 | `programs/{id}` (+ `/weeks/{id}/sessions`) | Marketplace programs | Read any auth · create coach/demo · update coach/admin · delete coach |
 | `squads/{id}` | Streak Squads | Read member · create creator · update member · delete creator |
-| `ai_credits/{uid}` | Daily AI quota (used_today, reset_at, is_premium, bonus_credits) | Owner; server-authoritative |
+| `ai_credits/{uid}` | Server AI ledger — daily quota (used_today, reset_at, is_premium, bonus_credits) | Owner read · **server/admin write only** (server-authoritative; client cannot mint credits) |
+| `entitlements/{uid}` | Premium entitlement (tier, expiry) — source of truth for paid access; server mirrors `subscription_tier` to the user doc | Owner read · **server/admin write only** |
+| `processed_purchases/{id}` | Purchase-token replay guard (dedupes IAP tokens so a receipt can't be redeemed twice) | **Fully server-only** (no client read or write) |
 | `admin_audit/{id}` | Append-only admin action log | Create admin · read admin · no update/delete |
 | `admin_config/{doc}` | Feature flags, maintenance, AI model, blocked keywords | Admin only |
 | `broadcasts/{id}` | Admin broadcast messages | Admin create/read/update |
@@ -220,3 +222,11 @@ Add an index here for **every new query shape** (`where` + `orderBy` combos). Cu
   the whole doc.
 - Immutable collections (reviews, audit) deny update/delete.
 - PII never on the public user doc — it lives in `users/{uid}/private/nutrition`.
+- **Server-authoritative state is never client-writable.** Entitlements (`entitlements`, the user
+  doc's `subscription_*`/`subscription_tier`), AI credits (`ai_credits`, the user doc's
+  `ai_credits_*`), economy (`commissions`), and trust flags (`is_banned`, `referral_used`) are
+  written only by Cloud Functions / admin. The public user doc is **field-locked**: client updates
+  must not touch any of those fields. IAP grants flow through a server purchase verifier guarded by
+  `processed_purchases` (replay protection).
+- Content-length caps belong in the rule (`request.resource.data.<field>.size() < N`) for any
+  user-authored free text — posts, comments, chat messages, signals.

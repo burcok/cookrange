@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/services/admin_service.dart';
+import '../../../core/utils/firestore_count.dart';
 import '../../../core/widgets/ds/ds.dart';
 import '../../admin/admin_panel_screen.dart';
 import '../../coach/coach_dashboard_screen.dart';
@@ -132,14 +133,18 @@ class _GymCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final accentColor = Theme.of(context).primaryColor;
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('members')
-          .where('gym_uid', isEqualTo: user.uid)
-          .where('status', isEqualTo: 'active')
-          .snapshots(),
+    // Member COUNT only — use the cheap aggregation poll, not a whole-collection
+    // listener on the always-visible home screen (was a major read-cost sink).
+    return StreamBuilder<int>(
+      stream: pollCount(
+        FirebaseFirestore.instance
+            .collection('members')
+            .where('gym_uid', isEqualTo: user.uid)
+            .where('status', isEqualTo: 'active'),
+        interval: const Duration(minutes: 2),
+      ),
       builder: (context, snapshot) {
-        final count = snapshot.data?.size ?? 0;
+        final count = snapshot.data ?? 0;
         final body = l10n.translate(
           'home.role_card.gym_members',
           variables: {'n': '$count'},

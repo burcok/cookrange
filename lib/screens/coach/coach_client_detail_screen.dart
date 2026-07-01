@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -71,7 +72,7 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.translate('common.cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -91,13 +92,15 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
     } catch (e) {
       debugPrint('CoachClientDetailScreen._endCoaching error: $e');
       if (!mounted) return;
-      AppSnackBar.error(context, 'Could not end coaching. Try again.');
+      AppSnackBar.error(context,
+          AppLocalizations.of(context).translate('coach.coaching.error.end_failed'));
     }
   }
 
   Future<void> _generateAiReport() async {
     if (!AIService().isConfigured) {
-      AppSnackBar.warning(context, 'AI reports require AI configuration.');
+      AppSnackBar.warning(context,
+          AppLocalizations.of(context).translate('coach.coaching.warning.ai_not_configured'));
       return;
     }
 
@@ -319,7 +322,7 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
           radius: 32,
           backgroundColor: primary.withValues(alpha: 0.15),
           backgroundImage: client.clientPhotoURL != null
-              ? NetworkImage(client.clientPhotoURL!)
+              ? CachedNetworkImageProvider(client.clientPhotoURL!)
               : null,
           child: client.clientPhotoURL == null
               ? Icon(Icons.person_rounded, color: primary, size: 32)
@@ -477,7 +480,7 @@ class _AiReportCard extends StatelessWidget {
             children: [
               Icon(Icons.auto_awesome_rounded, size: 16, color: primary),
               const SizedBox(width: 6),
-              Text('AI Report',
+              Text(AppLocalizations.of(context).translate('coach.client_detail.section_ai_report'),
                   style: AppText.of(context)
                       .labelS
                       .copyWith(color: primary, fontWeight: FontWeight.w700)),
@@ -506,7 +509,7 @@ class _AiReportCard extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           if (focusAreas.isNotEmpty) ...[
-            Text('Focus Areas',
+            Text(AppLocalizations.of(context).translate('coach.client_detail.section_focus_areas'),
                 style: AppText.of(context).labelS.copyWith(
                     color: palette.textPrimary, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
@@ -528,7 +531,7 @@ class _AiReportCard extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           if (nextSteps.isNotEmpty) ...[
-            Text('Next Steps',
+            Text(AppLocalizations.of(context).translate('coach.client_detail.section_next_steps'),
                 style: AppText.of(context).labelS.copyWith(
                     color: palette.textPrimary, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),

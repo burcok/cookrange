@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -591,10 +592,14 @@ class _GymMapList extends StatelessWidget {
                     child: gym.logoUrl != null
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(AppRadius.sm),
-                            child: Image.network(gym.logoUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    _initials(gym.name, primary)),
+                            child: CachedNetworkImage(
+                              imageUrl: gym.logoUrl!,
+                              fit: BoxFit.cover,
+                              placeholder: (c, _) =>
+                                  _initials(gym.name, primary),
+                              errorWidget: (c, _, __) =>
+                                  _initials(gym.name, primary),
+                            ),
                           )
                         : _initials(gym.name, primary),
                   ),
@@ -718,7 +723,7 @@ class _MyGymsStrip extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return AppErrorState(
-            title: 'Something went wrong',
+            title: l10n.translate('common.something_wrong'),
             message: snapshot.error.toString(),
             onRetry: () {},
           );
@@ -797,11 +802,11 @@ class _MyGymChip extends StatelessWidget {
               child: gym.logoUrl != null
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(AppRadius.sm),
-                      child: Image.network(
-                        gym.logoUrl!,
+                      child: CachedNetworkImage(
+                        imageUrl: gym.logoUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            _initials(gym.name, primary),
+                        placeholder: (c, _) => _initials(gym.name, primary),
+                        errorWidget: (c, _, __) => _initials(gym.name, primary),
                       ),
                     )
                   : _initials(gym.name, primary),
@@ -908,11 +913,11 @@ class _GymCard extends StatelessWidget {
               child: gym.logoUrl != null
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(AppRadius.sm),
-                      child: Image.network(
-                        gym.logoUrl!,
+                      child: CachedNetworkImage(
+                        imageUrl: gym.logoUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            _initials(gym.name, primary),
+                        placeholder: (c, _) => _initials(gym.name, primary),
+                        errorWidget: (c, _, __) => _initials(gym.name, primary),
                       ),
                     )
                   : _initials(gym.name, primary),

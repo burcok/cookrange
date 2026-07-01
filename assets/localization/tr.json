@@ -752,7 +752,10 @@
     "request_sent_to": "{name} kullanıcısına istek gönderildi",
     "follow_action": "Takip Et",
     "unfollow_action": "Takibi Bırak",
-    "followers_count": "Takipçi"
+    "followers_count": "Takipçi",
+    "settings": {
+      "referral_code_placeholder": "AB3X9K"
+    }
   },
   "offline": {
     "title": "Çevrimdışı Mod",
@@ -1074,7 +1077,9 @@
     "retry_in_days": "Tekrar {days} gün içinde denenecek",
     "next": "İleri",
     "error": "Hata",
-    "stale": "Eski"
+    "stale": "Eski",
+    "something_wrong": "Bir şeyler ters gitti",
+    "error_with_details": "Hata: {details}"
   },
   "errors": {
     "general": "Bir şeyler yanlış gitti",
@@ -1233,6 +1238,10 @@
       "target": "Hedef",
       "empty_title": "Henüz kayıt yok",
       "empty_subtitle": "İlk öğününü kaydet ve serine başla!"
+    },
+    "error": {
+      "log_meal_failed": "Öğün kaydedilemedi: {details}",
+      "swap_meal_failed": "Öğün değiştirilemedi: {details}"
     }
   },
   "ai_chat": {
@@ -1794,7 +1803,11 @@
     "history_empty_title": "Henüz analiz yok",
     "history_empty_msg": "Geçmiş yemek analizleriniz burada görünecek.",
     "photo_unavailable": "Fotoğraf analizi şu an kullanılamıyor.",
-    "express_snap_btn": "Fotoğrafla Kaydet"
+    "express_snap_btn": "Fotoğrafla Kaydet",
+    "ai_disclosure_title": "Fotoğraf analizi",
+    "ai_disclosure_body": "Besin değerini tahmin etmek için fotoğrafın AI sağlayıcımıza (OpenRouter) gönderilir; bu işlem ülken dışındaki sunucularda gerçekleşebilir. Yalnızca bu analiz için kullanılır.",
+    "ai_disclosure_accept": "Kabul et ve analiz et",
+    "ai_disclosure_cancel": "İptal"
   },
   "barcode": {
     "scan_btn": "Barkod Tara",
@@ -2178,7 +2191,32 @@
     "details_btn": "Detaylar",
     "join_qr_btn": "QR ile Katıl",
     "join_qr_title": "Davet QR'ı Tara",
-    "join_qr_subtitle": "Üye olmak için spor salonunun davet QR kodunu tara"
+    "join_qr_subtitle": "Üye olmak için spor salonunun davet QR kodunu tara",
+    "community": {
+      "dialog_comments_title": "Yorumlar",
+      "error": {
+        "update_post_failed": "Gönderi güncellenemedi.",
+        "delete_post_failed": "Gönderi silinemedi.",
+        "create_post_failed": "Gönderi oluşturulamadı. Tekrar deneyin.",
+        "send_comment_failed": "Yorum gönderilemedi.",
+        "delete_comment_failed": "Yorum silinemedi."
+      },
+      "comments": {
+        "empty_title": "Henüz yorum yok",
+        "empty_message": "İlk yorumu sen yap."
+      }
+    },
+    "qr": {
+      "error": {
+        "not_found": "Salon bulunamadı",
+        "load_failed": "Salon verileri yüklenemedi."
+      }
+    },
+    "leaderboard": {
+      "error": {
+        "load_wars": "Rekabetler yüklenemedi"
+      }
+    }
   },
   "coach": {
     "setup_title": "Antrenör Profili Kurulumu",
@@ -2318,7 +2356,42 @@
     "nearby_consent_title": "Yakınındaki Antrenörleri Bul",
     "nearby_consent_rationale": "Cookrange, antrenörleri mesafeye göre sıralamak için yalnızca cihazınızdaki konumu kullanır. Konumunuz sunucularımıza gönderilmez ve depolanmaz (KVKK / GDPR).",
     "not_found_title": "Antrenör Bulunamadı",
-    "not_found_body": "Bu antrenör profili mevcut değil."
+    "not_found_body": "Bu antrenör profili mevcut değil.",
+    "clients": {
+      "success": {
+        "accepted": "Danışan kabul edildi!"
+      },
+      "error": {
+        "accept_failed": "Danışan kabul edilemedi.",
+        "decline_failed": "İstek reddedilemedi."
+      },
+      "warning": {
+        "declined": "İstek reddedildi."
+      }
+    },
+    "profile": {
+      "section_specializations": "Uzmanlıklar",
+      "section_certifications": "Sertifikalar",
+      "stat_clients": "Danışanlar",
+      "stat_rate": "Puan"
+    },
+    "coaching": {
+      "error": {
+        "end_failed": "Koçluk sonlandırılamadı. Tekrar deneyin."
+      },
+      "warning": {
+        "ai_not_configured": "AI raporları için AI yapılandırması gerekir."
+      }
+    },
+    "client_detail": {
+      "section_ai_report": "AI Raporu",
+      "section_focus_areas": "Odak Alanları",
+      "section_next_steps": "Sonraki Adımlar"
+    },
+    "dashboard": {
+      "see_all": "Tümünü gör ({count})",
+      "action_edit_profile": "Profili Düzenle"
+    }
   },
   "ai": {
     "twin_title": "Yapay Zeka Vücut Projeksiyonu",
@@ -2762,7 +2835,57 @@
     "notif_title_hint": "Başlık",
     "notif_body_hint": "Mesaj",
     "notif_sent": "Bildirim gönderildi",
-    "notif_send": "Gönder"
+    "notif_send": "Gönder",
+    "validation": {
+      "title_message_required": "Başlık (EN) ve Mesaj (EN) zorunludur.",
+      "uid_required": "Lütfen bir kullanıcı UID'si girin."
+    },
+    "credits": {
+      "granted": "{count} kredi verildi"
+    },
+    "ai_usage": {
+      "no_heavy_users": "Bugün yoğun AI kullanıcısı yok"
+    },
+    "referral": {
+      "empty_state": "Henüz referans kodu yok"
+    },
+    "dishes": {
+      "label_protein": "Protein g",
+      "label_carbs": "Karbonhidrat g",
+      "label_fat": "Yağ g",
+      "label_fiber": "Lif g"
+    },
+    "users": {
+      "status_banned": "Yasaklı"
+    },
+    "cost_title": "Maliyet ve Kâr Analizi",
+    "cost_error_title": "Analiz yüklenemedi",
+    "cost_error": "Maliyet tahmini hesaplanamadı. Tekrar dene.",
+    "cost_estimate_disclaimer": "Yalnızca tahmin — kullanımın × birim fiyatlara göre, gerçek fatura değil.",
+    "cost_monthly_profit": "Aylık Kâr (tahmini)",
+    "cost_margin": "Kâr Marjı",
+    "cost_revenue": "Gelir",
+    "cost_cost": "Maliyet",
+    "cost_breakdown": "Maliyet Dökümü",
+    "cost_line_firestore_ops": "Firestore işlemleri",
+    "cost_line_firestore_storage": "Firestore depolama",
+    "cost_line_storage": "Cloud Storage + trafik",
+    "cost_line_functions": "Cloud Functions",
+    "cost_line_ai": "AI (OpenRouter)",
+    "cost_revenue_per_user": "Gelir ve Kullanıcı Başı",
+    "cost_arpu": "ARPU (gelir/kullanıcı)",
+    "cost_per_user": "Maliyet / kullanıcı",
+    "cost_premium_users": "Premium kullanıcı",
+    "cost_total_users": "Toplam kullanıcı",
+    "cost_projection": "Projeksiyon (Senaryo)",
+    "cost_projection_hint": "Ölçeklendiğinde aylık tahmini kâr",
+    "cost_assumptions": "Varsayımlar",
+    "cost_assumption_reads": "Aktif kullanıcı başına okuma / gün",
+    "cost_assumption_writes": "Aktif kullanıcı başına yazma / gün",
+    "cost_assumption_image": "Ort. görsel boyutu",
+    "cost_assumption_dau": "Günlük aktif kullanıcı",
+    "cost_entry_title": "Maliyet ve Kâr",
+    "cost_entry_subtitle": "Kullanım maliyeti, gelir ve kâr tahmini"
   },
   "intro": {
     "skip": "Atla",
@@ -3055,6 +3178,17 @@
     "tier_legend": {
       "title": "Efsane",
       "desc": "Efsane itibar seviyesine ulaştın"
+    }
+  },
+  "app": {
+    "name": "Cookrange",
+    "tagline": "Yapay Zeka Destekli Beslenme"
+  },
+  "programs": {
+    "error": {
+      "signin_to_view": "Programları görmek için giriş yapın",
+      "signin_to_view_yours": "Programlarınızı görmek için giriş yapın",
+      "load_failed": "Programlar yüklenemedi"
     }
   }
 }

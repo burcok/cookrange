@@ -57,7 +57,7 @@ referral & commission tracking · full EN/TR localization · dark/light theming 
 | **Platforms** | iOS + Android (single Flutter codebase) |
 | **Frontend** | Flutter / Dart · Provider state management · `flutter_screenutil` responsive |
 | **Backend** | Firebase: Firestore, Auth, Storage, Cloud Messaging, Remote Config, Crashlytics, Performance, App Check |
-| **Serverless** | Node.js Cloud Functions (`functions/index.js`) — AI proxy, notification fan-out |
+| **Serverless** | Node.js Cloud Functions (`functions/`) — AI proxy, notification fan-out, **server-authoritative entitlements / credits / purchases / referral economy / GDPR erasure** |
 | **AI** | OpenRouter LLM, proxied + quota-enforced server-side |
 | **Localization** | English + Turkish, parity-enforced in CI |
 | **Scale** | ~274 Dart files · ~100K LOC · 42 models · 75 services · 95 screens · 25+ design-system widgets |
@@ -85,7 +85,46 @@ Backend       Firestore · Storage · Auth · FCM · Remote Config · Crashlytic
 ```
 **Inviolable:** UI never calls Firebase directly (always via a service) · services are singletons ·
 no raw colors/text styles in UI (design tokens only) · PII lives in `users/{uid}/private/nutrition`,
-never the public doc. Full detail in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+never the public doc · **the client is never trusted for entitlements, AI credits, the economy, or
+moderation state** — those are server-only (see [Security](#security)). Full detail in
+[`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+### Security
+
+Cookrange runs a **server-authoritative trust model**: the client renders state but is never the
+authority for anything that has value or affects safety. (Cloud Functions + locked Firestore rules
+deployed to the `cookrange-app` project; app not yet publicly launched.)
+
+- **Server is the authority** — Premium, AI credits, referrals, coach commissions, and account
+  deletion all live in Cloud Functions (`functions/`) behind locked rules. The client calls server
+  callables; it cannot mint credits, grant itself Premium, or self-refer.
+- **Cloud Functions backend** — `aiProxy` (model allowlist, `max_tokens`/payload caps, fail-closed
+  per-uid quota + rate limit, App Check gated by `APP_ENV`, no wildcard CORS); `entitlements.js`
+  (server-only grant/revoke Premium + bonus credits); `purchases.js` (Apple App Store Server API +
+  Google Play receipt validation, token dedupe, fail-closed; store notifications revoke on
+  refund/expiry); `economy.js` (server-validated referral + commission ledger); `account.js`
+  (`deleteUserAccount` recursive erasure); `config.js` (`APP_ENV` development/production).
+- **Locked Firestore rules** — `users/{uid}` updates are field-locked so clients can't write
+  `subscription_tier` / `ai_credits_*` / `referral_used` / `is_banned`; `ai_credits`/`entitlements`
+  are owner-read + server-write; `processed_purchases`, `commissions`, and `failed_login_attempts`
+  are server-only; content-length caps on posts/comments/chat/signals.
+- **Encrypted local storage** — Hive boxes are AES-256 encrypted with a key held in
+  `flutter_secure_storage`.
+- **GDPR erasure & export** — account deletion calls the server `deleteUserAccount` for recursive
+  KVKK/GDPR erasure of the whole user subtree + Storage + the Auth user; a complete data export is
+  available from Settings. Analytics/Crashlytics collection is **privacy-by-default OFF**, gated on
+  consent.
+- **Hardened AI proxy** — the OpenRouter key never ships in release (bundled key is debug-only); the
+  proxy is mandatory in release with real App Check providers (Play Integrity / App Attest). A
+  deterministic allergen safety filter, prompt-injection guard, null-safe parsing of
+  attacker-controlled docs, and a safe URL launcher round out the AI/data path.
+
+Deferred to go-live (tracked in [`TODO.md`](TODO.md)): disabling Android cleartext traffic,
+root/jailbreak + FLAG_SECURE + cert-pinning + obfuscation, Storage chat-image scoping + upload
+scanning/EXIF strip, minimizing the world-readable user doc, fully server-authored
+notifications/friends, point-of-use AI consent, and server-side streak/reputation. Console/external
+go-live steps (rotate the leaked Admin SA key, App Check registration + enforcement, store accounts +
+creds + iOS APNs, OpenRouter spend cap) are owner-only.
 
 ### Repository structure
 ```

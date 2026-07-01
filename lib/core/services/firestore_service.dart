@@ -584,6 +584,59 @@ class FirestoreService {
     }
   }
 
+  /// Refreshes the device/system context on the user doc when the app opens or
+  /// is resumed — a lightweight sibling of [handleUserLogin] WITHOUT the streak
+  /// recompute or login-history write. A cached session (auto-login) never runs
+  /// [handleUserLogin], so without this the doc would only ever get `is_online`
+  /// refreshed and the phone/app-version data would go stale. `getSystemContext`
+  /// caches the device info and the IP (4h), so this is cheap to call on resume.
+  Future<void> syncDeviceContext(String uid) async {
+    _log.info('Syncing device context for user: $uid', service: _serviceName);
+    try {
+      final ctx = await _log.getSystemContext();
+      // If context lookup failed entirely, still refresh presence.
+      final ip = ctx['ip_address'];
+      final deviceModel = ctx['device_model'];
+      await _firestore.collection('users').doc(uid).set({
+        'is_online': true,
+        'last_active_at': FieldValue.serverTimestamp(),
+        if (ip != null) 'last_login_ip': ip,
+        if (deviceModel != null) ...{
+          'last_login_device': deviceModel,
+          'last_login_device_model': deviceModel,
+        },
+        if (ctx['device_type'] != null)
+          'last_login_device_type': ctx['device_type'],
+        if (ctx['device_os'] != null) 'last_login_device_os': ctx['device_os'],
+        if (ctx['os_version'] != null)
+          'last_login_os_version': ctx['os_version'],
+        if (ctx['device_brand'] != null) 'device_brand': ctx['device_brand'],
+        if (ctx['manufacturer'] != null) 'manufacturer': ctx['manufacturer'],
+        if (ctx['is_physical_device'] != null)
+          'is_physical_device': ctx['is_physical_device'],
+        if (ctx['app_version'] != null) ...{
+          'app_version': ctx['app_version'],
+          'last_login_app_version': ctx['app_version'],
+        },
+        if (ctx['build_number'] != null) ...{
+          'build_number': ctx['build_number'],
+          'last_login_build_number': ctx['build_number'],
+        },
+        if (ctx['timezone'] != null) 'timezone': ctx['timezone'],
+        if (ctx['locale'] != null) 'device_locale': ctx['locale'],
+        // Append to the historical arrays (arrayUnion dedupes automatically).
+        if (ip != null) 'login_ips': FieldValue.arrayUnion([ip]),
+        if (deviceModel != null)
+          'login_devices': FieldValue.arrayUnion([deviceModel]),
+        if (ctx['app_version'] != null)
+          'login_app_versions': FieldValue.arrayUnion([ctx['app_version']]),
+      }, SetOptions(merge: true));
+    } catch (e, s) {
+      _log.error('Error syncing device context for user $uid',
+          service: _serviceName, error: e, stackTrace: s);
+    }
+  }
+
   /// Updates the online status of a user.
   Future<void> updateUserOnlineStatus(String uid, bool isOnline) async {
     _log.info('Setting online status for user $uid to: $isOnline',

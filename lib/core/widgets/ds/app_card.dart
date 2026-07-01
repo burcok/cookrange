@@ -207,15 +207,6 @@ class _AppGlassCardState extends State<AppGlassCard>
                     color: palette.glassFill,
                     borderRadius: borderRadius,
                     border: Border.all(color: palette.glassStroke),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        palette.glassHighlight,
-                        Colors.transparent,
-                      ],
-                      stops: const [0.0, 0.5],
-                    ),
                   ),
                   child: widget.child,
                 ),

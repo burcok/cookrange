@@ -81,7 +81,7 @@ class _AdminDishesScreenState extends State<AdminDishesScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Cancel',
+            child: Text(l10n.translate('common.cancel'),
                 style: t.labelM.copyWith(color: palette.textSecondary)),
           ),
           TextButton(
@@ -155,7 +155,8 @@ class _AdminDishesScreenState extends State<AdminDishesScreen> {
           }
           if (snap.hasError) {
             return AppErrorState(
-                title: 'Error', message: snap.error.toString());
+                title: l10n.translate('common.error'),
+                message: snap.error.toString());
           }
 
           final all = snap.data ?? [];
@@ -524,7 +525,7 @@ class _DishEditSheetState extends State<_DishEditSheet> {
             Expanded(
                 child: _SheetField(
                     ctrl: _protCtrl,
-                    label: 'Protein g',
+                    label: l10n.translate('admin.dishes.label_protein'),
                     palette: palette,
                     t: t,
                     keyboardType: TextInputType.number,
@@ -535,7 +536,7 @@ class _DishEditSheetState extends State<_DishEditSheet> {
             Expanded(
                 child: _SheetField(
                     ctrl: _carbCtrl,
-                    label: 'Carbs g',
+                    label: l10n.translate('admin.dishes.label_carbs'),
                     palette: palette,
                     t: t,
                     keyboardType: TextInputType.number,
@@ -544,7 +545,7 @@ class _DishEditSheetState extends State<_DishEditSheet> {
             Expanded(
                 child: _SheetField(
                     ctrl: _fatCtrl,
-                    label: 'Fat g',
+                    label: l10n.translate('admin.dishes.label_fat'),
                     palette: palette,
                     t: t,
                     keyboardType: TextInputType.number,
@@ -553,7 +554,7 @@ class _DishEditSheetState extends State<_DishEditSheet> {
             Expanded(
                 child: _SheetField(
                     ctrl: _fiberCtrl,
-                    label: 'Fiber g',
+                    label: l10n.translate('admin.dishes.label_fiber'),
                     palette: palette,
                     t: t,
                     keyboardType: TextInputType.number,

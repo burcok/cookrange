@@ -15,19 +15,12 @@ class CrashlyticsService {
   Future<void> initialize() async {
     LogService().info('Initializing CrashlyticsService', service: _serviceName);
     try {
-      if (kReleaseMode) {
-        await _crashlytics.setCrashlyticsCollectionEnabled(true);
-        LogService().info(
-            'Firebase Crashlytics collection enabled for release mode.',
-            service: _serviceName);
-      } else {
-        await _crashlytics.setCrashlyticsCollectionEnabled(false);
-        LogService().info(
-            'Firebase Crashlytics collection disabled for debug mode.',
-            service: _serviceName);
-      }
+      // Privacy-by-default: collection stays OFF until the user's analytics
+      // consent is applied via [setConsentEnabled]. Never collect in debug.
+      await _crashlytics.setCrashlyticsCollectionEnabled(false);
 
-      LogService().info('Crashlytics initialized.', service: _serviceName);
+      LogService().info('Crashlytics initialized (collection gated on consent).',
+          service: _serviceName);
 
       // Listen to the log stream for severe errors.
       Logger.root.onRecord.listen((record) {
@@ -43,6 +36,17 @@ class CrashlyticsService {
     } catch (e, stackTrace) {
       LogService().error('Error initializing CrashlyticsService',
           service: _serviceName, error: e, stackTrace: stackTrace);
+    }
+  }
+
+  /// Enables/disables Crashlytics collection per the user's analytics consent.
+  /// Never collects in debug. Called by ConsentService on consent load/change.
+  Future<void> setConsentEnabled(bool granted) async {
+    try {
+      await _crashlytics.setCrashlyticsCollectionEnabled(kReleaseMode && granted);
+    } catch (e) {
+      LogService().warning('Crashlytics setConsentEnabled failed: $e',
+          service: _serviceName);
     }
   }
 

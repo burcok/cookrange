@@ -47,16 +47,25 @@ class AiCreditModel {
     );
   }
 
+  /// Parses the server ledger (`ai_credits/{uid}`: `used_today`, `reset_at`,
+  /// `bonus`), with a fallback to the legacy user-doc fields for safety. If the
+  /// stored reset time has passed, `used` is treated as 0 for display so the
+  /// badge is correct without the client writing the ledger (server resets on
+  /// the next AI call).
   factory AiCreditModel.fromFirestore(Map<String, dynamic> data,
       {bool isPremium = false}) {
-    final resetAtRaw = data['ai_credits_reset_at'];
+    final resetAtRaw = data['reset_at'] ?? data['ai_credits_reset_at'];
     final resetAt =
         resetAtRaw is Timestamp ? resetAtRaw.toDate() : _nextMidnight();
+    final rolledOver = DateTime.now().isAfter(resetAt);
+    final usedRaw =
+        (data['used_today'] ?? data['ai_credits_used']) as int? ?? 0;
+    final bonus = (data['bonus'] ?? data['ai_credits_bonus']) as int? ?? 0;
     return AiCreditModel(
-      used: data['ai_credits_used'] as int? ?? 0,
+      used: rolledOver ? 0 : usedRaw,
       isPremium: isPremium,
-      resetAt: resetAt,
-      bonus: data['ai_credits_bonus'] as int? ?? 0,
+      resetAt: rolledOver ? _nextMidnight() : resetAt,
+      bonus: bonus,
     );
   }
 

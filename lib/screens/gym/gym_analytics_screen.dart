@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -99,6 +100,7 @@ class _GymAnalyticsScreenState extends State<GymAnalyticsScreen>
           .collection('gyms')
           .doc(_resolvedGymId)
           .collection('members')
+          .limit(500)
           .get();
       _allMembers = membersSnap.docs.map(GymMemberModel.fromFirestore).toList();
 
@@ -751,7 +753,7 @@ class _AtRiskTile extends StatelessWidget {
               radius: 20,
               backgroundColor: palette.surfaceVariant,
               backgroundImage: member.photoURL != null
-                  ? NetworkImage(member.photoURL!)
+                  ? CachedNetworkImageProvider(member.photoURL!)
                   : null,
               child: member.photoURL == null
                   ? Text(
@@ -907,7 +909,7 @@ class _TopMemberTile extends StatelessWidget {
               radius: 18,
               backgroundColor: palette.surfaceVariant,
               backgroundImage: member.photoURL != null
-                  ? NetworkImage(member.photoURL!)
+                  ? CachedNetworkImageProvider(member.photoURL!)
                   : null,
               child: member.photoURL == null
                   ? Text(

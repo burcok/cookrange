@@ -3,205 +3,72 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/ai_credit_model.dart';
-import 'ai/ai_service.dart';
 import 'analytics_service.dart';
 
-/// Singleton service that tracks and gates **daily** AI usage per user.
+/// Reads the user's AI-credit state from the **server-only** ledger
+/// `ai_credits/{uid}`.
 ///
-/// Free users get [AiCreditModel.freeDailyLimit] new AI generations per day.
-/// Premium users get [AiCreditModel.premiumDailyLimit] per day.
-/// Reading cached/saved projections must NEVER call [checkAndConsume].
-/// The counter resets at local midnight each day.
+/// All authoritative logic — daily reset, quota check, consumption, bonus-credit
+/// grants — happens SERVER-SIDE (the `aiProxy` and purchase-validation Cloud
+/// Functions). The Firestore rule makes `ai_credits/{uid}` owner-READ but
+/// deny-WRITE, so this client can show the credit badge and avoid firing a
+/// request it knows will 402, but it can never grant or mutate credits.
 ///
-/// Firestore fields on `users/{uid}`:
-///   - `ai_credits_used`     — int, count of new generations today
-///   - `ai_credits_reset_at` — Timestamp, next local midnight
-///   - `ai_credits_bonus`    — int, consumable top-up pool (not reset at midnight)
+/// Ledger fields (written by the server): `used_today`, `reset_at`, `bonus`.
 class AiCreditService {
   static final AiCreditService _i = AiCreditService._();
   factory AiCreditService() => _i;
   AiCreditService._();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  CollectionReference<Map<String, dynamic>> get _users =>
-      _db.collection('users');
 
-  // ─── Public API ────────────────────────────────────────────────────────────
+  DocumentReference<Map<String, dynamic>> _ledger(String uid) =>
+      _db.collection('ai_credits').doc(uid);
 
-  /// Reads the current credit state for [uid], auto-resetting if the day
-  /// has rolled over. Callers can pass [isPremium] for correct limit display.
+  /// Reads the current credit state for [uid]. Returns a fresh model when no
+  /// ledger exists yet (server creates it on first AI call).
   Future<AiCreditModel> getCredits(String uid, {bool isPremium = false}) async {
-    final snap = await _users.doc(uid).get();
-    final data = snap.data();
-    if (data == null || !data.containsKey('ai_credits_reset_at')) {
-      await _resetCredits(uid);
+    try {
+      final snap = await _ledger(uid).get();
+      final data = snap.data();
+      if (data == null) return AiCreditModel.fresh(isPremium: isPremium);
+      return AiCreditModel.fromFirestore(data, isPremium: isPremium);
+    } catch (e) {
+      debugPrint('[AiCreditService] getCredits error: $e');
       return AiCreditModel.fresh(isPremium: isPremium);
     }
-
-    final resetAtRaw = data['ai_credits_reset_at'];
-    final resetAt = resetAtRaw is Timestamp
-        ? resetAtRaw.toDate()
-        : DateTime.now().subtract(const Duration(seconds: 1));
-
-    if (DateTime.now().isAfter(resetAt)) {
-      await _resetCredits(uid);
-      return AiCreditModel.fresh(isPremium: isPremium);
-    }
-
-    return AiCreditModel.fromFirestore(data, isPremium: isPremium);
   }
 
-  /// Checks whether [uid] can make a new AI generation and, if so, consumes
-  /// one credit atomically. Returns `true` when permitted.
-  ///
-  /// In proxy mode ([AIService.hasProxy] == true) the server enforces quotas
-  /// atomically — client-side consumption is skipped to avoid double-counting.
-  /// Bonus credits (from consumable IAP top-ups) are consumed first before the
-  /// daily quota. Premium users still check the daily limit but have a higher
-  /// cap. Only call this for genuine NEW AI generations — never for cache reads.
+  /// Returns `true` if the user *appears* to have credits left, so the UI can
+  /// avoid firing a request that would 402. This is advisory only — the server
+  /// performs the authoritative atomic check + consumption in `aiProxy`.
   Future<bool> checkAndConsume(String uid, bool isPremium) async {
     final credits = await getCredits(uid, isPremium: isPremium);
-
     if (credits.isExhausted) {
       debugPrint('[AiCreditService] uid=$uid — limit reached '
-          '(used=${credits.used}, bonus=${credits.bonus}, '
-          'isPremium=$isPremium)');
+          '(used=${credits.used}, bonus=${credits.bonus}, isPremium=$isPremium)');
       unawaited(AnalyticsService().logEvent(
         name: 'credit_exhausted',
         parameters: {'uid': uid, 'is_premium': isPremium},
       ));
       return false;
     }
-
-    // In proxy mode the server handles atomic consumption — skip client-side
-    // decrement to avoid double-counting. The credit badge updates via the
-    // live Firestore stream once the server responds.
-    if (AIService().hasProxy) {
-      return true;
-    }
-
-    // Local/dev mode (no proxy): consume client-side.
-    if (credits.bonus > 0) {
-      await _consumeBonusCredit(uid);
-    } else {
-      await consumeCredit(uid);
-    }
-
-    unawaited(AnalyticsService().logEvent(
-      name: 'credit_consumed',
-      parameters: {
-        'uid': uid,
-        'is_premium': isPremium,
-        'from_bonus': credits.bonus > 0,
-      },
-    ));
     return true;
   }
 
-  /// Rolls back a previously consumed daily credit (call when the AI request
-  /// that consumed the credit fails or returns empty). Floors at 0.
-  /// No-op in proxy mode — the server handles rollback on failure.
-  Future<void> rollbackCredit(String uid) async {
-    if (AIService().hasProxy) return;
-    try {
-      await _users.doc(uid).update({
-        'ai_credits_used': FieldValue.increment(-1),
-      });
-      debugPrint('[AiCreditService] rolled back 1 daily credit for uid=$uid');
-    } catch (e) {
-      debugPrint('[AiCreditService] rollbackCredit error: $e');
-    }
-  }
+  /// No-op: the server rolls back its own ledger on upstream AI failure. Kept
+  /// for call-site compatibility with the screens that consume credits.
+  Future<void> rollbackCredit(String uid) async {}
 
-  /// Rolls back a previously consumed bonus credit (call when the AI request
-  /// fails and the credit came from the bonus pool). Floors at 0.
-  /// No-op in proxy mode — the server handles rollback on failure.
-  Future<void> rollbackBonusCredit(String uid) async {
-    if (AIService().hasProxy) return;
-    try {
-      await _users.doc(uid).update({
-        'ai_credits_bonus': FieldValue.increment(1),
-      });
-      debugPrint('[AiCreditService] rolled back 1 bonus credit for uid=$uid');
-    } catch (e) {
-      debugPrint('[AiCreditService] rollbackBonusCredit error: $e');
-    }
-  }
+  /// No-op: see [rollbackCredit].
+  Future<void> rollbackBonusCredit(String uid) async {}
 
-  /// Grants [count] bonus credits to [uid] from a consumable IAP top-up.
-  /// Bonus credits stack on top of the daily limit and never reset at midnight.
-  Future<void> addBonusCredits(String uid, int count) async {
-    try {
-      await _users.doc(uid).set(
-        {'ai_credits_bonus': FieldValue.increment(count)},
-        SetOptions(merge: true),
-      );
-      debugPrint('[AiCreditService] added $count bonus credits to uid=$uid');
-      unawaited(AnalyticsService().logEvent(
-        name: 'ai_credits_purchased',
-        parameters: {'count': count, 'uid': uid},
-      ));
-    } catch (e) {
-      debugPrint('[AiCreditService] addBonusCredits error: $e');
-    }
-  }
-
-  /// Increments `ai_credits_used` by 1. Fire-and-forget safe.
-  Future<void> consumeCredit(String uid) async {
-    debugPrint('[AiCreditService] consuming daily credit for uid=$uid');
-    await _users.doc(uid).set(
-      {'ai_credits_used': FieldValue.increment(1)},
-      SetOptions(merge: true),
-    );
-  }
-
-  /// Decrements `ai_credits_bonus` by 1. Internal use only.
-  Future<void> _consumeBonusCredit(String uid) async {
-    debugPrint('[AiCreditService] consuming bonus credit for uid=$uid');
-    await _users.doc(uid).set(
-      {'ai_credits_bonus': FieldValue.increment(-1)},
-      SetOptions(merge: true),
-    );
-  }
-
-  /// Live stream of the user's credit state — used by [AiCreditBadge].
+  /// Live stream of the user's credit state — used by the credit badge/sheet.
   Stream<AiCreditModel> getCreditsStream(String uid, {bool isPremium = false}) {
-    return _users.doc(uid).snapshots().map((snap) {
+    return _ledger(uid).snapshots().map((snap) {
       final data = snap.data();
-      if (data == null ||
-          !data.containsKey('ai_credits_used') ||
-          !data.containsKey('ai_credits_reset_at')) {
-        return AiCreditModel.fresh(isPremium: isPremium);
-      }
-      // Auto-reset if the day has rolled over. Fire-and-forget the write — it
-      // triggers a new snapshot which the stream delivers with fresh values.
-      final resetAtRaw = data['ai_credits_reset_at'];
-      if (resetAtRaw is Timestamp &&
-          DateTime.now().isAfter(resetAtRaw.toDate())) {
-        unawaited(_resetCredits(uid));
-        return AiCreditModel.fresh(isPremium: isPremium);
-      }
+      if (data == null) return AiCreditModel.fresh(isPremium: isPremium);
       return AiCreditModel.fromFirestore(data, isPremium: isPremium);
     });
-  }
-
-  // ─── Private helpers ───────────────────────────────────────────────────────
-
-  Future<void> _resetCredits(String uid) async {
-    final nextMidnight = _nextMidnight();
-    debugPrint('[AiCreditService] resetting daily credits for uid=$uid; '
-        'next reset at $nextMidnight');
-    await _users.doc(uid).set(
-      {
-        'ai_credits_used': 0,
-        'ai_credits_reset_at': Timestamp.fromDate(nextMidnight),
-      },
-      SetOptions(merge: true),
-    );
-  }
-
-  DateTime _nextMidnight() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day + 1);
   }
 }

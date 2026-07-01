@@ -30,8 +30,10 @@
    never sends/stores it — see §6.)*
 4. **Accuracy** — let users correct their data (profile editing exists).
 5. **Storage limitation** — define a retention period; delete when no longer needed.
-6. **Integrity & confidentiality** — encryption in transit (HTTPS/Firebase), least-privilege Firestore
-   rules, PII in owner-only subcollections, App Check, no secrets in the client.
+6. **Integrity & confidentiality** — encryption in transit (HTTPS/Firebase) **and at rest on-device
+   (Hive AES-256)**, least-privilege Firestore rules, PII in owner-only subcollections, App Check, no
+   secrets in the client. Entitlements/credits/economy/erasure are **server-authoritative** — the
+   client is never trusted to grant paid access, mint AI credits, or self-erase (see `DATA_MODEL.md` §7).
 7. **Accountability** — document the basis and flow for every data type (this file + `DATA_MODEL.md`).
 
 ## 3. Legal Bases
@@ -55,7 +57,7 @@ Cross-reference `docs/DATA_MODEL.md` for exact Firestore paths.
 | Food & exercise logs | meals, calories, workouts | Yes (health) | Explicit consent | `users/{uid}/food_logs`, `exercise_logs` | Until deletion |
 | Location | GPS for "gyms near me", GPS check-in | **Yes** | Explicit consent | **Not stored** (in-memory only) | Transient — discarded after use |
 | Social content | posts, comments, chats, follows | No | Consent / contract | `posts`, `chats`, … | Until deletion / takedown |
-| Device & usage | device model, OS, app version, analytics events | No | Legitimate interest / consent | Analytics, `logs/{uid}` | Rolling, per policy |
+| Device & usage | device model, OS, app version, analytics events | No | **Consent (opt-in)** | Analytics, `logs/{uid}` | Rolling, per policy |
 | AI inputs | prompts, profile context sent to OpenRouter | Yes (derived) | Explicit consent | Not persisted by us beyond the call; processor sees it | Per processor policy |
 | Payment | purchase receipts, subscription tier | No (handled by store/PSP) | Contract / legal obligation | Store + `users/{uid}` flags | Per tax law |
 | Commissions/payouts | earnings, payout account (future) | No | Contract / legal obligation | `commissions`, future PSP | Per tax law |
@@ -86,8 +88,13 @@ location prompt runs, and the coordinate lives only in in-memory state for dista
 
 ## 7. Data Subject Rights (must remain functional)
 KVKK Art. 11 / GDPR Art. 15–22 — users can: access, rectify, erase, restrict, port, and object.
-- **Access / portability:** `DataExportService` → JSON export from Settings.
-- **Erasure:** `AuthService.deleteAccount()` + full Firestore erasure from Settings.
+- **Access / portability:** ✅ **complete** export — `DataExportService` → JSON from Settings now
+  includes private nutrition PII, **all** owner subcollections, authored comments, and a Storage
+  manifest (GDPR Art. 20 / KVKK Art. 11).
+- **Erasure:** ✅ **server-side recursive erasure** — the `deleteUserAccount` Cloud Function deletes
+  the whole `users/{uid}` subtree + `entitlements`/`ai_credits`/`logs`/`notifications` + authored
+  `posts`/`signals` + **all** Storage prefixes + the Firebase Auth user (GDPR Art. 17 / KVKK Art. 7).
+  This replaces the old partial client-side delete, which left orphaned server data.
 - **Rectification:** profile editing.
 - **Withdraw consent:** the **Consent Center** (Settings → Privacy & Consents) — one surface to grant/
   withdraw each purpose, backed by `ConsentService` writing versioned, timestamped records to
@@ -104,8 +111,22 @@ KVKK Art. 11 / GDPR Art. 15–22 — users can: access, rectify, erase, restrict
   separate from the data consent (KVKK wants açık rıza unbundled from the general contract).
 - **First-run nudge (fallback):** `ConsentPromptSheet` only shows for legacy users who registered
   before consent capture existed (the registration flow sets the seen-flag). It never auto-grants.
-- **Remaining:** per-purpose *enforcement* wiring so each consumer checks `ConsentService.hasConsent(...)`
-  (e.g. analytics honoring its toggle). Tracked in `FUTURE_FEATURES.md` (consent hardening).
+
+**Remaining gaps (deferred, post-hardening):**
+- **Point-of-use consent for AI/photo processing → OpenRouter (cross-border):** enforce a
+  `ConsentService.hasConsent(aiProcessing/crossBorderTransfer)` check at the call site before sending
+  prompts/photos to the LLM processor, not just at registration.
+- **Minimize the world-readable user doc:** `email`, IP, and `fcm_token` are currently on the
+  any-auth-readable `users/{uid}` doc — move to an owner-only subdocument / server-only field.
+- **Storage upload hygiene:** scan uploaded images and strip EXIF (incl. GPS) on profile/post/chat
+  uploads before they become readable.
+- **Analytics/Crashlytics consent (✅ enforced):** collection is **privacy-by-default OFF** and gated
+  on the user's analytics consent — `ConsentService.applyCollectionConsent()` toggles Firebase
+  Analytics/Crashlytics collection on/off to match the recorded consent. Raw email is **no longer**
+  sent in Analytics events.
+- **Remaining (deferred — see "Remaining gaps" below):** point-of-use consent *enforcement* for the
+  remaining purposes — chiefly AI/photo processing sent to OpenRouter (cross-border). Tracked in
+  `FUTURE_FEATURES.md` (consent hardening).
 
 ## 8. In-App Legal Documents (EN + TR)
 Legal text lives in **`assets/legal/<base>_<lang>.md`** (NOT in the i18n JSON — keeps it out of the

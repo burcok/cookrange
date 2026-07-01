@@ -1,7 +1,10 @@
 # SERVICES.md — Services & Cloud Functions
 
 > All business logic lives here. UI never calls Firebase directly — it goes through a service.
-> 75 Dart singletons in `lib/core/services/**` + 4 Cloud Functions in `functions/index.js`.
+> 75 Dart singletons in `lib/core/services/**` + Cloud Functions in `functions/`.
+> **Security-authoritative state lives server-side**: premium in `entitlements/{uid}`, AI credits in
+> `ai_credits/{uid}` — both owner-**read** + server-**write-only**; the client never grants premium,
+> consumes credits, applies referrals, or deletes accounts directly.
 > Pattern: `static final _instance = Foo._internal(); factory Foo() => _instance;`
 > **Code is truth — keep this in sync when you add/change a service.**
 
@@ -9,8 +12,10 @@
 
 ## Auth & Identity
 - **AuthService** `auth_service.dart` — Auth lifecycle: email/password, Google, Apple; email
-  verification; password reset; GDPR account deletion; session tracking + concurrent-login
-  detection. Holds the app `navigatorKey`. In-memory user cache. Touches `users/{uid}`, `logs/{uid}`.
+  verification; password reset; session tracking + concurrent-login detection. Holds the app
+  `navigatorKey`. In-memory user cache. Touches `users/{uid}`, `logs/{uid}`. **GDPR account deletion
+  is server-authoritative** — `deleteAccount` invokes the `deleteUserAccount` callable (recursive
+  subtree + Storage + Auth erasure) instead of client-side deletes. Email no longer sent to analytics.
 - **FirestoreService** `firestore_service.dart` — Central Firestore I/O: user CRUD, activity
   logging, role assignment (`addUserRole`), streak, `getUserStream`. `getPrivateNutritionData(uid)`
   migrates + reads PII subcollection; `savePrivateNutritionData(uid, data)` writes it.
@@ -18,25 +23,28 @@
   stream feeds `RouteGuard`; reads `admin_config` for maintenance/min-version.
 
 ## AI & Generation (`services/ai/` + AI services)
-- **AIService** `ai/ai_service.dart` — LLM engine (OpenRouter). Direct key (dev) or **proxy mode**
-  (prod). 3-retry policy. Typed exceptions: `AIRetryableException`, `AIFatalException`,
-  `AIQuotaExceededException` (402), `AIJsonParseException`. `generateCompletion`, `generateChatResponse`,
-  `generateJson`. `isConfigured`, `hasProxy`, `setProxyUrl()` (from Remote Config).
+- **AIService** `ai/ai_service.dart` — LLM engine (OpenRouter). **Proxy-mandatory in release** (all
+  calls go through the `aiProxy` Cloud Function); the bundled `OPENROUTER_API_KEY` is **debug-only**
+  (release builds never ship/use a client key). 3-retry policy. Typed exceptions:
+  `AIRetryableException`, `AIFatalException`, `AIQuotaExceededException` (402), `AIJsonParseException`.
+  `generateCompletion`, `generateChatResponse`, `generateJson`. `isConfigured`, `hasProxy`,
+  `setProxyUrl()` (from Remote Config).
 - **AiChatService** `ai/ai_chat_service.dart` — Builds profile-aware system prompt for nutrition chat.
 - **AiChatHistoryService** `ai/ai_chat_history_service.dart` — In-memory conversation state (voice↔text).
 - **PromptService** `ai/prompt_service.dart` — Prompt template library (recipe, weekly plan, ingredient
-  validation, plan alternates) + locale instructions.
+  validation, plan alternates) + locale instructions. **Prompt-injection guard**: user-supplied text
+  is sanitized/fenced before insertion so it can't override system instructions.
 - **RecipeGenerationService** `recipe_generation_service.dart` — Structured recipe gen via AI+Prompt.
 - **FoodAnalysisService** `food_analysis_service.dart` — Estimates nutrition from a food description.
 - **AiInsightService** `ai_insight_service.dart` — Daily accountability insight + 30/60/90-day fitness
   twin projection + risk detection. Caches daily insight in SharedPrefs (per date+locale); saves
   projections to `users/{uid}/ai_twin_projections`. `getLatestProjectionStream` is **locale-agnostic**
   (returns newest doc by `generatedAt` DESC regardless of language). Streams latest + history.
-- **AiCreditService** `ai_credit_service.dart` — Daily AI quota (free 2/day, premium 20/day, bonus
-  credits from IAP never reset). `checkAndConsume` (burns bonus first; **skipped in proxy mode** —
-  server enforces), `rollbackCredit`/`rollbackBonusCredit`, `addBonusCredits`, `getCreditsStream`
-  (**auto-resets** quota when `reset_at` is in the past — day-rollover detected on stream read, no
-  server-push needed). Authority is the `aiProxy` Cloud Function; client is read-only when proxied.
+- **AiCreditService** `ai_credit_service.dart` — **Read-only** view over the server-only
+  `ai_credits/{uid}` ledger (owner-read, server-write-only). Quota enforcement + consumption now live
+  entirely in the `aiProxy`/`entitlements` Cloud Functions — the client no longer writes credits.
+  Exposes `getCreditsStream` (live `used_today`/`reset_at`/`bonus`); legacy client
+  consume/rollback/add paths removed. Daily limits: free 2/day, premium 20/day, IAP bonus never reset.
 
 ## Nutrition & Food
 - **DishService** `dish_service.dart` — `dishes/` CRUD + seed; streams; admin edit/delete.
@@ -45,12 +53,17 @@
 - **RecentFoodService** `recent_food_service.dart` — Last ~20 foods (Hive), quick-add carousel.
 - **BarcodeLookupService** `barcode_lookup_service.dart` — Barcode → product nutrition (Open Food Facts).
 - **WeeklyMealPlanService** `weekly_meal_plan_service.dart` — AI weekly plan; hash-based cache
-  invalidation (profile change → regenerate); allergy validation; `getMealPlanHistory`, `restorePlan`,
-  auto-archive to `meal_plan_history/{key}`. Writes `users/{uid}/meal_plans/current`.
+  invalidation (profile change → regenerate); **filters allergen-unsafe dishes via `AllergenSafety`
+  before sending candidates to the AI** (defense-in-depth on top of allergy validation);
+  `getMealPlanHistory`, `restorePlan`, auto-archive to `meal_plan_history/{key}`. Writes
+  `users/{uid}/meal_plans/current`.
 - **MealPlanCalendarService** `meal_plan_calendar_service.dart` — Export plan as `.ics`.
 - **NutritionAnalyticsService** `nutrition_analytics_service.dart` — Weekly summary, macro %, trends.
 - **StorageService** `storage_service.dart` — Local Hive: recipes, plans, shopping, hydration, weight,
-  settings (boxes: user/recipes/meal_plans/settings/shopping/hydration/weight).
+  settings (boxes: user/recipes/meal_plans/settings/shopping/hydration/weight). **Boxes are AES-256
+  encrypted** — the cipher key is generated once and stored in `flutter_secure_storage` (Keychain/
+  Keystore). One-time migration transparently re-opens and re-writes any pre-existing plaintext boxes
+  under encryption.
 
 ## Social & Community
 - **CommunityService** `community_service.dart` — Posts CRUD, cursor pagination (`fetchPostsPage`),
@@ -63,8 +76,9 @@
   follow notification fan-out.
 - **FriendService** `friend_service.dart` — Search users, friendship status, send/accept/reject.
 - **FavoriteService** `favorite_service.dart` — `users/{uid}/favorites`; toggle, isFavorite stream.
-- **ReferralService** `referral_service.dart` — 6-char codes (`referrals/{code}`), apply → batch reward
-  (7-day premium trial both sides) + commission record + notification.
+- **ReferralService** `referral_service.dart` — 6-char codes (`referrals/{code}`). **Apply is
+  server-authoritative** — calls the `applyReferral` callable (server-validated reward + commission
+  ledger); the client no longer batch-writes rewards/premium. Reward: 7-day premium trial both sides.
 - **ReputationService** `reputation_service.dart` — Reputation badges/score from activity.
 - **SignalService** `signal_service.dart` — Ephemeral broadcasts (TTL via expiresAt).
 - **StreakSquadService** `streak_squad_service.dart` — Squads (`squads/`), invite codes, leaderboard.
@@ -83,8 +97,10 @@
 
 ## Billing & Credits
 - **BillingService** `billing_service.dart` — `in_app_purchase`; subscriptions
-  (`com.cookrange.premium.{monthly,yearly}`), consumable top-up (`cookrange_ai_credits_10` →
-  `AiCreditService.addBonusCredits(10)`), restore. Writes `subscription_tier`/`subscription_expires_at`.
+  (`com.cookrange.premium.{monthly,yearly}`), consumable top-up (`cookrange_ai_credits_10`), restore.
+  **No client-side premium grant or credit write** — every purchase is sent to the `validatePurchase`
+  callable, which verifies the receipt against Apple/Google and writes `entitlements/{uid}` +
+  `ai_credits/{uid}` server-side (mirrored to `subscription_tier`/`subscription_expires_at`).
 - **CommissionService** `commission_service.dart` — `users/{uid}/commissions` + payout_requests;
   `recordReferralCommission` (₺5/premium referral), `recordCoachSessionCommission`, earnings summary.
   (Tracking layer only; payout processing deferred — see roadmap.)
@@ -94,7 +110,8 @@
   (approve/reject coach+gym), `searchUsers`, `banUser`/`unbanUser`, `setUserRole`, history streams,
   `logAuditAction`+`auditLogStream`, `pendingCountStream`, reports (pending/reviewed/dismiss/remove +
   bulk), `fetchAnalyticsSnapshot` (count() aggregates), `premiumUsersStream`, `bannedUsersStream`,
-  `aiUsageStream`, `grantBonusCredits`, `referralsStream`/`voidReferralCode`, program review
+  `aiUsageStream`, `grantBonusCredits` (writes the server-only `ai_credits/{uid}` ledger),
+  `referralsStream`/`voidReferralCode`, program review
   (approve/reject/pending/history), `adminConfigStream`/`updateAdminConfig`, `broadcastsStream`/
   `sendBroadcast`, `setGymVerified`/`setCoachVerified`, `forceLogout`, `sendPasswordReset`,
   `getUserDataStats`.
@@ -117,7 +134,9 @@
   `getConsents()` (all purposes, unset-filled), `setConsent(purpose, granted)` (stamps
   `kLegalPolicyVersion` + server time; Crashlytics breadcrumb), `hasConsent(purpose)` (true only if
   granted & not stale — callers re-prompt otherwise), `recordInitialConsents({analytics, marketing})`
-  (batch-writes essentials=granted + optionals at registration). Source of truth:
+  (batch-writes essentials=granted + optionals at registration), `applyCollectionConsent` (ties the
+  user's consent state to the Analytics/Crashlytics collection flags so collection only runs once
+  consent is granted). Source of truth:
   `users/{uid}/consents/{docId}` (owner-only). Surfaced in `ConsentCenterScreen` + captured in
   `register_screen`. See `docs/COMPLIANCE.md`.
 - **PrivacyRequestService** `privacy_request_service.dart` — DSAR channel. `submit(type, message)`
@@ -129,10 +148,15 @@
 - **StorageUploadService** — Firebase Storage uploads (avatars, post/chat images).
 - **SharingService** — `share_plus` wrapper (recipe/progress/post/shopping/referral/challenge) + deep links.
 - **DeepLinkService** — `app_links` universal + custom scheme routing; `init(navigatorKey)` in splash.
-- **DataExportService** — GDPR export (profile + logs + plans + lists + posts → JSON share).
+- **DataExportService** — **Complete GDPR export**: profile + **private nutrition PII** + all
+  user subcollections (logs, plans, lists, posts, food analyses, achievements, consents, etc.) +
+  a Storage file manifest → JSON share.
 - **LogService** — Structured logging + device/IP context (Hive-cached).
 - **CrashlyticsService** — `recordError`, breadcrumbs, custom keys (screen/tier/aiModel).
-- **AnalyticsService** — Event queue (Hive), batch, `logScreenView`.
+  **Collection is privacy-by-default OFF** — enabled only after the user grants consent
+  (via `ConsentService.applyCollectionConsent`).
+- **AnalyticsService** — Event queue (Hive), batch, `logScreenView`. **Collection is
+  privacy-by-default OFF** — gated on consent (no email or PII in event payloads).
 - **PerformanceService** — `HttpMetric` on AI calls + custom traces.
 - **ExerciseLogService**, **ProgramService**, **LeaderboardService**, **RecipeNoteService**,
   **ShoppingListSyncService** (`users/{uid}/lists/shopping`).
@@ -142,20 +166,54 @@
   (orchestrates boot), **AppLifecycleService**, **ProviderInitializationService**,
   **RouteConfigurationService**, **LoggingNavigatorObserver**.
 - **GlobalErrorHandler** — single `FlutterError.onError` owner; wired into `MaterialApp.builder`.
+- **AllergenSafety** (util) — Deterministic allergen filter: given a user's allergies/avoid lists,
+  flags/removes unsafe dishes. Used by `WeeklyMealPlanService` (pre-AI) and food flows.
+- **safeLaunchUrl** (util) — Hardened `url_launcher` wrapper: only opens URLs whose scheme + host pass
+  an allowlist (blocks arbitrary/`javascript:`/unexpected-host navigation).
+- **AppEnv** (util) — Central env reader (`flutter_dotenv`): typed access to keys, `APP_ENV`, and the
+  debug-only `OPENROUTER_API_KEY`; single place that decides dev-vs-release behavior.
 - **TestModeService** — dev test-mode toggle (Hive) + `TestDataLibrary`.
 - **WhatsNewService** — once-per-version changelog gate (SharedPref `whats_new_last_version`).
 
 ---
 
-## Cloud Functions (`functions/index.js`)
+## Cloud Functions (`functions/`)
 
-- **aiProxy** (HTTPS) — The production AI path. Verifies Firebase **ID token** + **App Check**;
-  extracts `uid`; runs **`enforceAndConsumeQuota(uid)`** in a Firestore transaction
-  (auto-resets daily counter at midnight, burns bonus credits first, returns `'daily'`/`'bonus'`/
-  `'exceeded'`/`'open'`); returns **HTTP 402** when exceeded; otherwise proxies to OpenRouter with the
-  secret `OPENROUTER_API_KEY`. Rolls back the consumed credit on bad request / OpenRouter failure.
-  Fail-open on Firestore infra error (returns `'open'` so AI stays available).
+> Server-authoritative security layer (hardening 2026-06-30). **10/12 functions + Firestore rules
+> deployed to `cookrange-app`**; `appStoreNotifications` + `playRtdn` are pending go-live. App Check
+> enforcement + store-credential requirements are gated by `APP_ENV` (`development` | `production`)
+> in `config.js`.
+
+**AI proxy** (`index.js`)
+- **aiProxy** (HTTPS) — The release AI path. Verifies Firebase **ID token** + **App Check** (App Check
+  gated by `APP_ENV`); enforces a **model allowlist**, `max_tokens`/payload-size caps, and a per-uid
+  **rate limit**; **no wildcard CORS**. Runs **fail-closed `enforceAndConsumeQuota(uid)`** in a
+  Firestore transaction (auto-resets daily counter at midnight, burns bonus credits first); returns
+  **HTTP 402** when exceeded; otherwise proxies to OpenRouter with `OPENROUTER_API_KEY` (read from
+  `functions/.env`). Rolls back the consumed credit on bad request / OpenRouter failure.
   Constants: `FREE_DAILY_LIMIT=2`, `PREMIUM_DAILY_LIMIT=20`.
+
+**Entitlements & purchases** (`entitlements.js`, `purchases.js`)
+- **grantPremium / revokePremium / grantBonusCredits / claimPurchaseToken** (`entitlements.js`) —
+  The **only** writers of `entitlements/{uid}` (premium) and `ai_credits/{uid}` (credits);
+  `subscription_tier` is mirrored to the user doc. Server-only.
+- **validatePurchase** (callable, `purchases.js`) — Verifies receipts against the **Apple App Store
+  Server API** + **Google Play Developer API**, dedupes purchase tokens, and grants entitlements/
+  credits via `entitlements.js`. **Fail-closed** (no grant unless the store confirms).
+- **appStoreNotifications** / **playRtdn** (`purchases.js`, *pending go-live*) — Store webhooks that
+  **revoke** premium on refund/expiry.
+
+**Economy & account** (`economy.js`, `account.js`)
+- **applyReferral** (callable, `economy.js`) — Server-validated referral apply + server-side
+  commission ledger (replaces the old client batch-write).
+- **deleteUserAccount** (callable, `account.js`) — GDPR erasure: recursively deletes the user's
+  Firestore subtree + Storage objects + the Auth user.
+
+**Config** (`config.js`)
+- **APP_ENV gating** — `development` | `production`; toggles App Check enforcement and the
+  store-credential requirement so dev/emulator runs don't break.
+
+**Notifications & broadcasts** (`index.js`)
 - **onInAppNotificationCreated** (Firestore trigger) — On new `users/{uid}/notifications/{id}`,
   fans out an FCM push respecting the recipient's mute preferences.
 - **onChatMessageCreated** (Firestore trigger) — On new `chats/{id}/messages/{id}`, pushes to other
@@ -163,7 +221,8 @@
 - **executeBroadcast** (internal helper) — Sends admin broadcasts to an audience (all/coaches/
   gymOwners/single uid), immediate or scheduled.
 
-**Secrets** (Functions): `OPENROUTER_API_KEY` (`firebase functions:secrets:set`).
+**Secrets / env** (Functions): `OPENROUTER_API_KEY` + Apple/Google store credentials in
+`functions/.env`; `APP_ENV` selects enforcement mode.
 
 ---
 

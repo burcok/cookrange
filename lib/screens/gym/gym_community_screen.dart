@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -165,7 +166,7 @@ class _FeedTab extends StatelessWidget {
         }
         if (snap.hasError) {
           return AppErrorState(
-            title: 'Something went wrong',
+            title: l10n.translate('common.something_wrong'),
             message: snap.error.toString(),
           );
         }
@@ -221,7 +222,7 @@ class _AnnouncementsTab extends StatelessWidget {
         }
         if (snap.hasError) {
           return AppErrorState(
-            title: 'Something went wrong',
+            title: l10n.translate('common.something_wrong'),
             message: snap.error.toString(),
           );
         }
@@ -346,9 +347,10 @@ class _GymPostCardState extends State<_GymPostCard>
   }
 
   void _openComments() {
+    final l10n = AppLocalizations.of(context);
     AppSheet.show(
       context: context,
-      title: 'Comments',
+      title: l10n.translate('gym.community.dialog_comments_title'),
       child: _CommentsSheet(
         gymId: widget.gymId,
         postId: widget.post.id,
@@ -393,7 +395,8 @@ class _GymPostCardState extends State<_GymPostCard>
                       .togglePin(widget.gymId, post.id, post.isPinned);
                 } catch (_) {
                   if (mounted) {
-                    AppSnackBar.error(context, 'Could not update post.');
+                    AppSnackBar.error(context,
+                        l10n.translate('gym.community.error.update_post_failed'));
                   }
                 }
               },
@@ -422,7 +425,8 @@ class _GymPostCardState extends State<_GymPostCard>
                       widget.gymId, post.id, post.isAnnouncement);
                 } catch (_) {
                   if (mounted) {
-                    AppSnackBar.error(context, 'Could not update post.');
+                    AppSnackBar.error(context,
+                        l10n.translate('gym.community.error.update_post_failed'));
                   }
                 }
               },
@@ -451,7 +455,7 @@ class _GymPostCardState extends State<_GymPostCard>
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(false),
-                        child: const Text('Cancel'),
+                        child: Text(l10n.translate('common.cancel')),
                       ),
                       TextButton(
                         onPressed: () => Navigator.of(ctx).pop(true),
@@ -472,7 +476,8 @@ class _GymPostCardState extends State<_GymPostCard>
                     }
                   } catch (_) {
                     if (mounted) {
-                      AppSnackBar.error(context, 'Could not delete post.');
+                      AppSnackBar.error(context,
+                          l10n.translate('gym.community.error.delete_post_failed'));
                     }
                   }
                 }
@@ -509,7 +514,7 @@ class _GymPostCardState extends State<_GymPostCard>
                       radius: 20,
                       backgroundColor: primary.withValues(alpha: 0.15),
                       backgroundImage: post.authorPhotoUrl != null
-                          ? NetworkImage(post.authorPhotoUrl!)
+                          ? CachedNetworkImageProvider(post.authorPhotoUrl!)
                           : null,
                       child: post.authorPhotoUrl == null
                           ? Text(
@@ -608,11 +613,23 @@ class _GymPostCardState extends State<_GymPostCard>
                   const SizedBox(height: AppSpacing.sm),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(AppRadius.sm),
-                    child: Image.network(
-                      post.imageUrl!,
+                    child: CachedNetworkImage(
+                      imageUrl: post.imageUrl!,
                       fit: BoxFit.cover,
                       width: double.infinity,
-                      errorBuilder: (_, __, ___) => Container(
+                      placeholder: (c, _) => Container(
+                        height: 120,
+                        color: palette.surfaceVariant,
+                        child: const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child:
+                                CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      ),
+                      errorWidget: (c, _, __) => Container(
                         height: 120,
                         color: palette.surfaceVariant,
                         child: Icon(Icons.broken_image_outlined,
@@ -729,7 +746,9 @@ class _PostComposerSheetState extends State<_PostComposerSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
       if (mounted) {
-        AppSnackBar.error(context, 'Could not create post. Try again.');
+        AppSnackBar.error(context,
+            AppLocalizations.of(context)
+                .translate('gym.community.error.create_post_failed'));
         setState(() => _posting = false);
       }
     }
@@ -831,7 +850,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       }
     } catch (_) {
       if (mounted) {
-        AppSnackBar.error(context, 'Could not send comment.');
+        AppSnackBar.error(context,
+            AppLocalizations.of(context)
+                .translate('gym.community.error.send_comment_failed'));
         setState(() => _sending = false);
       }
     }
@@ -842,7 +863,11 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       await GymPostService()
           .deleteComment(widget.gymId, widget.postId, commentId);
     } catch (_) {
-      if (mounted) AppSnackBar.error(context, 'Could not delete comment.');
+      if (mounted) {
+        AppSnackBar.error(context,
+            AppLocalizations.of(context)
+                .translate('gym.community.error.delete_comment_failed'));
+      }
     }
   }
 
@@ -872,12 +897,14 @@ class _CommentsSheetState extends State<_CommentsSheet> {
               }
               final comments = snap.data ?? [];
               if (comments.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 20),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
                   child: AppEmptyState(
                     icon: Icons.chat_bubble_outline_rounded,
-                    title: 'No comments yet',
-                    message: 'Be the first to comment.',
+                    title:
+                        l10n.translate('gym.community.comments.empty_title'),
+                    message:
+                        l10n.translate('gym.community.comments.empty_message'),
                     compact: true,
                   ),
                 );
@@ -899,7 +926,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                           radius: 16,
                           backgroundColor: primary.withValues(alpha: 0.15),
                           backgroundImage: c.authorPhotoUrl != null
-                              ? NetworkImage(c.authorPhotoUrl!)
+                              ? CachedNetworkImageProvider(c.authorPhotoUrl!)
                               : null,
                           child: c.authorPhotoUrl == null
                               ? Text(

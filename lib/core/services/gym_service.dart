@@ -333,9 +333,12 @@ class GymService {
     return (members: members, lastDoc: lastDoc);
   }
 
-  Stream<List<GymMemberModel>> getMembersStream(String gymId) {
+  Stream<List<GymMemberModel>> getMembersStream(String gymId, {int limit = 200}) {
+    // Capped: avoid re-reading an entire (potentially huge) member collection on
+    // every change. Paginate with startAfter for gyms exceeding the cap.
     return _members(gymId)
         .orderBy('joined_at', descending: false)
+        .limit(limit)
         .snapshots()
         .map((s) => s.docs.map(GymMemberModel.fromFirestore).toList());
   }

@@ -179,7 +179,13 @@ class AppLifecycleService with WidgetsBindingObserver {
     if (user == null) return;
 
     _log.info('Setting user ${user.uid} to online.', service: _serviceName);
-    await _firestoreService.updateUserOnlineStatus(user.uid, true);
+    // Refresh the FULL device/system context (not just is_online) on every
+    // app open/resume — a cached auto-login never runs handleUserLogin, so this
+    // is what keeps the phone/app-version/IP data fresh on the user doc.
+    await _firestoreService.syncDeviceContext(user.uid);
+    // Backfill created_at / onboarding_completed if missing (also only runs in
+    // handleUserLogin, which a cached auto-login skips). Fire-and-forget.
+    unawaited(_firestoreService.verifyAndRepairUserData(user.uid));
   }
 
   /// Disposes the service and unregisters it as an observer.

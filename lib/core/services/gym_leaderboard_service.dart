@@ -44,9 +44,13 @@ class GymLeaderboardService {
         counts[m.uid] = (counts[m.uid] ?? 0) + 1;
       }
 
-      // Fetch the member list (single read per checkins emission)
-      final membersSnap =
-          await _db.collection('gyms').doc(gymId).collection('members').get();
+      // Fetch the member list (single read per checkins emission), capped.
+      final membersSnap = await _db
+          .collection('gyms')
+          .doc(gymId)
+          .collection('members')
+          .limit(200)
+          .get();
 
       final members =
           membersSnap.docs.map(GymMemberModel.fromFirestore).toList();

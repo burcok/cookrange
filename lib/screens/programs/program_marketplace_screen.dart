@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
@@ -62,7 +63,7 @@ class _ProgramMarketplaceScreenState extends State<ProgramMarketplaceScreen> {
                 }
                 if (snap.hasError) {
                   return AppErrorState(
-                    title: 'Failed to load programs',
+                    title: l10n.translate('programs.error.load_failed'),
                     message: snap.error.toString(),
                     retryLabel: 'Retry',
                     onRetry: () => setState(() {}),
@@ -247,11 +248,13 @@ class _ProgramCardState extends State<_ProgramCard>
                       height: 110.h,
                       width: double.infinity,
                       child: p.coverImageUrl != null
-                          ? Image.network(
-                              p.coverImageUrl!,
+                          ? CachedNetworkImage(
+                              imageUrl: p.coverImageUrl!,
                               fit: BoxFit.cover,
-                              cacheWidth: 400,
-                              errorBuilder: (_, __, ___) =>
+                              memCacheWidth: 400,
+                              placeholder: (_, __) =>
+                                  _GradientPlaceholder(category: p.category),
+                              errorWidget: (_, __, ___) =>
                                   _GradientPlaceholder(category: p.category),
                             )
                           : _GradientPlaceholder(category: p.category),
@@ -312,13 +315,17 @@ class _ProgramCardState extends State<_ProgramCard>
                             Padding(
                               padding: EdgeInsets.only(right: 4.w),
                               child: ClipOval(
-                                child: Image.network(
-                                  p.coachPhotoUrl!,
+                                child: CachedNetworkImage(
+                                  imageUrl: p.coachPhotoUrl!,
                                   width: 14.r,
                                   height: 14.r,
                                   fit: BoxFit.cover,
-                                  cacheWidth: 56,
-                                  errorBuilder: (_, __, ___) => Icon(
+                                  memCacheWidth: 56,
+                                  placeholder: (_, __) => Icon(
+                                      Icons.person_rounded,
+                                      size: 14.r,
+                                      color: palette.textSecondary),
+                                  errorWidget: (_, __, ___) => Icon(
                                       Icons.person_rounded,
                                       size: 14.r,
                                       color: palette.textSecondary),

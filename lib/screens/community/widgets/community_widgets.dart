@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/theme_provider.dart';
@@ -116,7 +117,7 @@ class StoryCircle extends StatelessWidget {
                     : palette.surface,
                 image: imageUrl != null
                     ? DecorationImage(
-                        image: NetworkImage(imageUrl!),
+                        image: CachedNetworkImageProvider(imageUrl!),
                         fit: BoxFit.cover,
                       )
                     : null,

@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../../core/utils/safe_url_launcher.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/coach_application_model.dart';
 import '../../core/models/gym_application_model.dart';
@@ -785,11 +785,12 @@ class _DocTile extends StatelessWidget {
   });
 
   Future<void> _open() async {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    // Applicant-supplied document URL — only ever launch trusted Firebase
+    // Storage https links (no javascript:/file:/custom-scheme redirects).
+    await safeLaunchUrl(
+      url,
+      allowedHosts: const {'firebasestorage.googleapis.com'},
+    );
   }
 
   @override

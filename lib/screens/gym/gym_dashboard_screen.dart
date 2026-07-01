@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/widgets/app_image.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
@@ -466,8 +467,10 @@ class _GymDashboardScreenState extends State<GymDashboardScreen>
                       child: gym.logoUrl != null
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(AppRadius.sm),
-                              child: Image.network(gym.logoUrl!,
-                                  fit: BoxFit.cover),
+                              child: AppImage(
+                                imageUrl: gym.logoUrl!,
+                                fit: BoxFit.cover,
+                              ),
                             )
                           : Center(
                               child: Text(

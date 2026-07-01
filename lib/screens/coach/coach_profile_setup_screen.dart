@@ -325,7 +325,7 @@ class _CoachProfileSetupScreenState extends State<CoachProfileSetupScreen>
           ],
           const SizedBox(height: 32),
           AppButton(
-            label: 'Continue',
+            label: l10n.translate('common.continue'),
             onPressed: _nextStep,
           ),
           const SizedBox(height: 24),

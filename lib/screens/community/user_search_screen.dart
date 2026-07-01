@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
@@ -226,8 +227,9 @@ class _UserTile extends StatelessWidget {
             CircleAvatar(
               radius: 24.r,
               backgroundColor: primary.withValues(alpha: 0.15),
-              backgroundImage:
-                  user.photoURL != null ? NetworkImage(user.photoURL!) : null,
+              backgroundImage: user.photoURL != null
+                  ? CachedNetworkImageProvider(user.photoURL!)
+                  : null,
               child: user.photoURL == null
                   ? Text(
                       (user.displayName?.isNotEmpty == true)

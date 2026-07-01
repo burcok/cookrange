@@ -6,11 +6,14 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/localization/app_localizations.dart';
+import '../../core/models/consent_model.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/ai_credit_service.dart';
+import '../../core/services/consent_service.dart';
 import '../../core/services/food_analysis_service.dart';
 import '../../core/services/food_analysis_history_service.dart';
 import '../../core/services/food_log_service.dart';
@@ -180,9 +183,65 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     }
   }
 
+  /// One-time KVKK/GDPR point-of-use disclosure before a photo leaves the device
+  /// for the cross-border AI service. Returns true if the user may proceed.
+  static const String _aiPhotoDisclosureKey = 'ai_photo_disclosure_shown';
+
+  Future<bool> _ensureAiPhotoConsent() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_aiPhotoDisclosureKey) ?? false) return true;
+    if (!mounted) return false;
+
+    final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final t = AppText.of(context);
+
+    final accepted = await AppSheet.show<bool>(
+      context: context,
+      title: l10n.translate('food_scan.ai_disclosure_title'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Icon(Icons.cloud_upload_outlined, size: 40.r, color: palette.info),
+          SizedBox(height: 12.h),
+          Text(
+            l10n.translate('food_scan.ai_disclosure_body'),
+            style: t.bodyM.copyWith(color: palette.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 20.h),
+          AppButton(
+            label: l10n.translate('food_scan.ai_disclosure_accept'),
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+          SizedBox(height: 8.h),
+          AppButton(
+            label: l10n.translate('food_scan.ai_disclosure_cancel'),
+            variant: AppButtonVariant.ghost,
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+        ],
+      ),
+    );
+
+    if (accepted == true) {
+      await prefs.setBool(_aiPhotoDisclosureKey, true);
+      // Auditable point-of-use re-affirmation of the relevant consents.
+      unawaited(
+          ConsentService().setConsent(ConsentPurpose.crossBorderTransfer, true));
+      unawaited(ConsentService().setConsent(ConsentPurpose.aiProcessing, true));
+      return true;
+    }
+    return false;
+  }
+
   Future<void> _analyzePhoto() async {
     final bytes = _photoBytes;
     if (bytes == null) return;
+    // KVKK/GDPR: disclose the cross-border transfer before the photo leaves.
+    if (!await _ensureAiPhotoConsent()) return;
+    if (!mounted) return;
     _focusNode.unfocus();
     unawaited(HapticFeedback.lightImpact());
 

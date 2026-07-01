@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/localization/app_localizations.dart';
@@ -276,7 +277,7 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
                         radius: 20,
                         backgroundColor: primary.withValues(alpha: 0.15),
                         backgroundImage: c.clientPhotoURL != null
-                            ? NetworkImage(c.clientPhotoURL!)
+                            ? CachedNetworkImageProvider(c.clientPhotoURL!)
                             : null,
                         child: c.clientPhotoURL == null
                             ? Icon(Icons.person_rounded,
@@ -339,7 +340,7 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
                   context,
                   AppTransitions.slideRight(const CoachClientsScreen()),
                 ),
-                child: Text('See all (${active.length})',
+                child: Text(l10n.translate('coach.dashboard.see_all', variables: {'count': active.length.toString()}),
                     style: AppText.of(context).labelS.copyWith(color: primary)),
               ),
           ],
@@ -370,7 +371,7 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
                           radius: 20,
                           backgroundColor: primary.withValues(alpha: 0.15),
                           backgroundImage: c.clientPhotoURL != null
-                              ? NetworkImage(c.clientPhotoURL!)
+                              ? CachedNetworkImageProvider(c.clientPhotoURL!)
                               : null,
                           child: c.clientPhotoURL == null
                               ? Icon(Icons.person_rounded,
@@ -424,7 +425,7 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
           children: [
             Expanded(
               child: AppButton(
-                label: 'Edit Profile',
+                label: l10n.translate('coach.dashboard.action_edit_profile'),
                 onPressed: () => Navigator.push(
                   context,
                   AppTransitions.slideRight(

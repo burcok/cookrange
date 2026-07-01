@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -241,8 +242,9 @@ class _LeaderboardRow extends StatelessWidget {
             // Avatar
             CircleAvatar(
               radius: 20,
-              backgroundImage:
-                  entry.photoURL != null ? NetworkImage(entry.photoURL!) : null,
+              backgroundImage: entry.photoURL != null
+                  ? CachedNetworkImageProvider(entry.photoURL!)
+                  : null,
               backgroundColor: palette.surfaceVariant,
               child: entry.photoURL == null
                   ? Text(

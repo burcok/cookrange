@@ -20,15 +20,19 @@ class MessageModel {
   });
 
   factory MessageModel.fromJson(Map<String, dynamic> json) {
+    // Null-safe: a chat message is written by the other participant and a
+    // pending serverTimestamp() reads back null locally — never hard-cast, or a
+    // crafted/in-flight doc crashes the viewer's chat (stored DoS).
+    final ts = json['timestamp'];
     return MessageModel(
-      id: json['id'] as String,
-      senderId: json['senderId'] as String,
-      text: json['text'] as String,
+      id: json['id'] as String? ?? '',
+      senderId: json['senderId'] as String? ?? '',
+      text: json['text'] as String? ?? '',
       type: MessageType.values.firstWhere(
         (e) => e.name == json['type'],
         orElse: () => MessageType.text,
       ),
-      timestamp: (json['timestamp'] as Timestamp).toDate(),
+      timestamp: ts is Timestamp ? ts.toDate() : DateTime.now(),
       isRead: json['isRead'] as bool? ?? false,
     );
   }

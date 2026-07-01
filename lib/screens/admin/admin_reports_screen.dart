@@ -145,7 +145,7 @@ class _ReportListState extends State<_ReportList> {
 
         if (snap.hasError) {
           return AppErrorState(
-            title: 'Error',
+            title: l10n.translate('common.error'),
             message: snap.error.toString(),
           );
         }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -296,10 +297,11 @@ class AuthService {
       }
 
       final time = DateTime.now();
+      // No PII (email) in Analytics — Google policy forbids it and it is a
+      // privacy leak. Track only the non-identifying event.
       unawaited(_analyticsService.logEvent(
         name: 'password_reset_request',
         parameters: {
-          'email': email,
           'time': time.toIso8601String(),
         },
       ));
@@ -320,10 +322,10 @@ class AuthService {
         await user.sendEmailVerification();
 
         final time = DateTime.now();
+        // No PII (email) in Analytics.
         unawaited(_analyticsService.logEvent(
           name: 'send_email_verification',
           parameters: {
-            'email': user.email ?? 'unknown',
             'time': time.toIso8601String(),
           },
         ));
@@ -688,24 +690,29 @@ class AuthService {
 
       final uid = user.uid;
 
-      // Delete Firestore data first (before Firebase Auth deletion)
-      await _firestoreService.deleteUserData(uid);
+      // Complete, server-side erasure (GDPR Art.17 / KVKK Art.7): the
+      // deleteUserAccount Cloud Function recursively deletes the entire
+      // users/{uid} subtree, server-only docs, authored content, ALL Storage
+      // objects, and the Auth identity itself — none of which the client can do
+      // reliably. Requires the reauth performed above.
+      await FirebaseFunctions.instance.httpsCallable('deleteUserAccount').call();
 
       // Cancel session monitoring
       await _sessionSubscription?.cancel();
       _sessionSubscription = null;
-
-      // Delete Firebase Auth account
-      await user.delete();
       _userDataCache = null;
 
       try {
         await _googleSignIn.disconnect();
       } catch (_) {}
-
+      // The Auth user is already deleted server-side; ensure local sign-out so
+      // the app returns to the unauthenticated state.
+      try {
+        await _auth.signOut();
+      } catch (_) {}
       await clearOnboardingData();
 
-      _log.info('Account deleted successfully for uid: $uid',
+      _log.info('Account erased (server-side) for uid: $uid',
           service: _serviceName);
       unawaited(_analyticsService.logEvent(name: 'account_deleted'));
     } on FirebaseAuthException catch (e) {

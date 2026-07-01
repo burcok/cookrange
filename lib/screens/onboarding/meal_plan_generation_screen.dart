@@ -55,6 +55,11 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
   // Minimum stage durations (ms) — total ~3.5 s minimum visual time
   static const _stageDurations = [600, 700, 700, 600, 500, 400];
 
+  // Expected generation window used to drive the progress bar at a constant
+  // linear rate (0 → 0.95). Roughly a typical free-model plan generation; if it
+  // finishes sooner the bar jumps to 100%, if later it holds at 0.95.
+  static const int _expectedGenerationMs = 60000;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -114,18 +119,13 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
     final localeCode =
         context.read<LanguageProvider>().currentLocale.languageCode;
 
-    // Phase 1: animate 0→0.85 in 4500ms with easeIn (starts slow, accelerates).
-    // Phase 2: if AI is still running, trickle 0.85→0.93 over 25s linear so
-    // the bar never appears frozen during a long generation.
-    unawaited(_progressCtrl
-        .animateTo(0.85,
-            duration: const Duration(milliseconds: 4500), curve: Curves.easeIn)
-        .then((_) {
-      if (!_done && !_hasError && mounted) {
-        unawaited(_progressCtrl.animateTo(0.93,
-            duration: const Duration(seconds: 25)));
-      }
-    }));
+    // Drive the bar LINEARLY (constant rate) from 0 → 0.95 across the expected
+    // generation window, so the percentage tracks real elapsed time instead of
+    // easing/stalling at a fake value. On real success _finishSuccess takes it
+    // 0.95 → 1.0; if generation runs longer than expected it simply holds at
+    // 0.95 ("still working") rather than jumping around.
+    unawaited(_progressCtrl.animateTo(0.95,
+        duration: const Duration(milliseconds: _expectedGenerationMs)));
 
     // Advance fake UI stages in parallel with the real network call.
     unawaited(_runFakeStages());
@@ -161,26 +161,32 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
   }
 
   Future<void> _advanceStage(int next) async {
+    if (!mounted) return;
     _stageCtrl.reset();
     setState(() => _stage = next);
     await _stageCtrl.forward();
-    if (next < _stageDurations.length - 1)
+    if (!mounted) return;
+    if (next < _stageDurations.length - 1) {
       unawaited(HapticFeedback.selectionClick());
+    }
   }
 
   Future<void> _finishSuccess() async {
     await _advanceStage(5);
+    if (!mounted) return;
     await _progressCtrl.animateTo(1.0,
         duration: const Duration(milliseconds: 400), curve: Curves.easeOut);
+    if (!mounted) return;
     setState(() => _done = true);
     unawaited(HapticFeedback.mediumImpact());
     await _successCtrl.forward();
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
 
-    // Mark meal_plan_generated=true so RouteGuard allows /main entry for all
-    // login paths (including email-verify-separately → login flows).
-    _markMealPlanGenerated();
+    // Persist meal_plan_generated=true (awaited) so RouteGuard allows /main and
+    // a live UserProvider re-fetch can't revert the flag before the write lands.
+    await _markMealPlanGenerated();
+    if (!mounted) return;
 
     unawaited(Navigator.pushNamedAndRemoveUntil(
         context, AppRoutes.main, (route) => false));
@@ -188,24 +194,42 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
         .logEvent(name: 'onboarding_plan_generated', parameters: {}));
   }
 
-  void _markMealPlanGenerated() {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    // Firestore write — best-effort, non-blocking.
-    unawaited(FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .update({'meal_plan_generated': true}).catchError((e) {
-      debugPrint('MealPlanGeneration: failed to set meal_plan_generated: $e');
-    }));
-    // Update in-memory UserProvider so RouteGuard sees the change immediately
-    // without waiting for a Firestore round-trip.
+  /// Marks the onboarding meal-plan gate satisfied. Updates the in-memory
+  /// UserProvider immediately AND awaits the Firestore write — the await is
+  /// essential: UserProvider's live listener can re-fetch the user doc at any
+  /// time (`_fetchAndMerge`), which would overwrite an in-memory-only flag with
+  /// the stale stored `false` and bounce the user back here (the loop).
+  Future<void> _markMealPlanGenerated() async {
+    // In-memory first, so RouteGuard sees it on the very next build.
     try {
       final up = _userProvider;
       if (up?.user != null) {
         up!.setUser(up.user!.copyWith(mealPlanGenerated: true));
       }
     } catch (_) {}
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .update({'meal_plan_generated': true}).timeout(
+        const Duration(seconds: 5),
+      );
+    } catch (e) {
+      debugPrint('MealPlanGeneration: failed to set meal_plan_generated: $e');
+    }
+  }
+
+  /// User chose to skip after an error. Persist the gate flag (awaited) BEFORE
+  /// navigating so RouteGuard's meal-plan gate lets /main render instead of
+  /// bouncing straight back here and re-triggering generation (the loop).
+  Future<void> _skip() async {
+    await _markMealPlanGenerated();
+    if (!mounted) return;
+    unawaited(Navigator.pushNamedAndRemoveUntil(
+        context, AppRoutes.main, (route) => false));
   }
 
   Future<void> _retry() async {
@@ -457,8 +481,7 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
             SizedBox(height: 16.h),
             AppButton(
               label: l10n.translate('onboarding.generating.skip'),
-              onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                  context, AppRoutes.main, (route) => false),
+              onPressed: _skip,
               variant: AppButtonVariant.ghost,
               expand: false,
             ),

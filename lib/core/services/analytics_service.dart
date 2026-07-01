@@ -61,12 +61,10 @@ class AnalyticsService {
       _packageInfo = await PackageInfo.fromPlatform();
       _log.info('Package info loaded', service: _serviceName);
 
-      // Critical setup: Enable/Disable analytics
-      if (kReleaseMode) {
-        unawaited(_analytics.setAnalyticsCollectionEnabled(true));
-      } else {
-        unawaited(_analytics.setAnalyticsCollectionEnabled(false));
-      }
+      // Privacy-by-default: collection stays OFF until the user's analytics
+      // consent is applied via [setConsentEnabled] (ConsentService). It is also
+      // never enabled in debug.
+      unawaited(_analytics.setAnalyticsCollectionEnabled(false));
       unawaited(
           _analytics.setSessionTimeoutDuration(const Duration(minutes: 30)));
 
@@ -85,6 +83,18 @@ class AnalyticsService {
       rethrow;
     } finally {
       _isInitializing = false;
+    }
+  }
+
+  /// Enables/disables Analytics collection per the user's analytics consent.
+  /// Never collects in debug. Called by ConsentService on consent load/change.
+  Future<void> setConsentEnabled(bool granted) async {
+    try {
+      await _analytics.setAnalyticsCollectionEnabled(kReleaseMode && granted);
+      _log.info('Analytics collection set to ${kReleaseMode && granted} '
+          '(consent=$granted)', service: _serviceName);
+    } catch (e) {
+      _log.warning('setConsentEnabled failed: $e', service: _serviceName);
     }
   }
 
@@ -170,6 +180,16 @@ class AnalyticsService {
     _processTimer = Timer.periodic(_processInterval, (_) {
       unawaited(_processQueue());
     });
+  }
+
+  /// Cancels the batch/process timers and flushes any queued events. Safe to
+  /// call on shutdown or in tests; the singleton normally lives the whole app.
+  Future<void> dispose() async {
+    _batchTimer?.cancel();
+    _batchTimer = null;
+    _processTimer?.cancel();
+    _processTimer = null;
+    await _processQueue();
   }
 
   Future<void> _processPendingEvents() async {

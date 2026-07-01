@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cookrange/core/models/dish_model.dart';
 import 'package:cookrange/core/models/user_model.dart';
@@ -807,7 +808,8 @@ class _CreatePostCardState extends State<CreatePostCard> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(AppRadius.sm),
                             image: DecorationImage(
-                              image: NetworkImage(_attachedImageUrls[index]),
+                              image: CachedNetworkImageProvider(
+                                  _attachedImageUrls[index]),
                               fit: BoxFit.cover,
                             ),
                           ),

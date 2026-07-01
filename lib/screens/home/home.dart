@@ -237,7 +237,12 @@ class _HomeScreenState extends State<HomeScreen>
         },
       ));
     } catch (e) {
-      if (mounted) AppSnackBar.error(context, 'Could not log meal: $e');
+      if (mounted) {
+        AppSnackBar.error(
+            context,
+            AppLocalizations.of(context).translate('home.error.log_meal_failed',
+                variables: {'details': e.toString()}));
+      }
     } finally {
       if (mounted) setState(() => _loggingInProgress.remove(mealType));
     }
@@ -341,7 +346,12 @@ class _HomeScreenState extends State<HomeScreen>
         parameters: {'meal_type': mealType, 'new_dish_id': newDish.id},
       ));
     } catch (e) {
-      if (mounted) AppSnackBar.error(context, 'Could not swap meal: $e');
+      if (mounted) {
+        AppSnackBar.error(
+            context,
+            AppLocalizations.of(context).translate('home.error.swap_meal_failed',
+                variables: {'details': e.toString()}));
+      }
     } finally {
       if (mounted) setState(() => _swapInProgress.remove(key));
     }
@@ -690,7 +700,8 @@ class _HomeScreenState extends State<HomeScreen>
                       ? _refreshController.value * 2 * math.pi
                       : progress * math.pi;
 
-                  return Container(
+                  return RepaintBoundary(
+                    child: Container(
                     width: 48.w,
                     height: 48.w,
                     transform: Matrix4.diagonal3Values(
@@ -717,6 +728,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ],
                     ),
+                  ),
                   );
                 },
               ),

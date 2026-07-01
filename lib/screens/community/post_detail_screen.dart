@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:cookrange/core/providers/user_provider.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/widgets/ds/app_avatar.dart';
+import '../../core/widgets/app_image.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final String postId;
@@ -94,9 +96,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     child: Center(
                       child: Hero(
                         tag: 'post_image_carousel_$index',
-                        child: Image.network(
-                          _post!.imageUrls[index],
+                        child: AppImage(
+                          imageUrl: _post!.imageUrls[index],
                           fit: BoxFit.contain,
+                          useMemCache: false,
                         ),
                       ),
                     ),
@@ -357,8 +360,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                       child: Row(
                                         children: [
                                           CircleAvatar(
-                                              backgroundImage: NetworkImage(
-                                                  _post!.author.avatarUrl)),
+                                              backgroundImage:
+                                                  CachedNetworkImageProvider(
+                                                      _post!.author.avatarUrl)),
                                           const SizedBox(width: AppSpacing.sm),
                                           Column(
                                             crossAxisAlignment:
@@ -610,8 +614,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                 child: Hero(
                                                   tag:
                                                       'post_image_carousel_$index',
-                                                  child: Image.network(
-                                                    _post!.imageUrls[index],
+                                                  child: AppImage(
+                                                    imageUrl:
+                                                        _post!.imageUrls[index],
                                                     fit: BoxFit.cover,
                                                     width: double.infinity,
                                                   ),
@@ -795,7 +800,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                         child: CircleAvatar(
                                                           radius: 10,
                                                           backgroundImage:
-                                                              NetworkImage(entry
+                                                              CachedNetworkImageProvider(entry
                                                                   .value
                                                                   .avatarUrl),
                                                         ),
@@ -867,7 +872,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             onTap: () => openUserProfile(context, userId: comment.author.id),
             child: CircleAvatar(
               radius: 16,
-              backgroundImage: NetworkImage(comment.author.avatarUrl),
+              backgroundImage:
+                  CachedNetworkImageProvider(comment.author.avatarUrl),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),

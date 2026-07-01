@@ -219,12 +219,16 @@ class _Content extends StatelessWidget {
           children: [
             Text('📊', style: TextStyle(fontSize: 16.sp)),
             SizedBox(width: 6.w),
-            Text(
-              l10n.translate('home.recap.title'),
-              style: t.titleM.copyWith(
-                  color: palette.textPrimary, fontWeight: FontWeight.bold),
+            Expanded(
+              child: Text(
+                l10n.translate('home.recap.title'),
+                style: t.titleM.copyWith(
+                    color: palette.textPrimary, fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const Spacer(),
+            SizedBox(width: 8.w),
             Container(
               padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
               decoration: BoxDecoration(
@@ -321,7 +325,10 @@ class _Content extends StatelessWidget {
           SizedBox(height: 10.h),
 
         // ── Stat row ──────────────────────────────────────────────────────────
-        Row(
+        Wrap(
+          spacing: 12.w,
+          runSpacing: 6.h,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             _Stat(
               icon: Icons.local_fire_department_rounded,
@@ -331,7 +338,6 @@ class _Content extends StatelessWidget {
               t: t,
               palette: palette,
             ),
-            SizedBox(width: 12.w),
             if (calorieTarget > 0)
               _Stat(
                 icon: Icons.flag_rounded,

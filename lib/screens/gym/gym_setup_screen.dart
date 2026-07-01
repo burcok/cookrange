@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -954,15 +955,25 @@ class _LogoPickerSection extends StatelessWidget {
                     child: logoFile != null
                         ? Image.file(logoFile!, fit: BoxFit.cover)
                         : existingLogoUrl != null
-                            ? Image.network(existingLogoUrl!,
+                            ? CachedNetworkImage(
+                                imageUrl: existingLogoUrl!,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Center(
-                                      child: Icon(
-                                        Icons.add_a_photo_rounded,
-                                        color: palette.textTertiary,
-                                        size: 28,
-                                      ),
-                                    ))
+                                placeholder: (c, _) => const Center(
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  ),
+                                ),
+                                errorWidget: (c, _, __) => Center(
+                                  child: Icon(
+                                    Icons.add_a_photo_rounded,
+                                    color: palette.textTertiary,
+                                    size: 28,
+                                  ),
+                                ),
+                              )
                             : Center(
                                 child: Icon(
                                   Icons.add_a_photo_rounded,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/gym_member_model.dart';
@@ -312,7 +313,7 @@ class _MemberTile extends StatelessWidget {
                     radius: 22,
                     backgroundColor: primary.withValues(alpha: 0.12),
                     backgroundImage: member.photoURL != null
-                        ? NetworkImage(member.photoURL!)
+                        ? CachedNetworkImageProvider(member.photoURL!)
                         : null,
                     child: member.photoURL == null
                         ? Text(

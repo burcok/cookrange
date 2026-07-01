@@ -42,7 +42,9 @@ class ChatModel {
         (e) => e.name == json['type'],
         orElse: () => ChatType.private,
       ),
-      updatedAt: (json['updatedAt'] as Timestamp).toDate(),
+      updatedAt: json['updatedAt'] is Timestamp
+          ? (json['updatedAt'] as Timestamp).toDate()
+          : DateTime.now(),
       name: json['name'],
       image: json['image'],
       isPublic: json['isPublic'] ?? false,

@@ -8,6 +8,7 @@ import '../../core/models/coach_review_model.dart';
 import '../../core/services/coach_review_service.dart';
 import '../../core/services/coach_service.dart';
 import '../../core/models/coach_profile_model.dart';
+import '../../core/widgets/app_image.dart';
 import '../../core/widgets/coach_share_card.dart';
 import '../../core/widgets/coachmark_tip.dart';
 import '../../core/widgets/ds/ds.dart';
@@ -81,7 +82,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return AppErrorState(
-              title: 'Something went wrong',
+              title: AppLocalizations.of(context).translate('common.something_wrong'),
               message: snapshot.error.toString(),
               onRetry: () => setState(() {}),
             );
@@ -129,7 +130,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                           const SizedBox(height: 24),
                         ],
                         if (profile.specializations.isNotEmpty) ...[
-                          Text('Specializations',
+                          Text(AppLocalizations.of(context).translate('coach.profile.section_specializations'),
                               style: AppText.of(context).titleM.copyWith(
                                   color: palette.textPrimary,
                                   fontWeight: FontWeight.bold)),
@@ -147,7 +148,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                           const SizedBox(height: 24),
                         ],
                         if (profile.certifications.isNotEmpty) ...[
-                          Text('Certifications',
+                          Text(AppLocalizations.of(context).translate('coach.profile.section_certifications'),
                               style: AppText.of(context).titleM.copyWith(
                                   color: palette.textPrimary,
                                   fontWeight: FontWeight.bold)),
@@ -197,7 +198,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                             builder: (context, snap) {
                               if (snap.hasError) {
                                 return AppErrorState(
-                                  title: 'Something went wrong',
+                                  title: AppLocalizations.of(context).translate('common.something_wrong'),
                                   message: snap.error.toString(),
                                   onRetry: () => setState(() {}),
                                 );
@@ -325,8 +326,9 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                 ),
                 child: ClipOval(
                   child: profile.photoURL != null
-                      ? Image.network(profile.photoURL!,
-                          fit: BoxFit.cover, cacheWidth: 320)
+                      ? AppImage(
+                          imageUrl: profile.photoURL!,
+                          memCacheWidth: 320)
                       : Container(
                           color: primary.withValues(alpha: 0.15),
                           child: Icon(Icons.person_rounded,
@@ -400,7 +402,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
           child: _StatCard(
             icon: Icons.people_alt_rounded,
             value: profile.clientCount.toString(),
-            label: 'Clients',
+            label: AppLocalizations.of(context).translate('coach.profile.stat_clients'),
             palette: palette,
           ),
         ),
@@ -410,7 +412,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
             child: _StatCard(
               icon: Icons.attach_money_rounded,
               value: '₺${profile.hourlyRate!.toStringAsFixed(0)}/saat',
-              label: 'Rate',
+              label: AppLocalizations.of(context).translate('coach.profile.stat_rate'),
               palette: palette,
             ),
           ),
@@ -603,7 +605,7 @@ class _ReviewsSection extends StatelessWidget {
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return AppErrorState(
-                title: 'Something went wrong',
+                title: l10n.translate('common.something_wrong'),
                 message: snapshot.error.toString(),
                 onRetry: () {},
               );

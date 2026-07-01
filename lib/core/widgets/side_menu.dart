@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cookrange/screens/chat/ai_chat_screen.dart';
 import 'package:cookrange/screens/chat/chat_list_screen.dart';
 import 'package:cookrange/screens/discover/discover_hub_screen.dart';
@@ -1148,10 +1149,12 @@ class _ProfileHeader extends StatelessWidget {
                   ),
                   child: ClipOval(
                     child: photoUrl != null
-                        ? Image.network(photoUrl,
+                        ? CachedNetworkImage(
+                            imageUrl: photoUrl,
                             fit: BoxFit.cover,
-                            cacheWidth: 208,
-                            errorBuilder: (_, __, ___) => _avatarFallback())
+                            memCacheWidth: 208,
+                            placeholder: (_, __) => _avatarFallback(),
+                            errorWidget: (_, __, ___) => _avatarFallback())
                         : _avatarFallback(),
                   ),
                 ),

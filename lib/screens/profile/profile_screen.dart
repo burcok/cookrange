@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:cookrange/core/constants/onboarding_options.dart';
 import 'package:cookrange/core/localization/app_localizations.dart';
@@ -630,15 +631,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: Color.lerp(palette.glassStroke, palette.error, 0.15) ??
                       palette.glassStroke,
                 ),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    palette.glassHighlight,
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.5],
-                ),
               ),
               child: Column(
                 children: [
@@ -804,17 +796,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: ClipOval(
                 child: photoURL != null && photoURL.isNotEmpty
-                    ? Image.network(
-                        photoURL,
+                    ? CachedNetworkImage(
+                        imageUrl: photoURL,
                         fit: BoxFit.cover,
-                        loadingBuilder: (_, child, progress) => progress == null
-                            ? child
-                            : Center(
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white.withValues(alpha: 0.7)),
-                              ),
-                        errorBuilder: (_, __, ___) => Center(
+                        placeholder: (_, __) => Center(
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white.withValues(alpha: 0.7)),
+                        ),
+                        errorWidget: (_, __, ___) => Center(
                           child: Text(
                             displayName.isNotEmpty
                                 ? displayName[0].toUpperCase()
@@ -1117,8 +1107,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(width: 1, height: 32, color: palette.border),
     );
+    double horizontalPadding = _isPublicMode ? 0 : 24;
     return AppGlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding:
+          EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 16),
       blur: AppPalette.glassBlurSubtle,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1407,7 +1399,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         child: CircleAvatar(
                                           radius: 24,
                                           backgroundImage: f.photoURL != null
-                                              ? NetworkImage(f.photoURL!)
+                                              ? CachedNetworkImageProvider(
+                                                  f.photoURL!)
                                               : null,
                                           child: f.photoURL == null
                                               ? Text((f.displayName ?? "U")[0])
@@ -1895,15 +1888,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: palette.glassFill,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: palette.glassStroke),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                palette.glassHighlight,
-                Colors.transparent,
-              ],
-              stops: const [0.0, 0.5],
-            ),
             boxShadow: [
               BoxShadow(
                   color: palette.shadow.withValues(alpha: 0.06),
@@ -2289,7 +2273,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundImage: friend.photoURL != null
-                          ? NetworkImage(friend.photoURL!)
+                          ? CachedNetworkImageProvider(friend.photoURL!)
                           : null,
                       child: friend.photoURL == null
                           ? Text((friend.displayName ?? "U")[0])
@@ -2403,7 +2387,7 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
                             child: ListTile(
                               leading: CircleAvatar(
                                 backgroundImage: u.photoURL != null
-                                    ? NetworkImage(u.photoURL!)
+                                    ? CachedNetworkImageProvider(u.photoURL!)
                                     : null,
                                 child: u.photoURL == null
                                     ? Text((u.displayName ?? "U")[0])

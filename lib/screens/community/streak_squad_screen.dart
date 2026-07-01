@@ -88,7 +88,7 @@ class _StreakSquadScreenState extends State<StreakSquadScreen> {
                           builder: (context, snap) {
                             if (snap.hasError) {
                               return AppErrorState(
-                                title: 'Something went wrong',
+                                title: AppLocalizations.of(context).translate('common.something_wrong'),
                                 message: snap.error.toString(),
                                 onRetry: () => setState(() {}),
                               );
@@ -404,7 +404,7 @@ class _SquadCardState extends State<_SquadCard>
                   builder: (context, snap) {
                     if (snap.hasError) {
                       return AppErrorState(
-                        title: 'Something went wrong',
+                        title: AppLocalizations.of(context).translate('common.something_wrong'),
                         message: snap.error.toString(),
                         onRetry: () => setState(() {}),
                       );
@@ -587,7 +587,7 @@ class _SquadDetailSheetState extends State<_SquadDetailSheet> {
       builder: (context, snap) {
         if (snap.hasError) {
           return AppErrorState(
-            title: 'Something went wrong',
+            title: AppLocalizations.of(context).translate('common.something_wrong'),
             message: snap.error.toString(),
             onRetry: () => setState(() {}),
           );

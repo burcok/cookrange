@@ -44,8 +44,15 @@ class SignalModel {
       ),
       message: json['message'] ?? '',
       metadata: Map<String, dynamic>.from(json['metadata'] ?? {}),
-      createdAt: (json['createdAt'] as Timestamp).toDate(),
-      expiresAt: (json['expiresAt'] as Timestamp).toDate(),
+      // Null-safe: signals are globally visible and created by any user — a
+      // crafted/in-flight doc with a missing/bad timestamp must not crash the
+      // whole feed. A malformed expiry defaults to "expired" (hidden).
+      createdAt: json['createdAt'] is Timestamp
+          ? (json['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
+      expiresAt: json['expiresAt'] is Timestamp
+          ? (json['expiresAt'] as Timestamp).toDate()
+          : DateTime.fromMillisecondsSinceEpoch(0),
       ignoredBy: List<String>.from(json['ignoredBy'] ?? []),
     );
   }

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../models/coach_application_model.dart';
 import '../models/privacy_request_model.dart';
 import '../models/report_model.dart';
+import '../utils/firestore_count.dart';
 import 'analytics_service.dart';
 import '../models/coach_profile_model.dart';
 import '../models/gym_application_model.dart';
@@ -45,33 +46,37 @@ class AdminService {
         .map((s) => s.docs.map(GymApplicationModel.fromFirestore).toList());
   }
 
-  Stream<int> pendingCountStream() {
-    return _db
-        .collection('coach_applications')
-        .where('status', isEqualTo: 'pending')
-        .snapshots()
-        .asyncMap((coachSnap) async {
-      final gymSnap = await _db
-          .collection('gym_applications')
-          .where('status', isEqualTo: 'pending')
-          .get();
-      return coachSnap.size + gymSnap.size;
-    });
+  // These counts use the cheap count() aggregation polled periodically, instead
+  // of streaming (and re-reading) entire collections on every change. Aggregate
+  // queries have no .snapshots(), so we poll via pollCount.
+  Stream<int> pendingCountStream() async* {
+    while (true) {
+      try {
+        final coach = await _db
+            .collection('coach_applications')
+            .where('status', isEqualTo: 'pending')
+            .count()
+            .get();
+        final gym = await _db
+            .collection('gym_applications')
+            .where('status', isEqualTo: 'pending')
+            .count()
+            .get();
+        yield (coach.count ?? 0) + (gym.count ?? 0);
+      } catch (_) {
+        yield 0;
+      }
+      await Future<void>.delayed(const Duration(seconds: 45));
+    }
   }
 
-  /// Total registered user count (approximate — reads first page of users stream).
-  Stream<int> userCountStream() {
-    return _db.collection('users').snapshots().map((s) => s.size);
-  }
+  /// Total registered user count via aggregation (not a whole-collection listen).
+  Stream<int> userCountStream() => pollCount(_db.collection('users'));
 
-  /// Count of open/pending reports in the `reports` collection.
-  Stream<int> openReportCountStream() {
-    return _db
-        .collection('reports')
-        .where('status', isEqualTo: 'pending')
-        .snapshots()
-        .map((s) => s.size);
-  }
+  /// Count of open/pending reports via aggregation.
+  Stream<int> openReportCountStream() => pollCount(
+        _db.collection('reports').where('status', isEqualTo: 'pending'),
+      );
 
   // ── Reports ────────────────────────────────────────────────────────────────
 
@@ -777,6 +782,18 @@ class AdminService {
       },
       SetOptions(merge: true),
     );
+    // Mirror the moderation word-list to a PUBLIC-read settings doc, because
+    // admin_config is admin-read-only — the client content filter (all users)
+    // must read the list from somewhere they can access.
+    if (updates.containsKey('blocked_keywords')) {
+      await _db.collection('settings').doc('content_filter').set(
+        {
+          'blocked_keywords': updates['blocked_keywords'],
+          'updated_at': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    }
     await logAuditAction(
       action: 'update_admin_config',
       targetUid: adminUid,
@@ -802,9 +819,11 @@ class AdminService {
   Future<void> grantBonusCredits(String uid, int count, String reason) async {
     debugPrint(
         'AdminService: grantBonusCredits uid=$uid count=$count reason=$reason');
-    await _db.collection('users').doc(uid).update({
-      'ai_credits_bonus': FieldValue.increment(count),
-    });
+    // Bonus credits live in the server-authoritative ledger ai_credits/{uid}
+    // (not the user doc). Admins may write it (rule allows isAdmin()).
+    await _db.collection('ai_credits').doc(uid).set({
+      'bonus': FieldValue.increment(count),
+    }, SetOptions(merge: true));
     await logAuditAction(
       action: 'grant_bonus_credits',
       targetUid: uid,

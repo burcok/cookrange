@@ -89,7 +89,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   ) {
     if (snap.hasError) {
       return AppErrorState(
-        title: 'Error',
+        title: l10n.translate('common.error'),
         message: snap.error.toString(),
         onRetry: () => setState(() {}),
       );
@@ -348,7 +348,7 @@ class _BannedBadge extends StatelessWidget {
         children: [
           Icon(Icons.block_rounded, color: palette.error, size: 10.r),
           SizedBox(width: 2.w),
-          Text('Banned',
+          Text(AppLocalizations.of(context).translate('admin.users.status_banned'),
               style: t.labelS
                   .copyWith(color: palette.error, fontWeight: FontWeight.w600)),
         ],
@@ -450,7 +450,7 @@ class _UserActionSheetState extends State<_UserActionSheet> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
+              child: Text(l10n.translate('common.cancel')),
             ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
@@ -491,7 +491,7 @@ class _UserActionSheetState extends State<_UserActionSheet> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(widget.l10n.translate('common.cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -875,7 +875,7 @@ class _SendNotificationDialogState extends State<_SendNotificationDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(widget.l10n.translate('common.cancel')),
         ),
         TextButton(
           onPressed: () {

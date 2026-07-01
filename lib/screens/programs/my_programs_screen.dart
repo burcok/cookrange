@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -54,7 +55,8 @@ class _MyProgramsScreenState extends State<MyProgramsScreen> {
         ],
       ),
       body: uid == null
-          ? const AppErrorState(title: 'Sign in to view your programs')
+          ? AppErrorState(
+              title: l10n.translate('programs.error.signin_to_view_yours'))
           : StreamBuilder<
               List<
                   ({
@@ -150,13 +152,15 @@ class _ProgramCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.sm.r),
             child: p?.coverImageUrl != null
-                ? Image.network(
-                    p!.coverImageUrl!,
+                ? CachedNetworkImage(
+                    imageUrl: p!.coverImageUrl!,
                     width: 72.r,
                     height: 72.r,
                     fit: BoxFit.cover,
-                    cacheWidth: 288,
-                    errorBuilder: (_, __, ___) =>
+                    memCacheWidth: 288,
+                    placeholder: (_, __) =>
+                        _GradientThumb(category: p.category, size: 72.r),
+                    errorWidget: (_, __, ___) =>
                         _GradientThumb(category: p.category, size: 72.r),
                   )
                 : _GradientThumb(

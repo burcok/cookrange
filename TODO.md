@@ -33,6 +33,44 @@
 
 ---
 
+## Security Hardening (2026-06-30)
+
+> Major hardening pass — server-authoritative trust boundaries + data protection. See
+> `docs/roadmap/GO_LIVE.md` Phase 5S for the full plan and console steps.
+
+**✅ DONE:**
+- Server-authoritative **AI proxy** + **credit/entitlement ledger** (client can no longer mint credits).
+- **Native-store purchase validation** (server verifies receipts).
+- Server-side **referral / commission / payout** logic.
+- **Field-locked Firestore rules** (immutable/owner-controlled fields enforced server-side).
+- **App Check release providers** (Android Play Integrity, iOS App Attest; debug provider debug-only).
+- **Hive encryption** (AES-256, key in `flutter_secure_storage`).
+- **Null-safe parsing** + **content-length caps** on inputs.
+- **Prompt-injection guard** + **deterministic allergen filter** on AI output.
+- **Server-side account erasure** + **complete GDPR export**.
+- **Analytics consent-gating** + email removal from analytics payloads.
+- **`APP_ENV` gating** (development relaxes App Check / store-cred reqs; production enforces).
+- **Cloud Functions + Firestore rules DEPLOYED** to `cookrange-app` (10/12 functions).
+
+**🟡 DEFERRED:**
+- Disable cleartext traffic (`usesCleartextTraffic=false`) + `network_security_config`.
+- Root/jailbreak detection, `FLAG_SECURE` / iOS screenshot protection, certificate pinning, release `--obfuscate`.
+- Storage chat-image scoping + upload scanning / EXIF stripping.
+- Minimize world-readable user doc surface.
+- Full server-authored notifications/friends + `failed_login` monitoring.
+- Point-of-use AI / photo consent prompts.
+- Streak / reputation moved server-side.
+- The 2 remaining purchase webhooks (`appStoreNotifications`, `playRtdn`).
+
+**🔧 CONSOLE / EXTERNAL (go-live, user-only — outside code):**
+- Rotate the leaked Admin service-account key.
+- App Check registration + enforcement in Firebase Console.
+- Set `APP_ENV=production` + populate `functions/.env` credentials.
+- Apple/Google developer accounts + store creds + iOS APNs key.
+- OpenRouter spend cap.
+
+---
+
 ## 0. Executive Summary (The Brutal Truth)
 
 Cookrange today is a **single-user AI meal-planning app with social features** — a genuinely solid one. It is **not yet** the "Fitness Operating System" described in the README. The gap between vision and code is large but the foundation is real.

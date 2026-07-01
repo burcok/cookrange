@@ -199,7 +199,7 @@ lib/
 | `RecentFoodService` | `recent_food_service.dart` | `users/{uid}/recent_foods`; auto-upserted by `FoodLogService`; max 20 entries; `getRecentFoods`, `getFrequentFoods` |
 | `NotificationPreferencesService` | `notification_preferences_service.dart` | Per-group mute prefs in `users/{uid}.notification_muted`; groups: likes/comments/friends/system/referral |
 | `WeeklyMealPlanService` (extended) | `weekly_meal_plan_service.dart` | Added `getMealPlanHistory`, `restorePlan`, auto-archive to `meal_plan_history/{key}` on every save |
-| `AiCreditService` | `ai_credit_service.dart` | Daily AI credit quotas (free=2/day, premium=20/day); `checkAndConsume(uid, isPremium)` burns bonus credits first; `rollbackCredit(uid)` / `rollbackBonusCredit(uid)` for failed AI calls; `addBonusCredits(uid, count)` for IAP top-ups; `getCreditsStream(uid)` **auto-resets** quota when `reset_at` is in the past (day-rollover detected on stream read) |
+| `AiCreditService` | `ai_credit_service.dart` | **Read-only** client over the server-authoritative ledger `ai_credits/{uid}` (`used_today`/`reset_at`/`bonus`). Quota check, consumption, daily reset, and bonus grants are all **server-side** (`aiProxy` + purchase Functions); the client only reads for the badge / to pre-empt a 402. `checkAndConsume` no longer writes; `rollbackCredit`/`rollbackBonusCredit` are no-ops (server rolls back). Premium read from `entitlements/{uid}`, not the user doc. |
 | `AchievementService` | `achievement_service.dart` | 11-badge system; `earn(uid, key)` idempotent Firestore write; `checkAndGrant(uid, {streak, tier, justLoggedMeal, justLoggedPhoto, justPosted, justCookedAndLogged})` fires from all success paths; `backfillForUser(uid)` for existing accounts; `getAchievementsStream(uid)` live stream. Catalog in `achievement_model.dart` (`kAchievementCatalog`). |
 | `AchievementsGrid` | `screens/profile/widgets/achievements_grid.dart` | Profile badge grid; earned/locked tiles; bounce unlock animation (reduced-motion aware); tap → `AppSheet` detail. Shown after reputation badge in `profile_screen.dart`. |
 | `WhatsNewService` | `whats_new_service.dart` | Singleton; `shouldShow()` → true once per version bump (SharedPrefs `whats_new_last_version`); skips first install |
@@ -225,7 +225,9 @@ lib/
 | `users/{uid}/ai_twin_projections/{id}` | Persisted AI fitness projections; fields: `locale`, `generatedAt`, payload, `inputsHash` |
 | `users/{uid}/ai_weekly_recaps/{id}` | Weekly AI coach recaps (owner-only); fields: `weekKey` (YYYY-MM-DD Monday), `locale`, `score`, `wins[]`, `challenges[]`, `trend`, `recommendation`, `isLowData`, `generatedAt` |
 | `admin_audit/{id}` | Append-only audit log for every admin action (who/what/when/target); admin-only rules |
-| `ai_credits/{uid}` | Daily AI quota: `used_today`, `reset_at`, `is_premium`, `bonus_credits` (IAP top-ups, not reset at midnight) |
+| `ai_credits/{uid}` | **Server-only** AI ledger (owner-read, deny client-write): `used_today`, `reset_at`, `bonus`, `rate_window_start`, `rate_count`. Mutated only by `aiProxy`/purchase Functions (Admin SDK) + admins. |
+| `entitlements/{uid}` | **Server-only** premium entitlement (owner-read, deny client-write): `tier`, `expires_at`, `product_id`, `source`, `latest_transaction_id`. Written only by purchase-validation / referral Functions; mirrored to `users/{uid}.subscription_tier` for UI. |
+| `processed_purchases/{id}` | **Fully server-only** replay/dedupe guard for validated store purchase tokens. |
 | `reports/{id}` | Moderation reports; `status` (pending/reviewed), `targetType`, `reason`; indexes on `status+timestamp` |
 | `seeds/{docId}` | Idempotent seed gates (e.g. `demo.demo_programs_v1`); authenticated read/write |
 
@@ -307,12 +309,64 @@ lib/
 ## AI Integration
 
 - Provider: OpenRouter (`https://openrouter.ai/api/v1/chat/completions`)
-- Model: `openrouter/free` (configurable)
-- Key stored in `.env` (client-side for MVP; move server-side before GA)
+- Model: default `deepseek/deepseek-chat-v3-0324:free` (the `openrouter/free` meta-router was
+  rate-limited and timed out on large plan JSON). Override via `.env` `OPENROUTER_MODEL`; text
+  timeout via `.env` `OPENROUTER_TIMEOUT_S` (default 90s). Both read in `app_initialization_service`.
+- Key handling: in **release**, the key is server-side only — `AIService` routes through the `aiProxy`
+  Cloud Function (the bundled-`.env` direct-call path is allowed **only in debug**, hard-blocked in
+  release). `aiProxy` enforces a model allowlist, `max_tokens`/payload caps, **fail-closed** quota,
+  mandatory App Check, and a per-uid rate limit. Purchases/referrals grant entitlements **server-side**
+  only (`validatePurchase`/`applyReferral` Functions); the client never writes premium/credits.
 - `AIService.isConfigured` guards all AI calls — returns empty results if key is placeholder
 - JSON responses: use `AIService.generateJson()` which returns `Map<String, dynamic>`
 - Error hierarchy: `AIRetryableException` → retry up to 3×; `AIFatalException` → abort
 - Never add AI features that don't degrade gracefully when `isConfigured == false`
+
+## Server-Side Security Model (Cloud Functions) — DEPLOYED
+
+> The app is **server-authoritative**: the client is NOT trusted for entitlements, AI
+> credits, the economy, or moderation state. Functions + the hardened Firestore rules are
+> **deployed to `cookrange-app`** (10/12 functions; `appStoreNotifications`/`playRtdn` pending go-live).
+> Config: `firebase.json` + `.firebaserc`; runtime env in `functions/.env` (`APP_ENV=development|production`).
+
+| Function (`functions/`) | Purpose |
+|---|---|
+| `aiProxy` (`index.js`) | Keeps the OpenRouter key server-side. Model **allowlist**, `max_tokens`/payload caps, **fail-closed** quota, per-uid rate limit, App Check (enforced when `APP_ENV=production`), no wildcard CORS. |
+| `entitlements.js` | Server-only writers `grantPremium`/`revokePremium`/`grantBonusCredits`/`claimPurchaseToken`. Premium → `entitlements/{uid}`, credits → `ai_credits/{uid}`; mirrors `subscription_tier` to the user doc for UI. |
+| `purchases.js` | `validatePurchase` (Apple App Store Server API + Google Play Developer API receipt validation + token dedupe, **fails closed**); `appStoreNotifications`/`playRtdn` revoke on refund/chargeback/expiry. Store creds gated by `APP_ENV`. |
+| `economy.js` | `applyReferral` — server-validated (no self-referral, one-per-account, max-uses), grants premium to both + writes the commission ledger. |
+| `account.js` | `deleteUserAccount` — recursive GDPR/KVKK erasure: whole `users/{uid}` subtree + server docs + authored content + **all Storage prefixes** + the Auth user. |
+| `config.js` | `APP_ENV` gating: `development` relaxes App Check + store-cred requirements (functions deploy/run with no Apple/Google/App Check setup); `production` enforces them. |
+
+**Firestore rules (deployed) — key locks:** `users/{uid}` update is **field-locked** (clients can't write
+`subscription_tier`/`subscription_*`/`ai_credits_*`/`referral_used`/`is_banned` — server/admin only; `user_roles`
+is intentionally NOT locked since true admin power is gated server-side by `admin/status`). `ai_credits`/`entitlements`
+are owner-read + server-write; `processed_purchases` fully server-only; `commissions` server-write-only; `referrals`
+update is owner/admin-only (`owner_uid` pinned); content-length caps on posts/comments/chat/signals; `failed_login_attempts`
+server-only. **Text moderation:** blocked-keyword list lives at **public-read** `settings/content_filter` (admins write via
+`AdminService.updateAdminConfig`, which mirrors `blocked_keywords` there); `CommunityService._checkContent` reads it from
+`settings/content_filter` (was `admin_config/global`, which is admin-only-read → the filter failed open for normal users).
+
+**Client trust changes:** AI proxy is **mandatory in release** (bundled `.env` key is debug-only); App Check uses real
+providers in release (Play Integrity / App Attest); `AiCreditService` is **read-only** over `ai_credits/{uid}`;
+`BillingService`/`ReferralService` call the `validatePurchase`/`applyReferral` callables; `AuthService.deleteAccount`
+calls `deleteUserAccount`; Hive boxes are **AES-256 encrypted** (key in `flutter_secure_storage`); Analytics/Crashlytics
+collection is **privacy-by-default OFF**, gated on consent (`ConsentService.applyCollectionConsent`); meal-plan generation
+runs a **deterministic allergen filter** (`utils/allergen_safety.dart`); prompts use a **prompt-injection guard**.
+
+> ⚠️ Still **deferred** (tracked in `docs/roadmap/GO_LIVE.md` §5S): Android `usesCleartextTraffic` disable, root/jailbreak
+> detection, FLAG_SECURE, cert pinning, obfuscation, storage chat-image scoping + upload scanning, world-readable-user-doc
+> minimization, server-authored notifications, point-of-use AI/photo consent, `streak`/`reputation` server-side. Console/
+> external (go-live): rotate the leaked Admin SA key, App Check registration+enforcement, store accounts + iOS APNs, OpenRouter spend cap.
+
+## Admin Tooling — Cost & Profit Dashboard
+
+`CostAnalyticsService` (`cost_analytics_service.dart`) + `AdminCostAnalyticsScreen` — admin-only,
+in-app **estimated** cost/revenue/profit. Live counts via Firestore `count()` aggregation (total/
+premium users, collection sizes) × unit prices in `cost_analytics_model.dart` (`FirebasePricing` /
+`OpenRouterPricing` / `RevenueAssumptions` + tunable `UsageAssumptions`). Shows Firebase + AI cost
+breakdown, revenue & ARPU, profit/margin, and a "what-if at N users" projection. All figures are
+ESTIMATES (no GCP billing API). Entry: Admin panel → overview → "Cost & Profit" card.
 
 ## Localization
 
@@ -349,6 +403,46 @@ lib/
 - Primary/brand color: `themeProvider.primaryColor` — default orange `AppPalette.brand` (`0xFFF97300`).
 - **Never hardcode colors.** Migrating old screens: replace `Color(0xFF2E3A59)` → `palette.textPrimary`,
   `Color(0xFF0D1117)` → `palette.background`, white cards → `palette.surface`, etc.
+
+## Performance & Cost Playbook (MANDATORY — apply on every prompt)
+
+> These are the concrete, learned-the-hard-way rules from the cost/security hardening pass.
+> They make R1 (optimization) and R3 (caching) actionable. **Every new query, image, and write
+> must follow them.** Firestore reads + Storage egress are the top Firebase cost lines.
+
+**Firestore reads (the #1 cost):**
+- ❌ NEVER `.snapshots()` or `.get()` on a collection/query without `.limit(n)` (single-doc reads excepted).
+  An unbounded listener re-reads every matching doc on every change → runaway cost.
+- ✅ For COUNTS/badges use the **`count()` aggregation**, never `.snapshots().map((s) => s.size)`
+  (that reads every doc just to count). `count()` has no `.snapshots()` → use **`pollCount(query)`**
+  (`lib/core/utils/firestore_count.dart`) for a cheap, live-ish polled count.
+- ✅ Paginate lists with `startAfter` cursors; always `.limit()`. Default list cap ~50–200.
+- ❌ No N+1 read loops (a `.get()` per item). Batch with `whereIn` (≤30) or denormalize a field/counter.
+- ✅ Prefer a one-shot `.get()` over a listener when realtime isn't needed. **Cancel every subscription
+  in `dispose()`.** Don't listen to a whole doc for one field — denormalize hot fields or scope the query.
+
+**Images (Storage + egress + perf):**
+- ✅ UPLOAD images ONLY via `StorageUploadService` — it resizes (≤1440 photos / ≤512 avatars),
+  compresses (JPEG q82), strips EXIF/GPS, and runs off the UI thread (isolate). Never `putFile` raw
+  user images elsewhere.
+- ✅ DISPLAY network images ONLY via `AppImage` (widget) or `CachedNetworkImageProvider`
+  (for `DecorationImage`/`CircleAvatar.backgroundImage`). ❌ NEVER raw `Image.network(...)` or
+  `NetworkImage(...)` — uncached = re-download on every view = egress cost + jank.
+- Chat images use a participants-only scoped path + unguessable filename (see `uploadChatImage`).
+
+**Writes / security (server-authoritative — see "Server-Side Security Model"):**
+- Clients NEVER write entitlements/credits/economy/ban/role-admin state. Those go through Cloud
+  Functions (Admin SDK) + are field-locked in `firestore.rules`. AI runs through the `aiProxy`
+  (mandatory in release); never the bundled key.
+
+**UI (R1/R5):** `const` constructors, `RepaintBoundary` on heavy/animated widgets,
+`Selector`/`ValueListenableBuilder` over broad `watch`, debounced inputs, `mounted` checks after await.
+
+**Per-PR review checklist:**
+☑ No unbounded `.snapshots()`/`.get()` (has `.limit()` or single-doc) · ☑ Counts via `count()`/`pollCount`
+· ☑ No N+1 loops · ☑ Network images via `AppImage`/`CachedNetworkImageProvider` (no raw `Image.network`/
+`NetworkImage`) · ☑ Uploads via `StorageUploadService` · ☑ Subscriptions cancelled in `dispose()` ·
+☑ No client writes to entitlement/credit/role/ban fields.
 
 ## Code Conventions
 
