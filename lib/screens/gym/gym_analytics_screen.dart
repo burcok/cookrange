@@ -195,7 +195,7 @@ class _GymAnalyticsScreenState extends State<GymAnalyticsScreen>
                     icon: Icon(Icons.file_download_outlined,
                         color: palette.textSecondary, size: 22),
                     onPressed: _export,
-                    tooltip: 'Export CSV',
+                    tooltip: l10n.translate('gym.analytics_export_csv'),
                   ),
         ],
       ),

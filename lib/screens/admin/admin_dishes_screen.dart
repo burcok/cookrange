@@ -516,7 +516,7 @@ class _DishEditSheetState extends State<_DishEditSheet> {
             Expanded(
                 child: _SheetField(
                     ctrl: _calCtrl,
-                    label: 'kcal',
+                    label: l10n.translate('common.unit_kcal'),
                     palette: palette,
                     t: t,
                     keyboardType: TextInputType.number,

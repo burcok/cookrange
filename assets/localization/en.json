@@ -626,7 +626,9 @@
       "optional_header": "Optional (you can change these anytime in Settings):",
       "analytics": "Share anonymous usage data to help improve the app.",
       "marketing": "Send me product news and offers."
-    }
+    },
+    "dialog_logged_out": "Logged Out",
+    "dialog_logged_out_message": "You have been logged in on another device."
   },
   "profile": {
     "title": "Profile",
@@ -755,7 +757,13 @@
     "followers_count": "Followers",
     "settings": {
       "referral_code_placeholder": "AB3X9K"
-    }
+    },
+    "avatar_upload_failed": "Avatar upload failed: {details}",
+    "goals_empty": "No goals set",
+    "equipment_empty": "No equipment listed",
+    "disliked_foods_title": "Disliked Foods",
+    "friend_request_sent": "Request sent to {name}",
+    "share_profile": "Share Profile"
   },
   "offline": {
     "title": "Offline Mode",
@@ -959,7 +967,8 @@
       "breakfast": "Breakfast",
       "lunch": "Lunch",
       "dinner": "Dinner"
-    }
+    },
+    "test_mode": "Test Mode"
   },
   "sharing": {
     "recipe_title": "🍽️ {name}\n🔥 {calories} kcal\nProtein: {protein}g · Carbs: {carbs}g · Fat: {fat}g\n\nDiscover AI-powered meal plans on Cookrange! {appTag}{link}",
@@ -1079,7 +1088,9 @@
     "error": "Error",
     "stale": "Stale",
     "something_wrong": "Something went wrong",
-    "error_with_details": "Error: {details}"
+    "error_with_details": "Error: {details}",
+    "unit_kcal": "kcal",
+    "unit_kg": "kg"
   },
   "errors": {
     "general": "Something went wrong",
@@ -2216,7 +2227,11 @@
       "error": {
         "load_wars": "Could not load wars"
       }
-    }
+    },
+    "stats_members": "Members",
+    "stats_tier": "Tier",
+    "stats_access": "Access",
+    "analytics_export_csv": "Export CSV"
   },
   "coach": {
     "setup_title": "Coach Profile Setup",
@@ -2391,7 +2406,11 @@
     "dashboard": {
       "see_all": "See all ({count})",
       "action_edit_profile": "Edit Profile"
-    }
+    },
+    "stats_clients": "Clients",
+    "stats_reviews": "Reviews",
+    "stats_day_streak": "Day Streak",
+    "stats_since_last_log": "Since Last Log"
   },
   "ai": {
     "twin_title": "AI Body Projection",
@@ -2885,7 +2904,19 @@
     "cost_assumption_image": "Avg image size",
     "cost_assumption_dau": "Daily active users",
     "cost_entry_title": "Cost & Profit",
-    "cost_entry_subtitle": "Usage cost, revenue & profit estimate"
+    "cost_entry_subtitle": "Usage cost, revenue & profit estimate",
+    "ai_usage_title": "Real AI Usage",
+    "ai_usage_note": "Measured from real proxy traffic (server-logged tokens × per-model price). Debug direct-key calls are NOT logged.",
+    "ai_usage_empty": "No AI usage logged yet.",
+    "ai_usage_total_cost": "Total AI cost",
+    "ai_usage_requests": "Requests",
+    "ai_usage_tokens": "Tokens",
+    "ai_usage_by_type": "By query type",
+    "ai_usage_by_model": "By model",
+    "ai_usage_per_user": "Per-user lookup",
+    "ai_usage_uid_hint": "Enter user UID",
+    "ai_usage_show": "Show",
+    "ai_usage_no_logs": "No AI requests for this user."
   },
   "intro": {
     "skip": "Skip",
@@ -3190,5 +3221,13 @@
       "signin_to_view_yours": "Sign in to view your programs",
       "load_failed": "Failed to load programs"
     }
+  },
+  "nutrition": {
+    "macro_protein_short": "P",
+    "macro_carbs_short": "C",
+    "macro_fat_short": "F"
+  },
+  "coachmark": {
+    "dismiss_tip": "Dismiss tip"
   }
 }

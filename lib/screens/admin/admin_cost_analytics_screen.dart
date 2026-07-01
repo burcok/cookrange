@@ -19,6 +19,9 @@ class AdminCostAnalyticsScreen extends StatefulWidget {
 class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
   final _service = CostAnalyticsService();
   late Future<CostAnalytics> _future;
+  late Future<AiUsageStats> _aiFuture;
+  final _uidCtrl = TextEditingController();
+  Future<List<AiUsageLogEntry>>? _userLogsFuture;
   static const _assumptions = UsageAssumptions();
   static const _projectionPoints = [1000, 10000, 100000, 1000000];
 
@@ -26,13 +29,33 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
   void initState() {
     super.initState();
     _future = _service.compute(assumptions: _assumptions);
+    _aiFuture = _service.fetchAiUsageStats();
+  }
+
+  @override
+  void dispose() {
+    _uidCtrl.dispose();
+    super.dispose();
   }
 
   void _reload() {
     setState(() {
       _future = _service.compute(assumptions: _assumptions);
+      _aiFuture = _service.fetchAiUsageStats();
     });
   }
+
+  void _lookupUser() {
+    final uid = _uidCtrl.text.trim();
+    if (uid.isEmpty) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _userLogsFuture = _service.fetchUserAiLogs(uid);
+    });
+  }
+
+  String _usd4(double v) =>
+      v >= 1 ? _usd(v) : '\$${v.toStringAsFixed(4)}';
 
   String _usd(double v) {
     final neg = v < 0;
@@ -197,6 +220,10 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
         ),
         SizedBox(height: 12.h),
 
+        // ── REAL AI usage (measured from proxy logs) ──
+        _buildRealAiSection(l10n, palette, t),
+        SizedBox(height: 12.h),
+
         // ── Revenue & per-user ──
         _sectionCard(
           t,
@@ -332,6 +359,181 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
           Text(value, style: t.titleM.copyWith(color: palette.textPrimary)),
         ],
       ),
+    );
+  }
+
+  String _dt(DateTime? d) {
+    if (d == null) return '—';
+    final l = d.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${l.year}-${two(l.month)}-${two(l.day)} ${two(l.hour)}:${two(l.minute)}';
+  }
+
+  // ── REAL AI usage (measured) + per-user lookup ──
+  Widget _buildRealAiSection(
+      AppLocalizations l10n, AppPalette palette, AppText t) {
+    return FutureBuilder<AiUsageStats>(
+      future: _aiFuture,
+      builder: (context, snap) {
+        final stats = snap.data ?? const AiUsageStats();
+        final children = <Widget>[
+          Text(l10n.translate('admin.ai_usage_note'),
+              style: t.labelS.copyWith(color: palette.textTertiary)),
+          SizedBox(height: 10.h),
+        ];
+
+        if (snap.connectionState == ConnectionState.waiting) {
+          children.add(const Padding(
+            padding: EdgeInsets.all(8),
+            child: Center(child: CircularProgressIndicator()),
+          ));
+        } else if (stats.isEmpty) {
+          children.add(Text(l10n.translate('admin.ai_usage_empty'),
+              style: t.bodyM.copyWith(color: palette.textSecondary)));
+        } else {
+          children.addAll([
+            Row(children: [
+              Expanded(
+                child: _miniStat(
+                    t,
+                    palette,
+                    l10n.translate('admin.ai_usage_total_cost'),
+                    _usd4(stats.totalCostUsd),
+                    palette.error),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: _miniStat(
+                    t,
+                    palette,
+                    l10n.translate('admin.ai_usage_requests'),
+                    _intK(stats.totalRequests),
+                    palette.textPrimary),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: _miniStat(
+                    t,
+                    palette,
+                    l10n.translate('admin.ai_usage_tokens'),
+                    _intK(stats.totalTokens),
+                    palette.textPrimary),
+              ),
+            ]),
+            SizedBox(height: 12.h),
+            Text(l10n.translate('admin.ai_usage_by_type'),
+                style: t.labelM.copyWith(color: palette.textSecondary)),
+            ...stats.byType.entries.map((e) => _metricRow(
+                t,
+                palette,
+                '${e.key} (${_intK(e.value.requests)})',
+                _usd4(e.value.costUsd))),
+            SizedBox(height: 8.h),
+            Text(l10n.translate('admin.ai_usage_by_model'),
+                style: t.labelM.copyWith(color: palette.textSecondary)),
+            ...stats.byModel.entries.map((e) => _metricRow(
+                t,
+                palette,
+                '${e.key} (${_intK(e.value.requests)})',
+                _usd4(e.value.costUsd))),
+          ]);
+        }
+
+        // Per-user lookup.
+        children.addAll([
+          SizedBox(height: 14.h),
+          Divider(color: palette.border, height: 1),
+          SizedBox(height: 12.h),
+          Text(l10n.translate('admin.ai_usage_per_user'),
+              style: t.labelM.copyWith(color: palette.textSecondary)),
+          SizedBox(height: 8.h),
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _uidCtrl,
+                style: t.bodyM,
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: l10n.translate('admin.ai_usage_uid_hint'),
+                  hintStyle:
+                      t.bodyM.copyWith(color: palette.textTertiary),
+                  filled: true,
+                  fillColor: palette.surfaceVariant,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.r),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onSubmitted: (_) => _lookupUser(),
+              ),
+            ),
+            SizedBox(width: 8.w),
+            AppButton(
+              label: l10n.translate('admin.ai_usage_show'),
+              onPressed: _lookupUser,
+              size: AppButtonSize.small,
+              expand: false,
+            ),
+          ]),
+          if (_userLogsFuture != null) _buildUserLogs(l10n, palette, t),
+        ]);
+
+        return _sectionCard(
+            t, palette, l10n.translate('admin.ai_usage_title'),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: children));
+      },
+    );
+  }
+
+  Widget _buildUserLogs(
+      AppLocalizations l10n, AppPalette palette, AppText t) {
+    return FutureBuilder<List<AiUsageLogEntry>>(
+      future: _userLogsFuture,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return Padding(
+            padding: EdgeInsets.only(top: 12.h),
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        final logs = snap.data ?? const [];
+        if (logs.isEmpty) {
+          return Padding(
+            padding: EdgeInsets.only(top: 12.h),
+            child: Text(l10n.translate('admin.ai_usage_no_logs'),
+                style: t.bodyM.copyWith(color: palette.textSecondary)),
+          );
+        }
+        return Column(
+          children: logs.map((e) {
+            return Padding(
+              padding: EdgeInsets.symmetric(vertical: 5.h),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${e.type} · ${e.model}',
+                            style: t.bodyM.copyWith(
+                                color: palette.textPrimary)),
+                        Text(
+                          '${_dt(e.createdAt)} · ${_intK(e.totalTokens)} tok',
+                          style: t.labelS
+                              .copyWith(color: palette.textTertiary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(_usd4(e.costUsd),
+                      style: t.titleM.copyWith(color: palette.textPrimary)),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }

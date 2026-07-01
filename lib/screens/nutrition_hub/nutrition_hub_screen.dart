@@ -244,6 +244,7 @@ class _DishCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final t = AppText.of(context);
+    final l10n = AppLocalizations.of(context);
     final primary = Theme.of(context).primaryColor;
     final isEn =
         context.read<LanguageProvider>().currentLocale.languageCode == 'en';
@@ -310,14 +311,19 @@ class _DishCard extends StatelessWidget {
                 Row(
                   children: [
                     _MacroDot(
-                        label: 'P ${dish.protein.round()}',
+                        label:
+                            '${l10n.translate('nutrition.macro_protein_short')} ${dish.protein.round()}',
                         color: palette.protein),
                     SizedBox(width: 8.w),
                     _MacroDot(
-                        label: 'C ${dish.carbs.round()}', color: palette.carbs),
+                        label:
+                            '${l10n.translate('nutrition.macro_carbs_short')} ${dish.carbs.round()}',
+                        color: palette.carbs),
                     SizedBox(width: 8.w),
                     _MacroDot(
-                        label: 'F ${dish.fat.round()}', color: palette.fat),
+                        label:
+                            '${l10n.translate('nutrition.macro_fat_short')} ${dish.fat.round()}',
+                        color: palette.fat),
                   ],
                 ),
               ],

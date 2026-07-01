@@ -111,7 +111,7 @@ class WeeklyMealPlanService {
       // We expect a valid JSON string
       final jsonResponse = await _aiService.generateJson(
           prompt: prompt,
-          jsonStructure: '{ ... WeeklyMealPlanModel structure ... }');
+          jsonStructure: '{ ... WeeklyMealPlanModel structure ... }', type: 'meal_plan');
 
       // 4. Parse Response
       final now = DateTime.now();
@@ -365,6 +365,7 @@ class WeeklyMealPlanService {
         prompt: prompt,
         jsonStructure:
             '{"alternates":[{"name":"","description":"","avg_daily_calories":0,"avg_macros":{"protein":0,"carbs":0,"fat":0}}]}',
+        type: 'meal_plan',
       );
       final list = json['alternates'] as List? ?? [];
       return list

@@ -245,6 +245,7 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final protein = avgMacros['protein'] ?? 0;
     final carbs = avgMacros['carbs'] ?? 0;
     final fat = avgMacros['fat'] ?? 0;
@@ -311,7 +312,8 @@ class _PlanCard extends StatelessWidget {
                   child: Column(
                     children: [
                       _MacroBar(
-                        label: 'P',
+                        label:
+                            l10n.translate('nutrition.macro_protein_short'),
                         value: protein,
                         total: protein + carbs + fat,
                         color: palette.protein,
@@ -319,7 +321,7 @@ class _PlanCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       _MacroBar(
-                        label: 'C',
+                        label: l10n.translate('nutrition.macro_carbs_short'),
                         value: carbs,
                         total: protein + carbs + fat,
                         color: palette.carbs,
@@ -327,7 +329,7 @@ class _PlanCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       _MacroBar(
-                        label: 'F',
+                        label: l10n.translate('nutrition.macro_fat_short'),
                         value: fat,
                         total: protein + carbs + fat,
                         color: palette.fat,

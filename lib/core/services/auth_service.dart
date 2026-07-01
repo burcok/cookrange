@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
+import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/analytics_service.dart';
 import 'crashlytics_service.dart';
 import 'firestore_service.dart';
@@ -211,8 +212,10 @@ class AuthService {
         context: navigatorKey.currentContext!,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          title: const Text('Logged Out'),
-          content: const Text('You have been logged in on another device.'),
+          title:
+              Text(AppLocalizations.of(context).translate('auth.dialog_logged_out')),
+          content: Text(AppLocalizations.of(context)
+              .translate('auth.dialog_logged_out_message')),
           actions: [
             TextButton(
               onPressed: () {
@@ -220,7 +223,7 @@ class AuthService {
                 // Ensure we are at login screen (usually handled by auth stream, but safe to force)
                 // Navigator.of(context).pushReplacementNamed('/login');
               },
-              child: const Text('OK'),
+              child: Text(AppLocalizations.of(context).translate('common.ok')),
             ),
           ],
         ),

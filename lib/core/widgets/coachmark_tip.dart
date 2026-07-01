@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../localization/app_localizations.dart';
 import '../theme/app_dimensions.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_typography.dart';
@@ -98,7 +99,8 @@ class _CoachmarkTipState extends State<CoachmarkTip> {
                           ),
                         ),
                         Semantics(
-                          label: 'Dismiss tip',
+                          label: AppLocalizations.of(context)
+                              .translate('coachmark.dismiss_tip'),
                           button: true,
                           child: Icon(
                             Icons.close_rounded,

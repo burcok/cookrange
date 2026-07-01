@@ -92,6 +92,7 @@ class AIService {
     required String prompt,
     String? systemPrompt,
     double temperature = 0.7,
+    String type = 'other',
   }) async {
     if (!isConfigured) {
       debugPrint('AIService: no API key — returning mock response.');
@@ -251,6 +252,7 @@ class AIService {
           prompt: prompt,
           systemPrompt: systemPrompt,
           temperature: temperature,
+          type: type,
         );
       } on AIRetryableException catch (e) {
         lastError = e;
@@ -309,6 +311,7 @@ class AIService {
   Future<String> _callApiWithMessages({
     required List<Map<String, String>> messages,
     required double temperature,
+    String type = 'chat',
   }) async {
     final url = _proxyUrl ?? _baseUrl;
     final metric = PerformanceService().newHttpMetric(url, HttpMethod.Post);
@@ -344,6 +347,9 @@ class AIService {
               'model': _model,
               'messages': messages,
               'temperature': temperature,
+              // Only the proxy consumes `type` (usage logging); OpenRouter
+              // direct calls omit it.
+              if (_proxyUrl != null) 'type': type,
             }),
           )
           .timeout(_textTimeout);
@@ -376,6 +382,7 @@ class AIService {
   Future<Map<String, dynamic>> generateJson({
     required String prompt,
     required String jsonStructure,
+    String type = 'other',
   }) async {
     final systemPrompt = '''
 You are a JSON generator. Output ONLY valid JSON matching this structure:
@@ -390,6 +397,7 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
           prompt: prompt,
           systemPrompt: systemPrompt,
           temperature: 0.2,
+          type: type,
         );
         return _parseJson(content);
       } on AIJsonParseException catch (e) {
@@ -515,6 +523,7 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
               'model': _visionModel,
               'messages': messages,
               'temperature': temperature,
+              if (_proxyUrl != null) 'type': 'food_photo',
             }),
           )
           .timeout(const Duration(seconds: 60));
@@ -546,6 +555,7 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
     required String prompt,
     String? systemPrompt,
     required double temperature,
+    String type = 'other',
   }) async {
     final messages = [
       if (systemPrompt != null) {'role': 'system', 'content': systemPrompt},
@@ -591,6 +601,9 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
               'model': _model,
               'messages': messages,
               'temperature': temperature,
+              // Only the proxy consumes `type` (usage logging); OpenRouter
+              // direct calls omit it.
+              if (_proxyUrl != null) 'type': type,
             }),
           )
           .timeout(_textTimeout);

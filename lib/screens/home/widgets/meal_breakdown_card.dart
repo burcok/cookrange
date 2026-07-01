@@ -132,17 +132,18 @@ class _MealRow extends StatelessWidget {
                 Row(
                   children: [
                     _MacroChip(
-                        label: 'P',
+                        label:
+                            l10n.translate('nutrition.macro_protein_short'),
                         value: totals.protein.toInt(),
                         color: palette.protein),
                     SizedBox(width: 6.w),
                     _MacroChip(
-                        label: 'C',
+                        label: l10n.translate('nutrition.macro_carbs_short'),
                         value: totals.carbs.toInt(),
                         color: palette.carbs),
                     SizedBox(width: 6.w),
                     _MacroChip(
-                        label: 'F',
+                        label: l10n.translate('nutrition.macro_fat_short'),
                         value: totals.fat.toInt(),
                         color: palette.fat),
                   ],

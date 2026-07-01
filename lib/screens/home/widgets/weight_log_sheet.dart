@@ -112,7 +112,7 @@ class _WeightInputBodyState extends State<_WeightInputBody> {
           decoration: InputDecoration(
             labelText: l10n.translate('tracking.weight.field_label'),
             labelStyle: TextStyle(color: palette.textSecondary),
-            suffixText: 'kg',
+            suffixText: l10n.translate('common.unit_kg'),
             suffixStyle: t.bodyL.copyWith(color: palette.textSecondary),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.input.r),

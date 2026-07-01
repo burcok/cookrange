@@ -530,7 +530,7 @@ class _AdminCard extends StatelessWidget {
         Consumer<TestModeProvider>(
           builder: (context, testMode, _) => _ToggleTile(
             icon: Icons.science_rounded,
-            label: 'Test Mode',
+            label: l10n.translate('settings.test_mode'),
             subtitle: testMode.isActive ? 'Active — mock data' : 'Off',
             value: testMode.isActive,
             palette: palette,

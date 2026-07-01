@@ -626,7 +626,9 @@
       "optional_header": "İsteğe bağlı (Ayarlar’dan istediğiniz zaman değiştirebilirsiniz):",
       "analytics": "Uygulamayı iyileştirmek için anonim kullanım verisi paylaş.",
       "marketing": "Bana ürün haberleri ve teklifler gönder."
-    }
+    },
+    "dialog_logged_out": "Çıkış Yapıldı",
+    "dialog_logged_out_message": "Başka bir cihazda giriş yapıldı."
   },
   "profile": {
     "title": "Profil",
@@ -755,7 +757,13 @@
     "followers_count": "Takipçi",
     "settings": {
       "referral_code_placeholder": "AB3X9K"
-    }
+    },
+    "avatar_upload_failed": "Profil fotoğrafı yüklenemedi: {details}",
+    "goals_empty": "Hedef belirlenmemiş",
+    "equipment_empty": "Ekipman listelenmemiş",
+    "disliked_foods_title": "Sevilmeyen Yiyecekler",
+    "friend_request_sent": "{name} kişisine istek gönderildi",
+    "share_profile": "Profili Paylaş"
   },
   "offline": {
     "title": "Çevrimdışı Mod",
@@ -959,7 +967,8 @@
       "breakfast": "Kahvaltı",
       "lunch": "Öğle",
       "dinner": "Akşam"
-    }
+    },
+    "test_mode": "Test Modu"
   },
   "sharing": {
     "recipe_title": "🍽️ {name}\n🔥 {calories} kcal\nProtein: {protein}g · Karb: {carbs}g · Yağ: {fat}g\n\nYapay zeka destekli Cookrange ile öğünlerini planla! {appTag}{link}",
@@ -1079,7 +1088,9 @@
     "error": "Hata",
     "stale": "Eski",
     "something_wrong": "Bir şeyler ters gitti",
-    "error_with_details": "Hata: {details}"
+    "error_with_details": "Hata: {details}",
+    "unit_kcal": "kcal",
+    "unit_kg": "kg"
   },
   "errors": {
     "general": "Bir şeyler yanlış gitti",
@@ -2216,7 +2227,11 @@
       "error": {
         "load_wars": "Rekabetler yüklenemedi"
       }
-    }
+    },
+    "stats_members": "Üyeler",
+    "stats_tier": "Seviye",
+    "stats_access": "Erişim",
+    "analytics_export_csv": "CSV Dışa Aktar"
   },
   "coach": {
     "setup_title": "Antrenör Profili Kurulumu",
@@ -2391,7 +2406,11 @@
     "dashboard": {
       "see_all": "Tümünü gör ({count})",
       "action_edit_profile": "Profili Düzenle"
-    }
+    },
+    "stats_clients": "Danışanlar",
+    "stats_reviews": "Değerlendirmeler",
+    "stats_day_streak": "Gün Serisi",
+    "stats_since_last_log": "Son Kayıttan Beri"
   },
   "ai": {
     "twin_title": "Yapay Zeka Vücut Projeksiyonu",
@@ -2885,7 +2904,19 @@
     "cost_assumption_image": "Ort. görsel boyutu",
     "cost_assumption_dau": "Günlük aktif kullanıcı",
     "cost_entry_title": "Maliyet ve Kâr",
-    "cost_entry_subtitle": "Kullanım maliyeti, gelir ve kâr tahmini"
+    "cost_entry_subtitle": "Kullanım maliyeti, gelir ve kâr tahmini",
+    "ai_usage_title": "Gerçek AI Kullanımı",
+    "ai_usage_note": "Gerçek proxy trafiğinden ölçüldü (sunucu-loglu token × model fiyatı). Debug doğrudan-anahtar çağrıları loglanmaz.",
+    "ai_usage_empty": "Henüz AI kullanımı loglanmadı.",
+    "ai_usage_total_cost": "Toplam AI maliyeti",
+    "ai_usage_requests": "İstek",
+    "ai_usage_tokens": "Token",
+    "ai_usage_by_type": "Sorgu tipine göre",
+    "ai_usage_by_model": "Modele göre",
+    "ai_usage_per_user": "Kullanıcı bazında",
+    "ai_usage_uid_hint": "Kullanıcı UID girin",
+    "ai_usage_show": "Göster",
+    "ai_usage_no_logs": "Bu kullanıcı için AI isteği yok."
   },
   "intro": {
     "skip": "Atla",
@@ -3190,5 +3221,13 @@
       "signin_to_view_yours": "Programlarınızı görmek için giriş yapın",
       "load_failed": "Programlar yüklenemedi"
     }
+  },
+  "nutrition": {
+    "macro_protein_short": "P",
+    "macro_carbs_short": "K",
+    "macro_fat_short": "Y"
+  },
+  "coachmark": {
+    "dismiss_tip": "İpucunu kapat"
   }
 }

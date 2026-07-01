@@ -372,6 +372,7 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
 
   Widget _buildStatsSection(
       BuildContext context, CoachClientModel client, AppPalette palette) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Expanded(
@@ -379,7 +380,7 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
             icon: Icons.local_fire_department_rounded,
             iconColor: const Color(0xFFF97300),
             value: client.clientStreak?.toString() ?? '—',
-            label: 'Day Streak',
+            label: l10n.translate('coach.stats_day_streak'),
             palette: palette,
           ),
         ),
@@ -391,7 +392,7 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
             value: client.daysSinceLastLog == 999
                 ? 'Never'
                 : '${client.daysSinceLastLog}d',
-            label: 'Since Last Log',
+            label: l10n.translate('coach.stats_since_last_log'),
             palette: palette,
           ),
         ),

@@ -225,7 +225,9 @@ lib/
 | `users/{uid}/ai_twin_projections/{id}` | Persisted AI fitness projections; fields: `locale`, `generatedAt`, payload, `inputsHash` |
 | `users/{uid}/ai_weekly_recaps/{id}` | Weekly AI coach recaps (owner-only); fields: `weekKey` (YYYY-MM-DD Monday), `locale`, `score`, `wins[]`, `challenges[]`, `trend`, `recommendation`, `isLowData`, `generatedAt` |
 | `admin_audit/{id}` | Append-only audit log for every admin action (who/what/when/target); admin-only rules |
-| `ai_credits/{uid}` | **Server-only** AI ledger (owner-read, deny client-write): `used_today`, `reset_at`, `bonus`, `rate_window_start`, `rate_count`. Mutated only by `aiProxy`/purchase Functions (Admin SDK) + admins. |
+| `ai_credits/{uid}` | **Server-only** AI ledger (owner-read, deny client-write): `used_today`, `reset_at`, `bonus`, `rate_window_start`, `rate_count`. Mutated only by `aiProxy`/purchase Functions (Admin SDK) + admins. Also holds per-user **lifetime** AI totals (`lifetime_requests`/`lifetime_tokens`/`lifetime_cost_usd`/`by_type`) written by `aiProxy`. |
+| `ai_usage_logs/{id}` | **Server-only** per-request AI trail (admin-read, deny client-write): `uid`, `type` (meal_plan/recipe/insight/weekly_recap/food_photo/chat/other), `model`, `prompt/completion/total_tokens`, `cost_usd`, `unpriced`, `created_at`. Written by `aiProxy` from OpenRouter `usage`. Index: `uid`+`created_at`. |
+| `ai_usage_stats/{doc}` | **Server-only** AI aggregates (admin-read): `global` doc (total requests/tokens/cost + `by_model`/`by_type`) and `day_{YYYY-MM-DD}` buckets. Powers the REAL AI cost in the admin dashboard. |
 | `entitlements/{uid}` | **Server-only** premium entitlement (owner-read, deny client-write): `tier`, `expires_at`, `product_id`, `source`, `latest_transaction_id`. Written only by purchase-validation / referral Functions; mirrored to `users/{uid}.subscription_tier` for UI. |
 | `processed_purchases/{id}` | **Fully server-only** replay/dedupe guard for validated store purchase tokens. |
 | `reports/{id}` | Moderation reports; `status` (pending/reviewed), `targetType`, `reason`; indexes on `status+timestamp` |
@@ -331,7 +333,7 @@ lib/
 
 | Function (`functions/`) | Purpose |
 |---|---|
-| `aiProxy` (`index.js`) | Keeps the OpenRouter key server-side. Model **allowlist**, `max_tokens`/payload caps, **fail-closed** quota, per-uid rate limit, App Check (enforced when `APP_ENV=production`), no wildcard CORS. |
+| `aiProxy` (`index.js`) | Keeps the OpenRouter key server-side. Model **allowlist**, `max_tokens`/payload caps, **fail-closed** quota, per-uid rate limit, App Check (enforced when `APP_ENV=production`), no wildcard CORS. **Logs REAL usage/cost** per request: captures OpenRouter `usage` tokens × per-model price (`MODEL_PRICING`) → writes `ai_usage_logs` + `ai_usage_stats` + per-user lifetime totals (best-effort, off the response path). Client tags each call with a `type` (threaded through `AIService`). |
 | `entitlements.js` | Server-only writers `grantPremium`/`revokePremium`/`grantBonusCredits`/`claimPurchaseToken`. Premium → `entitlements/{uid}`, credits → `ai_credits/{uid}`; mirrors `subscription_tier` to the user doc for UI. |
 | `purchases.js` | `validatePurchase` (Apple App Store Server API + Google Play Developer API receipt validation + token dedupe, **fails closed**); `appStoreNotifications`/`playRtdn` revoke on refund/chargeback/expiry. Store creds gated by `APP_ENV`. |
 | `economy.js` | `applyReferral` — server-validated (no self-referral, one-per-account, max-uses), grants premium to both + writes the commission ledger. |
@@ -365,8 +367,12 @@ runs a **deterministic allergen filter** (`utils/allergen_safety.dart`); prompts
 in-app **estimated** cost/revenue/profit. Live counts via Firestore `count()` aggregation (total/
 premium users, collection sizes) × unit prices in `cost_analytics_model.dart` (`FirebasePricing` /
 `OpenRouterPricing` / `RevenueAssumptions` + tunable `UsageAssumptions`). Shows Firebase + AI cost
-breakdown, revenue & ARPU, profit/margin, and a "what-if at N users" projection. All figures are
-ESTIMATES (no GCP billing API). Entry: Admin panel → overview → "Cost & Profit" card.
+breakdown, revenue & ARPU, profit/margin, and a "what-if at N users" projection. Firebase figures are
+ESTIMATES (no GCP billing API), but the **AI section is REAL** — a "Real AI Usage" card reads
+`ai_usage_stats/global` (measured tokens × per-model price) with total cost/requests/tokens +
+by-model/by-type breakdown + a **per-user lookup** (enter a uid → recent `ai_usage_logs`: when/type/
+model/tokens/cost). Real AI logging only fires through the `aiProxy` (production/proxy mode); debug
+direct-key calls aren't logged. Entry: Admin panel → overview → "Cost & Profit" card.
 
 ## Localization
 

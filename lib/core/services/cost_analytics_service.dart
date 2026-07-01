@@ -47,6 +47,45 @@ class CostAnalyticsService {
     return estimate(scaled, assumptions);
   }
 
+  /// Reads the REAL AI usage aggregate written by the aiProxy Function.
+  /// Returns an empty stats object if no proxy traffic has been logged yet.
+  Future<AiUsageStats> fetchAiUsageStats() async {
+    try {
+      final snap =
+          await _db.collection('ai_usage_stats').doc('global').get();
+      if (!snap.exists) return const AiUsageStats();
+      final data = Map<String, dynamic>.from(snap.data() ?? {});
+      final ts = data['updated_at'];
+      if (ts is Timestamp) data['updated_at'] = ts.toDate();
+      return AiUsageStats.fromMap(data);
+    } catch (e) {
+      debugPrint('CostAnalyticsService: fetchAiUsageStats failed: $e');
+      return const AiUsageStats();
+    }
+  }
+
+  /// Recent AI requests for ONE user (newest first) — the per-user cost trail.
+  Future<List<AiUsageLogEntry>> fetchUserAiLogs(String uid,
+      {int limit = 50}) async {
+    try {
+      final q = await _db
+          .collection('ai_usage_logs')
+          .where('uid', isEqualTo: uid)
+          .orderBy('created_at', descending: true)
+          .limit(limit)
+          .get();
+      return q.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data());
+        final ts = data['created_at'];
+        if (ts is Timestamp) data['created_at'] = ts.toDate();
+        return AiUsageLogEntry.fromMap(data);
+      }).toList();
+    } catch (e) {
+      debugPrint('CostAnalyticsService: fetchUserAiLogs failed: $e');
+      return const [];
+    }
+  }
+
   // ─── Counts (real, via aggregation) ──────────────────────────────────────────
 
   Future<UsageCounts> _gatherCounts() async {

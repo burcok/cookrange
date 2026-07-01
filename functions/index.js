@@ -8,7 +8,9 @@ const { APP_CHECK_ENFORCE } = require('./config');
 admin.initializeApp();
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'openrouter/free';
+// Default text model. Prefer the env-configured model (matches the client's
+// default) so proxy calls don't get coerced back to the slow free meta-router.
+const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || 'openrouter/free';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Server-Side AI Quota Enforcement, Cost Control & Abuse Limits
@@ -41,11 +43,101 @@ const ALLOWED_MODELS = new Set(
 // Hard caps bounding per-request cost and resource use.
 const MAX_MESSAGES = 30;
 const MAX_TOTAL_CHARS = 24000; // serialized messages payload
-const MAX_OUTPUT_TOKENS = 1024;
+// Weekly meal-plan / recipe JSON needs real headroom; 1024 truncated them.
+const MAX_OUTPUT_TOKENS = 8192;
 
 // Per-uid sliding-window rate limit (independent of the daily quota).
 const RATE_WINDOW_MS = 60 * 1000;
 const RATE_MAX_IN_WINDOW = 12;
+
+// Query-type allowlist for usage logging (client-supplied `type`, defaulted).
+const ALLOWED_TYPES = new Set([
+  'meal_plan', 'recipe', 'insight', 'weekly_recap', 'food_photo', 'chat', 'other',
+]);
+
+// Per-model price in USD per 1,000,000 tokens (input / output). Approximate
+// published OpenRouter rates — verify against openrouter.ai/models. Any model
+// ending in ':free' is $0. Unknown paid models record tokens with unpriced=true
+// (cost 0) so the admin dashboard can flag "add pricing".
+const MODEL_PRICING = {
+  'openrouter/free': { in: 0, out: 0 },
+  'deepseek/deepseek-chat-v3-0324:free': { in: 0, out: 0 },
+  'meta-llama/llama-3.2-11b-vision-instruct:free': { in: 0, out: 0 },
+  'google/gemini-2.0-flash-001': { in: 0.10, out: 0.40 },
+  'openai/gpt-4o-mini': { in: 0.15, out: 0.60 },
+  'openai/gpt-4o': { in: 2.50, out: 10.0 },
+};
+
+function pricingFor(model) {
+  if (!model) return { in: 0, out: 0, known: false };
+  if (model.endsWith(':free')) return { in: 0, out: 0, known: true };
+  const p = MODEL_PRICING[model];
+  return p ? { in: p.in, out: p.out, known: true } : { in: 0, out: 0, known: false };
+}
+
+// Firestore map keys can't safely contain '.', '/', '*', '[', ']', '~'.
+function fieldSafe(s) {
+  return String(s || 'unknown').replace(/[^a-zA-Z0-9]/g, '_');
+}
+
+/**
+ * Records ONE AI request's real token usage + computed cost. Writes a queryable
+ * per-request log, bumps the global aggregate, and the per-user lifetime totals
+ * on the server-only ledger. Best-effort: never throws into the request path.
+ */
+async function recordUsage(uid, { type, model, usage, premium, consumed }) {
+  try {
+    const db = admin.firestore();
+    const pt = Number(usage && usage.prompt_tokens) || 0;
+    const ct = Number(usage && usage.completion_tokens) || 0;
+    const tt = Number(usage && usage.total_tokens) || pt + ct;
+    const pr = pricingFor(model);
+    const cost = (pt / 1e6) * pr.in + (ct / 1e6) * pr.out;
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const inc = admin.firestore.FieldValue.increment;
+    const mKey = fieldSafe(model);
+    const tKey = fieldSafe(type);
+
+    // Day bucket (UTC) for cheap trend charts.
+    const dayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    await Promise.all([
+      // Per-request log (queryable by uid + created_at). Raw model/type kept.
+      db.collection('ai_usage_logs').add({
+        uid, type, model, premium: !!premium, consumed: consumed || null,
+        prompt_tokens: pt, completion_tokens: ct, total_tokens: tt,
+        cost_usd: cost, unpriced: !pr.known, created_at: now,
+      }),
+      // Global running total + by-model / by-type breakdown.
+      db.collection('ai_usage_stats').doc('global').set({
+        total_requests: inc(1),
+        total_tokens: inc(tt),
+        total_cost_usd: inc(cost),
+        by_model: { [mKey]: { requests: inc(1), tokens: inc(tt), cost_usd: inc(cost) } },
+        by_type: { [tKey]: { requests: inc(1), cost_usd: inc(cost) } },
+        updated_at: now,
+      }, { merge: true }),
+      // Daily bucket for the trend line.
+      db.collection('ai_usage_stats').doc(`day_${dayKey}`).set({
+        day: dayKey,
+        requests: inc(1),
+        tokens: inc(tt),
+        cost_usd: inc(cost),
+        updated_at: now,
+      }, { merge: true }),
+      // Per-user lifetime totals on the server-only ledger.
+      db.collection('ai_credits').doc(uid).set({
+        lifetime_requests: inc(1),
+        lifetime_tokens: inc(tt),
+        lifetime_cost_usd: inc(cost),
+        last_request_at: now,
+        by_type: { [tKey]: inc(1) },
+      }, { merge: true }),
+    ]);
+  } catch (e) {
+    functions.logger.error('recordUsage failed', { uid, error: e.message });
+  }
+}
 
 // App Check enforcement is decided by ./config (enforced in production, relaxed
 // in development) — see APP_CHECK_ENFORCE import above.
@@ -240,6 +332,7 @@ exports.aiProxy = functions
     const requestedModel = typeof body.model === 'string' ? body.model : DEFAULT_MODEL;
     const model = ALLOWED_MODELS.has(requestedModel) ? requestedModel : DEFAULT_MODEL;
     const temperature = Math.min(Math.max(Number(body.temperature) || 0.7, 0), 1);
+    const type = ALLOWED_TYPES.has(body.type) ? body.type : 'other';
 
     // ── Premium (server-authoritative) + rate limit + quota ──────────────────
     const premium = await isPremium(uid);
@@ -287,15 +380,29 @@ exports.aiProxy = functions
       });
 
       if (!upstream.ok) {
-        functions.logger.warn('OpenRouter error', { uid, status: upstream.status });
+        // Log the upstream status + body SERVER-SIDE for diagnosis (never sent
+        // to the client). Truncated to keep logs bounded.
+        let errBody = '';
+        try {
+          errBody = (await upstream.text()).slice(0, 800);
+        } catch (_) {}
+        functions.logger.warn('OpenRouter error', {
+          uid,
+          status: upstream.status,
+          model,
+          body: errBody,
+        });
         await rollbackConsume(uid, gate.consumed);
-        // Do not leak the upstream body/status to the client.
         res.status(502).json({ error: 'ai_upstream_error' });
         return;
       }
 
       const data = await upstream.json();
-      functions.logger.info('aiProxy: success', { uid, consumed: gate.consumed, model });
+      functions.logger.info('aiProxy: success', { uid, consumed: gate.consumed, model, type });
+      // Record real token usage + cost (best-effort, off the response path).
+      recordUsage(uid, {
+        type, model, usage: data && data.usage, premium, consumed: gate.consumed,
+      }).catch(() => {});
       res.status(200).json(data);
     } catch (e) {
       functions.logger.error('aiProxy fetch error', { uid, error: e.message });

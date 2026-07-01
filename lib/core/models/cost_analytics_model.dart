@@ -134,6 +134,111 @@ class UsageCounts {
   });
 }
 
+/// REAL AI usage aggregate, read from server-written `ai_usage_stats/global`
+/// (populated by the aiProxy Cloud Function per request). Unlike [CostAnalytics]
+/// this is measured, not estimated: actual token counts × per-model prices.
+class AiUsageStats {
+  final int totalRequests;
+  final int totalTokens;
+  final double totalCostUsd;
+
+  /// Per-model breakdown: sanitized model key → {requests, tokens, cost_usd}.
+  final Map<String, AiUsageBreakdown> byModel;
+
+  /// Per-query-type breakdown: type key → {requests, cost_usd}.
+  final Map<String, AiUsageBreakdown> byType;
+
+  final DateTime? updatedAt;
+
+  const AiUsageStats({
+    this.totalRequests = 0,
+    this.totalTokens = 0,
+    this.totalCostUsd = 0,
+    this.byModel = const {},
+    this.byType = const {},
+    this.updatedAt,
+  });
+
+  bool get isEmpty => totalRequests == 0;
+
+  static AiUsageStats fromMap(Map<String, dynamic>? d) {
+    if (d == null) return const AiUsageStats();
+    Map<String, AiUsageBreakdown> parse(dynamic raw) {
+      if (raw is! Map) return const {};
+      final out = <String, AiUsageBreakdown>{};
+      raw.forEach((k, v) {
+        if (v is Map) out[k.toString()] = AiUsageBreakdown.fromMap(v);
+      });
+      return out;
+    }
+
+    final ts = d['updated_at'];
+    return AiUsageStats(
+      totalRequests: (d['total_requests'] as num?)?.toInt() ?? 0,
+      totalTokens: (d['total_tokens'] as num?)?.toInt() ?? 0,
+      totalCostUsd: (d['total_cost_usd'] as num?)?.toDouble() ?? 0,
+      byModel: parse(d['by_model']),
+      byType: parse(d['by_type']),
+      updatedAt: ts is DateTime ? ts : null,
+    );
+  }
+}
+
+class AiUsageBreakdown {
+  final int requests;
+  final int tokens;
+  final double costUsd;
+  const AiUsageBreakdown(
+      {this.requests = 0, this.tokens = 0, this.costUsd = 0});
+
+  static AiUsageBreakdown fromMap(Map raw) => AiUsageBreakdown(
+        requests: (raw['requests'] as num?)?.toInt() ?? 0,
+        tokens: (raw['tokens'] as num?)?.toInt() ?? 0,
+        costUsd: (raw['cost_usd'] as num?)?.toDouble() ?? 0,
+      );
+}
+
+/// One AI request as logged in `ai_usage_logs` — the per-user, per-request trail
+/// (when, which query type, which model, tokens, and computed USD cost).
+class AiUsageLogEntry {
+  final String uid;
+  final String type;
+  final String model;
+  final int promptTokens;
+  final int completionTokens;
+  final int totalTokens;
+  final double costUsd;
+  final bool unpriced;
+  final DateTime? createdAt;
+
+  const AiUsageLogEntry({
+    required this.uid,
+    required this.type,
+    required this.model,
+    this.promptTokens = 0,
+    this.completionTokens = 0,
+    this.totalTokens = 0,
+    this.costUsd = 0,
+    this.unpriced = false,
+    this.createdAt,
+  });
+
+  static AiUsageLogEntry fromMap(Map<String, dynamic> d) {
+    final ts = d['created_at'];
+    return AiUsageLogEntry(
+      uid: d['uid'] as String? ?? '',
+      type: d['type'] as String? ?? 'other',
+      model: d['model'] as String? ?? '',
+      promptTokens: (d['prompt_tokens'] as num?)?.toInt() ?? 0,
+      completionTokens: (d['completion_tokens'] as num?)?.toInt() ?? 0,
+      totalTokens: (d['total_tokens'] as num?)?.toInt() ?? 0,
+      costUsd: (d['cost_usd'] as num?)?.toDouble() ?? 0,
+      unpriced: d['unpriced'] as bool? ?? false,
+      createdAt: ts is DateTime ? ts : null,
+    );
+  }
+}
+
 /// The full estimate the dashboard renders.
 class CostAnalytics {
   final UsageCounts counts;

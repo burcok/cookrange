@@ -34,6 +34,7 @@ class RecipeGenerationService {
 
       final jsonResponse = await _aiService.generateJson(
         prompt: prompt,
+        type: 'recipe',
         jsonStructure: '''
 {
   "title": "Recipe Title",

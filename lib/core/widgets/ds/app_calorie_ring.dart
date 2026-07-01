@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import '../../localization/app_localizations.dart';
 import '../../providers/theme_provider.dart';
 import '../../theme/app_gradients.dart';
 import '../../theme/app_palette.dart';
@@ -122,7 +123,10 @@ class _AppCalorieRingState extends State<AppCalorieRing>
                         consumedNow.toString(),
                         style: t.displayM.copyWith(height: 1),
                       ),
-                      Text('kcal', style: t.labelM),
+                      Text(
+                          AppLocalizations.of(context)
+                              .translate('common.unit_kcal'),
+                          style: t.labelM),
                       if (widget.caption != null) ...[
                         SizedBox(height: AppSpacing.xxs.h),
                         Text(widget.caption!, style: t.labelS),

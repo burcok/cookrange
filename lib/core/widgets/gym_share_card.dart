@@ -355,6 +355,7 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -368,21 +369,21 @@ class _StatsRow extends StatelessWidget {
           _Stat(
             icon: Icons.people_rounded,
             value: '${gym.memberCount}',
-            label: 'Members',
+            label: l10n.translate('gym.stats_members'),
             accent: brandColor,
           ),
           _VertDivider(),
           _Stat(
             icon: Icons.workspace_premium_rounded,
             value: gym.subscriptionTier.displayName,
-            label: 'Tier',
+            label: l10n.translate('gym.stats_tier'),
             accent: AppPalette.energyDark,
           ),
           _VertDivider(),
           _Stat(
             icon: Icons.public_rounded,
             value: gym.isPublic ? 'Public' : 'Private',
-            label: 'Access',
+            label: l10n.translate('gym.stats_access'),
             accent: const Color(0xFF60A5FA),
           ),
         ],

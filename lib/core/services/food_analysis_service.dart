@@ -165,6 +165,7 @@ class FoodAnalysisService {
       final result = await _ai.generateJson(
         prompt: prompt,
         jsonStructure: _jsonStructure,
+        type: 'food_photo',
       );
       return _parse(result, fallbackName: description, fromPhoto: false);
     } catch (e) {

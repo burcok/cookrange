@@ -353,7 +353,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Avatar upload failed: $e')),
+          SnackBar(
+              content: Text(AppLocalizations.of(context).translate(
+                  'profile.avatar_upload_failed',
+                  variables: {'details': e.toString()}))),
         );
       }
     } finally {
@@ -1474,7 +1477,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         isDark)),
                 if ((user.onboardingData?['primary_goals'] as List?)?.isEmpty ??
                     true)
-                  Text("No goals set",
+                  Text(AppLocalizations.of(context).translate('profile.goals_empty'),
                       style: TextStyle(
                           color: AppPalette.of(context).textSecondary,
                           fontStyle: FontStyle.italic))
@@ -1747,7 +1750,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: palette.textSecondary)),
                   const SizedBox(height: 8),
                   if (equipment.isEmpty)
-                    Text("No equipment listed",
+                    Text(localizations.translate('profile.equipment_empty'),
                         style: TextStyle(
                             color: palette.textTertiary,
                             fontSize: 12,
@@ -1778,7 +1781,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   // Disliked Foods Section
                   if (dislikedFoods.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    Text("Disliked Foods",
+                    Text(localizations.translate('profile.disliked_foods_title'),
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
@@ -2157,7 +2160,10 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Search failed: $e")));
+            .showSnackBar(SnackBar(
+                content: Text(AppLocalizations.of(context).translate(
+                    'profile.search_failed',
+                    variables: {'details': e.toString()}))));
       }
     } finally {
       if (mounted) setState(() => _searching = false);
@@ -2169,12 +2175,18 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
       await _friendService.sendFriendRequest(context, user.uid);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Request sent to ${user.displayName}")));
+            SnackBar(
+                content: Text(AppLocalizations.of(context).translate(
+                    'profile.friend_request_sent',
+                    variables: {'name': user.displayName ?? ''}))));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Error: $e")));
+            .showSnackBar(SnackBar(
+                content: Text(AppLocalizations.of(context).translate(
+                    'common.error_with_details',
+                    variables: {'details': e.toString()}))));
       }
     }
   }

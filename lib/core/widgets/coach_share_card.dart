@@ -355,6 +355,7 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -368,7 +369,7 @@ class _StatsRow extends StatelessWidget {
           _Stat(
             icon: Icons.people_alt_rounded,
             value: '${coach.clientCount}',
-            label: 'Clients',
+            label: l10n.translate('coach.stats_clients'),
           ),
           _VertDivider(),
           _RatingStat(rating: coach.avgRating),
@@ -376,7 +377,7 @@ class _StatsRow extends StatelessWidget {
           _Stat(
             icon: Icons.star_rounded,
             value: '${coach.ratingCount}',
-            label: 'Reviews',
+            label: l10n.translate('coach.stats_reviews'),
           ),
         ],
       ),

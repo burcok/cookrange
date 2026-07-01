@@ -636,6 +636,21 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ─── AI usage logs (real token/cost per request) ─────────────────────────
+    // Written ONLY by the aiProxy Cloud Function (Admin SDK). Admin-read for the
+    // cost dashboard; clients can never read others' usage or forge cost/tokens.
+    match /ai_usage_logs/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ─── AI usage aggregates (global total, daily buckets, by-model/type) ─────
+    // Server-written (aiProxy); admin-read only.
+    match /ai_usage_stats/{doc} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // ─── Deny everything else ─────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

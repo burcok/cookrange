@@ -179,17 +179,19 @@ class _FavoriteRecipeCard extends StatelessWidget {
                       children: [
                         _MacroPill(
                             value: recipe.macros['protein']?.toInt() ?? 0,
-                            label: 'P',
+                            label:
+                                l10n.translate('nutrition.macro_protein_short'),
                             color: palette.protein),
                         SizedBox(width: 4.w),
                         _MacroPill(
                             value: recipe.macros['carbs']?.toInt() ?? 0,
-                            label: 'C',
+                            label:
+                                l10n.translate('nutrition.macro_carbs_short'),
                             color: palette.carbs),
                         SizedBox(width: 4.w),
                         _MacroPill(
                             value: recipe.macros['fat']?.toInt() ?? 0,
-                            label: 'F',
+                            label: l10n.translate('nutrition.macro_fat_short'),
                             color: palette.fat),
                       ],
                     ),
