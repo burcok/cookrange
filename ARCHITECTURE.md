@@ -124,9 +124,12 @@ listener auto-reloads and the side menu / gates update **without restart**.
 Screen → `AiCreditService.checkAndConsume()` (skipped if proxy mode) → feature service
 (`RecipeGenerationService` / `WeeklyMealPlanService` / `AiChatService` / `AiInsightService`)
 → `AIService.generateJson/Completion()` → **`aiProxy` Cloud Function** (verifies Firebase ID
-token + App Check, runs `enforceAndConsumeQuota` in a Firestore transaction, returns 402 if
-exceeded, else calls OpenRouter with the secret key) → response parsed, credit rolled back on
-failure. Server is the quota authority; client is read-only in proxy mode.
+token + App Check, reads model/`max_tokens`/`temperature`/quota from `app_config/global` and
+**ignores the client-sent model**, runs `enforceAndConsumeQuota` in a Firestore transaction, returns
+402 if exceeded, else calls OpenRouter with the secret key) → response parsed, credit rolled back on
+failure. Server is the quota authority; client is read-only in proxy mode. **Real cost tracking:**
+`aiProxy` captures OpenRouter's `usage` token counts on each call and logs actual cost to
+`ai_usage_logs` / `ai_usage_stats`.
 
 ### 4.4 PII separation
 Public profile → `users/{uid}` (readable by authenticated users). Sensitive nutrition PII
@@ -162,6 +165,10 @@ writes **structured** data only → `onInAppNotificationCreated` Cloud Function 
 - **Cloud Functions** (`functions/`):
   - `aiProxy` — HTTPS; token + App Check validation, model allowlist, `max_tokens`/payload caps,
     fail-closed server-side AI quota + per-uid rate limit, no wildcard CORS, OpenRouter proxy.
+    Server-authoritative model config: reads `app_config/global` (Admin SDK, 5-min cache) for
+    model/tokens/temperature/quota and ignores the client-sent model. Logs real OpenRouter token
+    usage/cost to `ai_usage_logs` / `ai_usage_stats`. Requires the `allUsers` Cloud Functions Invoker
+    role (deployed private; auth is in-code) — see `docs/PLATFORM.md` §5b.
   - `onInAppNotificationCreated` — Firestore trigger; push fan-out + mute prefs.
   - `onChatMessageCreated` — Firestore trigger; chat push.
   - `executeBroadcast` — internal helper for admin broadcasts.
@@ -179,6 +186,14 @@ writes **structured** data only → `onInAppNotificationCreated` Cloud Function 
 - **Remote Config** — `ai_proxy_url`, `ai_model`, `maintenance_mode`, `min_version`,
   feature flags, `max_meal_retries`. Read via `RemoteConfigService` (Firestore admin_config
   overrides RC for instant effect).
+- **Remote App Config** — Firestore **`app_config/global`** (public-read, admin-write, no secrets)
+  is the consolidated remote-config surface: `ai` (model/tokens/temperature/quota), `version`
+  (force/soft update), `maintenance`, `announcement`, `features` (kill-switches), `rollout`,
+  `limits`, `endpoints`. Client `AppConfigService` (cache-first + 6h TTL) drives version-gating,
+  maintenance mode, announcement banner, and feature kill-switches; edited via `AdminAppConfigScreen`.
+  `aiProxy` reads the same doc server-side (so model/quota change with **no redeploy**). Consolidates
+  the older scattered RC `ai_proxy_url`/`ai_model` (client still reads RC `ai_proxy_url` for
+  back-compat; `endpoints.ai_proxy_url` also honored).
 - **App Check** — Play Integrity (Android) / App Attest (iOS) / debug; enforced at the proxy
   (gated by `APP_ENV`), real providers required in release.
 

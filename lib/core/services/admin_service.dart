@@ -49,7 +49,12 @@ class AdminService {
   // These counts use the cheap count() aggregation polled periodically, instead
   // of streaming (and re-reading) entire collections on every change. Aggregate
   // queries have no .snapshots(), so we poll via pollCount.
-  Stream<int> pendingCountStream() async* {
+  // Broadcast so multiple StreamBuilders (the badge appears in >1 place on the
+  // admin overview) can listen without a single-subscription crash.
+  Stream<int> pendingCountStream() =>
+      _pendingCountGenerator().asBroadcastStream();
+
+  Stream<int> _pendingCountGenerator() async* {
     while (true) {
       try {
         final coach = await _db
@@ -597,6 +602,25 @@ class AdminService {
       name: 'admin_action',
       parameters: {'action': action, 'target_uid': targetUid},
     ));
+  }
+
+  /// Reads the current remote app config (`app_config/global`) for editing.
+  Future<Map<String, dynamic>> getAppConfig() async {
+    final snap = await _db.collection('app_config').doc('global').get();
+    return snap.data() ?? {};
+  }
+
+  /// Merges [patch] into `app_config/global` (admin-only per rules) + audits.
+  Future<void> updateAppConfig(Map<String, dynamic> patch) async {
+    await _db
+        .collection('app_config')
+        .doc('global')
+        .set(patch, SetOptions(merge: true));
+    await logAuditAction(
+      action: 'update_app_config',
+      targetUid: 'app_config/global',
+      metadata: {'keys': patch.keys.toList()},
+    );
   }
 
   Stream<List<Map<String, dynamic>>> auditLogStream() {

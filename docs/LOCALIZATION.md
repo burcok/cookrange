@@ -15,7 +15,7 @@
   - Arrays: `translateArray('key')` returns `List<String>`.
 - **Locale state:** `LanguageProvider` (persists `language_code` in SharedPreferences; defaults to
   device language tr→tr else en). Settings has a language picker sheet (EN/TR with flag + checkmark).
-- ~**2,082** keys across ~65 top-level sections (splash, onboarding, auth, home, community, gym,
+- ~**2,200** keys across ~65 top-level sections (splash, onboarding, auth, home, community, gym,
   coach, ai, admin, …).
 
 ## 2. Adding a string (the ONLY correct way — R9)
@@ -53,7 +53,15 @@ structured data; `NotificationPresenter` renders title/body from `notifications.
 **reader's** device, so it's always in their language with the real actor name. Add new notification
 copy as `notifications.feed.*` keys (EN+TR) using `{actor}`/`{emoji}`/`{days}` vars.
 
-## 5. Adding a new locale (future)
+## 5. Hardcoded-string sweep (2026 localization pass)
+A large pass localized **~120 previously hardcoded user-visible strings** across **~35 screens/
+widgets**, adding **~120 new EN+TR key pairs** in these groups: `common.*`, `app.*`, `admin.*`
+(incl. `admin.appconfig.*`, `admin.ai_usage_*`), `gym.*`, `coach.*`, `programs.*`,
+`nutrition.macro_*`, `update.*`, `maintenance.*`. EN/TR parity was preserved throughout
+(`test/i18n_parity_test.dart` passes). **Deliberately left un-localized:** the admin
+bilingual-composer example placeholders and dead code.
+
+## 6. Adding a new locale (future)
 Infra is ready. To add e.g. German: drop `assets/localization/de.json` (full parity), add
 `Locale('de')` to `supportedLocales` + the delegate's `isSupported`, handle the code in
 `AppLocalizations.load` and `LanguageProvider`, and extend the parity test to the new file.

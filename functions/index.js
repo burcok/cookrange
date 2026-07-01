@@ -60,9 +60,6 @@ const ALLOWED_TYPES = new Set([
 // ending in ':free' is $0. Unknown paid models record tokens with unpriced=true
 // (cost 0) so the admin dashboard can flag "add pricing".
 const MODEL_PRICING = {
-  'openrouter/free': { in: 0, out: 0 },
-  'deepseek/deepseek-chat-v3-0324:free': { in: 0, out: 0 },
-  'meta-llama/llama-3.2-11b-vision-instruct:free': { in: 0, out: 0 },
   'google/gemini-2.0-flash-001': { in: 0.10, out: 0.40 },
   'openai/gpt-4o-mini': { in: 0.15, out: 0.60 },
   'openai/gpt-4o': { in: 2.50, out: 10.0 },
@@ -142,6 +139,29 @@ async function recordUsage(uid, { type, model, usage, premium, consumed }) {
 // App Check enforcement is decided by ./config (enforced in production, relaxed
 // in development) — see APP_CHECK_ENFORCE import above.
 
+// In-memory cache of the admin-editable app config (app_config/global). Lets
+// admins retune model / max_tokens / quotas WITHOUT redeploying the function.
+// Refetched at most every APP_CONFIG_TTL_MS; fails safe to {} (env defaults).
+let _appConfigCache = null;
+let _appConfigAt = 0;
+const APP_CONFIG_TTL_MS = 5 * 60 * 1000;
+
+async function getAppConfig() {
+  const now = Date.now();
+  if (_appConfigCache && now - _appConfigAt < APP_CONFIG_TTL_MS) {
+    return _appConfigCache;
+  }
+  try {
+    const snap = await admin.firestore().collection('app_config').doc('global').get();
+    _appConfigCache = snap.exists ? (snap.data() || {}) : {};
+  } catch (e) {
+    functions.logger.warn('getAppConfig failed — using env defaults', { error: e.message });
+    _appConfigCache = _appConfigCache || {};
+  }
+  _appConfigAt = now;
+  return _appConfigCache;
+}
+
 function nextMidnightUtc(now) {
   const d = new Date(now);
   d.setUTCHours(24, 0, 0, 0);
@@ -174,10 +194,12 @@ async function isPremium(uid) {
  *         { ok: false, reason: 'rate_limited'|'exceeded' }.
  * THROWS on a transaction/infra failure — the caller MUST fail closed.
  */
-async function enforceRateLimitAndQuota(uid, premium) {
+async function enforceRateLimitAndQuota(uid, premium, limits) {
   const db = admin.firestore();
   const ref = db.collection('ai_credits').doc(uid);
-  const dailyLimit = premium ? PREMIUM_DAILY_LIMIT : FREE_DAILY_LIMIT;
+  const freeLimit = (limits && limits.free) || FREE_DAILY_LIMIT;
+  const premiumLimit = (limits && limits.premium) || PREMIUM_DAILY_LIMIT;
+  const dailyLimit = premium ? premiumLimit : freeLimit;
   const now = new Date();
 
   return db.runTransaction(async (tx) => {
@@ -329,16 +351,42 @@ exports.aiProxy = functions
       res.status(413).json({ error: 'payload_too_large' });
       return;
     }
-    const requestedModel = typeof body.model === 'string' ? body.model : DEFAULT_MODEL;
-    const model = ALLOWED_MODELS.has(requestedModel) ? requestedModel : DEFAULT_MODEL;
-    const temperature = Math.min(Math.max(Number(body.temperature) || 0.7, 0), 1);
     const type = ALLOWED_TYPES.has(body.type) ? body.type : 'other';
+
+    // Admin-editable config (app_config/global) decides model / tokens / quota
+    // SERVER-SIDE — the client's requested model is ignored for cost safety, and
+    // admins can retune all of this live without redeploying.
+    const cfg = await getAppConfig();
+    const aiCfg = (cfg && cfg.ai) || {};
+    const modelByType = aiCfg.model_by_type || {};
+    let model;
+    if (type === 'food_photo') {
+      model = aiCfg.vision_model ||
+        process.env.OPENROUTER_VISION_MODEL ||
+        'meta-llama/llama-3.2-11b-vision-instruct:free';
+    } else {
+      model = modelByType[type] || aiCfg.text_model || DEFAULT_MODEL;
+    }
+    const maxTokensByType = aiCfg.max_tokens_by_type || {};
+    const maxOut = Math.min(
+      Number(maxTokensByType[type] || aiCfg.max_tokens || MAX_OUTPUT_TOKENS) ||
+      MAX_OUTPUT_TOKENS,
+      32000,
+    );
+    const temperature = Math.min(
+      Math.max(Number(body.temperature) || Number(aiCfg.temperature) || 0.7, 0),
+      1,
+    );
+    const quotaLimits = {
+      free: Number(aiCfg.free_daily_limit) || undefined,
+      premium: Number(aiCfg.premium_daily_limit) || undefined,
+    };
 
     // ── Premium (server-authoritative) + rate limit + quota ──────────────────
     const premium = await isPremium(uid);
     let gate;
     try {
-      gate = await enforceRateLimitAndQuota(uid, premium);
+      gate = await enforceRateLimitAndQuota(uid, premium, quotaLimits);
     } catch (e) {
       // FAIL CLOSED — never grant free AI because the quota store hiccuped.
       functions.logger.error('quota tx failed — failing closed', { uid, error: e.message });
@@ -375,7 +423,7 @@ exports.aiProxy = functions
           model,
           messages,
           temperature,
-          max_tokens: MAX_OUTPUT_TOKENS,
+          max_tokens: maxOut,
         }),
       });
 
@@ -385,7 +433,7 @@ exports.aiProxy = functions
         let errBody = '';
         try {
           errBody = (await upstream.text()).slice(0, 800);
-        } catch (_) {}
+        } catch (_) { }
         functions.logger.warn('OpenRouter error', {
           uid,
           status: upstream.status,
@@ -402,7 +450,7 @@ exports.aiProxy = functions
       // Record real token usage + cost (best-effort, off the response path).
       recordUsage(uid, {
         type, model, usage: data && data.usage, premium, consumed: gate.consumed,
-      }).catch(() => {});
+      }).catch(() => { });
       res.status(200).json(data);
     } catch (e) {
       functions.logger.error('aiProxy fetch error', { uid, error: e.message });

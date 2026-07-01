@@ -432,6 +432,19 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   // Get user data from Firestore
+  /// Session-static flag: set true the moment the onboarding meal-plan step
+  /// completes (generated OR skipped). RouteGuard's meal-plan gate honours this
+  /// so a stale [_userDataCache] re-fetch can't bounce the user back into a
+  /// regeneration loop before the `meal_plan_generated` write is observed.
+  static bool mealPlanGatePassed = false;
+
+  /// Drops the in-memory user cache so the next [getUserData] reads fresh from
+  /// Firestore. Call after writing user-doc fields OUTSIDE AuthService (e.g. the
+  /// meal-plan gate) so a re-fetch doesn't resurrect stale values.
+  void invalidateUserCache() {
+    _userDataCache = null;
+  }
+
   Future<UserModel?> getUserData(String uid) async {
     _log.info('Getting user data for uid: $uid (from cache or service)',
         service: _serviceName);

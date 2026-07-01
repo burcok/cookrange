@@ -9,10 +9,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// cheaper for badges/labels that only need a number (admin counts, member
 /// counts, etc.). Use a real `.snapshots()` only when you actually render the
 /// documents. The first value is emitted immediately.
+/// Returns a **broadcast** stream so the same count can safely feed more than
+/// one `StreamBuilder` (e.g. an admin badge shown in two places) without the
+/// "Stream has already been listened to" crash a single-subscription generator
+/// would throw on the second listener.
 Stream<int> pollCount(
   Query<Object?> query, {
   Duration interval = const Duration(seconds: 45),
-}) async* {
+}) {
+  return _pollCountGenerator(query, interval).asBroadcastStream();
+}
+
+Stream<int> _pollCountGenerator(Query<Object?> query, Duration interval) async* {
   while (true) {
     try {
       final snap = await query.count().get();

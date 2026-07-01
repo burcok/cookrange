@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'storage_service.dart';
+import 'app_config_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -239,6 +240,9 @@ class AppInitializationService {
       // Initialize SharedPreferences
       await SharedPreferences.getInstance();
       await TestModeService().initialize();
+
+      // Remote app config: loads cache instantly, refreshes in background.
+      await AppConfigService().init();
 
       _log.info('Local storage initialized successfully',
           service: _serviceName);

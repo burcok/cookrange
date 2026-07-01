@@ -1,14 +1,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/app_config_service.dart';
+import '../models/app_config_model.dart';
 import '../providers/user_provider.dart';
 import '../services/admin_status_service.dart';
 import '../../screens/auth/account_suspended_screen.dart';
+import '../../screens/common/force_update_screen.dart';
+import '../../screens/common/maintenance_screen.dart';
 import '../../screens/onboarding/v2/onboarding_completion.dart';
 import '../../screens/onboarding/v2/onboarding_flow_screen.dart';
 import 'app_routes.dart';
+import 'version_gate.dart';
 
 /// RouteGuard - SIMPLIFIED VERSION
 ///
@@ -33,11 +39,22 @@ class _RouteGuardState extends State<RouteGuard> {
   bool _authInitialized = false;
   bool _hasRedirected = false;
 
+  /// Running build version, resolved once async. Null until known — while null
+  /// the version gate stays fail-open (never blocks the app on an unknown).
+  String? _currentVersion;
+
+  void _onConfigChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
     _setupAuthListener();
     _setupBanListener();
+    _loadAppVersion();
+    // Rebuild when remote config lands (maintenance / version thresholds).
+    AppConfigService().notifier.addListener(_onConfigChanged);
 
     // Mark as initialized if we have a current user already
     if (AuthService().currentUser != null) {
@@ -52,6 +69,16 @@ class _RouteGuardState extends State<RouteGuard> {
         if (mounted) setState(() {});
       }
     });
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      setState(() => _currentVersion = info.version);
+    } catch (_) {
+      // Leave null → version gate stays fail-open.
+    }
   }
 
   void _setupAuthListener() {
@@ -83,11 +110,26 @@ class _RouteGuardState extends State<RouteGuard> {
   void dispose() {
     _authSubscription?.cancel();
     _banSubscription?.cancel();
+    AppConfigService().notifier.removeListener(_onConfigChanged);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // 0. Remote app-config gates — evaluated BEFORE every other section.
+    //    Maintenance mode overrides everything; then the hard version gate.
+    //    Both render the target widget directly (no named route → no conflict
+    //    with app_routes). The version gate is fail-open: if the running
+    //    version isn't resolved yet it never blocks.
+    final AppConfig appConfig = AppConfigService().config;
+    if (appConfig.maintenance.enabled) {
+      return const MaintenanceScreen();
+    }
+    if (_currentVersion != null &&
+        VersionGate.isBelowMinimum(appConfig, _currentVersion!)) {
+      return const ForceUpdateScreen();
+    }
+
     // Handle ban status first (real-time check)
     if (_realtimeAdminStatus == AdminStatus.banned) {
       return const AccountSuspendedScreen();
@@ -226,9 +268,14 @@ class _RouteGuardState extends State<RouteGuard> {
     //    "exit verify_email → verify from email client → login" flow.
     //    mealPlanGenerated is set to true by MealPlanGenerationScreen on
     //    success, so this gate fires at most once per account.
+    //    `mealPlanGatePassed` is a session-static set the moment generation (or
+    //    skip) completes — immune to the AuthService cache/re-fetch race that
+    //    could momentarily revert the in-memory `mealPlanGenerated` to a stale
+    //    false and bounce the user back into a regeneration loop.
     if (userModel != null &&
         userModel.onboardingCompleted &&
         !userModel.mealPlanGenerated &&
+        !AuthService.mealPlanGatePassed &&
         routeName != AppRoutes.mealPlanGeneration &&
         routeName != AppRoutes.verifyEmail) {
       if (!_hasRedirected) {

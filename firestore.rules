@@ -636,6 +636,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ─── Remote app config (admin-editable settings) ─────────────────────────
+    // Public-read so every client can load it on launch; admin-only write.
+    // Holds NO secrets (model names/limits/flags/URLs only).
+    match /app_config/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // ─── AI usage logs (real token/cost per request) ─────────────────────────
     // Written ONLY by the aiProxy Cloud Function (Admin SDK). Admin-read for the
     // cost dashboard; clients can never read others' usage or forge cost/tokens.

@@ -16,6 +16,7 @@ import 'application_review_screen.dart';
 import 'admin_user_management_screen.dart';
 import 'admin_reports_screen.dart';
 import 'admin_cost_analytics_screen.dart';
+import 'admin_app_config_screen.dart';
 
 /// Admin-only screen for reviewing pending coach/gym applications,
 /// managing users, and viewing application history.
@@ -410,6 +411,17 @@ class _AdminOverviewTab extends StatelessWidget {
             accentColor: palette.calories,
             onTap: () => Navigator.of(context).push(
                 AppTransitions.slideRight(const AdminCostAnalyticsScreen())),
+            palette: palette,
+            t: t,
+          ),
+          SizedBox(height: 8.h),
+          _QuickAccessCard(
+            label: l10n.translate('admin.appconfig.entry_title'),
+            description: l10n.translate('admin.appconfig.entry_subtitle'),
+            icon: Icons.settings_suggest_rounded,
+            accentColor: palette.info,
+            onTap: () => Navigator.of(context).push(
+                AppTransitions.slideRight(const AdminAppConfigScreen())),
             palette: palette,
             t: t,
           ),

@@ -13,12 +13,19 @@
 ## Auth & Identity
 - **AuthService** `auth_service.dart` — Auth lifecycle: email/password, Google, Apple; email
   verification; password reset; session tracking + concurrent-login detection. Holds the app
-  `navigatorKey`. In-memory user cache. Touches `users/{uid}`, `logs/{uid}`. **GDPR account deletion
+  `navigatorKey`. In-memory user cache; `invalidateUserCache()` clears it so the next read refetches
+  (used to stop a stale cache flag from resurrecting old state — e.g. the meal-plan gate). Session-
+  static `mealPlanGatePassed` flag lets "Skip" clear the meal-plan generation gate permanently
+  (`RouteGuard` no longer re-loops back into generation). **GDPR account deletion
   is server-authoritative** — `deleteAccount` invokes the `deleteUserAccount` callable (recursive
   subtree + Storage + Auth erasure) instead of client-side deletes. Email no longer sent to analytics.
 - **FirestoreService** `firestore_service.dart` — Central Firestore I/O: user CRUD, activity
   logging, role assignment (`addUserRole`), streak, `getUserStream`. `getPrivateNutritionData(uid)`
   migrates + reads PII subcollection; `savePrivateNutritionData(uid, data)` writes it.
+  `syncDeviceContext(uid)` writes the full device/IP/app-version context on every app open/resume
+  (not just `is_online`) — called from `AppLifecycleService._setOnline`. `verifyAndRepairUserData`
+  now backfills `email`/`displayName`/`photoURL` from Auth when missing, so the core profile is
+  consistent regardless of sign-up method.
 - **AdminStatusService** `admin_status_service.dart` — Real-time ban/admin status; `onBanStatusChanged`
   stream feeds `RouteGuard`; reads `admin_config` for maintenance/min-version.
 
@@ -28,7 +35,9 @@
   (release builds never ship/use a client key). 3-retry policy. Typed exceptions:
   `AIRetryableException`, `AIFatalException`, `AIQuotaExceededException` (402), `AIJsonParseException`.
   `generateCompletion`, `generateChatResponse`, `generateJson`. `isConfigured`, `hasProxy`,
-  `setProxyUrl()` (from Remote Config).
+  `setProxyUrl()` (from Remote/App Config). Every call is tagged with a `type`
+  (`meal_plan`/`recipe`/`insight`/`weekly_recap`/`food_photo`/`chat`) that flows to `aiProxy` for
+  per-request cost logging.
 - **AiChatService** `ai/ai_chat_service.dart` — Builds profile-aware system prompt for nutrition chat.
 - **AiChatHistoryService** `ai/ai_chat_history_service.dart` — In-memory conversation state (voice↔text).
 - **PromptService** `ai/prompt_service.dart` — Prompt template library (recipe, weekly plan, ingredient
@@ -69,7 +78,9 @@
 - **CommunityService** `community_service.dart` — Posts CRUD, cursor pagination (`fetchPostsPage`),
   comments, reactions, groups, topic filter (arrayContains tags), weekly highlights
   (`getTopPostThisWeek`/`getTopStreakUserThisWeek`), mention fan-out, content moderation
-  (`_checkContent` blocked-keyword pre-screen), `reportContent`.
+  (`_checkContent` blocked-keyword pre-screen — reads the list from **public-read
+  `settings/content_filter`**, mirrored there by admins; previously read the admin-only
+  `admin_config/global` doc, so the filter was dead for normal users), `reportContent`.
 - **ChatService** `chat_service.dart` — Chats + messages, typing status, unread counts, mark-read,
   group/private/system creation.
 - **FollowService** `follow_service.dart` — Following/followers (batch), counts, isFollowing stream,
@@ -114,12 +125,34 @@
   `referralsStream`/`voidReferralCode`, program review
   (approve/reject/pending/history), `adminConfigStream`/`updateAdminConfig`, `broadcastsStream`/
   `sendBroadcast`, `setGymVerified`/`setCoachVerified`, `forceLogout`, `sendPasswordReset`,
-  `getUserDataStats`.
+  `getUserDataStats`, `getAppConfig`/`updateAppConfig` (read + audited write of `app_config/global`,
+  backing `AdminAppConfigScreen`).
+- **CostAnalyticsService** `cost_analytics_service.dart` — Admin-only cost/revenue/profit estimates
+  (Firebase pricing + `count()` aggregates) **plus real AI usage**: `fetchAiUsageStats` reads
+  `ai_usage_stats/global` (+ day buckets — total cost/requests/tokens, `by_model`, `by_type`) and
+  `fetchUserAiLogs(uid)` queries `ai_usage_logs` for a per-user breakdown. Powers
+  `AdminCostAnalyticsScreen` (now shows real AI spend, not just estimates).
+- **AdminAppConfigScreen** `screens/admin/admin_app_config_screen.dart` — Admin editor for the Remote
+  App Config (`app_config/global`) via `AdminService.getAppConfig`/`updateAppConfig`: AI models/limits,
+  version gates + force-update, maintenance mode, announcement, feature kill-switches, rollout %.
 
 ## Feature, Config & Push
 - **FeatureGateService** `feature_gate_service.dart` — Entitlement checks + `showPaywall()`.
-- **RemoteConfigService** `remote_config_service.dart` — Flags: `maintenanceMode`, `minVersion`,
-  `aiModel`, `maxMealRetries`, `featureVoiceAssistant`, `featureNutritionAnalytics`, `aiProxyUrl`.
+- **AppConfigService** `app_config_service.dart` — Remote App Config client over `app_config/global`
+  (public-read, admin-write, **no secrets**). Boot flow is **cache-first**: reads the SharedPrefs
+  snapshot instantly, then background-refreshes with a **6h TTL**; exposes a reactive `ValueNotifier`
+  so gates rebuild on change. Parses into `AppConfig` (`app_config_model.dart`, every field has a
+  fail-safe default). Config sections: `ai` (text/vision model, `model_by_type`, `max_tokens`
+  [`_by_type`], temperature, timeout, free/premium daily limits, feature toggles), `version`
+  (min_supported/latest per platform, force_update, store URLs, i18n update_message), `maintenance`,
+  `announcement`, `features` (kill-switch, default-ON), `rollout` (%), `limits`,
+  `endpoints.ai_proxy_url`. Helpers: `isFeatureEnabled(key)` (kill-switch), rollout bucketing.
+  Consumed by `version_gate.dart` (→ `ForceUpdateScreen`), `MaintenanceScreen`, `AnnouncementBanner`,
+  and feature gates — all evaluated at `route_guard.dart` build start. The **same doc is read
+  server-side by `aiProxy`** (5-min cache) so model/max_tokens/quota change without redeploy.
+- **RemoteConfigService** `remote_config_service.dart` — Firebase Remote Config flags: `maintenanceMode`,
+  `minVersion`, `aiModel`, `maxMealRetries`, `featureVoiceAssistant`, `featureNutritionAnalytics`,
+  `aiProxyUrl`. (Being superseded by `AppConfigService`/`app_config/global`.)
 - **PushNotificationService** `push_notification_service.dart` — FCM + `flutter_local_notifications`.
   Initializes the `timezone` DB (`flutter_timezone` → device zone) in `initialize()`. Hydration
   reminders are precise + multi-time: `scheduleDailyWaterReminder({title, body, wakeTime, sleepTime,
@@ -191,7 +224,12 @@
   Firestore transaction (auto-resets daily counter at midnight, burns bonus credits first); returns
   **HTTP 402** when exceeded; otherwise proxies to OpenRouter with `OPENROUTER_API_KEY` (read from
   `functions/.env`). Rolls back the consumed credit on bad request / OpenRouter failure.
-  Constants: `FREE_DAILY_LIMIT=2`, `PREMIUM_DAILY_LIMIT=20`.
+  Constants: `FREE_DAILY_LIMIT=2`, `PREMIUM_DAILY_LIMIT=20`. Reads **`app_config/global`** server-side
+  (5-min cache) so model/`max_tokens`/quota can change without a redeploy. **Real cost tracking**:
+  captures the OpenRouter `usage` token counts × per-model price (`MODEL_PRICING`) and writes
+  per-request `ai_usage_logs/{id}` (uid, `type`, model, prompt/completion/total tokens, `cost_usd`,
+  `unpriced`, `created_at`), rolls up `ai_usage_stats/global` (+ `day_YYYY-MM-DD` buckets, by_model/
+  by_type), and increments per-user lifetime totals on `ai_credits/{uid}`.
 
 **Entitlements & purchases** (`entitlements.js`, `purchases.js`)
 - **grantPremium / revokePremium / grantBonusCredits / claimPurchaseToken** (`entitlements.js`) —

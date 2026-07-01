@@ -117,7 +117,15 @@ deployed to the `cookrange-app` project; app not yet publicly launched.)
 - **Hardened AI proxy** — the OpenRouter key never ships in release (bundled key is debug-only); the
   proxy is mandatory in release with real App Check providers (Play Integrity / App Attest). A
   deterministic allergen safety filter, prompt-injection guard, null-safe parsing of
-  attacker-controlled docs, and a safe URL launcher round out the AI/data path.
+  attacker-controlled docs, and a safe URL launcher round out the AI/data path. `aiProxy` is a public
+  HTTPS function (needs `allUsers` **Cloud Functions Invoker**) that does its own auth in-code — it
+  **server-decides the model** (ignores the client's requested model for cost safety) and **meters
+  real cost**: it captures OpenRouter token usage × per-model price into `ai_usage_logs` /
+  `ai_usage_stats` / per-user lifetime totals, surfaced in the admin cost dashboard.
+- **Remote app config** — `app_config/global` (public-read, admin-write, no secrets) drives both the
+  client and `aiProxy`: AI model / max-tokens / quotas, force/soft **update gate**, **maintenance
+  mode**, in-app **announcements**, and **feature kill-switches** — all editable from the admin panel
+  and applied **without a redeploy** (`AppConfigService`, 6h cache-first TTL).
 
 Deferred to go-live (tracked in [`TODO.md`](TODO.md)): disabling Android cleartext traffic,
 root/jailbreak + FLAG_SECURE + cert-pinning + obfuscation, Storage chat-image scoping + upload

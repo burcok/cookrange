@@ -143,13 +143,32 @@
 
 ### 5.2 👤 Deploy Cloud Functions + secret
 - **What:** `firebase functions:secrets:set OPENROUTER_API_KEY` then `firebase deploy --only functions`.
-  Set Remote Config `ai_proxy_url` to the deployed `aiProxy` URL.
+  Set Remote Config `ai_proxy_url` (and/or `app_config.endpoints.ai_proxy_url`) to the deployed
+  `aiProxy` URL.
 - **Why:** This is what hides your AI key and enforces server-side quota. Until deployed, the app
   falls back to the local key.
 - 🤖 Code ready and **hardened** (`functions/index.js`): model allowlist, `max_tokens`/payload caps,
   **fail-closed** quota, **mandatory App Check** (`APP_CHECK_ENFORCE`), per-uid rate limit,
   `maxInstances`, no wildcard CORS. Credits/premium read from server-only `ai_credits/{uid}` +
   `entitlements/{uid}`, never the user doc. **See Phase 5S for the full security gate.**
+- ⚠️ **Grant the `aiProxy` public-invoker role (required or it 401s).** `aiProxy` is an
+  `https.onRequest` function; the platform deploys it **private** and returns a 401 HTML page before
+  the code runs unless `allUsers` has the Cloud Functions Invoker role. Auth is enforced **in-code**
+  (Firebase ID token + App Check + quota + rate-limit + model allowlist) — this is the standard
+  Firebase-Callable pattern. Run after deploy:
+  ```bash
+  gcloud functions add-iam-policy-binding aiProxy \
+    --region=us-central1 --member=allUsers --role=roles/cloudfunctions.invoker
+  ```
+- ⚠️ **AI model = `openai/gpt-4o-mini` (paid).** The old `deepseek/…:free` model was removed from
+  OpenRouter (404), so the default is now `gpt-4o-mini` — a **paid** model. The OpenRouter account
+  **must carry credit** or every AI call fails. Set the model/quota in `functions/.env`
+  (`OPENROUTER_MODEL`, `OPENROUTER_TIMEOUT_S`) and/or `app_config/global` — see next bullet.
+- ✅ **Model / tokens / quota are managed remotely (no redeploy).** `aiProxy` reads `app_config/global`
+  (Admin SDK, 5-min cache) for model / `max_tokens` / `temperature` / quota and **ignores the
+  client-sent model** (cost safety); `AdminAppConfigScreen` edits it live. `MAX_OUTPUT_TOKENS` is
+  8192 (large meal-plan JSON). Real OpenRouter token usage is logged to `ai_usage_logs` /
+  `ai_usage_stats`.
 
 ### 5.3 👤 Deploy rules + indexes
 - **What:** `firebase deploy --only firestore:rules,firestore:indexes,storage:rules`.
@@ -291,7 +310,10 @@
   so a missing `ai_proxy_url` returns the not-configured path instead of calling OpenRouter with the
   bundled key (do this once the proxy is deployed).
 - 👤 Register **Play Integrity** + **App Attest** (Phase 1.4 / 2.4) and **enable App Check enforcement**
-  for Functions/Firestore/Storage in the console. 👤 Set a **hard spend cap** on the OpenRouter account.
+  for Functions/Firestore/Storage in the console. 👤 Set a **hard spend cap** on the OpenRouter account
+  — and **top up OpenRouter credit**, since the default model is now the **paid** `openai/gpt-4o-mini`
+  (the old free DeepSeek model was 404'd). 👤 Grant `aiProxy` the **public-invoker** role (Phase 5.2)
+  or the platform returns 401 before the in-code auth runs.
 - 👤 Stop writing the real `OPENROUTER_API_KEY` into the bundled `.env` for distributed builds — only
   the proxy URL needs to reach the client.
 
@@ -358,6 +380,12 @@
 - [ ] S16 env isolation + lockfiles committed · [ ] S17 analytics consent-gated, no PII
 
 ---
+
+> ⚠️ **Deploy flakiness on this project (known behavior).** Functions run **cross-region**
+> (`us-central1` functions / `europe-west10` DB), so the CLI often prints `failed to update` even
+> though the deploy actually lands **asynchronously** — verify in the console rather than trusting the
+> CLI exit. Back-to-back deploys return `operation already in progress` (code 9) — **wait between
+> deploys**. The Node 20 deprecation + gen1 `firebase-functions` warnings are still deferred (Phase 5T).
 
 ## Phase 5T — Cloud Functions modernization (scheduled migration)
 
@@ -437,8 +465,8 @@
 
 ### 7.3 👤 Launch checklist
 - [ ] **Phase 5S security gate fully green (all P0 + P1)** — see the 5S.✓ checklist; this is a hard blocker
-- [ ] Functions deployed + `ai_proxy_url` set · [ ] Rules/indexes deployed (field-locked) · [ ] API keys restricted
-- [ ] App Check **enforcement on** (Functions/Firestore/Storage) · [ ] SA key rotated · [ ] OpenRouter spend cap set
+- [ ] Functions deployed + `ai_proxy_url` set · [ ] `aiProxy` **public-invoker role granted** (else 401) · [ ] Rules/indexes deployed (field-locked) · [ ] API keys restricted
+- [ ] App Check **enforcement on** (Functions/Firestore/Storage) · [ ] SA key rotated · [ ] OpenRouter spend cap set + **credit topped up** (paid `gpt-4o-mini`)
 - [ ] IAP products live + agreements signed · [ ] **Server-side receipt validation passing** · [ ] Privacy labels/data-safety accurate
 - [ ] Push works both platforms · [ ] Deep-link files hosted · [ ] Crashlytics/Performance alerts on
 - [ ] Backups scheduled · [ ] `min_version` set in Remote Config (force-update lever) · [ ] Monitoring dashboards

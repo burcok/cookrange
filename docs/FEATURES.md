@@ -84,6 +84,13 @@ Legend: ✅ shipped · 🟡 partial/tracking-only · 🔗 entry point
 ## Admin & Ops
 - ✅ **13-tab admin panel** — apps, users, history, audit, broadcasts, config, credits/codes,
   programs, billing, abuse, analytics (see `docs/FRONTEND.md` §9).
+- ✅ **Remote App Config** — `app_config/global` drives AI models/limits, force + soft update gates
+  (per-platform min/latest version, store URLs, i18n message), maintenance mode, announcement banner,
+  feature kill-switches (default-ON), and % rollout — all without a redeploy; `aiProxy` reads the same
+  doc server-side. Edited from `AdminAppConfigScreen`. 🔗 Admin → App Config.
+- ✅ **Real AI cost tracking** — `aiProxy` logs per-request token usage × model price to
+  `ai_usage_logs` / `ai_usage_stats`; `AdminCostAnalyticsScreen` shows actual AI spend (total
+  cost/requests/tokens, by-model, by-type) + per-user usage lookup.
 - ✅ **Feature flags / Remote Config** — maintenance mode, min version, AI model, blocked keywords.
 - ✅ **Audit log** — append-only admin actions.
 - ✅ **User management** — ban/unban, role, force logout, password reset.

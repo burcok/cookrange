@@ -64,11 +64,15 @@
 | `coach_applications/{id}` | Coach applications | Read applicant/admin · create applicant · update admin |
 | `programs/{id}` (+ `/weeks/{id}/sessions`) | Marketplace programs | Read any auth · create coach/demo · update coach/admin · delete coach |
 | `squads/{id}` | Streak Squads | Read member · create creator · update member · delete creator |
-| `ai_credits/{uid}` | Server AI ledger — daily quota (used_today, reset_at, is_premium, bonus_credits) | Owner read · **server/admin write only** (server-authoritative; client cannot mint credits) |
+| `ai_credits/{uid}` | Server AI ledger — daily quota (used_today, reset_at, is_premium, bonus_credits) **+ per-user lifetime totals** (lifetime_requests, lifetime_tokens, lifetime_cost_usd, lifetime_by_type) | Owner read · **server/admin write only** (server-authoritative; client cannot mint credits) |
+| `ai_usage_logs/{id}` | Per-request AI usage/cost log written by `aiProxy` (uid, type, model, prompt/completion/total_tokens, cost_usd, unpriced, created_at) | **Server write only** · admin read |
+| `ai_usage_stats/{doc}` | Aggregated AI usage rollups: `global` + `day_YYYY-MM-DD` buckets (total cost/requests/tokens, by_model, by_type) | **Server write only** · admin read |
 | `entitlements/{uid}` | Premium entitlement (tier, expiry) — source of truth for paid access; server mirrors `subscription_tier` to the user doc | Owner read · **server/admin write only** |
 | `processed_purchases/{id}` | Purchase-token replay guard (dedupes IAP tokens so a receipt can't be redeemed twice) | **Fully server-only** (no client read or write) |
 | `admin_audit/{id}` | Append-only admin action log | Create admin · read admin · no update/delete |
 | `admin_config/{doc}` | Feature flags, maintenance, AI model, blocked keywords | Admin only |
+| `app_config/global` | Remote App Config — `ai` (models/limits/toggles), `version` (min/latest per platform, force_update, store URLs, update_message i18n), `maintenance`, `announcement`, `features` (kill-switches), `rollout`, `limits`, `endpoints.ai_proxy_url`. **No secrets.** | **Public read** · admin write |
+| `settings/content_filter` | Blocked-keyword list mirrored from admin config for client moderation pre-screen | **Public read** · admin write |
 | `broadcasts/{id}` | Admin broadcast messages | Admin create/read/update |
 | `seeds/{doc}` | Idempotent seed gates (e.g. `demo.demo_programs_v1`) | Auth read/write |
 | `logs/{uid}` | Activity/login audit | Owner |

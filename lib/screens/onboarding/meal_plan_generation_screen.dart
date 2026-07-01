@@ -13,6 +13,7 @@ import '../../core/providers/user_provider.dart';
 import '../../core/models/weekly_meal_plan_model.dart';
 import '../../core/repositories/meal_plan_repository.dart';
 import '../../core/services/analytics_service.dart';
+import '../../core/services/auth_service.dart';
 import '../../core/utils/app_routes.dart';
 import '../../core/widgets/ds/ds.dart';
 
@@ -200,6 +201,11 @@ class _MealPlanGenerationScreenState extends State<MealPlanGenerationScreen>
   /// time (`_fetchAndMerge`), which would overwrite an in-memory-only flag with
   /// the stale stored `false` and bounce the user back here (the loop).
   Future<void> _markMealPlanGenerated() async {
+    // Session-static gate: RouteGuard honours this immediately, immune to the
+    // AuthService cache/re-fetch race that previously bounced users back here.
+    AuthService.mealPlanGatePassed = true;
+    // Drop the stale AuthService cache so any UserProvider re-fetch reads fresh.
+    AuthService().invalidateUserCache();
     // In-memory first, so RouteGuard sees it on the very next build.
     try {
       final up = _userProvider;

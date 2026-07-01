@@ -63,6 +63,49 @@ When you build or change anything, ask: **"Does this behave correctly on iOS *an
   `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `ANDROID_STORE_PASSWORD`,
   `PLAY_STORE_SERVICE_ACCOUNT_JSON`.
 
+## 5b. Cloud Functions Env & AI Proxy Config
+
+**`functions/.env`** (runtime env, not committed):
+- `APP_ENV` — `development` | `production` (see §7 / GO_LIVE Phase 5S).
+- `OPENROUTER_MODEL` — default model, now **`openai/gpt-4o-mini`** (the old
+  `deepseek/…:free` model was removed from OpenRouter → 404). This is a **paid** model, so the
+  OpenRouter account needs credit.
+- `OPENROUTER_TIMEOUT_S` — request timeout in seconds (default **90**; the client text timeout was
+  raised 45→90s to match, so long meal-plan generations don't cut off).
+
+**`aiProxy` (server-authoritative model + usage logging):**
+- Reads **`app_config/global`** with the Admin SDK (5-minute in-memory cache) and takes the
+  **model, `max_tokens`, `temperature`, and quota FROM THERE** — it **ignores the model the client
+  sends** (cost safety). This means model / token / quota can be changed **from the admin panel with
+  no redeploy**.
+- `MAX_OUTPUT_TOKENS` raised **1024 → 8192** so large meal-plan JSON responses aren't truncated.
+- Captures OpenRouter's `usage` token counts on every call and logs the **real** cost to
+  `ai_usage_logs` / `ai_usage_stats`.
+
+> ⚠️ **`aiProxy` public-invoker requirement (deploy step).** `aiProxy` is an `https.onRequest`
+> function; the Cloud Functions platform deploys it **private**, so the real authentication happens
+> **inside the code** (Firebase ID-token verify + App Check). For it to be reachable, the function
+> must have `allUsers` granted the **Cloud Functions Invoker** role — otherwise the platform returns
+> a **401 HTML** page before the code runs:
+> ```bash
+> gcloud functions add-iam-policy-binding aiProxy \
+>   --region=us-central1 --member=allUsers --role=roles/cloudfunctions.invoker
+> ```
+> This is the standard pattern for Firebase Callables; security is provided by the in-code layers
+> (ID token + quota + rate-limit + model allowlist), not by the platform invoker gate.
+
+## 5c. Remote App Config — `app_config/global`
+
+Firestore **`app_config/global`** (public-read, admin-write, contains **no secrets**) is the
+consolidated remote config surface: `ai` (model/tokens/temperature/quota), `version` (force/soft
+update), `maintenance`, `announcement`, `features` (kill-switches), `rollout`, `limits`, `endpoints`.
+- Client-side `AppConfigService` (cache-first + 6h TTL) drives version-gating (force / soft update),
+  maintenance mode, the announcement banner, and feature kill-switches; edited in-app via
+  `AdminAppConfigScreen`.
+- This consolidates the older scattered Remote Config `ai_proxy_url` / `ai_model` values. The client
+  still reads Remote Config `ai_proxy_url` for back-compat; `app_config.endpoints.ai_proxy_url` is
+  also honored.
+
 ## 6. Platform Pre-Flight (per UI/feature)
 - [ ] Safe areas correct on notch + gesture-nav devices (both).
 - [ ] Keyboard inset handled (sheets, inputs) on both.

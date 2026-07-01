@@ -767,6 +767,30 @@ class FirestoreService {
       final data = userDoc.data()!;
       final Map<String, dynamic> updates = {};
 
+      // Data-completeness guarantee: backfill identity fields from FirebaseAuth
+      // when they're missing, so an account has the SAME core data regardless of
+      // how it registered (email vs Google/Apple, or a login that skipped the
+      // register-onboarding flow). Safe: only fills blanks, never overwrites.
+      final authUser = FirebaseAuth.instance.currentUser;
+      if (authUser != null && authUser.uid == uid) {
+        bool blank(dynamic v) => v == null || (v is String && v.isEmpty);
+        if (blank(data['email']) &&
+            authUser.email != null &&
+            authUser.email!.isNotEmpty) {
+          updates['email'] = authUser.email;
+        }
+        if (blank(data['displayName']) &&
+            authUser.displayName != null &&
+            authUser.displayName!.isNotEmpty) {
+          updates['displayName'] = authUser.displayName;
+        }
+        if (blank(data['photoURL']) &&
+            authUser.photoURL != null &&
+            authUser.photoURL!.isNotEmpty) {
+          updates['photoURL'] = authUser.photoURL;
+        }
+      }
+
       // Example check: Ensure 'created_at' exists
       if (data['created_at'] == null) {
         updates['created_at'] =

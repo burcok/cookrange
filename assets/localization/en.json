@@ -2916,7 +2916,42 @@
     "ai_usage_per_user": "Per-user lookup",
     "ai_usage_uid_hint": "Enter user UID",
     "ai_usage_show": "Show",
-    "ai_usage_no_logs": "No AI requests for this user."
+    "ai_usage_no_logs": "No AI requests for this user.",
+    "appconfig": {
+      "title": "App Config",
+      "saved": "Configuration saved",
+      "save": "Save",
+      "section_ai": "AI",
+      "section_version": "Version & Update",
+      "section_maintenance": "Maintenance",
+      "section_announcement": "Announcement",
+      "section_features": "Feature Flags",
+      "ai_text_model": "Text model",
+      "ai_vision_model": "Vision model",
+      "ai_max_tokens": "Max output tokens",
+      "ai_temperature": "Temperature",
+      "ai_timeout": "Timeout (seconds)",
+      "ai_free_limit": "Free daily limit",
+      "ai_premium_limit": "Premium daily limit",
+      "ai_photo": "Photo analysis enabled",
+      "ai_recap": "Weekly recap enabled",
+      "ver_min_android": "Min supported (Android)",
+      "ver_min_ios": "Min supported (iOS)",
+      "ver_latest_android": "Latest (Android)",
+      "ver_latest_ios": "Latest (iOS)",
+      "ver_force": "Force update",
+      "ver_android_url": "Android store URL",
+      "ver_ios_url": "iOS store URL",
+      "enabled": "Enabled",
+      "message_en": "Message (EN)",
+      "message_tr": "Message (TR)",
+      "ann_type": "Type (info/warning/success)",
+      "ann_cta": "CTA URL",
+      "ann_id": "Announcement ID",
+      "ann_dismissible": "Dismissible",
+      "entry_title": "App Config",
+      "entry_subtitle": "Model, version, flags, maintenance"
+    }
   },
   "intro": {
     "skip": "Skip",
@@ -3229,5 +3264,18 @@
   },
   "coachmark": {
     "dismiss_tip": "Dismiss tip"
+  },
+  "update": {
+    "force_title": "Update required",
+    "force_message": "This version is no longer supported. Please update to continue.",
+    "soft_title": "Update available",
+    "soft_message": "A new version is available with improvements.",
+    "update_button": "Update now",
+    "later": "Later"
+  },
+  "maintenance": {
+    "title": "Under maintenance",
+    "default_message": "We'll be back shortly. Thanks for your patience.",
+    "retry": "Try again"
   }
 }

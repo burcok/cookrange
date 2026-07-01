@@ -2916,7 +2916,42 @@
     "ai_usage_per_user": "Kullanıcı bazında",
     "ai_usage_uid_hint": "Kullanıcı UID girin",
     "ai_usage_show": "Göster",
-    "ai_usage_no_logs": "Bu kullanıcı için AI isteği yok."
+    "ai_usage_no_logs": "Bu kullanıcı için AI isteği yok.",
+    "appconfig": {
+      "title": "Uygulama Ayarları",
+      "saved": "Ayarlar kaydedildi",
+      "save": "Kaydet",
+      "section_ai": "Yapay Zeka",
+      "section_version": "Sürüm & Güncelleme",
+      "section_maintenance": "Bakım",
+      "section_announcement": "Duyuru",
+      "section_features": "Özellik Anahtarları",
+      "ai_text_model": "Metin modeli",
+      "ai_vision_model": "Görsel modeli",
+      "ai_max_tokens": "Maks. çıktı token",
+      "ai_temperature": "Sıcaklık",
+      "ai_timeout": "Zaman aşımı (saniye)",
+      "ai_free_limit": "Ücretsiz günlük limit",
+      "ai_premium_limit": "Premium günlük limit",
+      "ai_photo": "Foto analizi açık",
+      "ai_recap": "Haftalık özet açık",
+      "ver_min_android": "Min desteklenen (Android)",
+      "ver_min_ios": "Min desteklenen (iOS)",
+      "ver_latest_android": "Son sürüm (Android)",
+      "ver_latest_ios": "Son sürüm (iOS)",
+      "ver_force": "Zorunlu güncelleme",
+      "ver_android_url": "Android mağaza URL",
+      "ver_ios_url": "iOS mağaza URL",
+      "enabled": "Açık",
+      "message_en": "Mesaj (EN)",
+      "message_tr": "Mesaj (TR)",
+      "ann_type": "Tür (info/warning/success)",
+      "ann_cta": "CTA URL",
+      "ann_id": "Duyuru ID",
+      "ann_dismissible": "Kapatılabilir",
+      "entry_title": "Uygulama Ayarları",
+      "entry_subtitle": "Model, sürüm, bayraklar, bakım"
+    }
   },
   "intro": {
     "skip": "Atla",
@@ -3229,5 +3264,18 @@
   },
   "coachmark": {
     "dismiss_tip": "İpucunu kapat"
+  },
+  "update": {
+    "force_title": "Güncelleme gerekli",
+    "force_message": "Bu sürüm artık desteklenmiyor. Devam etmek için lütfen güncelleyin.",
+    "soft_title": "Güncelleme mevcut",
+    "soft_message": "İyileştirmeler içeren yeni bir sürüm mevcut.",
+    "update_button": "Şimdi güncelle",
+    "later": "Sonra"
+  },
+  "maintenance": {
+    "title": "Bakımdayız",
+    "default_message": "Kısa süre içinde döneceğiz. Sabrınız için teşekkürler.",
+    "retry": "Tekrar dene"
   }
 }

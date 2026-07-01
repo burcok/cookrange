@@ -10,6 +10,39 @@
 
 ---
 
+## 🆕 Phase 16 — Remote config, AI cost metering & AI reliability (2026-07-01) ✅
+
+- ✅ **Remote App Config** — Firestore `app_config/global` (public-read, admin-write, no secrets)
+  drives client **and** `aiProxy`: AI model/max-tokens/quotas, force/soft **update gate**
+  (`ForceUpdateScreen`), **maintenance mode**, in-app **announcements**, **feature kill-switches**,
+  %rollout, limits. `AppConfigService` (cache-first + 6h TTL + reactive notifier); admin editor
+  `AdminAppConfigScreen`; gates at top of `route_guard.dart`. **Editable without a redeploy.**
+- ✅ **Real AI cost tracking** — `aiProxy` captures OpenRouter token usage × per-model price →
+  `ai_usage_logs` (per-request) + `ai_usage_stats` (global + daily + by-model/by-type) + per-user
+  lifetime totals on `ai_credits`. Admin cost dashboard shows REAL AI spend + per-user lookup. Every
+  AI call is tagged with a `type` (meal_plan/recipe/insight/weekly_recap/food_photo/chat).
+- ✅ **AI reliability** — default model → `openai/gpt-4o-mini` (old `deepseek/…:free` slug was removed
+  from OpenRouter → 404); `.env` `OPENROUTER_MODEL`/`OPENROUTER_TIMEOUT_S`; timeout 45→90 s; proxy
+  `MAX_OUTPUT_TOKENS` 1024→8192; `aiProxy` **server-decides the model** (ignores client for cost
+  safety) and is public-invoker (`allUsers` Cloud Functions Invoker; auth is in-code).
+- ✅ **Meal-plan generation fixes** — killed the RouteGuard **regeneration loop**
+  (`AuthService.mealPlanGatePassed` session-static + `invalidateUserCache()`; root cause: stale
+  AuthService cache reverted the flag via `UserProvider._fetchAndMerge`); **linear** progress bar;
+  "Skip" persists the gate; unmount-crash guards.
+- ✅ **Data completeness** — `verifyAndRepairUserData` backfills `email`/`displayName`/`photoURL` from
+  FirebaseAuth when blank; `syncDeviceContext` writes full device/IP/app-version on every app open.
+- ✅ **Content moderation fixed** — blocked-keyword list mirrored to public-read
+  `settings/content_filter`; `CommunityService._checkContent` reads it there (was admin-only → dead).
+- ✅ **Localization sweep** — ~120 hardcoded user-visible strings across ~35 screens/widgets localized
+  (EN+TR parity). **Perf:** RepaintBoundary on home refresh ring; app-init timeout 15→8 s;
+  `AnalyticsService.dispose()`.
+- ⚠️ **Deploy:** `firebase deploy --only functions,firestore:rules,firestore:indexes`; create
+  `app_config/global` via the admin editor; ensure the OpenRouter account has credit (gpt-4o-mini is
+  paid). Cross-region functions deploy is flaky ("failed to update" often lands async; back-to-back
+  deploys hit "operation already in progress" — wait between them).
+
+---
+
 ## 🆕 Phase 13 — QA fixes & feature upgrades (2026-06-30) ✅
 
 - ✅ **Bug fixes:** self-profile shown as a stranger; "save first weight" dismissing the profile;

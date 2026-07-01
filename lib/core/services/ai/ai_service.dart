@@ -18,7 +18,7 @@ class AIService {
   // Concrete, reliable free model by default (the `openrouter/free` meta-router
   // is heavily rate-limited/queued and timed out on large meal-plan JSON).
   // Override via [initialize] `model` (from `.env` OPENROUTER_MODEL).
-  static const String _defaultModel = 'deepseek/deepseek-chat-v3-0324:free';
+  static const String _defaultModel = 'openai/gpt-4o-mini';
   String _model = _defaultModel;
   // Text-generation HTTP timeout. Large plan JSON needs headroom; a slow free
   // model can legitimately take >45 s. Override via `.env` OPENROUTER_TIMEOUT_S.
@@ -83,6 +83,25 @@ class AIService {
   void setProxyUrl(String? url) {
     final trimmed = url?.trim() ?? '';
     _proxyUrl = trimmed.isEmpty ? null : trimmed;
+  }
+
+  /// Applies remote [AppConfig] values (model / timeout / vision / proxy) once
+  /// they load — lets admins retune AI from the dashboard without a rebuild.
+  /// Only overrides with non-empty values so defaults/`.env` still win if unset.
+  void applyRemoteConfig({
+    String? textModel,
+    String? visionModel,
+    int? timeoutSeconds,
+    String? proxyUrl,
+  }) {
+    final m = textModel?.trim() ?? '';
+    if (m.isNotEmpty) _model = m;
+    final vm = visionModel?.trim() ?? '';
+    if (vm.isNotEmpty) _visionModel = vm;
+    if (timeoutSeconds != null && timeoutSeconds > 0) {
+      _textTimeout = Duration(seconds: timeoutSeconds);
+    }
+    if (proxyUrl != null) setProxyUrl(proxyUrl);
   }
 
   // ─── Public API ────────────────────────────────────────────────────────────

@@ -27,6 +27,7 @@ import '../../core/repositories/food_log_repository.dart';
 import '../../core/repositories/dish_repository.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/widgets/shareable_fitness_card.dart';
+import '../../core/widgets/announcement_banner.dart';
 import '../common/generic_error_screen.dart';
 import '../recipe/recipe_detail_screen.dart';
 import 'widgets/tracking_card.dart';
@@ -654,6 +655,7 @@ class _HomeScreenState extends State<HomeScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const MainHeader(),
+                  const AnnouncementBanner(),
                   if (_showEmailBanner) ...[
                     SizedBox(height: 16.h),
                     _buildEmailBanner(l10n),
