@@ -182,8 +182,8 @@ class _UserTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final t = AppText.of(context);
-    final name = (user['display_name'] as String?)?.isNotEmpty == true
-        ? user['display_name'] as String
+    final name = (user['displayName'] as String?)?.isNotEmpty == true
+        ? user['displayName'] as String
         : 'Unknown';
     final email = (user['email'] as String?) ?? '';
     final role = (user['user_role'] as String?) ?? 'consumer';

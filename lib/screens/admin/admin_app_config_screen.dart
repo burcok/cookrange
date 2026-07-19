@@ -57,6 +57,9 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
   bool _annEnabled = false;
   bool _annDismissible = true;
 
+  // ── Endpoints ─────────────────────────────────────────────────────────────
+  final _aiProxyUrlCtrl = TextEditingController();
+
   // ── Features ────────────────────────────────────────────────────────────
   static const _featureKeys = <String>[
     'community',
@@ -102,6 +105,7 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
       _annCtaCtrl,
       _annMsgEnCtrl,
       _annMsgTrCtrl,
+      _aiProxyUrlCtrl,
     ]) {
       c.dispose();
     }
@@ -178,6 +182,9 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
     for (final key in _featureKeys) {
       _features[key] = features[key] as bool? ?? true;
     }
+
+    final endpoints = _mapOf(cfg['endpoints']);
+    _aiProxyUrlCtrl.text = _str(endpoints['ai_proxy_url']);
   }
 
   /// Only puts a string value into [target] when non-empty, so a blank field
@@ -244,12 +251,17 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
       for (final e in _features.entries) e.key: e.value,
     };
 
+    final endpoints = <String, dynamic>{
+      'ai_proxy_url': _aiProxyUrlCtrl.text.trim(),
+    };
+
     return {
       'ai': ai,
       'version': version,
       'maintenance': maintenance,
       'announcement': announcement,
       'features': features,
+      'endpoints': endpoints,
     };
   }
 
@@ -406,6 +418,17 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
             for (final key in _featureKeys)
               _switch(key, _features[key] ?? true,
                   (v) => setState(() => _features[key] = v), palette, t),
+          ],
+        ),
+        // ── Endpoints ─────────────────────────────────────────────
+        _Section(
+          title: l10n.translate('admin.appconfig.section_endpoints'),
+          icon: Icons.link_rounded,
+          palette: palette,
+          t: t,
+          children: [
+            _field(_aiProxyUrlCtrl,
+                l10n.translate('admin.appconfig.ai_proxy_url')),
           ],
         ),
       ],

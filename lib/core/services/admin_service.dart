@@ -427,18 +427,18 @@ class AdminService {
       return TestDataLibrary.adminUsers()
           .where((u) =>
               query.isEmpty ||
-              (u['display_name'] as String? ?? '')
+              (u['displayName'] as String? ?? '')
                   .toLowerCase()
                   .contains(lower) ||
               (u['email'] as String? ?? '').toLowerCase().contains(lower))
           .toList();
     }
-    // Prefix range search on display_name (\uf8ff is the high-codepoint cap).
+    // Prefix range search on displayName (\uf8ff is the high-codepoint cap).
     final end = query.isEmpty ? query : '$query\uf8ff';
     final snap = await _db
         .collection('users')
-        .where('display_name', isGreaterThanOrEqualTo: query)
-        .where('display_name', isLessThan: end)
+        .where('displayName', isGreaterThanOrEqualTo: query)
+        .where('displayName', isLessThan: end)
         .limit(20)
         .get();
     return snap.docs.map((d) => {'uid': d.id, ...d.data()}).toList();

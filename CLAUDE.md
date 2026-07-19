@@ -363,6 +363,21 @@ runs a **deterministic allergen filter** (`utils/allergen_safety.dart`); prompts
 > minimization, server-authored notifications, point-of-use AI/photo consent, `streak`/`reputation` server-side. Console/
 > external (go-live): rotate the leaked Admin SA key, App Check registration+enforcement, store accounts + iOS APNs, OpenRouter spend cap.
 
+## Admin Surface — Hub navigation (redesigned)
+
+The admin surface is a **hub + drawer**, not a scrollable TabBar. `AdminHubScreen`
+(`screens/admin/admin_hub_screen.dart`) is the landing: a **categorized card grid** of every
+section with live badges. `admin_sections.dart` is the **single source of truth** (`AdminSection`
+enum + `AdminSectionMeta`: title/subtitle/icon/category/badge/standalone) — adding/removing a section
+is one entry. `admin_nav.dart` routes a section to its screen (`AdminNav.screenFor/open`) and owns the
+shared **`AdminNavDrawer`** (jump to any section from anywhere). `widgets/admin_section_scaffold.dart`
+gives every section consistent DS chrome + the drawer. `AdminPanelScreen({AdminSection? initialSection})`
+now dispatches: `null` → `AdminHubScreen`; a section → that section's body in `AdminSectionScaffold`
+(standalone sections — users/dishes/cost/reports/privacy/appConfig — have their own screens). Removed
+in the redesign: the legacy `_ConfigTab` (folded into `AdminAppConfigScreen`; `ai_proxy_url` now under
+its Endpoints section), the `_BillingTab` (folded into the cost dashboard's Revenue section), the
+duplicate in-panel `_UsersTab` (use `AdminUserManagementScreen`), and the fake Overview weekly chart.
+
 ## Admin Tooling — Cost & Profit Dashboard
 
 `CostAnalyticsService` (`cost_analytics_service.dart`) + `AdminCostAnalyticsScreen` — admin-only,
@@ -451,6 +466,19 @@ direct-key calls aren't logged. Entry: Admin panel → overview → "Cost & Prof
 · ☑ No N+1 loops · ☑ Network images via `AppImage`/`CachedNetworkImageProvider` (no raw `Image.network`/
 `NetworkImage`) · ☑ Uploads via `StorageUploadService` · ☑ Subscriptions cancelled in `dispose()` ·
 ☑ No client writes to entitlement/credit/role/ban fields.
+
+## Field-naming convention (avoid camel/snake mismatches)
+
+- **`users/{uid}` doc:** identity fields mirror Firebase Auth in **camelCase** — `displayName`,
+  `photoURL`, `email`. **Everything else is snake_case** (`created_at`, `is_online`, `last_login_ip`,
+  `onboarding_data`, `user_role`, `is_banned`, `meal_plan_generated`). Read/query the user doc's name as
+  **`displayName`**, never `display_name` (that returns null — it broke admin user search + admin name
+  columns; fixed). `verifyAndRepairUserData` backfills `displayName`/`photoURL`/`email` from Auth.
+- **Other collections** (`coach_profiles`, `gyms/*/members`, `*/checkins`, `community_groups`, coach
+  clients) denormalize the name as **`display_name`/`photo_url`** (snake) and are internally
+  consistent (their `fromMap`/`toMap` both use snake) — do NOT "fix" these to camelCase without a data
+  migration. When populating them, source the value from the user doc's **`displayName`**.
+- External API payloads keep their own keys (e.g. Nominatim reverse-geocode returns `display_name`).
 
 ## Code Conventions
 

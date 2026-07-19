@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/cost_analytics_model.dart';
+import '../../core/services/admin_service.dart';
 import '../../core/services/cost_analytics_service.dart';
 import '../../core/widgets/ds/ds.dart';
 
@@ -18,6 +19,7 @@ class AdminCostAnalyticsScreen extends StatefulWidget {
 
 class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
   final _service = CostAnalyticsService();
+  final _admin = AdminService();
   late Future<CostAnalytics> _future;
   late Future<AiUsageStats> _aiFuture;
   final _uidCtrl = TextEditingController();
@@ -244,6 +246,10 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
         ),
         SizedBox(height: 12.h),
 
+        // ── Revenue & subscribers (live premium list + MRR) ──
+        _buildRevenueSection(l10n, palette, t),
+        SizedBox(height: 12.h),
+
         // ── Projection / what-if ──
         _sectionCard(
           t,
@@ -367,6 +373,40 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
     final l = d.toLocal();
     String two(int n) => n.toString().padLeft(2, '0');
     return '${l.year}-${two(l.month)}-${two(l.day)} ${two(l.hour)}:${two(l.minute)}';
+  }
+
+  // ── Revenue & subscribers (live premium list + estimated MRR) ──
+  Widget _buildRevenueSection(
+      AppLocalizations l10n, AppPalette palette, AppText t) {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _admin.premiumUsersStream(),
+      builder: (context, snap) {
+        final subs = snap.data ?? const [];
+        final count = subs.length;
+        final mrr = count * RevenueAssumptions.premiumMonthlyPrice;
+
+        final Widget body;
+        if (snap.connectionState == ConnectionState.waiting) {
+          body = const Padding(
+            padding: EdgeInsets.all(8),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        } else {
+          body = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _metricRow(t, palette, l10n.translate('admin.cost_subscribers'),
+                  _intK(count)),
+              _metricRow(
+                  t, palette, l10n.translate('admin.cost_mrr'), _usd(mrr)),
+            ],
+          );
+        }
+
+        return _sectionCard(
+            t, palette, l10n.translate('admin.cost_revenue_section'), body);
+      },
+    );
   }
 
   // ── REAL AI usage (measured) + per-user lookup ──

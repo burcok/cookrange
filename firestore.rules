@@ -25,8 +25,14 @@ service cloud.firestore {
     }
 
     function isAdmin() {
+      // Admin-ness lives in a dead-simple top-level doc: `admin_roles/{uid}` with
+      // `is_admin: true`. Trivial to create in the console (one collection, one
+      // doc, one field) and client-unwritable (catch-all deny → server/console
+      // only), so it can't be self-granted. exists()-guarded so a missing doc is
+      // a clean false. (Ban flags stay separately at admin/status/{uid}/flags.)
       return isAuthenticated()
-        && get(/databases/$(database)/documents/admin/status/$(request.auth.uid)).data.is_admin == true;
+        && exists(/databases/$(database)/documents/admin_roles/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admin_roles/$(request.auth.uid)).data.is_admin == true;
     }
 
     // Validate that only allowed fields are being written
@@ -264,7 +270,10 @@ service cloud.firestore {
     match /reports/{reportId} {
       allow create: if isAuthenticated()
         && request.resource.data.reporterId == request.auth.uid;
-      allow read, update, delete: if false;
+      // Admins read the moderation queue + action reports (dismiss/remove).
+      allow read: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if false;
     }
 
     // ─── Privacy / data-subject requests (DSAR — KVKK/GDPR) ───────────────────
@@ -642,6 +651,14 @@ service cloud.firestore {
     match /app_config/{doc} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // ─── Admin roles (the real admin gate; server/console-written) ───────────
+    // `admin_roles/{uid}.is_admin == true` grants admin. Owner may read own;
+    // never client-writable (self-grant would be privilege escalation).
+    match /admin_roles/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
     }
 
     // ─── AI usage logs (real token/cost per request) ─────────────────────────

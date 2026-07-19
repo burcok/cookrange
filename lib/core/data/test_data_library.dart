@@ -1061,7 +1061,7 @@ class TestDataLibrary {
       for (var i = 0; i < rows.length; i++)
         {
           'uid': 'test_user_$i',
-          'display_name': rows[i][0],
+          'displayName': rows[i][0],
           'email': rows[i][1],
           'user_role': rows[i][2],
           'is_banned': rows[i][3],
