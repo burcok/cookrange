@@ -16,9 +16,11 @@ Runs on every PR. Flutter 3.24.0.
 dart format --set-exit-if-changed   →   flutter analyze   →   flutter test   →   Android debug APK
 ```
 
-> ⚠️ **CI is red on `main`** (`BLK-13`). The format and test jobs fail, and the rules job has nothing
-> to run because **`test/` is gitignored** (`.gitignore:58`). There is currently no trustworthy
-> quality gate — a green local run says nothing about the pipeline.
+> **`BLK-13`'s code-side causes are fixed**: the format and test jobs' local-reproducible failures are
+> resolved, and `test/` (incl. `test/firestore_rules/`) is tracked so the rules job has files to run.
+> Whether the pipeline is actually green is a separate question this doc doesn't answer — see
+> `PROJECT_STATE.md` for the last confirmed run. A green local run is still not the same claim as a
+> green pipeline; don't conflate them.
 
 Match CI locally before calling a task done:
 
@@ -88,6 +90,24 @@ JSON or PEM) is still to be added. Deleting a leaked key is not rotation — **r
 `APP_ENV=development` relaxes App Check enforcement and store-credential requirements so Functions
 deploy without Apple/Google setup. **It is currently `development` in production** (`BLK-14`).
 
+### Local setup — `lib/firebase_options.dart`
+
+Gitignored (`.gitignore:53`) and **not** committed — it holds only public client identifiers (API
+key, app ID, project ID; no secret), but keeping it generated-not-checked-in is what lets flavors
+(above) each carry their own without a merge conflict. A fresh clone has no way to build until it
+exists:
+
+```bash
+dart pub global activate flutterfire_cli   # once per machine
+flutterfire configure --project=cookrange-app
+```
+
+This writes `lib/firebase_options.dart` and registers the platform apps it doesn't already find in
+the project. CI does not run this — it writes a placeholder instead (`ci.yml`, "Create
+firebase_options.dart placeholder" step) since analyze/format/test never construct `Firebase.app()`.
+That placeholder hack is `DEBT-52`; it is a real gap for anyone bootstrapping a device build straight
+from CI's config, but out of scope for `BLK-13`.
+
 ---
 
 ## 5. Deploying Firebase
@@ -126,7 +146,7 @@ before your code runs. All real auth is in-code — the standard Firebase-callab
 
 ```
 1. All Definition-of-Done boxes green (CLAUDE.md §11)
-2. CI green on main                                   ← currently impossible, BLK-13
+2. CI green on main                                   ← code-side fixed, confirm the run (BLK-13)
 3. Bump version in pubspec.yaml
 4. Update CHANGELOG.md
 5. Update PROJECT_STATE.md — version, milestone, blockers

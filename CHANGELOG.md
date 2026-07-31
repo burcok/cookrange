@@ -89,6 +89,25 @@ actively misleading rather than merely incomplete. Corrected in this pass:
 - **`test/` is gitignored** — surfaced in `TESTING.md` and `DEVOPS.md` as the root cause of the ~1 %
   coverage and the red CI pipeline, rather than left implicit.
 
+### Fixed — `BLK-13`: CI quality gate (2026-08-01)
+
+- **`test/` un-ignored and committed.** 6 files were written locally but invisible to git and CI:
+  `ai_credit_model_test.dart`, `allergen_safety_test.dart`, `cost_analytics_test.dart`, and the
+  entire `test/firestore_rules/` Firestore security-rules suite (15 assertions — the test class that
+  would have caught `BLK-06`, `BLK-07`, `BLK-08` at write time). `node_modules` under
+  `firestore_rules/` stays excluded via a scoped ignore rule.
+- **`pubspec.lock` un-ignored** (`DEBT-51`) — it must be committed for an application; the ignore
+  rule contradicted the fact that it was already tracked.
+- **3 failing tests fixed** in `app_lifecycle_service_test.dart` — `MockFirestoreService` was missing
+  overrides for `syncDeviceContext` and `verifyAndRepairUserData`, added to the real service after
+  the mock was written. Verified the fix isn't a rubber stamp by breaking `_endSession` and
+  confirming the suite still fails.
+- **44 files reformatted** to match `dart format`'s canonical output (whitespace-only; verified by
+  comparing whitespace-stripped token streams before/after).
+- **`lib/firebase_options.dart` generation documented** (`docs/DEVOPS.md` §4) — `DEBT-52`. The file
+  stays gitignored; CI's placeholder hack is unchanged and remains a gap for anyone bootstrapping a
+  device build directly from CI's config.
+
 ---
 
 ## [0.9.6] — 2026-07-31 — *internal alpha*

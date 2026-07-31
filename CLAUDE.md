@@ -202,8 +202,9 @@ one-line change.
 
 ## 8. Testing requirements
 
-Full strategy: [`docs/TESTING.md`](docs/TESTING.md). Current coverage is ~1 % and `test/` is
-gitignored (`BLK-13`) — treat every claim of correctness as unproven until you run something.
+Full strategy: [`docs/TESTING.md`](docs/TESTING.md). Current coverage is ~1 % — `test/` is now
+tracked (`BLK-13`), which makes coverage countable, not higher. Treat every claim of correctness as
+unproven until you run something.
 
 **Before any task is done:**
 

@@ -3,9 +3,11 @@
 > How correctness is proven — and, right now, mostly isn't.
 > CI mechanics live in [`DEVOPS.md`](DEVOPS.md).
 >
-> ⚠️ **Coverage is ~1 %, three tests fail, and `test/` is in `.gitignore`** (`BLK-13`). Testing is
-> the lowest-scoring dimension in the project at **2.0 / 10** and the highest-leverage thing anyone
-> can improve. Read this before claiming anything works.
+> ⚠️ **Coverage is still ~1 % of ~115k LOC** — line coverage hasn't moved. What changed (`BLK-13`):
+> `test/` is tracked in git, all 3 previously-failing tests now pass, and the 15-assertion Firestore
+> rules suite can finally run in CI instead of silently not existing. Testing was the lowest-scoring
+> dimension at 2.0 / 10; it is still the highest-leverage thing anyone can improve — 1 % coverage
+> means almost everything is still unproven.
 
 ---
 
@@ -13,17 +15,18 @@
 
 | | |
 |---|---|
-| Test files | 11, all unit tests |
+| Test files | **14**, all unit tests |
 | Coverage | **~1 %** of ~115k LOC |
-| Failing | **3** |
+| Failing | **0** |
 | Widget tests | 1 (the Flutter scaffold default) |
 | Integration tests | **0** |
-| Firestore rules tests | **0 in version control** |
-| **`test/` tracked in git?** | **No — line 58 of `.gitignore`** |
+| Firestore rules tests | **15**, in version control (`test/firestore_rules/rules.test.mjs`) |
+| **`test/` tracked in git?** | **Yes** |
 
-**The `.gitignore` entry is the root cause.** Tests written locally never reach the repository, so CI
-can't run them, so nobody trusts them, so nobody writes them. Un-ignoring `test/` is a one-line
-change and the precondition for everything else on this page.
+**Un-ignoring `test/` was the root-cause fix.** Tests written locally were never reaching the
+repository, so CI couldn't run them, so nobody trusted them, so nobody wrote them. That gate now
+exists — it doesn't retroactively add coverage, it just means new tests (and the 3 that were already
+here) actually count from now on.
 
 ### Why coverage is this low
 
@@ -52,9 +55,13 @@ cover, and they're good.
 | `app_lifecycle_service_test.dart` | Lifecycle transitions |
 | `i18n_parity_test.dart` | **EN/TR key parity — the one real CI gate** |
 | `widget_test.dart` | Default scaffold smoke test |
+| `firestore_rules/rules.test.mjs` | 15 assertions: economy lock, server-only ledgers, PII isolation, content caps, admin self-grant denial — runs against the emulator, not `flutter test` |
 
 These share a shape worth copying: **pure Dart, no Firebase, deterministic, real edge cases.**
 `i18n_parity_test.dart` is the model for what a gate should be — mechanical, fast, unarguable.
+All 11 Dart files above were already accurate as "what exists" before `BLK-13` — but 3 of them
+(`allergen_safety_test.dart`, `ai_credit_model_test.dart`, `cost_analytics_test.dart`) existed only on
+disk, not in git, which this page did not previously say.
 
 ---
 
@@ -72,12 +79,14 @@ These share a shape worth copying: **pure Dart, no Firebase, deterministic, real
 
 ### Priority order
 
-1. **`BLK-13`** — un-ignore `test/`, fix the 3 failures, get CI green. Nothing else counts until a
-   gate exists.
-2. **`TEST-01` — Firestore rules tests in version control.** Highest value per hour in the whole
-   project: rules are where the security model actually lives, and `BLK-06`/`BLK-07`/`BLK-08` are all
-   defects a rules test suite would have caught at write time. Also the required safety net before
-   the `S1` rules lock.
+1. ~~**`BLK-13`** — un-ignore `test/`, fix the 3 failures, get CI green.~~ **Code-side fix landed**:
+   `test/` tracked, 0 local failures, rules suite committed. CI confirmation is the remaining step —
+   see `PROJECT_STATE.md` for the current call on whether the pipeline is actually green.
+2. **`TEST-01` — Firestore rules tests in version control.** Landed as part of `BLK-13` — 15
+   assertions in `test/firestore_rules/rules.test.mjs`, covering the security model directly:
+   `BLK-06`/`BLK-07`/`BLK-08`-shaped defects are exactly what this class of test catches at write
+   time. Still needed: **execute it** (this repo has never run it — verify green in CI, not just
+   present) and extend it toward all 71 rule match blocks, not just the 15 covered today.
 3. **`TEST-02` — widget tests** for the states that break silently: loading, empty, error, and both
    themes.
 4. **`TEST-03` — integration tests** against the emulator for the consumer path: signup → onboarding
@@ -120,8 +129,13 @@ flutter analyze lib/                          # 0 errors — the other hard gate
 ```
 
 ```bash
-firebase emulators:exec --only firestore "npm test --prefix functions"
+cd test/firestore_rules && npm install
+firebase emulators:exec --only firestore --project demo-cookrange \
+  "node --test --test-reporter=spec ."
 ```
+
+> Needs a JVM (the emulator runs on it) — `java -version` first. Not runnable on a machine without
+> one; that's this repo's real state as of `BLK-13` (verify in CI, which installs Temurin 17).
 
 ---
 
@@ -130,12 +144,16 @@ firebase emulators:exec --only firestore "npm test --prefix functions"
 `.github/workflows/ci.yml` on every PR: `dart format --set-exit-if-changed` → `flutter analyze` →
 `flutter test` → Android debug build. Mechanics: [`DEVOPS.md`](DEVOPS.md).
 
-> ⚠️ **CI is red on `main`.** The format and test jobs fail, and the rules job has no files to run
-> because `test/` is gitignored. A green local run does not mean a green pipeline.
+> The format and test jobs were failing locally-reproducible ways (`BLK-13`) — both fixed and verified
+> locally: `dart format --set-exit-if-changed lib/` exits 0, `flutter test` is 78/78. The rules job
+> had nothing to run; `test/firestore_rules/` is now tracked. **None of this is the same as a
+> confirmed green pipeline run** — check `PROJECT_STATE.md` for whether `main`'s CI has actually been
+> observed passing, and don't take a green local run as a substitute.
 
-**Definition of a working gate** (none of these hold yet): CI is green on `main` · a PR that breaks a
-test cannot merge · the rules suite runs on every change to `firestore.rules` · coverage is reported
-and does not silently fall.
+**Definition of a working gate:** CI is green on `main` · a PR that breaks a test cannot merge · the
+rules suite runs on every change to `firestore.rules` · coverage is reported and does not silently
+fall. Branch protection requiring all four jobs is still open (`BLK-13` acceptance criteria) —
+un-ignoring `test/` makes the jobs runnable, it doesn't yet make them required.
 
 ---
 
@@ -143,7 +161,7 @@ and does not silently fall.
 
 | Milestone | Target | Focus |
 |---|---|---|
-| **M1 — Truth** | CI green, `test/` tracked, 3 failures fixed | Make the gate exist |
+| **M1 — Truth** | ~~CI green, `test/` tracked, 3 failures fixed~~ `test/` tracked ✅, 3 failures fixed ✅, CI green ⏳ pending confirmed run | Make the gate exist |
 | **M2 — Legal** | Rules suite covering every collection | Security is only real if it's tested |
 | **M4 — Beta** | ~30 % line coverage; consumer path in integration tests | Cover what users actually touch |
 | **M6+** | ~60 % on `core/`; widget tests on all primary screens | Sustainable |

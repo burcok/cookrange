@@ -317,7 +317,9 @@ node scripts/load_test.js                     # AI proxy load test (needs PROXY_
 ```
 
 CI runs on every PR: `dart format` → `flutter analyze` → `flutter test` → Android debug build.
-**CI is currently red on `main` (`BLK-13`)** — don't read a green local run as a green pipeline.
+`BLK-13`'s code-side causes (unformatted files, 3 failing tests, untracked `test/`) are fixed and
+verified locally — whether `main`'s pipeline is actually green is confirmed in `PROJECT_STATE.md`,
+not here. A green local run is still never proof of a green pipeline; check the real run.
 Details: [`docs/DEVOPS.md`](docs/DEVOPS.md), [`docs/TESTING.md`](docs/TESTING.md).
 
 ---
