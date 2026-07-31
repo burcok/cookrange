@@ -31,7 +31,6 @@ macos/
 .flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
-pubspec.lock
 .pub/
 /build/
 
@@ -55,7 +54,7 @@ functions/.env.*
 
 # Server
 functions/node_modules
-test/
+test/firestore_rules/node_modules/
 
 
 # Agent Telemetry Cache
