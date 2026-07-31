@@ -115,8 +115,7 @@ class StorageService {
         };
         await plain.close();
         await Hive.deleteBoxFromDisk(name);
-        final encrypted =
-            await Hive.openBox(name, encryptionCipher: cipher);
+        final encrypted = await Hive.openBox(name, encryptionCipher: cipher);
         if (entries.isNotEmpty) await encrypted.putAll(entries);
         await encrypted.close();
         debugPrint('StorageService: migrated "$name" to encrypted '

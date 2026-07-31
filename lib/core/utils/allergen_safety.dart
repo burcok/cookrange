@@ -19,23 +19,99 @@ class AllergenSafety {
 
   /// Common allergen category → concrete ingredient terms (EN + TR), lower-case.
   static const Map<String, List<String>> _synonyms = {
-    'gluten': ['gluten', 'wheat', 'flour', 'bread', 'barley', 'rye', 'pasta',
-        'bulgur', 'buğday', 'un', 'ekmek', 'makarna', 'arpa'],
-    'dairy': ['dairy', 'milk', 'cheese', 'butter', 'yogurt', 'yoghurt', 'cream',
-        'lactose', 'süt', 'peynir', 'tereyağ', 'yoğurt', 'krema', 'laktoz'],
-    'lactose': ['milk', 'cheese', 'butter', 'yogurt', 'cream', 'süt', 'peynir',
-        'yoğurt'],
-    'nuts': ['nut', 'peanut', 'almond', 'walnut', 'hazelnut', 'cashew',
-        'pistachio', 'fındık', 'fıstık', 'badem', 'ceviz', 'kaju', 'antep'],
+    'gluten': [
+      'gluten',
+      'wheat',
+      'flour',
+      'bread',
+      'barley',
+      'rye',
+      'pasta',
+      'bulgur',
+      'buğday',
+      'un',
+      'ekmek',
+      'makarna',
+      'arpa'
+    ],
+    'dairy': [
+      'dairy',
+      'milk',
+      'cheese',
+      'butter',
+      'yogurt',
+      'yoghurt',
+      'cream',
+      'lactose',
+      'süt',
+      'peynir',
+      'tereyağ',
+      'yoğurt',
+      'krema',
+      'laktoz'
+    ],
+    'lactose': [
+      'milk',
+      'cheese',
+      'butter',
+      'yogurt',
+      'cream',
+      'süt',
+      'peynir',
+      'yoğurt'
+    ],
+    'nuts': [
+      'nut',
+      'peanut',
+      'almond',
+      'walnut',
+      'hazelnut',
+      'cashew',
+      'pistachio',
+      'fındık',
+      'fıstık',
+      'badem',
+      'ceviz',
+      'kaju',
+      'antep'
+    ],
     'peanut': ['peanut', 'yer fıstığı', 'fıstık'],
-    'tree_nuts': ['almond', 'walnut', 'hazelnut', 'cashew', 'pistachio',
-        'badem', 'ceviz', 'fındık', 'antep fıstığı'],
+    'tree_nuts': [
+      'almond',
+      'walnut',
+      'hazelnut',
+      'cashew',
+      'pistachio',
+      'badem',
+      'ceviz',
+      'fındık',
+      'antep fıstığı'
+    ],
     'egg': ['egg', 'yumurta', 'mayonnaise', 'mayonez'],
     'eggs': ['egg', 'yumurta'],
-    'shellfish': ['shrimp', 'prawn', 'crab', 'lobster', 'shellfish', 'karides',
-        'yengeç', 'istakoz', 'midye', 'mussel'],
-    'fish': ['fish', 'salmon', 'tuna', 'anchovy', 'balık', 'somon', 'ton',
-        'hamsi', 'levrek'],
+    'shellfish': [
+      'shrimp',
+      'prawn',
+      'crab',
+      'lobster',
+      'shellfish',
+      'karides',
+      'yengeç',
+      'istakoz',
+      'midye',
+      'mussel'
+    ],
+    'fish': [
+      'fish',
+      'salmon',
+      'tuna',
+      'anchovy',
+      'balık',
+      'somon',
+      'ton',
+      'hamsi',
+      'levrek'
+    ],
     'soy': ['soy', 'soya', 'tofu', 'edamame'],
     'sesame': ['sesame', 'tahini', 'susam', 'tahin'],
   };
@@ -82,7 +158,9 @@ class AllergenSafety {
       ..write(' ')
       ..write(dish.nameEn.toLowerCase());
     for (final ing in dish.ingredients) {
-      haystack..write(' ')..write(ing.name.toLowerCase());
+      haystack
+        ..write(' ')
+        ..write(ing.name.toLowerCase());
     }
     final hay = haystack.toString();
     for (final term in unsafeTerms) {

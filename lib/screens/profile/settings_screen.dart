@@ -2340,8 +2340,8 @@ class _ApplyCodeSheetState extends State<_ApplyCodeSheet> {
           controller: _ctrl,
           labelText:
               widget.appLoc.translate('settings.referral.enter_code_label'),
-          hintText:
-              widget.appLoc.translate('profile.settings.referral_code_placeholder'),
+          hintText: widget.appLoc
+              .translate('profile.settings.referral_code_placeholder'),
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
           ],

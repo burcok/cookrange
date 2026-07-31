@@ -51,8 +51,8 @@ class ForceUpdateScreen extends StatelessWidget {
                   width: 96.r,
                   height: 96.r,
                   decoration: BoxDecoration(
-                    color: primary.withValues(
-                        alpha: palette.isDark ? 0.18 : 0.10),
+                    color:
+                        primary.withValues(alpha: palette.isDark ? 0.18 : 0.10),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(

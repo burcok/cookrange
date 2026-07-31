@@ -41,7 +41,8 @@ class DataExportService {
     // content, and a manifest of uploaded files.
     final results = await Future.wait([
       _doc('users/$uid'), // 0
-      _collection('users/$uid/private'), // 1 — height/weight/gender/DOB/allergies
+      _collection(
+          'users/$uid/private'), // 1 — height/weight/gender/DOB/allergies
       _collection('users/$uid/food_logs'), // 2
       _collection('users/$uid/meal_plans'), // 3
       _collection('users/$uid/food_analyses'), // 4

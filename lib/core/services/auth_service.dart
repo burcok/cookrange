@@ -212,8 +212,8 @@ class AuthService {
         context: navigatorKey.currentContext!,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          title:
-              Text(AppLocalizations.of(context).translate('auth.dialog_logged_out')),
+          title: Text(
+              AppLocalizations.of(context).translate('auth.dialog_logged_out')),
           content: Text(AppLocalizations.of(context)
               .translate('auth.dialog_logged_out_message')),
           actions: [
@@ -711,7 +711,9 @@ class AuthService {
       // users/{uid} subtree, server-only docs, authored content, ALL Storage
       // objects, and the Auth identity itself — none of which the client can do
       // reliably. Requires the reauth performed above.
-      await FirebaseFunctions.instance.httpsCallable('deleteUserAccount').call();
+      await FirebaseFunctions.instance
+          .httpsCallable('deleteUserAccount')
+          .call();
 
       // Cancel session monitoring
       await _sessionSubscription?.cancel();

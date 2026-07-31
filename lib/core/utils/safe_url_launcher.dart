@@ -27,8 +27,7 @@ Future<bool> safeLaunchUrl(
     debugPrint('safeLaunchUrl: blocked disallowed scheme "${uri.scheme}"');
     return false;
   }
-  if (allowedHosts != null &&
-      !allowedHosts.contains(uri.host.toLowerCase())) {
+  if (allowedHosts != null && !allowedHosts.contains(uri.host.toLowerCase())) {
     debugPrint('safeLaunchUrl: blocked disallowed host "${uri.host}"');
     return false;
   }

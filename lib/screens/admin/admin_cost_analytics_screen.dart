@@ -56,8 +56,7 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
     });
   }
 
-  String _usd4(double v) =>
-      v >= 1 ? _usd(v) : '\$${v.toStringAsFixed(4)}';
+  String _usd4(double v) => v >= 1 ? _usd(v) : '\$${v.toStringAsFixed(4)}';
 
   String _usd(double v) {
     final neg = v < 0;
@@ -168,15 +167,21 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: _miniStat(t, palette,
+                      child: _miniStat(
+                          t,
+                          palette,
                           l10n.translate('admin.cost_revenue'),
-                          _usd(a.monthlyRevenueUsd), palette.success),
+                          _usd(a.monthlyRevenueUsd),
+                          palette.success),
                     ),
                     SizedBox(width: 12.w),
                     Expanded(
-                      child: _miniStat(t, palette,
+                      child: _miniStat(
+                          t,
+                          palette,
                           l10n.translate('admin.cost_cost'),
-                          _usd(a.monthlyCostUsd), palette.error),
+                          _usd(a.monthlyCostUsd),
+                          palette.error),
                     ),
                   ],
                 ),
@@ -263,9 +268,8 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
               SizedBox(height: 8.h),
               ..._projectionPoints.map((users) {
                 final sim = _service.simulateAt(users, a, _assumptions);
-                final c = sim.monthlyProfitUsd >= 0
-                    ? palette.success
-                    : palette.error;
+                final c =
+                    sim.monthlyProfitUsd >= 0 ? palette.success : palette.error;
                 return Padding(
                   padding: EdgeInsets.symmetric(vertical: 5.h),
                   child: Row(
@@ -273,15 +277,15 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
                       SizedBox(
                         width: 64.w,
                         child: Text(_intK(users),
-                            style: t.titleM
-                                .copyWith(color: palette.textPrimary)),
+                            style:
+                                t.titleM.copyWith(color: palette.textPrimary)),
                       ),
                       Expanded(
                         child: Text(
                           '${l10n.translate('admin.cost_revenue')} ${_usd(sim.monthlyRevenueUsd)}  ·  '
                           '${l10n.translate('admin.cost_cost')} ${_usd(sim.monthlyCostUsd)}',
-                          style: t.labelS
-                              .copyWith(color: palette.textSecondary),
+                          style:
+                              t.labelS.copyWith(color: palette.textSecondary),
                         ),
                       ),
                       Text(_usd(sim.monthlyProfitUsd),
@@ -302,16 +306,24 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
           l10n.translate('admin.cost_assumptions'),
           Column(
             children: [
-              _metricRow(t, palette,
+              _metricRow(
+                  t,
+                  palette,
                   l10n.translate('admin.cost_assumption_reads'),
                   '${a.assumptions.readsPerActiveUserPerDay}'),
-              _metricRow(t, palette,
+              _metricRow(
+                  t,
+                  palette,
                   l10n.translate('admin.cost_assumption_writes'),
                   '${a.assumptions.writesPerActiveUserPerDay}'),
-              _metricRow(t, palette,
+              _metricRow(
+                  t,
+                  palette,
                   l10n.translate('admin.cost_assumption_image'),
                   '${a.assumptions.avgImageKb.toStringAsFixed(0)} KB'),
-              _metricRow(t, palette,
+              _metricRow(
+                  t,
+                  palette,
                   l10n.translate('admin.cost_assumption_dau'),
                   '${(a.assumptions.dailyActiveFraction * 100).toStringAsFixed(0)}%'),
             ],
@@ -354,8 +366,7 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
     );
   }
 
-  Widget _metricRow(
-      AppText t, AppPalette palette, String label, String value) {
+  Widget _metricRow(AppText t, AppPalette palette, String label, String value) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 6.h),
       child: Row(
@@ -495,8 +506,7 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
                 decoration: InputDecoration(
                   isDense: true,
                   hintText: l10n.translate('admin.ai_usage_uid_hint'),
-                  hintStyle:
-                      t.bodyM.copyWith(color: palette.textTertiary),
+                  hintStyle: t.bodyM.copyWith(color: palette.textTertiary),
                   filled: true,
                   fillColor: palette.surfaceVariant,
                   border: OutlineInputBorder(
@@ -519,14 +529,17 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
         ]);
 
         return _sectionCard(
-            t, palette, l10n.translate('admin.ai_usage_title'),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: children));
+            t,
+            palette,
+            l10n.translate('admin.ai_usage_title'),
+            Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children));
       },
     );
   }
 
-  Widget _buildUserLogs(
-      AppLocalizations l10n, AppPalette palette, AppText t) {
+  Widget _buildUserLogs(AppLocalizations l10n, AppPalette palette, AppText t) {
     return FutureBuilder<List<AiUsageLogEntry>>(
       future: _userLogsFuture,
       builder: (context, snap) {
@@ -556,12 +569,11 @@ class _AdminCostAnalyticsScreenState extends State<AdminCostAnalyticsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('${e.type} · ${e.model}',
-                            style: t.bodyM.copyWith(
-                                color: palette.textPrimary)),
+                            style:
+                                t.bodyM.copyWith(color: palette.textPrimary)),
                         Text(
                           '${_dt(e.createdAt)} · ${_intK(e.totalTokens)} tok',
-                          style: t.labelS
-                              .copyWith(color: palette.textTertiary),
+                          style: t.labelS.copyWith(color: palette.textTertiary),
                         ),
                       ],
                     ),

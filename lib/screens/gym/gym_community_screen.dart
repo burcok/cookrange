@@ -395,8 +395,10 @@ class _GymPostCardState extends State<_GymPostCard>
                       .togglePin(widget.gymId, post.id, post.isPinned);
                 } catch (_) {
                   if (mounted) {
-                    AppSnackBar.error(context,
-                        l10n.translate('gym.community.error.update_post_failed'));
+                    AppSnackBar.error(
+                        context,
+                        l10n.translate(
+                            'gym.community.error.update_post_failed'));
                   }
                 }
               },
@@ -425,8 +427,10 @@ class _GymPostCardState extends State<_GymPostCard>
                       widget.gymId, post.id, post.isAnnouncement);
                 } catch (_) {
                   if (mounted) {
-                    AppSnackBar.error(context,
-                        l10n.translate('gym.community.error.update_post_failed'));
+                    AppSnackBar.error(
+                        context,
+                        l10n.translate(
+                            'gym.community.error.update_post_failed'));
                   }
                 }
               },
@@ -476,8 +480,10 @@ class _GymPostCardState extends State<_GymPostCard>
                     }
                   } catch (_) {
                     if (mounted) {
-                      AppSnackBar.error(context,
-                          l10n.translate('gym.community.error.delete_post_failed'));
+                      AppSnackBar.error(
+                          context,
+                          l10n.translate(
+                              'gym.community.error.delete_post_failed'));
                     }
                   }
                 }
@@ -624,8 +630,7 @@ class _GymPostCardState extends State<_GymPostCard>
                           child: SizedBox(
                             width: 20,
                             height: 20,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         ),
                       ),
@@ -746,7 +751,8 @@ class _PostComposerSheetState extends State<_PostComposerSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
       if (mounted) {
-        AppSnackBar.error(context,
+        AppSnackBar.error(
+            context,
             AppLocalizations.of(context)
                 .translate('gym.community.error.create_post_failed'));
         setState(() => _posting = false);
@@ -850,7 +856,8 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       }
     } catch (_) {
       if (mounted) {
-        AppSnackBar.error(context,
+        AppSnackBar.error(
+            context,
             AppLocalizations.of(context)
                 .translate('gym.community.error.send_comment_failed'));
         setState(() => _sending = false);
@@ -864,7 +871,8 @@ class _CommentsSheetState extends State<_CommentsSheet> {
           .deleteComment(widget.gymId, widget.postId, commentId);
     } catch (_) {
       if (mounted) {
-        AppSnackBar.error(context,
+        AppSnackBar.error(
+            context,
             AppLocalizations.of(context)
                 .translate('gym.community.error.delete_comment_failed'));
       }
@@ -901,8 +909,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   child: AppEmptyState(
                     icon: Icons.chat_bubble_outline_rounded,
-                    title:
-                        l10n.translate('gym.community.comments.empty_title'),
+                    title: l10n.translate('gym.community.comments.empty_title'),
                     message:
                         l10n.translate('gym.community.comments.empty_message'),
                     compact: true,

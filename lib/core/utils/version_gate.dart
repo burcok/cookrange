@@ -20,14 +20,10 @@ int compareVersions(String a, String b) {
 }
 
 List<int> _parse(String v) {
-  return v
-      .trim()
-      .split('.')
-      .map((part) {
-        final match = RegExp(r'^\d+').firstMatch(part.trim());
-        return match == null ? 0 : (int.tryParse(match.group(0)!) ?? 0);
-      })
-      .toList();
+  return v.trim().split('.').map((part) {
+    final match = RegExp(r'^\d+').firstMatch(part.trim());
+    return match == null ? 0 : (int.tryParse(match.group(0)!) ?? 0);
+  }).toList();
 }
 
 /// Version-gating helpers over the remote [AppConfig]. All platform-aware:

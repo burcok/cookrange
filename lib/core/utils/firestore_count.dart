@@ -20,7 +20,8 @@ Stream<int> pollCount(
   return _pollCountGenerator(query, interval).asBroadcastStream();
 }
 
-Stream<int> _pollCountGenerator(Query<Object?> query, Duration interval) async* {
+Stream<int> _pollCountGenerator(
+    Query<Object?> query, Duration interval) async* {
   while (true) {
     try {
       final snap = await query.count().get();

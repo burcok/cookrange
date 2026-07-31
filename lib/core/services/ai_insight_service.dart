@@ -105,8 +105,8 @@ Return ONLY valid JSON matching this structure:
 ${PromptService().localeInstruction(locale)}''';
 
       const jsonStructure = '{"message": "string", "tips": ["string"]}';
-      final result = await AIService()
-          .generateJson(prompt: prompt, jsonStructure: jsonStructure, type: 'insight');
+      final result = await AIService().generateJson(
+          prompt: prompt, jsonStructure: jsonStructure, type: 'insight');
 
       final insight = AiInsightModel.fromJson(result);
 
@@ -222,8 +222,8 @@ ${PromptService().localeInstruction(locale)}''';
       const jsonStructure =
           '{"currentStatus": "string", "weeklyWeightChange": 0.0, "projection30days": "string", "projection60days": "string", "projection90days": "string", "goalDateEstimate": "string", "calorieGap": 0, "recommendations": ["string"], "motivationScore": 0}';
 
-      final result = await AIService()
-          .generateJson(prompt: prompt, jsonStructure: jsonStructure, type: 'insight');
+      final result = await AIService().generateJson(
+          prompt: prompt, jsonStructure: jsonStructure, type: 'insight');
 
       unawaited(AnalyticsService().logEvent(
         name: 'ai_generated',
@@ -479,8 +479,8 @@ ${PromptService().localeInstruction(locale)}''';
       const jsonStructure =
           '{"score": 0, "wins": ["string"], "challenges": ["string"], "trend": "steady", "recommendation": "string"}';
 
-      final result = await AIService()
-          .generateJson(prompt: prompt, jsonStructure: jsonStructure, type: 'weekly_recap');
+      final result = await AIService().generateJson(
+          prompt: prompt, jsonStructure: jsonStructure, type: 'weekly_recap');
 
       result['isLowData'] = false;
       result['weekKey'] = key;

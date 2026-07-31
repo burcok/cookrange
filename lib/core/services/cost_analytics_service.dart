@@ -51,8 +51,7 @@ class CostAnalyticsService {
   /// Returns an empty stats object if no proxy traffic has been logged yet.
   Future<AiUsageStats> fetchAiUsageStats() async {
     try {
-      final snap =
-          await _db.collection('ai_usage_stats').doc('global').get();
+      final snap = await _db.collection('ai_usage_stats').doc('global').get();
       if (!snap.exists) return const AiUsageStats();
       final data = Map<String, dynamic>.from(snap.data() ?? {});
       final ts = data['updated_at'];
@@ -91,8 +90,9 @@ class CostAnalyticsService {
   Future<UsageCounts> _gatherCounts() async {
     final results = await Future.wait([
       _countCol('users'),
-      _countQuery(_db.collection('users').where('subscription_tier',
-          whereIn: ['premium', 'pro'])),
+      _countQuery(_db
+          .collection('users')
+          .where('subscription_tier', whereIn: ['premium', 'pro'])),
       _countCol('posts'),
       _countCol('dishes'),
       _countCol('chats'),
@@ -181,13 +181,14 @@ class CostAnalyticsService {
     final imgGB = c.imageObjectsEstimate * a.avgImageKb / (1000 * 1000);
     final storageCost = max(0.0, imgGB - FirebasePricing.storageFreeGB) *
         FirebasePricing.storagePerGBMonth;
-    final egressGB = dau * 20 * a.avgImageKb / (1000 * 1000) * 30; // ~20 views/day
+    final egressGB =
+        dau * 20 * a.avgImageKb / (1000 * 1000) * 30; // ~20 views/day
     final egressCost = egressGB * FirebasePricing.storageDownloadPerGB;
 
     // Cloud Functions invocations (AI + chat + notifications proxy).
     final invocationsMo = dau * 10 * 30;
-    final fnCost = max(
-            0, invocationsMo - FirebasePricing.functionsFreeInvocationsPerMonth) /
+    final fnCost = max(0,
+            invocationsMo - FirebasePricing.functionsFreeInvocationsPerMonth) /
         1000000 *
         FirebasePricing.functionsInvocationPerMillion;
 

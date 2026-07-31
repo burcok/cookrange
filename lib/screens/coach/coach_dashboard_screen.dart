@@ -340,7 +340,9 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
                   context,
                   AppTransitions.slideRight(const CoachClientsScreen()),
                 ),
-                child: Text(l10n.translate('coach.dashboard.see_all', variables: {'count': active.length.toString()}),
+                child: Text(
+                    l10n.translate('coach.dashboard.see_all',
+                        variables: {'count': active.length.toString()}),
                     style: AppText.of(context).labelS.copyWith(color: primary)),
               ),
           ],

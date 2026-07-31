@@ -69,7 +69,8 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     return Scaffold(
       backgroundColor: palette.background,
       body: uid == null
-          ? AppErrorState(title: l10n.translate('programs.error.signin_to_view'))
+          ? AppErrorState(
+              title: l10n.translate('programs.error.signin_to_view'))
           : FutureBuilder<ProgramEnrollmentModel?>(
               future: ProgramService().getEnrollment(uid, _p.id),
               builder: (context, enrollSnap) {
@@ -153,8 +154,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                 imageUrl: _p.coverImageUrl!,
                 fit: BoxFit.cover,
                 memCacheWidth: 800,
-                placeholder: (_, __) =>
-                    _CoverGradient(category: _p.category),
+                placeholder: (_, __) => _CoverGradient(category: _p.category),
                 errorWidget: (_, __, ___) =>
                     _CoverGradient(category: _p.category),
               )
@@ -307,8 +307,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                       height: 48.r,
                       fit: BoxFit.cover,
                       memCacheWidth: 192,
-                      placeholder: (_, __) =>
-                          _coachAvatarPlaceholder(primary),
+                      placeholder: (_, __) => _coachAvatarPlaceholder(primary),
                       errorWidget: (_, __, ___) =>
                           _coachAvatarPlaceholder(primary),
                     )

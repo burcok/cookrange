@@ -82,7 +82,8 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return AppErrorState(
-              title: AppLocalizations.of(context).translate('common.something_wrong'),
+              title: AppLocalizations.of(context)
+                  .translate('common.something_wrong'),
               message: snapshot.error.toString(),
               onRetry: () => setState(() {}),
             );
@@ -130,7 +131,9 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                           const SizedBox(height: 24),
                         ],
                         if (profile.specializations.isNotEmpty) ...[
-                          Text(AppLocalizations.of(context).translate('coach.profile.section_specializations'),
+                          Text(
+                              AppLocalizations.of(context).translate(
+                                  'coach.profile.section_specializations'),
                               style: AppText.of(context).titleM.copyWith(
                                   color: palette.textPrimary,
                                   fontWeight: FontWeight.bold)),
@@ -148,7 +151,9 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                           const SizedBox(height: 24),
                         ],
                         if (profile.certifications.isNotEmpty) ...[
-                          Text(AppLocalizations.of(context).translate('coach.profile.section_certifications'),
+                          Text(
+                              AppLocalizations.of(context).translate(
+                                  'coach.profile.section_certifications'),
                               style: AppText.of(context).titleM.copyWith(
                                   color: palette.textPrimary,
                                   fontWeight: FontWeight.bold)),
@@ -198,7 +203,8 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                             builder: (context, snap) {
                               if (snap.hasError) {
                                 return AppErrorState(
-                                  title: AppLocalizations.of(context).translate('common.something_wrong'),
+                                  title: AppLocalizations.of(context)
+                                      .translate('common.something_wrong'),
                                   message: snap.error.toString(),
                                   onRetry: () => setState(() {}),
                                 );
@@ -327,8 +333,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
                 child: ClipOval(
                   child: profile.photoURL != null
                       ? AppImage(
-                          imageUrl: profile.photoURL!,
-                          memCacheWidth: 320)
+                          imageUrl: profile.photoURL!, memCacheWidth: 320)
                       : Container(
                           color: primary.withValues(alpha: 0.15),
                           child: Icon(Icons.person_rounded,
@@ -402,7 +407,8 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
           child: _StatCard(
             icon: Icons.people_alt_rounded,
             value: profile.clientCount.toString(),
-            label: AppLocalizations.of(context).translate('coach.profile.stat_clients'),
+            label: AppLocalizations.of(context)
+                .translate('coach.profile.stat_clients'),
             palette: palette,
           ),
         ),
@@ -412,7 +418,8 @@ class _CoachProfileScreenState extends State<CoachProfileScreen>
             child: _StatCard(
               icon: Icons.attach_money_rounded,
               value: '₺${profile.hourlyRate!.toStringAsFixed(0)}/saat',
-              label: AppLocalizations.of(context).translate('coach.profile.stat_rate'),
+              label: AppLocalizations.of(context)
+                  .translate('coach.profile.stat_rate'),
               palette: palette,
             ),
           ),

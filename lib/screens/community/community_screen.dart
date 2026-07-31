@@ -219,7 +219,6 @@ class _CommunityScreenState extends State<CommunityScreen>
     _applyFilter(_selectedFilter);
   }
 
-
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
@@ -716,8 +715,7 @@ class _FeedModeTabs extends StatelessWidget {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
                 color: isActive
                     ? primary
@@ -733,11 +731,8 @@ class _FeedModeTabs extends StatelessWidget {
               child: Text(
                 l10n.translate(filterKeys[f]!),
                 style: t.labelM.copyWith(
-                  color: isActive
-                      ? Colors.white
-                      : palette.textSecondary,
-                  fontWeight:
-                      isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: isActive ? Colors.white : palette.textSecondary,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),
@@ -796,8 +791,7 @@ class _TopicChips extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOut,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
                   color: isActive
                       ? color.withValues(alpha: 0.15)
@@ -841,4 +835,3 @@ class _TopicChips extends StatelessWidget {
     );
   }
 }
-

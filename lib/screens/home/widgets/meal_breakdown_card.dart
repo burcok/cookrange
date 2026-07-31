@@ -132,8 +132,7 @@ class _MealRow extends StatelessWidget {
                 Row(
                   children: [
                     _MacroChip(
-                        label:
-                            l10n.translate('nutrition.macro_protein_short'),
+                        label: l10n.translate('nutrition.macro_protein_short'),
                         value: totals.protein.toInt(),
                         color: palette.protein),
                     SizedBox(width: 6.w),

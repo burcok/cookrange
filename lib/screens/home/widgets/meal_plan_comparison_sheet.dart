@@ -312,8 +312,7 @@ class _PlanCard extends StatelessWidget {
                   child: Column(
                     children: [
                       _MacroBar(
-                        label:
-                            l10n.translate('nutrition.macro_protein_short'),
+                        label: l10n.translate('nutrition.macro_protein_short'),
                         value: protein,
                         total: protein + carbs + fat,
                         color: palette.protein,

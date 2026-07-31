@@ -84,8 +84,7 @@ class AiConfig {
     return AiConfig(
       textModel: _str(m['text_model'], d.textModel),
       visionModel: _str(m['vision_model'], d.visionModel),
-      modelByType: _map(m['model_by_type'])
-          .map((k, v) => MapEntry(k, '$v')),
+      modelByType: _map(m['model_by_type']).map((k, v) => MapEntry(k, '$v')),
       maxTokens: _int(m['max_tokens'], d.maxTokens),
       maxTokensByType: _map(m['max_tokens_by_type'])
           .map((k, v) => MapEntry(k, _int(v, d.maxTokens))),
@@ -99,8 +98,10 @@ class AiConfig {
       premiumDailyLimit: _int(m['premium_daily_limit'], d.premiumDailyLimit),
       photoAnalysisEnabled:
           _bool(m['photo_analysis_enabled'], d.photoAnalysisEnabled),
-      weeklyRecapEnabled: _bool(m['weekly_recap_enabled'], d.weeklyRecapEnabled),
-      fitnessTwinEnabled: _bool(m['fitness_twin_enabled'], d.fitnessTwinEnabled),
+      weeklyRecapEnabled:
+          _bool(m['weekly_recap_enabled'], d.weeklyRecapEnabled),
+      fitnessTwinEnabled:
+          _bool(m['fitness_twin_enabled'], d.fitnessTwinEnabled),
     );
   }
 }
@@ -130,7 +131,8 @@ class VersionConfig {
   static VersionConfig fromMap(Map<String, dynamic> m) {
     const d = VersionConfig();
     return VersionConfig(
-      minSupportedAndroid: _str(m['min_supported_android'], d.minSupportedAndroid),
+      minSupportedAndroid:
+          _str(m['min_supported_android'], d.minSupportedAndroid),
       minSupportedIos: _str(m['min_supported_ios'], d.minSupportedIos),
       latestAndroid: _str(m['latest_android'], d.latestAndroid),
       latestIos: _str(m['latest_ios'], d.latestIos),
@@ -173,7 +175,8 @@ class AnnouncementConfig {
     this.dismissible = true,
   });
 
-  static AnnouncementConfig fromMap(Map<String, dynamic> m) => AnnouncementConfig(
+  static AnnouncementConfig fromMap(Map<String, dynamic> m) =>
+      AnnouncementConfig(
         enabled: _bool(m['enabled'], false),
         id: _str(m['id'], ''),
         message: LocalizedText.fromAny(m['message']),

@@ -117,8 +117,7 @@ class _AnnouncementBannerState extends State<AnnouncementBanner> {
           decoration: BoxDecoration(
             color: accent.withValues(alpha: palette.isDark ? 0.18 : 0.10),
             borderRadius: BorderRadius.circular(AppRadius.md.r),
-            border: Border.all(
-                color: accent.withValues(alpha: 0.35)),
+            border: Border.all(color: accent.withValues(alpha: 0.35)),
           ),
           child: Row(
             children: [
@@ -132,8 +131,7 @@ class _AnnouncementBannerState extends State<AnnouncementBanner> {
               ),
               if (hasCta) ...[
                 SizedBox(width: AppSpacing.xs.w),
-                Icon(Icons.chevron_right_rounded,
-                    color: accent, size: 20.r),
+                Icon(Icons.chevron_right_rounded, color: accent, size: 20.r),
               ],
               if (a.dismissible) ...[
                 SizedBox(width: AppSpacing.xs.w),

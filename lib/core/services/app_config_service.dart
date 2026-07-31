@@ -56,9 +56,8 @@ class AppConfigService {
       final map = jsonDecode(raw) as Map<String, dynamic>;
       final atMs = prefs.getInt(_cacheAtKey);
       _set(AppConfig.fromMap(map,
-          fetchedAt: atMs != null
-              ? DateTime.fromMillisecondsSinceEpoch(atMs)
-              : null));
+          fetchedAt:
+              atMs != null ? DateTime.fromMillisecondsSinceEpoch(atMs) : null));
     } catch (e) {
       _log.warning('AppConfig cache load failed — using defaults',
           service: _serviceName);

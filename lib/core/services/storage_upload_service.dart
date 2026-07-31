@@ -111,7 +111,8 @@ class StorageUploadService {
     // Resize + compress + EXIF-strip in a background isolate (no UI jank).
     Uint8List clean;
     try {
-      clean = await compute(_processImage, _ImageJob(raw, maxDim, _jpegQuality));
+      clean =
+          await compute(_processImage, _ImageJob(raw, maxDim, _jpegQuality));
     } catch (e) {
       debugPrint('StorageUploadService: image processing failed: $e');
       clean = raw;

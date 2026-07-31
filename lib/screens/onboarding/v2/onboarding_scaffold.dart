@@ -119,7 +119,8 @@ class OnboardingScaffold extends StatelessWidget {
                         if (showContinue)
                           AppButton(
                             label: continueLabel ??
-                                AppLocalizations.of(context).translate('common.continue'),
+                                AppLocalizations.of(context)
+                                    .translate('common.continue'),
                             loading: continueLoading,
                             onPressed: (onContinue != null && !continueLoading)
                                 ? () {

@@ -228,8 +228,8 @@ class _FoodScanScreenState extends State<FoodScanScreen>
     if (accepted == true) {
       await prefs.setBool(_aiPhotoDisclosureKey, true);
       // Auditable point-of-use re-affirmation of the relevant consents.
-      unawaited(
-          ConsentService().setConsent(ConsentPurpose.crossBorderTransfer, true));
+      unawaited(ConsentService()
+          .setConsent(ConsentPurpose.crossBorderTransfer, true));
       unawaited(ConsentService().setConsent(ConsentPurpose.aiProcessing, true));
       return true;
     }

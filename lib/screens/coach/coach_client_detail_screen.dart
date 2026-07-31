@@ -92,15 +92,19 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
     } catch (e) {
       debugPrint('CoachClientDetailScreen._endCoaching error: $e');
       if (!mounted) return;
-      AppSnackBar.error(context,
-          AppLocalizations.of(context).translate('coach.coaching.error.end_failed'));
+      AppSnackBar.error(
+          context,
+          AppLocalizations.of(context)
+              .translate('coach.coaching.error.end_failed'));
     }
   }
 
   Future<void> _generateAiReport() async {
     if (!AIService().isConfigured) {
-      AppSnackBar.warning(context,
-          AppLocalizations.of(context).translate('coach.coaching.warning.ai_not_configured'));
+      AppSnackBar.warning(
+          context,
+          AppLocalizations.of(context)
+              .translate('coach.coaching.warning.ai_not_configured'));
       return;
     }
 
@@ -481,7 +485,9 @@ class _AiReportCard extends StatelessWidget {
             children: [
               Icon(Icons.auto_awesome_rounded, size: 16, color: primary),
               const SizedBox(width: 6),
-              Text(AppLocalizations.of(context).translate('coach.client_detail.section_ai_report'),
+              Text(
+                  AppLocalizations.of(context)
+                      .translate('coach.client_detail.section_ai_report'),
                   style: AppText.of(context)
                       .labelS
                       .copyWith(color: primary, fontWeight: FontWeight.w700)),
@@ -510,7 +516,9 @@ class _AiReportCard extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           if (focusAreas.isNotEmpty) ...[
-            Text(AppLocalizations.of(context).translate('coach.client_detail.section_focus_areas'),
+            Text(
+                AppLocalizations.of(context)
+                    .translate('coach.client_detail.section_focus_areas'),
                 style: AppText.of(context).labelS.copyWith(
                     color: palette.textPrimary, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
@@ -532,7 +540,9 @@ class _AiReportCard extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           if (nextSteps.isNotEmpty) ...[
-            Text(AppLocalizations.of(context).translate('coach.client_detail.section_next_steps'),
+            Text(
+                AppLocalizations.of(context)
+                    .translate('coach.client_detail.section_next_steps'),
                 style: AppText.of(context).labelS.copyWith(
                     color: palette.textPrimary, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),

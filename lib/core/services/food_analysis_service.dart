@@ -157,8 +157,7 @@ class FoodAnalysisService {
     if (!_ai.isConfigured) return null;
     if (description.trim().isEmpty) return null;
 
-    final prompt =
-        '${PromptService.injectionGuard}'
+    final prompt = '${PromptService.injectionGuard}'
         'Analyze the nutritional content of the following food description and estimate its macros, key micros (fiber, sugar, sodium), a 0–100 health score (higher = healthier), your confidence (0–1), and likely allergens, per the described serving:\n\n${PromptService().fence(description)}\n\nProvide best-effort estimates based on typical values. If the user described a quantity, use it as the serving size.';
 
     try {
@@ -184,8 +183,7 @@ class FoodAnalysisService {
     if (!_ai.isVisionAvailable) return null;
     if (imageBytes.isEmpty) return null;
 
-    final prompt =
-        '${PromptService.injectionGuard}'
+    final prompt = '${PromptService.injectionGuard}'
         'Identify the food in this image and estimate the nutrition for the visible portion: macros, key micros (fiber, sugar, sodium), a 0–100 health score (higher = healthier), your confidence (0–1), the estimated portion weight in grams, and likely allergens.'
         '${(hint != null && hint.trim().isNotEmpty) ? '\n\nUser note: ${PromptService().fence(hint.trim())}.' : ''}'
         '\n\nIf multiple foods are present, summarize the whole plate.';

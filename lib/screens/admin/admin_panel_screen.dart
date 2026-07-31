@@ -1480,7 +1480,8 @@ class _ComposeBroadcastSheetState extends State<_ComposeBroadcastSheet> {
     final audience =
         _audience == 'single' ? 'user:${_uidCtrl.text.trim()}' : _audience;
     if (audience == 'user:') {
-      AppSnackBar.error(context, l10n.translate('admin.validation.uid_required'));
+      AppSnackBar.error(
+          context, l10n.translate('admin.validation.uid_required'));
       return;
     }
 

@@ -350,7 +350,8 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         AppSnackBar.error(
             context,
-            AppLocalizations.of(context).translate('home.error.swap_meal_failed',
+            AppLocalizations.of(context).translate(
+                'home.error.swap_meal_failed',
                 variables: {'details': e.toString()}));
       }
     } finally {
@@ -704,33 +705,35 @@ class _HomeScreenState extends State<HomeScreen>
 
                   return RepaintBoundary(
                     child: Container(
-                    width: 48.w,
-                    height: 48.w,
-                    transform: Matrix4.diagonal3Values(
-                        currentScale, currentScale, 1.0),
-                    transformAlignment: Alignment.center,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CustomPaint(
-                          size: Size(48.w, 48.w),
-                          painter: _RefreshRingPainter(
-                            progress: _isRefreshing ? 0.3 : progress,
-                            rotation: rotation,
-                            color: context.watch<ThemeProvider>().primaryColor,
+                      width: 48.w,
+                      height: 48.w,
+                      transform: Matrix4.diagonal3Values(
+                          currentScale, currentScale, 1.0),
+                      transformAlignment: Alignment.center,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CustomPaint(
+                            size: Size(48.w, 48.w),
+                            painter: _RefreshRingPainter(
+                              progress: _isRefreshing ? 0.3 : progress,
+                              rotation: rotation,
+                              color:
+                                  context.watch<ThemeProvider>().primaryColor,
+                            ),
                           ),
-                        ),
-                        Transform.rotate(
-                          angle: rotation,
-                          child: Icon(
-                            Icons.refresh_rounded,
-                            color: context.watch<ThemeProvider>().primaryColor,
-                            size: 22.w,
+                          Transform.rotate(
+                            angle: rotation,
+                            child: Icon(
+                              Icons.refresh_rounded,
+                              color:
+                                  context.watch<ThemeProvider>().primaryColor,
+                              size: 22.w,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
                   );
                 },
               ),

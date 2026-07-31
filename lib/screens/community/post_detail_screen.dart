@@ -800,9 +800,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                         child: CircleAvatar(
                                                           radius: 10,
                                                           backgroundImage:
-                                                              CachedNetworkImageProvider(entry
-                                                                  .value
-                                                                  .avatarUrl),
+                                                              CachedNetworkImageProvider(
+                                                                  entry.value
+                                                                      .avatarUrl),
                                                         ),
                                                       ),
                                                     );

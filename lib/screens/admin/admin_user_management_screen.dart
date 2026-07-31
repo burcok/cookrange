@@ -348,7 +348,9 @@ class _BannedBadge extends StatelessWidget {
         children: [
           Icon(Icons.block_rounded, color: palette.error, size: 10.r),
           SizedBox(width: 2.w),
-          Text(AppLocalizations.of(context).translate('admin.users.status_banned'),
+          Text(
+              AppLocalizations.of(context)
+                  .translate('admin.users.status_banned'),
               style: t.labelS
                   .copyWith(color: palette.error, fontWeight: FontWeight.w600)),
         ],

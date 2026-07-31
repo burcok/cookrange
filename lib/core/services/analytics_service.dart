@@ -91,8 +91,10 @@ class AnalyticsService {
   Future<void> setConsentEnabled(bool granted) async {
     try {
       await _analytics.setAnalyticsCollectionEnabled(kReleaseMode && granted);
-      _log.info('Analytics collection set to ${kReleaseMode && granted} '
-          '(consent=$granted)', service: _serviceName);
+      _log.info(
+          'Analytics collection set to ${kReleaseMode && granted} '
+          '(consent=$granted)',
+          service: _serviceName);
     } catch (e) {
       _log.warning('setConsentEnabled failed: $e', service: _serviceName);
     }

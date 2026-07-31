@@ -15,7 +15,8 @@ class AppEnv {
 
   /// The configured environment name; defaults to `development` when unset.
   static String get name {
-    final v = (dotenv.maybeGet('APP_ENV') ?? 'development').trim().toLowerCase();
+    final v =
+        (dotenv.maybeGet('APP_ENV') ?? 'development').trim().toLowerCase();
     return v.isEmpty ? 'development' : v;
   }
 

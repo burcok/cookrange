@@ -203,8 +203,9 @@ class AppInitializationService {
       // Prereqs before enforcing in console: register the app's Play Integrity
       // (SHA-256) and Apple App Attest in the Firebase console.
       await FirebaseAppCheck.instance.activate(
-        androidProvider:
-            kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
+        androidProvider: kReleaseMode
+            ? AndroidProvider.playIntegrity
+            : AndroidProvider.debug,
         appleProvider:
             kReleaseMode ? AppleProvider.appAttest : AppleProvider.debug,
       );

@@ -137,8 +137,7 @@ class _DrawerTile extends StatelessWidget {
     return ListTile(
       dense: true,
       leading: Icon(m.icon,
-          size: 20,
-          color: selected ? AppPalette.brand : palette.textSecondary),
+          size: 20, color: selected ? AppPalette.brand : palette.textSecondary),
       title: Text(
         l10n.translate(m.titleKey),
         style: t.bodyM.copyWith(

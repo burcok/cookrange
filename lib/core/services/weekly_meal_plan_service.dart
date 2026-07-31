@@ -111,7 +111,8 @@ class WeeklyMealPlanService {
       // We expect a valid JSON string
       final jsonResponse = await _aiService.generateJson(
           prompt: prompt,
-          jsonStructure: '{ ... WeeklyMealPlanModel structure ... }', type: 'meal_plan');
+          jsonStructure: '{ ... WeeklyMealPlanModel structure ... }',
+          type: 'meal_plan');
 
       // 4. Parse Response
       final now = DateTime.now();

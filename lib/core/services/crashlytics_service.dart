@@ -19,7 +19,8 @@ class CrashlyticsService {
       // consent is applied via [setConsentEnabled]. Never collect in debug.
       await _crashlytics.setCrashlyticsCollectionEnabled(false);
 
-      LogService().info('Crashlytics initialized (collection gated on consent).',
+      LogService().info(
+          'Crashlytics initialized (collection gated on consent).',
           service: _serviceName);
 
       // Listen to the log stream for severe errors.
@@ -43,7 +44,8 @@ class CrashlyticsService {
   /// Never collects in debug. Called by ConsentService on consent load/change.
   Future<void> setConsentEnabled(bool granted) async {
     try {
-      await _crashlytics.setCrashlyticsCollectionEnabled(kReleaseMode && granted);
+      await _crashlytics
+          .setCrashlyticsCollectionEnabled(kReleaseMode && granted);
     } catch (e) {
       LogService().warning('Crashlytics setConsentEnabled failed: $e',
           service: _serviceName);

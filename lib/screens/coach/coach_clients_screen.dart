@@ -43,13 +43,17 @@ class _CoachClientsScreenState extends State<CoachClientsScreen>
       unawaited(HapticFeedback.mediumImpact());
       await CoachService().acceptClient(clientUid);
       if (!mounted) return;
-      AppSnackBar.success(context,
-          AppLocalizations.of(context).translate('coach.clients.success.accepted'));
+      AppSnackBar.success(
+          context,
+          AppLocalizations.of(context)
+              .translate('coach.clients.success.accepted'));
     } catch (e) {
       debugPrint('CoachClientsScreen._acceptClient error: $e');
       if (!mounted) return;
-      AppSnackBar.error(context,
-          AppLocalizations.of(context).translate('coach.clients.error.accept_failed'));
+      AppSnackBar.error(
+          context,
+          AppLocalizations.of(context)
+              .translate('coach.clients.error.accept_failed'));
     }
   }
 
@@ -58,13 +62,17 @@ class _CoachClientsScreenState extends State<CoachClientsScreen>
       unawaited(HapticFeedback.lightImpact());
       await CoachService().rejectClient(clientUid);
       if (!mounted) return;
-      AppSnackBar.warning(context,
-          AppLocalizations.of(context).translate('coach.clients.warning.declined'));
+      AppSnackBar.warning(
+          context,
+          AppLocalizations.of(context)
+              .translate('coach.clients.warning.declined'));
     } catch (e) {
       debugPrint('CoachClientsScreen._rejectClient error: $e');
       if (!mounted) return;
-      AppSnackBar.error(context,
-          AppLocalizations.of(context).translate('coach.clients.error.decline_failed'));
+      AppSnackBar.error(
+          context,
+          AppLocalizations.of(context)
+              .translate('coach.clients.error.decline_failed'));
     }
   }
 
