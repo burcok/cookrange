@@ -142,8 +142,12 @@ actively misleading rather than merely incomplete. Corrected in this pass:
   matching local dev exactly, rather than the open-ended dependency-downgrade path. Verified clean
   under the new pin: `flutter pub get`, `flutter analyze lib/` (0 errors), `dart format` (0 diff),
   `flutter test` (78/78) — all re-run fresh, not assumed from earlier in the session.
-- **Not yet confirmed against a real CI run** — the fix is applied and locally verified; the next push
-  settles whether all 4 jobs are actually green.
+- **Confirmed against a real CI run** ([run #42](https://github.com/burcok/cookrange/actions/runs/30669425771)):
+  `Get dependencies` now succeeds — the actual fix works. But the same run surfaced a *new* failure:
+  `flutter analyze --no-fatal-infos` fails in CI at the `Analyze code` step, which does **not**
+  reproduce locally under the identical Flutter 3.44.4 (verified exit 0, once a stale local
+  `build/ios` directory — gitignored, macOS-only, never present on CI's Ubuntu runner — was removed).
+  Undiagnosed pending the actual CI log text.
 
 ---
 
