@@ -162,8 +162,13 @@ test('posts: oversized content is rejected, normal content allowed', async () =>
 });
 
 test('admin/status: a user CANNOT self-grant admin', async () => {
+  // admin/status/{uid}/flags (per firestore.rules:32) — 4 segments, a valid
+  // document reference. No match block exists for this path at all (only
+  // admin_roles/admin_audit/admin_config do), so this exercises the implicit
+  // default-deny at the bottom of firestore.rules, same as a real client
+  // attempt against this not-yet-built path would hit.
   await assertFails(
-    setDoc(doc(db('u1'), 'admin/status/u1'), { is_admin: true })
+    setDoc(doc(db('u1'), 'admin/status/u1/flags'), { is_admin: true })
   );
 });
 

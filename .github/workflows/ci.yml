@@ -56,7 +56,10 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          # firebase-tools (installed at `latest` below) requires JDK 21+ —
+          # 17 makes the emulator refuse to start ("no longer supports Java
+          # version before 21"), which is why this job was failing.
+          java-version: '21'
 
       - name: Set up Node
         uses: actions/setup-node@v4
