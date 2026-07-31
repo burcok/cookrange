@@ -5,9 +5,10 @@
 >
 > ⚠️ **Coverage is still ~1 % of ~115k LOC** — line coverage hasn't moved. What changed (`BLK-13`):
 > `test/` is tracked in git, all 3 previously-failing tests now pass, and the 15-assertion Firestore
-> rules suite can finally run in CI instead of silently not existing. Testing was the lowest-scoring
-> dimension at 2.0 / 10; it is still the highest-leverage thing anyone can improve — 1 % coverage
-> means almost everything is still unproven.
+> rules suite runs green **in a real CI run**, not just locally
+> ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)). Testing was the
+> lowest-scoring dimension at 2.0 / 10; it is still the highest-leverage thing anyone can improve —
+> 1 % coverage means almost everything is still unproven.
 
 ---
 
@@ -79,14 +80,16 @@ disk, not in git, which this page did not previously say.
 
 ### Priority order
 
-1. ~~**`BLK-13`** — un-ignore `test/`, fix the 3 failures, get CI green.~~ **Code-side fix landed**:
-   `test/` tracked, 0 local failures, rules suite committed. CI confirmation is the remaining step —
-   see `PROJECT_STATE.md` for the current call on whether the pipeline is actually green.
+1. ~~**`BLK-13`** — un-ignore `test/`, fix the 3 failures, get CI green.~~ **Fixed and confirmed**:
+   `test/` tracked, 0 local failures, rules suite green in a real CI run
+   ([#40](https://github.com/burcok/cookrange/actions/runs/30667024406)). "Get CI green" itself is
+   only 2/4 — `analyze-and-test` fails on a confirmed pre-existing, unrelated issue, tracked as
+   `CI-11`.
 2. **`TEST-01` — Firestore rules tests in version control.** Landed as part of `BLK-13` — 15
    assertions in `test/firestore_rules/rules.test.mjs`, covering the security model directly:
    `BLK-06`/`BLK-07`/`BLK-08`-shaped defects are exactly what this class of test catches at write
-   time. Still needed: **execute it** (this repo has never run it — verify green in CI, not just
-   present) and extend it toward all 71 rule match blocks, not just the 15 covered today.
+   time, and it's now confirmed to run and pass in CI, not just locally. Still needed: extend it
+   toward all 71 rule match blocks, not just the 15 covered today.
 3. **`TEST-02` — widget tests** for the states that break silently: loading, empty, error, and both
    themes.
 4. **`TEST-03` — integration tests** against the emulator for the consumer path: signup → onboarding
@@ -130,12 +133,15 @@ flutter analyze lib/                          # 0 errors — the other hard gate
 
 ```bash
 cd test/firestore_rules && npm install
-firebase emulators:exec --only firestore --project demo-cookrange \
-  "node --test --test-reporter=spec ."
+cd ../.. && firebase emulators:exec --only firestore --project demo-cookrange \
+  "node --test --test-reporter=spec test/firestore_rules/rules.test.mjs"
 ```
 
-> Needs a JVM (the emulator runs on it) — `java -version` first. Not runnable on a machine without
-> one; that's this repo's real state as of `BLK-13` (verify in CI, which installs Temurin 17).
+> Needs a JVM 21+ (`firebase-tools` refuses to start the emulator below that) — `java -version` first.
+> Point the last argument at the **file**, not the directory — Node's test runner resolves a bare
+> directory as a module to `require()` and throws `MODULE_NOT_FOUND` instead of discovering tests in
+> it. Confirmed passing 15/15 both locally and in CI (Temurin 21, bumped from 17 — `BLK-13`/`CI-11`'s
+> investigation found `firebase-tools@latest` now hard-requires it).
 
 ---
 
@@ -144,11 +150,12 @@ firebase emulators:exec --only firestore --project demo-cookrange \
 `.github/workflows/ci.yml` on every PR: `dart format --set-exit-if-changed` → `flutter analyze` →
 `flutter test` → Android debug build. Mechanics: [`DEVOPS.md`](DEVOPS.md).
 
-> The format and test jobs were failing locally-reproducible ways (`BLK-13`) — both fixed and verified
-> locally: `dart format --set-exit-if-changed lib/` exits 0, `flutter test` is 78/78. The rules job
-> had nothing to run; `test/firestore_rules/` is now tracked. **None of this is the same as a
-> confirmed green pipeline run** — check `PROJECT_STATE.md` for whether `main`'s CI has actually been
-> observed passing, and don't take a green local run as a substitute.
+> The format, test, and rules jobs were all failing (`BLK-13`) — confirmed fixed in a **real CI run**,
+> not just locally: `dart format`/`flutter test` (78/78) and `firestore-rules` (15/15) are green
+> ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)). `secret-scan` was already
+> green. `analyze-and-test` still fails, but on a **confirmed pre-existing, unrelated** issue
+> (`Get dependencies` — tracked as `CI-11`), and `build-android` is skipped downstream of it. 2 of 4
+> green is real progress, not full green — check `PROJECT_STATE.md` for the current count.
 
 **Definition of a working gate:** CI is green on `main` · a PR that breaks a test cannot merge · the
 rules suite runs on every change to `firestore.rules` · coverage is reported and does not silently
@@ -161,7 +168,7 @@ un-ignoring `test/` makes the jobs runnable, it doesn't yet make them required.
 
 | Milestone | Target | Focus |
 |---|---|---|
-| **M1 — Truth** | ~~CI green, `test/` tracked, 3 failures fixed~~ `test/` tracked ✅, 3 failures fixed ✅, CI green ⏳ pending confirmed run | Make the gate exist |
+| **M1 — Truth** | `test/` tracked ✅, 3 failures fixed ✅, CI green 🚧 2/4 (`CI-11` blocks the rest) | Make the gate exist |
 | **M2 — Legal** | Rules suite covering every collection | Security is only real if it's tested |
 | **M4 — Beta** | ~30 % line coverage; consumer path in integration tests | Cover what users actually touch |
 | **M6+** | ~60 % on `core/`; widget tests on all primary screens | Sustainable |

@@ -6,7 +6,7 @@
 > Keep it **small**. Status lines only — no design, no rationale, no task detail. Full task cards
 > live in [`TODO.md`](TODO.md); decisions live in [`DECISIONS.md`](DECISIONS.md).
 
-**Last updated:** 2026-07-31 · **Source of record:** `TODO.md` §1 (audit 2026-07-31)
+**Last updated:** 2026-08-01 · **Source of record:** `TODO.md` §1 (audit 2026-07-31; `BLK-13` re-verified 2026-08-01)
 
 ---
 
@@ -56,7 +56,7 @@
 | Code quality | 6.5 / 10 | Readable, null-safe; **swallow-and-log is the systemic defect** |
 | Maintainability | 5.5 / 10 | 40 files > 800 LOC, no interfaces, no test seam |
 | **Documentation** | **6.5 / 10** | Well-organised and now status-honest (this file); breadth still outruns verification |
-| **Testing** | **2.0 / 10** | **~1 % coverage**, 3 failing tests, **`test/` is gitignored** |
+| **Testing** | **2.5 / 10** | **~1 % coverage** (unchanged) — but `test/` is now tracked, 0 failing, and the Firestore rules suite runs green in real CI (`CI-11` blocks 2 of 4 jobs; unrelated) |
 | Business readiness | 2.0 / 10 | **Zero revenue capability**; premium bypassable |
 | Production readiness | 2.5 / 10 | Two hard ship blockers, CI red, no monitoring, no backups |
 | **Weighted composite** | **5.4 / 10** | Strong design instincts, high velocity, **no verification discipline** |
@@ -81,7 +81,7 @@ Full cards in [`TODO.md`](TODO.md) §2.
 | `BLK-10` | 🔥 User doc world-readable with `email`, `last_login_ip`, device fingerprints | [Security](docs/SECURITY.md) |
 | `BLK-11` | 🔥 Dish catalog unseedable in-app; only 75 dishes | [Database](docs/DATABASE.md) |
 | `BLK-12` | 🔥 GDPR erasure + export incomplete | [Compliance](docs/COMPLIANCE.md) |
-| `BLK-13` | 🔥 CI red on `main`; **`test/` gitignored** | [Testing](docs/TESTING.md) |
+| `BLK-13` | 🚧 Own defects fixed & verified in real CI (`test/` tracked, 3 failures fixed, rules suite green); blocked from full-green by newly-found **`CI-11`** (pre-existing, unrelated `pub get` failure) | [Testing](docs/TESTING.md) |
 | `BLK-14` | 🔥 App Check not enforced (`APP_ENV=development`) | [Security](docs/SECURITY.md) |
 | `BLK-15` | 🔥 Live OpenRouter key bundled as a Flutter asset + shipped in CI artifacts | [AI](docs/AI_SYSTEM.md) |
 | `BLK-16` | 🔥 No Apple / Google enrolment, no signing identity | [DevOps](docs/DEVOPS.md) |
@@ -105,7 +105,7 @@ Full cards in [`TODO.md`](TODO.md) §2.
 | 🚧 Meal plan history | `BLK-06` |
 | 🚧 Dish catalog | `BLK-11` |
 | 🚧 Moderation (scans wrong prefix; queue unreachable) | `BLK-05` |
-| 🚧 CI/CD (4 jobs + full deploy workflow, all red) | `BLK-13` |
+| 🚧 CI/CD (4 jobs + full deploy workflow, 2/4 green) | `CI-11` |
 
 ## 5. Verified working
 
@@ -115,7 +115,8 @@ cooking mode · community feed & comments & reactions · 1:1 + group chat · in-
 achievements · AI insight/twin/recap (all guard `isConfigured`) · AI proxy security core ·
 allergen pre-filter · prompt-injection guard · Hive AES-256 · consent registry · design system ·
 EN/TR parity (2,722 keys) · maintenance + force-update gates · feature kill-switches ·
-image upload pipeline · `pollCount` discipline · `flutter analyze lib/` 0 errors.
+image upload pipeline · `pollCount` discipline · `flutter analyze lib/` 0 errors ·
+Firestore rules test suite (15 assertions, partial coverage) green in real CI.
 
 Evidence table: `TODO.md` §1.4.
 
@@ -154,8 +155,11 @@ Store review is an irreducible 1–2 weeks of wall clock.
    key bypassing all rules is the highest-severity open item.
 2. **`BLK-01`** — add the `isConfigured` guard so release builds cannot serve fabricated meal plans.
    Fabricated health guidance is the worst failure mode this app has.
-3. **`BLK-13`** — un-gitignore `test/`, fix the 3 failing tests, get CI green. Without a trustworthy
-   gate every other fix is unverifiable.
+3. ~~**`BLK-13`**~~ **Done** — `test/` tracked, 3 failures fixed, rules suite green in real CI
+   ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)). **`CI-11`** — diagnose
+   and fix the pre-existing, unrelated `flutter pub get` failure blocking the other 2 CI jobs
+   (`analyze-and-test`, `build-android`); strong lead is `DEBT-42`'s undocumented
+   `dependency_overrides` vs. CI's Flutter `3.24.0` pin. Then add branch protection (`CI-02`).
 4. **`BLK-02`** — add the missing iOS usage string (one line, prevents 6 crashes + rejection).
 5. **`BLK-05` / `BLK-03` / `BLK-06`** — the "shipped but dead" cluster: create `admin_roles`, point
    the push trigger at the real path, add the `meal_plan_history` rule.

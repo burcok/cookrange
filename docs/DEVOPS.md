@@ -16,11 +16,12 @@ Runs on every PR. Flutter 3.24.0.
 dart format --set-exit-if-changed   →   flutter analyze   →   flutter test   →   Android debug APK
 ```
 
-> **`BLK-13`'s code-side causes are fixed**: the format and test jobs' local-reproducible failures are
-> resolved, and `test/` (incl. `test/firestore_rules/`) is tracked so the rules job has files to run.
-> Whether the pipeline is actually green is a separate question this doc doesn't answer — see
-> `PROJECT_STATE.md` for the last confirmed run. A green local run is still not the same claim as a
-> green pipeline; don't conflate them.
+> **2 of 4 jobs are confirmed green** (`firestore-rules`, `secret-scan` —
+> [run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)). `analyze-and-test` still
+> fails at its `Get dependencies` step — confirmed **pre-existing**, unrelated to `BLK-13` (reproduces
+> identically on the commit before it). Tracked as `CI-11`. `build-android` is skipped, downstream of
+> that failure. A green local run is still not the same claim as a green pipeline — this is what
+> checking the real one found.
 
 Match CI locally before calling a task done:
 
@@ -146,7 +147,8 @@ before your code runs. All real auth is in-code — the standard Firebase-callab
 
 ```
 1. All Definition-of-Done boxes green (CLAUDE.md §11)
-2. CI green on main                                   ← code-side fixed, confirm the run (BLK-13)
+2. CI green on main                                   ← 2/4 (firestore-rules, secret-scan); analyze-
+                                                          and-test + build-android blocked on CI-11
 3. Bump version in pubspec.yaml
 4. Update CHANGELOG.md
 5. Update PROJECT_STATE.md — version, milestone, blockers

@@ -199,7 +199,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | 🚧 **Challenge sunset** | Screens, model, service, deep links, lib refs removed | **`DEBT-11`** — rules block + 2 indexes + 4 orphan i18n keys survive; old roadmap claimed complete |
 | 🚧 **Accessibility** | DS-level semantics on ~6 components, reduced-motion in 2 widgets | 32 sites across 329 files; no screen-reader / contrast / touch-target pass |
 | 🚧 **Dark mode** | Both themes fully defined, `ThemeProvider` live | 120 hex + 214 `Colors.white/black` literals in `lib/screens` |
-| 🚧 **CI/CD** | 4 CI jobs + full TestFlight/Play deploy workflow | **`BLK-13`** — format + test jobs red; rules job has no files; no secrets set |
+| 🚧 **CI/CD** | 4 CI jobs + full TestFlight/Play deploy workflow | `BLK-13`'s own defects fixed — format/tests/rules job now green (verified in real CI); **`CI-11`** (pre-existing, unrelated `flutter pub get` failure) blocks 2/4 jobs; no store secrets set |
 
 ### 1.6 Missing systems — no implementation exists
 
@@ -245,7 +245,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | `BLK-10` | 🔥 User doc world-readable with `email`, `last_login_ip`, device fingerprints | GDPR / KVKK exposure in the primary market |
 | `BLK-11` | 🔥 Dish catalog unseedable in-app; only 75 dishes | Core feature has no content on a fresh project |
 | `BLK-12` | 🔥 GDPR erasure + export incomplete | Art. 17 / Art. 20 non-compliance |
-| `BLK-13` | 🔥 CI red on `main`; `test/` gitignored | No trustworthy quality gate |
+| `BLK-13` | 🚧 Own defects fixed (test/ tracked, 3 failures fixed, format clean, rules suite green); `CI-11` (new, pre-existing, unrelated) blocks full green | 2/4 CI jobs green — real, verified progress; not yet a fully trustworthy gate |
 | `BLK-14` | 🔥 App Check not enforced (`APP_ENV=development`) | Proxy and Functions open to unattested clients |
 | `BLK-15` | 🔥 Live OpenRouter key bundled as a Flutter asset + shipped in CI artifacts | Key extraction / denial-of-wallet |
 | `BLK-16` | 🔥 No Apple / Google developer programme enrolment, no signing identity | Cannot produce a distributable build |
@@ -843,49 +843,68 @@ comment threads). Decide explicitly and write it into the privacy policy.
 
 ---
 
-#### `BLK-13` 🔥 CI is red on `main` and `test/` is gitignored
+#### `BLK-13` 🚧 CI is red on `main` and `test/` is gitignored
 
-**Status** 🔥 Critical · **Priority** Critical · **Complexity** S · **Est** 4 h
+**Status** 🚧 Partial — this card's own defects are fixed and verified; blocked from full-green by a
+newly discovered, pre-existing, unrelated defect (`CI-11`) · **Priority** Critical · **Complexity** S
+· **Est** 4 h (actual: ~4 h of fixes + diagnosis)
 **Version** v0.9.7 · **Milestone** M1 · **Owner** DevOps Lead
 **Labels** `ci` `testing` `quality-gate` `git-hygiene`
 **Modules** DevOps · Testing
-**Files** `.gitignore` (contains `test/`) · `test/app_lifecycle_service_test.dart` (3 failures) · 44 unformatted files in `lib/` · `.github/workflows/ci.yml`
+**Files** `.gitignore` · `test/app_lifecycle_service_test.dart` · 44 files in `lib/` · `.github/workflows/ci.yml` · `test/firestore_rules/rules.test.mjs`
 **Dependencies** — · **Required before** every other task's DoD
-**Blocking** Any trustworthy statement about code quality.
+**Blocking** Any trustworthy statement about code quality — **substantially unblocked**; see below.
 
 **What exists / what is missing**
 
-Four CI jobs are configured (analyze+test, firestore-rules, secret-scan, build-android) plus a complete
-TestFlight/Play deploy workflow. Current state:
+Fixed and verified — both locally and in a real CI run on `main`
+([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406), commit `d944828`):
 
 | Check | Result |
 |---|---|
-| `flutter analyze lib/` | ✅ 0 errors, 0 warnings, 25 infos |
-| `dart format --output=none --set-exit-if-changed lib/` | ❌ **exit 1** — 44 files unformatted |
-| `flutter test` | ❌ **3 failures** in `test/app_lifecycle_service_test.dart` (`MockFirestoreService` signature mismatch on `syncDeviceContext`) |
-| `firebase emulators:exec … node --test test/firestore_rules/` | ❌ **cannot run** — `test/` is gitignored |
+| `test/` tracked in git (was gitignored) | ✅ 14 files; `test/firestore_rules/node_modules/` scoped-excluded |
+| `dart format --output=none --set-exit-if-changed lib/` | ✅ 44 files reformatted (whitespace-only, verified) |
+| `flutter test` (3 `app_lifecycle_service_test` failures) | ✅ fixed — `MockFirestoreService` was missing `syncDeviceContext`/`verifyAndRepairUserData` overrides added after the mock was written. 78/78 pass |
+| `firestore-rules` CI job | ✅ **green in real CI** — was failing at "Install rules-test deps" (directory didn't exist); now installs, runs, and passes 15/15 |
+| `secret-scan` (gitleaks) CI job | ✅ green |
+| `pubspec.lock` gitignore contradiction (`DEBT-51`) | ✅ fixed — un-ignored; was already tracked anyway |
+| `lib/firebase_options.dart` generation undocumented (`DEBT-52`) | ✅ partially — generation step documented in `docs/DEVOPS.md` §4; file stays gitignored; CI's placeholder hack is untouched (real gap remains for anyone building a device install straight from CI's config) |
 
-`.gitignore` contains a bare `test/` line. Eight test files are grandfathered into tracking; three newer
-ones (`ai_credit_model_test.dart`, `allergen_safety_test.dart`, `cost_analytics_test.dart`) and the
-entire `test/firestore_rules/` directory (including `rules.test.mjs`) are **not in version control**.
-The rules test suite — the one thing that would have caught `BLK-03`, `BLK-06`, `BLK-07`, `BLK-08`,
-`BLK-09` — has almost certainly never executed.
+Two defects surfaced getting the rules job to actually run for what is very likely the first time in
+this repo's history — both **fixed and reverified 15/15 locally + confirmed green in CI**:
+1. `ci.yml` pinned Java 17; `firebase-tools` (installed at `latest`) hard-requires 21+ and refused to
+   start the emulator below that. Bumped to 21.
+2. `rules.test.mjs`'s `admin/status` test passed `doc(db('u1'), 'admin/status/u1')` — 3 segments, an
+   **invalid** Firestore document reference (`doc()` requires an even count). No match block for this
+   path exists in `firestore.rules` at all (only `admin_roles`/`admin_audit`/`admin_config` do), so
+   fixed to the valid 4-segment form `firestore.rules:32`'s own comment already describes
+   (`admin/status/{uid}/flags`) — exercises the same real implicit default-deny.
+
+**Not fixed — genuinely out of this card's scope, now tracked separately as `CI-11`:**
+`analyze-and-test`'s **`Get dependencies` step (`flutter pub get`) fails in CI**, confirmed
+**pre-existing** — reproduces identically on the commit before this work (`8e167c0`) and one 12 days
+older (`e06ca0d`). Not caused by anything in this card. Blocks `analyze-and-test` directly and
+`build-android` transitively (`needs: analyze-and-test`). See `CI-11` for the diagnosis so far.
 
 **Acceptance Criteria**
-- `test/` removed from `.gitignore`; all 11 Dart test files and `test/firestore_rules/` committed.
-- `test/firestore_rules/node_modules` excluded specifically (`test/firestore_rules/node_modules/`).
-- `dart format lib/` applied; formatting job green.
-- The 3 `app_lifecycle_service_test` failures fixed (align the mock's `syncDeviceContext` signature).
-- All four CI jobs green on `main`.
-- Branch protection requires all four to pass before merge.
-- `pubspec.lock` tracking made deliberate (currently gitignored-but-grandfathered) — see `DEBT-51`.
-- `lib/firebase_options.dart` handling documented so a fresh clone can build without the CI placeholder hack — see `DEBT-52`.
+- ✅ `test/` removed from `.gitignore`; all 14 files (11 Dart + 3 `firestore_rules/`) committed.
+- ✅ `test/firestore_rules/node_modules` excluded specifically.
+- ✅ `dart format lib/` applied; formatting job green.
+- ✅ The 3 `app_lifecycle_service_test` failures fixed.
+- ⛔ **All four CI jobs green on `main`** — 2/4 green (`firestore-rules`, `secret-scan`), 1/4 red
+  (`analyze-and-test` — `CI-11`, unrelated), 1/4 skipped (`build-android`, downstream of the red one).
+  **This bullet is why the card stays 🚧, not ✅** — closing it depends on `CI-11`.
+- 📋 Branch protection requiring all four — not yet done; blocked on the above being real first.
+- ✅ `pubspec.lock` tracking made deliberate — see `DEBT-51`, now closed.
+- 🚧 `lib/firebase_options.dart` generation documented — see `DEBT-52`, partially closed (placeholder
+  hack in CI itself untouched).
 
-**DoD** §0.5 plus a green CI run on `main` linked in the commit.
+**DoD** §0.5 partially: every locally-checkable item passed; the "green CI run linked in the commit"
+bullet is linked above and is honestly not fully green — 2 of 4 jobs, for reasons outside this card.
 
 **Technical Notes**
-`.gitignore` also lists `pubspec.lock`, `macos/`, and `/lib/firebase_options.dart`. For an application,
-`pubspec.lock` **must** be committed (it already is, by accident). Make the intent match reality.
+`.gitignore` also lists `macos/` and `/lib/firebase_options.dart` (deliberately, unrelated to this
+card). `pubspec.lock` is now committed on purpose, matching reality.
 
 ---
 
@@ -1754,7 +1773,7 @@ streak/reputation recompute (`SEC-14`), notification-path migration (`BLK-03`).
 | `FB-15` | ❌ | Delete dead `challenges` rules + 2 indexes | Medium | XS | 1 h | v0.9.8 / M2 | Firebase Architect | `firestore.rules:296-304`, `firestore.indexes.json` (2 `challenges` indexes) | — | Both removed. **The prior roadmap (13.2) claimed this was done — it was not.** See `DEBT-11` | Re-adding them if Challenges 2.0 ships (`CHL-01`) is trivial; leaving reserved infrastructure for a non-existent feature is how documentation starts lying |
 | `FB-16` | ❌ | Delete the orphaned `meal_plan_history` index or add the rule | Medium | XS | 15 m | v0.9.7 / M1 | Firebase Architect | `firestore.indexes.json` | `BLK-06` | Rule added (preferred) so the index becomes useful | An index on a rule-denied path is pure waste |
 | `FB-17` | ❌ | Bound every unbounded listener and query | High | M | 2 d | v0.9.8 / M2 | Performance Engineer | `dish_service.dart:17` (unbounded `.get()` on `dishes`, called per plan generation), `:56` (unbounded `.snapshots()`), plus 12 other files using `.snapshots()` with no `.limit()` in-file | `BLK-11` | Every collection query has `.limit()` or is provably single-doc; the `dishes` listener paginated or replaced; a CI lint or review checklist item enforces it. Directly violates the repo's own Performance Playbook (`S23`) | At 75 dishes the cost is trivial; at 5,000 it is 5,000 reads per plan per user |
-| `FB-18` | ❌ | Rules test suite covering every match block | Critical | L | 1 w | v0.9.7 / M1 | QA Lead | `test/firestore_rules/rules.test.mjs` (exists locally, **untracked**) | `BLK-13` | Every one of the 71 match blocks has at least a positive and a negative test; all holes in §7.2 have regression tests; the CI `firestore-rules` job is green and **required** | The suite that would have caught 5 of the 17 blockers exists and has never run. This is the single highest-value test investment |
+| `FB-18` | 🚧 | Rules test suite covering every match block | Critical | L | 1 w | v0.9.7 / M1 | QA Lead | `test/firestore_rules/rules.test.mjs` (tracked, **running green in CI** — [run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)) | `BLK-13` | 15 of 71 match blocks covered (economy lock, PII, admin self-grant, content caps), all passing. Still open: the other ~56 blocks, and making the CI job **required** | The suite that would have caught 5 of the 17 blockers now runs and passes for its current scope — extending coverage is the remaining value here |
 | `FB-19` | ❌ | Reduce `isAdmin()` read cost | Low | S | 1 d | v1.1.0 / M6 | Firebase Architect | `firestore.rules:27-35` | `SEC-04` | Once admin is a custom claim, `isAdmin()` reads `request.auth.token.admin` instead of `exists()` + `get()` — removing 2 document reads per admin-gated operation | Claim propagation lag; keep the doc check as a fallback during migration |
 | `FB-20` | ❌ | Document the field-naming convention as an enforced test | Medium | S | 1 d | v0.9.8 / M2 | Software Architect | `CLAUDE.md` (documents camelCase identity / snake_case everything else), all 48 models | `ARCH-11` | A test asserts every model's `toMap`/`fromMap` key casing matches the convention; the two production bugs this drift already caused (admin user search, admin name columns) have regression tests | The convention is deliberate and documented; the risk is future drift, not the current state |
 
@@ -2350,9 +2369,9 @@ count per slot and monitor plan variety.
 
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `CI-01` | 🔥 | Get all four CI jobs green | Critical | S | 4 h | v0.9.7 / M1 | DevOps | see `BLK-13` | — | Tracked in `BLK-13` | — |
+| `CI-01` | 🚧 | Get all four CI jobs green | Critical | S | 4 h | v0.9.7 / M1 | DevOps | see `BLK-13` | `CI-11` | 2/4 green (`firestore-rules`, `secret-scan`) — verified in real CI. Remaining 2 (`analyze-and-test`, `build-android`) blocked on `CI-11`, not on anything `BLK-13` itself still owns | — |
 | `CI-02` | ❌ | Branch protection requiring green CI | Critical | XS | 30 m | v0.9.7 / M1 | DevOps | GitHub settings | `CI-01` | `main` protected; all four checks required; no direct pushes; the 97-commit history shows direct commits to `main` throughout | Without protection, a red `main` recurs immediately |
-| `CI-03` | ❌ | Rules tests running in CI | Critical | L | 1 w | v0.9.7 / M1 | QA Lead | see `FB-18`; `.github/workflows/ci.yml` `firestore-rules` job | `BLK-13` | Tracked in `FB-18`. **The job is configured and has never had files to run** | — |
+| `CI-03` | 🚧 | Rules tests running in CI | Critical | L | 1 w | v0.9.7 / M1 | QA Lead | see `FB-18`; `.github/workflows/ci.yml` `firestore-rules` job | `BLK-13` | **The job now runs and is green** (15/15, real CI run linked in `FB-18`). Full-coverage bar tracked in `FB-18` | — |
 | `CI-04` | ❌ | Verify the deploy workflow end to end | High | S | 1 d | v0.9.9 / M3 | DevOps | `.github/workflows/deploy.yml` | `BLK-16` | One successful TestFlight upload and one Play internal upload from CI; the keychain cleanup step verified; secret rotation documented | A 200-line signing workflow that has never run will not work first time — budget for iteration |
 | `CI-05` | ❌ | Obfuscated release builds + symbol upload | High | S | 1 d | v0.9.9 / M3 | DevOps | see `SEC-18`, `FB-22` | `BLK-16` | Tracked in `SEC-18` + `FB-22` | — |
 | `CI-06` | ❌ | Staged rollout and rollback lever | High | S | 1 d | v1.0.0 / M5 | DevOps | Play Console staged rollout, App Store phased release, `app_config/global.version.force_update` | `BLK-16` | Releases go out at 5 % → 20 % → 50 % → 100 % with crash-rate gates; the force-update lever tested as a rollback mechanism (`min_supported` bump); a documented rollback runbook | The force-update gate is the **only** rollback lever for a client app — test it before you need it |
@@ -2360,6 +2379,7 @@ count per slot and monitor plan variety.
 | `CI-08` | ❌ | Pre-commit hooks | Low | XS | 2 h | v0.9.8 / M2 | DevOps | `.githooks/` or `lefthook` | `CI-01` | `dart format` + `flutter analyze` + a secret scan run before commit. **44 unformatted files reached `main`** because nothing checked locally | Cheap prevention of the exact failure that made CI red |
 | `CI-09` | ❌ | Dependabot / dependency update automation | Medium | XS | 1 h | v0.9.8 / M2 | DevOps | `.github/dependabot.yml` | `SEC-28` | Dependabot on `pub` and `npm`; weekly PRs; security advisories reviewed. `flutter pub outdated` previously reported 78 newer versions | Manual dependency review does not happen |
 | `CI-10` | ❌ | Emulator-based integration tests in CI | Medium | M | 3 d | v1.1.0 / M6 | QA Lead | see `TEST-02`; `INF-02` | `TEST-02` | Tracked in `TEST-02` | — |
+| `CI-11` | 🔥 | `flutter pub get` fails in CI's `analyze-and-test` job (`Get dependencies` step) | Critical | S–M | 2–4 h diagnosis + fix; more if a real downgrade is needed | v0.9.7 / M1 | DevOps | `pubspec.yaml` `dependency_overrides` (`analyzer: 6.4.1`, `leak_tracker: ^11.0.1`, `leak_tracker_flutter_testing: ^3.0.10`, `material_color_utilities: ^0.13.0` — `DEBT-42`) · `.github/workflows/ci.yml` (Flutter pinned `3.24.0`) | `DEBT-42` | **Discovered while verifying `BLK-13`'s CI push** — confirmed pre-existing (reproduces identically on commits `8e167c0` and `e06ca0d`, both predating `BLK-13`'s changes), so this is a separate, newly-surfaced defect, not something `BLK-13` caused. Blocks `analyze-and-test` directly and `build-android` transitively (`needs: analyze-and-test`) — 2 of the 4 CI jobs. Leading hypothesis, **not yet confirmed** (log access requires GitHub sign-in; not pursued): the local dev machine runs Flutter 3.44.4, and `dependency_overrides` was very likely added to satisfy *that* toolchain's bundled `flutter_test` transitive constraints — versions incompatible with CI's much older pinned Flutter 3.24.0, failing pub's version solve. Confirm by reproducing with Flutter 3.24.0 locally (e.g. via FVM), then choose: bump CI's Flutter pin (re-verify `dart format`'s canonical output and the analyzer's lint set — both shift across SDK versions) or resolve `DEBT-42` properly (document or remove the overrides) | Whichever fix is chosen has its own re-verification burden across the whole Definition of Done — this is deliberately **not** folded into `BLK-13`, which only fixes what it originally diagnosed |
 
 ---
 
@@ -2367,16 +2387,16 @@ count per slot and monitor plan variety.
 
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `TEST-01` | 🔥 | Commit and run the Firestore rules test suite | Critical | L | 1 w | v0.9.7 / M1 | QA Lead | `test/firestore_rules/rules.test.mjs` (exists, **untracked**) | `BLK-13` | All 71 match blocks covered positive and negative; every hole in §7.2 has a regression test; the CI job green and required. **This suite would have caught 5 of the 17 blockers. It is the single highest-value test investment in this backlog** | Rules tests need the emulator; keep them fast or they get skipped |
+| `TEST-01` | 🚧 | Commit and run the Firestore rules test suite | Critical | L | 1 w | v0.9.7 / M1 | QA Lead | `test/firestore_rules/rules.test.mjs` (tracked, **green in CI**) | `BLK-13` | Committed and running (15/71 match blocks, all passing). Still open: cover the other ~56 blocks per §7.2; make the CI job required. **This suite would have caught 5 of the 17 blockers. It is the single highest-value test investment in this backlog** | Rules tests need the emulator; keep them fast or they get skipped |
 | `TEST-02` | ❌ | Integration tests for the critical flows | Critical | L | 2 w | v1.0.0 / M4 | QA Lead | `integration_test/` (does not exist) | `ARCH-04`, `INF-02` | End-to-end against the emulator: register → verify → onboard → generate plan → log food → view analytics; login → community → post → comment; purchase → entitlement (sandbox). **Zero integration tests exist today** | Integration tests are the only automated defence against the class of defect that produced this entire backlog |
 | `TEST-03` | ❌ | Widget tests for real screens | High | L | 2 w | v1.0.0 / M4 | QA Lead | `test/widget_test.dart` is 92 LOC covering `ErrorFallbackWidget` + `UnknownRouteScreen` only | `ARCH-04` | The 10 primary screens have widget tests covering loading, empty, error and success states with faked services; **the meal-plan screen specifically asserts an error state when AI is unconfigured** (`BLK-01` regression test) | Required before `ARCH-02` refactoring — otherwise 12,000 lines of untested UI get restructured blind |
-| `TEST-04` | ✅ | Unit tests — 75 tests across 11 files: `calorie_calculator` (20), `streak_logic` (8), `meal_plan_parse` (8), `onboarding_projection`, `water_reminder_schedule`, `allergen_safety`, `ai_credit_model` (6), `cost_analytics` (3), `i18n_parity` (2), `app_lifecycle_service` (**3 failing**), `widget_test` | — | — | — | shipped | — | `test/` | `BLK-13` | Verified — genuinely good pure-logic coverage of the maths and safety code. **3 failures must be fixed (`BLK-13`), and 3 files are untracked** | — |
+| `TEST-04` | ✅ | Unit tests — 78 tests across 11 files: `calorie_calculator` (20), `streak_logic` (8), `meal_plan_parse` (8), `onboarding_projection`, `water_reminder_schedule`, `allergen_safety`, `ai_credit_model` (6), `cost_analytics` (3), `i18n_parity` (2), `app_lifecycle_service` (3), `widget_test` | — | — | — | shipped | — | `test/` | `BLK-13` | Verified — genuinely good pure-logic coverage of the maths and safety code. All 78 pass; all 11 files tracked | — |
 | `TEST-05` | ❌ | Golden tests for the DS components | Medium | M | 1 w | v1.1.0 / M6 | QA Lead | `test/goldens/` | `TEST-03` | Golden images for all 14 DS components in both themes at two font scales; a visual regression fails the build. **Carried from `FUTURE_FEATURES` G1** | Goldens are brittle across platforms — pin the test environment |
 | `TEST-06` | ❌ | Cloud Functions unit tests | High | M | 1 w | v0.9.8 / M2 | QA Lead | `functions/` (**no tests at all**) | `INF-02` | `enforceRateLimitAndQuota`, `isPremium`, `pricingFor`, `recordUsage`, `resolveBroadcastAudience`, purchase validation and `deleteUserAccount` unit-tested against the emulator; the fail-closed quota path specifically tested | 1,692 LOC of the most security-critical code in the project has **zero tests**, including the money and quota paths |
 | `TEST-07` | ❌ | Test coverage reporting and a floor | Medium | S | 1 d | v1.0.0 / M4 | QA Lead | `.github/workflows/ci.yml` | `TEST-03` | Coverage measured and reported per PR; a floor set (start at the current ~1 % and ratchet); the floor never decreases | Coverage as a target invites gaming; use it as a ratchet, not a goal |
 | `TEST-08` | ❌ | Manual QA test plan and device matrix | High | M | 3 d | v1.0.0 / M4 | QA Lead | `docs/` | `BLK-16` | A written plan per release covering every primary flow on: iPhone SE-class, current iPhone, mid-range Android, current Android; both themes, both locales, and denied-permission paths. **Every one of the seven dead paths would have been caught by one honest manual pass** | The single most effective quality intervention available right now, and the cheapest |
 | `TEST-09` | ❌ | Red-team prompt-injection suite | High | M | 3 d | v0.9.8 / M2 | AI Architect | see `SEC-11` | `AI-09` | Tracked in `SEC-11` | — |
-| `TEST-10` | ❌ | Fix the `app_lifecycle_service_test` mock signature | Critical | XS | 1 h | v0.9.7 / M1 | QA Lead | `test/app_lifecycle_service_test.dart:39`, `:63` (`MockFirestoreService.syncDeviceContext` argument mismatch → `NoSuchMethodError` in 3 tests) | `BLK-13` | All 75 tests green | Trivial fix; it is currently the reason CI's test job is red |
+| `TEST-10` | ✅ | Fix the `app_lifecycle_service_test` mock signature | Critical | XS | 1 h | v0.9.7 / M1 | QA Lead | `test/app_lifecycle_service_test.dart` (`MockFirestoreService` was missing `syncDeviceContext` **and** `verifyAndRepairUserData` overrides — the second one only surfaced once the first was fixed) | `BLK-13` | All 78 tests green — verified locally and re-confirmed the fix isn't a rubber stamp by breaking `_endSession` and watching 2 of 3 tests correctly fail | — |
 
 ---
 
@@ -2447,7 +2467,8 @@ count per slot and monitor plan variety.
 
 ## §46 — Technical Debt Register
 
-**55 items.** Critical 7 · High 15 · Medium 18 · Low 15.
+**52 items** (3 resolved this pass — `DEBT-19`, `DEBT-20`, `DEBT-51`, moved to §46.5). Critical 7 ·
+High 13 · Medium 18 · Low 14.
 Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register ≈ **28–34 engineer-weeks**.
 
 ### 46.1 🔴 Critical
@@ -2477,8 +2498,6 @@ Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register �
 | `DEBT-16` | GDPR erasure and export incomplete | Residual personal data after a deletion request | Fix the chat-image enumeration; purge `ai_usage_logs`; clean cross-user artefacts | 3–4 d | `BLK-12` |
 | `DEBT-17` | Non-AI premium gated client-side only | Paywall bypassable in a repackaged build | Enforce server-side at the cost boundary; publish an enforcement inventory | 1 w | `SEC-16` |
 | `DEBT-18` | AI proxy timeout mismatch (30 s server / 90 s client) | Retries stack onto server-killed requests, burning quota | Align both to 60 s | 1 h | `BE-02` |
-| `DEBT-19` | `test/` gitignored; 3 test files and the whole rules suite untracked | The suite that would have caught 5 of 17 blockers has never run | Un-ignore `test/`; commit everything except `node_modules` | 1 h | `BLK-13` |
-| `DEBT-20` | CI red on `main` (format + tests) | No trustworthy quality gate; 44 unformatted files reached `main` | `dart format`; fix the mock signature; branch protection; pre-commit hooks | 4 h | `BLK-13`, `TEST-10`, `CI-08` |
 | `DEBT-21` | `usesCleartextTraffic="true"` in the release manifest | MITM exposure app-wide | Set `false`; verify every network path is HTTPS | 2 h | `SEC-17` |
 | `DEBT-22` | Streak and reputation client-written | Leaderboards, achievements and reputation tiers trivially gameable | Move to Functions; add to the protected-field list; reconcile existing values | 1 w | `SEC-14` |
 
@@ -2519,8 +2538,7 @@ Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register �
 | `DEBT-48` | `AdminStatusService._cachedBanStatus` never invalidated | TTL or replace with the live listener | 2 h | `SEC-03` |
 | `DEBT-49` | `BillingService.dispose()` disposes a singleton's `ValueNotifier`; `purchase()` throws `StateError` against its documented contract | Make the singleton dispose-safe; return `false` as documented | 1 h | `BLK-04` |
 | `DEBT-50` | 25 analyzer `info` hints (redundant arguments, missing braces) | Clean up | 2 h | `CI-01` |
-| `DEBT-51` | `pubspec.lock` gitignored but grandfathered into tracking | Make the intent match reality — it **must** be committed for an app | 15 m | `BLK-13` |
-| `DEBT-52` | `lib/firebase_options.dart` gitignored → a fresh clone cannot build without the CI placeholder hack | Document the generation step, or commit it (it contains no secrets — only public client identifiers) | 2 h | `BLK-13` |
+| `DEBT-52` | `lib/firebase_options.dart` gitignored → a fresh clone cannot build without the CI placeholder hack | Generation step now documented (`docs/DEVOPS.md` §4: `flutterfire configure`). File stays gitignored by choice; **CI's own placeholder hack is untouched** — a device build straight from CI's config still can't happen | 2 h remaining | `BLK-13` |
 | `DEBT-53` | Splash hard-codes a 1,500 ms delay plus sequential controller waits | Measure, then make startup work-bound | 2 h | `PERF-14` |
 | `DEBT-54` | Orphaned `priority_onboarding_screen` (387 LOC) still registered as a route **and** counted as an auth route in `RouteGuard` | Delete the screen, route constant, registration and `_isAuthRoute` entry | 2 h | `ONB-09` |
 | `DEBT-55` | Test mode is a SharedPrefs boolean with no build-mode guard; intercepts meal plans, food logs, shopping, dishes, gyms, coaches and admin users; `TestDataLibrary` is 1,073 LOC shipped in release | Hard-gate on `kDebugMode`; move `TestDataLibrary` to `test/` or tree-shake it | 2 h | `SET-04` |
@@ -2544,6 +2562,9 @@ Recorded so the history is not lost. All verified fixed.
 | 🟡 | `performance_service.dart` dead code; no real perf backend | Phase 1 (Firebase Performance) |
 | 🟡 | Translations loaded from `lib/` (non-standard asset path) | v0.9.5 (moved to `assets/localization/`) |
 | 🟡 | No pagination on the community feed | Phase 3 (`startAfter` cursor) |
+| 🟠 | `test/` gitignored; 3 test files and the whole rules suite untracked (`DEBT-19`) | `BLK-13` — 14 files tracked, rules suite green in CI ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)) |
+| 🟠 | CI red on `main` — format + 3 failing tests (`DEBT-20`) | `BLK-13` — `dart format` clean, mock signature fixed, 78/78 tests pass. Branch protection and pre-commit hooks were listed alongside this debt but are separate, still-open items — tracked as `CI-02`, `CI-08` |
+| 🟢 | `pubspec.lock` gitignored but grandfathered into tracking (`DEBT-51`) | `BLK-13` — ignore rule removed, intent matches reality |
 | 🟡 | No pagination on notifications | v0.9.6 (`getNotificationsPage`) |
 | 🟢 | Stray `print()` calls throughout `lib/` (12 files) | v0.9.5 (`debugPrint`) |
 | 🟢 | Dead legacy widgets (`custom_back_button`, `gender_picker_modal`, `language_selector`) | v0.9.5 (deleted) |
@@ -2575,7 +2596,7 @@ Recorded so the history is not lost. All verified fixed.
 | B10 | Community feed pagination | `community_service.fetchPostsPage` |
 | B11 | Dark-mode correctness | `main_scaffold.dart` dynamic background |
 | B12 | Legal: Privacy Policy + Terms | `legal_screen.dart` — **drafts pending lawyer review (`LEG-07`)** |
-| B13 | CI pipeline | `.github/workflows/ci.yml` — **currently red (`BLK-13`)** |
+| B13 | CI pipeline | `.github/workflows/ci.yml` — `BLK-13`'s own defects fixed (2/4 jobs green, verified); **`CI-11`** (new, pre-existing, unrelated) blocks the other 2 |
 
 ### 47.2 Phase-by-phase delivery record
 
@@ -2987,8 +3008,12 @@ The first ten things to do, in this order. Everything else follows from them.
    engineering work compresses it.
 2. **`ARCH-01` / `DEBT-01`** — kill swallow-and-log. This converts remaining unknown-unknowns into
    visible failures and is the reason seven defects hid for months.
-3. **`BLK-13`** — un-ignore `test/`, fix 3 tests, format 44 files, get CI green, protect `main`.
-4. **`TEST-01` / `FB-18`** — commit and run the rules suite. It would have caught 5 of the 17 blockers.
+3. ~~**`BLK-13`** — un-ignore `test/`, fix 3 tests, format 44 files, get CI green, protect `main`.~~
+   Done except "protect `main`" (blocked on `CI-11` reaching green first — don't require a job that
+   can't pass).
+4. ~~**`TEST-01` / `FB-18`** — commit and run the rules suite. It would have caught 5 of the 17 blockers.~~
+   Committed and running green in CI for its current 15-assertion scope; extending to all 71 match
+   blocks is still open.
 5. **`INF-01`** — stand up staging. Nothing else can be tested honestly against one shared project.
 6. **`BLK-01`** + **`BE-01`** + **`BE-02`** — delete the mock, deploy the proxy, align the timeouts.
    Land together; each is dangerous alone.

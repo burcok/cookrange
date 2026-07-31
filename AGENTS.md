@@ -230,8 +230,8 @@ prompt unfenced.
 
 **Owns** `test/`, `docs/TESTING.md`, CI quality gates.
 
-**Responsibilities.** Make correctness provable. At ~1 % coverage with `test/` gitignored, this role
-is currently the highest-leverage one in the project.
+**Responsibilities.** Make correctness provable. At ~1 % coverage — still true even with `test/` now
+tracked — this role is currently the highest-leverage one in the project.
 
 **May change** tests, test fixtures, CI test config, `.gitignore`'s test entry.
 **Must not** weaken or delete a test to make a build pass.

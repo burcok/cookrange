@@ -138,8 +138,8 @@ firebase emulators:start
 **when you change code, update the document that covers it in the same change.** Code is the source
 of truth, and the docs must not drift behind it.
 
-> Note: `test/` is currently in `.gitignore` and CI is red on `main` — see
-> [`docs/TESTING.md`](docs/TESTING.md) before trusting a local green run.
+> Note: `test/` is tracked and CI's local-reproducible failures are fixed — see
+> [`docs/TESTING.md`](docs/TESTING.md) for the current, confirmed state before trusting a local green run.
 
 ---
 

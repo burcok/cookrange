@@ -107,6 +107,22 @@ actively misleading rather than merely incomplete. Corrected in this pass:
 - **`lib/firebase_options.dart` generation documented** (`docs/DEVOPS.md` §4) — `DEBT-52`. The file
   stays gitignored; CI's placeholder hack is unchanged and remains a gap for anyone bootstrapping a
   device build directly from CI's config.
+- **Pushed to `main` and verified against real CI rather than trusting a local run** — the whole point
+  of the fix. Result:
+  [run #40](https://github.com/burcok/cookrange/actions/runs/30667024406), 2 of 4 jobs green.
+  - `firestore-rules` — went from failing before it could even install (the directory didn't exist in
+    the repo) to **15/15 passing**. Two real bugs surfaced and fixed getting there: `ci.yml` pinned
+    Java 17, but `firebase-tools` (installed at `latest`) now hard-requires 21+; and the
+    `admin/status` test passed an invalid 3-segment Firestore document reference (`doc()` requires an
+    even count) — fixed to the valid path `firestore.rules:32`'s own comment describes.
+  - `secret-scan` — green (unchanged).
+  - `analyze-and-test` fails at `Get dependencies` (`flutter pub get`) — confirmed **pre-existing**,
+    reproducing identically on the commit before this work and one 12 days older. Not caused by this
+    fix; not fixed by it either. Opened as `CI-11`, with a lead (`DEBT-42`'s undocumented
+    `dependency_overrides` vs. CI's Flutter `3.24.0` pin) rather than a confirmed cause — bumping CI's
+    Flutter version has its own re-verification cost, so it's scoped separately rather than folded in
+    here.
+  - `build-android` — skipped, downstream of the above.
 
 ---
 
