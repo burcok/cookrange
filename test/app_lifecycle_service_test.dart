@@ -55,6 +55,12 @@ class MockFirestoreService implements FirestoreService {
       {Map<String, dynamic>? extraData}) async {}
 
   @override
+  Future<void> syncDeviceContext(String uid) async {}
+
+  @override
+  Future<void> verifyAndRepairUserData(String uid) async {}
+
+  @override
   dynamic noSuchMethod(Invocation invocation) {
     // Allow other calls (like addLoginHistoryToLogs) to just return null or Future.value()
     if (invocation.memberName == const Symbol('addLoginHistoryToLogs')) {
