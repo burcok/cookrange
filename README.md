@@ -5,361 +5,255 @@
 <h1 align="center">Cookrange</h1>
 
 <p align="center">
-  <strong>The AI fitness & nutrition operating system for people, coaches, and gyms.</strong><br/>
-  Flutter (iOS + Android) · Firebase · OpenRouter AI · EN/TR
+  <strong>The AI fitness &amp; nutrition operating system for people, coaches, and gyms.</strong><br/>
+  Flutter (iOS + Android) · Firebase · OpenRouter AI · English &amp; Turkish
 </p>
 
 <p align="center">
-  <em>Fitness isn't an information problem — it's a consistency problem.</em><br/>
-  Cookrange combines AI nutrition, behavioral nudges, gym communities, and coach tools into one app.
+  <em>Fitness isn't an information problem — it's a consistency problem.</em>
+</p>
+
+<p align="center">
+  <sub><strong>Status: v0.9.6 — internal alpha.</strong> Not released on either store.
+  Much of the feature surface is built but unverified — see
+  <a href="PROJECT_STATE.md">PROJECT_STATE.md</a> for the honest picture.</sub>
 </p>
 
 ---
 
-## Table of Contents
+## What Cookrange is
 
-- [What Cookrange Is](#what-cookrange-is)
-- **Part 1 — [Developer Guide](#part-1--developer-guide)** (project analysis, setup, architecture)
-- **Part 2 — [User Guide](#part-2--user-guide)** (how to use every feature)
-- [Documentation Map](#documentation-map)
-- [Contributing & the Living-Docs Rule](#contributing--the-living-docs-rule)
-- [Contact](#contact)
+A cross-platform mobile app that turns fitness from a guessing game into a guided, social,
+AI-assisted habit. Everyone already knows they should eat better and move more. What they lack is a
+system that adapts to them and keeps them going on the days motivation doesn't show up.
 
----
-
-## What Cookrange Is
-
-Cookrange is a cross-platform mobile app that turns fitness from a guessing game into a guided,
-social, AI-assisted habit. It serves four kinds of people from one codebase:
+Cookrange serves four kinds of people from one codebase:
 
 | Role | What they get |
 |---|---|
-| **Consumer** | AI meal plans, food/exercise logging, recipes, analytics, AI coach chat, community, streaks |
-| **Coach** | Public profile, client management, AI client reports, sellable programs, reviews, commissions |
-| **Gym Owner** | Gym profile, QR check-ins, member community, leaderboards, analytics, gym-vs-gym competition |
-| **Admin** | Full moderation, application review, broadcasts, config, billing & abuse monitoring |
+| **Consumer** | AI meal plans, food and exercise logging, recipes, analytics, an AI coach, community, streaks |
+| **Coach** | Public profile, client roster, AI client reports, sellable programs, reviews, commissions |
+| **Gym owner** | Gym profile, QR check-ins, member community, leaderboards, attendance analytics |
+| **Admin** | Moderation, application review, broadcasts, remote config, cost monitoring |
 
-**Highlights:** personalized AI weekly meal plans · AI fitness "twin" projections · barcode + photo-free
-AI food scanning · gym & coach ecosystems · marketplace programs · premium subscriptions + AI credits ·
-referral & commission tracking · full EN/TR localization · dark/light theming · GDPR data export.
+## Vision
+
+Most nutrition apps are databases with a search box: they tell you what you ate after you ate it.
+Cookrange is built on three bets.
+
+1. **Personalization has to be real.** Your plan should come from your body, your goals, your
+   allergies, your kitchen, and your cooking skill — regenerated when any of those change, not
+   picked from a list of templates.
+2. **Consistency is social.** People stay for the community, the streak, and the friend who
+   notices they missed a day — not for the macro pie chart.
+3. **The gym is the missing layer.** Your gym and your coach already exist in your real life.
+   An app that connects to them beats one that ignores them. That three-sided marketplace —
+   consumers, coaches, gyms — is what a solo tracker can't copy.
 
 ---
 
-# Part 1 — Developer Guide
+## Main features
 
-> A comprehensive technical analysis. For the deep maps (every model, service, screen, token), this
-> README points into the `docs/` system rather than duplicating it — see the [Documentation Map](#documentation-map).
+**Nutrition & food** — AI-generated weekly meal plans built from your profile and filtered against
+your allergies · five ways to log food (meal plan, quick-add, recipe search, AI description scan,
+barcode) · a Turkish + international recipe database · full-screen cooking mode with timers ·
+auto-generated shopping lists · hydration, weight, and exercise tracking · 7-day nutrition analytics.
 
-### At a glance
+**AI** — a profile-aware nutrition coach you can talk or type to · an "AI Fitness Twin" projecting
+your next 30/60/90 days · daily accountability nudges · weekly recaps · nutrition estimates from a
+photo or a sentence. Every AI request runs through a server-side proxy with a real per-user quota.
+
+**Community** — a feed of posts, recipes, and progress with reactions and comments · friends and
+following · @mentions · 1:1 and group chat · location-based groups · streak squads · achievements,
+streaks, and leaderboards.
+
+**Gym & coach** — gym profiles with QR/GPS check-in, branded member feeds, leaderboards, and
+attendance analytics · coach profiles with reviews and client management · a program marketplace.
+
+**Platform** — full English/Turkish parity · dark and light themes · GDPR/KVKK data export and
+account deletion · a consent center · accessibility semantics.
+
+Complete catalog with per-feature state: [`docs/FEATURES.md`](docs/FEATURES.md).
+
+---
+
+## Technology stack
 
 | | |
 |---|---|
-| **Platforms** | iOS + Android (single Flutter codebase) |
-| **Frontend** | Flutter / Dart · Provider state management · `flutter_screenutil` responsive |
-| **Backend** | Firebase: Firestore, Auth, Storage, Cloud Messaging, Remote Config, Crashlytics, Performance, App Check |
-| **Serverless** | Node.js Cloud Functions (`functions/`) — AI proxy, notification fan-out, **server-authoritative entitlements / credits / purchases / referral economy / GDPR erasure** |
-| **AI** | OpenRouter LLM, proxied + quota-enforced server-side |
-| **Localization** | English + Turkish, parity-enforced in CI |
-| **Scale** | ~274 Dart files · ~100K LOC · 42 models · 75 services · 95 screens · 25+ design-system widgets |
+| **Platforms** | iOS + Android from a single Flutter codebase |
+| **Frontend** | Flutter / Dart · Provider state management · `flutter_screenutil` responsive layout |
+| **Backend** | Firebase — Firestore, Auth, Storage, Cloud Messaging, Remote Config, Crashlytics, Performance, App Check |
+| **Serverless** | Node.js Cloud Functions — AI proxy, purchase validation, entitlements, notification fan-out, account erasure |
+| **AI** | OpenRouter, proxied server-side with per-user quota and real cost metering |
+| **Local storage** | Hive (AES-256 encrypted) + SharedPreferences |
+| **Localization** | English + Turkish, parity enforced in CI |
+| **Scale** | ~115k LOC · 329 files · 42 models · 75 services · 95 screens |
 
-### Tech-stack rationale
-- **Flutter** — one codebase, native 60fps UI, both stores.
-- **Firebase** — managed auth, realtime Firestore (source of truth), storage, push, remote config,
-  crash/perf monitoring, and App Check abuse protection without running servers.
-- **Provider (not Riverpod/Bloc)** — simple, scoped `ChangeNotifier` state; services are singletons.
-- **OpenRouter behind a Cloud Function** — the API key never ships in the app; the proxy enforces
-  per-user daily quota in a Firestore transaction and validates Firebase ID + App Check tokens.
+---
 
-### Architecture (four layers)
-```
-Presentation  lib/screens/**, lib/core/widgets/**     UI only; no direct Firebase
-     ↓ provider
-State         lib/core/providers/**  (7 ChangeNotifiers: User, Theme, Language, Onboarding, …)
-     ↓ singletons
-Services      lib/core/services/**   (75 singletons — ALL business logic + Firebase access)
-     ↓ models
-Data          lib/core/models/**, lib/core/data/**, lib/core/repositories/**
-     ↓
-Backend       Firestore · Storage · Auth · FCM · Remote Config · Crashlytics · App Check
-              + functions/index.js (aiProxy, notif fan-out) + OpenRouter
-```
-**Inviolable:** UI never calls Firebase directly (always via a service) · services are singletons ·
-no raw colors/text styles in UI (design tokens only) · PII lives in `users/{uid}/private/nutrition`,
-never the public doc · **the client is never trusted for entitlements, AI credits, the economy, or
-moderation state** — those are server-only (see [Security](#security)). Full detail in
-[`ARCHITECTURE.md`](ARCHITECTURE.md).
+## Installation
 
-### Security
+**Prerequisites** — Flutter SDK 3.24+, a Firebase project, an OpenRouter API key (development only),
+Xcode (iOS) and/or Android Studio.
 
-Cookrange runs a **server-authoritative trust model**: the client renders state but is never the
-authority for anything that has value or affects safety. (Cloud Functions + locked Firestore rules
-deployed to the `cookrange-app` project; app not yet publicly launched.)
-
-- **Server is the authority** — Premium, AI credits, referrals, coach commissions, and account
-  deletion all live in Cloud Functions (`functions/`) behind locked rules. The client calls server
-  callables; it cannot mint credits, grant itself Premium, or self-refer.
-- **Cloud Functions backend** — `aiProxy` (model allowlist, `max_tokens`/payload caps, fail-closed
-  per-uid quota + rate limit, App Check gated by `APP_ENV`, no wildcard CORS); `entitlements.js`
-  (server-only grant/revoke Premium + bonus credits); `purchases.js` (Apple App Store Server API +
-  Google Play receipt validation, token dedupe, fail-closed; store notifications revoke on
-  refund/expiry); `economy.js` (server-validated referral + commission ledger); `account.js`
-  (`deleteUserAccount` recursive erasure); `config.js` (`APP_ENV` development/production).
-- **Locked Firestore rules** — `users/{uid}` updates are field-locked so clients can't write
-  `subscription_tier` / `ai_credits_*` / `referral_used` / `is_banned`; `ai_credits`/`entitlements`
-  are owner-read + server-write; `processed_purchases`, `commissions`, and `failed_login_attempts`
-  are server-only; content-length caps on posts/comments/chat/signals.
-- **Encrypted local storage** — Hive boxes are AES-256 encrypted with a key held in
-  `flutter_secure_storage`.
-- **GDPR erasure & export** — account deletion calls the server `deleteUserAccount` for recursive
-  KVKK/GDPR erasure of the whole user subtree + Storage + the Auth user; a complete data export is
-  available from Settings. Analytics/Crashlytics collection is **privacy-by-default OFF**, gated on
-  consent.
-- **Hardened AI proxy** — the OpenRouter key never ships in release (bundled key is debug-only); the
-  proxy is mandatory in release with real App Check providers (Play Integrity / App Attest). A
-  deterministic allergen safety filter, prompt-injection guard, null-safe parsing of
-  attacker-controlled docs, and a safe URL launcher round out the AI/data path. `aiProxy` is a public
-  HTTPS function (needs `allUsers` **Cloud Functions Invoker**) that does its own auth in-code — it
-  **server-decides the model** (ignores the client's requested model for cost safety) and **meters
-  real cost**: it captures OpenRouter token usage × per-model price into `ai_usage_logs` /
-  `ai_usage_stats` / per-user lifetime totals, surfaced in the admin cost dashboard.
-- **Remote app config** — `app_config/global` (public-read, admin-write, no secrets) drives both the
-  client and `aiProxy`: AI model / max-tokens / quotas, force/soft **update gate**, **maintenance
-  mode**, in-app **announcements**, and **feature kill-switches** — all editable from the admin panel
-  and applied **without a redeploy** (`AppConfigService`, 6h cache-first TTL).
-
-Deferred to go-live (tracked in [`TODO.md`](TODO.md)): disabling Android cleartext traffic,
-root/jailbreak + FLAG_SECURE + cert-pinning + obfuscation, Storage chat-image scoping + upload
-scanning/EXIF strip, minimizing the world-readable user doc, fully server-authored
-notifications/friends, point-of-use AI consent, and server-side streak/reputation. Console/external
-go-live steps (rotate the leaked Admin SA key, App Check registration + enforcement, store accounts +
-creds + iOS APNs, OpenRouter spend cap) are owner-only.
-
-### Repository structure
-```
-cookrange/
-├── CLAUDE.md · AGENTS.md · ARCHITECTURE.md   ← engineering rules / how-to-work / system map
-├── README.md · TODO.md                       ← this file / roadmap & status
-├── docs/                                      ← the knowledge base (see Documentation Map)
-├── lib/
-│   ├── main.dart                              app entry: Firebase → MultiProvider → MaterialApp
-│   ├── core/
-│   │   ├── models/        data models (Firestore ↔ app)
-│   │   ├── data/          seed data (dishes, 81 TR provinces + districts)
-│   │   ├── repositories/  in-memory caches
-│   │   ├── providers/     ChangeNotifier state
-│   │   ├── services/      business logic singletons (+ ai/)
-│   │   ├── theme/         design tokens (palette, typography, dimensions, gradients)
-│   │   ├── widgets/ds/    design-system components (one barrel: ds.dart)
-│   │   ├── localization/  AppLocalizations (JSON-backed)
-│   │   └── utils/         routes, route guard, navigation helpers
-│   └── screens/           95 screens, one dir per feature (consumer + gym/coach/admin)
-├── functions/             Cloud Functions (Node.js)
-├── scripts/               load_test.js & one-offs
-├── test/                  unit + i18n parity tests
-├── assets/localization/   en.json · tr.json
-└── firestore.rules · firestore.indexes.json · storage.rules · firebase.json
-```
-
-### Key data-flow paths
-- **Boot:** `main()` → Firebase init → `MultiProvider` → splash runs `AppInitializationService`
-  (dotenv/AI, error handler, Firestore persistence + App Check, Hive, Remote Config → AI proxy URL,
-  Crashlytics/Analytics/Auth/FCM/Performance, background seeders) → `UserProvider.loadUser()` →
-  `RouteGuard` (ban → auth → email-verify → onboarding → main).
-- **AI request:** screen → `AiCreditService` (read-only in proxy mode) → feature service →
-  `AIService` → **`aiProxy` Cloud Function** (verifies token + App Check, runs
-  `enforceAndConsumeQuota` transaction, 402 if exceeded, else OpenRouter) → parsed, credit rolled
-  back on failure.
-- **Roles:** `UserProvider` holds a live Firestore listener on `users/{uid}`; an admin role/tier flip
-  updates menus and gates **without restart**.
-- **PII split:** public profile in `users/{uid}`; sensitive nutrition in `users/{uid}/private/nutrition`.
-- **Notifications:** structured-only writes → Cloud Function push fan-out → localized at render time
-  on the reader's device.
-
-### Local setup
 ```bash
-# Prerequisites: Flutter SDK (3.24+), a Firebase project, an OpenRouter API key (dev)
+git clone https://github.com/burcok/cookrange.git
+cd cookrange
 flutter pub get
-echo "OPENROUTER_API_KEY=sk-or-..." > .env   # dev-only key; prod uses the server-side proxy
-flutter run                                   # runs on a connected iOS/Android device or simulator
 ```
-Firebase config files (`android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist`)
-must be present. Optional local backend: `firebase emulators:start` (auth/firestore/storage/UI ports
-in `firebase.json`).
 
-### Quality gates
+Add your Firebase config files:
+- `android/app/google-services.json`
+- `ios/Runner/GoogleService-Info.plist`
+
+Create `.env` in the project root:
+
 ```bash
-flutter analyze lib/                      # MUST be 0 errors
-flutter test                              # unit + i18n parity
-flutter test test/i18n_parity_test.dart   # after any string change
-dart format lib/                          # CI enforces formatting
-node scripts/load_test.js                 # AI proxy load test (PROXY_URL + ID_TOKEN)
+OPENROUTER_API_KEY=sk-or-...   # development only — release builds use the server-side proxy
+APP_ENV=development
 ```
-**CI** (`.github/workflows/ci.yml`) on every PR: format check → analyze → test → Android debug build.
-**Deploy** (`deploy.yml`) on main: iOS → TestFlight, Android → Play internal. Full launch path in
-[`docs/roadmap/GO_LIVE.md`](docs/roadmap/GO_LIVE.md).
 
-### Engineering rules (the short version)
-Every change must satisfy the Definition of Done in [`CLAUDE.md`](CLAUDE.md): multi-role reasoning,
-optimization, correct data tier + indexes + rules, logging, smooth iOS/Android UX, dark/light + EN/TR,
-flagship-grade states (loading/empty/error/modal), `flutter analyze` 0 errors, and **docs updated**.
-Before coding, read [`AGENTS.md`](AGENTS.md) (the per-prompt workflow) and the relevant `docs/` file.
+```bash
+flutter run
+```
 
-**Legal-first (KVKK + GDPR):** data security and lawful processing are release blockers. Any feature
-touching personal data must pass the Legal & Privacy checklist (`AGENTS.md` §2) and follow
-[`docs/COMPLIANCE.md`](docs/COMPLIANCE.md) — disclose purpose + get consent *before* access, minimize
-(prefer transient/on-device over storage), and update the data inventory. (In-app legal documents are
-drafts pending qualified-lawyer review before launch.)
+## Development setup
 
----
+```bash
+flutter analyze lib/                      # must report 0 errors
+flutter test                              # unit + i18n parity tests
+flutter test test/i18n_parity_test.dart   # after changing any user-facing string
+dart format lib/                          # CI enforces formatting
+```
 
-# Part 2 — User Guide
+Optional local backend:
 
-> How to actually use Cookrange, feature by feature. Everything below is shipped in the app today.
+```bash
+firebase emulators:start
+```
 
-### Getting started
-1. **Sign up** with email, Google, or Apple. Verify your email when prompted.
-2. **Feature tour** — a quick 5-screen intro shows what the app does (replayable later from Settings).
-3. **Onboarding** — a 6-step setup captures your goals, body metrics, activity level, dietary
-   preferences, allergies, and cooking level. (Your sensitive data is stored privately and only you
-   can see it.) A fast 2-step version exists for returning users.
-4. **Your first meal plan** — Cookrange generates a personalized weekly plan with an animated
-   progress screen, then drops you on the Home dashboard.
+**Before contributing**, read [`CLAUDE.md`](CLAUDE.md) (engineering rules and Definition of Done) and
+[`AGENTS.md`](AGENTS.md) (workflow and review checklists). The one rule worth stating up front:
+**when you change code, update the document that covers it in the same change.** Code is the source
+of truth, and the docs must not drift behind it.
 
-### The Home dashboard (your daily hub)
-- **Today's summary** — calorie ring (consumed vs. target), protein/carbs/fat macros, and water intake.
-- **Weekly meal plan** — swipe through the days; tap a meal to view the recipe or swap it.
-- **Log food** — tap quick-add to log meals (see below). Logged items update your ring in real time.
-- **Exercise** — log a workout (running, cycling, weights, …); calories burned adjust your day.
-- **AI insight card** — a daily, personalized nudge based on your goal and streak.
-- **Streak** — keep your daily streak alive; milestones celebrate you.
-- Pull down to refresh.
-
-### Logging food (five ways)
-1. **From your meal plan** — tap a planned meal → log it.
-2. **Quick-add** — pick from recent/frequent foods you've logged before.
-3. **Search the recipe database** — Turkish + international dishes with full nutrition.
-4. **AI food scan** — type what you ate ("2 eggs and toast") and AI estimates the nutrition.
-5. **Barcode scan** — scan a packaged product to pull its nutrition.
-
-### Recipes & cooking
-- **Recipe detail** — ingredients, step-by-step instructions, full macros, and a nutrition card.
-- **Favorites** — bookmark recipes (heart icon) and find them under Favorites.
-- **Cooking Mode** — a full-screen, step-by-step guide with a built-in timer; your screen stays awake.
-  Finishing logs the meal automatically.
-
-### Meal plans & shopping
-- **Regenerate** — your plan adapts when your profile changes; past plans are archived and restorable.
-- **Shopping list** — auto-generate it from your meal plan, check items off, sync across devices,
-  and share it. Export your plan to your calendar (.ics).
-
-### Nutrition analytics
-See a 7-day breakdown of calories vs. target, macro ratios, and goal adherence — so you can see
-trends, not just today.
-
-### AI tools
-- **AI Chat coach** — ask anything ("what should I eat today?", "make a low-carb dinner", "I missed
-  my workout"). It knows your profile. Works by voice too.
-- **AI Fitness Twin** — a 30/60/90-day projection of your progress, goal date, and a motivation score.
-- **Daily accountability & risk nudges** — gentle prompts when your consistency slips.
-- **AI credits** — free accounts get 2 AI generations/day, Premium gets 20/day. A live badge shows
-  what's left; you can top up with credit packs or upgrade.
-
-### Community & social
-- **Feed** — share posts (text, recipes, progress, meals), react, and comment. Filter by Global,
-  Friends, Following, your Gym, or Saved; browse by topic (fat loss, muscle, vegetarian, …).
-- **Friends & follow** — search people, send requests, follow others; see weekly community highlights.
-- **@mentions** — tag people in posts; they get notified.
-- **Streak Squads** — form small accountability groups with an invite code and a shared streak goal.
-- **Chat** — 1-on-1 and group chats with typing indicators, images, and read receipts.
-- **Notifications** — everything that involves you, always in your language; mute categories you don't
-  want in Settings.
-
-### For gym members
-- **Find & join a gym** — discover gyms by city/district, or tap **Near Me** to sort by distance on a
-  map. Cookrange asks first and tells you your location is used only on your device to sort gyms and is
-  **not stored** (KVKK/GDPR); you can decline and keep browsing by city. Scan a gym's QR to join and check in.
-- **Gym community** — your gym's own feed, announcements, and leaderboard.
-- **Check in** — QR, GPS, or manual; climb your gym's leaderboard.
-
-### For gym owners
-Apply from the side menu → once approved you get a **Gym Dashboard**: set up your gym (logo, brand
-color, location), manage members, display a check-in QR, run a branded community feed, view a
-leaderboard, and see analytics (active members, peak hours, retention).
-
-### For coaches
-Apply (specializations, certifications, references) → once approved you get a **Coach Dashboard**:
-a public profile with reviews and rating, a client roster with at-risk detection, AI-generated client
-reports, and the ability to publish **programs** to the marketplace. Clients can rate you.
-
-### Programs marketplace
-Browse fitness programs by category, view week-by-week breakdowns and reviews, and **enroll** to track
-your progress week by week. (Free programs are live; paid programs are coming with the payments rollout.)
-
-### Premium, credits & referrals
-- **Premium** — more AI/day, advanced meal customization, full analytics, and coach-visibility perks.
-- **Credit packs** — one-off top-ups for extra AI generations.
-- **Referrals** — share your 6-character code or invite link; you and your friend each get a 7-day
-  Premium trial. Coaches earn commission when people subscribe via their code (tracked now; payouts
-  rolling out).
-
-### Profile & settings
-- **Profile** — edit your photo, bio, and body metrics; see your stats, reputation, and completeness.
-  Make your profile private so only friends see the details.
-- **Settings** — switch **language (English/Turkish)** and **theme (light/dark)**, manage notification
-  categories, toggle privacy, **export all your data** (GDPR), copy your referral link, get support,
-  and (for staff) open the admin panel.
-
-### Privacy & your data (KVKK / GDPR)
-Cookrange is built privacy-first. Your sensitive info (body metrics, allergies, dietary restrictions)
-is stored **privately and owner-only**. Sensitive access is **consent-gated** — we tell you the
-purpose and whether data is stored *before* asking (e.g. location for "Near Me" is used on your device
-and **not stored**). You can **export everything** you've created as a file, or **delete your account
-entirely**, from Settings. Full framework: [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md).
+> Note: `test/` is currently in `.gitignore` and CI is red on `main` — see
+> [`docs/TESTING.md`](docs/TESTING.md) before trusting a local green run.
 
 ---
 
-## Documentation Map
+## Screenshots
 
-For contributors and AI agents, the full knowledge base lives in `docs/` (so you never have to read
-the whole codebase to make a change):
+> _To be added._ Store-ready captures are produced during **M4 — Beta**: 6.7" and 6.5" iPhone,
+> Android phone and tablet, plus a Play feature graphic. Required set and sizes:
+> [`docs/roadmap/GO_LIVE.md`](docs/roadmap/GO_LIVE.md) Phase 3.4.
 
-| Doc | Covers |
+| Home dashboard | Meal plan | AI coach | Community |
+|---|---|---|---|
+| _pending_ | _pending_ | _pending_ | _pending_ |
+
+---
+
+## Product roadmap
+
+| Milestone | Version | Theme |
+|---|---|---|
+| **M1 — Truth** | v0.9.7 | Make what already exists actually work; close all 17 blockers; CI green |
+| **M2 — Legal** | v0.9.8 | KVKK/GDPR complete: erasure, export, privacy filings, backups |
+| **M3 — Commerce** | v0.9.9 | Store enrolment, live products, one real sandbox purchase → real entitlement |
+| **M4 — Beta** | v1.0.0-beta1 | 50–100 real testers, ≥ 300 recipes, retention measured |
+| **M5 — Launch** | v1.0.0 | Consumer-only public launch on both stores |
+| **M6 — Ecosystem** | v1.1.0 | Reopen gym + coach with pilot partners and a payout rail |
+| **M7 — Scale** | v1.2.0+ | Search, analytics pipeline, 10k → 100k users |
+
+**v1.0 ships consumer-only.** Gym, coach, programs, marketplace, and payouts are deliberately held
+back to M6 so the consumer product can prove retention first — they stay in the codebase behind
+feature flags. Reasoning: [`DECISIONS.md`](DECISIONS.md) ADR-012.
+
+Detail: [`PROJECT_STATE.md`](PROJECT_STATE.md) · [`docs/roadmap/GO_LIVE.md`](docs/roadmap/GO_LIVE.md).
+
+---
+
+## Premium
+
+Free accounts get the whole product — logging, meal plans, recipes, community, streaks — with **2 AI
+generations per day**. Premium raises that to **20 per day** and adds advanced meal customization,
+full analytics history, and coach-visibility perks. One-off credit packs top up AI generations
+without a subscription, and a referral code gives both people a 7-day trial.
+
+The principle: **the core product is free and complete.** Premium buys more AI, not access to your
+own data.
+
+Monthly and yearly subscriptions are planned for both stores; entitlements are validated
+server-side. Details: [`docs/PREMIUM.md`](docs/PREMIUM.md).
+
+## Gym ecosystem
+
+Gyms get a real presence rather than a listing: a branded profile, QR and GPS check-ins, a
+members-only community feed in the gym's colours, member leaderboards, and attendance analytics
+showing active members, peak hours, and retention.
+
+The longer-term vision is white-label — a gym running its own branded experience on Cookrange's
+infrastructure — plus class scheduling, gym-to-gym competitions, and formal gym↔coach
+relationships so a gym can bring its trainers onto the platform with revenue sharing.
+
+Location features follow a strict rule: **"Near Me" sorting happens entirely on your device and no
+coordinate is ever stored.** You're told that before the permission dialog appears, and declining
+keeps everything else working. Vision and roadmap: [`docs/GYM_ECOSYSTEM.md`](docs/GYM_ECOSYSTEM.md).
+
+## Community
+
+Fitness apps lose people in week three. The community exists to be the reason someone opens the app
+on the day they don't feel like it — a feed where progress posts get reactions from people on the
+same journey, streak squads where a small group shares one goal, gym feeds tying the app to a
+physical place, and location-based groups connecting people who train in the same city.
+
+Notifications are stored as structure, never text, so every message renders in the reader's own
+language with the sender's current name. Moderation runs keyword screening, image scanning, user
+reports, and an admin queue. Details: [`docs/COMMUNITY.md`](docs/COMMUNITY.md).
+
+---
+
+## Privacy & your data
+
+Built privacy-first, because Turkey's KVKK and the EU's GDPR treat health data as special-category —
+and because it's the right default.
+
+- **Sensitive data is isolated.** Body metrics, allergies, and dietary restrictions live in an
+  owner-only store that no other user can read.
+- **Consent comes before access**, with the purpose, whether the data is stored, and a real option
+  to decline.
+- **You can take it all with you** — export everything you've created, or delete your account and
+  everything in it, from Settings.
+- **Analytics are off until you turn them on.**
+
+Framework: [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md). In-app legal documents (Privacy Policy, Terms,
+KVKK Aydınlatma Metni, Açık Rıza) are drafted in both languages and **pending qualified legal review
+before launch**.
+
+---
+
+## Documentation
+
+Cookrange keeps a routed documentation system so contributors and AI agents can understand any part
+of it without reading the codebase.
+
+**Start here:** [`PROJECT_STATE.md`](PROJECT_STATE.md) (what works now) →
+[`docs/INDEX.md`](docs/INDEX.md) (which document your task needs).
+
+| Document | Covers |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | How to work: per-prompt workflow, pre-flight checklist, anti-drift rules |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | System layers, data flow, directory map |
-| [`CLAUDE.md`](CLAUDE.md) | Engineering rules (R0–R9) + Definition of Done |
-| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | Models, Firestore collections, indexes, security & storage rules |
-| [`docs/SERVICES.md`](docs/SERVICES.md) | All 75 services + 4 Cloud Functions |
-| [`docs/FRONTEND.md`](docs/FRONTEND.md) | All 95 screens, navigation, routing |
-| [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) | Tokens, components, motion, accessibility |
-| [`docs/FEATURES.md`](docs/FEATURES.md) | Feature catalog (what exists, where) |
-| [`docs/PLATFORM.md`](docs/PLATFORM.md) | iOS/Android parity, native config, CI/CD |
-| [`docs/LOCALIZATION.md`](docs/LOCALIZATION.md) | i18n system + how to add strings |
-| [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md) | Legal-first framework — KVKK + GDPR, data inventory, consent pattern, per-feature legal checklist |
-| [`docs/roadmap/GO_LIVE.md`](docs/roadmap/GO_LIVE.md) | Full App Store + Play Store launch roadmap |
-| [`docs/roadmap/FUTURE_FEATURES.md`](docs/roadmap/FUTURE_FEATURES.md) | Missing & future features with build plans |
-| [`TODO.md`](TODO.md) | Live status & roadmap |
-
----
-
-## Contributing & the Living-Docs Rule
-
-This project is built to stay self-documenting. **When you add or change a feature, the documentation
-must change in the same task — code is the source of truth, and docs must never drift behind it.**
-
-The rule (enforced via [`AGENTS.md`](AGENTS.md) §3): touch a file → update its owning doc.
-- New/changed **model, Firestore rule, or index** → update `docs/DATA_MODEL.md`
-- New/changed **service or Cloud Function** → update `docs/SERVICES.md`
-- New/changed **screen, route, or navigation** → update `docs/FRONTEND.md`
-- New/changed **design token or component** → update `docs/DESIGN_SYSTEM.md`
-- **Any new or removed user-facing capability** → update `docs/FEATURES.md` **and this README**
-  (both the feature list and the User Guide section)
-- Platform/native change → `docs/PLATFORM.md` · localization → `docs/LOCALIZATION.md`
-- Shipped a future feature → move it out of `docs/roadmap/FUTURE_FEATURES.md`
-- Scope/status change → `TODO.md`
-
-Before committing: `flutter analyze lib/` (0 errors), `flutter test`, and confirm the relevant docs
-were updated.
+| [`PROJECT_STATE.md`](PROJECT_STATE.md) | Live status, blockers, milestones — **the only place status lives** |
+| [`docs/INDEX.md`](docs/INDEX.md) | The task → documents router |
+| [`CLAUDE.md`](CLAUDE.md) · [`AGENTS.md`](AGENTS.md) | Engineering rules · agent roles and workflow |
+| [`DECISIONS.md`](DECISIONS.md) | Architecture Decision Records — why it's built this way |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Layers, data flow, directory map |
+| [`docs/DATABASE.md`](docs/DATABASE.md) · [`docs/API.md`](docs/API.md) | Data model · backend contracts |
+| [`docs/SECURITY.md`](docs/SECURITY.md) · [`docs/AUTHENTICATION.md`](docs/AUTHENTICATION.md) | Threat model · identity |
+| [`docs/AI_SYSTEM.md`](docs/AI_SYSTEM.md) · [`docs/PREMIUM.md`](docs/PREMIUM.md) | AI architecture · monetization |
+| [`docs/FEATURES.md`](docs/FEATURES.md) | Capability catalog with per-feature state |
+| [`CHANGELOG.md`](CHANGELOG.md) · [`TODO.md`](TODO.md) | History · backlog |
 
 ---
 

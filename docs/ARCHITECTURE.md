@@ -1,7 +1,8 @@
 # ARCHITECTURE.md — Cookrange System Map
 
 > The structural truth of the codebase. If you're changing *where* something lives or
-> *how layers talk*, this is the contract. Feature-level detail lives in `docs/`.
+> *how layers talk*, this is the contract. Feature-level detail lives in the sibling documents —
+> see [`INDEX.md`](INDEX.md). **What actually works** lives in [`../PROJECT_STATE.md`](../PROJECT_STATE.md).
 
 ---
 
@@ -52,7 +53,7 @@ Cloud Functions** layer, with **OpenRouter** for LLM inference (proxied server-s
 │  DATA                     lib/core/models/**, lib/core/data/**,    │
 │                           lib/core/repositories/**                 │
 │  Pure Dart models (fromFirestore/toFirestore/copyWith), seed data │
-│  (dishes, TR locations), in-memory repo caches. See DATA_MODEL.md.│
+│  (dishes, TR locations), in-memory repo caches. See DATABASE.md.│
 └───────────────────────────────┬──────────────────────────────────┘
                                  ▼
 ┌──────────────────────────────────────────────────────────────────┐
@@ -159,7 +160,7 @@ writes **structured** data only → `onInAppNotificationCreated` Cloud Function 
 ## 6. Backend Topology
 
 - **Firestore** — source of truth. ~40 collection paths, ~52 composite indexes, full security
-  rules. Map in `docs/DATA_MODEL.md`.
+  rules. Map in `docs/DATABASE.md`.
 - **Storage** — profile photos, post/chat images, application docs, gym logos. Rules enforce
   owner-write + size/type limits.
 - **Cloud Functions** (`functions/`):
@@ -168,7 +169,7 @@ writes **structured** data only → `onInAppNotificationCreated` Cloud Function 
     Server-authoritative model config: reads `app_config/global` (Admin SDK, 5-min cache) for
     model/tokens/temperature/quota and ignores the client-sent model. Logs real OpenRouter token
     usage/cost to `ai_usage_logs` / `ai_usage_stats`. Requires the `allUsers` Cloud Functions Invoker
-    role (deployed private; auth is in-code) — see `docs/PLATFORM.md` §5b.
+    role (deployed private; auth is in-code) — see `API.md` §2.
   - `onInAppNotificationCreated` — Firestore trigger; push fan-out + mute prefs.
   - `onChatMessageCreated` — Firestore trigger; chat push.
   - `executeBroadcast` — internal helper for admin broadcasts.
@@ -217,12 +218,11 @@ project; app not yet publicly launched).
   Analytics/Crashlytics collection is privacy-by-default OFF, gated on consent; a complete GDPR data
   export, deterministic allergen safety filter on meal plans, prompt-injection guard, null-safe
   parsing of attacker-controlled docs, and a safe URL launcher round it out.
-- **Deferred to go-live** (tracked in `TODO.md`): Android cleartext traffic still enabled (only Hive
-  encryption done); no root/jailbreak detection, `FLAG_SECURE`, cert-pinning, or obfuscation; Storage
-  chat-image scoping + upload scanning/EXIF strip; minimizing the world-readable user doc; fully
-  server-authored notifications/friends; point-of-use AI consent; server-side streak/reputation.
-  Console/owner-only steps: rotate the leaked Admin SA key, App Check registration + enforcement,
-  store accounts + creds + iOS APNs, OpenRouter spend cap.
+- ⚠️ **This model is designed and largely code-complete, but not activated.** All 18 security gates
+  `S0`–`S17` are open and App Check is unenforced. The gap list, the deploy ordering constraint, and
+  the attack scenarios are owned by [`SECURITY.md`](SECURITY.md); current status is owned by
+  [`../PROJECT_STATE.md`](../PROJECT_STATE.md). Do not infer from this section that the guarantees
+  above are live.
 
 ---
 
@@ -263,4 +263,6 @@ Full versioned list in `docs/SERVICES.md` §Dependencies and `pubspec.yaml`.
 
 ---
 
-**See also:** `AGENTS.md` (how to work) · `CLAUDE.md` (rules) · `docs/INDEX.md` (doc map).
+**See also:** [`../CLAUDE.md`](../CLAUDE.md) (rules) · [`../AGENTS.md`](../AGENTS.md) (how to work) ·
+[`../DECISIONS.md`](../DECISIONS.md) (why it's built this way) · [`INDEX.md`](INDEX.md) (doc router) ·
+[`../PROJECT_STATE.md`](../PROJECT_STATE.md) (what actually works).

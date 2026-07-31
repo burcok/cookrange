@@ -135,7 +135,7 @@ timezone changes; notification permission denied (no schedule, surface a soft pr
 `settings.reminders.streak_*`; `notification_prefs.reminders`.
 
 ### Docs to update on completion
-`docs/SERVICES.md` (PushNotificationService + functions), `docs/DATA_MODEL.md`
+`docs/SERVICES.md` (PushNotificationService + functions), `docs/DATABASE.md`
 (onboarding_data reminder fields, NotificationType, `broadcasts`), `docs/LOCALIZATION.md` (key groups),
 `docs/PLATFORM.md` (notification behavior), `CLAUDE.md` Key Services, `TODO.md`.
 
@@ -253,7 +253,7 @@ premium conversion from the recap CTA.
 `..share`, `..low_data`, `..weight_trend`, `notifications.feed.weekly_recap_ready_title/body`.
 
 ### Docs to update
-`docs/SERVICES.md` (AiInsightService + functions), `docs/DATA_MODEL.md` (`ai_weekly_recaps` +
+`docs/SERVICES.md` (AiInsightService + functions), `docs/DATABASE.md` (`ai_weekly_recaps` +
 rules), `docs/FRONTEND.md` (new screen + route), `docs/FEATURES.md`, `docs/LOCALIZATION.md`,
 `CLAUDE.md` (Key Services + Firestore collections), `TODO.md`.
 
@@ -307,7 +307,7 @@ first open), locked-state copy. **Success metric:** streak-survival rate; achiev
 first_photo_log…), `streak.freeze_count`, `streak.freeze_used_title/body`.
 
 ### Docs to update
-`docs/SERVICES.md` (AchievementService), `docs/DATA_MODEL.md` (achievements subcollection + rules +
+`docs/SERVICES.md` (AchievementService), `docs/DATABASE.md` (achievements subcollection + rules +
 NotificationType), `docs/FRONTEND.md` (achievements grid + profile), `docs/FEATURES.md`,
 `docs/LOCALIZATION.md`, `CLAUDE.md` (Key Services + collections), `TODO.md`.
 
@@ -349,7 +349,7 @@ image); offline (queue/snackbar). Earns the `first_cook` achievement (ties to 15
 
 ---
 
-## 3. New Firestore surface summary (for `DATA_MODEL.md` + `firestore.rules`)
+## 3. New Firestore surface summary (for `DATABASE.md` + `firestore.rules`)
 
 | Path | Purpose | Rules | Index |
 |---|---|---|---|

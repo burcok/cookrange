@@ -1,0 +1,128 @@
+# CHANGELOG
+
+All notable changes to Cookrange. Format follows [Keep a Changelog](https://keepachangelog.com/);
+versioning follows [Semantic Versioning](https://semver.org/).
+
+> Live status is in [`PROJECT_STATE.md`](PROJECT_STATE.md); the backlog is in [`TODO.md`](TODO.md);
+> the reasoning behind structural choices is in [`DECISIONS.md`](DECISIONS.md).
+>
+> **The app has never been publicly released.** Versions below are internal milestones.
+
+---
+
+## [Unreleased]
+
+### Added — documentation system (2026-07-31)
+
+A complete documentation ecosystem, so future contributors and AI agents can understand the project
+without scanning the repository.
+
+**New root documents**
+- `PROJECT_STATE.md` — live status: version, milestone, progress, the 17 critical blockers, health
+  scorecard, next recommended actions. **The single source of truth for status.**
+- `DECISIONS.md` — 17 Architecture Decision Records (ADR-001 … ADR-017) covering Flutter, Firebase,
+  Provider, singletons, the abandoned repository layer, the AI proxy, `in_app_purchase` vs
+  RevenueCat, the server-authoritative trust boundary, the PII split, structured notifications,
+  remote app config, the consumer-only v1 scope cut, inverted onboarding, i18n parity, the design
+  system, caching tiers, and this documentation architecture.
+- `CHANGELOG.md` — this file.
+
+**New technical documents**
+- `docs/SECURITY.md` — threat model, adversaries, authorization layers, secrets, the `S0`–`S17` gate
+  list, and six attack scenarios walked end to end.
+- `docs/AUTHENTICATION.md` — registration, login, OAuth, the `RouteGuard` gate order, email
+  verification, session and token handling, GDPR account deletion.
+- `docs/AI_SYSTEM.md` — LLM architecture, models, prompt strategy, cost control, quota, injection
+  prevention, degradation contract, roadmap.
+- `docs/API.md` — all 13 Cloud Functions, request/response contracts, webhooks, triggers, scheduled
+  jobs, external services, deploy gotchas.
+- `docs/PREMIUM.md` — tiers, products, AI credits, the purchase flow, entitlement truth, referrals,
+  commissions, and what blocks revenue.
+- `docs/COMMUNITY.md` — feed, social graph, chat, notifications, gamification, moderation layers.
+- `docs/GYM_ECOSYSTEM.md` — gym model, onboarding, attendance, GPS-presence privacy pattern,
+  analytics, M6 roadmap.
+- `docs/COACH_ECOSYSTEM.md` — coach profiles, discovery, client management, reviews, marketplace,
+  revenue sharing.
+- `docs/TESTING.md` — the honest coverage picture, why it's ~1 %, the target pyramid, priorities.
+- `docs/DEVOPS.md` — CI/CD, environments, secrets, Firebase deploy order, release process,
+  monitoring gaps.
+
+**Restructured**
+- `CLAUDE.md` — rewritten as **rules only**: identity, context-loading strategy, coding philosophy,
+  R0–R9, architecture/security/documentation/testing rules, coding standards, forbidden behaviours,
+  Definition of Done. Reduced from ~49 KB to ~13 KB by removing service, collection, and feature
+  tables that duplicated `docs/`. This file loads into every session, so the saving recurs
+  permanently.
+- `AGENTS.md` — rewritten around **eight specialist agent roles** (Architecture, Security, Frontend,
+  Backend, Firebase, AI, Testing, Documentation), each with responsibilities, allowed changes, and a
+  review checklist; plus the per-prompt workflow and anti-drift constraints.
+- `docs/INDEX.md` — rewritten as a **task router**: a four-file bootstrap, a task → documents table,
+  and a registry recording each document's owned source paths and dependencies.
+- `README.md` — refocused as a public product overview (vision, features, stack, setup, roadmap,
+  premium, gym and community vision). Internal architecture, security detail, and implementation
+  rationale moved to `docs/` and `DECISIONS.md`.
+- `docs/FEATURES.md` — rebuilt with an explicit **State** column (✅ working · 🚧 built-unverified ·
+  ⛔ blocked · 🔒 kill-switched · ❌ not built) plus Since / Depends on / Next per capability.
+
+**Moved / merged / removed**
+- `ARCHITECTURE.md` → `docs/ARCHITECTURE.md`
+- `docs/DATA_MODEL.md` → `docs/DATABASE.md`, extended with a collection tree, relationships, data
+  lifecycle, and migration strategy
+- `docs/generated/db-schema.md` — **deleted**; its flat path tree is folded into `DATABASE.md` §1,
+  removing a hand-maintained derived copy
+- CI/CD detail moved out of `docs/PLATFORM.md` into `docs/DEVOPS.md`; `PLATFORM.md` now owns native
+  parity only
+
+### Fixed — documentation accuracy
+
+The prior documentation asserted capabilities as shipped that do not function, which made it
+actively misleading rather than merely incomplete. Corrected in this pass:
+
+- **Status is now separated from description.** Feature documents describe how something is *built*;
+  only `PROJECT_STATE.md` claims anything *works*. `README.md` no longer states that every listed
+  feature is live in the app.
+- **Cloud Function count** — documented as "4" in the index and "10/12" in `SERVICES.md`; verified
+  **13** exported functions and corrected in `docs/API.md`.
+- **RevenueCat** — referenced as a project dependency in the documentation request; the codebase
+  uses `in_app_purchase` with self-hosted receipt validation and has no RevenueCat dependency.
+  Recorded as ADR-007 with the trade-off and a note to revisit.
+- **`test/` is gitignored** — surfaced in `TESTING.md` and `DEVOPS.md` as the root cause of the ~1 %
+  coverage and the red CI pipeline, rather than left implicit.
+
+---
+
+## [0.9.6] — 2026-07-31 — *internal alpha*
+
+Full audit (`TODO.md`) established the honest baseline: ~84 % of the feature surface written, ~45 %
+verified functional, 17 critical blockers, all 18 security gates open, ~1 % test coverage.
+Scope decision: **consumer-only v1** — gym, coach, programs, marketplace, commissions, and payouts
+deferred to M6 behind kill-switches (ADR-012).
+
+## [0.9.5] — 2026-07 — *admin, config & cost*
+Centralized admin navigation (categorized hub grid + shared section scaffold) · remote app
+configuration service with feature kill-switches and maintenance/force-update gates · AI usage
+tracking with per-user lookup and per-request-type categorization · Cloud Functions backend, cost
+analytics, and mandatory AI data-usage consent flows · achievement tracking, weekly recap, and
+streak calendar.
+
+## [0.9.x] — 2026-06 — *security hardening & onboarding V2*
+Server-authoritative trust boundary (ADR-008): entitlements, AI credits, referral economy, purchase
+validation, and account erasure moved to Cloud Functions behind field-locked rules · Hive AES-256
+encryption · consent-gated analytics · deterministic allergen filter · prompt-injection guard ·
+Onboarding V2, inverted to run before registration (ADR-013).
+
+## [0.9.0] and earlier — *feature build-out*
+Design system · food scanning · nutrition analytics · cooking mode · community · shopping list ·
+settings · referral program · deep linking · ATT consent · accessibility semantics · GDPR data
+export · social sharing · gym and coach ecosystems · program marketplace. Phase-by-phase record:
+`TODO.md` §47.2.
+
+---
+
+## Maintaining this file
+
+- Add to **[Unreleased]** as work lands; move it under a version heading at release.
+- Group entries as **Added · Changed · Fixed · Removed · Security**.
+- Write for a reader who wasn't there: what changed and why it matters, not the file names touched.
+- A structural change also needs an ADR in [`DECISIONS.md`](DECISIONS.md).
+- A status change also needs [`PROJECT_STATE.md`](PROJECT_STATE.md).

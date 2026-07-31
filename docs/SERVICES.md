@@ -1,7 +1,9 @@
 # SERVICES.md — Services & Cloud Functions
 
 > All business logic lives here. UI never calls Firebase directly — it goes through a service.
-> 75 Dart singletons in `lib/core/services/**` + Cloud Functions in `functions/`.
+> 75 Dart singletons in `lib/core/services/**` + **13** Cloud Functions in `functions/`.
+> **Cloud Function *contracts* (request/response, auth, error codes) are owned by
+> [`API.md`](API.md)** — this file covers what each service/function *does*.
 > **Security-authoritative state lives server-side**: premium in `entitlements/{uid}`, AI credits in
 > `ai_credits/{uid}` — both owner-**read** + server-**write-only**; the client never grants premium,
 > consumes credits, applies referrals, or deletes accounts directly.
@@ -212,24 +214,18 @@
 
 ## Cloud Functions (`functions/`)
 
-> Server-authoritative security layer (hardening 2026-06-30). **10/12 functions + Firestore rules
-> deployed to `cookrange-app`**; `appStoreNotifications` + `playRtdn` are pending go-live. App Check
-> enforcement + store-credential requirements are gated by `APP_ENV` (`development` | `production`)
-> in `config.js`.
+> Server-authoritative security layer (hardening 2026-06-30). **13 functions**, deployed to
+> `cookrange-app` alongside the Firestore rules; `appStoreNotifications` + `playRtdn` are wired but
+> inert until store credentials exist. App Check enforcement + store-credential requirements are
+> gated by `APP_ENV` (`development` | `production`) in `config.js` — **currently `development`**
+> (`BLK-14`).
+>
+> Full inventory and wire contracts: [`API.md`](API.md) §1.
 
 **AI proxy** (`index.js`)
-- **aiProxy** (HTTPS) — The release AI path. Verifies Firebase **ID token** + **App Check** (App Check
-  gated by `APP_ENV`); enforces a **model allowlist**, `max_tokens`/payload-size caps, and a per-uid
-  **rate limit**; **no wildcard CORS**. Runs **fail-closed `enforceAndConsumeQuota(uid)`** in a
-  Firestore transaction (auto-resets daily counter at midnight, burns bonus credits first); returns
-  **HTTP 402** when exceeded; otherwise proxies to OpenRouter with `OPENROUTER_API_KEY` (read from
-  `functions/.env`). Rolls back the consumed credit on bad request / OpenRouter failure.
-  Constants: `FREE_DAILY_LIMIT=2`, `PREMIUM_DAILY_LIMIT=20`. Reads **`app_config/global`** server-side
-  (5-min cache) so model/`max_tokens`/quota can change without a redeploy. **Real cost tracking**:
-  captures the OpenRouter `usage` token counts × per-model price (`MODEL_PRICING`) and writes
-  per-request `ai_usage_logs/{id}` (uid, `type`, model, prompt/completion/total tokens, `cost_usd`,
-  `unpriced`, `created_at`), rolls up `ai_usage_stats/global` (+ `day_YYYY-MM-DD` buckets, by_model/
-  by_type), and increments per-user lifetime totals on `ai_credits/{uid}`.
+- **aiProxy** (HTTPS) — The release AI path: the only place the OpenRouter key exists, and the only
+  place AI quota is enforced. Architecture, cost model, and safety layers:
+  [`AI_SYSTEM.md`](AI_SYSTEM.md). Wire contract and error codes: [`API.md`](API.md) §2.
 
 **Entitlements & purchases** (`entitlements.js`, `purchases.js`)
 - **grantPremium / revokePremium / grantBonusCredits / claimPurchaseToken** (`entitlements.js`) —

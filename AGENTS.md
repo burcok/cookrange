@@ -1,197 +1,312 @@
-# AGENTS.md — Cookrange AI Operating Manual
+# AGENTS.md — How to Work
 
-> **This is the first file any AI agent reads before touching the Cookrange codebase.**
-> It defines *how* to work. The *what* (rules) lives in `CLAUDE.md`; the *where*
-> (code map) lives in `docs/`. Read this, then the relevant `docs/` file for your task,
-> then act. **You should almost never need to `grep` blind — the map already exists.**
+> **`CLAUDE.md` says what the rules are. This says how to apply them.**
+> Read `CLAUDE.md` first, then find your role in §3.
 
 ---
 
-## 0. The 30-Second Orientation
+## 1. The per-prompt workflow
 
-Cookrange is a **Flutter (iOS + Android) + Firebase** AI fitness/nutrition platform.
-274 Dart files, ~100K LOC, 42 models, 75 services, 95 screens, a full design system,
-and a Node.js Cloud Functions backend.
-
-| You need to… | Read first | Then |
-|---|---|---|
-| Understand the whole system | `ARCHITECTURE.md` | the specific `docs/` file |
-| Change/look at a **data model, Firestore, rules, index** | `docs/DATA_MODEL.md` | the model file |
-| Change/look at **business logic, a service, Cloud Function** | `docs/SERVICES.md` | the service file |
-| Change/look at a **screen, navigation, route** | `docs/FRONTEND.md` | the screen file |
-| Build/restyle **any UI** | `docs/DESIGN_SYSTEM.md` | `lib/core/widgets/ds/` |
-| Know **if a feature exists & where** | `docs/FEATURES.md` | — |
-| Handle **iOS vs Android** differences | `docs/PLATFORM.md` | — |
-| Add/change a **user-facing string** | `docs/LOCALIZATION.md` | both JSON files |
-| Plan **launch / store submission** | `docs/roadmap/GO_LIVE.md` | — |
-| Build a **future/missing feature** | `docs/roadmap/FUTURE_FEATURES.md` | — |
-| Know **what's done / pending** | `TODO.md` | — |
-
----
-
-## 1. The Mandatory Per-Prompt Workflow
-
-Run this loop **on every non-trivial task**. Do not skip steps.
+Run this on every non-trivial task. Do not skip steps.
 
 ```
-┌─ 1. CLASSIFY ────────────────────────────────────────────────┐
-│  Bug fix? Feature? Refactor? Design? Data change? Doc?        │
-│  → picks which docs/ file is authoritative for this task.     │
-└──────────────────────────────────────────────────────────────┘
-            ↓
-┌─ 2. READ THE MAP (not the whole repo) ───────────────────────┐
-│  Open the relevant docs/ file from the table above.           │
-│  It tells you the exact file(s), class(es), and patterns.     │
-│  Only then open the actual source file(s).                    │
-└──────────────────────────────────────────────────────────────┘
-            ↓
-┌─ 3. THINK IN 3 ROLES (CLAUDE.md R0) ─────────────────────────┐
-│  PM: what problem, what edge cases, what "even better"?       │
-│  Architect: data tier, indexes, rules, failure modes?        │
-│  Dev: idiomatic, optimized, matches surrounding code?        │
-└──────────────────────────────────────────────────────────────┘
-            ↓
-┌─ 4. CHECK THE PRE-FLIGHT CHECKLIST (§2 below) ───────────────┐
-│  Design tokens? Both themes? EN+TR? iOS+Android? Animation?   │
-│  Caching tier? Index + rule? Logging? Optimization?           │
-└──────────────────────────────────────────────────────────────┘
-            ↓
-┌─ 5. IMPLEMENT ───────────────────────────────────────────────┐
-│  Smallest correct change. Match conventions. No drift (§4).   │
-└──────────────────────────────────────────────────────────────┘
-            ↓
-┌─ 6. VERIFY ──────────────────────────────────────────────────┐
-│  flutter analyze lib/  → 0 errors (REQUIRED)                  │
-│  flutter test test/i18n_parity_test.dart  → green (if i18n)   │
-│  Other tests if logic changed.                                │
-└──────────────────────────────────────────────────────────────┘
-            ↓
-┌─ 7. SYNC DOCS (§3 — THE GOLDEN RULE) ────────────────────────┐
-│  If you changed code, update the docs/ file that covers it,   │
-│  plus CLAUDE.md tables and TODO.md if scope/status changed.   │
-└──────────────────────────────────────────────────────────────┘
+1. ORIENT      PROJECT_STATE.md — is this area working, blocked, or deferred?
+                  ↓
+2. ROUTE       docs/INDEX.md §2 — which 1–3 docs does this task need?
+                  ↓
+3. LOAD        Read those docs. Then, and only then, the source files they name.
+                  ↓
+4. ROLE        Identify your role (§3). Think PM → Architect → Developer (R0).
+                  ↓
+5. CHECK       Run your role's pre-flight checklist (§3) + the shared one (§2).
+                  ↓
+6. IMPLEMENT   Smallest correct change. Match surrounding conventions.
+                  ↓
+7. VERIFY      flutter analyze lib/ → 0 errors. Tests if logic or strings changed.
+                  ↓
+8. SYNC DOCS   Update the owning doc (§4). PROJECT_STATE.md if status moved.
+                  ↓
+9. REPORT      What you did, what you verified, what you did NOT verify.
 ```
 
----
-
-## 2. Pre-Flight Checklist (the "Definition of Done")
-
-Before you consider any task complete, every applicable box must be true.
-This is the operational expansion of `CLAUDE.md`'s Definition of Done.
-
-### Always
-- [ ] **Read the design type first.** Before writing UI, read `docs/DESIGN_SYSTEM.md`.
-      Never hand-roll a `Container`/`ElevatedButton`/hex color when a DS token or
-      component exists. Use `AppPalette`, `AppText`, `AppSpacing`, `AppButton`, `AppCard`,
-      `AppGlassCard`, `AppSheet`, etc.
-- [ ] **`flutter analyze lib/` returns 0 errors.** Non-negotiable.
-- [ ] **No silent `catch {}`.** Log via `debugPrint` (dev) + `CrashlyticsService` (real errors),
-      with context (screen, uid, operation). See `CLAUDE.md` R4.
-
-### Any user-visible string
-- [ ] **EN + TR added together** in `assets/localization/{en,tr}.json`, same key, same change.
-      Use the sequential Python `json.load → mutate → json.dump` pattern (never `sed`). See R9.
-- [ ] **`flutter test test/i18n_parity_test.dart` passes** (CI gate).
-- [ ] Key follows `screen.section.element` naming.
-
-### Any UI
-- [ ] **Dark + Light both correct.** No hardcoded colors — `AppPalette.of(context)` only.
-- [ ] **iOS + Android both considered.** Platform-guard where needed (`Platform.isIOS`),
-      respect safe areas, Cupertino gestures where they matter, haptics on meaningful actions.
-      See `docs/PLATFORM.md`.
-- [ ] **Smooth animation.** Use `AppMotion` durations/curves + `AnimationController` /
-      implicit animations. Target 60fps. No abrupt state jumps, no jank.
-- [ ] **All states designed:** loading (`AppShimmer`/`AppSkeleton*`), empty (`AppEmptyState`),
-      error (`AppErrorState`), success, modals (`AppSheet`). No bare `CircularProgressIndicator`.
-- [ ] **Accessibility:** glass/blur respects reduce-transparency; animations respect
-      reduce-motion; interactive surfaces have semantic labels.
-- [ ] **Performance:** `const` constructors, `RepaintBoundary` on heavy/animated list items,
-      cancelled subscriptions in `dispose`, debounced inputs, paginated lists, image caching.
-
-### Any data change
-- [ ] **Caching tier chosen deliberately** (in-memory / Hive·SharedPrefs / Firestore). See R3.
-- [ ] **Firestore index added** to `firestore.indexes.json` for any new query shape.
-- [ ] **Security rule added** to `firestore.rules` / `storage.rules` for any new path.
-      Never leave a collection unguarded.
-- [ ] **Seed/migration** provided if reference data or backfill is needed (idempotent).
-- [ ] **PII goes to the private subcollection** (`users/{uid}/private/nutrition`), never the
-      public user doc. See `docs/DATA_MODEL.md`.
-
-### Any personal-data access (LEGAL-FIRST — KVKK + GDPR)
-> The founder treats data security & legal compliance as release blockers. Full framework:
-> `docs/COMPLIANCE.md`. Mirror its §9 checklist here:
-- [ ] **Identify the data.** What personal data does this touch? Is any **sensitive** (health,
-      location, biometric)? Sensitive data needs **explicit consent** (açık rıza).
-- [ ] **Disclose before access.** Show a `PermissionPrimer` / in-flow disclosure stating the
-      **purpose**, **what data**, **whether it's stored**, the **KVKK/GDPR note**, and that the user
-      **can decline** — *before* the OS dialog or processing. Reference impl:
-      `gym_discovery_screen.dart::_activateNearMe` ("location not stored").
-- [ ] **Minimize.** Prefer transient/on-device over storage. Don't persist what you don't need.
-- [ ] **Legal basis + retention** recorded; update `docs/COMPLIANCE.md` §4 inventory.
-- [ ] **Security:** owner-only rule, no PII on public docs/logs, nothing sensitive in plaintext logs.
-- [ ] **New sub-processor / cross-border transfer?** → add to `COMPLIANCE.md` §5 + Privacy Policy.
-- [ ] **Rights intact:** export/delete still cover the new data; graceful fallback if user declines.
-- [ ] Legal copy (consent/disclosure) added **EN+TR**.
-
-### Docs (see §3)
-- [ ] **Relevant `docs/` file updated**, plus `CLAUDE.md` / `TODO.md` if needed.
+Step 9 matters as much as step 6. An unverified change reported as done is how this project reached
+84 % written / 45 % working.
 
 ---
 
-## 3. The Golden Rule: Docs Stay In Sync With Code
+## 2. Shared pre-flight checklist
 
-**Documentation drift is the #1 failure mode of an AI-maintained codebase.** The whole point
-of `docs/` is that the *next* agent trusts it instead of re-reading the repo. If you change
-code and don't update the doc, you've poisoned that trust.
+Applies to every role. Role-specific items are in §3.
 
-**When you change a file, update its owning doc — in the same task:**
+**Always**
+- [ ] `flutter analyze lib/` → **0 errors**
+- [ ] No silent `catch {}` — log with context or handle it (R4)
+- [ ] Smallest change that is correct; no drive-by refactors
+- [ ] The owning doc updated in this same task
 
-| If you touch… | Update… |
-|---|---|
-| `lib/core/models/**`, `firestore.rules`, `firestore.indexes.json`, `storage.rules` | `docs/DATA_MODEL.md` |
-| `lib/core/services/**`, `functions/index.js` | `docs/SERVICES.md` |
-| `lib/screens/**`, `lib/main.dart`, routes, navigation | `docs/FRONTEND.md` |
-| `lib/core/theme/**`, `lib/core/widgets/ds/**` | `docs/DESIGN_SYSTEM.md` |
-| Any new/removed user-facing capability | `docs/FEATURES.md` **and** `README.md` (feature list + user guide) |
-| iOS/Android config, platform guards | `docs/PLATFORM.md` |
-| Anything touching personal data, consent, processors, or legal copy | `docs/COMPLIANCE.md` (+ legal docs) |
-| `assets/localization/**`, the i18n system | `docs/LOCALIZATION.md` |
-| Anything that changes a "Key Services / Files" table | `CLAUDE.md` |
-| Task status, scope, roadmap | `TODO.md` |
-| A shipped future-feature | move it out of `docs/roadmap/FUTURE_FEATURES.md` |
+**Any user-visible string**
+- [ ] EN **and** TR added together, key `screen.section.element`
+- [ ] Sequential Python `json.load → mutate → json.dump` — never `sed`, never parallel writers (R9)
+- [ ] `flutter test test/i18n_parity_test.dart` passes
 
-Keep doc edits **surgical and accurate** — add the row, fix the line, bump the count. Do not
-rewrite a whole doc for a one-line code change. If a doc and the code disagree, the **code is
-truth** — fix the doc and note it.
+**Any UI**
+- [ ] Dark **and** light correct — `AppPalette.of(context)`, no hex
+- [ ] iOS **and** Android considered — safe areas, gestures, haptics
+- [ ] Loading / empty / error / success states all designed (`AppShimmer`, `AppEmptyState`, `AppErrorState`)
+- [ ] Motion via `AppMotion`; reduced-motion and reduced-transparency respected
+- [ ] `const` constructors, `RepaintBoundary` on heavy items, subscriptions cancelled
 
----
+**Any data change**
+- [ ] Caching tier chosen deliberately (R3)
+- [ ] Composite index added for every new query shape
+- [ ] Security rule added for every new path — **never leave one unguarded**
+- [ ] PII to `users/{uid}/private/nutrition`, never the public doc
+- [ ] Idempotent seed or migration if reference data / backfill is needed
 
-## 4. Anti-Drift Constraints (hard limits)
-
-These prevent the agent from quietly degrading the architecture.
-
-1. **Layer discipline.** UI (`screens/`, `widgets/`) → Providers (`core/providers/`) →
-   Services (`core/services/`) → Models/Data (`core/models/`, `core/data/`).
-   UI **never** calls Firebase directly — always through a service. Never import a UI widget
-   into a model or service.
-2. **Singletons for services.** `static final _instance = Foo._internal(); factory Foo() => _instance;`
-   Never `new` a service.
-3. **No speculative refactors.** Don't "clean up" working code unless the task asks for it.
-   Prefer the smallest localized change. Don't span multiple layers in one unreviewable patch
-   when you can split it.
-4. **No new architectural layers** without explicit instruction. The structure in
-   `ARCHITECTURE.md` is the structure.
-5. **No raw colors / text styles / magic numbers** in UI — design tokens only.
-6. **Shared-file write safety (R9).** Never let two parallel agents write the same
-   `en.json`/`tr.json`/`firestore.*`/`storage.rules`. Serialize, or give each agent a disjoint
-   file set. Localization edits are always sequential Python mutations.
-7. **`mounted` check** before every `setState`/`context` use after an `await`.
-8. **Graceful AI degradation.** Any AI feature must no-op cleanly when
-   `AIService().isConfigured == false`.
+**Any personal-data access — legal-first**
+- [ ] Identified the data; is any of it special-category (health, location, biometric)?
+- [ ] Disclosure **before** access: purpose, what data, whether it's stored, KVKK/GDPR note, real decline path
+- [ ] Minimized — transient/on-device preferred over stored
+- [ ] Legal basis + retention recorded in `docs/COMPLIANCE.md` §4
+- [ ] Export and deletion still cover the new data
+- [ ] New sub-processor or cross-border transfer → `COMPLIANCE.md` §5 + Privacy Policy
+- [ ] Consent/disclosure copy in EN **and** TR
 
 ---
 
-## 5. Verification Commands
+## 3. The eight roles
+
+Pick the role matching your task. Multi-domain tasks run the checklists of each role they touch.
+Roles are review lenses, not permissions — but the **Must not touch** column is a hard boundary:
+changing something there is a separate, explicitly-scoped task.
+
+---
+
+### 3.1 Architecture Agent
+
+**Owns** `docs/ARCHITECTURE.md`, `DECISIONS.md`, layer boundaries, `lib/` structure.
+
+**Responsibilities.** Decide where new code lives. Protect the four-layer vertical. Judge whether a
+change needs an ADR. Choose the caching tier. Define implementation order for multi-part work.
+
+**May change** directory structure, provider composition, service boundaries, `DECISIONS.md`.
+**Must not touch** security rules (→ Security/Firebase Agent), UI styling (→ Frontend Agent).
+
+**Review checklist**
+- [ ] UI → Provider → Service → Model direction preserved; no UI importing `cloud_firestore`
+- [ ] New service is a singleton; nothing `new`s a service
+- [ ] No new architectural layer introduced without explicit instruction
+- [ ] The repository layer was **not** extended piecemeal (ADR-005)
+- [ ] Caching tier chosen and justified (R3)
+- [ ] Does this constrain future work? → append an ADR. Does it reverse one? → supersede, don't edit
+- [ ] No new god object; if a file passes ~800 LOC, say so even if you don't split it
+
+---
+
+### 3.2 Security Agent
+
+**Owns** `docs/SECURITY.md`, the threat model, `firestore.rules` / `storage.rules` intent, secrets.
+
+**Responsibilities.** Keep the client untrusted. Review every new path, field, and endpoint for
+who can read/write it. Guard the ADR-008 deploy order. Own the `S0`–`S17` gate list.
+
+**May change** rules, Cloud Function auth logic, App Check config, `docs/SECURITY.md`.
+**Must not** relax a rule to unblock a client feature — fix the client or move the write server-side.
+
+**Review checklist**
+- [ ] Every new path has an explicit rule; default is deny
+- [ ] No value-bearing field is client-writable (`subscription_*`, `ai_credits_*`, `user_roles`,
+      `is_banned`, `referral_used`, commissions, reward-gating counters)
+- [ ] Content-length caps on all user-authored free text
+- [ ] No secret in client code, a bundled `.env`, a doc, or a log
+- [ ] No PII in analytics events, logs, or the world-readable user doc
+- [ ] Auth checked server-side, not just hidden in the UI
+- [ ] Rate limiting / abuse path considered for anything user-triggerable
+- [ ] **Deploy order:** server write paths before rules lock — locking first breaks live flows
+- [ ] If this closes an `S`-gate or a `BLK`, update `PROJECT_STATE.md`
+
+---
+
+### 3.3 Frontend Agent
+
+**Owns** `lib/screens/`, `lib/core/widgets/`, `docs/FRONTEND.md`, `docs/DESIGN_SYSTEM.md`.
+
+**Responsibilities.** Build screens and components. Own every visual state. Keep both themes, both
+locales, and both platforms correct.
+
+**May change** screens, widgets, DS components, routes, transitions.
+**Must not** call Firebase directly, or put business logic in a widget.
+
+**Review checklist**
+- [ ] Design tokens only — zero hex, zero raw `TextStyle`, zero magic numbers
+- [ ] Dark **and** light verified
+- [ ] Loading / empty / error / success / modal all designed — no bare spinner, no grey error text
+- [ ] EN + TR keys added; nothing hardcoded in either language
+- [ ] iOS + Android: safe areas, keyboard insets, back gesture, haptics
+- [ ] `const` constructors; `RepaintBoundary` on heavy or animated list items
+- [ ] `Selector` over broad `watch`; inputs debounced
+- [ ] Every subscription cancelled in `dispose`; `mounted` checked after every `await`
+- [ ] Images via `AppImage` / `CachedNetworkImageProvider` — never raw `Image.network`
+- [ ] Accessibility: semantic labels, reduced-motion, reduced-transparency, touch targets ≥ 44pt
+
+---
+
+### 3.4 Backend Agent
+
+**Owns** `functions/`, `docs/API.md`, server-side business logic.
+
+**Responsibilities.** Write Cloud Functions. Own the client↔server contract. Keep authoritative
+logic on the server.
+
+**May change** `functions/**`, callable/HTTPS signatures, triggers, `docs/API.md`.
+**Must not** change Firestore rules without the Security Agent's checklist, or break a deployed
+contract without a client migration path.
+
+**Review checklist**
+- [ ] Auth verified in-code: Firebase ID token **and** App Check
+- [ ] Input validated and size-capped; never trust a client-supplied model, price, amount, or uid
+- [ ] Idempotent — a retried call must not double-grant, double-charge, or double-write
+- [ ] Fails **closed**: on error, deny rather than grant
+- [ ] Writes wrapped in a transaction where two callers could race
+- [ ] Errors logged with context; the client gets a safe message, never a stack trace
+- [ ] Cold-start and `maxInstances` considered; no unbounded fan-out
+- [ ] Contract change reflected in `docs/API.md` **and** the calling Dart service
+- [ ] Deploys land cross-region on this project — verify in the console, don't trust the CLI exit
+
+---
+
+### 3.5 Firebase Agent
+
+**Owns** `firestore.rules`, `firestore.indexes.json`, `storage.rules`, `docs/DATABASE.md`, collection shape.
+
+**Responsibilities.** Own the data model on the server side: paths, indexes, rules, quotas, cost.
+This role exists separately from Backend because Firestore's cost and rules model is its own
+discipline.
+
+**May change** collection shape, indexes, rules, storage paths, seeders, migrations.
+**Must not** rename a field in a live collection without a migration, or "fix" the snake/camel
+convention mismatch — it is deliberate and documented.
+
+**Review checklist**
+- [ ] Path and doc shape recorded in `docs/DATABASE.md` in this same task
+- [ ] Composite index added for **every** new `where` + `orderBy` combination
+- [ ] Rule added and scoped as tightly as the feature allows
+- [ ] Every query has `.limit()`; no unbounded `.snapshots()`
+- [ ] Counts via `count()` / `pollCount()`, never `.snapshots().map((s) => s.size)`
+- [ ] No N+1 read loop — batch with `whereIn` (≤ 30) or denormalize
+- [ ] Denormalized fields have a defined writer and stay consistent
+- [ ] Field naming matches the collection's existing convention (see `CLAUDE.md` §9)
+- [ ] Seeder is idempotent; migration is versioned, idempotent, and logged
+- [ ] Storage paths have size and content-type limits
+
+---
+
+### 3.6 AI Agent
+
+**Owns** `lib/core/services/ai/`, `functions/index.js` (`aiProxy`), `docs/AI_SYSTEM.md`, prompts.
+
+**Responsibilities.** Own prompt quality, model routing, cost, quota, and safe degradation. AI
+output here becomes health guidance, so correctness is a safety property.
+
+**May change** prompts, model config, proxy logic, credit accounting, parsing.
+**Must not** ship an AI path that fabricates content when unconfigured, or let user text reach a
+prompt unfenced.
+
+**Review checklist**
+- [ ] **Degrades gracefully** — guards `AIService().isConfigured`, and never substitutes mock or
+      hardcoded content for a real response in release (`BLK-01` is exactly this failure)
+- [ ] User-supplied text is fenced and treated as data — prompt-injection guard applied
+- [ ] Output parsed defensively; malformed JSON handled, never trusted blindly
+- [ ] Allergen / safety filters applied **before** the model sees candidates, and on its output
+- [ ] Quota checked and consumed server-side; credit rolled back on failure
+- [ ] Call tagged with a `type` so per-request cost lands in `ai_usage_logs`
+- [ ] Model, `max_tokens`, temperature read from `app_config/global` — not hardcoded, not client-sent
+- [ ] Token cost of a prompt change estimated; the 180-dish prompt ceiling respected
+- [ ] Locale honoured — the user gets output in their language
+
+---
+
+### 3.7 Testing Agent
+
+**Owns** `test/`, `docs/TESTING.md`, CI quality gates.
+
+**Responsibilities.** Make correctness provable. At ~1 % coverage with `test/` gitignored, this role
+is currently the highest-leverage one in the project.
+
+**May change** tests, test fixtures, CI test config, `.gitignore`'s test entry.
+**Must not** weaken or delete a test to make a build pass.
+
+**Review checklist**
+- [ ] New pure logic has a unit test — calculators, parsers, schedulers, filters, safety checks
+- [ ] The test actually fails when the logic is broken (verify by breaking it)
+- [ ] Edge cases covered: empty, null, boundary, timezone, locale
+- [ ] No test depends on network, wall-clock time, or live Firebase
+- [ ] Tests are deterministic — no ordering dependence, no flake
+- [ ] The full suite was **run**, and the real result reported
+- [ ] Coverage change noted in `docs/TESTING.md` if meaningful
+- [ ] Untestable-by-design code (ADR-004) is called out rather than skipped silently
+
+---
+
+### 3.8 Documentation Agent
+
+**Owns** every `.md`. Guardian of the system in `docs/INDEX.md`.
+
+**Responsibilities.** Keep docs true, routed, and non-duplicated. Documentation drift is the failure
+mode that makes every other agent unreliable.
+
+**May change** any doc, the router, doc structure.
+**Must not** create a new document when an existing one owns the topic, or restate a fact that lives
+elsewhere.
+
+**Review checklist**
+- [ ] The fact lives in exactly **one** doc; everything else links to it
+- [ ] Status went to `PROJECT_STATE.md` — not into a feature doc
+- [ ] No feature described as working on the strength of it having been written
+- [ ] `docs/INDEX.md` §2 routes to the doc; §3 lists its owned source paths
+- [ ] Edit is surgical — a row, a line, a count. Not a rewrite for a one-line change
+- [ ] Links resolve; no reference to a moved or deleted file
+- [ ] A structural decision produced an ADR in `DECISIONS.md`
+- [ ] `CHANGELOG.md` updated if this is a release or a structural change
+- [ ] Nothing new added to `CLAUDE.md` that isn't a rule
+
+---
+
+## 4. The golden rule: docs sync in the same task
+
+**Documentation drift is the #1 failure mode of an AI-maintained codebase.** The whole point of
+`docs/` is that the next agent trusts it instead of re-reading the repo. Change code without
+updating its doc and you've poisoned that trust for everyone after you.
+
+The routing table lives in [`CLAUDE.md`](CLAUDE.md) §7. Two rules restated because they are the ones
+that broke last time:
+
+1. **Status has exactly one home** — `PROJECT_STATE.md`. Feature docs describe construction, never
+   condition.
+2. **Written ≠ working.** Do not promote a system to "verified working" because you just wrote it.
+
+Keep edits surgical. If a doc and the code disagree, **the code is truth** — fix the doc and say so.
+
+---
+
+## 5. Anti-drift constraints
+
+Hard limits that stop the architecture degrading one reasonable-looking change at a time.
+
+1. **Layer discipline** — UI → Providers → Services → Models. UI never calls Firebase.
+2. **Singletons for services.** Never `new` one.
+3. **No speculative refactors.** Don't clean up working code the task didn't name.
+4. **No new layers** without instruction.
+5. **No raw colors, text styles, or magic numbers** in UI.
+6. **R9 shared-file safety** — disjoint file sets for parallel agents; localization edits sequential.
+7. **`mounted` check** after every `await` before `setState` or `context`.
+8. **Graceful AI degradation** — no-op cleanly when `isConfigured == false`; never fabricate.
+9. **Never widen scope silently.** If the right fix is bigger than the task, say so and let the user
+   decide — don't quietly do it, and don't quietly skip it.
+
+---
+
+## 6. Verification commands
 
 ```bash
 flutter analyze lib/                          # MUST be 0 errors before done
@@ -201,55 +316,26 @@ dart format lib/                              # CI enforces formatting
 node scripts/load_test.js                     # AI proxy load test (needs PROXY_URL + ID_TOKEN)
 ```
 
-CI (`.github/workflows/ci.yml`) runs on every PR: `dart format` check → `flutter analyze`
-→ `flutter test` → Android debug build. Match it locally before you call a task done.
+CI runs on every PR: `dart format` → `flutter analyze` → `flutter test` → Android debug build.
+**CI is currently red on `main` (`BLK-13`)** — don't read a green local run as a green pipeline.
+Details: [`docs/DEVOPS.md`](docs/DEVOPS.md), [`docs/TESTING.md`](docs/TESTING.md).
 
 ---
 
-## 6. Parallel / Sub-Agent Work
+## 7. Parallel and sub-agent work
 
-For large multi-part features you may fan out to sub-agents (PM / architect / dev, or
-per-subsystem). When you do:
-- Give each agent a **disjoint file set** (R9). If two need the same shared JSON/rules file,
-  serialize them or have one collect both changes and write once.
-- Have each agent return **structured findings**, then synthesize and write once yourself.
-- The `docs/` files were themselves built this way — keep them the single source of truth.
+For large multi-part features you may fan out (by role, or by subsystem). When you do:
 
----
-
-## 7. Where Everything Lives (top-level map)
-
-```
-cookrange/
-├── CLAUDE.md            ← canonical engineering rules (R0–R9 + DoD)
-├── AGENTS.md            ← THIS FILE — how to work
-├── ARCHITECTURE.md      ← system architecture & layer map
-├── README.md           ← product vision (human-facing)
-├── TODO.md             ← roadmap & status (what's done / pending)
-├── docs/
-│   ├── INDEX.md            ← doc navigation
-│   ├── DATA_MODEL.md       ← models, Firestore, indexes, rules, storage
-│   ├── SERVICES.md         ← 75 services + 4 Cloud Functions
-│   ├── FRONTEND.md         ← screens, navigation, routing
-│   ├── DESIGN_SYSTEM.md    ← tokens, components, animation, a11y
-│   ├── FEATURES.md         ← feature catalog (what exists, where)
-│   ├── PLATFORM.md         ← iOS/Android parity & specifics
-│   ├── LOCALIZATION.md     ← i18n system & how to add strings
-│   ├── firebase-console-setup.md  ← console one-time steps
-│   ├── generated/          ← auto/derived references (db schema, etc.)
-│   └── roadmap/
-│       ├── GO_LIVE.md          ← pre-launch checklist
-│       └── FUTURE_FEATURES.md  ← future features + per-feature roadmaps
-├── lib/                ← Flutter app (see ARCHITECTURE.md)
-├── functions/          ← Node.js Cloud Functions (AI proxy, notif fan-out)
-├── scripts/            ← load_test.js & one-off scripts
-├── test/               ← unit + parity tests
-├── assets/localization/← en.json, tr.json
-└── firestore.rules · firestore.indexes.json · storage.rules · firebase.json
-```
+- **Disjoint file sets per agent (R9).** If two need the same shared file — `en.json`, `tr.json`,
+  `firestore.rules`, `firestore.indexes.json`, `storage.rules` — serialize them, or have one agent
+  collect both changes and write once. This rule exists because parallel writers silently dropped
+  localization keys.
+- Have each agent return **structured findings**; synthesize and write yourself.
+- Give each agent its **role checklist** from §3 — that's what the roles are for.
+- One agent owns `PROJECT_STATE.md` for the whole operation. Never let two update status.
 
 ---
 
-**TL;DR:** Read the map (`docs/`), think in 3 roles, satisfy the pre-flight checklist,
-make the smallest correct change, verify with `flutter analyze`, and **update the doc you
-just made stale.** That last step is what keeps this system alive.
+**TL;DR** — Orient in `PROJECT_STATE.md`, route through `docs/INDEX.md`, work your role's checklist,
+make the smallest correct change, verify it, update the doc you just made stale, and report honestly
+what you did and did not confirm.

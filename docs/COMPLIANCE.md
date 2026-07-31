@@ -33,8 +33,8 @@
 6. **Integrity & confidentiality** — encryption in transit (HTTPS/Firebase) **and at rest on-device
    (Hive AES-256)**, least-privilege Firestore rules, PII in owner-only subcollections, App Check, no
    secrets in the client. Entitlements/credits/economy/erasure are **server-authoritative** — the
-   client is never trusted to grant paid access, mint AI credits, or self-erase (see `DATA_MODEL.md` §7).
-7. **Accountability** — document the basis and flow for every data type (this file + `DATA_MODEL.md`).
+   client is never trusted to grant paid access, mint AI credits, or self-erase (see `DATABASE.md` §7).
+7. **Accountability** — document the basis and flow for every data type (this file + `DATABASE.md`).
 
 ## 3. Legal Bases
 | Basis | When used in Cookrange |
@@ -48,7 +48,7 @@ Consent must be **freely given, specific, informed, unambiguous**, and **withdra
 it was given. Record when/what was consented to.
 
 ## 4. Data Inventory (what we process, basis, storage, retention)
-Cross-reference `docs/DATA_MODEL.md` for exact Firestore paths.
+Cross-reference `docs/DATABASE.md` for exact Firestore paths.
 
 | Data | Examples | Sensitive? | Basis | Stored where | Retention |
 |---|---|---|---|---|---|
@@ -159,7 +159,7 @@ L2; update these files (both languages) whenever data practices change.
 - [ ] **Legal basis** chosen and recorded (§3).
 - [ ] **Disclosure + consent** shown *before* access (§6 pattern); declinable with graceful fallback.
 - [ ] **Data minimization:** is storage actually needed, or can it be transient/on-device?
-- [ ] **Storage + retention** defined; reflected in §4 inventory + `DATA_MODEL.md`.
+- [ ] **Storage + retention** defined; reflected in §4 inventory + `DATABASE.md`.
 - [ ] **Security:** owner-only Firestore rule, encryption in transit, no PII on public docs/logs.
 - [ ] **New sub-processor?** → add to §5 + Privacy Policy.
 - [ ] **Cross-border transfer?** → lawful mechanism + disclosure.

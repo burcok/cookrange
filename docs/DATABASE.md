@@ -1,9 +1,68 @@
-# DATA_MODEL.md — Models, Firestore, Indexes, Rules
+# DATABASE.md — Data Model, Firestore, Indexes & Rules
 
-> Canonical map of the data layer. Before touching a model, a Firestore query, an index, or a
-> security rule, read the relevant row here. **Code is truth — if this drifts, fix it.**
+> Canonical map of the data layer. Before touching a model, a query, an index, or a security rule,
+> read the relevant row here. **Code is truth — if this drifts, fix it.**
 > Owners: `lib/core/models/**`, `lib/core/data/**`, `lib/core/repositories/**`,
 > `firestore.rules`, `firestore.indexes.json`, `storage.rules`.
+>
+> Rule *intent* and the threat model live in [`SECURITY.md`](SECURITY.md); this document owns the
+> shapes and the access matrix.
+
+---
+
+## 0. Collection tree — quick scan
+
+Read this first; drop to §1 only when you need the access rules.
+
+```
+users/{uid}                                   public profile + onboarding_data, roles, tier mirror
+  ├─ private/nutrition                         PII — height/weight/gender/DOB, allergies, restrictions
+  ├─ meal_plans/current                        current weekly plan (+ generationPromptHash)
+  ├─ meal_plan_history/{YYYY-MM-DD}            archived weekly plans
+  ├─ food_logs/{id} · exercise_logs/{id}       daily diary · workout logs
+  ├─ favorites/{recipeId} · recent_foods/{id}  saved recipes · quick-add cache (~20)
+  ├─ recipe_notes/{recipeId} · lists/{listId}  user notes · shopping lists
+  ├─ saved_posts/{postId}                      bookmarked posts
+  ├─ notifications/{id}                        structured in-app notifications (no stored text)
+  ├─ notification_preferences/{id}             per-group mute prefs
+  ├─ program_enrollments/{programId}           enrolled programs + progress
+  ├─ commissions/{id} · payout_requests/{id}   economy — SERVER-WRITE ONLY
+  ├─ ai_twin_projections/{id}                  saved AI projections (locale-tagged)
+  ├─ ai_weekly_recaps/{id} · food_analyses/{id}  weekly recaps · AI food-analysis history
+  ├─ achievements/{key}                        earned badges
+  ├─ consents/{purpose}                        KVKK/GDPR consent records
+  ├─ following/{uid} · followers/{uid}         follow graph (one-way)
+  ├─ friends/{id} · friend_requests/{id}       friendship (mutual)
+  ├─ coaching_requests/{clientUid}             coach link requests
+  └─ block_list/{blockedId}                    blocked users
+
+dishes/{id}                                   recipe DB (admin-write, seeded)
+posts/{id}                                    community posts  (+ /comments, /likes, /reactions)
+chats/{id}/messages/{id}                      chat threads + messages
+signals/{id}                                  ephemeral broadcasts (TTL via expiresAt)
+community_groups/{id}/members/{uid}           location-based groups
+squads/{id}                                   streak squads
+reports/{id} · privacy_requests/{id}          moderation queue · DSAR channel
+referrals/{code}                              referral codes
+
+gyms/{id}                                     gym profiles (+ /members, /posts, /checkins)
+gym_wars/{id} · gym_applications/{id}         competition · owner applications
+coach_profiles/{uid}                          coach profiles (+ /clients, /reviews)
+coach_applications/{id}                       coach applications
+programs/{id}/weeks/{id}/sessions             marketplace programs
+
+ai_credits/{uid}          SERVER-ONLY WRITE   daily quota + bonus + lifetime totals
+entitlements/{uid}        SERVER-ONLY WRITE   premium tier + expiry — SOURCE OF TRUTH
+processed_purchases/{id}  SERVER-ONLY         purchase-token replay guard (no client access)
+ai_usage_logs/{id}        SERVER-ONLY WRITE   per-request AI cost trail (admin-read)
+ai_usage_stats/{doc}      SERVER-ONLY WRITE   global + day_YYYY-MM-DD rollups
+admin_audit/{id}                              append-only admin action log
+admin_config/{doc}                            admin-only flags
+app_config/global         PUBLIC READ         remote config — NO SECRETS EVER
+settings/content_filter   PUBLIC READ         blocked-keyword list (mirrored from admin config)
+broadcasts/{id} · seeds/{doc} · logs/{uid}    broadcasts · seed gates · activity audit
+failed_login_attempts/{id} SERVER-ONLY        brute-force tracking
+```
 
 ---
 
@@ -234,3 +293,113 @@ Add an index here for **every new query shape** (`where` + `orderBy` combos). Cu
   `processed_purchases` (replay protection).
 - Content-length caps belong in the rule (`request.resource.data.<field>.size() < N`) for any
   user-authored free text — posts, comments, chat messages, signals.
+
+---
+
+## 8. Relationships
+
+Firestore has no joins, so relationships are expressed three ways. Pick deliberately.
+
+| Pattern | Used for | Cost | Risk |
+|---|---|---|---|
+| **Subcollection** | Owned children — `food_logs`, `members`, `comments`, `reviews` | One read per child | Recursive delete needed on erasure |
+| **Denormalized copy** | `display_name`/`photo_url` on members, clients, posts | Free at read | **Goes stale** — needs a defined writer |
+| **Reference + fetch** | `dishId` on a food log, `relatedId` on a notification | Extra read | N+1 if looped |
+
+### The graph
+
+```
+users/{uid} ─┬─ 1:1  private/nutrition              PII split (ADR-009)
+             ├─ 1:1  entitlements/{uid}             premium truth, server-written
+             ├─ 1:1  ai_credits/{uid}               quota ledger, server-written
+             ├─ 1:N  food_logs → dishes/{id}        by reference
+             ├─ 1:1  coach_profiles/{uid}           only if the coach role is held
+             ├─ M:N  gyms          via gyms/{id}/members/{uid} + users.gym_memberships[]
+             ├─ M:N  community_groups  via members/{uid} + users.group_memberships[]
+             ├─ M:N  follow        via following/{uid} + followers/{uid}   (both sides written)
+             ├─ M:N  friends       via friends/{id}, mediated by friend_requests
+             └─ M:N  coach↔client  via coach_profiles/{c}/clients/{u} + users/{u}/coaching_requests
+```
+
+**Rules for denormalized fields**
+1. Every copy has exactly **one** writer. Name it in this document when you add one.
+2. Source a user's name from the user doc's **`displayName`** (camelCase), then write it into other
+   collections as **`display_name`** (snake). Both conventions are correct in their own place — see
+   `CLAUDE.md` §9. Reading `display_name` off the user doc returns null and has broken admin search.
+3. **M:N mirrors must be written together.** `gyms/{id}/members/{uid}` and
+   `users/{uid}.gym_memberships[]` are one logical edge in two places — write both in a batch, or
+   they diverge.
+4. Counters (`member_count`, `client_count`, `enrollment_count`) are denormalized and need a narrow
+   update rule so a client can move the counter but not the document.
+
+---
+
+## 9. Data lifecycle
+
+| Stage | Where it happens |
+|---|---|
+| **Created** | Onboarding (in memory, then persisted at registration — ADR-013) · user action · server grant |
+| **Read** | Live listeners for hot state; one-shot `.get()` otherwise. Always `.limit()` |
+| **Cached** | Three deliberate tiers — in-memory / Hive / Firestore (ADR-016). Stale-while-revalidate |
+| **Archived** | Weekly meal plans → `meal_plan_history/{YYYY-MM-DD}` on every regeneration |
+| **Expired** | `signals.expiresAt` (TTL policy still needed) · AI daily quota resets at midnight |
+| **Exported** | `DataExportService` — profile + PII + every owner subcollection + Storage manifest |
+| **Erased** | `deleteUserAccount` — recursive subtree + server docs + authored content + Storage + Auth user |
+
+### Retention
+
+Nothing is auto-deleted today except AI quota resets. Retention periods per data type are defined in
+[`COMPLIANCE.md`](COMPLIANCE.md) §4 — that document is authoritative for *how long*; this one for
+*where*. Firestore **TTL policies are still to be configured** on `signals.expiresAt`, old `logs`,
+and `processed_purchases` (safe to expire after the refund window). Without them, ephemeral data
+accumulates cost forever.
+
+> ⚠️ **Adding a user subcollection creates three obligations in the same task:** a security rule,
+> inclusion in the **export**, and inclusion in the **erasure** function. Missing the last two is a
+> GDPR Art. 17 / Art. 20 failure, not a bug — this is exactly what `BLK-12` is.
+
+---
+
+## 10. Migration strategy
+
+> ⚠️ **No migration framework exists** (`ARCH-06`). Schema changes so far have relied on
+> backward-compatible reads and opportunistic repair. Anything beyond that must be built.
+
+### Patterns in use
+
+- **Backward-compatible reads.** Models tolerate missing fields with defaults, so old documents keep
+  working — this is why `NotificationModel` still parses legacy `title`/`body`, and why
+  `NotificationType` accepts old enum names.
+- **Read-time migration.** `getPrivateNutritionData(uid)` moves PII into the private subcollection
+  the first time it's read for a user.
+- **Opportunistic repair.** `verifyAndRepairUserData` backfills `displayName`/`photoURL`/`email`
+  from Auth when they're missing.
+- **Idempotent seeding.** `DishSeederService.seedIfEmpty()` and `DemoContentSeeder`, gated by
+  `seeds/{docId}` so a seed runs once regardless of how often it's invoked.
+- **Transparent re-encryption.** `StorageService` reopens and rewrites pre-existing plaintext Hive
+  boxes under AES-256 on first launch after the encryption change.
+
+### Rules for any migration
+
+1. **Idempotent.** Running it twice must equal running it once.
+2. **Versioned.** Record what ran, against which schema version.
+3. **Logged.** Emit progress and failures; never mutate user data silently.
+4. **Reversible or additive.** Prefer adding a field over rewriting one. Never destroy the old shape
+   in the same release that introduces the new one.
+5. **Batched with limits.** Firestore batches cap at 500 writes; large backfills need pagination and
+   need to survive being interrupted halfway.
+6. **Backfill server-side** for anything users can't be relied upon to trigger — a read-time
+   migration only reaches users who open the app.
+
+### Adding a field — the safe sequence
+
+```
+1. Write the field alongside the old one; read either.       (deploy)
+2. Backfill existing documents.                              (script, idempotent)
+3. Switch reads to the new field only.                       (deploy)
+4. Stop writing the old field.                               (deploy)
+5. Remove it — only after every supported client is on step 3.
+```
+
+Steps 3–5 are gated on the **oldest client version still in the field**, which is what
+`app_config.version.min_supported` exists to control ([`DEVOPS.md`](DEVOPS.md) §4).

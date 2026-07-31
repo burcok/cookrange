@@ -49,62 +49,20 @@ When you build or change anything, ask: **"Does this behave correctly on iOS *an
   strings, ATT), `ios/Runner/Runner.entitlements` (universal links, sign-in with Apple),
   `ios/ExportOptions.plist` (App Store export + provisioning), `ios/Podfile`.
 
-## 5. CI/CD (`.github/workflows/`)
-- **ci.yml** (every PR): Flutter 3.24.0 → `dart format --set-exit-if-changed` → `flutter analyze`
-  → `flutter test` → Android debug APK build.
-- **deploy.yml** (push to main):
-  - **deploy-ios** (macos): `pod install` → import Apple cert + provisioning → inject team ID into
-    `ExportOptions.plist` → `flutter build ipa --release` → upload to TestFlight (altool).
-  - **deploy-android** (ubuntu): decode keystore → `key.properties` → `flutter build appbundle
-    --release` → upload to Play internal track.
-- **Secrets needed:** `OPENROUTER_API_KEY`; iOS: `APPLE_CERTIFICATE_BASE64`,
-  `APPLE_CERTIFICATE_PASSWORD`, `APPLE_PROVISIONING_PROFILE_BASE64`, `APPLE_DEVELOPMENT_TEAM`,
-  `APP_STORE_CONNECT_{KEY_ID,ISSUER_ID,PRIVATE_KEY}`; Android: `ANDROID_KEYSTORE_BASE64`,
-  `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `ANDROID_STORE_PASSWORD`,
-  `PLAY_STORE_SERVICE_ACCOUNT_JSON`.
+## 5. CI/CD, environments, secrets & release
 
-## 5b. Cloud Functions Env & AI Proxy Config
+Owned by **[`DEVOPS.md`](DEVOPS.md)** — CI and deploy workflows, the GitHub secret list, environment
+separation, Firebase deploy order, the release process, and monitoring.
 
-**`functions/.env`** (runtime env, not committed):
-- `APP_ENV` — `development` | `production` (see §7 / GO_LIVE Phase 5S).
-- `OPENROUTER_MODEL` — default model, now **`openai/gpt-4o-mini`** (the old
-  `deepseek/…:free` model was removed from OpenRouter → 404). This is a **paid** model, so the
-  OpenRouter account needs credit.
-- `OPENROUTER_TIMEOUT_S` — request timeout in seconds (default **90**; the client text timeout was
-  raised 45→90s to match, so long meal-plan generations don't cut off).
+Owned by **[`AI_SYSTEM.md`](AI_SYSTEM.md)** / **[`API.md`](API.md)** — `functions/.env`, the
+`aiProxy` contract, and the `allUsers` invoker requirement.
 
-**`aiProxy` (server-authoritative model + usage logging):**
-- Reads **`app_config/global`** with the Admin SDK (5-minute in-memory cache) and takes the
-  **model, `max_tokens`, `temperature`, and quota FROM THERE** — it **ignores the model the client
-  sends** (cost safety). This means model / token / quota can be changed **from the admin panel with
-  no redeploy**.
-- `MAX_OUTPUT_TOKENS` raised **1024 → 8192** so large meal-plan JSON responses aren't truncated.
-- Captures OpenRouter's `usage` token counts on every call and logs the **real** cost to
-  `ai_usage_logs` / `ai_usage_stats`.
+Owned by **[`DECISIONS.md`](../DECISIONS.md)** ADR-011 — why `app_config/global` replaced scattered
+Remote Config values.
 
-> ⚠️ **`aiProxy` public-invoker requirement (deploy step).** `aiProxy` is an `https.onRequest`
-> function; the Cloud Functions platform deploys it **private**, so the real authentication happens
-> **inside the code** (Firebase ID-token verify + App Check). For it to be reachable, the function
-> must have `allUsers` granted the **Cloud Functions Invoker** role — otherwise the platform returns
-> a **401 HTML** page before the code runs:
-> ```bash
-> gcloud functions add-iam-policy-binding aiProxy \
->   --region=us-central1 --member=allUsers --role=roles/cloudfunctions.invoker
-> ```
-> This is the standard pattern for Firebase Callables; security is provided by the in-code layers
-> (ID token + quota + rate-limit + model allowlist), not by the platform invoker gate.
-
-## 5c. Remote App Config — `app_config/global`
-
-Firestore **`app_config/global`** (public-read, admin-write, contains **no secrets**) is the
-consolidated remote config surface: `ai` (model/tokens/temperature/quota), `version` (force/soft
-update), `maintenance`, `announcement`, `features` (kill-switches), `rollout`, `limits`, `endpoints`.
-- Client-side `AppConfigService` (cache-first + 6h TTL) drives version-gating (force / soft update),
-  maintenance mode, the announcement banner, and feature kill-switches; edited in-app via
-  `AdminAppConfigScreen`.
-- This consolidates the older scattered Remote Config `ai_proxy_url` / `ai_model` values. The client
-  still reads Remote Config `ai_proxy_url` for back-compat; `app_config.endpoints.ai_proxy_url` is
-  also honored.
+Platform-relevant summary only: the iOS job builds an `.ipa` for TestFlight and needs Apple signing
+secrets; the Android job builds an `.aab` for the Play internal track and needs the keystore
+secrets. **Neither has ever run successfully** — no signing identity exists (`BLK-16`).
 
 ## 6. Platform Pre-Flight (per UI/feature)
 - [ ] Safe areas correct on notch + gesture-nav devices (both).

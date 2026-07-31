@@ -1,517 +1,285 @@
-# Cookrange — AI Engineering Guide
+# CLAUDE.md — Rules for AI Agents
 
-> AI-powered nutrition & fitness app. Flutter (iOS + Android) + Firebase backend.
-
----
-
-## 📖 START HERE — The Documentation System
-
-This file holds the **rules** (R0–R9 + Definition of Done). Two companions hold the rest:
-
-- **`AGENTS.md`** — *how to work*: the mandatory per-prompt workflow, the pre-flight checklist,
-  anti-drift constraints, and the "keep docs in sync" golden rule. **Read it before any task.**
-- **`ARCHITECTURE.md`** — *how the system fits together*: layers, data flow, directory map.
-- **`docs/`** — *where everything is* (so you don't grep blind): `DATA_MODEL.md`, `SERVICES.md`,
-  `FRONTEND.md`, `DESIGN_SYSTEM.md`, `FEATURES.md`, `PLATFORM.md`, `LOCALIZATION.md`,
-  `COMPLIANCE.md`, `roadmap/GO_LIVE.md`, `roadmap/FUTURE_FEATURES.md`. Index: `docs/INDEX.md`.
-
-> ⚖️ **Legal-first is non-negotiable.** Data security + KVKK/GDPR compliance are release blockers.
-> Any feature touching personal data must pass the Legal & Privacy checklist (`AGENTS.md` §2) and the
-> framework in `docs/COMPLIANCE.md`: disclose purpose + consent *before* access, minimize (prefer
-> transient/on-device over storage), and never store more than needed. Reference impl: the
-> "gyms near me" consent gate (location used on-device, not stored).
-
-**The loop every prompt:** classify the task → read the relevant `docs/` file → think in 3 roles
-(R0) → satisfy the pre-flight checklist (`AGENTS.md` §2) → make the smallest correct change →
-`flutter analyze lib/` (0 errors) → **update the `docs/` file you just made stale.** When you change
-code, the doc that covers it (and `CLAUDE.md`/`TODO.md` if scope/status changed) must change in the
-same task — code is truth, docs must not drift.
+> **This file is loaded into every session. It contains rules only.**
+> Facts about the system live in `docs/` and are loaded on demand — never restate them here.
+> If you want to know *what exists*, read `docs/INDEX.md`. This file tells you *how to behave*.
 
 ---
 
-## 🔱 GLOBAL ENGINEERING RULES (NON-NEGOTIABLE — APPLY ON EVERY PROMPT)
+## 1. Project identity
 
-> These rules are **always active**. They are not optional, not per-task. Every feature, fix,
-> refactor, and design change must satisfy **all** of them. After completing any work, **update
-> this section and `TODO.md`** so the rules and roadmap stay current for future prompts.
+**Cookrange** — an AI nutrition & fitness platform. Flutter (iOS + Android) + Firebase + a Node.js
+Cloud Functions backend + OpenRouter LLM behind a server-side proxy. Bilingual EN/TR. Turkey is the
+primary market, so **KVKK and GDPR are release blockers, not features**.
 
-### R0 — Multi-Role Mindset (think as a team, not a coder)
-Before writing code for any non-trivial feature, reason through it from three perspectives, in order:
-1. **Product Manager** — What problem does this solve? What's the user story, the edge cases, the
-   success metric, the "even better than expected" version? Define scope before touching code.
-2. **Senior Architect** — Data model, collection/table shape, indexes, caching tier, security
-   rules, migration/seed needs, failure modes, scalability. Decide the *right* structure, not the
-   quick one. Identify the optimal implementation order (dependencies first).
-3. **Senior Developer** — Implement cleanly: idiomatic, optimized, tested against analyze, matching
-   surrounding conventions. Smooth UX, full platform + theme + i18n coverage.
+~115k LOC · 329 files · 42 models · 75 services · 95 screens · Provider state · server-authoritative
+trust model.
 
-For large/multi-part features, you may delegate these roles to parallel sub-agents (PM agent,
-architect agent, dev agent) and synthesize. Always produce the **most optimal, professional**
-result — aim to exceed the expected outcome, not just meet it.
-
-### R1 — Optimization is mandatory, always
-Every feature/fix must be the **most optimized** version reasonable: no N+1 reads, batch/transaction
-where applicable, `const` constructors, lazy/paginated lists, `RepaintBoundary` for heavy widgets,
-debounced inputs, cancelled subscriptions in `dispose`, image caching, minimal rebuilds
-(`Selector`/`ValueListenableBuilder` over broad `watch`). Never ship an obviously slower path.
-
-### R2 — Data layer discipline (decide it deliberately)
-For anything touching data, the **architect role decides** and you implement end-to-end:
-- **Where data lives** — choose the correct tier per the R3 caching policy.
-- **Firestore shape** — collection path, doc schema, and **composite/single-field indexes** added to
-  `firestore.indexes.json` whenever a query needs them. Add **security rules** to `firestore.rules` /
-  `storage.rules` for every new path. Never leave a collection unguarded.
-- **Seed / dump / one-time setup** — if a feature needs reference data (categories, dishes, presets),
-  provide a one-time idempotent seeder (pattern: `seedIfEmpty()`), or a documented one-shot script in
-  `lib/scripts/`. If a one-time table/collection or backfill is required, build it and note it in `TODO.md`.
-- **Migrations** — versioned, idempotent, logged. Never silently mutate user data.
-
-### R3 — Caching policy (pick the right tier every time)
-Decide consciously for each piece of state — never default blindly:
-- **In-memory (service singleton / provider)** — hot, session-scoped, cheap to recompute
-  (e.g. current meal plan, unread counts). Fastest; lost on restart.
-- **Local app storage (Hive / SharedPreferences)** — device-scoped, must survive restart but not
-  cross-device (settings, theme, draft input, offline cache, last-synced snapshot).
-- **Firestore (server)** — source of truth, cross-device, multi-user, or auditable
-  (profile, logs, social, subscription). Always the authority; cache reads locally when it helps UX.
-Prefer **stale-while-revalidate**: show cached instantly, refresh in background, reconcile.
-
-### R4 — Logging at the highest level everywhere
-Every service method, async boundary, and error path logs meaningfully. Use `debugPrint` (dev) and
-route real errors/crashes to `CrashlyticsService` with context (screen, uid, operation). Log
-inputs/outputs of AI calls, Firestore failures, purchase events, migrations. No silent `catch {}`.
-
-### R5 — Performance-grade UX (smooth, native-feeling, both platforms)
-- **Animations**: use `AnimationController` / `AnimatedContainer` / implicit animations with
-  intentional curves & durations (see design tokens). Target 60fps; no jank, no abrupt state jumps.
-- **iOS + Android parity**: test both. Platform-guard where needed (`Platform.isIOS`), respect safe
-  areas, use Cupertino-correct gestures where it matters. Haptics on meaningful actions.
-
-### R6 — Theme + i18n are never optional
-- **Dark/Light**: never hardcode a color. Use `Theme.of(context)`, `AppColors` extension, or design
-  tokens. Every new UI must look correct in both themes.
-- **EN/TR parity**: every user-visible string gets both `en.json` and `tr.json` keys in the same
-  change. Key naming: `screen.section.element`.
-
-### R7 — Design language: "billion-dollar product"
-Every surface must feel like a flagship app from a top-tier company — modern, innovative, cohesive,
-and on-brand for a premium nutrition/fitness product. This explicitly includes the states people
-forget: **loading, empty, error, success, modals/sheets, selectors/pickers, transitions**. No raw
-`CircularProgressIndicator` dropped on a blank screen, no default grey error text, no abrupt modals.
-Use the shared design system (tokens + reusable components in `lib/core/theme/` and
-`lib/core/widgets/`) — build the component once, reuse everywhere. Sustainable and unique.
-
-### R8 — Keep the guide and roadmap alive
-After every meaningful change: update the relevant section here, tick/append `TODO.md`, and keep the
-"Key Services / Files" tables accurate. Rules and status must never drift from the code.
-
-### R9 — Shared-file parallel-write guard (MANDATORY)
-**Never let two agents or two tool calls write the same shared JSON/rules file at the same time.**
-This caused a silent key-loss collision in Phase 12. The rule:
-- `en.json` / `tr.json`: all localization key additions must be **sequential** — use a Python
-  `json.load → mutate → json.dump` script one key group at a time, never a raw `sed` patch.
-- `firestore.indexes.json` / `firestore.rules` / `storage.rules`: one agent owns a file per turn.
-- When spawning parallel sub-agents, assign each a **disjoint file set**. If two agents need the same
-  file, serialize them or have one collect both changes and write once.
-- `test/i18n_parity_test.dart` is the CI gate — it must pass after every localization change.
-
-### Definition of Done (every task must pass)
-☑ Multi-role reasoning applied · ☑ Optimized (R1) · ☑ Data tier + indexes + rules + seed correct
-(R2/R3) · ☑ Logged (R4) · ☑ Smooth + iOS/Android (R5) · ☑ Dark/Light + EN/TR (R6) ·
-☑ Flagship-grade UI incl. loading/empty/error/modal states (R7) · ☑ `flutter analyze lib/` has
-**0 errors** · ☑ CLAUDE.md + TODO.md updated (R8).
+**Current state: `v0.9.6` internal alpha.** Much of the surface is written but unverified.
+**Read [`PROJECT_STATE.md`](PROJECT_STATE.md) before assuming any feature works.**
 
 ---
 
-## Architecture at a Glance
+## 2. Context loading strategy — read this before you read anything else
 
-```
-lib/
-├── core/
-│   ├── models/          # Pure Dart data models (Firestore ↔ app boundary)
-│   ├── providers/       # ChangeNotifier state (LanguageProvider, ThemeProvider, UserProvider)
-│   ├── services/        # All business logic and Firebase access (singleton pattern)
-│   │   └── ai/          # AIService, PromptService (OpenRouter / DeepSeek)
-│   ├── utils/           # Route constants, helpers, ban check observer
-│   ├── theme/           # AppTheme (light + dark, primary color slot)
-│   └── localization/    # AppLocalizations, en.json, tr.json
-├── screens/             # One directory per feature
-│   ├── home/            # Main dashboard + meal plan + food logging
-│   ├── community/       # Social feed (posts, comments, reactions)
-│   ├── chat/            # 1:1 real-time chat
-│   ├── profile/         # Profile view + settings + legal
-│   ├── shopping/        # Shopping list (Hive local + meal-plan auto-gen)
-│   └── auth/            # Login, register, verify email, forgot password
-└── main.dart            # Firebase init + MultiProvider + MaterialApp
-```
+**Never read the entire repository. Never scan directories to orient yourself.** The documentation
+exists so you don't have to. Repository-wide search is a last resort, not a first step.
 
-## State Management
+**Use documentation as your primary context.** Source code is for verifying a specific unknown
+detail, not for discovering what the system does.
 
-- **Provider** (not Riverpod, not Bloc) — all providers extend `ChangeNotifier`
-- Providers live in `lib/core/providers/`
-- Services are singletons (`factory() => _instance`) — never instantiate with `new`
-- Access via `context.read<T>()` (mutations) or `context.watch<T>()` / `Consumer<T>` (UI)
+### The loading order
 
-## Firebase Collections
+1. [`PROJECT_STATE.md`](PROJECT_STATE.md) — what actually works right now
+2. [`docs/INDEX.md`](docs/INDEX.md) §2 — the task router: which docs your task needs
+3. The 1–3 documents that row names
+4. **Only then** the specific source files those documents point at
 
-| Collection | Purpose |
+### Hard limits
+
+- ❌ Don't read `TODO.md` end-to-end (3,000 lines). Jump to the section or task ID you were given.
+- ❌ Don't read a doc "for background" if the router didn't list it for your task.
+- ❌ Don't `grep` for something the docs already map. If the map is missing it, **fix the map** as
+  part of your task.
+- ✅ Do read source when a doc is ambiguous, suspect, or silent — then correct the doc.
+- ✅ Do stop reading once you can act. Enough context beats complete context.
+
+**Code is truth.** When a doc and the code disagree, the code wins — fix the doc in the same task
+and say so in your summary.
+
+---
+
+## 3. Coding philosophy
+
+1. **Smallest correct change.** Targeted edits over rewrites. Don't refactor code the task didn't
+   ask about. Don't "clean up" on the way past.
+2. **Match the surrounding code.** Its naming, comment density, error handling, and idiom are the
+   spec. A change that reads as foreign is a defect even if it works.
+3. **Finish the whole task.** Including the localization keys, the security rule, the index, and the
+   doc update. A feature that needs a follow-up commit to be correct was not delivered.
+4. **Be honest about what you did.** If a step was skipped, if a test fails, if you couldn't verify
+   something — say so plainly. Never report unverified work as done.
+5. **Optimize by default (R1).** No N+1 reads, no unbounded queries, `const` constructors,
+   cancelled subscriptions, minimal rebuilds. The slower path is never the acceptable one.
+
+---
+
+## 4. The rules — R0–R9
+
+These are always active, on every task.
+
+### R0 — Think in three roles before non-trivial work
+**PM**: what problem, which edge cases, what does "better than expected" look like? →
+**Architect**: data tier, schema, indexes, rules, failure modes, migration, implementation order? →
+**Developer**: idiomatic, optimized, matches conventions, all states covered.
+Roles are a thinking sequence, not a deliverable. See [`AGENTS.md`](AGENTS.md) for the eight
+specialist roles and their review checklists.
+
+### R1 — Optimization is mandatory
+Batch/transact where applicable · `const` constructors · lazy/paginated lists · `RepaintBoundary` on
+heavy widgets · debounced inputs · subscriptions cancelled in `dispose` · image caching ·
+`Selector`/`ValueListenableBuilder` over broad `watch`. Never ship an obviously slower path.
+
+### R2 — Data-layer discipline
+Decide deliberately and implement end to end: where the data lives (R3) · the Firestore path and doc
+shape · a **composite index in `firestore.indexes.json` for every new query shape** · a **security
+rule in `firestore.rules`/`storage.rules` for every new path — never leave a collection unguarded** ·
+an idempotent seeder if reference data is needed · versioned, idempotent, logged migrations.
+Details: [`docs/DATABASE.md`](docs/DATABASE.md).
+
+### R3 — Pick the caching tier consciously
+**In-memory** (session-scoped, cheap to recompute) · **Hive/SharedPreferences** (device-scoped, must
+survive restart) · **Firestore** (source of truth, cross-device, auditable). Prefer
+stale-while-revalidate: show cached instantly, refresh in background, reconcile. Rationale: ADR-016.
+
+### R4 — Log at every boundary
+Every service method, async boundary, and error path logs meaningfully: `debugPrint` for dev,
+`CrashlyticsService` with context (screen, uid, operation) for real errors. Log AI call inputs and
+outputs, Firestore failures, purchase events, migrations.
+
+> **No silent `catch {}`.** Swallow-and-log is this codebase's single systemic defect (`DEBT-01`) —
+> it is why Crashlytics is blind. If you catch, either handle it or re-report it. Never neither.
+
+### R5 — Performance-grade UX on both platforms
+`AnimationController` / implicit animations with intentional `AppMotion` curves and durations; 60fps,
+no jank, no abrupt state jumps. Test iOS **and** Android: platform-guard where needed
+(`Platform.isIOS`), respect safe areas, Cupertino-correct gestures, haptics on meaningful actions.
+
+### R6 — Theme and i18n are never optional
+**Never hardcode a color** — `AppPalette.of(context)` / design tokens only; every surface correct in
+dark and light. **Every user-visible string gets EN and TR keys in the same change**, named
+`screen.section.element`. `test/i18n_parity_test.dart` must pass.
+
+### R7 — Flagship design language
+Every surface should read as a top-tier product — including the states people skip: **loading,
+empty, error, success, sheets, pickers, transitions**. No bare `CircularProgressIndicator`, no
+default grey error text, no abrupt modal. Build the component once in `lib/core/widgets/ds/` and
+reuse it. Details: [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md).
+
+### R8 — Keep the documentation alive
+See §7. Non-negotiable and part of the Definition of Done.
+
+### R9 — Shared-file parallel-write guard
+**Never let two agents or two tool calls write the same shared file concurrently.** This has already
+silently destroyed localization keys once.
+- `en.json` / `tr.json`: sequential Python `json.load → mutate → json.dump`, one key group at a
+  time. **Never `sed`.**
+- `firestore.indexes.json` · `firestore.rules` · `storage.rules`: one writer per turn.
+- Parallel sub-agents get **disjoint file sets**. If two need the same file, serialize them or have
+  one collect both changes and write once.
+
+---
+
+## 5. Architecture rules
+
+**The four layers, one direction:**
+`screens/` + `widgets/` → `core/providers/` → `core/services/` → `core/models/` + `core/data/`
+
+1. **UI never touches Firebase.** No `cloud_firestore` import in a screen or widget — go through a
+   service. A service never imports a UI widget.
+2. **Services are singletons**: `static final _instance = Foo._internal(); factory Foo() => _instance;`
+   Never `new` a service.
+3. **No new architectural layers** without explicit instruction. The structure in
+   [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) is the structure.
+4. **Don't extend the repository layer.** It covers four domains and was left incomplete (ADR-005).
+   Follow the surrounding domain's existing pattern.
+5. **PII belongs in `users/{uid}/private/nutrition`**, never the public user doc (ADR-009).
+6. **The client is never the authority** for entitlements, AI credits, the economy, roles, ban state,
+   or moderation. Those are server-only (ADR-008, [`docs/SECURITY.md`](docs/SECURITY.md)).
+
+---
+
+## 6. Security rules
+
+Full model: [`docs/SECURITY.md`](docs/SECURITY.md). Non-negotiable minimums on every task:
+
+- **Never write a secret into client code, a `.env` shipped as an asset, a doc, or a log.**
+- **Every new Firestore/Storage path gets a rule in the same change.** Default deny.
+- **Never make a value-bearing field client-writable** (`subscription_*`, `ai_credits_*`,
+  `user_roles`, `is_banned`, `referral_used`, commissions, counters that gate rewards).
+- **Content-length caps in rules** for any user-authored free text.
+- **Never log PII** — no email, IP, body metrics, or health data in analytics events or logs.
+- **Personal data needs disclosure + consent *before* access**, with purpose, whether it's stored,
+  and a real decline path. Health and location are special-category: explicit consent
+  (*açık rıza*). Framework: [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md) §6, §9.
+- **Minimize.** Prefer transient/on-device over stored. Reference implementation: the "gyms near me"
+  consent gate — location used on-device, never stored.
+- **Deploy order matters**: server write paths ship before rules lock (ADR-008).
+
+---
+
+## 7. Documentation update rules
+
+**Update only affected documentation** — surgically, in the same task, never a rewrite for a
+one-line change.
+
+| You touched | Update |
 |---|---|
-| `users/{uid}` | User profile, public onboarding data (streak, activity_level, goals, cooking_level, `main_goal`, `target_weight`, `water_reminder`, `cooks_for_others`, etc.) |
-| `users/{uid}/private/nutrition` | **Owner-only PII** — personal_info (height/weight/gender/birth_date), allergies, dietary_restrictions, disliked_foods, avoid_ingredients |
-| `users/{uid}/meal_plans/current` | Current weekly meal plan |
-| `users/{uid}/food_logs/{logId}` | Daily food diary entries |
-| `posts/{postId}` | Community posts |
-| `posts/{postId}/comments/{commentId}` | Post comments |
-| `chats/{chatId}/messages/{msgId}` | Chat messages |
-| `notifications/{uid}/items/{id}` | In-app notifications |
-| `dishes/{dishId}` | Recipe/dish database (seeded once) |
-| `signals/{uid}` | Ephemeral social broadcasts |
-| `admin/status/{uid}` | Ban/admin flags |
-| `referrals/{code}` | Referral code docs (owner, usedByUids, maxUses) |
-| `users/{uid}/favorites/{recipeId}` | Saved/bookmarked recipes |
-| `users/{uid}/recent_foods/{dishId}` | Recent & frequent food log entries (max 20) |
-| `users/{uid}/meal_plan_history/{key}` | Archived weekly meal plans (key = `YYYY-MM-DD` week start) |
+| `lib/core/models/`, `firestore.rules`, `firestore.indexes.json`, `storage.rules` | `docs/DATABASE.md` |
+| `lib/core/services/`, `functions/` | `docs/SERVICES.md` (+ `docs/API.md` if a contract changed) |
+| `lib/screens/`, `lib/main.dart`, routes | `docs/FRONTEND.md` |
+| `lib/core/theme/`, `lib/core/widgets/ds/` | `docs/DESIGN_SYSTEM.md` |
+| `assets/localization/` | `docs/LOCALIZATION.md` (only if the system changed) |
+| `android/`, `ios/` | `docs/PLATFORM.md` |
+| `.github/workflows/`, `firebase.json` | `docs/DEVOPS.md` |
+| `test/` | `docs/TESTING.md` |
+| Anything touching personal data or consent | `docs/COMPLIANCE.md` |
+| A user-facing capability appeared or disappeared | `docs/FEATURES.md` **and** `README.md` |
+| A blocker opened/closed, or a system started/stopped working | **`PROJECT_STATE.md`** |
+| A structural choice that constrains future work | **`DECISIONS.md`** (new ADR, append-only) |
+| Task scope or status | `TODO.md` |
+| A shipped roadmap item | move it out of `docs/roadmap/FUTURE_FEATURES.md` |
 
-## Key Services
+**Two rules that keep this system trustworthy:**
 
-| Service | File | Notes |
-|---|---|---|
-| `AuthService` | `auth_service.dart` | Singleton, Firebase Auth wrapper, Google + Apple + email |
-| `FirestoreService` | `firestore_service.dart` | User CRUD, activity logging, streak, notifications; `getPrivateNutritionData(uid)` migrates + reads PII subcollection; `savePrivateNutritionData(uid, data)` writes PII |
-| `AIService` | `ai/ai_service.dart` | OpenRouter client, typed exceptions, 3-retry policy |
-| `WeeklyMealPlanService` | `weekly_meal_plan_service.dart` | AI-generated plan, Firestore caching, hash invalidation |
-| `FoodLogService` | `food_log_service.dart` | Real-time food diary stream for home dashboard |
-| `StorageUploadService` | `storage_upload_service.dart` | Firebase Storage (avatars, post images) |
-| `PushNotificationService` | `push_notification_service.dart` | FCM + local notifications |
-| `CommunityService` | `community_service.dart` | Posts CRUD + cursor-based pagination |
-| `DishService` | `dish_service.dart` | Firestore dish DB, seed on demand |
-| `GlobalErrorHandler` | `global_error_handler.dart` | **Single** `FlutterError.onError` owner; wired into `MaterialApp.builder` |
-| `ATTConsentService` | `att_consent_service.dart` | iOS App Tracking Transparency; one-shot prompt, SharedPrefs `att_prompted` key |
-| `DeepLinkService` | `deep_link_service.dart` | `app_links` universal + custom-scheme routing; `init(navigatorKey)` in splash |
-| `ReferralService` | `referral_service.dart` | 6-char referral codes; Firestore `referrals/{code}`; batch-write reward on apply |
-| `SharingService` | `sharing_service.dart` | Native share-sheet wrapper for recipes, progress, posts, challenges, referrals |
-| `DataExportService` | `data_export_service.dart` | GDPR data export — downloads user Firestore data as JSON |
-| `ShareableFitnessCard` | `widgets/shareable_fitness_card.dart` | Capture-to-PNG progress card; `capture(key)` → share_plus |
-| `NotificationService` | `notification_service.dart` | In-app notifications. **Stores STRUCTURED data only** (`type`, `actorUid/Name/PhotoUrl`, `relatedId`, `metadata`) — never pre-rendered text |
-| `NotificationPresenter` | `utils/notification_presenter.dart` | Renders notification title/body/icon/color dynamically from `notifications.feed.*` keys; legacy docs fall back to stored title/body |
-| `openUserProfile` / `ProfileLink` | `utils/profile_navigation.dart` | Standard way to open a user's profile from any avatar/name (`{userId}` or `{user}`); self → own profile |
-| `FavoriteService` | `favorite_service.dart` | `users/{uid}/favorites/{recipeId}`; `toggleFavorite`, `isFavoriteStream`, `getFavoritesStream` |
-| `RecentFoodService` | `recent_food_service.dart` | `users/{uid}/recent_foods`; auto-upserted by `FoodLogService`; max 20 entries; `getRecentFoods`, `getFrequentFoods` |
-| `NotificationPreferencesService` | `notification_preferences_service.dart` | Per-group mute prefs in `users/{uid}.notification_muted`; groups: likes/comments/friends/system/referral |
-| `WeeklyMealPlanService` (extended) | `weekly_meal_plan_service.dart` | Added `getMealPlanHistory`, `restorePlan`, auto-archive to `meal_plan_history/{key}` on every save |
-| `AppConfigService` | `app_config_service.dart` | Loads/caches the admin-editable `app_config/global` (`AppConfig` model, fail-safe defaults). `init()` at startup (cache-first + background refresh, 6h TTL), reactive `notifier`. Pushes AI values into `AIService.applyRemoteConfig`. Powers version-gate (`utils/version_gate.dart` → `ForceUpdateScreen`), `MaintenanceScreen`, `AnnouncementBanner`, feature kill-switches (`isFeatureEnabled`), rollout bucketing. Admin edits via `AdminService.updateAppConfig` in `AdminAppConfigScreen`. Gates wired in `route_guard.dart` (maintenance/force-update render before all other sections). |
-| `AiCreditService` | `ai_credit_service.dart` | **Read-only** client over the server-authoritative ledger `ai_credits/{uid}` (`used_today`/`reset_at`/`bonus`). Quota check, consumption, daily reset, and bonus grants are all **server-side** (`aiProxy` + purchase Functions); the client only reads for the badge / to pre-empt a 402. `checkAndConsume` no longer writes; `rollbackCredit`/`rollbackBonusCredit` are no-ops (server rolls back). Premium read from `entitlements/{uid}`, not the user doc. |
-| `AchievementService` | `achievement_service.dart` | 11-badge system; `earn(uid, key)` idempotent Firestore write; `checkAndGrant(uid, {streak, tier, justLoggedMeal, justLoggedPhoto, justPosted, justCookedAndLogged})` fires from all success paths; `backfillForUser(uid)` for existing accounts; `getAchievementsStream(uid)` live stream. Catalog in `achievement_model.dart` (`kAchievementCatalog`). |
-| `AchievementsGrid` | `screens/profile/widgets/achievements_grid.dart` | Profile badge grid; earned/locked tiles; bounce unlock animation (reduced-motion aware); tap → `AppSheet` detail. Shown after reputation badge in `profile_screen.dart`. |
-| `WhatsNewService` | `whats_new_service.dart` | Singleton; `shouldShow()` → true once per version bump (SharedPrefs `whats_new_last_version`); skips first install |
-| `WhatsNewSheetContent` | `core/widgets/whats_new_sheet.dart` | DS bottom sheet for version changelogs; `WhatsNewSheetContent.show(context)` static method |
-| `CoachmarkTip` | `core/widgets/coachmark_tip.dart` | One-time contextual tooltip (SharedPrefs-gated); `prefKey` param; dismiss-on-tap; reduced-motion aware |
-| `ProfileCompletenessCard` | `screens/profile/widgets/profile_completeness_card.dart` | Owner-only card (3 steps: photo/meal/challenge); progress ring; self-hides when complete |
-| `DiscoverHubScreen` | `screens/discover/discover_hub_screen.dart` | Unified 2×2 discovery grid (Gyms/Coaches/Programs/Challenges) + premium banner; `AppRoutes.discover` |
-| `GymJoinPromptSheet` | `screens/gym/gym_join_prompt_sheet.dart` | Shown when non-member scans gym QR; join + check-in flow; `GymJoinPromptSheet.show(context, gymId:, gymName:, uid:)` |
-| `RoleQuickCard` | `screens/home/widgets/role_quick_card.dart` | Role-aware home dashboard card (gymOwner/coach/admin); quick-entry to role dashboards; hidden for consumers |
-| `AiInsightService` (extended) | `ai_insight_service.dart` | `generateFitnessTwin(user, locale:)` → persists to `users/{uid}/ai_twin_projections`; `getLatestProjectionStream(uid, locale)` is **locale-agnostic** (no `.where('locale')` filter — returns newest doc regardless of language); locale-tagged SharedPrefs cache for daily insight. **15.4**: `generateWeeklyRecap(user, locale:)` (idempotent per week+locale via Firestore cache, low-data <3 days is free), `checkLowDataThisWeek(uid)`, `getLatestWeeklyRecapStream(uid)`, `static weekKey(DateTime)` → `users/{uid}/ai_weekly_recaps/{doc}` |
-| `WeeklyRecapScreen` | `screens/ai/weekly_recap_screen.dart` | Score ring, wins/challenges sections, trend chip, recommendation, Share sheet. Credit-gated (free for low-data recaps). Entry via `WeeklyRecapCard` on home. |
-| `WeeklyRecapCard` | `screens/home/widgets/weekly_recap_card.dart` | Home teaser: shows week score + trend when recap exists for current week; "Generate" CTA otherwise. Streams from `ai_weekly_recaps`. |
-| `AdminService` (extended) | `admin_service.dart` | Added `searchUsers`, `getUsersStream`, `banUser`, `unbanUser`, `setUserRole`, `coachApplicationHistoryStream`, `gymApplicationHistoryStream`, `logAuditAction`, `auditLogStream`, `pendingCountStream` |
-| `AiCreditsSheet` | `screens/ai/widgets/ai_credits_sheet.dart` | Bottom sheet: usage bar, reset countdown, plan chip, upgrade CTA (shows SnackBar placeholder — `ai.premium_coming_soon`); `AiCreditsSheet.show(context, uid:, isPremium:)` |
-| `AiCreditBadge` | `screens/ai/widgets/ai_credit_badge.dart` | Tappable badge → opens `AiCreditsSheet`; live credit stream |
-| `OnboardingProjectionService` | `onboarding_projection_service.dart` | Pure Dart: BMI+band, calories/macros (reuses `CalorieCalculator`), **safe-clamped** weekly rate + ETA, recommended water. Powers onboarding pages 5 + 14 |
-| `IntroScreen` / `OnboardingFlowScreen` | `screens/onboarding/v2/` | V2 flow: Yazio-style intro carousel + 14-page host (`onboarding_scaffold.dart` chrome, `v2/widgets/onboarding_widgets.dart` controls). `OnboardingFlowScreen(loggedInCompletion:)` runs pre-registration (default) **or** logged-in completion (prefills + persists to the existing uid). See "Onboarding V2" above |
-| `OnboardingCompletion` | `screens/onboarding/v2/onboarding_completion.dart` | Shared completion tail for BOTH onboarding exits (new-account register + logged-in completion): `finalizeAndRoute` → `OnboardingProvider.persistV2Profile` + water reminder + `UserProvider` (copyWith) + route to `mealPlanGeneration`; best-effort so a write hiccup never strands the account |
+1. **Status lives in `PROJECT_STATE.md` and nowhere else.** Feature docs describe how something is
+   *built*; they never claim it works. Do not put percentages, health scores, or blocker lists in a
+   feature doc.
+2. **Never document a feature as present because you just wrote it.** Written ≠ working. Moving a
+   system into `PROJECT_STATE.md` §5 requires demonstrating it runs.
 
-### Firestore collections (Phase 12 additions)
-| Collection | Purpose |
-|---|---|
-| `users/{uid}/ai_twin_projections/{id}` | Persisted AI fitness projections; fields: `locale`, `generatedAt`, payload, `inputsHash` |
-| `users/{uid}/ai_weekly_recaps/{id}` | Weekly AI coach recaps (owner-only); fields: `weekKey` (YYYY-MM-DD Monday), `locale`, `score`, `wins[]`, `challenges[]`, `trend`, `recommendation`, `isLowData`, `generatedAt` |
-| `admin_audit/{id}` | Append-only audit log for every admin action (who/what/when/target); admin-only rules |
-| `ai_credits/{uid}` | **Server-only** AI ledger (owner-read, deny client-write): `used_today`, `reset_at`, `bonus`, `rate_window_start`, `rate_count`. Mutated only by `aiProxy`/purchase Functions (Admin SDK) + admins. Also holds per-user **lifetime** AI totals (`lifetime_requests`/`lifetime_tokens`/`lifetime_cost_usd`/`by_type`) written by `aiProxy`. |
-| `app_config/global` | **Admin-editable** remote app config (**public-read**, admin-write, NO secrets): `ai` (model/vision_model/model_by_type/max_tokens[/_by_type]/temperature/timeout_s/quotas/feature toggles), `version` (min_supported/latest per-platform, force_update, store URLs, update_message i18n), `maintenance`, `announcement`, `features` (kill-switches), `rollout`, `limits`, `endpoints.ai_proxy_url`. Loaded once/session by `AppConfigService` (cache-first, 6h TTL); the **`aiProxy` also reads it** server-side (5min cache) to pick model/tokens/quota — so admin changes take effect WITHOUT a redeploy. |
-| `ai_usage_logs/{id}` | **Server-only** per-request AI trail (admin-read, deny client-write): `uid`, `type` (meal_plan/recipe/insight/weekly_recap/food_photo/chat/other), `model`, `prompt/completion/total_tokens`, `cost_usd`, `unpriced`, `created_at`. Written by `aiProxy` from OpenRouter `usage`. Index: `uid`+`created_at`. |
-| `ai_usage_stats/{doc}` | **Server-only** AI aggregates (admin-read): `global` doc (total requests/tokens/cost + `by_model`/`by_type`) and `day_{YYYY-MM-DD}` buckets. Powers the REAL AI cost in the admin dashboard. |
-| `entitlements/{uid}` | **Server-only** premium entitlement (owner-read, deny client-write): `tier`, `expires_at`, `product_id`, `source`, `latest_transaction_id`. Written only by purchase-validation / referral Functions; mirrored to `users/{uid}.subscription_tier` for UI. |
-| `processed_purchases/{id}` | **Fully server-only** replay/dedupe guard for validated store purchase tokens. |
-| `reports/{id}` | Moderation reports; `status` (pending/reviewed), `targetType`, `reason`; indexes on `status+timestamp` |
-| `seeds/{docId}` | Idempotent seed gates (e.g. `demo.demo_programs_v1`); authenticated read/write |
+---
 
-### Phase 15 additions (engagement & gamification)
-`PushNotificationService` extended with `scheduleDailyMealReminders({times, title, body})` + `cancelMealReminders()` (ID block 8001–8008, mirrors water reminder pattern). `NotificationPreferencesService.preferencePairs` has new `reminders` group covering `mealReminder`, `streakAtRisk`, `weeklyPlanReady`. `settings_screen.dart` has `_showMealReminderSheet()` with breakfast/lunch/dinner pickers; stores `onboarding_data.meal_reminder{enabled, times[]}`. `functions/index.js` has `streakAtRiskNotifier` (daily 17:00 UTC, checks `food_logs.date == today`) and `weeklyPlanReadyNotifier` (Mon 07:00 UTC) cron producers; both respect `notification_muted.reminders`, cap at 500 users.
+## 8. Testing requirements
 
-### Firestore collections (Phase 15 additions)
-| Collection | Purpose |
-|---|---|
-| `users/{uid}/achievements/{key}` | Earned badges — owner-only; `key` = `AchievementKey.name`; fields: `earned_at`. Rules: owner R/W. |
+Full strategy: [`docs/TESTING.md`](docs/TESTING.md). Current coverage is ~1 % and `test/` is
+gitignored (`BLK-13`) — treat every claim of correctness as unproven until you run something.
 
-### Firestore collections (Phase 13 additions)
-| Collection | Purpose |
-|---|---|
-| `community_groups/{groupId}` | Location-based community groups: `name, description, city, district, owner_uid, member_count, is_public, tags[], last_activity_at`. Members at `.../members/{uid}` (`role`). Discovery indexes on `is_public`(+`city`(+`district`)) × sort field. See `docs/roadmap/COMMUNITY_GROUPS.md`. |
-| `users/{uid}/food_analyses/{id}` | AI food-analysis history (owner-only): full `NutritionEstimate` JSON + `created_at` |
-| `posts/{postId}.groupId` | Optional top-level field — group-scoped feed (null = global). Index `groupId+timestamp` |
-| `users/{uid}.group_memberships[]` | Array of joined group ids (mirrors `gym_memberships`) for "My groups" |
-
-### Phase 13 — features & fixes (current)
-- **Shared filter bar** — `AppFilterBar` / `AppFilterPill` (`core/widgets/ds/app_filter_bar.dart`,
-  exported from `ds.dart`): canonical 34h pill bar. **All four discovery surfaces now consume it** —
-  gym & coach discovery, program marketplace, and community feed/topics. `AppFilterPill` has `sort`
-  (label + check) and `.picker` (value + chevron) styles + per-pill `accent` (e.g. energy "Near me")
-  and `loading` (spinner, hides label).
-- **Foods & Nutrition hub** — `NutritionHubScreen` (`screens/nutrition_hub/`): tabbed Browse Foods
-  (DishService catalog + category filter + search) · Favorites (`FavoritesBody`) · Insights
-  (`NutritionAnalyticsScreen(showChrome:false)`). Route `AppRoutes.nutritionHub`; entry from quick
-  actions + side menu. Repointed the old Favorites/Analytics quick-actions here.
-- **Food analysis v2** (`food_scan_screen.dart`) — Describe **or Photo** input. `AIService.generateJsonFromImage`
-  (vision; `.env OPENROUTER_VISION_MODEL`, `isVisionAvailable` gates the photo option).
-  `FoodAnalysisService.analyzeFoodPhoto` + enriched `NutritionEstimate` (fiber/sugar/sodium, health
-  score, allergens, confidence, portion). Portion stepper rescales live. **AI credits now metered**
-  (checkAndConsume + rollback) with live `AiCreditBadge`; analysis history via `FoodAnalysisHistoryService`.
-- **Barcode scanner** — explicit initializing / permission-denied / camera-unavailable states +
-  **manual entry** fallback (no more silent black screen, e.g. on simulator).
-- **Shopping list** — items now carry `sourceMeals`/`sourceDates` (which dish/day needs each
-  ingredient); "for: …" subtitle + This-week/Today filters. (Market data dropped — no source.)
-- **Admin** — fixed empty users list (`getUsersStream` ordered by camelCase `createdAt` → snake_case
-  `created_at`), fixed `searchUsers` escaped `\$query`, added `AdminService.sendNotificationToUser`
-  (+ action-sheet UI), wired `TestDataLibrary.adminUsers()` for test mode.
-- **Bug fixes** — self-profile-as-stranger (`profile_screen` `_isSelf`), weight-save dismissing the
-  profile (`WeightLogSheet`), My Programs infinite spinner (composite index + un-swallowed stream
-  error + StatefulWidget retry), onboarding water reminder defaults to ON.
-
-| Service / Widget | File | Notes |
-|---|---|---|
-| `CommunityGroupService` | `community_group_service.dart` | Groups CRUD + membership + discovery; `CommunityService.getGroupFeedStream` for the group feed |
-| `FoodAnalysisHistoryService` | `food_analysis_history_service.dart` | Owner-only `users/{uid}/food_analyses`; `save`, `streamRecent` |
-| `AppFilterBar` / `AppFilterPill` | `core/widgets/ds/app_filter_bar.dart` | Canonical pill filter bar (sort + picker styles, per-pill accent) |
-| `NutritionHubScreen` | `screens/nutrition_hub/nutrition_hub_screen.dart` | Browse Foods / Favorites / Insights tabs |
-| `WeightLogSheet` | `screens/home/widgets/weight_log_sheet.dart` | Shared weight-log sheet (home card + profile completeness card) |
-
-### Notifications (architecture)
-- **Never store display text.** Call `NotificationService.sendNotification(type:, actorUid:, actorName:, actorPhotoUrl:, relatedId:, metadata:)`. Text is rendered on the reader's device by `NotificationPresenter` so it's always in their language with the real actor name.
-- Add new notification copy as `notifications.feed.*` keys (EN+TR) with `{actor}`/`{emoji}`/`{days}` vars.
-- `NotificationType` is backward-compatible: old names (`like`, `friend_request`…) still parse; prefer granular values (`likePost`, `likeComment`, `reaction`, `referral`, `streakMilestone`).
-
-### Profile privacy
-- `UserModel.isPrivate` (`is_private`). Non-friends viewing a private profile see only the lock card; owner + accepted friends see full. Enforced in `profile_screen.dart` (`_privacyResolved` gate + fresh re-fetch). Profile detail is UI-gated (lives on the readable user doc); `food_logs`/`meal_plans` are server-side owner-only.
-
-### Role growth card (side menu)
-- `_ConsumerCard` in `side_menu.dart` accepts `hideGym` and `hideCoach` bool params. `_buildRoleCard` always appends `_ConsumerCard` when the user lacks at least one of gym-owner/coach, passing `hideGym: isGymOwner` and `hideCoach: isCoach`. This means: admin sees "Register Gym" + "Become Coach"; gym owner sees "Become Coach" only; coach sees "Register Gym" only; already both → no grow card. Users who already hold a role never see the "become X" option for it.
-
-### Discovery filter bars (gym & coach screens)
-- **Redesigned filter bar** — single-row horizontal scrollable pills (height 34h). Design: full text inline per chip (icon + label + trailing ▼/✓), `AnimatedContainer` color transitions. A `VerticalDivider` separates **location** (city, optional district) from **sort** pills.
-- **Gym sort options** (`gym_discovery_screen.dart`): `avg_rating` (Highest Rated), `member_count` (Popular, **default**), `created_at` (Newest), `near_me` (Nearest — energy-colored, KVKK consent-gated). Sort default changed from `name` to `member_count`. `GymService.searchGyms` now accepts `avg_rating` as a valid `sortBy`.
-- **Coach sort options** (`coach_discovery_screen.dart`): `avg_rating` (Highest Rated), `client_count` (Popular, **default**), `created_at` (Newest), `near_me` (Nearest — same KVKK consent flow as gym). District filter added (shown when city is selected). `CoachProfileModel` now carries `latitude`/`longitude` for client-side near-me sorting.
-- **Map view** (`_GymMapView`): A 96px horizontal gym list panel sits below the map. Tapping a card opens the info sheet (name, address, description, tags, member count + "View Gym" CTA). The sheet was enhanced with `address`, `description`, and `tags` fields from `GymModel`.
-
-### Onboarding V2 (pre-registration — INVERTED flow)
-- **Onboarding now runs BEFORE registration.** Flow: `Splash → Intro carousel → [Başla] → Onboarding (14 pages, in `lib/screens/onboarding/v2/`) → [Onayla] → Register → AI meal-plan generation → Home`. Side paths: intro/report `[Zaten hesabım var]` → `OnboardingProvider.reset()` → Login; Login `[Kayıt ol]` → `AppRoutes.onboardingV2`.
-- `OnboardingProvider` accumulates everything **in-memory (no uid)**; the shared tail `OnboardingCompletion.finalizeAndRoute` (`v2/onboarding_completion.dart`) persists it — public `onboarding_data` + private nutrition + `displayName` + `onboarding_completed:true` via `OnboardingProvider.persistV2Profile` (all best-effort) — schedules the water reminder, repopulates `UserProvider` (built via `copyWith`, since `persistV2Profile` writes through `FirestoreService` and does **not** invalidate the `AuthService` cache → a refetch could be stale), and routes to `mealPlanGeneration`. Two callers: `register_screen._completeV2Onboarding` (new account; also records consents) and the logged-in completion path below.
-- `AppRoutes.intro` + `AppRoutes.onboardingV2` are **unwrapped** (pre-auth, like splash). Host: `onboarding_flow_screen.dart`; shared chrome: `onboarding_scaffold.dart`; shared controls: `v2/widgets/onboarding_widgets.dart`.
-- **Email verification is a HARD GATE** — `RouteGuard` Section C blocks all routes except `/verify_email` and `/meal_plan_generation` until `firebaseUser.emailVerified == true`. Social auth (Google) skips the gate (already verified). `OnboardingCompletion.finalizeAndRoute` routes email-auth accounts to `/verify_email` instead of `/meal_plan_generation`; on successful verification `verify_email.dart` routes to `/meal_plan_generation` (onboarding complete) or back into `onboardingV2` (logged-in completion path, onboarding incomplete). New `onboarding_data` keys: `main_goal`, `target_weight`, `water_reminder{enabled,target_ml,wake,sleep}`, `cooks_for_others`.
-- **Legacy post-registration onboarding is fully removed** (`onboarding_screen.dart`, `steps/`, `screens/onboarding/widgets/`, `lib/widgets/onboarding_common_widgets.dart`, `AppRoutes.onboarding`). An already-authenticated account whose `onboarding_completed == false` (a legacy incomplete, or a V2 final-write failure) finishes in the **same V2 flow in logged-in mode**: `OnboardingFlowScreen(loggedInCompletion: true)` (route arg `OnboardingFlowScreen.loggedInCompletionArgs`) prefills from `UserProvider.user.onboardingData` (+ `displayName`), then `OnboardingCompletion` persists to the **existing uid** (no new account) and routes to `mealPlanGeneration`. Splash, RouteGuard (§B+§D), and verify-email send such accounts here; `OnboardingFlowResolver.resolve` returns only `main` (complete) or `onboardingV2` (incomplete) — the logged-out `intro`/`firstIncompleteStep` branches were dropped since the resolver only ever runs for an authenticated user.
-- New features introduced here: **water reminder** (`PushNotificationService.scheduleDailyWaterReminder` — precise, multi-time daily reminders via `timezone`/`flutter_timezone` + `zonedSchedule`, spread across the wake→sleep window; editable from **Settings → Water reminder**) and **`cooks_for_others`** flag (per-household meal scaling shelved — see `docs/roadmap/ONBOARDING_V2.md` §7).
-
-## AI Integration
-
-- Provider: OpenRouter (`https://openrouter.ai/api/v1/chat/completions`)
-- Model: default `deepseek/deepseek-chat-v3-0324:free` (the `openrouter/free` meta-router was
-  rate-limited and timed out on large plan JSON). Override via `.env` `OPENROUTER_MODEL`; text
-  timeout via `.env` `OPENROUTER_TIMEOUT_S` (default 90s). Both read in `app_initialization_service`.
-- Key handling: in **release**, the key is server-side only — `AIService` routes through the `aiProxy`
-  Cloud Function (the bundled-`.env` direct-call path is allowed **only in debug**, hard-blocked in
-  release). `aiProxy` enforces a model allowlist, `max_tokens`/payload caps, **fail-closed** quota,
-  mandatory App Check, and a per-uid rate limit. Purchases/referrals grant entitlements **server-side**
-  only (`validatePurchase`/`applyReferral` Functions); the client never writes premium/credits.
-- `AIService.isConfigured` guards all AI calls — returns empty results if key is placeholder
-- JSON responses: use `AIService.generateJson()` which returns `Map<String, dynamic>`
-- Error hierarchy: `AIRetryableException` → retry up to 3×; `AIFatalException` → abort
-- Never add AI features that don't degrade gracefully when `isConfigured == false`
-
-## Server-Side Security Model (Cloud Functions) — DEPLOYED
-
-> The app is **server-authoritative**: the client is NOT trusted for entitlements, AI
-> credits, the economy, or moderation state. Functions + the hardened Firestore rules are
-> **deployed to `cookrange-app`** (10/12 functions; `appStoreNotifications`/`playRtdn` pending go-live).
-> Config: `firebase.json` + `.firebaserc`; runtime env in `functions/.env` (`APP_ENV=development|production`).
-
-| Function (`functions/`) | Purpose |
-|---|---|
-| `aiProxy` (`index.js`) | Keeps the OpenRouter key server-side. Model **allowlist**, `max_tokens`/payload caps, **fail-closed** quota, per-uid rate limit, App Check (enforced when `APP_ENV=production`), no wildcard CORS. **Logs REAL usage/cost** per request: captures OpenRouter `usage` tokens × per-model price (`MODEL_PRICING`) → writes `ai_usage_logs` + `ai_usage_stats` + per-user lifetime totals (best-effort, off the response path). Client tags each call with a `type` (threaded through `AIService`). |
-| `entitlements.js` | Server-only writers `grantPremium`/`revokePremium`/`grantBonusCredits`/`claimPurchaseToken`. Premium → `entitlements/{uid}`, credits → `ai_credits/{uid}`; mirrors `subscription_tier` to the user doc for UI. |
-| `purchases.js` | `validatePurchase` (Apple App Store Server API + Google Play Developer API receipt validation + token dedupe, **fails closed**); `appStoreNotifications`/`playRtdn` revoke on refund/chargeback/expiry. Store creds gated by `APP_ENV`. |
-| `economy.js` | `applyReferral` — server-validated (no self-referral, one-per-account, max-uses), grants premium to both + writes the commission ledger. |
-| `account.js` | `deleteUserAccount` — recursive GDPR/KVKK erasure: whole `users/{uid}` subtree + server docs + authored content + **all Storage prefixes** + the Auth user. |
-| `config.js` | `APP_ENV` gating: `development` relaxes App Check + store-cred requirements (functions deploy/run with no Apple/Google/App Check setup); `production` enforces them. |
-
-**Firestore rules (deployed) — key locks:** `users/{uid}` update is **field-locked** (clients can't write
-`subscription_tier`/`subscription_*`/`ai_credits_*`/`referral_used`/`is_banned` — server/admin only; `user_roles`
-is intentionally NOT locked since true admin power is gated server-side by `admin/status`). `ai_credits`/`entitlements`
-are owner-read + server-write; `processed_purchases` fully server-only; `commissions` server-write-only; `referrals`
-update is owner/admin-only (`owner_uid` pinned); content-length caps on posts/comments/chat/signals; `failed_login_attempts`
-server-only. **Text moderation:** blocked-keyword list lives at **public-read** `settings/content_filter` (admins write via
-`AdminService.updateAdminConfig`, which mirrors `blocked_keywords` there); `CommunityService._checkContent` reads it from
-`settings/content_filter` (was `admin_config/global`, which is admin-only-read → the filter failed open for normal users).
-
-**Client trust changes:** AI proxy is **mandatory in release** (bundled `.env` key is debug-only); App Check uses real
-providers in release (Play Integrity / App Attest); `AiCreditService` is **read-only** over `ai_credits/{uid}`;
-`BillingService`/`ReferralService` call the `validatePurchase`/`applyReferral` callables; `AuthService.deleteAccount`
-calls `deleteUserAccount`; Hive boxes are **AES-256 encrypted** (key in `flutter_secure_storage`); Analytics/Crashlytics
-collection is **privacy-by-default OFF**, gated on consent (`ConsentService.applyCollectionConsent`); meal-plan generation
-runs a **deterministic allergen filter** (`utils/allergen_safety.dart`); prompts use a **prompt-injection guard**.
-
-> ⚠️ Still **deferred** (tracked in `docs/roadmap/GO_LIVE.md` §5S): Android `usesCleartextTraffic` disable, root/jailbreak
-> detection, FLAG_SECURE, cert pinning, obfuscation, storage chat-image scoping + upload scanning, world-readable-user-doc
-> minimization, server-authored notifications, point-of-use AI/photo consent, `streak`/`reputation` server-side. Console/
-> external (go-live): rotate the leaked Admin SA key, App Check registration+enforcement, store accounts + iOS APNs, OpenRouter spend cap.
-
-## Admin Surface — Hub navigation (redesigned)
-
-The admin surface is a **hub + drawer**, not a scrollable TabBar. `AdminHubScreen`
-(`screens/admin/admin_hub_screen.dart`) is the landing: a **categorized card grid** of every
-section with live badges. `admin_sections.dart` is the **single source of truth** (`AdminSection`
-enum + `AdminSectionMeta`: title/subtitle/icon/category/badge/standalone) — adding/removing a section
-is one entry. `admin_nav.dart` routes a section to its screen (`AdminNav.screenFor/open`) and owns the
-shared **`AdminNavDrawer`** (jump to any section from anywhere). `widgets/admin_section_scaffold.dart`
-gives every section consistent DS chrome + the drawer. `AdminPanelScreen({AdminSection? initialSection})`
-now dispatches: `null` → `AdminHubScreen`; a section → that section's body in `AdminSectionScaffold`
-(standalone sections — users/dishes/cost/reports/privacy/appConfig — have their own screens). Removed
-in the redesign: the legacy `_ConfigTab` (folded into `AdminAppConfigScreen`; `ai_proxy_url` now under
-its Endpoints section), the `_BillingTab` (folded into the cost dashboard's Revenue section), the
-duplicate in-panel `_UsersTab` (use `AdminUserManagementScreen`), and the fake Overview weekly chart.
-
-## Admin Tooling — Cost & Profit Dashboard
-
-`CostAnalyticsService` (`cost_analytics_service.dart`) + `AdminCostAnalyticsScreen` — admin-only,
-in-app **estimated** cost/revenue/profit. Live counts via Firestore `count()` aggregation (total/
-premium users, collection sizes) × unit prices in `cost_analytics_model.dart` (`FirebasePricing` /
-`OpenRouterPricing` / `RevenueAssumptions` + tunable `UsageAssumptions`). Shows Firebase + AI cost
-breakdown, revenue & ARPU, profit/margin, and a "what-if at N users" projection. Firebase figures are
-ESTIMATES (no GCP billing API), but the **AI section is REAL** — a "Real AI Usage" card reads
-`ai_usage_stats/global` (measured tokens × per-model price) with total cost/requests/tokens +
-by-model/by-type breakdown + a **per-user lookup** (enter a uid → recent `ai_usage_logs`: when/type/
-model/tokens/cost). Real AI logging only fires through the `aiProxy` (production/proxy mode); debug
-direct-key calls aren't logged. Entry: Admin panel → overview → "Cost & Profit" card.
-
-## Localization
-
-- Two locales: `en` (English) and `tr` (Turkish) — **must remain in parity**
-- Files: `assets/localization/{en,tr}.json`
-- Access: `AppLocalizations.of(context).translate('key.path')`
-- **When adding any user-visible string, add both EN and TR keys simultaneously**
-- Key naming: `screen.section.element` (e.g. `settings.account.change_email`)
-
-## Design System (USE THIS — see Rule R7)
-
-> Flagship design system lives in `lib/core/theme/` (tokens) + `lib/core/widgets/ds/` (components).
-> One barrel import: `import 'package:cookrange/core/widgets/ds/ds.dart';`. Build a component once,
-> reuse everywhere. **Prefer DS tokens/components over ad-hoc `Container`/`ElevatedButton`/hex.**
-
-**Tokens** (`lib/core/theme/`):
-- `AppSpacing` / `AppRadius` / `AppSize` / `AppElevation` — geometry (design-px; apply `.r`/`.w`/`.h` at call site).
-- `AppMotion` — durations (`instant/fast/normal/slow/ambient`) + curves (`standard/emphasized/spring`…).
-- `AppPalette.of(context)` (or `context.palette`) — **semantic color roles**: `surface`, `surfaceVariant`,
-  `textPrimary/Secondary/Tertiary`, `border`, `success/warning/error/info`, macro accents
-  (`protein/carbs/fat/calories`), `shadow/scrim/shimmer*`. Theme-aware. **Use these instead of raw hex.**
-- `AppText.of(context)` — semantic typography (`displayL`…`labelS`, `overline`), theme-aware, Poppins.
-
-**Components** (`lib/core/widgets/ds/`):
-- `AppButton` — variants (primary/secondary/tonal/ghost/destructive), sizes, loading, haptics, press-scale.
-- `AppCard` / `AppGlassCard` — standard + frosted-glass surfaces with press feedback.
-- `AppSheet.show(...)` — the standard modern bottom sheet (handle, blur scrim, title row, safe-area).
-- `AppShimmer` + `AppSkeletonBox` / `AppSkeletonList` — branded loading skeletons (no bare spinners).
-- `AppEmptyState` / `AppErrorState` — illustrated, animated, on-brand states with CTA/retry.
-
-**Theme plumbing** (legacy, still active):
-- `ThemeProvider` manages `ThemeMode` (light/dark) and `primaryColor` (live brand color).
-- `AppTheme.lightTheme(primaryColor)` / `AppTheme.darkTheme(primaryColor)` in `app_theme.dart`.
-- Primary/brand color: `themeProvider.primaryColor` — default orange `AppPalette.brand` (`0xFFF97300`).
-- **Never hardcode colors.** Migrating old screens: replace `Color(0xFF2E3A59)` → `palette.textPrimary`,
-  `Color(0xFF0D1117)` → `palette.background`, white cards → `palette.surface`, etc.
-
-## Performance & Cost Playbook (MANDATORY — apply on every prompt)
-
-> These are the concrete, learned-the-hard-way rules from the cost/security hardening pass.
-> They make R1 (optimization) and R3 (caching) actionable. **Every new query, image, and write
-> must follow them.** Firestore reads + Storage egress are the top Firebase cost lines.
-
-**Firestore reads (the #1 cost):**
-- ❌ NEVER `.snapshots()` or `.get()` on a collection/query without `.limit(n)` (single-doc reads excepted).
-  An unbounded listener re-reads every matching doc on every change → runaway cost.
-- ✅ For COUNTS/badges use the **`count()` aggregation**, never `.snapshots().map((s) => s.size)`
-  (that reads every doc just to count). `count()` has no `.snapshots()` → use **`pollCount(query)`**
-  (`lib/core/utils/firestore_count.dart`) for a cheap, live-ish polled count.
-- ✅ Paginate lists with `startAfter` cursors; always `.limit()`. Default list cap ~50–200.
-- ❌ No N+1 read loops (a `.get()` per item). Batch with `whereIn` (≤30) or denormalize a field/counter.
-- ✅ Prefer a one-shot `.get()` over a listener when realtime isn't needed. **Cancel every subscription
-  in `dispose()`.** Don't listen to a whole doc for one field — denormalize hot fields or scope the query.
-
-**Images (Storage + egress + perf):**
-- ✅ UPLOAD images ONLY via `StorageUploadService` — it resizes (≤1440 photos / ≤512 avatars),
-  compresses (JPEG q82), strips EXIF/GPS, and runs off the UI thread (isolate). Never `putFile` raw
-  user images elsewhere.
-- ✅ DISPLAY network images ONLY via `AppImage` (widget) or `CachedNetworkImageProvider`
-  (for `DecorationImage`/`CircleAvatar.backgroundImage`). ❌ NEVER raw `Image.network(...)` or
-  `NetworkImage(...)` — uncached = re-download on every view = egress cost + jank.
-- Chat images use a participants-only scoped path + unguessable filename (see `uploadChatImage`).
-
-**Writes / security (server-authoritative — see "Server-Side Security Model"):**
-- Clients NEVER write entitlements/credits/economy/ban/role-admin state. Those go through Cloud
-  Functions (Admin SDK) + are field-locked in `firestore.rules`. AI runs through the `aiProxy`
-  (mandatory in release); never the bundled key.
-
-**UI (R1/R5):** `const` constructors, `RepaintBoundary` on heavy/animated widgets,
-`Selector`/`ValueListenableBuilder` over broad `watch`, debounced inputs, `mounted` checks after await.
-
-**Per-PR review checklist:**
-☑ No unbounded `.snapshots()`/`.get()` (has `.limit()` or single-doc) · ☑ Counts via `count()`/`pollCount`
-· ☑ No N+1 loops · ☑ Network images via `AppImage`/`CachedNetworkImageProvider` (no raw `Image.network`/
-`NetworkImage`) · ☑ Uploads via `StorageUploadService` · ☑ Subscriptions cancelled in `dispose()` ·
-☑ No client writes to entitlement/credit/role/ban fields.
-
-## Field-naming convention (avoid camel/snake mismatches)
-
-- **`users/{uid}` doc:** identity fields mirror Firebase Auth in **camelCase** — `displayName`,
-  `photoURL`, `email`. **Everything else is snake_case** (`created_at`, `is_online`, `last_login_ip`,
-  `onboarding_data`, `user_role`, `is_banned`, `meal_plan_generated`). Read/query the user doc's name as
-  **`displayName`**, never `display_name` (that returns null — it broke admin user search + admin name
-  columns; fixed). `verifyAndRepairUserData` backfills `displayName`/`photoURL`/`email` from Auth.
-- **Other collections** (`coach_profiles`, `gyms/*/members`, `*/checkins`, `community_groups`, coach
-  clients) denormalize the name as **`display_name`/`photo_url`** (snake) and are internally
-  consistent (their `fromMap`/`toMap` both use snake) — do NOT "fix" these to camelCase without a data
-  migration. When populating them, source the value from the user doc's **`displayName`**.
-- External API payloads keep their own keys (e.g. Nominatim reverse-geocode returns `display_name`).
-
-## Code Conventions
-
-- No comments unless the WHY is non-obvious
-- Singletons for all services: `static final _instance = Foo._internal(); factory Foo() => _instance;`
-- `mounted` check before every `setState` or `context` use after `await`
-- Use `unawaited()` (with `dart:async` import) for intentional fire-and-forget
-- `StatefulBuilder` inside `showDialog` for dialog-local loading state
-- Platform guards: `if (Platform.isIOS)` for Apple Sign-In, Apple-specific UI
-- Cursor pagination: `DocumentSnapshot startAfter` pattern (see `community_service.dart:fetchPostsPage`)
-
-## MVP Status
-
-All B1-B13 blockers are complete. App is in **v0.9.5 consumer-beta state**. Phase 2–3.5 are fully shipped:
-design system, food scanning, nutrition analytics, cooking mode, community, challenges, shopping list,
-settings, referral program, deep linking, ATT consent, accessibility semantics, performance RepaintBoundaries,
-GDPR data export, social sharing, and shareable fitness card. **Onboarding V2** (pre-registration inverted flow:
-Yazio-style intro + 14 personalized pages + water reminder + household flag) is shipped — see
-`docs/roadmap/ONBOARDING_V2.md` (incl. known follow-ups). See `TODO.md` for current roadmap.
-
-## Running Locally
+**Before any task is done:**
 
 ```bash
-flutter pub get
-flutter run
+flutter analyze lib/                          # MUST be 0 errors — non-negotiable
+flutter test test/i18n_parity_test.dart       # after ANY localization change
+flutter test                                  # if you changed logic
+dart format lib/                              # CI enforces this
 ```
 
-CI runs on every PR: `flutter analyze` + `flutter test` + Android debug build (`.github/workflows/ci.yml`).
+- **New pure logic gets a unit test.** Calculators, parsers, schedulers, filters, safety checks —
+  anything with no Firebase dependency has no excuse.
+- **Never delete or weaken a test to make it pass.** A failing test is information.
+- **Never claim a test passed without running it.**
+- Firebase-dependent code is currently untestable by design (ADR-004) — say so rather than
+  pretending otherwise.
 
-## Key Files to Know First
+---
 
-1. `lib/main.dart` — app entry, providers, MaterialApp
-2. `lib/screens/splash_screen.dart` — all heavy initialization (Firebase, Hive, AI, push)
-3. `lib/core/services/auth_service.dart` — auth state machine
-4. `lib/screens/home/home.dart` — core product screen (~1200 LOC)
-5. `assets/localization/en.json` — all user-visible strings
+## 9. Coding standards
+
+- **Comments only where the WHY is non-obvious.** No narrating what the code says.
+- `mounted` check before every `setState` or `context` use after an `await`.
+- `unawaited()` (with `dart:async`) for intentional fire-and-forget.
+- `StatefulBuilder` inside `showDialog` for dialog-local loading state.
+- Cursor pagination via `DocumentSnapshot startAfter` (`community_service.dart:fetchPostsPage`).
+- Platform guards: `if (Platform.isIOS)` for Apple Sign-In and Apple-specific UI.
+- **Field naming** — the `users/{uid}` doc mirrors Firebase Auth in **camelCase** (`displayName`,
+  `photoURL`, `email`); **everything else on it is snake_case** (`created_at`, `is_online`,
+  `onboarding_data`, `user_role`, `is_banned`). Other collections denormalize as
+  `display_name`/`photo_url` (snake) and are internally consistent — **do not "fix" those** without
+  a data migration. Reading the user doc's name as `display_name` returns null; this has already
+  broken admin search once.
+- **Images:** display via `AppImage` or `CachedNetworkImageProvider` — **never** raw `Image.network`
+  or `NetworkImage`. Upload only via `StorageUploadService` (resize, compress, EXIF strip, off-thread).
+- **Counts:** `count()` aggregation or `pollCount()` — never `.snapshots().map((s) => s.size)`.
+- **Queries:** always `.limit()`. An unbounded listener re-reads every matching doc on every change.
+
+---
+
+## 10. Forbidden behaviours
+
+Doing any of these is a failed task, regardless of whether the code works.
+
+| ❌ Never | Why |
+|---|---|
+| Read the whole repository, or scan directories to orient | The docs exist for this (§2) |
+| Restate `docs/` content inside `CLAUDE.md` | This file loads every session; duplication costs tokens forever |
+| Put status, percentages, or blockers in a feature doc | Status has exactly one owner (§7) |
+| Document something as working because you wrote it | Written ≠ working — the drift that broke the previous docs |
+| Refactor beyond the task's scope | Unreviewable diffs; ADR-005 is what that produces |
+| Add a Firestore path without a rule | Silent-failure class; already caused `BLK-06`, `BLK-07` |
+| Add a query without an index | Fails in production only |
+| Write a user-visible string in one language | Breaks the CI parity gate |
+| Hardcode a color or text style in UI | Breaks dark mode structurally |
+| `catch {}` with no log or handling | Blinds Crashlytics (R4) |
+| Let two writers touch `en.json`/`tr.json`/rules concurrently | Has already destroyed keys (R9) |
+| Make a value-bearing field client-writable | The entire ADR-008 audit exists because of this |
+| Commit a secret, or log PII | Rotation is expensive; a breach is reportable |
+| Claim a command succeeded without running it | Destroys the only trust the system has |
+| Create a new doc when an existing one owns the topic | Duplication is the failure mode of doc systems |
+
+---
+
+## 11. Definition of Done
+
+Every task must pass all applicable boxes:
+
+☑ Multi-role reasoning applied (R0) · ☑ Optimized (R1) · ☑ Data tier + index + rule + seed correct
+(R2/R3) · ☑ Logged, no silent catch (R4) · ☑ Smooth on iOS **and** Android (R5) · ☑ Dark/Light +
+EN/TR (R6) · ☑ All states designed — loading/empty/error/success/modal (R7) · ☑ Security minimums
+met (§6) · ☑ `flutter analyze lib/` **0 errors** · ☑ Relevant tests run and reported honestly (§8) ·
+☑ Owning doc updated, and `PROJECT_STATE.md` / `DECISIONS.md` if status or a structural choice
+changed (§7)
+
+---
+
+**Next:** [`AGENTS.md`](AGENTS.md) for the per-prompt workflow and your specialist role ·
+[`docs/INDEX.md`](docs/INDEX.md) to find the documents for your task.
