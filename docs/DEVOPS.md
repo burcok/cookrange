@@ -10,7 +10,8 @@
 
 ## 1. CI — `.github/workflows/ci.yml`
 
-Runs on every PR. Flutter 3.24.0.
+Runs on every PR. Flutter 3.44.4 (`CI-11` — bumped from a stale 3.24.0 pin that predated the
+project's own dependency versions and made `flutter pub get` fail outright in CI).
 
 ```
 dart format --set-exit-if-changed   →   flutter analyze   →   flutter test   →   Android debug APK

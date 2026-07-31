@@ -199,7 +199,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | 🚧 **Challenge sunset** | Screens, model, service, deep links, lib refs removed | **`DEBT-11`** — rules block + 2 indexes + 4 orphan i18n keys survive; old roadmap claimed complete |
 | 🚧 **Accessibility** | DS-level semantics on ~6 components, reduced-motion in 2 widgets | 32 sites across 329 files; no screen-reader / contrast / touch-target pass |
 | 🚧 **Dark mode** | Both themes fully defined, `ThemeProvider` live | 120 hex + 214 `Colors.white/black` literals in `lib/screens` |
-| 🚧 **CI/CD** | 4 CI jobs + full TestFlight/Play deploy workflow | `BLK-13`'s own defects fixed — format/tests/rules job now green (verified in real CI); **`CI-11`** (pre-existing, unrelated `flutter pub get` failure) blocks 2/4 jobs; no store secrets set |
+| 🚧 **CI/CD** | 4 CI jobs + full TestFlight/Play deploy workflow | `BLK-13` + **`CI-11`** fixes applied (rules suite green in real CI; Flutter pin bumped `3.24.0`→`3.44.4`, locally verified) — pending one more real CI push to confirm all 4 jobs; no store secrets set |
 
 ### 1.6 Missing systems — no implementation exists
 
@@ -245,7 +245,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | `BLK-10` | 🔥 User doc world-readable with `email`, `last_login_ip`, device fingerprints | GDPR / KVKK exposure in the primary market |
 | `BLK-11` | 🔥 Dish catalog unseedable in-app; only 75 dishes | Core feature has no content on a fresh project |
 | `BLK-12` | 🔥 GDPR erasure + export incomplete | Art. 17 / Art. 20 non-compliance |
-| `BLK-13` | 🚧 Own defects fixed (test/ tracked, 3 failures fixed, format clean, rules suite green); `CI-11` (new, pre-existing, unrelated) blocks full green | 2/4 CI jobs green — real, verified progress; not yet a fully trustworthy gate |
+| `BLK-13` | 🚧 Own defects fixed (test/ tracked, 3 failures fixed, format clean, rules suite green); `CI-11`'s fix (Flutter pin bump) applied and locally verified, pending a real CI push to confirm | 2/4 CI jobs confirmed green; the other 2 have a fix in hand, not yet re-verified against a real run |
 | `BLK-14` | 🔥 App Check not enforced (`APP_ENV=development`) | Proxy and Functions open to unattested clients |
 | `BLK-15` | 🔥 Live OpenRouter key bundled as a Flutter asset + shipped in CI artifacts | Key extraction / denial-of-wallet |
 | `BLK-16` | 🔥 No Apple / Google developer programme enrolment, no signing identity | Cannot produce a distributable build |
@@ -880,20 +880,23 @@ this repo's history — both **fixed and reverified 15/15 locally + confirmed gr
    fixed to the valid 4-segment form `firestore.rules:32`'s own comment already describes
    (`admin/status/{uid}/flags`) — exercises the same real implicit default-deny.
 
-**Not fixed — genuinely out of this card's scope, now tracked separately as `CI-11`:**
-`analyze-and-test`'s **`Get dependencies` step (`flutter pub get`) fails in CI**, confirmed
-**pre-existing** — reproduces identically on the commit before this work (`8e167c0`) and one 12 days
-older (`e06ca0d`). Not caused by anything in this card. Blocks `analyze-and-test` directly and
-`build-android` transitively (`needs: analyze-and-test`). See `CI-11` for the diagnosis so far.
+**Was out of this card's scope, tracked and fixed separately as `CI-11`:**
+`analyze-and-test`'s `Get dependencies` step (`flutter pub get`) failed in CI, confirmed pre-existing
+(reproduced identically on the commit before this work and one 12 days older). Root cause found by
+reproducing with Flutter 3.24.0 via `fvm`: 9 direct `pubspec.yaml` dependencies had been bumped past
+what that old, never-updated CI pin's Dart SDK (3.5.0) supports. Fixed by bumping `ci.yml`/`deploy.yml`
+to Flutter `3.44.4` (matching local dev, already verified compatible) rather than downgrading 9
+dependencies including 2 with real production API differences. Locally verified — `flutter pub get`,
+`analyze`, `format`, `test` (78/78) all clean under the new pin. See `CI-11` for the full diagnosis.
 
 **Acceptance Criteria**
 - ✅ `test/` removed from `.gitignore`; all 14 files (11 Dart + 3 `firestore_rules/`) committed.
 - ✅ `test/firestore_rules/node_modules` excluded specifically.
 - ✅ `dart format lib/` applied; formatting job green.
 - ✅ The 3 `app_lifecycle_service_test` failures fixed.
-- ⛔ **All four CI jobs green on `main`** — 2/4 green (`firestore-rules`, `secret-scan`), 1/4 red
-  (`analyze-and-test` — `CI-11`, unrelated), 1/4 skipped (`build-android`, downstream of the red one).
-  **This bullet is why the card stays 🚧, not ✅** — closing it depends on `CI-11`.
+- 🚧 **All four CI jobs green on `main`** — 2/4 confirmed green (`firestore-rules`, `secret-scan`).
+  `CI-11`'s fix is applied and locally verified for the other 2; **not yet confirmed against a real
+  CI run**. **This bullet is why the card stays 🚧, not ✅** — one more push settles it.
 - 📋 Branch protection requiring all four — not yet done; blocked on the above being real first.
 - ✅ `pubspec.lock` tracking made deliberate — see `DEBT-51`, now closed.
 - 🚧 `lib/firebase_options.dart` generation documented — see `DEBT-52`, partially closed (placeholder
@@ -2369,7 +2372,7 @@ count per slot and monitor plan variety.
 
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `CI-01` | 🚧 | Get all four CI jobs green | Critical | S | 4 h | v0.9.7 / M1 | DevOps | see `BLK-13` | `CI-11` | 2/4 green (`firestore-rules`, `secret-scan`) — verified in real CI. Remaining 2 (`analyze-and-test`, `build-android`) blocked on `CI-11`, not on anything `BLK-13` itself still owns | — |
+| `CI-01` | 🚧 | Get all four CI jobs green | Critical | S | 4 h | v0.9.7 / M1 | DevOps | see `BLK-13`, `CI-11` | — | 2/4 confirmed green in real CI (`firestore-rules`, `secret-scan`). `CI-11`'s fix (Flutter pin bump) is applied and locally verified for the other 2 — pending one more real CI push to confirm | — |
 | `CI-02` | ❌ | Branch protection requiring green CI | Critical | XS | 30 m | v0.9.7 / M1 | DevOps | GitHub settings | `CI-01` | `main` protected; all four checks required; no direct pushes; the 97-commit history shows direct commits to `main` throughout | Without protection, a red `main` recurs immediately |
 | `CI-03` | 🚧 | Rules tests running in CI | Critical | L | 1 w | v0.9.7 / M1 | QA Lead | see `FB-18`; `.github/workflows/ci.yml` `firestore-rules` job | `BLK-13` | **The job now runs and is green** (15/15, real CI run linked in `FB-18`). Full-coverage bar tracked in `FB-18` | — |
 | `CI-04` | ❌ | Verify the deploy workflow end to end | High | S | 1 d | v0.9.9 / M3 | DevOps | `.github/workflows/deploy.yml` | `BLK-16` | One successful TestFlight upload and one Play internal upload from CI; the keychain cleanup step verified; secret rotation documented | A 200-line signing workflow that has never run will not work first time — budget for iteration |
@@ -2379,7 +2382,7 @@ count per slot and monitor plan variety.
 | `CI-08` | ❌ | Pre-commit hooks | Low | XS | 2 h | v0.9.8 / M2 | DevOps | `.githooks/` or `lefthook` | `CI-01` | `dart format` + `flutter analyze` + a secret scan run before commit. **44 unformatted files reached `main`** because nothing checked locally | Cheap prevention of the exact failure that made CI red |
 | `CI-09` | ❌ | Dependabot / dependency update automation | Medium | XS | 1 h | v0.9.8 / M2 | DevOps | `.github/dependabot.yml` | `SEC-28` | Dependabot on `pub` and `npm`; weekly PRs; security advisories reviewed. `flutter pub outdated` previously reported 78 newer versions | Manual dependency review does not happen |
 | `CI-10` | ❌ | Emulator-based integration tests in CI | Medium | M | 3 d | v1.1.0 / M6 | QA Lead | see `TEST-02`; `INF-02` | `TEST-02` | Tracked in `TEST-02` | — |
-| `CI-11` | 🔥 | `flutter pub get` fails in CI's `analyze-and-test` job (`Get dependencies` step) | Critical | S–M | 2–4 h diagnosis + fix; more if a real downgrade is needed | v0.9.7 / M1 | DevOps | `pubspec.yaml` `dependency_overrides` (`analyzer: 6.4.1`, `leak_tracker: ^11.0.1`, `leak_tracker_flutter_testing: ^3.0.10`, `material_color_utilities: ^0.13.0` — `DEBT-42`) · `.github/workflows/ci.yml` (Flutter pinned `3.24.0`) | `DEBT-42` | **Discovered while verifying `BLK-13`'s CI push** — confirmed pre-existing (reproduces identically on commits `8e167c0` and `e06ca0d`, both predating `BLK-13`'s changes), so this is a separate, newly-surfaced defect, not something `BLK-13` caused. Blocks `analyze-and-test` directly and `build-android` transitively (`needs: analyze-and-test`) — 2 of the 4 CI jobs. Leading hypothesis, **not yet confirmed** (log access requires GitHub sign-in; not pursued): the local dev machine runs Flutter 3.44.4, and `dependency_overrides` was very likely added to satisfy *that* toolchain's bundled `flutter_test` transitive constraints — versions incompatible with CI's much older pinned Flutter 3.24.0, failing pub's version solve. Confirm by reproducing with Flutter 3.24.0 locally (e.g. via FVM), then choose: bump CI's Flutter pin (re-verify `dart format`'s canonical output and the analyzer's lint set — both shift across SDK versions) or resolve `DEBT-42` properly (document or remove the overrides) | Whichever fix is chosen has its own re-verification burden across the whole Definition of Done — this is deliberately **not** folded into `BLK-13`, which only fixes what it originally diagnosed |
+| `CI-11` | ✅ | `flutter pub get` failed in CI's `analyze-and-test` job (`Get dependencies` step) | Critical | S–M | ~3 h diagnosis + fix | v0.9.7 / M1 | DevOps | `.github/workflows/ci.yml`, `.github/workflows/deploy.yml` (`flutter-version` bumped `3.24.0` → `3.44.4`, both jobs in each file) | — | **Root cause confirmed by reproduction, not guessed** — installed Flutter 3.24.0 via `fvm` and ran `flutter pub get` against an isolated copy of the real `pubspec.yaml`/`pubspec.lock`. The `dependency_overrides` block (`DEBT-42`) this card originally suspected turned out to be unrelated — Dart overrides bypass version-solve conflict checking entirely, so they were never the cause. The real cause: **9 direct `pubspec.yaml` dependencies** (`lints`, `vm_service`, `test_api`, `meta`, `async`, `fake_async`, `url_launcher`, `flutter_timezone`, `device_info_plus`) had been bumped, at some point after `ci.yml`'s Flutter pin was set (`ci.yml` was added 3 days *after* the last such bump, commit `629fc9f`, and never cross-checked), to versions requiring a Dart SDK newer than 3.24.0's bundled 3.5.0. Pub's solver only surfaces one conflict at a time, so fixing them one-by-one kept revealing more; 2 of the 9 (`flutter_timezone`, `device_info_plus`) would have needed actual production source-code changes for real major-version API differences, with no guarantee of being the last ones. **Chosen fix:** bump CI's Flutter pin to `3.44.4`, matching local dev exactly — confirmed clean (`flutter pub get`, `flutter analyze lib/` 0 errors, `dart format` 0 diff, `flutter test` 78/78, all re-run fresh after the bump) rather than the open-ended dependency-downgrade path | `build-android`'s CI runner needs the Android/Gradle/Kotlin/NDK toolchain a 2026-06-27 local build-system pass already fixed in committed `android/` config (see the historical debt entry) — that combination has run locally but never in CI; verify the real run |
 
 ---
 
@@ -2596,7 +2599,7 @@ Recorded so the history is not lost. All verified fixed.
 | B10 | Community feed pagination | `community_service.fetchPostsPage` |
 | B11 | Dark-mode correctness | `main_scaffold.dart` dynamic background |
 | B12 | Legal: Privacy Policy + Terms | `legal_screen.dart` — **drafts pending lawyer review (`LEG-07`)** |
-| B13 | CI pipeline | `.github/workflows/ci.yml` — `BLK-13`'s own defects fixed (2/4 jobs green, verified); **`CI-11`** (new, pre-existing, unrelated) blocks the other 2 |
+| B13 | CI pipeline | `.github/workflows/ci.yml` — `BLK-13` + `CI-11` fixes applied; 2/4 jobs confirmed green, the other 2 locally verified pending one more real CI push |
 
 ### 47.2 Phase-by-phase delivery record
 

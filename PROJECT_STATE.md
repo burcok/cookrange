@@ -56,7 +56,7 @@
 | Code quality | 6.5 / 10 | Readable, null-safe; **swallow-and-log is the systemic defect** |
 | Maintainability | 5.5 / 10 | 40 files > 800 LOC, no interfaces, no test seam |
 | **Documentation** | **6.5 / 10** | Well-organised and now status-honest (this file); breadth still outruns verification |
-| **Testing** | **2.5 / 10** | **~1 % coverage** (unchanged) — but `test/` is now tracked, 0 failing, and the Firestore rules suite runs green in real CI (`CI-11` blocks 2 of 4 jobs; unrelated) |
+| **Testing** | **2.5 / 10** | **~1 % coverage** (unchanged) — but `test/` is now tracked, 0 failing, the rules suite runs green in real CI, and `CI-11`'s fix (stale Flutter pin) is applied and locally verified pending one more push |
 | Business readiness | 2.0 / 10 | **Zero revenue capability**; premium bypassable |
 | Production readiness | 2.5 / 10 | Two hard ship blockers, CI red, no monitoring, no backups |
 | **Weighted composite** | **5.4 / 10** | Strong design instincts, high velocity, **no verification discipline** |
@@ -81,7 +81,7 @@ Full cards in [`TODO.md`](TODO.md) §2.
 | `BLK-10` | 🔥 User doc world-readable with `email`, `last_login_ip`, device fingerprints | [Security](docs/SECURITY.md) |
 | `BLK-11` | 🔥 Dish catalog unseedable in-app; only 75 dishes | [Database](docs/DATABASE.md) |
 | `BLK-12` | 🔥 GDPR erasure + export incomplete | [Compliance](docs/COMPLIANCE.md) |
-| `BLK-13` | 🚧 Own defects fixed & verified in real CI (`test/` tracked, 3 failures fixed, rules suite green); blocked from full-green by newly-found **`CI-11`** (pre-existing, unrelated `pub get` failure) | [Testing](docs/TESTING.md) |
+| `BLK-13` | 🚧 Own defects fixed & verified in real CI; **`CI-11`** (stale Flutter pin, root-caused by reproducing with `fvm`) fixed and locally verified — one more push confirms all 4 jobs | [Testing](docs/TESTING.md) |
 | `BLK-14` | 🔥 App Check not enforced (`APP_ENV=development`) | [Security](docs/SECURITY.md) |
 | `BLK-15` | 🔥 Live OpenRouter key bundled as a Flutter asset + shipped in CI artifacts | [AI](docs/AI_SYSTEM.md) |
 | `BLK-16` | 🔥 No Apple / Google enrolment, no signing identity | [DevOps](docs/DEVOPS.md) |
@@ -105,7 +105,7 @@ Full cards in [`TODO.md`](TODO.md) §2.
 | 🚧 Meal plan history | `BLK-06` |
 | 🚧 Dish catalog | `BLK-11` |
 | 🚧 Moderation (scans wrong prefix; queue unreachable) | `BLK-05` |
-| 🚧 CI/CD (4 jobs + full deploy workflow, 2/4 green) | `CI-11` |
+| 🚧 CI/CD (4 jobs + full deploy workflow, 2/4 confirmed green, 2/4 fix pending re-verification) | — |
 
 ## 5. Verified working
 
@@ -156,10 +156,11 @@ Store review is an irreducible 1–2 weeks of wall clock.
 2. **`BLK-01`** — add the `isConfigured` guard so release builds cannot serve fabricated meal plans.
    Fabricated health guidance is the worst failure mode this app has.
 3. ~~**`BLK-13`**~~ **Done** — `test/` tracked, 3 failures fixed, rules suite green in real CI
-   ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)). **`CI-11`** — diagnose
-   and fix the pre-existing, unrelated `flutter pub get` failure blocking the other 2 CI jobs
-   (`analyze-and-test`, `build-android`); strong lead is `DEBT-42`'s undocumented
-   `dependency_overrides` vs. CI's Flutter `3.24.0` pin. Then add branch protection (`CI-02`).
+   ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)). ~~**`CI-11`**~~ **Fixed,
+   locally verified** — root cause was 9 `pubspec.yaml` dependencies bumped past what CI's
+   never-updated Flutter `3.24.0` pin supports (`dependency_overrides`/`DEBT-42` was a red herring —
+   it bypasses conflict checking, so it was never the cause). Bumped `ci.yml`/`deploy.yml` to `3.44.4`,
+   matching local dev. **Push and confirm the real CI run**, then add branch protection (`CI-02`).
 4. **`BLK-02`** — add the missing iOS usage string (one line, prevents 6 crashes + rejection).
 5. **`BLK-05` / `BLK-03` / `BLK-06`** — the "shipped but dead" cluster: create `admin_roles`, point
    the push trigger at the real path, add the `meal_plan_history` rule.

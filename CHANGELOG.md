@@ -124,6 +124,27 @@ actively misleading rather than merely incomplete. Corrected in this pass:
     here.
   - `build-android` — skipped, downstream of the above.
 
+### Fixed — `CI-11`: stale Flutter version pin blocked `pub get` in CI (2026-08-01)
+
+- **Root cause confirmed by reproduction, not guessed.** Installed Flutter 3.24.0 via `fvm` and ran
+  `flutter pub get` against an isolated copy of the real `pubspec.yaml`/`pubspec.lock` — the original
+  lead (`DEBT-42`'s undocumented `dependency_overrides`) turned out to be unrelated; Dart overrides
+  bypass version-solve conflict checking entirely, so they were never the cause.
+- **Real cause:** 9 direct `pubspec.yaml` dependencies (`lints`, `vm_service`, `test_api`, `meta`,
+  `async`, `fake_async`, `url_launcher`, `flutter_timezone`, `device_info_plus`) had been bumped, at
+  some point after `.github/workflows/ci.yml` was added (3 days after the last such bump, per git
+  history — the two were never cross-checked), to versions requiring a newer Dart SDK than CI's pinned
+  Flutter 3.24.0 (Dart 3.5.0) provides. Pub's solver surfaces one conflict at a time, so fixing them
+  individually kept revealing more; 2 of the 9 would have needed actual production source-code changes
+  for real major-version API differences (`flutter_timezone`'s `getLocalTimezone()` return type
+  changed at 5.0.0; `device_info_plus` likely similar, unconfirmed).
+- **Fix chosen over the alternative:** bumped `ci.yml` and `deploy.yml`'s Flutter pin to `3.44.4`,
+  matching local dev exactly, rather than the open-ended dependency-downgrade path. Verified clean
+  under the new pin: `flutter pub get`, `flutter analyze lib/` (0 errors), `dart format` (0 diff),
+  `flutter test` (78/78) — all re-run fresh, not assumed from earlier in the session.
+- **Not yet confirmed against a real CI run** — the fix is applied and locally verified; the next push
+  settles whether all 4 jobs are actually green.
+
 ---
 
 ## [0.9.6] — 2026-07-31 — *internal alpha*
