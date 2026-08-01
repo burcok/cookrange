@@ -124,30 +124,49 @@ actively misleading rather than merely incomplete. Corrected in this pass:
     here.
   - `build-android` — skipped, downstream of the above.
 
-### Fixed — `CI-11`: stale Flutter version pin blocked `pub get` in CI (2026-08-01)
+### Fixed — `CI-11`: `analyze-and-test` failed in CI across three independent, stacked bugs (2026-08-01)
 
-- **Root cause confirmed by reproduction, not guessed.** Installed Flutter 3.24.0 via `fvm` and ran
-  `flutter pub get` against an isolated copy of the real `pubspec.yaml`/`pubspec.lock` — the original
-  lead (`DEBT-42`'s undocumented `dependency_overrides`) turned out to be unrelated; Dart overrides
-  bypass version-solve conflict checking entirely, so they were never the cause.
-- **Real cause:** 9 direct `pubspec.yaml` dependencies (`lints`, `vm_service`, `test_api`, `meta`,
-  `async`, `fake_async`, `url_launcher`, `flutter_timezone`, `device_info_plus`) had been bumped, at
-  some point after `.github/workflows/ci.yml` was added (3 days after the last such bump, per git
-  history — the two were never cross-checked), to versions requiring a newer Dart SDK than CI's pinned
-  Flutter 3.24.0 (Dart 3.5.0) provides. Pub's solver surfaces one conflict at a time, so fixing them
-  individually kept revealing more; 2 of the 9 would have needed actual production source-code changes
-  for real major-version API differences (`flutter_timezone`'s `getLocalTimezone()` return type
-  changed at 5.0.0; `device_info_plus` likely similar, unconfirmed).
-- **Fix chosen over the alternative:** bumped `ci.yml` and `deploy.yml`'s Flutter pin to `3.44.4`,
-  matching local dev exactly, rather than the open-ended dependency-downgrade path. Verified clean
-  under the new pin: `flutter pub get`, `flutter analyze lib/` (0 errors), `dart format` (0 diff),
-  `flutter test` (78/78) — all re-run fresh, not assumed from earlier in the session.
-- **Confirmed against a real CI run** ([run #42](https://github.com/burcok/cookrange/actions/runs/30669425771)):
-  `Get dependencies` now succeeds — the actual fix works. But the same run surfaced a *new* failure:
-  `flutter analyze --no-fatal-infos` fails in CI at the `Analyze code` step, which does **not**
-  reproduce locally under the identical Flutter 3.44.4 (verified exit 0, once a stale local
-  `build/ios` directory — gitignored, macOS-only, never present on CI's Ubuntu runner — was removed).
-  Undiagnosed pending the actual CI log text.
+Getting this job green meant fixing three unrelated defects, each one hiding the next until the
+previous was resolved. All three confirmed by reproduction, not guessed at from log fragments.
+
+**1. `flutter pub get` failed.** Installed Flutter 3.24.0 via `fvm` and ran `pub get` against an
+isolated copy of the real `pubspec.yaml`/`pubspec.lock` — the original lead (`DEBT-42`'s undocumented
+`dependency_overrides`) turned out to be unrelated; Dart overrides bypass version-solve conflict
+checking entirely. Real cause: 9 direct dependencies (`lints`, `vm_service`, `test_api`, `meta`,
+`async`, `fake_async`, `url_launcher`, `flutter_timezone`, `device_info_plus`) had been bumped past
+what CI's never-updated Flutter `3.24.0` pin's Dart SDK (3.5.0) supports; `ci.yml` was added 3 days
+after the last such bump and the two were never cross-checked. Fixed by bumping `ci.yml`/`deploy.yml`
+to `3.44.4`, matching local dev, rather than the open-ended downgrade path (2 of the 9 would have
+needed real production source-code changes for major-version API differences).
+**Confirmed green in a real CI run** ([#42](https://github.com/burcok/cookrange/actions/runs/30669425771)).
+
+**2. With `pub get` fixed, `flutter analyze` failed with 3 "Undefined name 'DefaultFirebaseOptions'"
+errors** (`lib/main.dart`, `app_initialization_service.dart`, `seed_db.dart`). `ci.yml`'s placeholder
+for the gitignored `lib/firebase_options.dart` was `// Auto-generated placeholder for CI` — a
+comment, never a real stub. This has been broken since `ci.yml` was created; invisible until (1) was
+fixed, because analyze was never reached before. `build-android` had no placeholder step at all —
+silently broken the same way, the whole time. Fixed with a minimal valid
+`DefaultFirebaseOptions.currentPlatform` stub in both jobs. `deploy.yml` deliberately **not** given
+the same fix — it builds real release artifacts for store distribution, so fake credentials would be
+actively wrong there, not just incomplete; tracked under `DEBT-52`/`BLK-16` instead.
+
+**3. Analyze then failed on `warning • The asset directory 'assets/fonts/' doesn't exist'`.** Real
+cause: git tracked `assets/**F**onts/` (capital F) while all 17 `pubspec.yaml` font declarations say
+`assets/**f**onts/` (lowercase) — invisible for the project's entire life because **macOS's
+filesystem is case-insensitive**, silently resolving the mismatch on every local dev machine. Linux
+(CI, and real Android devices) is case-sensitive and sees two different, non-existent paths. Fixed
+via a case-only `git mv` (two-step, since a direct rename no-ops on a case-insensitive filesystem).
+Also found and removed in the same sweep: 54 accidentally-committed Xcode build-cache files (47 under
+`assets/Fonts/build/`, 7 under `android/build/` — a misconfigured derived-data path, unrelated to the
+case bug). `.gitignore` broadened from `/build/` (root only) to `**/build/` so this can't recur
+silently.
+
+**Verification.** No Docker Desktop on this machine — installed `colima` + `docker`, ran a real
+`ubuntu:24.04` container under `--platform linux/amd64` (matching GitHub's actual runner
+architecture), cloned Flutter `3.44.4`, and tested the **exact bytes about to be pushed** via
+`git archive` of a `git stash create` snapshot — not an approximation. `pub get`, `dart format`,
+`flutter analyze --no-fatal-infos`, and `flutter test` (78/78) all exit 0 in that container. Real CI
+confirmation for this final round is the next step.
 
 ---
 

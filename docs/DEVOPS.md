@@ -106,9 +106,18 @@ flutterfire configure --project=cookrange-app
 
 This writes `lib/firebase_options.dart` and registers the platform apps it doesn't already find in
 the project. CI does not run this — it writes a placeholder instead (`ci.yml`, "Create
-firebase_options.dart placeholder" step) since analyze/format/test never construct `Firebase.app()`.
-That placeholder hack is `DEBT-52`; it is a real gap for anyone bootstrapping a device build straight
-from CI's config, but out of scope for `BLK-13`.
+firebase_options.dart placeholder" step, in both `analyze-and-test` and `build-android`).
+
+That placeholder must be **real, minimal, valid Dart** — a bare comment doesn't work
+(`CI-11`, found the hard way: `main.dart` and two other files reference
+`DefaultFirebaseOptions.currentPlatform` at the top level, so `flutter analyze` needs the class to
+exist even though nothing ever calls `Firebase.initializeApp()` in that job). The placeholder defines
+`DefaultFirebaseOptions.currentPlatform` with dummy values — enough to satisfy the analyzer and the
+debug APK build, never enough to actually reach Firebase.
+
+Committing the real file (still `DEBT-52`) remains a gap for anyone bootstrapping a device build
+straight from CI's config — the placeholder only gets analyze/test/debug-build this far, not a
+working Firebase connection.
 
 ---
 

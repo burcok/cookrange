@@ -56,7 +56,7 @@
 | Code quality | 6.5 / 10 | Readable, null-safe; **swallow-and-log is the systemic defect** |
 | Maintainability | 5.5 / 10 | 40 files > 800 LOC, no interfaces, no test seam |
 | **Documentation** | **6.5 / 10** | Well-organised and now status-honest (this file); breadth still outruns verification |
-| **Testing** | **2.5 / 10** | **~1 % coverage** (unchanged) — but `test/` is now tracked, 0 failing, the rules suite runs green in real CI, `CI-11`'s `pub get` fix confirmed in real CI — but that same run found `flutter analyze` newly failing in CI only, undiagnosed |
+| **Testing** | **2.5 / 10** | **~1 % coverage** (unchanged) — but `test/` is now tracked, 0 failing, the rules suite runs green in real CI; `CI-11`'s 3 stacked root causes (stale Flutter pin, invalid CI placeholder, a real `assets/Fonts` vs `assets/fonts` case bug) all fixed and container-verified, pending final real-CI confirmation |
 | Business readiness | 2.0 / 10 | **Zero revenue capability**; premium bypassable |
 | Production readiness | 2.5 / 10 | Two hard ship blockers, CI red, no monitoring, no backups |
 | **Weighted composite** | **5.4 / 10** | Strong design instincts, high velocity, **no verification discipline** |
@@ -81,7 +81,7 @@ Full cards in [`TODO.md`](TODO.md) §2.
 | `BLK-10` | 🔥 User doc world-readable with `email`, `last_login_ip`, device fingerprints | [Security](docs/SECURITY.md) |
 | `BLK-11` | 🔥 Dish catalog unseedable in-app; only 75 dishes | [Database](docs/DATABASE.md) |
 | `BLK-12` | 🔥 GDPR erasure + export incomplete | [Compliance](docs/COMPLIANCE.md) |
-| `BLK-13` | 🚧 Own defects fixed & verified in real CI; **`CI-11`**'s stale-Flutter-pin fix confirmed working (`pub get` now succeeds in CI) but surfaced a *new*, undiagnosed `flutter analyze` failure specific to CI's Linux runner — doesn't reproduce on macOS | [Testing](docs/TESTING.md) |
+| `BLK-13` | 🚧 Own defects fixed & verified in real CI; **`CI-11`** found 3 stacked root causes (stale Flutter pin; an invalid `firebase_options.dart` CI placeholder; a real `assets/Fonts`/`assets/fonts` case-sensitivity bug masked by macOS for the project's whole life) — all fixed, verified in a real Ubuntu container matching CI exactly, pending final real-CI confirmation | [Testing](docs/TESTING.md) |
 | `BLK-14` | 🔥 App Check not enforced (`APP_ENV=development`) | [Security](docs/SECURITY.md) |
 | `BLK-15` | 🔥 Live OpenRouter key bundled as a Flutter asset + shipped in CI artifacts | [AI](docs/AI_SYSTEM.md) |
 | `BLK-16` | 🔥 No Apple / Google enrolment, no signing identity | [DevOps](docs/DEVOPS.md) |
@@ -156,12 +156,16 @@ Store review is an irreducible 1–2 weeks of wall clock.
 2. **`BLK-01`** — add the `isConfigured` guard so release builds cannot serve fabricated meal plans.
    Fabricated health guidance is the worst failure mode this app has.
 3. ~~**`BLK-13`**~~ **Done** — `test/` tracked, 3 failures fixed, rules suite green in real CI
-   ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)). **`CI-11`** — the
-   `pub get` fix is confirmed working in real CI
-   ([run #42](https://github.com/burcok/cookrange/actions/runs/30669425771): dependency resolution
-   now succeeds), but that same run found `flutter analyze` failing in CI in a way that does **not**
-   reproduce on macOS under the identical Flutter version — likely Linux-specific. Get the real error
-   text (needs GitHub sign-in this session doesn't have) before attempting a fix.
+   ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)). ~~**`CI-11`**~~ **All 3
+   root causes fixed**: stale Flutter pin (confirmed fixed in
+   [run #42](https://github.com/burcok/cookrange/actions/runs/30669425771)); an invalid
+   `firebase_options.dart` CI placeholder (was literally just a comment, causing 3 undefined-name
+   errors — fixed with a real minimal stub); and a genuine `assets/Fonts/` vs `assets/fonts/` case
+   mismatch masked by macOS's case-insensitive filesystem for the project's entire life, invisible
+   until Linux (CI, real Android devices) tried to resolve it — fixed via case-only rename, plus 54
+   accidentally-committed Xcode build-cache files removed along the way. Verified in a real
+   `ubuntu:24.04` container matching CI's architecture exactly (no Docker Desktop here — installed
+   `colima`). **Push and get the real CI confirmation**, then add branch protection (`CI-02`).
 4. **`BLK-02`** — add the missing iOS usage string (one line, prevents 6 crashes + rejection).
 5. **`BLK-05` / `BLK-03` / `BLK-06`** — the "shipped but dead" cluster: create `admin_roles`, point
    the push trigger at the real path, add the `meal_plan_history` rule.

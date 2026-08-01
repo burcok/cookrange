@@ -33,6 +33,10 @@ macos/
 .pub-cache/
 .pub/
 /build/
+# A nested build/ from a misconfigured Xcode derived-data path has been
+# accidentally committed under assets/Fonts/ and android/ before (see CI-11) —
+# ignore build/ at any depth, not just the root, so it can't recur silently.
+**/build/
 
 # Symbolication related
 app.*.symbols

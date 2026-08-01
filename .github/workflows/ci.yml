@@ -30,7 +30,19 @@ jobs:
         run: |
           mkdir -p lib
           if [ ! -f lib/firebase_options.dart ]; then
-            echo "// Auto-generated placeholder for CI" > lib/firebase_options.dart
+            cat > lib/firebase_options.dart <<'DART'
+          // Auto-generated placeholder for CI — analysis/build only, never a real project.
+          import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+
+          class DefaultFirebaseOptions {
+            static const FirebaseOptions currentPlatform = FirebaseOptions(
+              apiKey: 'ci-placeholder',
+              appId: 'ci-placeholder',
+              messagingSenderId: 'ci-placeholder',
+              projectId: 'ci-placeholder',
+            );
+          }
+          DART
           fi
 
       - name: Get dependencies
@@ -116,6 +128,25 @@ jobs:
 
       - name: Create .env file
         run: echo "OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}" > .env
+
+      - name: Create firebase_options.dart placeholder
+        run: |
+          mkdir -p lib
+          if [ ! -f lib/firebase_options.dart ]; then
+            cat > lib/firebase_options.dart <<'DART'
+          // Auto-generated placeholder for CI — analysis/build only, never a real project.
+          import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+
+          class DefaultFirebaseOptions {
+            static const FirebaseOptions currentPlatform = FirebaseOptions(
+              apiKey: 'ci-placeholder',
+              appId: 'ci-placeholder',
+              messagingSenderId: 'ci-placeholder',
+              projectId: 'ci-placeholder',
+            );
+          }
+          DART
+          fi
 
       - name: Get dependencies
         run: flutter pub get
