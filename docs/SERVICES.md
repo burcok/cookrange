@@ -1,8 +1,7 @@
 # SERVICES.md — Services & Cloud Functions
 
 > All business logic lives here. UI never calls Firebase directly — it goes through a service.
-> 75 Dart singletons in `lib/core/services/**` + **14 deployed + 8 pending** Cloud Functions in
-> `functions/`.
+> 75 Dart singletons in `lib/core/services/**` + **22 deployed** Cloud Functions in `functions/`.
 > **Cloud Function *contracts* (request/response, auth, error codes) are owned by
 > [`API.md`](API.md)** — this file covers what each service/function *does*.
 > **Security-authoritative state lives server-side**: premium in `entitlements/{uid}`, AI credits in
@@ -229,11 +228,11 @@
 
 ## Cloud Functions (`functions/`)
 
-> Server-authoritative security layer (hardening 2026-06-30). **14 functions deployed** to
-> `cookrange-app` alongside the Firestore rules, **8 more written** (`notifications.js`/`social.js`,
-> `BLK-03`/`SEC-06`) pending deploy; `appStoreNotifications` + `playRtdn` are wired but inert until
-> store credentials exist. App Check enforcement + store-credential requirements are gated by
-> `APP_ENV` (`development` | `production`) in `config.js` — **currently `development`** (`BLK-14`).
+> Server-authoritative security layer (hardening 2026-06-30, extended 2026-08-01 with
+> `notifications.js`/`social.js` for `BLK-03`/`SEC-06`). **22 functions deployed** to `cookrange-app`
+> alongside the Firestore rules; `appStoreNotifications` + `playRtdn` are wired but inert until store
+> credentials exist. App Check enforcement + store-credential requirements are gated by `APP_ENV`
+> (`development` | `production`) in `config.js` — **currently `development`** (`BLK-14`).
 >
 > Full inventory and wire contracts: [`API.md`](API.md) §1.
 
@@ -264,7 +263,7 @@
   `is_admin` onto the Firebase Auth `admin` custom claim. The real admin gate: `admin_roles/{uid}`
   itself is console/Admin-SDK-only (`write: if false`), so this claim can't be self-granted.
 
-**Notifications & social** (`notifications.js`, `social.js`, `BLK-03`/`SEC-06`, pending deploy)
+**Notifications & social** (`notifications.js`, `social.js`, `BLK-03`/`SEC-06`)
 - **createNotification / retractNotification** (callables, `notifications.js`) — Server-authored
   in-app notification create/undo for social interactions (likes, comments, reactions, mentions,
   streak milestones). Actor is always `context.auth.uid`, re-fetched from `users/{uid}` — never the

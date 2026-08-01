@@ -203,7 +203,8 @@ Legal obligations, consent design, data inventory, DSAR, and the breach runbook 
 
 ## 8. The security gate — `S0`–`S17`
 
-**All 18 are open.** Full cards in [`roadmap/GO_LIVE.md`](roadmap/GO_LIVE.md) Phase 5S.
+**17 of 18 are open** — `S5` closed and deployed 2026-08-01 (`BLK-03`/`SEC-06`). Full cards in
+[`roadmap/GO_LIVE.md`](roadmap/GO_LIVE.md) Phase 5S.
 
 ### Order is load-bearing
 Deploy **server write paths first** (`S2` ledger → `S3` purchase validation → `S4` economy), **then**
@@ -218,7 +219,7 @@ breaks live flows. Run the rules-emulator tests before `S1`.
 | `S2` | Server-authoritative AI credit + entitlement ledger *(code ✅, rules pending)* |
 | `S3` | Server-side purchase validation, sandbox-proven end to end |
 | `S4` | Server-authoritative economy — referrals, commissions, payouts |
-| `S5` | Close open creates: notifications, friends, friend_requests *(code ✅, rules ✅ — pending deploy, `BLK-03`/`SEC-06`)* |
+| ~~`S5`~~ | Close open creates: notifications, friends, friend_requests *(closed and deployed, `BLK-03`/`SEC-06`)* |
 | `S6` | Hardened proxy + App Check **enforced** + client key fallback removed + OpenRouter spend cap |
 | `S7` | Server-side erasure + Storage cleanup |
 | `S8` | Runtime consent enforcement + cross-border AI transfer disclosure + age gate |

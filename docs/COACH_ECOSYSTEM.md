@@ -47,8 +47,9 @@ Consumer → "Become Coach" → coach_application_screen (~1135 LOC, multi-step:
 
 Status surfaces in `coach_application_pending_screen` (pending / approved / rejected / needsMoreInfo).
 
-> `BLK-05` (admin unreachable) is closed and deployed. `BLK-03` (approval notification fan-out) has
-> code + rules written — deploy pending; see `PROJECT_STATE.md` for current status.
+> `BLK-05` (admin unreachable) and `BLK-03` (approval notification fan-out) are both closed and
+> deployed; see `PROJECT_STATE.md` for current status. No real coach application has been approved
+> end to end against the live callables yet.
 
 ---
 
@@ -158,7 +159,7 @@ between discovery and commission.
 | ID | Issue |
 |---|---|
 | `BLK-09` 🔥 | `coach_uid == 'demo'` allows public marketplace publishing by anyone |
-| `BLK-03` | Approval and client notifications — fan-out fix code+rules written, deploy pending |
+| `BLK-03` | Approval and client notifications — fan-out fix deployed; no real approval exercised end to end yet |
 | `S13` | Reviews don't require a real client relationship |
 | `REF-04` | No payout rail; earnings are computed but unpayable |
 | — | Paid programs deliberately stubbed |
@@ -169,6 +170,6 @@ between discovery and commission.
 with real checkout, coach subscription tiers, in-app session booking, gym↔coach association,
 richer AI client analytics, and the payout provider.
 
-**Before reopening:** close `BLK-09` (a security defect, not a feature gap) and `S13`; confirm `BLK-03`
-is deployed and verified; integrate a payout rail; add marketplace terms to the legal documents. Then
-pilot with 5–10 real coaches.
+**Before reopening:** close `BLK-09` (a security defect, not a feature gap) and `S13`; verify `BLK-03`
+end to end against a real application (deployed, but not yet exercised live); integrate a payout
+rail; add marketplace terms to the legal documents. Then pilot with 5–10 real coaches.

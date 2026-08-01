@@ -56,7 +56,7 @@ call these callables rather than writing `friends`/`friend_requests` directly. U
 is already owner-scoped-safe.
 
 > ⚠️ Block enforcement is client-side only (`S13`). A blocked user's content is hidden, not withheld.
-> `friends`/`friend_requests` open-creates (`S5`) are closed in code+rules (`SEC-06`) — pending deploy.
+> `friends`/`friend_requests` open-creates (`S5`) are closed in code+rules, deployed (`SEC-06`).
 
 ---
 
@@ -72,7 +72,8 @@ Chat images use a **participants-only scoped path** with unguessable random file
 client-side EXIF/GPS stripping on upload.
 
 **Chat push works** — `onChatMessageCreated` is wired correctly. It was the only push path that did
-until `BLK-03` (fan-out fix, §4) landed in code — still pending deploy as of this writing.
+until `BLK-03` (fan-out fix, §4) deployed 2026-08-01 — every notification type now has a
+server-authored writer, though physical push delivery is unverified in this environment (no device).
 
 ---
 
@@ -103,9 +104,9 @@ it renders as a raw key (in-app) / generic text (push).
 
 > `BLK-03`/`SEC-06` — the fan-out trigger (`onInAppNotificationCreated`) now has a real writer for
 > every notification type, all server-authored via Admin SDK; client `create` on the notification path
-> is denied unconditionally by rule. Code + rules tests written, **deploy pending** as of this writing
-> — see `PROJECT_STATE.md` for current status. Physical-device push delivery cannot be verified in
-> this environment (no iOS/Android hardware, and the iOS Simulator cannot receive real APNs).
+> is denied unconditionally by rule. Deployed 2026-08-01 — see `PROJECT_STATE.md` for current status.
+> Physical-device push delivery cannot be verified in this environment (no iOS/Android hardware, and
+> the iOS Simulator cannot receive real APNs).
 
 ---
 

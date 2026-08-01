@@ -69,7 +69,6 @@ Full cards in [`TODO.md`](TODO.md) §2.
 
 | ID | Blocker | Domain |
 |---|---|---|
-| `BLK-03` | 🔥 Push fan-out — code+rules+tests complete, **deploy pending** (with `SEC-06`) | [Community](docs/COMMUNITY.md) |
 | `BLK-04` | 🔥 Monetization non-functional end to end | [Premium](docs/PREMIUM.md) |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | [Gym](docs/GYM_ECOSYSTEM.md) |
 | `BLK-08` | 🔥 Any user can mutate any post's non-content fields | [Security](docs/SECURITY.md) |
@@ -92,11 +91,11 @@ Full cards in [`TODO.md`](TODO.md) §2.
 | System | Blocked by |
 |---|---|
 | 🚧 AI meal planning · recipe generation — no longer fabricates when unconfigured (`BLK-01` ✅); real end-to-end generation still unverified | `BE-01` |
-| 🚧 Push notifications — every notification type now has a server-authored writer (`notifications.js`/`social.js`); chat push still the only one confirmed live pre-deploy | `BLK-03` |
+| 🚧 Push notifications — every notification type has a server-authored writer, deployed (`BLK-03` ✅); physical push delivery unverified — no device in this environment | — |
 | 🚧 Admin surface (~7,400 LOC, 9 screens) — reachable now (`BLK-05` ✅); no real admin session has exercised it yet | — |
 | 🚧 Monetization (IAP client + server validation both exist) | `BLK-04` |
-| 🚧 Gym ecosystem (11 screens) · Coach ecosystem (8 screens) | `BLK-03`, `BLK-07` |
-| 🚧 Friends/follow — code+rules complete for server-authored writes (`SEC-06`), deploy pending | `SEC-06` |
+| 🚧 Gym ecosystem (11 screens) · Coach ecosystem (8 screens) — `BLK-03` deployed, no real approval exercised end to end yet | `BLK-07` |
+| 🚧 Friends/follow — server-authored writes deployed (`SEC-06` ✅); no live UI flow exercised yet | — |
 | 🚧 Program marketplace | `BLK-09` |
 | 🚧 Dish catalog | `BLK-11` |
 | 🚧 Moderation (scans wrong prefix; queue reachable but unstaffed) | — |
@@ -119,6 +118,14 @@ admin authorization (`BLK-05` — `syncAdminClaim` deployed and confirmed live v
 functions:list`; all 3 client gates re-pointed at the custom claim; rules tests confirm the
 `admin_roles` → `isAdmin()` chain end to end in CI; no real admin session has exercised the 9-screen
 surface yet — nobody has been console-provisioned) ·
+push notification fan-out + social-write lockdown (`BLK-03`/`SEC-06` — 8 Cloud Functions
+(`createNotification`, `retractNotification`, `sendAdminNotification`, `followUser`, `unfollowUser`,
+`sendFriendRequest`, `respondToFriendRequest`, `cancelFriendRequest`) deployed and confirmed live via
+`firebase functions:list`; Firestore rules deployed cleanly; rules tests confirm client cannot forge
+a notification or write another user's `friends`/`friend_requests`, end to end in CI; no real
+gym/coach approval or friend-request/follow flow has been exercised against the live callables yet,
+and physical push delivery is unverifiable in this environment — no iOS/Android hardware, no real
+APNs on the Simulator) ·
 allergen pre-filter · prompt-injection guard · Hive AES-256 · consent registry · design system ·
 EN/TR parity (2,722 keys) · maintenance + force-update gates · feature kill-switches ·
 image upload pipeline · `pollCount` discipline · `flutter analyze lib/` 0 errors ·
@@ -193,8 +200,8 @@ Store review is an irreducible 1–2 weeks of wall clock.
    shipped alongside it. Followed with a downstream sweep of the ~30 "unreachable until `BLK-05`"
    references across `TODO.md` (`ADM-*`, `MOD-01`, `NOTIF-13`, `MKT-02`, `LEG-09`, etc.) now that
    the fix is confirmed live.
-6. **`BLK-03` + `SEC-06`** — **code+rules+tests complete, deploy pending.** One canonical notification
-   path (`notifications/{uid}/items/{docId}`), all creation moved server-side
+6. ~~**`BLK-03` + `SEC-06`**~~ **done** — one canonical notification path
+   (`notifications/{uid}/items/{docId}`), all creation moved server-side
    (`functions/notifications.js`, `social.js`): `createNotification`/`retractNotification` (generic
    social types, actor always re-derived from `context.auth.uid`), `sendAdminNotification`
    (admin-claim-gated), and `followUser`/`unfollowUser`/`sendFriendRequest`/`respondToFriendRequest`/
@@ -205,11 +212,16 @@ Store review is an irreducible 1–2 weeks of wall clock.
    have silently excluded those docs from the paginated feed once this path became canonical), and
    `executeBroadcast` was double-sending push (its own direct send plus a second generic-text send via
    the trigger it also happened to write into). `getPushText` rewritten with full EN/TR text for all 21
-   `NotificationType` values, closing `I18N-04` in the same change. 4 new rules tests written. **Not
-   deployed** — held for explicit go-ahead, same as `BLK-05`/`BLK-06`. Physical push delivery **cannot
-   be verified in this environment**: no iOS/Android hardware, and the iOS Simulator cannot receive
-   real APNs push at all — this is a harder limit than `BLK-01`/`BLK-02`'s partial Simulator
-   verification.
+   `NotificationType` values, closing `I18N-04` in the same change. 4 new rules tests (22 total)
+   confirmed passing in real CI. **Deployed** with your go-ahead: 8 Cloud Functions (the deploy hit
+   the same ambiguous "failed to create function" CLI error as `BLK-05`, repeatedly — each retry
+   advanced one function further while the CLI reported the *next* one as failed; deployed in small
+   batches, confirming every function via `firebase functions:list` rather than trusting the CLI
+   message, until all 8 were verified live) and the Firestore rules (clean on the first attempt).
+   **Residual:** physical push delivery **cannot be verified in this environment**: no iOS/Android
+   hardware, and the iOS Simulator cannot receive real APNs push at all — this is a harder limit than
+   `BLK-01`/`BLK-02`'s partial Simulator verification. No real gym/coach approval or friend-request
+   flow has been exercised end to end against the live callables yet either.
 7. Then M2 security gates in the order fixed by `GO_LIVE.md` Phase 5S — **server write paths first
    (`S2`→`S3`→`S4`), then lock the rules (`S1`, `S5`)**. Locking first breaks live flows.
 

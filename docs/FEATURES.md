@@ -69,7 +69,7 @@ Detail: [`AI_SYSTEM.md`](AI_SYSTEM.md).
 | @mentions with notification fan-out | ✅ | v0.7 | — | — |
 | 1:1 + group chat — typing, images, read status | ✅ | v0.5 | `ChatService` | — |
 | In-app notifications — structured, locale-rendered | ✅ | v0.6 | `NotificationPresenter` | — |
-| **Push notifications** | 🚧 `BLK-03` | v0.6 | Cloud Functions | Chat push works; social/admin push code+rules written (`notifications.js`/`social.js`), deploy + physical-device verification pending |
+| **Push notifications** | 🚧 `BLK-03` | v0.6 | Cloud Functions | Every notification type now has a deployed, server-authored writer (`notifications.js`/`social.js`); physical-device verification still pending — no hardware in this environment, and the iOS Simulator cannot receive real APNs |
 | Community groups — location-based | 🚧 | v0.9 | `CommunityGroupService` | — |
 | Streak squads | 🚧 | v0.7 | `StreakSquadService` | — |
 | Signals — ephemeral, TTL | 🚧 | v0.6 | needs a Firestore TTL policy | — |

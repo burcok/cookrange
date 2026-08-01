@@ -186,11 +186,11 @@ These are code-proven **and** believed functional. Full archive with evidence in
 
 | System | What exists | What is missing / broken |
 |---|---|---|
-| 🚧 **Push notifications** | FCM token capture, mute groups, presenter, 2 cron producers, **now** a real writer for every notification type (`notifications.js`/`social.js`) + localized push text | `BLK-03`/`SEC-06` code + rules + tests written — **not yet deployed**, and push delivery cannot be verified in this environment (no physical device; iOS Simulator has no real APNs) |
+| 🚧 **Push notifications** | FCM token capture, mute groups, presenter, 2 cron producers, a real writer for every notification type (`notifications.js`/`social.js`) + localized push text | `BLK-03`/`SEC-06` deployed to production 2026-08-01 (8 Cloud Functions confirmed live via `firebase functions:list`, rules confirmed released) — push delivery still cannot be verified in this environment (no physical device; iOS Simulator has no real APNs) |
 | 🚧 **Admin surface** (~7,400 LOC, 9 screens) | Hub, users, applications, dishes, reports, cost, config, audit, privacy | `BLK-05` closed and deployed — reachable now; no real admin session has exercised it end to end yet (nobody has been console-provisioned) |
 | 🚧 **Monetization** | IAP client, server validation, entitlement ledger, paywall, credits sheet | **`BLK-04`** — no store products, no store credentials |
-| 🚧 **Gym ecosystem** (11 screens) | Discovery, map, setup, dashboard, analytics, QR, members, community, leaderboard | `BLK-05` closed — `BLK-03` code+rules written (deploy pending) + `BLK-07` (logo upload denied) remain |
-| 🚧 **Coach ecosystem** (8 screens) | Discovery, application, profile, dashboard, clients, reviews | `BLK-05` closed — `BLK-03` code+rules written (deploy pending); paid programs and payouts absent |
+| 🚧 **Gym ecosystem** (11 screens) | Discovery, map, setup, dashboard, analytics, QR, members, community, leaderboard | `BLK-05` + `BLK-03` closed and deployed — no real approval has been exercised end to end yet; `BLK-07` (logo upload denied) remains |
+| 🚧 **Coach ecosystem** (8 screens) | Discovery, application, profile, dashboard, clients, reviews | `BLK-05` + `BLK-03` closed and deployed — no real approval has been exercised end to end yet; paid programs and payouts absent |
 | 🚧 **Program marketplace** | Model, content weeks, enrolment, My Programs | `BLK-09` open-write hole; paid gate stubbed |
 | 🚧 **Dish catalog** | 75 dishes, seeder, admin editor | **`BLK-11`** — unseedable in-app; 75 is too few; 180-dish prompt ceiling |
 | 🚧 **Moderation** | Keyword filter, report queue, Vision SafeSearch function | Scans the wrong prefix; admin queue now reachable (`BLK-05` closed) but unstaffed |
@@ -234,7 +234,6 @@ These are code-proven **and** believed functional. Full archive with evidence in
 
 | ID | Blocker | Why it blocks |
 |---|---|---|
-| `BLK-03` | 🔥 Push fan-out — code+rules+tests written, **deploy pending**; not verifiable on a physical device in this environment | Zero social push and gym/coach approval batches fail **until deployed** |
 | `BLK-04` | 🔥 Monetization non-functional end to end | Zero revenue capability |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | Gym setup broken; NSFW scanner watches the wrong prefix |
 | `BLK-08` | 🔥 Any user can mutate any post's non-content fields | Like-count / announcement / group integrity |
@@ -463,14 +462,18 @@ inconsistent would have meant three screens still skipping the app's own rationa
 
 ---
 
-#### `BLK-03` 🚧 Push notification fan-out — code+rules+tests complete, deploy pending (closed together with `SEC-06`)
+#### `BLK-03` ✅ Push notification fan-out — deployed to production (closed together with `SEC-06`)
 
-**Status** 🚧 Code, rules and rules-tests complete 2026-08-01 — rules tests confirmed passing in real
-CI ([run #30704409637](https://github.com/burcok/cookrange/actions/runs/30704409637); all 4 jobs
-green). **Cloud Functions deploy and Firestore rules deploy not yet done**, held for explicit
-go-ahead (same pattern as `BLK-05`/`BLK-06`). Physical
-push delivery **cannot be verified in this environment** — no iOS/Android hardware, and the iOS
-Simulator cannot receive real APNs push at all. · **Priority** Critical · **Complexity** M · **Est** 2–3 d
+**Status** ✅ Closed 2026-08-01 — code, rules, tests, and both deploys (8 Cloud Functions +
+Firestore rules) done, with explicit user go-ahead. Rules tests confirmed passing in real CI
+([run #30704409637](https://github.com/burcok/cookrange/actions/runs/30704409637); all 4 jobs
+green). All 8 functions confirmed live via `firebase functions:list`:
+`createNotification`/`retractNotification`/`sendAdminNotification`/`followUser`/`unfollowUser`/
+`sendFriendRequest`/`respondToFriendRequest`/`cancelFriendRequest`, all `v1`, `callable`,
+`us-central1`, `nodejs20`. Firestore rules deploy reported "Deploy complete!" cleanly. **Residual:**
+physical push delivery **cannot be verified in this environment** — no iOS/Android hardware, and the
+iOS Simulator cannot receive real APNs push at all — this remains unverified until a real device
+test. · **Priority** Critical · **Complexity** M · **Est** 2–3 d
 **Version** v0.9.7 · **Milestone** M1 · **Owner** Firebase Architect
 **Labels** `push` `notifications` `retention` `firestore-rules` `security` `silent-failure`
 **Modules** Backend · Firebase · Frontend · Security
@@ -529,8 +532,18 @@ worked.
   `weeklyPlanReadyNotifier`) already wrote to the correct path independently of this bug (they push
   directly via Admin SDK) — they now also pass the recipient's locale into `getPushText`.
 
+**Deployed** — both steps done in the order ADR-008 requires (Functions before rules), with explicit
+user go-ahead: `firebase deploy --only functions:createNotification,functions:retractNotification,functions:sendAdminNotification,functions:followUser,functions:unfollowUser,functions:sendFriendRequest,functions:respondToFriendRequest,functions:cancelFriendRequest`
+then `firebase deploy --only firestore:rules`, both `--project cookrange-app`. The functions deploy
+hit the same ambiguous "failed to create function" CLI error seen during `BLK-05`, but repeatedly —
+each retry (7 total) reported failure on the next function in the batch while the previous one(s)
+had, in fact, been created successfully underneath. Deployed in small batches, confirming via
+`firebase functions:list` after each attempt (never trusting the CLI's inline error alone) until all
+8 were verified live. The rules deploy succeeded cleanly on the first attempt (2 pre-existing,
+unrelated compiler warnings — `hasNoExtraFields` unused, `request.` variable-name notice — neither
+introduced by this change).
+
 **Acceptance criteria still open**
-- Deploy (`firebase deploy --only functions:createNotification,retractNotification,sendAdminNotification,followUser,unfollowUser,sendFriendRequest,respondToFriendRequest,cancelFriendRequest` + `firestore:rules`).
 - Verified on **two physical devices**: like a post → recipient receives push in their locale with the
   correct actor name. **Cannot be done in this environment.**
 - Mute groups respected in production (logic written, matches the pre-existing pattern; unverified live).
@@ -1457,12 +1470,13 @@ done.
 
 ---
 
-#### `SEC-06` 🚧 Server-author all social writes: notifications, friends, friend requests *(`S5`, `C9`)* — code+rules complete, deploy pending
+#### `SEC-06` ✅ Server-author all social writes: notifications, friends, friend requests *(`S5`, `C9`)* — deployed to production
 
-**Status** 🚧 Code, rules and rules-tests complete 2026-08-01 (landed together with `BLK-03` — same
-files, same deploy) — rules tests confirmed passing in real CI
-([run #30704409637](https://github.com/burcok/cookrange/actions/runs/30704409637)) — **not yet
-deployed**. · **Priority** Critical · **Complexity** M · **Est** 3–4 d
+**Status** ✅ Closed 2026-08-01 (landed together with `BLK-03` — same files, same deploy) — rules
+tests confirmed passing in real CI
+([run #30704409637](https://github.com/burcok/cookrange/actions/runs/30704409637)), all 8 Functions
+and the Firestore rules deploy confirmed live with explicit user go-ahead — see `BLK-03` for the full
+deploy verification detail. · **Priority** Critical · **Complexity** M · **Est** 3–4 d
 **Version** v0.9.7 · **Milestone** M1 (with `BLK-03`) · **Owner** Security Engineer
 **Labels** `firestore-rules` `spam` `impersonation` `push-forgery`
 **Modules** Security · Backend · Firebase
@@ -1489,13 +1503,14 @@ into anyone's friends list or friend-request queue.
   `friend_requests`, or create in `notifications/{B}/items` (even as an authenticated, non-owner user,
   and even B **themselves** cannot client-create their own notification — the whole point of the fix).
 
+**Deployed** — see `BLK-03` for the full deploy log (functions before rules, per ADR-008; both
+confirmed live).
+
 **Acceptance criteria still open**
-- Deploy (see `BLK-03`).
-- Verified: a crafted client write is rejected **in production** (confirmed against the rules
-  themselves in CI's Firestore emulator — real production behaviour still unverified until deploy);
-  the legitimate UI flow (send/accept/reject/cancel friend request, follow/unfollow) still works end
-  to end — needs a real deploy to exercise, callables can't be hit from the emulator-only rules-test
-  suite.
+- Verified: the legitimate UI flow (send/accept/reject/cancel friend request, follow/unfollow) has
+  not been exercised against the live callables by a real user session yet — the rules-test suite
+  proves the *rules* are correct, not that the callables behave correctly end to end in production.
+  No physical-device or manual QA pass has been done in this environment.
 
 **DoD** §0.5 plus rules tests per path — confirmed passing in CI
 ([run #30704409637](https://github.com/burcok/cookrange/actions/runs/30704409637)).
@@ -2027,7 +2042,7 @@ streak/reputation recompute (`SEC-14`), notification-path migration (`BLK-03`).
 | ID | Status | Path | Written by | Priority | Cx | Est | Version | Owner | Deps | Acceptance |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `FB-01` | ✅ | `users/{uid}/meal_plan_history/{key}` | `weekly_meal_plan_service.dart:191`, `:318` | Critical | XS | 2 h | v0.9.7 / M1 | Firebase Architect | — | Rule written, tested, and deployed — `BLK-06` closed |
-| `FB-02` | 🚧 | `notifications/{uid}/items/{id}` | `functions/notifications.js`, `social.js`, `economy.js`, `index.js` (broadcast) — all Admin SDK | Critical | M | 2–3 d | v0.9.7 / M1 | Firebase Architect | — | Rule written and tested — `BLK-03` code complete, deploy pending |
+| `FB-02` | ✅ | `notifications/{uid}/items/{id}` | `functions/notifications.js`, `social.js`, `economy.js`, `index.js` (broadcast) — all Admin SDK | Critical | M | 2–3 d | v0.9.7 / M1 | Firebase Architect | — | Rule written, tested, and deployed — `BLK-03` closed |
 | `FB-03` | 🔥 | `gyms/{gymId}/logo.jpg` (Storage) | `storage_upload_service.dart:145` | Critical | XS | 4 h | v1.1.0 / M6 | Firebase Architect | — | Tracked as `BLK-07` |
 | `FB-04` | ❌ | **Full path/rule reconciliation audit** | every collection | Critical | M | 2 d | v0.9.7 / M1 | Firebase Architect | `BLK-13` | Extract every Firestore and Storage path written or read anywhere in `lib/` and `functions/`; assert each has a rule; a CI script fails on any unmatched path. **Three mismatches were found by hand — this makes the check permanent.** §0.5 |
 
@@ -2038,9 +2053,9 @@ streak/reputation recompute (`SEC-14`), notification-path migration (`BLK-03`).
 | `FB-05` | 🔥 | `posts` update lets any user write any non-content field | `firestore.rules:195-199` | Critical | `BLK-08` |
 | `FB-06` | 🔥 | `programs` create allows `coach_uid == 'demo'` from any user | `:458-460` | Critical | `BLK-09` |
 | `FB-07` | 🔥 | `users/{uid}` read exposes email, IP, device fingerprints | `:68` | Critical | `BLK-10` |
-| `FB-08` | 🚧 | `users/{uid}/notifications` — path retired entirely (no rule; falls to catch-all deny) | — | Critical | `SEC-06` code complete, deploy pending |
-| `FB-09` | 🚧 | `users/{uid}/friends` create/update now `if false` (delete stays owner-only, already safe) | `:86-90` | Critical | `SEC-06` code complete, deploy pending |
-| `FB-10` | 🚧 | `users/{uid}/friend_requests` create/update/delete now `if false` (fully server-only) | `:95-98` | Critical | `SEC-06` code complete, deploy pending |
+| `FB-08` | ✅ | `users/{uid}/notifications` — path retired entirely (no rule; falls to catch-all deny), deployed | — | Critical | `SEC-06` closed |
+| `FB-09` | ✅ | `users/{uid}/friends` create/update now `if false` (delete stays owner-only, already safe), deployed | `:86-90` | Critical | `SEC-06` closed |
+| `FB-10` | ✅ | `users/{uid}/friend_requests` create/update/delete now `if false` (fully server-only), deployed | `:95-98` | Critical | `SEC-06` closed |
 | `FB-11` | 🔥 | `gyms/{gymId}/posts` create by any authenticated user | `:378-381` | High | `SEC-07` |
 | `FB-12` | 🔥 | `gym_logos` write/delete by any authenticated user (dead rule, real hole) | `storage.rules` | High | `BLK-07` |
 | `FB-13` | 🔥 | Group chat images readable by any authenticated user | `storage.rules` | High | `SEC-13` |
@@ -2427,7 +2442,7 @@ count per slot and monitor plan variety.
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `GYM-01` | ✅ | Gym data model, setup (3-step), discovery with search + cursor pagination, member management, owner dashboard, per-gym brand colour, member home, QR + GPS check-in, community feed + announcements, weekly leaderboard, Gym Wars, analytics (heatmap, engagement, at-risk, CSV export), verification badge | — | — | — | shipped | — | 11 screens ≈ 10,000 LOC; `gym_service.dart`, `gym_analytics_service.dart`, `gym_leaderboard_service.dart`, `gym_post_service.dart`, `gym_application_service.dart` | — | Code-verified; **operationally blocked** | — |
-| `GYM-02` | 🚧 | Unblock gym application review | Critical | — | — | v1.1.0 / M6 | Security | see `BLK-03`, `BE-05` | — | `BLK-05` closed — admin is reachable. `BLK-03` (approval batch + notification) code+rules complete, deploy pending; `BE-05` (reviewers can actually open the evidence documents) still open. **Until `BLK-03` deploys, a gym owner can apply today and nothing happens** | Two remaining defects still compound into one dead funnel |
+| `GYM-02` | 🚧 | Unblock gym application review | Critical | — | — | v1.1.0 / M6 | Security | see `BLK-03`, `BE-05` | — | `BLK-05` + `BLK-03` closed and deployed — admin is reachable and the approval batch + notification no longer fails structurally. No real gym application has been approved end to end yet to confirm live. `BE-05` (reviewers can actually open the evidence documents) still open | One remaining defect (`BE-05`) still blocks the funnel even though approval itself should now work |
 | `GYM-03` | 🔥 | Fix gym logo upload | Critical | XS | 4 h | v1.1.0 / M6 | Firebase Architect | see `BLK-07` | — | Tracked in `BLK-07` | — |
 | `GYM-04` | ❌ | Gym post membership enforcement | High | S | 1 d | v1.1.0 / M6 | Security | see `SEC-07` | — | Tracked in `SEC-07` | — |
 | `GYM-05` | ❌ | Check-in integrity (server geofence + membership + rate limit) | High | M | 2–3 d | v1.1.0 / M6 | Security | see `SEC-08` | `BLK-08` | Tracked in `SEC-08`. **Gym leaderboards and Gym Wars are meaningless until this lands** | — |
@@ -2446,7 +2461,7 @@ count per slot and monitor plan variety.
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `COA-01` | ✅ | Coach profiles, vanity referral codes, 3-step application with evidence upload, pending/rejected/needs-info states, competitive discovery (city+district filters, rating sort, rank badges, Top Coaches, trust badges), client management with at-risk detection, dashboard, AI client report, reviews with transaction-updated aggregates, share card | — | — | — | shipped | — | 8 screens; `coach_service.dart`, `coach_application_service.dart`, `coach_review_service.dart`, `coach_profile_model.dart` | — | Code-verified; **operationally blocked** | — |
-| `COA-02` | 🚧 | Unblock coach application review | Critical | — | — | v1.1.0 / M6 | Security | see `BLK-03`, `BE-05` | — | `BLK-05` closed — admin is reachable. `BLK-03` code+rules complete, deploy pending; `BE-05` still open. Same remaining dead funnel as `GYM-02` | — |
+| `COA-02` | 🚧 | Unblock coach application review | Critical | — | — | v1.1.0 / M6 | Security | see `BLK-03`, `BE-05` | — | `BLK-05` + `BLK-03` closed and deployed — admin is reachable and the approval batch + notification no longer fails structurally. No real coach application has been approved end to end yet to confirm live. `BE-05` still open | Same residual as `GYM-02` |
 | `COA-03` | ❌ | Coach review integrity (server-side aggregates) | Medium | S | 1 d | v1.1.0 / M6 | Security | see `SEC-09` | — | Tracked in `SEC-09` | — |
 | `COA-04` | ❌ | Coach credential verification process | High | M | 1 w | v1.1.0 / M6 | PM / Legal | `application_review_screen.dart`, `BE-05` | `BE-05` | A documented, repeatable verification standard (which certifications are accepted, how they are checked, who checks, what is recorded); the reviewer UI enforces the checklist; the decision and evidence retained per `LEG-05` | **Approving unverified people to give nutrition advice is a liability.** The screens exist; the *standard* does not |
 | `COA-05` | ❌ | Coach session billing and scheduling | Low | XL | 3–4 w | v2.0.0 / Icebox | PM | `commission_service.recordCoachSessionCommission` (ready but never called) | `REF-04`, `BLK-04` | Booking, calendar, payment for real-world coaching, commission on completion. **Carried from Phase 5/7: "actual payment processing intentionally deferred pending a payout provider"** | Real-world services can be billed outside IAP; digital content cannot. Get this distinction legally reviewed |
@@ -2525,7 +2540,7 @@ count per slot and monitor plan variety.
 | `ADM-01` | ✅ | Make the admin surface reachable | Critical | S | 1–2 d | v0.9.7 / M1 | Security | see `BLK-05` | — | This **is** `BLK-05` — closed, deployed, CI-confirmed. **~7,400 LOC across 9 screens is reachable now** | — |
 | `ADM-02` | ✅ | Admin hub — categorized card grid, `AdminSection` enum + `AdminSectionMeta` single source of truth, shared drawer, `AdminSectionScaffold` chrome | — | — | — | shipped | — | `admin_hub_screen.dart`, `admin_sections.dart`, `admin_nav.dart`, `widgets/admin_section_scaffold.dart` | — | Code verified; reachable now that `BLK-05` is deployed | — |
 | `ADM-03` | ✅ | User management — debounced search, role chip, ban/unban, force logout, password reset, per-user data stats, per-user notification send | — | — | — | shipped | — | `admin_user_management_screen.dart` (894 LOC), `admin_service.dart` (37.6 KB) | — | Code verified; reachable now that `BLK-05` is deployed | — |
-| `ADM-04` | ✅ | Application review (coach + gym) with evidence links, approve/reject, notes sheet, history | — | — | — | shipped | — | `application_review_screen.dart` (834 LOC) | `BLK-03`, `BE-05` | `BLK-05` closed — reachable. **Approval batch fix** (`BLK-03`) code+rules complete, deploy pending; evidence documents still unopenable (`BE-05`) | — |
+| `ADM-04` | ✅ | Application review (coach + gym) with evidence links, approve/reject, notes sheet, history | — | — | — | shipped | — | `application_review_screen.dart` (834 LOC) | `BLK-03`, `BE-05` | `BLK-05` + `BLK-03` closed and deployed — reachable, approval batch fix live. Evidence documents still unopenable (`BE-05`) | — |
 | `ADM-05` | ✅ | Dish DB management (live stream, search, category filter, edit sheet, re-seed, delete) | — | — | — | shipped | — | `admin_dishes_screen.dart` (825 LOC) | `FB-17` | Code verified; reachable now that `BLK-05` is deployed; still uses the unbounded stream (`FB-17`) | — |
 | `ADM-06` | ✅ | Moderation queue (pending/reviewed, dismiss, remove content, bulk actions, relative timestamps) | — | — | — | shipped | — | `admin_reports_screen.dart` (586 LOC) | — | Code verified; reachable now that `BLK-05` is deployed | — |
 | `ADM-07` | ✅ | Cost & profit dashboard — Firestore `count()` aggregates, unit-price model, Firebase + AI breakdown, revenue/ARPU/profit, what-if projection, **real** AI usage from `ai_usage_stats` with by-model/by-type and per-user lookup | — | — | — | shipped | — | `admin_cost_analytics_screen.dart` (579 LOC), `cost_analytics_service.dart`, `cost_analytics_model.dart` + tests | — | Code verified; reachable now that `BLK-05` is deployed. Firebase figures are **estimates** (no GCP Billing API); the AI section is real | — |
@@ -2622,7 +2637,7 @@ count per slot and monitor plan variety.
 | `I18N-01` | ✅ | EN/TR at 2,722 keys each, exact parity, no empty values, CI-enforced by `test/i18n_parity_test.dart`; `screen.section.element` naming; AI responses forced into the user's locale; locale-tagged AI caches | — | — | — | shipped | — | `assets/localization/{en,tr}.json`, `app_localizations.dart`, `prompt_service.localeInstruction` | `BLK-13` | Verified working. **The strongest dimension in the audit — better than most funded startups.** Protect the parity test | — |
 | `I18N-02` | ❌ | Remove orphaned i18n keys | Low | XS | 1 h | v0.9.8 / M2 | Technical Writer | 4 orphan challenge keys (`notification_prefs.challenges`, `gym.feature_challenges`, `gym.feature_challenges_sub` + TR) | `CHL-00` | Orphans removed; legitimate uses of the word "challenge" (`ai.weekly_recap_challenges`, `gym.war_*`, `intro.page3_*`) **kept or reworded deliberately** — note `intro.page3_title` still says "Community & Challenges" for a feature that no longer exists | User-visible copy promising a removed feature is a trust problem, not just an orphan key |
 | `I18N-03` | 📋 | Additional locales beyond EN/TR | Low | M per locale | 1 w per locale | v1.2.0 / Icebox | PM | `assets/localization/`, `app_localizations.dart` | `NUT-09` | The language picker is already an extensible `AppSheet` list — a new locale is a new JSON file plus a dish catalog (`NUT-09`) and legal-document translation. **Carried from Phase 9 and `FUTURE_FEATURES` F1** | Localizing the UI without localizing the food catalog and legal documents produces a half-translated product |
-| `I18N-04` | 🚧 | Localize the server-side push copy | High | S | 1–2 d | v0.9.7 / M1 | Backend | `functions/index.js` (`getPushText` — full EN/TR rewrite, mirrors `notifications.feed.*`) | `BLK-03` | Done in code as part of `BLK-03`: recipient's locale read from their user doc, push title/body rendered in that locale for all 21 `NotificationType` values. **Deploy pending** — same as `BLK-03` | Undermines the product's strongest differentiator at the most visible touchpoint, until deployed |
+| `I18N-04` | ✅ | Localize the server-side push copy | High | S | 1–2 d | v0.9.7 / M1 | Backend | `functions/index.js` (`getPushText` — full EN/TR rewrite, mirrors `notifications.feed.*`) | `BLK-03` | Done and deployed as part of `BLK-03`: recipient's locale read from their user doc, push title/body rendered in that locale for all 21 `NotificationType` values. Physical-device confirmation of the rendered text still pending (no hardware in this environment) | — |
 | `I18N-05` | ❌ | Locale-aware number, date and unit formatting audit | Medium | S | 2 d | v1.0.0 / M4 | Flutter Engineer | `intl` is a dependency; usage not audited | — | Dates, decimals, weights (kg) and currency (₺) formatted per locale everywhere; no hardcoded `dd/MM/yyyy` or `.` decimal separators | Turkish uses `,` as the decimal separator — a hardcoded `.` looks broken to the primary audience |
 | `I18N-06` | ❌ | Turkish copy review by a native speaker | High | S | 3 d (external) | v1.0.0 / M4 | PM (external) | `assets/localization/tr.json` (2,722 values) | — | A native Turkish speaker reviews every user-visible string for naturalness, tone and fitness-domain terminology; corrections applied | 2,722 machine-or-developer-written Turkish strings in a Turkish-first product carry real quality risk. Parity is verified; **quality is not** |
 
@@ -2759,7 +2774,7 @@ Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register �
 | ID | Debt | Why it exists | Risk | Impact | Fix | Effort | Tracked as |
 |---|---|---|---|---|---|---|---|
 | `DEBT-01` | Swallow-and-log error handling (25 bare catches + dozens of log-and-default) | Speed over observability; `debugPrint` felt like logging | **Root cause of `DEBT-04`, `DEBT-06` remaining invisible** (was also root cause of `DEBT-02`, closed with `BLK-01`, and `DEBT-05`, closed with `BLK-05`). `debugPrint` is a release no-op → zero production signal | Features die silently; nobody can state what works | Route every catch to Crashlytics with context; ban bare catches via CI grep; permission-denied renders an error state, not empty | 1 w | `ARCH-01`, `OBS-03` |
-| `DEBT-04` | Push fan-out path mismatch; admin path unruled | Trigger written against a documented path the client never adopted | Fixed in code (`BLK-03`) — one canonical path, ruled, server-authored. **Deploy pending** | Retention loop and both ecosystems dead until deployed | — | 2–3 d | `BLK-03` |
+| `DEBT-04` | Push fan-out path mismatch; admin path unruled | Trigger written against a documented path the client never adopted | Fixed and deployed (`BLK-03`) — one canonical path, ruled, server-authored | — | — | 2–3 d | `BLK-03` |
 | `DEBT-06` | Monetization non-functional end to end | Store setup never started; validation correctly fails closed | Zero revenue | No business | Register products, add credentials, `APP_ENV=production`, sandbox-verify | 1–2 w + store | `BLK-04` |
 | `DEBT-07` | All 18 of the project's own security gates unchecked | `GO_LIVE.md` §5S written but never worked | Unknown-unknowns across the whole surface | Compounds every other item | Work `S0`–`S17` in order; make the rules suite pass in CI | 3–4 w | §3 |
 
@@ -2871,7 +2886,7 @@ Recorded so the history is not lost. All verified fixed.
 | B2 | Real AI key management (client-side guard) | `ai_service.dart` `isConfigured` + placeholder detection — **note: this guard is the mechanism `BLK-01` exploits** |
 | B3 | Food/calorie logging (real consumed calories) | `food_log_model.dart`, `food_log_service.dart`, `home.dart` stream |
 | B4 | Image upload via Firebase Storage | `storage_upload_service.dart`, `create_post_card.dart`, avatar |
-| B5 | Push notifications (FCM + local) | `push_notification_service.dart` — **note: FCM fan-out code+rules complete (`BLK-03`), deploy pending; local notifications work** |
+| B5 | Push notifications (FCM + local) | `push_notification_service.dart` — **note: FCM fan-out (`BLK-03`) deployed 2026-08-01; physical-device delivery unverified in this environment. Local notifications work** |
 | B6 | Account deletion + data purge | Settings danger zone, `auth_service.deleteAccount`, later `functions/account.js` — **incomplete (`BLK-12`)** |
 | B7 | Apple Sign-In | `auth_service.signInWithApple`, iOS-guarded buttons |
 | B8 | Profile edit persistence | `profile_screen._pickAndUploadAvatar` |
@@ -3271,7 +3286,7 @@ strategy→`ARCH-07` (decision recorded, revisit on retention data) · 6 Event t
 | Scope delusion (README sells an OS) | 🔴 | 🔴 **unchanged and worse** — 8 domains, 75 screens, 0 validated users. §1.9 and `DOC-02` are the mitigation |
 | AI cost & reliability | 🟠 | 🟠 — cost controls are now genuinely strong (`AI-20`, `AI-21`); the fabrication-as-correctness-risk is fixed (`BLK-01` closed) — remaining reliability risk is availability-only, pending `BE-01`'s proxy deployment |
 | App Store rejection | 🟠 | 🟠 — `BLK-02`'s automatic-rejection cause (missing photo-library usage string) is fixed; `STORE-04` and `STORE-06` remain open risks |
-| Retention with no push | 🟠 | 🟠 — `BLK-03` fan-out fix is code+rules+tests complete but **not yet deployed**, and physical push delivery cannot be verified in this environment; downgraded from 🔴 now that a real writer exists for every notification type, but still unproven in production |
+| Retention with no push | 🟠 | 🟢 — `BLK-03` fan-out fix is deployed (8 Functions + rules confirmed live); physical push delivery still cannot be verified in this environment (no device, no real APNs on Simulator), so treat as code-correct-but-UX-unproven rather than fully closed |
 | "Looks done, isn't" | 🟠 | 🔴 **the defining risk of this codebase.** Seven confirmed dead paths; ~1 % coverage means seven is a floor, not a total |
 | Single-maintainer bus factor | 🟡 | 🔴 — 115k LOC, 486 KB of partly-inaccurate docs, all credentials with one person (`DR-05`) |
 | Two-sided marketplace cold start | 🟡 | 🟡 — unchanged; §1.9's consumer-first cut is the mitigation |
@@ -3306,11 +3321,11 @@ The first ten things to do, in this order. Everything else follows from them.
    the guard just makes "alone" mean "honest error state," not "silent lie."
 7. ~~**`BLK-02`**~~ — the string plus a preflight check landed. Device/`.ipa` verification still
    owed once `BLK-16` gives a signing identity.
-8. ~~**`BLK-05`**~~ — `syncAdminClaim` deployed; ~7,400 LOC of admin surface reachable. `BLK-03` was
-   the remaining blocker for both ecosystems' approval funnels.
-9. **`BLK-03`** + **`SEC-06`** — notification path fixed and authorship moved server-side, one canonical
-   path, rules + rules-tests written. **Deploy pending** (held for explicit go-ahead) — not struck
-   through until deployed and CI-confirmed green, matching the `BLK-05`/`BLK-06` precedent.
+8. ~~**`BLK-05`**~~ — `syncAdminClaim` deployed; ~7,400 LOC of admin surface reachable.
+9. ~~**`BLK-03`**~~ + ~~**`SEC-06`**~~ — notification path fixed and authorship moved server-side, one
+   canonical path, rules + rules-tests written, CI-confirmed green, 8 Cloud Functions + Firestore
+   rules deployed with explicit go-ahead. **Residual:** physical push delivery unverified — no
+   iOS/Android hardware in this environment, and the iOS Simulator cannot receive real APNs at all.
 10. **`TEST-08`** — write and execute an honest manual QA pass on physical iOS and Android devices.
     **Every one of the seven dead paths would have been caught by this. It is the cheapest and most
     effective quality intervention available.**

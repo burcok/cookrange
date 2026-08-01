@@ -53,8 +53,9 @@ Consumer → side menu "Register Gym" → gym_application_screen (documents to S
 
 Rejection and needs-more-info states surface in `gym_application_pending_screen`.
 
-> `BLK-05` (admin unreachable) closed and deployed. Approval notifications depend on `BLK-03`'s
-> fan-out fix — code + rules written, deploy pending; see `PROJECT_STATE.md` for current status.
+> `BLK-05` (admin unreachable) and `BLK-03` (approval notification fan-out) are both closed and
+> deployed; see `PROJECT_STATE.md` for current status. No real gym application has been approved
+> end to end against the live callables yet.
 
 ## 4. Gym setup
 
@@ -145,7 +146,7 @@ client referral, no revenue split between them. That's the main M6 design gap. S
 | ID | Issue |
 |---|---|
 | `BLK-07` | Gym logo upload writes to an unruled Storage prefix; scanner watches the wrong one |
-| `BLK-03` | Approval and gym notifications — fan-out fix code+rules written, deploy pending |
+| `BLK-03` | Approval and gym notifications — fan-out fix deployed; no real approval exercised end to end yet |
 | `S13` | Check-ins lack combined membership + geofence + rate-limit validation |
 | — | Gym Wars UI effectively unbuilt |
 | — | White-label is a brand colour only |
@@ -156,5 +157,6 @@ client referral, no revenue split between them. That's the main M6 design gap. S
 (logo, theme, optional own listing), gym subscription tiers, gym↔coach association, class scheduling,
 equipment/capacity awareness, and deeper retention analytics.
 
-**Before reopening this domain:** close `BLK-07` and `S13`, confirm `BLK-03` is deployed and verified,
-and pilot with 5–10 real gyms rather than launching broadly.
+**Before reopening this domain:** close `BLK-07` and `S13`, verify `BLK-03` end to end against a real
+application (deployed, but not yet exercised live), and pilot with 5–10 real gyms rather than
+launching broadly.

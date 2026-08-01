@@ -11,8 +11,9 @@
 
 ## 1. Surface overview
 
-**14 deployed functions, 8 written and pending deploy** (`BLK-03`/`SEC-06` — notifications.js +
-social.js). Project `cookrange-app`, region `us-central1` (Firestore is in `europe-west10` — see §7).
+**22 deployed functions** (`BLK-03`/`SEC-06`'s 8 new callables in `notifications.js`/`social.js`
+deployed 2026-08-01, confirmed via `firebase functions:list`). Project `cookrange-app`, region
+`us-central1` (Firestore is in `europe-west10` — see §7).
 
 | Function | Kind | Auth | File |
 |---|---|---|---|
@@ -30,14 +31,14 @@ social.js). Project `cookrange-app`, region `us-central1` (Firestore is in `euro
 | `drainScheduledBroadcasts` | Scheduled | — | `index.js` |
 | `streakAtRiskNotifier` | Scheduled, daily 17:00 UTC | — | `index.js` |
 | `weeklyPlanReadyNotifier` | Scheduled, Mon 07:00 UTC | — | `index.js` |
-| `createNotification` | Callable · pending deploy | ID token | `notifications.js` |
-| `retractNotification` | Callable · pending deploy | ID token | `notifications.js` |
-| `sendAdminNotification` | Callable · pending deploy | ID token + `admin` claim | `notifications.js` |
-| `followUser` | Callable · pending deploy | ID token | `social.js` |
-| `unfollowUser` | Callable · pending deploy | ID token | `social.js` |
-| `sendFriendRequest` | Callable · pending deploy | ID token | `social.js` |
-| `respondToFriendRequest` | Callable · pending deploy | ID token | `social.js` |
-| `cancelFriendRequest` | Callable · pending deploy | ID token | `social.js` |
+| `createNotification` | Callable | ID token | `notifications.js` |
+| `retractNotification` | Callable | ID token | `notifications.js` |
+| `sendAdminNotification` | Callable | ID token + `admin` claim | `notifications.js` |
+| `followUser` | Callable | ID token | `social.js` |
+| `unfollowUser` | Callable | ID token | `social.js` |
+| `sendFriendRequest` | Callable | ID token | `social.js` |
+| `respondToFriendRequest` | Callable | ID token | `social.js` |
+| `cancelFriendRequest` | Callable | ID token | `social.js` |
 
 `entitlements.js` exposes **internal** server-only helpers (`grantPremium`, `revokePremium`,
 `grantBonusCredits`, `claimPurchaseToken`) — module functions, not callables. They are the **only**
