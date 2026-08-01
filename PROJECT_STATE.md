@@ -230,8 +230,9 @@ Store review is an irreducible 1–2 weeks of wall clock.
    delta-constrained to ±1 per write. Found and fixed the identical bug twice more while
    investigating: `posts/{id}/comments` (same pattern) and `gyms/{id}/posts` (a different collection,
    snake_case fields — this is where the `is_announcement` flag the ticket named actually lives, not
-   on the main `posts` collection). 5 new rules tests (27 total) written. **Not deployed** — held for
-   explicit go-ahead. **Residual, honestly noted:** the `reactions` map and `likedUserIds`/
+   on the main `posts` collection). 5 new rules tests (27 total) confirmed passing in real CI
+   ([run #30708408738](https://github.com/burcok/cookrange/actions/runs/30708408738); all 4 jobs
+   green). **Not deployed** — held for explicit go-ahead. **Residual, honestly noted:** the `reactions` map and `likedUserIds`/
    `recentLikers` arrays are allowlisted but not delta-constrained (Firestore rules can't cheaply
    validate "one element changed" on a map/array) — a non-owner could still write an arbitrary
    `reactions` value in one call. Fully closing that needs the trigger-based rewrite the ticket

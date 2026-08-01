@@ -484,13 +484,12 @@ jump on a post; non-owner CAN make a legitimate ±1 engagement update; owner ret
 rights; comment-level equivalent; gym-post non-owner cannot flip `is_announcement`/`is_pinned` but
 can ±1 `like_count`, while the gym owner still can.
 
-**Verified:** `flutter analyze lib/` — 0 errors (no Dart touched — rules-only change). Rules tests
-written; cannot run locally (no Java on this machine, same constraint as every prior rules-test
-addition) — verification depends on CI's `firestore-rules` job.
+**Verified:** `flutter analyze lib/` — 0 errors (no Dart touched — rules-only change). All 5 new rules
+tests (27 total) confirmed passing for real in CI's `firestore-rules` job
+([run #30708408738](https://github.com/burcok/cookrange/actions/runs/30708408738); all 4 jobs green)
+— not run locally, no Java on this machine (same `BLK-13` constraint as every prior rules-test
+addition).
 **Not deployed.** Held for explicit go-ahead, same as every other rules-only change this session.
-
-**Not deployed.** Held for explicit go-ahead, same as `BLK-05`/`BLK-06` — this changeset touches
-both a Cloud Functions deploy (8 new callables) and a Firestore rules deploy together.
 
 ---
 

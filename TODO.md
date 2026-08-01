@@ -857,9 +857,10 @@ gym/coach application-document admin-access gap noted in `storage.rules`.
 
 #### `BLK-08` 🚧 Any authenticated user can mutate any post's non-content fields — code+rules complete, deploy pending
 
-**Status** 🚧 Code, rules and rules-tests complete 2026-08-01 — **Firestore rules deploy not yet
-done**, held for explicit go-ahead (same pattern as every other rules-only change this session).
-**Priority** Critical · **Complexity** S · **Est** 1 d
+**Status** 🚧 Code, rules and rules-tests complete 2026-08-01 — rules tests confirmed passing in real
+CI ([run #30708408738](https://github.com/burcok/cookrange/actions/runs/30708408738); all 4 jobs
+green). **Firestore rules deploy not yet done**, held for explicit go-ahead (same pattern as every
+other rules-only change this session). **Priority** Critical · **Complexity** S · **Est** 1 d
 **Version** v0.9.7 · **Milestone** M1 · **Owner** Security Engineer
 **Labels** `firestore-rules` `integrity` `abuse` `community`
 **Modules** Security · Firebase · Backend
@@ -924,8 +925,9 @@ another group.
   value into the `reactions` map in one call. Closing this fully needs the trigger-based rewrite;
   tracked as a future improvement, not silently dropped.
 
-**DoD** §0.5 plus rules tests for each forbidden field — written (5 new, 27 total), not yet
-CI-confirmed as of this commit.
+**DoD** §0.5 plus rules tests for each forbidden field — 5 new (27 total) confirmed passing for real
+in CI's `firestore-rules` job
+([run #30708408738](https://github.com/burcok/cookrange/actions/runs/30708408738); all 4 jobs green).
 
 **Technical Notes**
 The Technical Notes' suggestion to bundle group `member_count` (`BE-10`) and the `checkins`/
