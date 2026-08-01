@@ -53,8 +53,8 @@ Consumer → side menu "Register Gym" → gym_application_screen (documents to S
 
 Rejection and needs-more-info states surface in `gym_application_pending_screen`.
 
-> ⚠️ Admin review is unreachable (`BLK-05`), so no application can currently be approved. Approval
-> notifications also depend on the dead push path (`BLK-03`).
+> `BLK-05` (admin unreachable) closed and deployed. Approval notifications depend on `BLK-03`'s
+> fan-out fix — code + rules written, deploy pending; see `PROJECT_STATE.md` for current status.
 
 ## 4. Gym setup
 
@@ -144,16 +144,17 @@ client referral, no revenue split between them. That's the main M6 design gap. S
 
 | ID | Issue |
 |---|---|
-| `BLK-05` | Admin unreachable → no gym application can be approved |
 | `BLK-07` | Gym logo upload writes to an unruled Storage prefix; scanner watches the wrong one |
-| `BLK-03` | Approval and gym notifications never deliver |
+| `BLK-03` | Approval and gym notifications — fan-out fix code+rules written, deploy pending |
 | `S13` | Check-ins lack combined membership + geofence + rate-limit validation |
 | — | Gym Wars UI effectively unbuilt |
 | — | White-label is a brand colour only |
+
+`BLK-05` (admin unreachable) is closed and deployed — see `PROJECT_STATE.md`.
 
 **M6 roadmap** ([`roadmap/FUTURE_FEATURES.md`](roadmap/FUTURE_FEATURES.md) §B): real white-label
 (logo, theme, optional own listing), gym subscription tiers, gym↔coach association, class scheduling,
 equipment/capacity awareness, and deeper retention analytics.
 
-**Before reopening this domain:** close `BLK-05`, `BLK-07`, `BLK-03`, and `S13`, and pilot with 5–10
-real gyms rather than launching broadly.
+**Before reopening this domain:** close `BLK-07` and `S13`, confirm `BLK-03` is deployed and verified,
+and pilot with 5–10 real gyms rather than launching broadly.

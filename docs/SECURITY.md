@@ -218,7 +218,7 @@ breaks live flows. Run the rules-emulator tests before `S1`.
 | `S2` | Server-authoritative AI credit + entitlement ledger *(code ✅, rules pending)* |
 | `S3` | Server-side purchase validation, sandbox-proven end to end |
 | `S4` | Server-authoritative economy — referrals, commissions, payouts |
-| `S5` | Close open creates: notifications, friends, friend_requests |
+| `S5` | Close open creates: notifications, friends, friend_requests *(code ✅, rules ✅ — pending deploy, `BLK-03`/`SEC-06`)* |
 | `S6` | Hardened proxy + App Check **enforced** + client key fallback removed + OpenRouter spend cap |
 | `S7` | Server-side erasure + Storage cleanup |
 | `S8` | Runtime consent enforcement + cross-border AI transfer disclosure + age gate |

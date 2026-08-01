@@ -371,6 +371,72 @@ different IDs — closed/updated accordingly rather than left to drift.
 
 ---
 
+### Fixed — `BLK-03` + `SEC-06`: push fan-out wired to a path nothing writes; friends/notifications forgeable by any authenticated user (2026-08-01)
+
+Two divergent notification paths, each broken differently. `NotificationService` wrote to
+`users/{uid}/notifications` — it had a rule and in-app notifications worked, but **no Cloud
+Function listened to it**, so likes, comments, reactions, friend requests, follows and streak
+milestones sent zero push. `onInAppNotificationCreated` listened on
+`notifications/{uid}/items/{docId}` instead; `AdminService` wrote coach/gym approval/rejection
+notifications there, but that path had **no security rule at all** — the write hit the catch-all
+deny, and because it was part of a batch that also granted the role, **the entire approval
+transaction failed**. Separately, the old path's rule (`allow create: if isAuthenticated()`, no
+field checks) was a live forgery hole: any signed-in user could write an arbitrary notification —
+arbitrary `actorName` included — into any other user's inbox. `friends`/`friend_requests` had the
+identical hole: any authenticated user could write into anyone's friends list or friend-request
+queue.
+
+**Fix:**
+- **One canonical path**: `notifications/{uid}/items/{docId}` (matches the trigger that already
+  worked). Straight cutover, no migration — `PROJECT_STATE.md` confirms v0.9.6 has no real users yet,
+  so the old path's data is disposable.
+- **New `functions/notifications.js`**: `createNotification`/`retractNotification` (generic —
+  likes, comments, reactions, mentions, streak milestones; actor always `context.auth.uid`,
+  re-fetched from `users/{uid}`, never the client payload) and `sendAdminNotification`
+  (admin-claim-gated — `BLK-05`'s custom claim — for coach/gym decisions and free-text messages).
+- **New `functions/social.js`**: `followUser`, `unfollowUser`, `sendFriendRequest`,
+  `respondToFriendRequest`, `cancelFriendRequest` — each re-verifies state server-side (e.g.
+  `sendFriendRequest` re-checks no existing friendship/request rather than trusting the client) and
+  writes the edge(s) + notification atomically.
+- `firestore.rules`: `friends` create/update and `friend_requests` create/update/delete set to
+  `if false` unconditionally; old `users/{uid}/notifications` rule block removed entirely (falls to
+  catch-all deny); new rule added for the canonical path (owner read/mark-read/dismiss, `create:
+  if false` — including for the owner themselves, closing the forgery hole completely).
+- `NotificationService`, `FollowService`, `FriendService`, `AdminService` rewritten to call the new
+  callables. `CommunityService` and `FirestoreService`'s call sites needed **no changes** —
+  `NotificationService.sendNotification`/`deleteNotificationByRelatedId` kept their exact
+  signatures, only their internals changed. `removeFriend` (unfriend) stays client-direct — it only
+  ever deletes the caller's own side, already safe under the owner-scoped delete rule.
+- **Two adjacent bugs found and fixed in the same files:** `executeBroadcast` and `economy.js`'s
+  `applyReferral` both wrote `createdAt` instead of `NotificationModel`'s `timestamp` field —
+  invisible before (nothing read that path), but would have silently excluded those docs from every
+  paginated/ordered query once this became the canonical, actually-read path. And `executeBroadcast`
+  was **double-sending push** — it already sent its own per-locale push directly, but also wrote
+  into the same path the trigger listens on, so every broadcast fired a second, generic-text push
+  via the trigger. The trigger now skips `type: 'broadcast'` docs.
+- **Closes `I18N-04`**: `getPushText` rewritten with full EN/TR text for all 21 `NotificationType`
+  values (including the 2 previously-dormant `streakFreezeUsed`/`achievementEarned`, which
+  `NotificationPresenter` already renders but nothing yet triggers), mirroring the exact wording in
+  `assets/localization/{en,tr}.json`'s `notifications.feed.*` keys. Locale is read from the
+  recipient's own user doc — the two reminder cron producers (`streakAtRiskNotifier`,
+  `weeklyPlanReadyNotifier`) now pass it through too.
+- 4 new rules tests: a client cannot create a notification even for themselves; the old path is
+  confirmed retired; `friends`/`friend_requests` reject client create/update/delete.
+
+**Verified:** `flutter analyze lib/` — 0 errors (unchanged infos, none in touched files). `flutter
+test` — 79/79 pass. `node --check` on all new/modified `functions/*.js` files, plus a require-smoke
+test confirming all 8 new callables resolve through `index.js`'s exports. `dart format` applied.
+**Not verified:** the rules tests (written, cannot run locally — no Java on this machine, same
+`BLK-13` constraint as every prior rules-test addition); physical push delivery on a device — no
+iOS/Android hardware in this environment, and unlike `BLK-01`/`BLK-02` where the iOS Simulator
+offered partial verification, **the Simulator cannot receive real APNs push at all**, so this is a
+harder verification ceiling than any blocker closed so far this session.
+
+**Not deployed.** Held for explicit go-ahead, same as `BLK-05`/`BLK-06` — this changeset touches
+both a Cloud Functions deploy (8 new callables) and a Firestore rules deploy together.
+
+---
+
 ## [0.9.6] — 2026-07-31 — *internal alpha*
 
 Full audit (`TODO.md`) established the honest baseline: ~84 % of the feature surface written, ~45 %

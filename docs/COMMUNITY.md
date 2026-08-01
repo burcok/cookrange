@@ -49,9 +49,14 @@ Enforced in `profile_screen.dart` behind a `_privacyResolved` gate with a fresh 
 detail is UI-gated** — it lives on the readable user doc, so this is presentation, not security.
 `food_logs` and `meal_plans` are genuinely owner-only server-side.
 
+Follow/friend mutation goes through `functions/social.js` (`followUser`, `unfollowUser`,
+`sendFriendRequest`, `respondToFriendRequest`, `cancelFriendRequest`) — `FollowService`/`FriendService`
+call these callables rather than writing `friends`/`friend_requests` directly. Unfriend
+(`FriendService.removeFriend`) stays client-direct: it only ever deletes the caller's own side, which
+is already owner-scoped-safe.
+
 > ⚠️ Block enforcement is client-side only (`S13`). A blocked user's content is hidden, not withheld.
-> `friends` and `friend_requests` also have open creates (`S5`) — anyone can write into anyone's
-> subcollections.
+> `friends`/`friend_requests` open-creates (`S5`) are closed in code+rules (`SEC-06`) — pending deploy.
 
 ---
 
@@ -66,28 +71,41 @@ messages, read status, and unread counts. Content-length capped at the rules lay
 Chat images use a **participants-only scoped path** with unguessable random filenames, plus
 client-side EXIF/GPS stripping on upload.
 
-**Chat push works** — `onChatMessageCreated` is wired correctly. It is the only push path that does.
+**Chat push works** — `onChatMessageCreated` is wired correctly. It was the only push path that did
+until `BLK-03` (fan-out fix, §4) landed in code — still pending deploy as of this writing.
 
 ---
 
 ## 4. Notifications
 
-**Structured storage only** (ADR-010). `NotificationService.sendNotification(type:, actorUid:,
-actorName:, actorPhotoUrl:, relatedId:, metadata:)` — **never** pre-rendered text.
-`NotificationPresenter` renders title/body/icon/colour on the reader's device from
-`notifications.feed.*` keys, so the language is always the reader's and the actor name is current.
+**Structured storage only** (ADR-010), canonical path `notifications/{uid}/items/{docId}` (`BLK-03`).
+`NotificationService.sendNotification(type:, actorUid:, actorName:, actorPhotoUrl:, relatedId:,
+metadata:)` — **never** pre-rendered text — is now a thin client wrapper around the `createNotification`
+Cloud Function callable; `actorUid`/`actorName`/`actorPhotoUrl` passed to it are accepted for source
+compatibility but ignored, since the callable always derives the actor from the caller's own auth
+identity and re-fetches their current name/photo server-side. Follow/friend-request notifications are
+created inside their own callables (`functions/social.js`) since those also write the edge atomically;
+admin-authored ones (coach/gym decisions, free-text messages) go through `sendAdminNotification`
+(admin-claim-gated). `NotificationPresenter` renders title/body/icon/colour on the reader's device from
+`notifications.feed.*` keys, so the language is always the reader's and the actor name is current. Push
+text (`functions/index.js: getPushText`) mirrors the same EN/TR copy server-side.
 
 `NotificationType` is backward-compatible: legacy values (`like`, `friend_request`) still parse, but
 prefer the granular ones (`likePost`, `likeComment`, `reaction`, `referral`, `streakMilestone`).
 
 **Mute groups** (`users/{uid}.notification_muted`): likes · comments · friends · system · referral ·
-reminders. Respected by the fan-out functions.
+reminders. Respected by the fan-out function — muted groups still get the in-app notification, never
+the push.
 
-**Adding a notification type:** add the `type`, add `notifications.feed.*` keys in **EN and TR**, and
-handle it in `NotificationPresenter` — all in the same change, or it renders as a raw key.
+**Adding a notification type:** add the `type`, add `notifications.feed.*` keys in **EN and TR**, add
+an EN/TR case to `getPushText`, and handle it in `NotificationPresenter` — all in the same change, or
+it renders as a raw key (in-app) / generic text (push).
 
-> ⚠️ `BLK-03` — **the fan-out trigger listens on a path nothing writes.** Social and admin push are
-> silently dead; only chat push works. In-app notifications still appear.
+> `BLK-03`/`SEC-06` — the fan-out trigger (`onInAppNotificationCreated`) now has a real writer for
+> every notification type, all server-authored via Admin SDK; client `create` on the notification path
+> is denied unconditionally by rule. Code + rules tests written, **deploy pending** as of this writing
+> — see `PROJECT_STATE.md` for current status. Physical-device push delivery cannot be verified in
+> this environment (no iOS/Android hardware, and the iOS Simulator cannot receive real APNs).
 
 ---
 
@@ -133,10 +151,11 @@ handle it in `NotificationPresenter` — all in the same change, or it renders a
    remove, and bulk actions, plus an audit entry.
 5. **Admin enforcement** — ban/unban, force logout, content takedown, broadcasts.
 
-> ⚠️ **The moderation queue is unreachable** because the whole admin surface is (`BLK-05`), and
-> `scanImage` watches the wrong prefix (`BLK-07`). There is also **no per-uid UGC rate limiter**
-> (spam, mass friend-requests, signal flooding are all unthrottled). A real sliding-window limiter
-> needs UGC creates routed through a callable — scope it before community GA.
+> `BLK-05` (admin surface unreachable) is closed and deployed. `scanImage` still watches the wrong
+> prefix (`BLK-07`). There is also **no per-uid UGC rate limiter** (spam, mass friend-requests, signal
+> flooding are all unthrottled) — `SEC-06`'s callables re-verify identity and state server-side but add
+> no throttling. A real sliding-window limiter needs UGC creates routed through a callable — scope it
+> before community GA.
 
 ---
 

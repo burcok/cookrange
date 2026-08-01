@@ -11,8 +11,8 @@
 
 ## 1. Surface overview
 
-**13 deployed functions, 1 written and pending deploy** (`syncAdminClaim`, `BLK-05`). Project
-`cookrange-app`, region `us-central1` (Firestore is in `europe-west10` — see §7).
+**14 deployed functions, 8 written and pending deploy** (`BLK-03`/`SEC-06` — notifications.js +
+social.js). Project `cookrange-app`, region `us-central1` (Firestore is in `europe-west10` — see §7).
 
 | Function | Kind | Auth | File |
 |---|---|---|---|
@@ -30,6 +30,14 @@
 | `drainScheduledBroadcasts` | Scheduled | — | `index.js` |
 | `streakAtRiskNotifier` | Scheduled, daily 17:00 UTC | — | `index.js` |
 | `weeklyPlanReadyNotifier` | Scheduled, Mon 07:00 UTC | — | `index.js` |
+| `createNotification` | Callable · pending deploy | ID token | `notifications.js` |
+| `retractNotification` | Callable · pending deploy | ID token | `notifications.js` |
+| `sendAdminNotification` | Callable · pending deploy | ID token + `admin` claim | `notifications.js` |
+| `followUser` | Callable · pending deploy | ID token | `social.js` |
+| `unfollowUser` | Callable · pending deploy | ID token | `social.js` |
+| `sendFriendRequest` | Callable · pending deploy | ID token | `social.js` |
+| `respondToFriendRequest` | Callable · pending deploy | ID token | `social.js` |
+| `cancelFriendRequest` | Callable · pending deploy | ID token | `social.js` |
 
 `entitlements.js` exposes **internal** server-only helpers (`grantPremium`, `revokePremium`,
 `grantBonusCredits`, `claimPurchaseToken`) — module functions, not callables. They are the **only**
@@ -124,6 +132,43 @@ batch write, which was forgeable.
 Requires a recent re-authentication. Recursively erases the `users/{uid}` subtree, server-side docs,
 authored content, all Storage prefixes, and the Auth user. See [`AUTHENTICATION.md`](AUTHENTICATION.md) §9.
 
+### Notifications (`notifications.js`) — `BLK-03`/`SEC-06`
+All write to the canonical `notifications/{uid}/items/{docId}` path; `actorName`/`actorPhotoUrl` are
+always re-fetched server-side from the caller's own `users/{uid}` doc, never trusted from the request.
+
+```jsonc
+// createNotification — social interactions + self-reported milestones
+{ "targetUid": "…", "type": "likePost|likeComment|reaction|comment|system|streakMilestone",
+  "relatedId": "…", "metadata": {} }  →  { "ok": true }
+
+// retractNotification — undo a createNotification call (un-like, un-react)
+{ "targetUid": "…", "relatedId": "…", "type": "…" }  →  { "ok": true, "deleted": n }
+// Only deletes docs whose actorUid == caller — you can only retract your own fan-out.
+
+// sendAdminNotification — requires the `admin` custom claim (BLK-05)
+{ "targetUid": "…", "type": "coachApplicationApproved|coachApplicationRejected|"
+  + "gymApplicationApproved|gymApplicationRejected", "relatedId": "…", "notes": "…" }  →  { "ok": true }
+// or the free-text form:
+{ "targetUid": "…", "type": "system", "title": "…", "body": "…" }  →  { "ok": true }
+```
+Errors: `unauthenticated` · `permission-denied` (`admin_required`, `target_must_be_self`) ·
+`invalid-argument`.
+
+### Social graph (`social.js`) — `SEC-06`
+Replaces the old client-direct writes to `friends`/`friend_requests` (now `create`/`update` denied by
+rule unconditionally). Each writes its edge(s) and notification atomically.
+
+```jsonc
+followUser / unfollowUser        { "targetUid": "…" }  →  { "ok": true }
+sendFriendRequest                { "targetUid": "…" }  →  { "ok": true }
+respondToFriendRequest           { "senderUid": "…", "accept": true|false }  →  { "ok": true, "accepted": bool }
+cancelFriendRequest              { "targetUid": "…" }  →  { "ok": true }
+```
+`sendFriendRequest` re-verifies server-side that no friendship/request already exists (never trusts the
+client's own status check). `respondToFriendRequest` requires the incoming request to actually exist.
+Errors: `unauthenticated` · `invalid-argument` (`cannot_follow_self`, `cannot_friend_self`) ·
+`failed-precondition` (`already_friends`, `request_exists`, `no_such_request`).
+
 ---
 
 ## 4. Webhooks (store-driven)
@@ -143,7 +188,7 @@ entitlement.
 
 | Function | Fires on | Does |
 |---|---|---|
-| `onInAppNotificationCreated` | new notification doc | FCM fan-out, respecting per-group mute prefs |
+| `onInAppNotificationCreated` | new doc at `notifications/{uid}/items/{docId}` | FCM fan-out, localized (recipient's `locale`), respecting per-group mute prefs |
 | `onChatMessageCreated` | `chats/{id}/messages/{id}` | Push to the other participants |
 | `onBroadcastCreated` | new broadcast doc | Dispatch to the audience (all / coaches / gymOwners / single uid) |
 | `drainScheduledBroadcasts` | schedule | Send broadcasts whose time has arrived |
@@ -151,9 +196,13 @@ entitlement.
 | `weeklyPlanReadyNotifier` | Mon 07:00 UTC | "New week, new plan" nudge. Same mute + cap |
 | `scanImage` | Storage `onObjectFinalized` | Cloud Vision SafeSearch; deletes unsafe uploads |
 
-> ⚠️ **`onInAppNotificationCreated` listens on a path nothing writes** (`BLK-03`) — social and admin
-> push are silently dead. Chat push works because it uses a different trigger.
-> `scanImage` watches the wrong prefix for gym logos (`BLK-07`), and needs the Vision API enabled.
+`onInAppNotificationCreated` is now the single fan-out point for every notification writer
+(`notifications.js`, `social.js`, `economy.js`'s `applyReferral`, `index.js`'s broadcast path) — all of
+them write the canonical path, all via Admin SDK (`BLK-03`, fixed; previously this trigger listened on
+a path nothing wrote, so social/admin push was silently dead — chat worked because it used a separate
+trigger). It skips `type: 'broadcast'` docs to avoid double-sending, since `executeBroadcast` already
+sends its own per-locale push directly.
+> ⚠️ `scanImage` watches the wrong prefix for gym logos (`BLK-07`), and needs the Vision API enabled.
 
 ---
 

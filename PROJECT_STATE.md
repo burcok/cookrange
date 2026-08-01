@@ -69,7 +69,7 @@ Full cards in [`TODO.md`](TODO.md) §2.
 
 | ID | Blocker | Domain |
 |---|---|---|
-| `BLK-03` | 🔥 Push fan-out wired to a path nothing writes | [Community](docs/COMMUNITY.md) |
+| `BLK-03` | 🔥 Push fan-out — code+rules+tests complete, **deploy pending** (with `SEC-06`) | [Community](docs/COMMUNITY.md) |
 | `BLK-04` | 🔥 Monetization non-functional end to end | [Premium](docs/PREMIUM.md) |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | [Gym](docs/GYM_ECOSYSTEM.md) |
 | `BLK-08` | 🔥 Any user can mutate any post's non-content fields | [Security](docs/SECURITY.md) |
@@ -92,10 +92,11 @@ Full cards in [`TODO.md`](TODO.md) §2.
 | System | Blocked by |
 |---|---|
 | 🚧 AI meal planning · recipe generation — no longer fabricates when unconfigured (`BLK-01` ✅); real end-to-end generation still unverified | `BE-01` |
-| 🚧 Push notifications (chat push works; social/admin push does not) | `BLK-03` |
+| 🚧 Push notifications — every notification type now has a server-authored writer (`notifications.js`/`social.js`); chat push still the only one confirmed live pre-deploy | `BLK-03` |
 | 🚧 Admin surface (~7,400 LOC, 9 screens) — reachable now (`BLK-05` ✅); no real admin session has exercised it yet | — |
 | 🚧 Monetization (IAP client + server validation both exist) | `BLK-04` |
 | 🚧 Gym ecosystem (11 screens) · Coach ecosystem (8 screens) | `BLK-03`, `BLK-07` |
+| 🚧 Friends/follow — code+rules complete for server-authored writes (`SEC-06`), deploy pending | `SEC-06` |
 | 🚧 Program marketplace | `BLK-09` |
 | 🚧 Dish catalog | `BLK-11` |
 | 🚧 Moderation (scans wrong prefix; queue reachable but unstaffed) | — |
@@ -189,9 +190,25 @@ Store review is an irreducible 1–2 weeks of wall clock.
    `firebase functions:list`); all three client gates, the bootstrap runbook, and rules tests
    shipped alongside it. Followed with a downstream sweep of the ~30 "unreachable until `BLK-05`"
    references across `TODO.md` (`ADM-*`, `MOD-01`, `NOTIF-13`, `MKT-02`, `LEG-09`, etc.) now that
-   the fix is confirmed live. `BLK-03` (push notification fan-out) is the remaining item in this
-   cluster — also needs a Cloud Functions deploy, not yet started.
-6. Then M2 security gates in the order fixed by `GO_LIVE.md` Phase 5S — **server write paths first
+   the fix is confirmed live.
+6. **`BLK-03` + `SEC-06`** — **code+rules+tests complete, deploy pending.** One canonical notification
+   path (`notifications/{uid}/items/{docId}`), all creation moved server-side
+   (`functions/notifications.js`, `social.js`): `createNotification`/`retractNotification` (generic
+   social types, actor always re-derived from `context.auth.uid`), `sendAdminNotification`
+   (admin-claim-gated), and `followUser`/`unfollowUser`/`sendFriendRequest`/`respondToFriendRequest`/
+   `cancelFriendRequest` (edge + notification written atomically). `firestore.rules`: `friends`/
+   `friend_requests` locked to server-only, old `users/{uid}/notifications` retired (straight cutover —
+   no real users yet to migrate), new canonical path rule added. Found and fixed two adjacent bugs in
+   the same files: `executeBroadcast`/`applyReferral` wrote `createdAt` instead of `timestamp` (would
+   have silently excluded those docs from the paginated feed once this path became canonical), and
+   `executeBroadcast` was double-sending push (its own direct send plus a second generic-text send via
+   the trigger it also happened to write into). `getPushText` rewritten with full EN/TR text for all 21
+   `NotificationType` values, closing `I18N-04` in the same change. 4 new rules tests written. **Not
+   deployed** — held for explicit go-ahead, same as `BLK-05`/`BLK-06`. Physical push delivery **cannot
+   be verified in this environment**: no iOS/Android hardware, and the iOS Simulator cannot receive
+   real APNs push at all — this is a harder limit than `BLK-01`/`BLK-02`'s partial Simulator
+   verification.
+7. Then M2 security gates in the order fixed by `GO_LIVE.md` Phase 5S — **server write paths first
    (`S2`→`S3`→`S4`), then lock the rules (`S1`, `S5`)**. Locking first breaks live flows.
 
 ---

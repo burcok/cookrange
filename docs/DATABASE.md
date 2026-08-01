@@ -23,7 +23,7 @@ users/{uid}                                   public profile + onboarding_data, 
   ├─ favorites/{recipeId} · recent_foods/{id}  saved recipes · quick-add cache (~20)
   ├─ recipe_notes/{recipeId} · lists/{listId}  user notes · shopping lists
   ├─ saved_posts/{postId}                      bookmarked posts
-  ├─ notifications/{id}                        structured in-app notifications (no stored text)
+  ├─ notifications/{id}                        RETIRED (BLK-03) — see notifications/{uid}/items below
   ├─ notification_preferences/{id}             per-group mute prefs
   ├─ program_enrollments/{programId}           enrolled programs + progress
   ├─ commissions/{id} · payout_requests/{id}   economy — SERVER-WRITE ONLY
@@ -32,7 +32,7 @@ users/{uid}                                   public profile + onboarding_data, 
   ├─ achievements/{key}                        earned badges
   ├─ consents/{purpose}                        KVKK/GDPR consent records
   ├─ following/{uid} · followers/{uid}         follow graph (one-way)
-  ├─ friends/{id} · friend_requests/{id}       friendship (mutual)
+  ├─ friends/{id} · friend_requests/{id}       friendship (mutual) — SERVER-WRITE ONLY (SEC-06)
   ├─ coaching_requests/{clientUid}             coach link requests
   └─ block_list/{blockedId}                    blocked users
 
@@ -82,7 +82,7 @@ failed_login_attempts/{id} SERVER-ONLY        brute-force tracking
 | `users/{uid}/lists/{listId}` | Shopping lists | Owner only |
 | `users/{uid}/saved_posts/{postId}` | Bookmarked community posts | Owner only |
 | `users/{uid}/recipe_notes/{recipeId}` | User notes on recipes | Owner only |
-| `users/{uid}/notifications/{id}` | In-app notifications (structured, no stored text) | Owner read/write |
+| `users/{uid}/notifications/{id}` | **RETIRED** (`BLK-03`) — no rule, falls to catch-all deny. The old forgery hole (`create: if isAuthenticated()`, no field checks); replaced by `notifications/{uid}/items/{id}` below | Deny all |
 | `users/{uid}/notification_preferences/{prefId}` | Per-group mute prefs | Owner only |
 | `users/{uid}/program_enrollments/{programId}` | Enrolled programs + progress | Owner only |
 | `users/{uid}/commissions/{id}` | Affiliate/coach commissions | Read owner · **write server-only** (economy is server-authoritative) · no delete |
@@ -91,8 +91,8 @@ failed_login_attempts/{id} SERVER-ONLY        brute-force tracking
 | `users/{uid}/consents/{purpose}` | KVKK/GDPR consent records (granted, policy_version, updated_at) per purpose | Owner only |
 | `users/{uid}/following/{targetUid}` | Following graph | Read any auth · create/delete owner |
 | `users/{uid}/followers/{sourceUid}` | Follower graph | Read any auth · create/delete sourceUid |
-| `users/{uid}/friends/{friendId}` | Accepted friends | Read owner · write any auth |
-| `users/{uid}/friend_requests/{id}` | Pending friend requests | Read owner · create any auth · delete owner/requester |
+| `users/{uid}/friends/{friendId}` | Accepted friends | Read owner · create/update **server-only** (`sendFriendRequest`/`respondToFriendRequest`, `SEC-06`) · delete owner (unfriend stays client-direct — safe, owner-scoped) |
+| `users/{uid}/friend_requests/{id}` | Pending friend requests | Read owner · **fully server-only** create/update/delete (`social.js`, `SEC-06`) — no legitimate client write path remains |
 | `users/{uid}/coaching_requests/{clientUid}` | Coach link requests | Read uid or client · write client |
 | `users/{uid}/block_list/{blockedId}` | Blocked users | Owner only |
 
@@ -106,7 +106,7 @@ failed_login_attempts/{id} SERVER-ONLY        brute-force tracking
 | `chats/{id}` | Chat threads (private/group/system/gym) | Participants only |
 | `chats/{id}/messages/{id}` | Chat messages | Participants only. Content-length capped. |
 | `signals/{id}` | Ephemeral social broadcasts (TTL via expiresAt) | Read any auth · create owner · delete owner. Content-length capped. |
-| `notifications/{uid}/items/{id}` | (legacy alias of user notifications) | Owner |
+| `notifications/{uid}/items/{id}` | **Canonical notifications path** (`BLK-03`). Fans out to push via `onInAppNotificationCreated`. Schema: `type` (enum name), `isRead`, `timestamp`, `actorUid?`, `actorName?`, `actorPhotoUrl?`, `relatedId?`, `metadata?` — or legacy `title`+`body` for admin free-text messages (no `actorUid`/`metadata` on those, by design — see `NotificationModel.isLegacy`) | Read/update(mark-read)/delete: owner · **create: server-only** (`notifications.js`, `social.js`, `economy.js`, `index.js` broadcast — all Admin SDK) |
 | `reports/{id}` | Moderation reports | Create author only · read/update **admin backend only** |
 | `privacy_requests/{id}` | DSAR requests (uid, email, type, message, status, admin_note) | Create owner · read owner/admin · update admin · no delete |
 | `challenges/{id}` | Challenges (legacy; mostly sunset) | Read any auth · create/own |

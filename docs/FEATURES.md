@@ -65,11 +65,11 @@ Detail: [`AI_SYSTEM.md`](AI_SYSTEM.md).
 |---|---|---|---|---|
 | Feed — posts, reactions, comments, image carousel | ✅ | v0.5 | `CommunityService` | Post field-mutation hole `BLK-08` |
 | Filters & topics — Global/Friends/Following/Gym/Saved | ✅ | v0.7 | `AppFilterBar` | — |
-| Friends, follow graph, weekly highlights | ✅ | v0.5 | `FriendService`, `FollowService` | Open creates (`S5`) |
+| Friends, follow graph, weekly highlights | ✅ | v0.5 | `FriendService`, `FollowService` | Open creates (`S5`) closed in code+rules, deploy pending |
 | @mentions with notification fan-out | ✅ | v0.7 | — | — |
 | 1:1 + group chat — typing, images, read status | ✅ | v0.5 | `ChatService` | — |
 | In-app notifications — structured, locale-rendered | ✅ | v0.6 | `NotificationPresenter` | — |
-| **Push notifications** | ⛔ `BLK-03` | v0.6 | Cloud Functions | Chat push works; social/admin push is dead |
+| **Push notifications** | 🚧 `BLK-03` | v0.6 | Cloud Functions | Chat push works; social/admin push code+rules written (`notifications.js`/`social.js`), deploy + physical-device verification pending |
 | Community groups — location-based | 🚧 | v0.9 | `CommunityGroupService` | — |
 | Streak squads | 🚧 | v0.7 | `StreakSquadService` | — |
 | Signals — ephemeral, TTL | 🚧 | v0.6 | needs a Firestore TTL policy | — |

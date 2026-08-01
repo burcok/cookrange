@@ -1,7 +1,8 @@
 # SERVICES.md — Services & Cloud Functions
 
 > All business logic lives here. UI never calls Firebase directly — it goes through a service.
-> 75 Dart singletons in `lib/core/services/**` + **13** Cloud Functions in `functions/`.
+> 75 Dart singletons in `lib/core/services/**` + **14 deployed + 8 pending** Cloud Functions in
+> `functions/`.
 > **Cloud Function *contracts* (request/response, auth, error codes) are owned by
 > [`API.md`](API.md)** — this file covers what each service/function *does*.
 > **Security-authoritative state lives server-side**: premium in `entitlements/{uid}`, AI credits in
@@ -85,9 +86,16 @@
   `admin_config/global` doc, so the filter was dead for normal users), `reportContent`.
 - **ChatService** `chat_service.dart` — Chats + messages, typing status, unread counts, mark-read,
   group/private/system creation.
-- **FollowService** `follow_service.dart` — Following/followers (batch), counts, isFollowing stream,
-  follow notification fan-out.
-- **FriendService** `friend_service.dart` — Search users, friendship status, send/accept/reject.
+- **FollowService** `follow_service.dart` — Following/followers counts, isFollowing stream (reads
+  stay client-direct). **Write is server-authoritative** (`BLK-03`/`SEC-06`) — `follow`/`unfollow` call
+  the `followUser`/`unfollowUser` callables, which write both edge sides and the follow notification
+  atomically; the client no longer batch-writes them or supplies actor info.
+- **FriendService** `friend_service.dart` — Search users, friendship status (read, client-side
+  pre-check for UX only). **Mutation is server-authoritative** (`BLK-03`/`SEC-06`) — send/accept/
+  reject/cancel call `sendFriendRequest`/`respondToFriendRequest`/`cancelFriendRequest`, which
+  re-verify status server-side, write both sides atomically, and send the notification with the actor
+  derived from the caller's auth identity. `removeFriend` (unfriend) stays client-direct — it only
+  ever deletes the caller's own side, already safe under the owner-scoped delete rule.
 - **FavoriteService** `favorite_service.dart` — `users/{uid}/favorites`; toggle, isFavorite stream.
 - **ReferralService** `referral_service.dart` — 6-char codes (`referrals/{code}`). **Apply is
   server-authoritative** — calls the `applyReferral` callable (server-validated reward + commission
@@ -96,7 +104,11 @@
 - **SignalService** `signal_service.dart` — Ephemeral broadcasts (TTL via expiresAt).
 - **StreakSquadService** `streak_squad_service.dart` — Squads (`squads/`), invite codes, leaderboard.
 - **NotificationService** `notification_service.dart` — **Structured-only** in-app notifications
-  (type, actorUid/Name/PhotoUrl, relatedId, metadata — never pre-rendered text). Pagination, mark-read.
+  (type, actorUid/Name/PhotoUrl, relatedId, metadata — never pre-rendered text) at the canonical
+  `notifications/{uid}/items/{docId}` path. Pagination, mark-read, delete/clear stay client-direct
+  (owner-scoped, already safe). **Creation is server-authoritative** (`BLK-03`) — `sendNotification`/
+  `deleteNotificationByRelatedId` call the `createNotification`/`retractNotification` callables; the
+  actor is always derived from the caller's own auth identity, never the client payload.
 - **NotificationPreferencesService** `notification_preferences_service.dart` — Per-group mute prefs
   (likes/comments/friends/system/referral) in `users/{uid}.notification_muted`.
 
@@ -128,7 +140,10 @@
   (approve/reject/pending/history), `adminConfigStream`/`updateAdminConfig`, `broadcastsStream`/
   `sendBroadcast`, `setGymVerified`/`setCoachVerified`, `forceLogout`, `sendPasswordReset`,
   `getUserDataStats`, `getAppConfig`/`updateAppConfig` (read + audited write of `app_config/global`,
-  backing `AdminAppConfigScreen`).
+  backing `AdminAppConfigScreen`). Coach/gym approval-decision notifications and
+  `sendNotificationToUser` (free-text) are **server-authoritative** (`BLK-03`) — both call the
+  admin-claim-gated `sendAdminNotification` callable rather than writing the notification doc
+  directly; the application status/role-grant batch itself is unchanged (already `isAdmin()`-gated).
 - **CostAnalyticsService** `cost_analytics_service.dart` — Admin-only cost/revenue/profit estimates
   (Firebase pricing + `count()` aggregates) **plus real AI usage**: `fetchAiUsageStats` reads
   `ai_usage_stats/global` (+ day buckets — total cost/requests/tokens, `by_model`, `by_type`) and
@@ -214,11 +229,11 @@
 
 ## Cloud Functions (`functions/`)
 
-> Server-authoritative security layer (hardening 2026-06-30). **13 functions**, deployed to
-> `cookrange-app` alongside the Firestore rules; `appStoreNotifications` + `playRtdn` are wired but
-> inert until store credentials exist. App Check enforcement + store-credential requirements are
-> gated by `APP_ENV` (`development` | `production`) in `config.js` — **currently `development`**
-> (`BLK-14`).
+> Server-authoritative security layer (hardening 2026-06-30). **14 functions deployed** to
+> `cookrange-app` alongside the Firestore rules, **8 more written** (`notifications.js`/`social.js`,
+> `BLK-03`/`SEC-06`) pending deploy; `appStoreNotifications` + `playRtdn` are wired but inert until
+> store credentials exist. App Check enforcement + store-credential requirements are gated by
+> `APP_ENV` (`development` | `production`) in `config.js` — **currently `development`** (`BLK-14`).
 >
 > Full inventory and wire contracts: [`API.md`](API.md) §1.
 
@@ -239,21 +254,38 @@
 
 **Economy & account** (`economy.js`, `account.js`)
 - **applyReferral** (callable, `economy.js`) — Server-validated referral apply + server-side
-  commission ledger (replaces the old client batch-write).
+  commission ledger (replaces the old client batch-write); writes the referrer's notification via
+  `notifications.js`'s shared `writeNotification` helper.
 - **deleteUserAccount** (callable, `account.js`) — GDPR erasure: recursively deletes the user's
   Firestore subtree + Storage objects + the Auth user.
 
-**Config** (`config.js`)
-- **APP_ENV gating** — `development` | `production`; toggles App Check enforcement and the
-  store-credential requirement so dev/emulator runs don't break.
+**Admin roles** (`admin.js`)
+- **syncAdminClaim** (Firestore trigger, `BLK-05`) — On write to `admin_roles/{uid}`, mirrors
+  `is_admin` onto the Firebase Auth `admin` custom claim. The real admin gate: `admin_roles/{uid}`
+  itself is console/Admin-SDK-only (`write: if false`), so this claim can't be self-granted.
+
+**Notifications & social** (`notifications.js`, `social.js`, `BLK-03`/`SEC-06`, pending deploy)
+- **createNotification / retractNotification** (callables, `notifications.js`) — Server-authored
+  in-app notification create/undo for social interactions (likes, comments, reactions, mentions,
+  streak milestones). Actor is always `context.auth.uid`, re-fetched from `users/{uid}` — never the
+  client payload. `retractNotification` only deletes docs whose `actorUid` matches the caller.
+- **sendAdminNotification** (callable, `notifications.js`) — Admin-claim-gated (`BLK-05`'s custom
+  claim). Coach/gym application decisions and free-text single-user messages
+  (`AdminService.sendNotificationToUser`'s server side).
+- **followUser / unfollowUser / sendFriendRequest / respondToFriendRequest / cancelFriendRequest**
+  (callables, `social.js`) — Replace the old client-direct writes to `friends`/`friend_requests`
+  (now rule-denied unconditionally). Each re-verifies state server-side and writes the edge(s) +
+  notification atomically.
 
 **Notifications & broadcasts** (`index.js`)
-- **onInAppNotificationCreated** (Firestore trigger) — On new `users/{uid}/notifications/{id}`,
-  fans out an FCM push respecting the recipient's mute preferences.
+- **onInAppNotificationCreated** (Firestore trigger) — On new `notifications/{uid}/items/{docId}`
+  doc (the canonical path, `BLK-03`), fans out a localized (recipient's `locale`) FCM push respecting
+  the recipient's mute preferences. Skips `type: 'broadcast'` docs (handled below) to avoid a
+  double-send.
 - **onChatMessageCreated** (Firestore trigger) — On new `chats/{id}/messages/{id}`, pushes to other
   participants.
 - **executeBroadcast** (internal helper) — Sends admin broadcasts to an audience (all/coaches/
-  gymOwners/single uid), immediate or scheduled.
+  gymOwners/single uid), immediate or scheduled, with its own per-locale push text.
 
 **Secrets / env** (Functions): `OPENROUTER_API_KEY` + Apple/Google store credentials in
 `functions/.env`; `APP_ENV` selects enforcement mode.
