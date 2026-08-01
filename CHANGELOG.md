@@ -286,6 +286,37 @@ with the app still alive underneath. No crash anywhere in the flow — the liter
 **Not done:** physical-iPhone confirmation and a signed `flutter build ipa` — no physical device
 available, and no Apple signing identity exists yet (`BLK-16`) regardless.
 
+### Fixed (code) — `BLK-06`: `meal_plan_history` rule written — **not yet deployed** (2026-08-01)
+
+`users/{uid}/meal_plan_history/{key}` is written on every plan save and read by a 298-line history
+screen. It has a composite index. It had no security rule — catch-all deny — so the write and the
+read both failed on every single call, silently: `catchError((e) => debugPrint(...))` on write,
+`catch (e) { ... return []; }` on read. The history screen has rendered an empty state, forever,
+since this feature shipped.
+
+**Fix:**
+- Added `match /meal_plan_history/{historyId} { allow read, write: if isOwner(uid); }` to
+  `firestore.rules`, a sibling of the already-working `meal_plans/{planId}` block.
+- Both named call sites in `weekly_meal_plan_service.dart` now also report to `CrashlyticsService`
+  (`coach_review_service.dart`'s existing idiom — debugPrint for dev, Crashlytics for production —
+  not one replacing the other).
+- Found two more catch sites in the same state while in `meal_plan_history_screen.dart`:
+  `_loadHistory`'s catch had no Crashlytics call, and `_restorePlan`'s Firestore write had no catch
+  at all. Both fixed the same way. No new user-facing copy — this is observability, not new UX.
+- New rules test in `test/firestore_rules/rules.test.mjs` asserting owner-only read and write.
+
+**Verified:** `flutter analyze lib/` — 0 errors, 25 infos (unchanged). `flutter test` — 79/79 pass.
+The rules test itself could not be run locally — no Java on this machine, same pre-existing
+constraint as the rest of this suite (`BLK-13`); CI's `firestore-rules` job is the authoritative
+check once pushed.
+
+**Not done, deliberately: the rule is not deployed.** A `firestore.rules` file change has zero
+effect on the live app until someone runs `firebase deploy --only firestore:rules` (or a full
+deploy) against the real project. Right now, production is still enforcing the old (missing) rule
+— this feature is still broken for every real user. Deploying rules to the live backend is a real,
+shared-infrastructure action; it wasn't done as part of this change and is flagged for a separate,
+explicit go-ahead rather than folded in silently.
+
 ---
 
 ## [0.9.6] — 2026-07-31 — *internal alpha*

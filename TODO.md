@@ -191,7 +191,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | 🚧 **Gym ecosystem** (11 screens) | Discovery, map, setup, dashboard, analytics, QR, members, community, leaderboard | `BLK-05` + `BLK-03` + `BLK-07` (logo upload denied) |
 | 🚧 **Coach ecosystem** (8 screens) | Discovery, application, profile, dashboard, clients, reviews | `BLK-05` + `BLK-03`; paid programs and payouts absent |
 | 🚧 **Program marketplace** | Model, content weeks, enrolment, My Programs | `BLK-09` open-write hole; paid gate stubbed |
-| 🚧 **Meal plan history** | Service + 298-LOC screen + composite index | **`BLK-06`** — no security rule → always empty |
+| 🚧 **Meal plan history** | Service + 298-LOC screen + composite index | **`BLK-06`** — rule written, **not yet deployed**; still always empty in production until it is |
 | 🚧 **Dish catalog** | 75 dishes, seeder, admin editor | **`BLK-11`** — unseedable in-app; 75 is too few; 180-dish prompt ceiling |
 | 🚧 **Moderation** | Keyword filter, report queue, Vision SafeSearch function | Scans the wrong prefix; admin queue unreachable (`BLK-05`) |
 | 🚧 **Analytics** | ~35 typed events, offline queue, consent-gated | No BigQuery export, no funnels, no dashboards, no taxonomy doc |
@@ -237,7 +237,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | `BLK-03` | 🔥 Push fan-out wired to a path nothing writes; admin path has no rule | Zero social push; gym/coach approval batches fail |
 | `BLK-04` | 🔥 Monetization non-functional end to end | Zero revenue capability |
 | `BLK-05` | 🔥 Admin surface unreachable — `admin_roles/{uid}` created by nothing | No moderation, no approvals, no cost visibility |
-| `BLK-06` | 🔥 `meal_plan_history` has an index but **no rule** | Shipped, documented feature permanently empty |
+| `BLK-06` | ⚠️ `meal_plan_history` rule **written, not deployed** — still permanently empty until it is | Shipped, documented feature; fix is one `firebase deploy --only firestore:rules` away |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | Gym setup broken; NSFW scanner watches the wrong prefix |
 | `BLK-08` | 🔥 Any user can mutate any post's non-content fields | Like-count / announcement / group integrity |
 | `BLK-09` | 🔥 `coach_uid == 'demo'` lets any user publish to the public marketplace | Content injection into a live storefront |
@@ -618,35 +618,68 @@ un-administrable — which is exactly the failure mode M1 must eliminate.
 
 ---
 
-#### `BLK-06` 🔥 `meal_plan_history` has a composite index but no security rule
+#### `BLK-06` ⚠️ Code complete, NOT DEPLOYED — `meal_plan_history` has a composite index but no security rule
 
-**Status** 🔥 Critical · **Priority** Critical · **Complexity** XS · **Est** 2 h
+**Status** ⚠️ Rule written 2026-08-01, **not yet deployed to the live project** · **Priority** Critical · **Complexity** XS · **Est** 2 h
 **Version** v0.9.7 · **Milestone** M1 · **Owner** Firebase Architect
 **Labels** `firestore-rules` `silent-failure` `dead-feature`
 **Modules** Firebase · Backend
-**Files** `firestore.rules` (absent) · `lib/core/services/weekly_meal_plan_service.dart:191-200` (write, `catchError → debugPrint`) · `:318-333` (read, `catch → return []`) · `lib/screens/home/meal_plan_history_screen.dart` (298 LOC) · `firestore.indexes.json` (index exists)
+**Files** `firestore.rules` (rule added) · `lib/core/services/weekly_meal_plan_service.dart:191-200` (write, now also reports to `CrashlyticsService`) · `:318-333` (read, same) · `lib/screens/home/meal_plan_history_screen.dart` (298 LOC, two more catch sites given the same treatment) · `firestore.indexes.json` (index already existed) · `test/firestore_rules/rules.test.mjs` (new test)
 **Dependencies** — · **Required before** `NUT-05`
-**Blocking** A shipped, documented, indexed feature that has never worked.
+**Blocking** Was a shipped, documented, indexed feature that has never worked. **Still blocking in
+production** until the rule is deployed — see below.
 
-**What exists / what is missing**
+**What was wrong**
 
 `users/{uid}/meal_plan_history/{key}` is written on every plan save and read by a 298-line screen. It
-has a composite index. It has **no rule** → catch-all deny. Both sides swallow the failure:
+has a composite index. It had **no rule** → catch-all deny. Both sides swallowed the failure:
 `unawaited(...).catchError((e) => debugPrint(...))` on write, `catch (e) { ... return []; }` on read.
-The screen therefore renders `AppEmptyState` forever, and in release `debugPrint` produces no output at
-all.
+The screen therefore rendered `AppEmptyState` forever, and in release `debugPrint` produced no output
+at all.
 
-**Acceptance Criteria**
-- `match /users/{uid}/meal_plan_history/{key} { allow read, write: if isOwner(uid); }` added.
-- Both call sites route their failures to `CrashlyticsService` instead of `debugPrint`.
-- Verified on device: generate a plan → regenerate → history screen lists the archived plan → restore works.
-- A rules test asserts owner-only access.
+**What changed**
+- Added `match /meal_plan_history/{historyId} { allow read, write: if isOwner(uid); }` to
+  `firestore.rules`, as a sibling to the existing `meal_plans/{planId}` block — same shape, same
+  `isOwner(uid)` guard already used by a dozen other subcollections in this file.
+- Both named call sites in `weekly_meal_plan_service.dart` now report to `CrashlyticsService` in
+  addition to `debugPrint` (matching the established `coach_review_service.dart` idiom — dev visibility
+  *and* production signal, not one replacing the other).
+- Went a little further than the literal acceptance criteria while in the file: `meal_plan_history_screen.dart`
+  had two of its own catch sites in the same state — `_loadHistory`'s catch had no Crashlytics call, and
+  `_restorePlan`'s `await _service.restorePlan(...)` had **no catch at all**. Both now report. No new
+  user-facing copy/UI added — this is an observability fix, not a UX feature; flagging the scope
+  addition explicitly rather than leaving it unmentioned.
+- New rules test in `test/firestore_rules/rules.test.mjs`: seeds a doc, asserts a non-owner is denied
+  both read and write, asserts the owner succeeds at both.
 
-**DoD** §0.5.
+**Acceptance criteria — status**
+- ✅ Rule added (see above).
+- ✅ Both named call sites route to `CrashlyticsService` (plus two adjacent ones, see above).
+- ❌ **Not verified on device** — and structurally can't be, yet. This is a security **rule**, not
+  application code: my `firestore.rules` file change has zero effect on the running app until someone
+  runs `firebase deploy --only firestore:rules` against the real project. Running the app right now
+  would reproduce the exact same permission-denied failure this card describes, because production is
+  still enforcing the pre-fix rules. **I did not run that deploy** — pushing rule changes to the live
+  Firebase project is a real, shared-infrastructure action, and I flagged it for you rather than firing
+  it off unilaterally. Once deployed: generate a plan → regenerate → history screen lists it → restore
+  works is the remaining manual check, on a device or simulator.
+- ✅ Rules test written. **Not run locally** — this machine has no local Java, so the Firestore
+  emulator can't start here (same pre-existing constraint as the rest of this suite, see `BLK-13`/`docs/TESTING.md`).
+  CI's `firestore-rules` job (Java installed via the workflow) is the authoritative check once pushed.
+
+**DoD** §0.5 — code and test written and pushed; the on-device verification leg is blocked on the rule
+actually being live, which needs your go-ahead to deploy.
 
 **Technical Notes**
 This is the cleanest illustration of `DEBT-01`. The rule was simply never added, and nothing in the
-system was capable of reporting that. Fix the rule here; fix the class of defect in `DEBT-01`.
+system was capable of reporting that. The rule fix is here; `DEBT-01` (the systemic swallow-and-log
+pattern) remains its own, much larger, separately-tracked item.
+
+**Deploy note (read before closing this card):** `firebase deploy --only firestore:rules` (or a full
+deploy) is required for this fix to take effect. Per `ADR-008`'s "server write paths ship before rules
+lock" ordering: this specific rule only *adds* an owner-only allow on a path nothing else touches, so
+there's no known sequencing hazard — but it's still a live change to the real project's security
+posture, and is the one piece of this card intentionally left for the human in the loop.
 
 ---
 
@@ -1846,7 +1879,7 @@ streak/reputation recompute (`SEC-14`), notification-path migration (`BLK-03`).
 
 | ID | Status | Path | Written by | Priority | Cx | Est | Version | Owner | Deps | Acceptance |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `FB-01` | 🔥 | `users/{uid}/meal_plan_history/{key}` | `weekly_meal_plan_service.dart:191`, `:318` | Critical | XS | 2 h | v0.9.7 / M1 | Firebase Architect | — | Tracked as `BLK-06` |
+| `FB-01` | ⚠️ | `users/{uid}/meal_plan_history/{key}` | `weekly_meal_plan_service.dart:191`, `:318` | Critical | XS | 2 h | v0.9.7 / M1 | Firebase Architect | — | Rule written, tracked as `BLK-06` — not yet deployed |
 | `FB-02` | 🔥 | `notifications/{uid}/items/{id}` | `admin_service.dart:234`, `:316`, `:353`, `:387` | Critical | M | 2–3 d | v0.9.7 / M1 | Firebase Architect | — | Tracked as `BLK-03` |
 | `FB-03` | 🔥 | `gyms/{gymId}/logo.jpg` (Storage) | `storage_upload_service.dart:145` | Critical | XS | 4 h | v1.1.0 / M6 | Firebase Architect | — | Tracked as `BLK-07` |
 | `FB-04` | ❌ | **Full path/rule reconciliation audit** | every collection | Critical | M | 2 d | v0.9.7 / M1 | Firebase Architect | `BLK-13` | Extract every Firestore and Storage path written or read anywhere in `lib/` and `functions/`; assert each has a rule; a CI script fails on any unmatched path. **Three mismatches were found by hand — this makes the check permanent.** §0.5 |
@@ -1871,7 +1904,7 @@ streak/reputation recompute (`SEC-14`), notification-path migration (`BLK-03`).
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `FB-15` | ❌ | Delete dead `challenges` rules + 2 indexes | Medium | XS | 1 h | v0.9.8 / M2 | Firebase Architect | `firestore.rules:296-304`, `firestore.indexes.json` (2 `challenges` indexes) | — | Both removed. **The prior roadmap (13.2) claimed this was done — it was not.** See `DEBT-11` | Re-adding them if Challenges 2.0 ships (`CHL-01`) is trivial; leaving reserved infrastructure for a non-existent feature is how documentation starts lying |
-| `FB-16` | ❌ | Delete the orphaned `meal_plan_history` index or add the rule | Medium | XS | 15 m | v0.9.7 / M1 | Firebase Architect | `firestore.indexes.json` | `BLK-06` | Rule added (preferred) so the index becomes useful | An index on a rule-denied path is pure waste |
+| `FB-16` | ⚠️ | Delete the orphaned `meal_plan_history` index or add the rule | Medium | XS | 15 m | v0.9.7 / M1 | Firebase Architect | `firestore.indexes.json` | `BLK-06` | Rule added (preferred) — pending deploy, see `BLK-06` | An index on a rule-denied path is pure waste until the rule is live |
 | `FB-17` | ❌ | Bound every unbounded listener and query | High | M | 2 d | v0.9.8 / M2 | Performance Engineer | `dish_service.dart:17` (unbounded `.get()` on `dishes`, called per plan generation), `:56` (unbounded `.snapshots()`), plus 12 other files using `.snapshots()` with no `.limit()` in-file | `BLK-11` | Every collection query has `.limit()` or is provably single-doc; the `dishes` listener paginated or replaced; a CI lint or review checklist item enforces it. Directly violates the repo's own Performance Playbook (`S23`) | At 75 dishes the cost is trivial; at 5,000 it is 5,000 reads per plan per user |
 | `FB-18` | 🚧 | Rules test suite covering every match block | Critical | L | 1 w | v0.9.7 / M1 | QA Lead | `test/firestore_rules/rules.test.mjs` (tracked, **running green in CI** — [run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)) | `BLK-13` | 15 of 71 match blocks covered (economy lock, PII, admin self-grant, content caps), all passing. Still open: the other ~56 blocks, and making the CI job **required** | The suite that would have caught 5 of the 17 blockers now runs and passes for its current scope — extending coverage is the remaining value here |
 | `FB-19` | ❌ | Reduce `isAdmin()` read cost | Low | S | 1 d | v1.1.0 / M6 | Firebase Architect | `firestore.rules:27-35` | `SEC-04` | Once admin is a custom claim, `isAdmin()` reads `request.auth.token.admin` instead of `exists()` + `get()` — removing 2 document reads per admin-gated operation | Claim propagation lag; keep the doc check as a fallback during migration |
@@ -2013,7 +2046,7 @@ count per slot and monitor plan variety.
 | `NUT-02` | ✅ | Weekly AI meal plan with Firestore caching + profile-hash invalidation | — | — | — | shipped | — | — | `weekly_meal_plan_service.dart` | — | Verified working; generation path no longer fabricates when unconfigured (`BLK-01` closed) — real end-to-end generation still depends on `BE-01` | — |
 | `NUT-03` | ✅ | Per-meal swap/substitution without regenerating the plan | — | — | — | shipped | — | — | `weekly_meal_plan_service.swapMeal()`, `_SwapSheet` in `home.dart` | — | Verified working | — |
 | `NUT-04` | ✅ | Meal-plan comparison (2 AI-generated macro approaches) | — | — | — | shipped | — | — | `meal_plan_comparison_sheet.dart`, `generatePlanAlternatesPrompt` | — | Verified working; credit-gated with rollback | — |
-| `NUT-05` | 🔥 | Meal-plan history — add the missing rule | Critical | XS | 2 h | v0.9.7 / M1 | Firebase Architect | Firebase | see `BLK-06` | — | Tracked in `BLK-06` | — |
+| `NUT-05` | ⚠️ | Meal-plan history — add the missing rule | Critical | XS | 2 h | v0.9.7 / M1 | Firebase Architect | Firebase | see `BLK-06` | — | Rule written, tracked in `BLK-06` — not yet deployed | — |
 | `NUT-06` | ✅ | Meal-plan calendar export (`.ics`) | — | — | — | shipped | — | — | `meal_plan_calendar_service.dart` | — | Verified working | — |
 | `NUT-07` | ✅ | Calorie/macro targets (Mifflin-St Jeor) + onboarding projections | — | — | — | shipped | — | — | `calorie_calculator.dart`, `onboarding_projection_service.dart` + 2 test suites | — | Verified working; rates safe-clamped | — |
 | `NUT-08` | ❌ | User-submitted dishes with moderation | Low | L | 1–2 w | v1.2.0 / Icebox | PM | Product, Database, Moderation | new | `MOD-01`, `BLK-11` | Users propose dishes with macros and a photo; admin/nutritionist approves before the dish enters the shared catalog; contributor credit; abuse-rate-limited | Wrong macros in a shared catalog is a health-data quality problem — approval must be real, not rubber-stamped |
@@ -2586,7 +2619,7 @@ Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register �
 
 | ID | Debt | Risk | Fix | Effort | Tracked as |
 |---|---|---|---|---|---|
-| `DEBT-08` | `meal_plan_history` has an index but no rule | A shipped, documented, indexed feature is permanently empty | Add the owner rule; report the failures | 2 h | `BLK-06` |
+| `DEBT-08` | `meal_plan_history` has an index but no rule | A shipped, documented, indexed feature is permanently empty | Owner rule written, failures now reported to Crashlytics — **awaiting deploy**, see `BLK-06` | 2 h | `BLK-06` |
 | `DEBT-09` | Gym logo writes to an unruled Storage prefix; scanner watches the same wrong prefix | Gym setup broken; NSFW scanning misaligned | Align upload, rules and `SCAN_PREFIXES`; close the `isAuthenticated()` hole | 4 h | `BLK-07` |
 | `DEBT-10` | Any user can mutate any post's non-content fields | Like-count, `groupId`, `is_announcement` integrity | `hasOnly` + delta constraints, or server-maintained counters | 1 d | `BLK-08` |
 | `DEBT-11` | **Challenge sunset incomplete while marked ✅** | `firestore.rules:296-304`, 2 composite indexes and 4 orphan i18n keys survive; `intro.page3_title` still advertises "Community & Challenges" to users | Remove the rules block, both indexes and the orphan keys; reword the intro copy | 1 h | `CHL-00`, `FB-15`, `I18N-02` |
