@@ -234,7 +234,6 @@ These are code-proven **and** believed functional. Full archive with evidence in
 
 | ID | Blocker | Why it blocks |
 |---|---|---|
-| `BLK-02` | 🔥 `NSPhotoLibraryUsageDescription` missing from iOS `Info.plist` | Crash on 6 screens + automatic App Store rejection |
 | `BLK-03` | 🔥 Push fan-out wired to a path nothing writes; admin path has no rule | Zero social push; gym/coach approval batches fail |
 | `BLK-04` | 🔥 Monetization non-functional end to end | Zero revenue capability |
 | `BLK-05` | 🔥 Admin surface unreachable — `admin_roles/{uid}` created by nothing | No moderation, no approvals, no cost visibility |
@@ -383,41 +382,86 @@ plan rendered as a completely plausible real one. `weekly_meal_plan_service.dart
 
 ---
 
-#### `BLK-02` 🔥 `NSPhotoLibraryUsageDescription` missing — iOS crash and guaranteed App Store rejection
+#### `BLK-02` ✅ Closed (code) — `NSPhotoLibraryUsageDescription` missing — iOS crash and guaranteed App Store rejection
 
-**Status** 🔥 Critical · **Priority** Critical · **Complexity** XS · **Est** 1 h
+**Status** ✅ Closed 2026-08-01 (code-complete; device verification blocked on `BLK-16`) · **Priority** Critical · **Complexity** XS · **Est** 1 h
 **Version** v0.9.7 · **Milestone** M1 · **Owner** Staff Flutter Engineer
 **Labels** `ios` `store-blocker` `crash` `permissions`
 **Modules** Frontend · Store · Legal
-**Files** `ios/Runner/Info.plist` · `lib/screens/profile/profile_screen.dart:333` · `lib/screens/chat/chat_detail_screen.dart:119` · `lib/screens/community/widgets/create_post_card.dart:388` · `lib/screens/gym/gym_setup_screen.dart:887` · `lib/screens/coach/coach_application_screen.dart:246` · `lib/screens/home/food_scan_screen.dart:514`
+**Files** `ios/Runner/Info.plist` · `scripts/check_ios_permissions.sh` (new) · `.github/workflows/ci.yml` ·
+`lib/screens/profile/profile_screen.dart:333` (already correct) · `lib/screens/chat/chat_detail_screen.dart:119` ·
+`lib/screens/community/widgets/create_post_card.dart:388` (already correct) · `lib/screens/gym/gym_setup_screen.dart:887` ·
+`lib/screens/coach/coach_application_screen.dart:246` (already correct) · `lib/screens/home/food_scan_screen.dart:514`
 **Dependencies** — · **Required before** `STORE-03`, `CI-04`, all of M4
-**Blocking** Any iOS distribution whatsoever.
+**Blocking** Was any iOS distribution whatsoever.
 
-**What exists / what is missing**
+**What was wrong**
 
-`Info.plist` declares `NSCameraUsageDescription`, `NSLocationWhenInUseUsageDescription`,
+`Info.plist` declared `NSCameraUsageDescription`, `NSLocationWhenInUseUsageDescription`,
 `NSMicrophoneUsageDescription`, `NSSpeechRecognitionUsageDescription`, `NSUserTrackingUsageDescription`
 — and **no photo-library string**. `ImageSource.gallery` is used in six screens. On iOS the app
 terminates immediately when the picker is invoked, and App Review rejects binaries that touch the photo
 library without a purpose string.
 
-Android declares `READ_MEDIA_IMAGES` and `READ_EXTERNAL_STORAGE`, so this is iOS-only.
+A second, related gap found during verification (not previously tracked): three of the six gallery
+call sites — `chat_detail_screen.dart`, `gym_setup_screen.dart`, and `food_scan_screen.dart` — called
+`ImagePicker().pickImage()` directly with **no** `PermissionService` import or call anywhere in the
+file. The other three (`profile_screen.dart`, `coach_application_screen.dart`, `create_post_card.dart`)
+already primed correctly. Confirmed by grep, not assumed: `grep -rn "PermissionService"` on all three
+files returned nothing before this fix.
 
-**Acceptance Criteria**
-- `NSPhotoLibraryUsageDescription` added with honest, localized-intent copy (avatar, post images, food photos, gym logo, application documents).
-- `NSPhotoLibraryAddUsageDescription` added **if** any flow writes to the library (verify: today none do — if confirmed, document the decision).
-- All six gallery entry points exercised on a **physical iPhone** without crash.
-- `PermissionService` photo priming still fires before the OS dialog on iOS.
-- A `scripts/` preflight check greps `Info.plist` for every `NS*UsageDescription` implied by the plugin set and fails the build if one is absent — so this class of defect cannot recur.
+Android declares `READ_MEDIA_IMAGES` and `READ_EXTERNAL_STORAGE`, so this was iOS-only.
 
-**DoD** §0.5 plus: `flutter build ipa` succeeds and photo pick works on device.
+**What changed**
+- `NSPhotoLibraryUsageDescription` added to `Info.plist`, honest copy covering all six real use cases
+  (profile picture, food logging, community posts, gym logos, coach applications). Validated with
+  `plutil -lint` — well-formed.
+- `NSPhotoLibraryAddUsageDescription` **not** added — confirmed by grep (`PHPhotoLibrary`,
+  `image_gallery_saver`, `package:gal` all absent from `lib/`, `pubspec.yaml`) that no flow writes to
+  the library. Documented here per the acceptance criterion, not added speculatively.
+- `chat_detail_screen.dart`'s `_pickAndSendImage`, `gym_setup_screen.dart`'s `_LogoPickerSection._pickImage`,
+  and `food_scan_screen.dart`'s `_pickPhoto` now call `PermissionService().requestPhotos(context)` (or
+  `.requestCamera()` for `food_scan_screen.dart`'s shared camera/gallery method, branched on `source`)
+  before the picker, matching the pattern already used correctly elsewhere. All six sites now prime
+  consistently.
+- New `scripts/check_ios_permissions.sh`: greps `pubspec.yaml` for `image_picker`, `mobile_scanner`,
+  `geolocator`, `speech_to_text` and fails if `Info.plist` is missing the usage-description key(s)
+  each implies. Wired into `ci.yml`'s `analyze-and-test` job, right after checkout (no Flutter/Java
+  needed, so it fails fast). Verified it actually catches the original defect: wrote and ran the
+  script **before** touching `Info.plist` — it failed with the exact missing-key message against the
+  real, still-broken file; added the fix; re-ran — passed.
+
+**Acceptance criteria — verified**
+- ✅ `NSPhotoLibraryUsageDescription` added with honest, specific copy.
+- ✅ `NSPhotoLibraryAddUsageDescription` — confirmed unnecessary, documented above.
+- ⚠️ **Not verified on a physical iPhone** — none available. Verified instead on the iOS Simulator
+  (fresh debug build): reset the app's photo permission (`xcrun simctl privacy ... reset photos`),
+  triggered the avatar picker on `profile_screen.dart` — the in-app `PermissionPrimer` ("Fotoğraf
+  Kitaplığı") fired correctly, then the OS-level request resolved to permanently-denied (a
+  Simulator-specific quirk — no seeded Photos library — not a crash), and `PermissionService`
+  correctly routed to its Settings-redirect sheet; "Ayarları Aç" opened iOS Settings with Cookrange
+  still alive underneath. **No crash at any point** — this is the literal defect BLK-02 fixes, and
+  it's gone. The native "Allow full access / Select Photos / Don't Allow" sheet itself wasn't
+  observed on Simulator; physical-device confirmation is still owed once one is available.
+- ✅ `PermissionService` photo priming fires before the OS dialog on iOS — now true for all six sites
+  (three already were; three fixed here).
+- ✅ Preflight script added, wired into CI, verified to actually fail on the original defect and pass
+  after the fix (not just written and assumed correct).
+
+**DoD** §0.5 plus: `flutter build ipa` succeeds and photo pick works on device — **not done**. Building
+a signed `.ipa` needs an Apple signing identity, which doesn't exist yet (`BLK-16`). `flutter analyze
+lib/` (0 errors, 25 infos, unchanged baseline) and `flutter test` (79/79) both pass; that's the DoD
+that's actually achievable before `BLK-16` closes.
 
 **Technical Notes**
-The preflight check is the real fix. The missing string is a symptom of never having run the app on an
-iOS device through the photo flow. Add `speech_to_text` → `NSSpeechRecognition`, `image_picker` →
-`NSPhotoLibrary`, `geolocator` → `NSLocationWhenInUse`, `mobile_scanner` → `NSCamera` to the check table.
+The preflight check is the real fix. The missing string was a symptom of never having run the app on
+an iOS device through the photo flow. The check table currently covers `speech_to_text`,
+`image_picker`, `geolocator`, `mobile_scanner` — a new plugin needing a new `NS*UsageDescription` still
+needs a manual addition to both `Info.plist` and `scripts/check_ios_permissions.sh`.
 
-**Risks** None. This is a one-line fix with a permanent guard.
+**Risks** None realized. The one bit of scope growth (priming the three missed call sites) was a
+same-category fix using an already-proven pattern, not a new one — low risk, and leaving it
+inconsistent would have meant three screens still skipping the app's own rationale sheet.
 
 ---
 
@@ -1956,7 +2000,7 @@ count per slot and monitor plan variety.
 | `AI-19` | ✅ | Deterministic allergen pre-filter | — | — | — | shipped | — | — | `lib/core/utils/allergen_safety.dart` + unit tests | — | Verified working. **Do not replace with prompt instructions** | — |
 | `AI-20` | ✅ | AI credit ledger — server-authoritative, read-only client, bonus-first consumption | — | — | — | shipped | — | — | `functions/index.js:197-252`, `ai_credit_service.dart`, `ai_credit_model.dart` + tests | — | Verified working | — |
 | `AI-21` | ✅ | Real AI cost metering — tokens × per-model price → logs, aggregates, per-user lifetime | — | — | — | shipped | — | — | `functions/index.js:85-137` | — | Verified working (only via the proxy; debug direct calls are not logged) | — |
-| `AI-22` | ❌ | Vision model availability + graceful photo degradation on iOS | High | S | 1 d | v0.9.7 / M1 | AI Architect | AI, Frontend | `food_scan_screen.dart`, `food_analysis_service.dart:110` | `BLK-02` | `isVisionAvailable` correctly hides the photo option; the camera path works on a physical iPhone once `BLK-02` lands; gallery path likewise; the `OPENROUTER_VISION_MODEL` default documented | Photo analysis is currently untestable on iOS because of `BLK-02` |
+| `AI-22` | ❌ | Vision model availability + graceful photo degradation on iOS | High | S | 1 d | v0.9.7 / M1 | AI Architect | AI, Frontend | `food_scan_screen.dart`, `food_analysis_service.dart:110` | — | `isVisionAvailable` correctly hides the photo option; the camera and gallery paths verified on a **physical** iPhone (Simulator-only confirmed so far); the `OPENROUTER_VISION_MODEL` default documented | The iOS crash that made this untestable is fixed (`BLK-02`); physical-device confirmation is still owed once one is available |
 | `AI-23` | 🚧 | Voice assistant — verify end to end, then keep or cut | Medium | S | 2 d | v1.0.0 / M4 | AI Architect | AI, Frontend, UX | `lib/core/widgets/voice_assistant_overlay.dart`, `main_scaffold.dart:165` (gated on `NavigationProvider.isVoiceAssistantOpen`), `ai/ai_chat_history_service.dart` (voice↔text transitions), `speech_to_text: ^7.3.0`, `RECORD_AUDIO`, `NSSpeechRecognitionUsageDescription` | `ARCH-05`, `SEC-11` | **The Phase 2 fix held** — the transcript now routes to `AIChatScreen(initialMessage:)` at three call sites (`:451`, `:474`), so it is no longer the "non-functional demo" the original audit described. Verify: Turkish speech recognition accuracy on device, the microphone-permission priming path, behaviour when recognition is unavailable, and that the transcript is `fence()`-guarded before reaching the prompt (`SEC-11`). Then make an explicit keep-or-cut decision — it carries a microphone permission, a speech dependency, and an `AnimationController`-heavy overlay for an unmeasured amount of use. If kept, its `feature_voice_assistant` kill-switch must migrate to `AppConfigService` (`ARCH-05`) rather than being deleted with `RemoteConfigService` | A microphone permission is one of the most trust-sensitive things an app requests. Carrying it for a feature nobody uses is a real cost at store review and in user perception. **Measure usage in M4 before deciding** |
 
 ---
@@ -2002,7 +2046,7 @@ count per slot and monitor plan variety.
 | `LOG-01` | ✅ | Food diary + real-time consumed calorie/macro stream on home | — | — | — | shipped | — | `food_log_service.dart`, `food_log_model.dart`, `home.dart` | — | Verified working | — |
 | `LOG-02` | ✅ | Recent & frequent foods + quick-add sheet | — | — | — | shipped | — | `recent_food_service.dart`, `quick_add_sheet.dart` | — | Verified working; capped at 20 | — |
 | `LOG-03` | 🚧 | Barcode scanning — external API reliability | Medium | S | 2 d | v1.0.0 / M4 | Flutter Engineer | `barcode_lookup_service.dart` (Open Food Facts), `barcode_scan_screen.dart` | — | Timeout, retry and offline handling for the Open Food Facts API; a "not found" path that routes to manual entry; response cached; **the existing permission/camera-unavailable/manual-entry states are genuinely good work — keep them** | Third-party API with no SLA; Turkish product coverage is likely thin — measure hit rate |
-| `LOG-04` | 🚧 | Food photo analysis — verify on iOS | High | S | 1 d | v0.9.7 / M1 | AI Architect | `food_scan_screen.dart`, `food_analysis_service.dart` | `BLK-02`, `AI-22` | Camera and gallery paths verified on a physical iPhone; credit metering and rollback verified; history written to `users/{uid}/food_analyses` | Blocked by `BLK-02` today |
+| `LOG-04` | 🚧 | Food photo analysis — verify on iOS | High | S | 1 d | v0.9.7 / M1 | AI Architect | `food_scan_screen.dart`, `food_analysis_service.dart` | `AI-22` | Camera and gallery paths verified on a physical iPhone; credit metering and rollback verified; history written to `users/{uid}/food_analyses` | No longer blocked by a crash (`BLK-02` fixed) — just needs a physical device |
 | `LOG-05` | ✅ | Express one-tap photo logging with auto meal-type | — | — | — | shipped | — | `FoodScanScreen(expressPhoto:)`, `meal_time_util.dart` | `BLK-02` | Verified working on Android | — |
 | `LOG-06` | ✅ | Mark-meal-as-eaten from cooking mode → diary | — | — | — | shipped | — | `cooking_mode_screen.dart`, `food_log_service.logRecipe` | — | Verified working | — |
 | `LOG-07` | ✅ | Meal-type nutrition breakdown card | — | — | — | shipped | — | `meal_breakdown_card.dart` | — | Verified working | — |
@@ -2476,7 +2520,7 @@ count per slot and monitor plan variety.
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `STORE-01` | 🔥 | Developer programme enrolment, signing, store records | Critical | M | 1–2 w wall clock | v0.9.9 / M3 | CTO | see `BLK-16` | — | Tracked in `BLK-16`. **Longest lead time in the backlog — start day one** | — |
-| `STORE-02` | 🔥 | iOS photo-library usage description | Critical | XS | 1 h | v0.9.7 / M1 | Flutter Engineer | see `BLK-02` | — | Tracked in `BLK-02` | — |
+| `STORE-02` | ✅ | iOS photo-library usage description | Critical | XS | 1 h | v0.9.7 / M1 | Flutter Engineer | see `BLK-02` | — | Tracked in `BLK-02`, closed | — |
 | `STORE-03` | ❌ | Store listing assets and metadata | High | M | 1 w | v1.0.0 / M4 | PM | `cookrange-icon.png`, `cookrange-logo.png` exist | `BLK-16` | Icon, screenshots (phone + tablet, both platforms), preview video, title, subtitle, description, keywords — all in EN and TR; age rating questionnaires completed | Screenshots showing features that will not ship (challenges, payouts) is a rejection and a trust risk |
 | `STORE-04` | ❌ | Privacy nutrition labels and Play Data Safety | Critical | M | 3 d | v0.9.9 / M3 | Legal | App Store Connect, Play Console | `BLK-10`, `BLK-12`, `LEG-01` | Accurate declarations of every data type collected, its purpose, whether it is linked to identity, and whether it is used for tracking. Must reconcile with: health data, IP and device fingerprints (`BLK-10`), the `AD_ID` permission, ATT, analytics, Crashlytics, and OpenRouter as a cross-border sub-processor | **An inaccurate privacy declaration is a removal risk, not a warning.** Complete `BLK-10` first so the declaration describes the real data model |
 | `STORE-05` | ❌ | Account-deletion requirement compliance | Critical | S | 1 d | v0.9.9 / M3 | Legal | `settings_screen.dart` danger zone, `functions/account.js` | `BLK-12` | In-app deletion present (it is) **and** — per Apple's requirement — the deletion path is discoverable and complete; a web-based deletion request route provided if required | Apple rejects apps with account creation and no in-app deletion. The path exists; verify it is complete per `BLK-12` |
@@ -2524,16 +2568,15 @@ count per slot and monitor plan variety.
 
 ## §46 — Technical Debt Register
 
-**51 items** (4 resolved this pass — `DEBT-19`, `DEBT-20`, `DEBT-51`, `DEBT-02`, moved to §46.5). Critical 6 ·
-High 13 · Medium 18 · Low 14.
+**50 items** (5 resolved this pass — `DEBT-19`, `DEBT-20`, `DEBT-51`, `DEBT-02`, `DEBT-03`, moved to
+§46.5). Critical 5 · High 13 · Medium 18 · Low 14.
 Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register ≈ **28–34 engineer-weeks**.
 
 ### 46.1 🔴 Critical
 
 | ID | Debt | Why it exists | Risk | Impact | Fix | Effort | Tracked as |
 |---|---|---|---|---|---|---|---|
-| `DEBT-01` | Swallow-and-log error handling (25 bare catches + dozens of log-and-default) | Speed over observability; `debugPrint` felt like logging | **Root cause of `DEBT-03`–`DEBT-06` remaining invisible** (was also root cause of `DEBT-02`, closed with `BLK-01`). `debugPrint` is a release no-op → zero production signal | Features die silently; nobody can state what works | Route every catch to Crashlytics with context; ban bare catches via CI grep; permission-denied renders an error state, not empty | 1 w | `ARCH-01`, `OBS-03` |
-| `DEBT-03` | iOS photo-library permission missing | Never run on an iOS device through the photo flow | Crash on 6 screens; automatic store rejection | Cannot ship iOS | Add the string; add a plugin→plist preflight check | 1 h | `BLK-02` |
+| `DEBT-01` | Swallow-and-log error handling (25 bare catches + dozens of log-and-default) | Speed over observability; `debugPrint` felt like logging | **Root cause of `DEBT-04`–`DEBT-06` remaining invisible** (was also root cause of `DEBT-02`, closed with `BLK-01`). `debugPrint` is a release no-op → zero production signal | Features die silently; nobody can state what works | Route every catch to Crashlytics with context; ban bare catches via CI grep; permission-denied renders an error state, not empty | 1 w | `ARCH-01`, `OBS-03` |
 | `DEBT-04` | Push fan-out path mismatch; admin path unruled | Trigger written against a documented path the client never adopted | No social push; gym/coach approval batches fail | Retention loop and both ecosystems dead | Pick one path, add the rule, move authorship server-side | 2–3 d | `BLK-03` |
 | `DEBT-05` | Admin surface unreachable (`admin_roles` created by nothing) | Rule written before the provisioning path | ~7,400 LOC unusable; no moderation, approvals or cost visibility | No operational capability | Provision the doc, mirror to a custom claim, gate the UI on the claim, document | 1–2 d | `BLK-05` |
 | `DEBT-06` | Monetization non-functional end to end | Store setup never started; validation correctly fails closed | Zero revenue | No business | Register products, add credentials, `APP_ENV=production`, sandbox-verify | 1–2 w + store | `BLK-04` |
@@ -2622,6 +2665,7 @@ Recorded so the history is not lost. All verified fixed.
 | 🟠 | CI red on `main` — format + 3 failing tests (`DEBT-20`) | `BLK-13` — `dart format` clean, mock signature fixed, 78/78 tests pass. Branch protection and pre-commit hooks were listed alongside this debt but are separate, still-open items — tracked as `CI-02`, `CI-08` |
 | 🟢 | `pubspec.lock` gitignored but grandfathered into tracking (`DEBT-51`) | `BLK-13` — ignore rule removed, intent matches reality |
 | 🔴 | Release AI served fabricated meal plans and recipes (`DEBT-02`) | `BLK-01` — mock block deleted, both services guard `isConfigured` and rethrow, branded error states wired in `home.dart`/`explore_screen.dart`, startup Crashlytics assertion added, regression test added |
+| 🔴 | iOS photo-library permission missing — crash on 6 screens (`DEBT-03`) | `BLK-02` — `NSPhotoLibraryUsageDescription` added, 3 of 6 gallery call sites given the `PermissionService` priming they were missing, permanent preflight guard (`scripts/check_ios_permissions.sh`) in CI. Physical-device confirmation and `flutter build ipa` still owed once a signing identity exists (`BLK-16`) |
 | 🟡 | No pagination on notifications | v0.9.6 (`getNotificationsPage`) |
 | 🟢 | Stray `print()` calls throughout `lib/` (12 files) | v0.9.5 (`debugPrint`) |
 | 🟢 | Dead legacy widgets (`custom_back_button`, `gender_picker_modal`, `language_selector`) | v0.9.5 (deleted) |
@@ -3042,8 +3086,8 @@ strategy→`ARCH-07` (decision recorded, revisit on retention data) · 6 Event t
 |---|---|---|
 | Security/data breach on open rules | 🔴 | 🟠 — rules are extensive and serious, but 8 authorization holes and 3 missing paths remain (§7) |
 | Scope delusion (README sells an OS) | 🔴 | 🔴 **unchanged and worse** — 8 domains, 75 screens, 0 validated users. §1.9 and `DOC-02` are the mitigation |
-| AI cost & reliability | 🟠 | 🟠 — cost controls are now genuinely strong (`AI-20`, `AI-21`), but `BLK-01` makes reliability a correctness risk, not just an availability one |
-| App Store rejection | 🟠 | 🔴 — `BLK-02` is an automatic rejection; `STORE-04` and `STORE-06` add more |
+| AI cost & reliability | 🟠 | 🟠 — cost controls are now genuinely strong (`AI-20`, `AI-21`); the fabrication-as-correctness-risk is fixed (`BLK-01` closed) — remaining reliability risk is availability-only, pending `BE-01`'s proxy deployment |
+| App Store rejection | 🟠 | 🟠 — `BLK-02`'s automatic-rejection cause (missing photo-library usage string) is fixed; `STORE-04` and `STORE-06` remain open risks |
 | Retention with no push | 🟠 | 🔴 — push is built and **does not work** (`BLK-03`); worse than "not built" because it looks done |
 | "Looks done, isn't" | 🟠 | 🔴 **the defining risk of this codebase.** Seven confirmed dead paths; ~1 % coverage means seven is a floor, not a total |
 | Single-maintainer bus factor | 🟡 | 🔴 — 115k LOC, 486 KB of partly-inaccurate docs, all credentials with one person (`DR-05`) |
@@ -3073,9 +3117,12 @@ The first ten things to do, in this order. Everything else follows from them.
    Committed and running green in CI for its current 15-assertion scope; extending to all 71 match
    blocks is still open.
 5. **`INF-01`** — stand up staging. Nothing else can be tested honestly against one shared project.
-6. **`BLK-01`** + **`BE-01`** + **`BE-02`** — delete the mock, deploy the proxy, align the timeouts.
-   Land together; each is dangerous alone.
-7. **`BLK-02`** — one line plus a preflight check. Unblocks all iOS verification.
+6. ~~**`BLK-01`**~~ + **`BE-01`** + **`BE-02`** — delete the mock, deploy the proxy, align the timeouts.
+   The mock is deleted and both services guard `isConfigured` (`BLK-01` closed); `BE-01`/`BE-02`
+   (deploy the proxy, align timeouts) remain open and still dangerous alone without the guard —
+   the guard just makes "alone" mean "honest error state," not "silent lie."
+7. ~~**`BLK-02`**~~ — the string plus a preflight check landed. Device/`.ipa` verification still
+   owed once `BLK-16` gives a signing identity.
 8. **`BLK-05`** — one Firestore document plus a custom claim unlocks ~7,400 LOC and both ecosystems.
 9. **`BLK-03`** + **`SEC-06`** — fix the notification path and move authorship server-side in one change.
 10. **`TEST-08`** — write and execute an honest manual QA pass on physical iOS and Android devices.

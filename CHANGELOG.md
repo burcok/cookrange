@@ -253,6 +253,39 @@ it every release build shows the honest error state, never a working plan. That'
 trade: a visible failure instead of a silent lie. `AI-07` (deterministic catalog-based fallback) and
 `AI-08` (`AiChatService`'s leaking fallback string) remain open, out of scope here.
 
+### Fixed — `BLK-02`: missing iOS photo-library usage string caused a crash on 6 screens (2026-08-01)
+
+`Info.plist` declared usage strings for camera, location, microphone, speech recognition, and
+tracking — but not photos, even though `ImageSource.gallery` is used in six screens. On iOS the app
+terminates immediately when the picker is invoked without the matching key, and App Review rejects
+binaries that touch the photo library without a purpose string.
+
+**Fix:**
+- Added `NSPhotoLibraryUsageDescription` to `Info.plist` with copy naming all six real use cases
+  (profile picture, food logging, community posts, gym logos, coach applications). Confirmed
+  `NSPhotoLibraryAddUsageDescription` isn't needed — grepped for `PHPhotoLibrary`, `image_gallery_saver`,
+  `package:gal`; nothing in this codebase writes to the library.
+- Found a related, previously-untracked gap while verifying the six call sites: three of them
+  (`chat_detail_screen.dart`, `gym_setup_screen.dart`, `food_scan_screen.dart`) called `ImagePicker`
+  directly with no `PermissionService` import anywhere in the file, skipping the app's own in-app
+  rationale sheet that the other three already showed correctly. Added the same
+  `PermissionService().requestPhotos()` (or `.requestCamera()` for `food_scan_screen.dart`'s shared
+  camera/gallery method) call used by the three that already had it.
+- New `scripts/check_ios_permissions.sh`: greps `pubspec.yaml` for `image_picker`, `mobile_scanner`,
+  `geolocator`, `speech_to_text` and fails if `Info.plist` is missing the usage-description key(s)
+  each implies. Wired into `ci.yml` right after checkout. Verified it actually catches the defect:
+  ran it against the real, still-broken `Info.plist` before adding the string (failed with the exact
+  missing-key message), then again after (passed).
+
+**Verified:** `flutter analyze lib/` — 0 errors, 25 infos (unchanged baseline). `flutter test` —
+79/79 pass. On the iOS Simulator: reset the app's photo permission, triggered the avatar picker —
+the in-app primer fired, the OS-level request resolved to permanently-denied (a Simulator quirk with
+no seeded Photos library, not a crash), and the Settings-redirect sheet correctly opened iOS Settings
+with the app still alive underneath. No crash anywhere in the flow — the literal defect this fixes.
+
+**Not done:** physical-iPhone confirmation and a signed `flutter build ipa` — no physical device
+available, and no Apple signing identity exists yet (`BLK-16`) regardless.
+
 ---
 
 ## [0.9.6] — 2026-07-31 — *internal alpha*

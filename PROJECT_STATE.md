@@ -6,7 +6,7 @@
 > Keep it **small**. Status lines only — no design, no rationale, no task detail. Full task cards
 > live in [`TODO.md`](TODO.md); decisions live in [`DECISIONS.md`](DECISIONS.md).
 
-**Last updated:** 2026-08-01 · **Source of record:** `TODO.md` §1 (audit 2026-07-31; `BLK-13` re-verified 2026-08-01; `BLK-01` closed 2026-08-01)
+**Last updated:** 2026-08-01 · **Source of record:** `TODO.md` §1 (audit 2026-07-31; `BLK-13` re-verified 2026-08-01; `BLK-01` and `BLK-02` closed 2026-08-01)
 
 ---
 
@@ -69,7 +69,6 @@ Full cards in [`TODO.md`](TODO.md) §2.
 
 | ID | Blocker | Domain |
 |---|---|---|
-| `BLK-02` | 🔥 `NSPhotoLibraryUsageDescription` missing from iOS `Info.plist` — crash + auto-rejection | [Platform](docs/PLATFORM.md) |
 | `BLK-03` | 🔥 Push fan-out wired to a path nothing writes | [Community](docs/COMMUNITY.md) |
 | `BLK-04` | 🔥 Monetization non-functional end to end | [Premium](docs/PREMIUM.md) |
 | `BLK-05` | 🔥 Admin surface unreachable — `admin_roles/{uid}` created by nothing | [Security](docs/SECURITY.md) |
@@ -113,6 +112,9 @@ cooking mode · community feed & comments & reactions · 1:1 + group chat · in-
 achievements · AI insight/twin/recap (all guard `isConfigured`) · AI proxy security core ·
 AI meal-plan/recipe generation degradation path (`BLK-01` — throws + branded error state when
 unconfigured, never fabricates; real proxy call path still unverified, see `BE-01`) ·
+iOS photo-picker path (`BLK-02` — `NSPhotoLibraryUsageDescription` present, all 6 gallery call sites
+prime via `PermissionService`, permanent CI guard against the string going missing again; confirmed
+crash-free on Simulator, physical-iPhone confirmation still pending a device) ·
 allergen pre-filter · prompt-injection guard · Hive AES-256 · consent registry · design system ·
 EN/TR parity (2,722 keys) · maintenance + force-update gates · feature kill-switches ·
 image upload pipeline · `pollCount` discipline · `flutter analyze lib/` 0 errors ·
@@ -138,7 +140,7 @@ IDs in `TODO.md` §1.6.
 
 | Milestone | Version | Exit criterion | Est (solo) |
 |---|---|---|---|
-| **M1 — Truth** | `v0.9.7` | Every consumer-path feature demonstrated on a physical iPhone **and** Android against a production-configured backend. All 17 blockers closed (`BLK-13` ✅, `BLK-01` ✅, 15 remain). ~~CI green~~ **✅ done** — all 4 jobs confirmed. | 4–6 w |
+| **M1 — Truth** | `v0.9.7` | Every consumer-path feature demonstrated on a physical iPhone **and** Android against a production-configured backend. All 17 blockers closed (`BLK-13` ✅, `BLK-01` ✅, `BLK-02` ✅ code/CI, physical-device confirmation still owed, 14 remain). ~~CI green~~ **✅ done** — all 4 jobs confirmed. | 4–6 w |
 | **M2 — Legal** | `v0.9.8` | `S0`–`S17` green. User doc split. Erasure + export complete. Privacy labels + Data Safety filed. DPA executed. Backups live. | 3–4 w ∥ |
 | **M3 — Commerce** | `v0.9.9` | Both stores enrolled. 3 products live. One real sandbox purchase → real entitlement. Premium gated server-side. | 3–4 w ∥ |
 | **M4 — Beta** | `v1.0.0-beta1` | 50–100 real users. Dish catalog ≥ 300. D7 measured. Crash-free > 99 %. A11y pass on 10 flows. | 4 w |
@@ -171,7 +173,12 @@ Store review is an irreducible 1–2 weeks of wall clock.
    with a full Android SDK set up for the last one — not guessed at from log fragments. **Recommended
    next step: `CI-02` branch protection**, now genuinely achievable; not done here, since it's a
    repository-settings change outside what was asked for.
-4. **`BLK-02`** — add the missing iOS usage string (one line, prevents 6 crashes + rejection).
+4. ~~**`BLK-02`**~~ **Done (code)** — `NSPhotoLibraryUsageDescription` added; found and fixed a related
+   gap along the way (3 of 6 gallery call sites had no `PermissionService` priming at all — now all
+   six do); added `scripts/check_ios_permissions.sh` as a permanent CI guard so a missing iOS usage
+   string can't recur silently. **Residual:** physical-iPhone confirmation and a signed
+   `flutter build ipa` are still owed — verified on the Simulator only (no crash, correct primer +
+   Settings-redirect flow), and a real device needs `BLK-16` (no signing identity yet) regardless.
 5. **`BLK-05` / `BLK-03` / `BLK-06`** — the "shipped but dead" cluster: create `admin_roles`, point
    the push trigger at the real path, add the `meal_plan_history` rule.
 6. Then M2 security gates in the order fixed by `GO_LIVE.md` Phase 5S — **server write paths first

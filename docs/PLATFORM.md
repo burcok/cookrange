@@ -68,7 +68,10 @@ secrets. **Neither has ever run successfully** — no signing identity exists (`
 - [ ] Safe areas correct on notch + gesture-nav devices (both).
 - [ ] Keyboard inset handled (sheets, inputs) on both.
 - [ ] Permissions primed (`PermissionPrimer`) before OS dialog; usage strings present in Info.plist /
-      AndroidManifest.
+      AndroidManifest. `scripts/check_ios_permissions.sh` (run in CI) catches a missing iOS usage
+      string for `image_picker`/`mobile_scanner`/`geolocator`/`speech_to_text` automatically — see
+      `BLK-02`. It only covers plugins with a mapping in that script; a new plugin needing a new
+      `NS*UsageDescription` still needs a manual add to both Info.plist and the check table.
 - [ ] Apple Sign-In present if Google Sign-In is offered (App Store requirement).
 - [ ] Haptics on meaningful actions.
 - [ ] Tested in both light + dark, EN + TR, on both platforms.
