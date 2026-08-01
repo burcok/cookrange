@@ -71,7 +71,6 @@ Full cards in [`TODO.md`](TODO.md) §2.
 |---|---|---|
 | `BLK-03` | 🔥 Push fan-out wired to a path nothing writes | [Community](docs/COMMUNITY.md) |
 | `BLK-04` | 🔥 Monetization non-functional end to end | [Premium](docs/PREMIUM.md) |
-| `BLK-05` | ⚠️ Admin surface — client/rules/function written, `syncAdminClaim` **not deployed** | [Security](docs/SECURITY.md) |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | [Gym](docs/GYM_ECOSYSTEM.md) |
 | `BLK-08` | 🔥 Any user can mutate any post's non-content fields | [Security](docs/SECURITY.md) |
 | `BLK-09` | 🔥 `coach_uid == 'demo'` lets any user publish to the public marketplace | [Coach](docs/COACH_ECOSYSTEM.md) |
@@ -94,12 +93,12 @@ Full cards in [`TODO.md`](TODO.md) §2.
 |---|---|
 | 🚧 AI meal planning · recipe generation — no longer fabricates when unconfigured (`BLK-01` ✅); real end-to-end generation still unverified | `BE-01` |
 | 🚧 Push notifications (chat push works; social/admin push does not) | `BLK-03` |
-| 🚧 Admin surface (~7,400 LOC, 9 screens) | `BLK-05` |
+| 🚧 Admin surface (~7,400 LOC, 9 screens) — reachable now (`BLK-05` ✅); no real admin session has exercised it yet | — |
 | 🚧 Monetization (IAP client + server validation both exist) | `BLK-04` |
-| 🚧 Gym ecosystem (11 screens) · Coach ecosystem (8 screens) | `BLK-05`, `BLK-03`, `BLK-07` |
+| 🚧 Gym ecosystem (11 screens) · Coach ecosystem (8 screens) | `BLK-03`, `BLK-07` |
 | 🚧 Program marketplace | `BLK-09` |
 | 🚧 Dish catalog | `BLK-11` |
-| 🚧 Moderation (scans wrong prefix; queue unreachable) | `BLK-05` |
+| 🚧 Moderation (scans wrong prefix; queue reachable but unstaffed) | — |
 | 🚧 CD — deploy workflow (TestFlight + Play, never run) | `BLK-16` |
 
 ## 5. Verified working
@@ -115,10 +114,14 @@ prime via `PermissionService`, permanent CI guard against the string going missi
 crash-free on Simulator, physical-iPhone confirmation still pending a device) ·
 meal plan history (`BLK-06` — owner rule deployed to production, both read/write paths report to
 Crashlytics; rules test confirmed passing in CI, full on-device flow not separately walked) ·
+admin authorization (`BLK-05` — `syncAdminClaim` deployed and confirmed live via `firebase
+functions:list`; all 3 client gates re-pointed at the custom claim; rules tests confirm the
+`admin_roles` → `isAdmin()` chain end to end in CI; no real admin session has exercised the 9-screen
+surface yet — nobody has been console-provisioned) ·
 allergen pre-filter · prompt-injection guard · Hive AES-256 · consent registry · design system ·
 EN/TR parity (2,722 keys) · maintenance + force-update gates · feature kill-switches ·
 image upload pipeline · `pollCount` discipline · `flutter analyze lib/` 0 errors ·
-Firestore rules test suite (16 test cases, partial coverage) green in real CI ·
+Firestore rules test suite (18 test cases, partial coverage) green in real CI ·
 **CI — all 4 jobs green** (`analyze-and-test`, `firestore-rules`, `secret-scan`, `build-android`),
 confirmed in a real run, first time in this repo's history.
 
@@ -181,13 +184,13 @@ Store review is an irreducible 1–2 weeks of wall clock.
    Settings-redirect flow), and a real device needs `BLK-16` (no signing identity yet) regardless.
 5. ~~`BLK-06`~~ **done** — `meal_plan_history` rule deployed to production with your go-ahead, rules
    test confirmed green in CI.
-   ~~`BLK-05`~~ **code complete** — `admin_roles` custom-claim sync (`syncAdminClaim`), all three
-   client gates, the bootstrap runbook, and rules tests are all written and pushed.
-   **`firebase deploy --only functions` is the one step not taken** — a new, automatically-triggered
-   Cloud Function with full Admin SDK privileges that grants admin access is a bigger risk than a
-   declarative rules change, so it's held for your explicit go-ahead rather than folded in
-   unilaterally. `BLK-03` (push notification fan-out) is the remaining item in this cluster — also
-   needs a Cloud Functions deploy, not yet started.
+   ~~`BLK-05`~~ **done** — `admin_roles` custom-claim sync (`syncAdminClaim`) deployed to production
+   with your go-ahead (`firebase deploy --only functions:syncAdminClaim`, confirmed live via
+   `firebase functions:list`); all three client gates, the bootstrap runbook, and rules tests
+   shipped alongside it. Followed with a downstream sweep of the ~30 "unreachable until `BLK-05`"
+   references across `TODO.md` (`ADM-*`, `MOD-01`, `NOTIF-13`, `MKT-02`, `LEG-09`, etc.) now that
+   the fix is confirmed live. `BLK-03` (push notification fan-out) is the remaining item in this
+   cluster — also needs a Cloud Functions deploy, not yet started.
 6. Then M2 security gates in the order fixed by `GO_LIVE.md` Phase 5S — **server write paths first
    (`S2`→`S3`→`S4`), then lock the rules (`S1`, `S5`)**. Locking first breaks live flows.
 

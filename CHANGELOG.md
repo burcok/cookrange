@@ -316,7 +316,7 @@ user go-ahead (rules changes are live, shared-infrastructure actions — asked f
 folded in silently). Confirmed by the CLI's own output: "released rules firestore.rules to
 cloud.firestore." The feature is live for real users as of this deploy.
 
-### Fixed (code) — `BLK-05`: the entire admin surface was unreachable — `syncAdminClaim` NOT YET DEPLOYED (2026-08-01)
+### Fixed — `BLK-05`: the entire admin surface was unreachable (2026-08-01)
 
 `isAdmin()` in `firestore.rules` requires `admin_roles/{uid}.is_admin == true`. Nothing anywhere —
 not the client, not any Cloud Function — ever created that document. Meanwhile the client showed
@@ -343,20 +343,31 @@ read.
   unconditionally, even for an admin, so the Firebase Console is the only way to create it. No
   callable bootstrap function was built — one that can grant admin is itself a privilege-escalation
   surface, and the acceptance criteria only asked for a console step **or** a callable, not both.
-- 3 new rules tests: a seeded admin still can't write `admin_roles` via the client SDK; a
-  console-provisioned admin can read `admin_audit`/`ai_usage_logs`/`admin_config`; a non-admin is
-  denied on all three.
+- 2 new rules tests: one asserts a seeded admin still can't write `admin_roles` via the client SDK;
+  the other asserts a console-provisioned admin can read `admin_audit`/`ai_usage_logs`/`admin_config`
+  while a non-admin is denied on all three.
 
 **Verified:** `flutter analyze lib/` — 0 errors, 25 infos (unchanged). `flutter test` — 79/79 pass.
-Rules tests written and syntax-checked; not run locally (no Java, same `BLK-13` constraint) — CI's
-`firestore-rules` job is the authoritative check once pushed.
+Rules tests confirmed passing for real in CI's `firestore-rules` job
+([run #52](https://github.com/burcok/cookrange/actions/runs/30701019872)) — not run locally, no
+Java on this machine (same `BLK-13` constraint).
 
-**Not deployed — deliberately.** `syncAdminClaim` has zero effect until
-`firebase deploy --only functions` runs. Unlike the `meal_plan_history` rule (a declarative,
-easily-diffed change), this deploys new, automatically-triggered, privileged code — a materially
-bigger risk. Held for a separate, explicit go-ahead rather than folded into this pass. Until
-deployed, `admin_roles/{uid}` can still be created via the Console runbook, but the custom claim
-won't sync automatically, so the fix isn't complete in production yet.
+**Deployed:** `firebase deploy --only functions:syncAdminClaim --project cookrange-app`, with
+explicit user go-ahead (a new, automatically-triggered Cloud Function with full Admin SDK
+privileges is a materially bigger risk than a declarative rules change, so this was asked
+separately from the `meal_plan_history` rule deploy). First attempt returned an ambiguous "failed
+to create function" error with no further detail — consistent with a freshly-enabled API
+(`cloudscheduler.googleapis.com`) needing a moment to propagate. Re-ran the identical command with
+no changes; it completed cleanly. Confirmed genuinely healthy via `firebase functions:list`, not
+just the CLI's success message: listed as `syncAdminClaim`, `v1`, Firestore `document.write`
+trigger, `us-central1` — matches the source exactly.
+
+Followed with a downstream documentation sweep: ~30 `TODO.md` references describing `ADM-*`,
+`MOD-01`, `GYM-02`, `COA-02`, `NOTIF-13`, `MKT-02`, `LEG-09` and others as "code-verified,
+unreachable until `BLK-05`" all updated now that the fix is confirmed live — most fully unblocked,
+a few (`ADM-04`, `GYM-02`, `COA-02`) still open against their *other* listed blockers (`BLK-03`,
+`BE-05`). Also found `AUTHZ-02` and `SEC-04` were tracking substantially the same work under
+different IDs — closed/updated accordingly rather than left to drift.
 
 ---
 

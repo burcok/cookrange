@@ -187,13 +187,13 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | System | What exists | What is missing / broken |
 |---|---|---|
 | 🚧 **Push notifications** | FCM token capture, mute groups, presenter, 2 cron producers | **`BLK-03`** — fan-out trigger listens on a path nothing writes |
-| 🚧 **Admin surface** (~7,400 LOC, 9 screens) | Hub, users, applications, dishes, reports, cost, config, audit, privacy | **`BLK-05`** — `admin_roles/{uid}` created by nothing |
+| 🚧 **Admin surface** (~7,400 LOC, 9 screens) | Hub, users, applications, dishes, reports, cost, config, audit, privacy | `BLK-05` closed and deployed — reachable now; no real admin session has exercised it end to end yet (nobody has been console-provisioned) |
 | 🚧 **Monetization** | IAP client, server validation, entitlement ledger, paywall, credits sheet | **`BLK-04`** — no store products, no store credentials |
-| 🚧 **Gym ecosystem** (11 screens) | Discovery, map, setup, dashboard, analytics, QR, members, community, leaderboard | `BLK-05` + `BLK-03` + `BLK-07` (logo upload denied) |
-| 🚧 **Coach ecosystem** (8 screens) | Discovery, application, profile, dashboard, clients, reviews | `BLK-05` + `BLK-03`; paid programs and payouts absent |
+| 🚧 **Gym ecosystem** (11 screens) | Discovery, map, setup, dashboard, analytics, QR, members, community, leaderboard | `BLK-05` closed — `BLK-03` + `BLK-07` (logo upload denied) remain |
+| 🚧 **Coach ecosystem** (8 screens) | Discovery, application, profile, dashboard, clients, reviews | `BLK-05` closed — `BLK-03` remains; paid programs and payouts absent |
 | 🚧 **Program marketplace** | Model, content weeks, enrolment, My Programs | `BLK-09` open-write hole; paid gate stubbed |
 | 🚧 **Dish catalog** | 75 dishes, seeder, admin editor | **`BLK-11`** — unseedable in-app; 75 is too few; 180-dish prompt ceiling |
-| 🚧 **Moderation** | Keyword filter, report queue, Vision SafeSearch function | Scans the wrong prefix; admin queue unreachable (`BLK-05`) |
+| 🚧 **Moderation** | Keyword filter, report queue, Vision SafeSearch function | Scans the wrong prefix; admin queue now reachable (`BLK-05` closed) but unstaffed |
 | 🚧 **Analytics** | ~35 typed events, offline queue, consent-gated | No BigQuery export, no funnels, no dashboards, no taxonomy doc |
 | 🚧 **Crashlytics** | Correct single-owner wiring, custom keys, consent gate | **Blinded** by swallow-and-log (`DEBT-01`); no release symbol upload |
 | 🚧 **Offline** | Firestore persistence, one cache-first read, Hive domains | No write queue, no conflict resolution, no sync-status UI |
@@ -236,7 +236,6 @@ These are code-proven **and** believed functional. Full archive with evidence in
 |---|---|---|
 | `BLK-03` | 🔥 Push fan-out wired to a path nothing writes; admin path has no rule | Zero social push; gym/coach approval batches fail |
 | `BLK-04` | 🔥 Monetization non-functional end to end | Zero revenue capability |
-| `BLK-05` | ⚠️ Admin surface — client + rules + function **written**, `syncAdminClaim` **not deployed** | No moderation, no approvals, no cost visibility until deployed |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | Gym setup broken; NSFW scanner watches the wrong prefix |
 | `BLK-08` | 🔥 Any user can mutate any post's non-content fields | Like-count / announcement / group integrity |
 | `BLK-09` | 🔥 `coach_uid == 'demo'` lets any user publish to the public marketplace | Content injection into a live storefront |
@@ -567,11 +566,12 @@ real-world coaching services through a payout provider (`REF-04`). Legal review 
 
 ---
 
-#### `BLK-05` ⚠️ Code complete, `syncAdminClaim` NOT DEPLOYED — the entire admin surface is unreachable
+#### `BLK-05` ✅ Closed — the entire admin surface was unreachable
 
-**Status** ⚠️ Code + tests + docs done 2026-08-01 — **Cloud Function not yet deployed**, held for
-explicit go-ahead (deploying live, privileged, auto-triggered code is a bigger risk than a rules-only
-change; asked separately from this pass) · **Priority** Critical · **Complexity** S · **Est** 1–2 d
+**Status** ✅ Closed 2026-08-01 — code, tests, docs, and the `syncAdminClaim` Cloud Function deploy
+all done, with explicit user go-ahead on the deploy step (`firebase deploy --only
+functions:syncAdminClaim --project cookrange-app`, confirmed via `firebase functions:list`: `v1`,
+Firestore `document.write` trigger, `us-central1`) · **Priority** Critical · **Complexity** S · **Est** 1–2 d
 **Version** v0.9.7 · **Milestone** M1 · **Owner** Security Engineer
 **Labels** `admin` `authorization` `security` `operations` `doc-drift`
 **Modules** Security · Firebase · Frontend · Documentation
@@ -583,8 +583,9 @@ state) · `lib/core/widgets/side_menu.dart:401`, `lib/screens/home/widgets/role_
 corrected path) · `docs/DATABASE.md`, `docs/API.md` (schema/surface entries) ·
 `test/firestore_rules/rules.test.mjs` (3 new tests)
 **Dependencies** — · **Required before** `BLK-03`, `MOD-01`, `GYM-02`, `COA-02`, `ADM-*`
-**Blocking** All moderation, all application review, all cost visibility, all operational capability —
-**still blocking in production** until `syncAdminClaim` is deployed; see below.
+**Blocking** Was all moderation, all application review, all cost visibility, all operational
+capability. The admin surface itself is reachable now — many downstream cards still have their
+*other* listed blockers (`BLK-03`, `BE-05`) open; see the follow-up sweep below.
 
 **What was wrong**
 
@@ -630,22 +631,26 @@ permanently dead code path silently falling back to Remote Config.
   unconditionally (even for an admin) — the console is the **only** way to create it. No
   `functions:shell` callable was built; a function that can grant admin is itself a
   privilege-escalation surface, and the acceptance criteria only asked for one **or** the other.
-- 3 new rules tests: `admin_roles` denies client writes even from a seeded admin; a
-  console-provisioned admin (`admin_roles/{uid}` seeded directly, the only way it's ever created for
-  real too) can read `admin_audit`/`ai_usage_logs`/`admin_config`; a non-admin is denied on all three.
+- 2 new rules tests: one asserts `admin_roles` denies client writes even from a seeded admin; the
+  other seeds a console-provisioned admin (`admin_roles/{uid}` directly, the only way it's ever
+  created for real too) and asserts it can read `admin_audit`/`ai_usage_logs`/`admin_config` while a
+  non-admin is denied on all three.
 
 **Acceptance criteria — status**
 - ✅ `admin_roles/{uid}` documented with a runbook (`docs/SECURITY.md` §4).
 - ✅ Bootstrap path: console step only, by design (see Technical Notes below for why not a callable).
 - ✅ Client admin UI gated on the `admin` custom claim, all three call sites.
-- ✅ `syncAdminClaim` written — sets the claim when `admin_roles/{uid}` is written.
-  **⚠️ Not deployed** — see Residual below.
+- ✅ `syncAdminClaim` written **and deployed** — sets the claim when `admin_roles/{uid}` is written.
+  Confirmed live via `firebase functions:list`.
 - ✅ `AdminStatusService`'s dead reads removed.
 - ✅ `CLAUDE.md` — no change needed, confirmed it doesn't currently reference either path.
-- ⚠️ **Not verified end-to-end** (provisioned admin can list users / review / cost dashboard / edit
-  config; non-admin sees no UI) — this needs `syncAdminClaim` live and a real admin session, neither
-  possible before the deploy. The client-gate logic is verified by reading and by `flutter analyze`;
-  the rule logic is verified by the new rules tests (CI-confirmed once pushed).
+- ⚠️ **Not verified end-to-end with a real admin session** — no admin has actually been
+  console-provisioned yet to walk "list users, review an application, view the cost dashboard, edit
+  app config" for real. That's a deliberate decision for whoever wants to become the first admin
+  (the runbook in `docs/SECURITY.md` §4 is the how-to), not something to simulate. The mechanism
+  itself is verified: the rules tests exercise the exact `admin_roles` → `isAdmin()` → collection-read
+  chain end to end (CI-confirmed, [run #52](https://github.com/burcok/cookrange/actions/runs/30701019872)),
+  and the client-gate logic is verified by reading and by `flutter analyze`.
 
 **DoD** §0.5 plus a rules test asserting a non-admin is denied on `admin_audit`, `ai_usage_logs`,
 `admin_config` — **met**, see above.
@@ -662,18 +667,28 @@ allowlist? time-boxed?) — the acceptance criteria explicitly offered a console
 and it's simpler and has no new attack surface. If a fresh-environment bootstrap becomes a recurring
 pain point, revisit as a separate, carefully-scoped follow-up.
 
-**Residual — the actual production fix is not live yet**
-`syncAdminClaim` has zero effect until deployed (`firebase deploy --only functions`). Until then,
-`admin_roles/{uid}` can still be created via the Console (per the runbook), but the custom claim
-won't sync automatically — the client would need `user.getIdTokenResult(true)` forced after a manual
-claim-setting workaround, which defeats the point. **This is intentionally the one piece of BLK-05
-left for a human decision**: deploying a new, automatically-triggered Cloud Function that grants
-admin access is a materially bigger risk than a declarative rules change (arbitrary code execution
-with full Admin SDK privileges vs. a syntax-checked, easily-diffed rules file), so it's flagged
-separately rather than folded into this pass. Once deployed and confirmed, the ~30 downstream
-`ADM-*`/`MOD-01`/`GYM-02`/`COA-02`/etc. cards that are "code-verified, unreachable until `BLK-05`"
-should be revisited in one pass — not done here to avoid a premature update that would need
-re-walking if the deploy surfaces something.
+**Deployed 2026-08-01** with explicit user go-ahead — `firebase deploy --only
+functions:syncAdminClaim --project cookrange-app` (targeted at just the new function, not a blanket
+redeploy of the other 13). First attempt returned an ambiguous "failed to create function" error with
+no further detail, immediately after several "ensuring required API..." lines (`cloudscheduler.googleapis.com`
+among them) — consistent with a freshly-touched API needing a moment to propagate. Re-ran the
+identical command with no code changes; second attempt completed cleanly ("Successful update
+operation", "Deploy complete!"). Confirmed genuinely healthy via `firebase functions:list`, not just
+trusting the CLI's own success message: listed as `syncAdminClaim`, `v1`, trigger
+`providers/cloud.firestore/eventTypes/document.write`, `us-central1`, `256`MB, `nodejs20` — matches
+the source exactly. The downstream sweep below is the direct result of this deploy succeeding.
+
+**Downstream sweep — the ~30 "unreachable until `BLK-05`" references**, done in the same pass now
+that the fix is confirmed live:
+- Cards where `BLK-05` was the **only** listed blocker (`ADM-02` through `ADM-09`, `ADM-11`,
+  `ADM-12`, `NOTIF-13`, `MKT-02`, `LEG-09`) — their code was already independently verified; the
+  blocker is gone, so they're reachable now. Left their own status marks (`✅ shipped`, etc.) as-is
+  since this card can't re-verify their individual functionality, just that the door is open —
+  updated their "unreachable"/"unusable" notes to say so.
+- Cards where `BLK-05` was **one of several** blockers (`ADM-04`, `MOD-01`, `GYM-02`, `COA-02`) —
+  removed `BLK-05` from their blocking list; left them open against their remaining blockers
+  (`BLK-03`, `BE-05`).
+- `ADM-01` ("make the admin surface reachable") — this **is** `BLK-05`; closed as a duplicate pointer.
 
 **Risks**
 Granting the first admin is a manual console step by design (see Technical Notes). Document it
@@ -930,7 +945,7 @@ Many call sites read the user doc. Audit every `collection('users').doc(...)` re
 **Labels** `data` `content` `bootstrap` `silent-failure` `ai`
 **Modules** Database · Backend · AI · Product
 **Files** `lib/core/services/app_initialization_service.dart:320` · `lib/core/services/dish_seeder_service.dart` · `firestore.rules:178` (`dishes` write requires `isAdmin()`) · `lib/core/data/dish_data.dart` (75 dishes, 3,046 LOC) · `lib/core/services/dish_service.dart:17`, `:56` · `lib/scripts/seed_db.dart`
-**Dependencies** `BLK-05` (for the admin path) · **Required before** `AI-02`, `NUT-01`, all of M4
+**Dependencies** — · **Required before** `AI-02`, `NUT-01`, all of M4
 **Blocking** The core product feature on any fresh Firebase project.
 
 **What exists / what is missing**
@@ -938,10 +953,13 @@ Many call sites read the user doc. Audit every `collection('users').doc(...)` re
 Three compounding problems:
 
 1. **Unseedable.** The only in-app seeding path is `DishSeederService().seedIfEmpty()`, fired from
-   `AppInitializationService` on **every client's** cold start. `dishes` write requires `isAdmin()`, and
-   no admin exists (`BLK-05`) → the write is denied for every user, forever. There is **no local
-   fallback**: `DishService.getAllDishes()` reads Firestore only. On a fresh project, meal planning is
-   dead.
+   `AppInitializationService` on **every client's** cold start. `dishes` write requires `isAdmin()` —
+   correctly, by design, regardless of `BLK-05`'s status — so a **regular** client's write is denied
+   for every user, forever, on a fresh project with no admin yet provisioned. `BLK-05` closing means an
+   admin *can* now be provisioned and *could* trigger this path by being logged in on cold start, but
+   that's a fragile, accidental mechanism, not a real fix — this card's actual ask (a proper seeding
+   path) stands regardless. There is **no local fallback**: `DishService.getAllDishes()` reads
+   Firestore only. On a fresh project, meal planning is dead until dishes are seeded some other way.
 2. **Too small.** 75 dishes must fill 28 meal slots per week under dietary restrictions, allergen
    filtering and dislike exclusion. Users will see visible repetition within days.
 3. **Capped.** `PromptService.generateWeeklyMealPlanPrompt` inlines the **entire catalog** at ~120 chars
@@ -1365,21 +1383,23 @@ for the process lifetime and never invalidated, so a mid-session ban is not obse
 **Labels** `authorization` `privilege-escalation` `admin`
 **Modules** Security · Backend · Firebase · Frontend
 **Files** `firestore.rules:27-35`, `:45-56` · `lib/core/widgets/side_menu.dart:401` · `lib/core/models/user_model.dart:81`
-**Dependencies** `BLK-05` · **Required before** `ADM-*` · **Blocking** Any claim that admin UI is access-controlled
+**Dependencies** — · **Required before** `ADM-*` · **Blocking** Was any claim that admin UI is access-controlled
 
 **What exists / what is missing**
-`user_roles` is deliberately unlocked; the rules comment argues a self-written `['admin']` is cosmetic
-because real power is server-gated. That reasoning is correct **today** and fragile **tomorrow** — it
-depends on every future rule and every future Function remembering not to trust `user_roles`. Also, a
-self-granted admin UI that then fails with permission errors is a support and confusion cost.
+Three of four acceptance criteria below were built as part of `BLK-05` (same underlying work — a Cloud
+Function mirroring `admin_roles/{uid}.is_admin` into a custom claim, the client gating on it). Not
+separately re-verified here: the specific test this card also asks for, asserting that a self-written
+`coach`/`gymOwner` role grants **no real capability**, only UI affordance — `BLK-05`'s own tests
+covered `admin_roles` and the three admin-gated collections, not this. Left open rather than claimed
+done.
 
 **Acceptance Criteria**
-- A Cloud Function mirrors `admin_roles/{uid}.is_admin` into a custom claim.
-- The client gates admin UI on the claim.
-- `coach` / `gymOwner` self-service role writes remain allowed (they are ownership-gated by design) but are documented as **UI-affordance only** with a test asserting no capability follows from them.
-- `firestore.rules` comment updated to state the claim is now the client gate.
+- ✅ A Cloud Function mirrors `admin_roles/{uid}.is_admin` into a custom claim — `syncAdminClaim`, `BLK-05`.
+- ✅ The client gates admin UI on the claim — `BLK-05`.
+- ❌ `coach` / `gymOwner` self-service role writes remain allowed (they are ownership-gated by design) but are documented as **UI-affordance only** with a test asserting no capability follows from them. **Not built.**
+- ✅ `firestore.rules` comment updated to state the claim is now the client gate — `BLK-05`.
 
-**DoD** §0.5 plus a rules + claim test.
+**DoD** §0.5 plus a rules + claim test — partially met; the admin-claim test exists, the coach/gymOwner-affordance test doesn't.
 **Future** `SEC-05` role hierarchy with granular admin scopes (moderator vs finance vs support).
 
 ---
@@ -2007,7 +2027,7 @@ streak/reputation recompute (`SEC-14`), notification-path migration (`BLK-03`).
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `AUTHZ-01` | ✅ | `UserRole` enum (`consumer`/`gymOwner`/`coach`/`admin`) + role-aware side menu, quick actions, home card | — | — | — | shipped | — | `user_model.dart`, `side_menu.dart`, `quick_actions_sheet.dart`, `role_quick_card.dart` | — | Verified working | — |
-| `AUTHZ-02` | 🔥 | Admin authority via custom claim | Critical | M | 2 d | v0.9.7 / M1 | Security | see `BLK-05`, `SEC-04` | — | Tracked in `BLK-05` + `SEC-04` | — |
+| `AUTHZ-02` | ✅ | Admin authority via custom claim | Critical | M | 2 d | v0.9.7 / M1 | Security | see `BLK-05`, `SEC-04` | — | This is what `BLK-05` built (`syncAdminClaim` + `UserProvider.isAdmin`) — closed, deployed. Whatever additional scope `SEC-04` names beyond the claim mechanism itself wasn't separately re-verified here | — |
 | `AUTHZ-03` | ❌ | Granular admin scopes | Low | M | 3–4 d | v1.2.0 / M7 | Security | see `SEC-05` | `SEC-04` | Tracked in `SEC-05` | — |
 | `AUTHZ-04` | ✅ | Live role refresh after admin approval (menus/labels update without restart) | — | — | — | shipped | — | `UserProvider` user-doc listener | — | Verified working (Phase 12.4) | — |
 | `AUTHZ-05` | ❌ | Document that self-service `coach`/`gymOwner` role writes confer **no capability** | Medium | XS | 2 h | v0.9.8 / M2 | Security | `firestore.rules:45-56`, `docs/COMPLIANCE.md` | `SEC-04` | An ADR records the decision; a rules test asserts a self-written role grants no read or write it did not already have | The reasoning is currently a rules comment only — it must survive future rule edits |
@@ -2233,7 +2253,7 @@ count per slot and monitor plan variety.
 | `NOTIF-10` | ❌ | iOS APNs key uploaded to Firebase | Critical | XS | 1 h + console | v0.9.9 / M3 | DevOps | Firebase console | `BLK-16` | APNs auth key uploaded; a push verified on a physical iPhone. **Push on iOS cannot work without this, so `BLK-03` cannot be verified on iOS** | On the critical path for `BLK-03` verification |
 | `NOTIF-11` | ❌ | Notification grouping / collapsing | Low | S | 2 d | v1.1.0 / M6 | Flutter Engineer | `notification_screen.dart`, `functions/index.js` | `BLK-03` | "5 people liked your post" instead of 5 rows; FCM collapse keys used; in-app grouped by post + type | Ungrouped notification spam is a mute/uninstall driver once the feed is active |
 | `NOTIF-12` | ❌ | Rich push with images | Low | S | 2 d | v1.2.0 / Icebox | Flutter Engineer | `functions/index.js`, iOS notification service extension | `BLK-03` | Post thumbnail in the push; iOS requires a notification service extension target | Extra native target to maintain |
-| `NOTIF-13` | ✅ | Admin broadcast composer + scheduling + audience resolution + 5-min drain cron | — | — | — | shipped | — | `admin_panel_screen.dart` Broadcasts, `AdminService.sendBroadcast`, `onBroadcastCreated`, `drainScheduledBroadcasts` | `BLK-05`, `INF-06` | Code verified; **unusable until `BLK-05`**; audience capped at 500 (`INF-06`) | — |
+| `NOTIF-13` | ✅ | Admin broadcast composer + scheduling + audience resolution + 5-min drain cron | — | — | — | shipped | — | `admin_panel_screen.dart` Broadcasts, `AdminService.sendBroadcast`, `onBroadcastCreated`, `drainScheduledBroadcasts` | `INF-06` | Code verified; reachable now that `BLK-05` is deployed; audience still capped at 500 (`INF-06`) | — |
 
 ---
 
@@ -2335,13 +2355,13 @@ count per slot and monitor plan variety.
 
 ## §26 — Gym Ecosystem
 
-> **Scope note:** deferred to **M6** per §1.9. Screens stay in the codebase behind a kill-switch. All
-> gym work is blocked on `BLK-05` (admin approval) and `BLK-03` (approval notifications).
+> **Scope note:** deferred to **M6** per §1.9. Screens stay in the codebase behind a kill-switch.
+> `BLK-05` (admin approval) is closed; gym work is still blocked on `BLK-03` (approval notifications).
 
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `GYM-01` | ✅ | Gym data model, setup (3-step), discovery with search + cursor pagination, member management, owner dashboard, per-gym brand colour, member home, QR + GPS check-in, community feed + announcements, weekly leaderboard, Gym Wars, analytics (heatmap, engagement, at-risk, CSV export), verification badge | — | — | — | shipped | — | 11 screens ≈ 10,000 LOC; `gym_service.dart`, `gym_analytics_service.dart`, `gym_leaderboard_service.dart`, `gym_post_service.dart`, `gym_application_service.dart` | — | Code-verified; **operationally blocked** | — |
-| `GYM-02` | 🔥 | Unblock gym application review | Critical | — | — | v1.1.0 / M6 | Security | see `BLK-05`, `BLK-03`, `BE-05` | — | Tracked in `BLK-05` (admin reachable), `BLK-03` (approval batch + notification), `BE-05` (reviewers can actually open the evidence documents). **A gym owner can apply today and then nothing happens, forever** | Three separate defects compound into one dead funnel |
+| `GYM-02` | 🔥 | Unblock gym application review | Critical | — | — | v1.1.0 / M6 | Security | see `BLK-03`, `BE-05` | — | `BLK-05` closed — admin is reachable. Still tracked in `BLK-03` (approval batch + notification), `BE-05` (reviewers can actually open the evidence documents). **A gym owner can apply today and then nothing happens, forever** | Two remaining defects still compound into one dead funnel |
 | `GYM-03` | 🔥 | Fix gym logo upload | Critical | XS | 4 h | v1.1.0 / M6 | Firebase Architect | see `BLK-07` | — | Tracked in `BLK-07` | — |
 | `GYM-04` | ❌ | Gym post membership enforcement | High | S | 1 d | v1.1.0 / M6 | Security | see `SEC-07` | — | Tracked in `SEC-07` | — |
 | `GYM-05` | ❌ | Check-in integrity (server geofence + membership + rate limit) | High | M | 2–3 d | v1.1.0 / M6 | Security | see `SEC-08` | `BLK-08` | Tracked in `SEC-08`. **Gym leaderboards and Gym Wars are meaningless until this lands** | — |
@@ -2360,7 +2380,7 @@ count per slot and monitor plan variety.
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `COA-01` | ✅ | Coach profiles, vanity referral codes, 3-step application with evidence upload, pending/rejected/needs-info states, competitive discovery (city+district filters, rating sort, rank badges, Top Coaches, trust badges), client management with at-risk detection, dashboard, AI client report, reviews with transaction-updated aggregates, share card | — | — | — | shipped | — | 8 screens; `coach_service.dart`, `coach_application_service.dart`, `coach_review_service.dart`, `coach_profile_model.dart` | — | Code-verified; **operationally blocked** | — |
-| `COA-02` | 🔥 | Unblock coach application review | Critical | — | — | v1.1.0 / M6 | Security | see `BLK-05`, `BLK-03`, `BE-05` | — | Tracked in `BLK-05`, `BLK-03`, `BE-05`. Same dead funnel as `GYM-02` | — |
+| `COA-02` | 🔥 | Unblock coach application review | Critical | — | — | v1.1.0 / M6 | Security | see `BLK-03`, `BE-05` | — | `BLK-05` closed — admin is reachable. Still tracked in `BLK-03`, `BE-05`. Same remaining dead funnel as `GYM-02` | — |
 | `COA-03` | ❌ | Coach review integrity (server-side aggregates) | Medium | S | 1 d | v1.1.0 / M6 | Security | see `SEC-09` | — | Tracked in `SEC-09` | — |
 | `COA-04` | ❌ | Coach credential verification process | High | M | 1 w | v1.1.0 / M6 | PM / Legal | `application_review_screen.dart`, `BE-05` | `BE-05` | A documented, repeatable verification standard (which certifications are accepted, how they are checked, who checks, what is recorded); the reviewer UI enforces the checklist; the decision and evidence retained per `LEG-05` | **Approving unverified people to give nutrition advice is a liability.** The screens exist; the *standard* does not |
 | `COA-05` | ❌ | Coach session billing and scheduling | Low | XL | 3–4 w | v2.0.0 / Icebox | PM | `commission_service.recordCoachSessionCommission` (ready but never called) | `REF-04`, `BLK-04` | Booking, calendar, payment for real-world coaching, commission on completion. **Carried from Phase 5/7: "actual payment processing intentionally deferred pending a payout provider"** | Real-world services can be billed outside IAP; digital content cannot. Get this distinction legally reviewed |
@@ -2375,7 +2395,7 @@ count per slot and monitor plan variety.
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `MKT-01` | 🔥 | Close the `coach_uid == 'demo'` injection hole | Critical | XS | 4 h | v1.1.0 / M6 | Security | see `BLK-09` | `BLK-11` | Tracked in `BLK-09` | — |
-| `MKT-02` | ✅ | Program model + content weeks/days/sessions, marketplace with category filters, detail screen with enrolment-gated content, My Programs with progress, admin approval queue (`draft→pending→approved/rejected`), demo content seed | — | — | — | shipped | — | `program_service.dart`, `program_content_model.dart`, `program_marketplace_screen.dart`, `program_detail_screen.dart`, `my_programs_screen.dart` (6 indexes) | `BLK-05` | Code-verified; approval unusable until `BLK-05` | — |
+| `MKT-02` | ✅ | Program model + content weeks/days/sessions, marketplace with category filters, detail screen with enrolment-gated content, My Programs with progress, admin approval queue (`draft→pending→approved/rejected`), demo content seed | — | — | — | shipped | — | `program_service.dart`, `program_content_model.dart`, `program_marketplace_screen.dart`, `program_detail_screen.dart`, `my_programs_screen.dart` (6 indexes) | — | Code-verified; approval reachable now that `BLK-05` is deployed | — |
 | `MKT-03` | 🟡 | Paid programs — the purchase seam | High | M | 1 w | v1.1.0 / M6 | Monetization | `program_detail_screen.dart:57` (`program.paid_coming_soon`), `canViewContent({required bool isEnrolled})` | `BLK-04` | `canViewContent` extended with `hasPurchased`; program purchase via IAP; entitlement per program written server-side; the honest "Available Soon v2.0" banner replaced. **The seam is deliberately clean — one line to wire** | Digital content **must** go through IAP; do not route it to a payout provider |
 | `MKT-04` | ❌ | Remove demo programs from production | High | XS | 2 h | v1.1.0 / M6 | Backend | `demo_content_seeder.dart` (3 programs + content, seeded from every client) | `BLK-09`, `INF-01` | Demo content seeded only in dev/staging; production purged of `coach_uid == 'demo'` programs | **Fake marketplace content in a live storefront** is both a trust and a legal-advertising problem |
 | `MKT-05` | ❌ | Program refund and dispute policy | Medium | S | 2 d | v1.1.0 / M6 | Legal / PM | `docs/`, store listings | `MKT-03` | A written refund policy consistent with both stores' rules; a dispute path; commission clawback on refund (`SEC-15`) | Selling content without a refund policy invites store escalations |
@@ -2436,18 +2456,18 @@ count per slot and monitor plan variety.
 
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `ADM-01` | 🔥 | Make the admin surface reachable | Critical | S | 1–2 d | v0.9.7 / M1 | Security | see `BLK-05` | — | Tracked in `BLK-05`. **~7,400 LOC across 9 screens is unusable today** | — |
-| `ADM-02` | ✅ | Admin hub — categorized card grid, `AdminSection` enum + `AdminSectionMeta` single source of truth, shared drawer, `AdminSectionScaffold` chrome | — | — | — | shipped | — | `admin_hub_screen.dart`, `admin_sections.dart`, `admin_nav.dart`, `widgets/admin_section_scaffold.dart` | `BLK-05` | Code verified; unreachable | — |
-| `ADM-03` | ✅ | User management — debounced search, role chip, ban/unban, force logout, password reset, per-user data stats, per-user notification send | — | — | — | shipped | — | `admin_user_management_screen.dart` (894 LOC), `admin_service.dart` (37.6 KB) | `BLK-05` | Code verified; unreachable | — |
-| `ADM-04` | ✅ | Application review (coach + gym) with evidence links, approve/reject, notes sheet, history | — | — | — | shipped | — | `application_review_screen.dart` (834 LOC) | `BLK-05`, `BLK-03`, `BE-05` | Code verified; **approval batch fails** (`BLK-03`) and evidence documents are unopenable (`BE-05`) | — |
-| `ADM-05` | ✅ | Dish DB management (live stream, search, category filter, edit sheet, re-seed, delete) | — | — | — | shipped | — | `admin_dishes_screen.dart` (825 LOC) | `BLK-05`, `FB-17` | Code verified; unreachable; uses the unbounded stream | — |
-| `ADM-06` | ✅ | Moderation queue (pending/reviewed, dismiss, remove content, bulk actions, relative timestamps) | — | — | — | shipped | — | `admin_reports_screen.dart` (586 LOC) | `BLK-05` | Code verified; unreachable | — |
-| `ADM-07` | ✅ | Cost & profit dashboard — Firestore `count()` aggregates, unit-price model, Firebase + AI breakdown, revenue/ARPU/profit, what-if projection, **real** AI usage from `ai_usage_stats` with by-model/by-type and per-user lookup | — | — | — | shipped | — | `admin_cost_analytics_screen.dart` (579 LOC), `cost_analytics_service.dart`, `cost_analytics_model.dart` + tests | `BLK-05` | Code verified; unreachable. Firebase figures are **estimates** (no GCP Billing API); the AI section is real | — |
-| `ADM-08` | ✅ | Abuse monitoring (banned users, top AI consumers with quota %), audit log viewer, privacy-request queue, broadcasts | — | — | — | shipped | — | `admin_panel_screen.dart`, `admin_privacy_requests_screen.dart` | `BLK-05` | Code verified; unreachable | — |
-| `ADM-09` | ✅ | Remote app config editor (`app_config/global`: AI model/tokens/quotas, version gate, maintenance, announcement, feature flags, rollout, limits, endpoints) — **editable without a redeploy, read by client and `aiProxy`** | — | — | — | shipped | — | `admin_app_config_screen.dart` (524 LOC), `app_config_service.dart`, `app_config_model.dart` | `BLK-05`, `SEC-10`, `ARCH-05` | Code verified; unreachable. **Genuinely good design** — but needs the server-side ceiling from `SEC-10` so a mistaken edit cannot raise limits platform-wide | — |
-| `ADM-10` | ❌ | Replace estimated Firebase costs with the real GCP Billing API | Medium | M | 3 d | v1.1.0 / M6 | DevOps | `cost_analytics_service.dart`, `cost_analytics_model.dart` (`FirebasePricing`, `UsageAssumptions`) | `BLK-05` | Actual billing data via the Cloud Billing API replaces `UsageAssumptions`; the dashboard clearly labels which figures are measured and which are modelled | Estimated costs presented alongside real AI costs invites treating both as fact |
-| `ADM-11` | ❌ | Admin action rate limits and dangerous-action confirmations | Medium | S | 2 d | v1.1.0 / M6 | Security | `admin_service.dart` | `BLK-05`, `SEC-05` | Bulk removals and bans require typed confirmation; a rate limit prevents a compromised admin account from mass-destroying content; every action already audit-logged — verify coverage | A compromised admin is the highest-impact account-takeover target |
-| `ADM-12` | ❌ | Admin runbook documentation | High | S | 2 d | v0.9.7 / M1 | Technical Writer | `docs/` | `BLK-05` | How to provision the first admin, review an application, handle a report, respond to a DSAR, put the app in maintenance, force an update, grant bonus credits, handle a refund dispute | No runbook exists. The admin surface is unusable **and** undocumented |
+| `ADM-01` | ✅ | Make the admin surface reachable | Critical | S | 1–2 d | v0.9.7 / M1 | Security | see `BLK-05` | — | This **is** `BLK-05` — closed, deployed, CI-confirmed. **~7,400 LOC across 9 screens is reachable now** | — |
+| `ADM-02` | ✅ | Admin hub — categorized card grid, `AdminSection` enum + `AdminSectionMeta` single source of truth, shared drawer, `AdminSectionScaffold` chrome | — | — | — | shipped | — | `admin_hub_screen.dart`, `admin_sections.dart`, `admin_nav.dart`, `widgets/admin_section_scaffold.dart` | — | Code verified; reachable now that `BLK-05` is deployed | — |
+| `ADM-03` | ✅ | User management — debounced search, role chip, ban/unban, force logout, password reset, per-user data stats, per-user notification send | — | — | — | shipped | — | `admin_user_management_screen.dart` (894 LOC), `admin_service.dart` (37.6 KB) | — | Code verified; reachable now that `BLK-05` is deployed | — |
+| `ADM-04` | ✅ | Application review (coach + gym) with evidence links, approve/reject, notes sheet, history | — | — | — | shipped | — | `application_review_screen.dart` (834 LOC) | `BLK-03`, `BE-05` | `BLK-05` closed — reachable. **Approval batch still fails** (`BLK-03`) and evidence documents are still unopenable (`BE-05`) | — |
+| `ADM-05` | ✅ | Dish DB management (live stream, search, category filter, edit sheet, re-seed, delete) | — | — | — | shipped | — | `admin_dishes_screen.dart` (825 LOC) | `FB-17` | Code verified; reachable now that `BLK-05` is deployed; still uses the unbounded stream (`FB-17`) | — |
+| `ADM-06` | ✅ | Moderation queue (pending/reviewed, dismiss, remove content, bulk actions, relative timestamps) | — | — | — | shipped | — | `admin_reports_screen.dart` (586 LOC) | — | Code verified; reachable now that `BLK-05` is deployed | — |
+| `ADM-07` | ✅ | Cost & profit dashboard — Firestore `count()` aggregates, unit-price model, Firebase + AI breakdown, revenue/ARPU/profit, what-if projection, **real** AI usage from `ai_usage_stats` with by-model/by-type and per-user lookup | — | — | — | shipped | — | `admin_cost_analytics_screen.dart` (579 LOC), `cost_analytics_service.dart`, `cost_analytics_model.dart` + tests | — | Code verified; reachable now that `BLK-05` is deployed. Firebase figures are **estimates** (no GCP Billing API); the AI section is real | — |
+| `ADM-08` | ✅ | Abuse monitoring (banned users, top AI consumers with quota %), audit log viewer, privacy-request queue, broadcasts | — | — | — | shipped | — | `admin_panel_screen.dart`, `admin_privacy_requests_screen.dart` | — | Code verified; reachable now that `BLK-05` is deployed | — |
+| `ADM-09` | ✅ | Remote app config editor (`app_config/global`: AI model/tokens/quotas, version gate, maintenance, announcement, feature flags, rollout, limits, endpoints) — **editable without a redeploy, read by client and `aiProxy`** | — | — | — | shipped | — | `admin_app_config_screen.dart` (524 LOC), `app_config_service.dart`, `app_config_model.dart` | `SEC-10`, `ARCH-05` | `BLK-05` closed — reachable. **Genuinely good design** — still needs the server-side ceiling from `SEC-10` so a mistaken edit cannot raise limits platform-wide | — |
+| `ADM-10` | ❌ | Replace estimated Firebase costs with the real GCP Billing API | Medium | M | 3 d | v1.1.0 / M6 | DevOps | `cost_analytics_service.dart`, `cost_analytics_model.dart` (`FirebasePricing`, `UsageAssumptions`) | — | Actual billing data via the Cloud Billing API replaces `UsageAssumptions`; the dashboard clearly labels which figures are measured and which are modelled. Not blocked by `BLK-05` anymore — just not started | Estimated costs presented alongside real AI costs invites treating both as fact |
+| `ADM-11` | ❌ | Admin action rate limits and dangerous-action confirmations | Medium | S | 2 d | v1.1.0 / M6 | Security | `admin_service.dart` | `SEC-05` | Bulk removals and bans require typed confirmation; a rate limit prevents a compromised admin account from mass-destroying content; every action already audit-logged — verify coverage. Not blocked by `BLK-05` anymore — just not started | A compromised admin is the highest-impact account-takeover target |
+| `ADM-12` | 🚧 | Admin runbook documentation | High | S | 2 d | v0.9.7 / M1 | Technical Writer | `docs/` | — | How to provision the first admin (**done** — `docs/SECURITY.md` §4, written with `BLK-05`), review an application, handle a report, respond to a DSAR, put the app in maintenance, force an update, grant bonus credits, handle a refund dispute (all still open) | Bootstrap runbook exists; the other 7 operational runbooks don't |
 
 ---
 
@@ -2455,7 +2475,7 @@ count per slot and monitor plan variety.
 
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `MOD-01` | 🔥 | Make the moderation queue reachable and staffed | Critical | S | 1 d | v0.9.7 / M1 | Moderation | see `BLK-05`; `admin_reports_screen.dart` | `BLK-05` | An admin can see and action reports; a documented SLA for first response; the queue is checked daily from beta onward | **Launching UGC with no working moderation is a legal and platform-policy exposure.** Both stores require a functioning report-and-action path |
+| `MOD-01` | 🚧 | Make the moderation queue reachable and staffed | Critical | S | 1 d | v0.9.7 / M1 | Moderation | see `BLK-05`; `admin_reports_screen.dart` | — | Queue is reachable now that `BLK-05` is deployed. Still open: a documented SLA for first response, and the queue actually being checked daily from beta onward — those are process, not code | **Launching UGC with no working moderation is a legal and platform-policy exposure.** Both stores require a functioning report-and-action path |
 | `MOD-02` | ✅ | Report flows (post, comment, user, squad, group) with reason pickers writing `reports/{id}` | — | — | — | shipped | — | `community_service.reportContent`, `glass_post_card.dart`, `post_detail_screen.dart`, `chat_detail_screen.dart`, `streak_squad_screen.dart` | `MOD-01` | Verified working | — |
 | `MOD-03` | ✅ | Keyword content filter (admin-managed list, public-read mirror, 5-min TTL cache, blocks on match) | — | — | — | shipped | — | `community_service._checkContent`, `settings/content_filter` | — | Verified working | — |
 | `MOD-04` | 🚧 | Image safety scanning | High | M | 2–3 d | v0.9.8 / M2 | DevSecOps | see `SEC-13`; `functions/media.js` | `BLK-07` | Tracked in `SEC-13`. Cloud Vision must be **enabled in the console**; `SCAN_PREFIXES` must match the real prefixes; a CSAM/NCMEC path is required before public UGC | The function fails open (keeps the image) when Vision is unavailable — which is the current state |
@@ -2642,7 +2662,7 @@ count per slot and monitor plan variety.
 | `LEG-06` | 📋 | Processor DPAs and VERBİS assessment | Critical | M | 2–3 w (external) | v0.9.8 / M2 | Legal (external) | `docs/COMPLIANCE.md` | — | DPAs executed with **OpenRouter** (cross-border AI sub-processor), Google/Firebase, and any other processor; the cross-border transfer register completed; VERBİS registration assessed and filed if required. **Carried from `FUTURE_FEATURES` L5 — "ENGINEERING DONE (legal-ops open)"** | Consent for cross-border transfer is recorded in-app, but the **legal instrument permitting the transfer does not exist**. This is a launch blocker for the Turkish market |
 | `LEG-07` | 📋 | Qualified-lawyer review of all legal documents | Critical | M | 2–3 w (external) | v0.9.9 / M3 | Legal (external) | `assets/legal/`, `legal_screen.dart` | `LEG-06` | Privacy policy, terms of use, coach/marketplace terms, medical disclaimer and cookie/tracking disclosure reviewed by a qualified lawyer in both EN and TR. **Carried from `FUTURE_FEATURES` L1: "DRAFTED (pending lawyer review)" and L7: "DRAFTED"** | Shipping self-drafted legal documents for a health app processing special-category data in a KVKK jurisdiction is the highest-severity legal risk in this backlog |
 | `LEG-08` | ❌ | Point-of-use consent for AI and photo processing | High | M | 3 d | v0.9.8 / M2 | Legal / Flutter | `consent_service.dart` (recorded at registration), `food_scan_screen.dart`, AI entry points | `LEG-03` | Before health data or a meal photo first leaves the device, a point-of-use disclosure names the recipient (OpenRouter), the purpose, and the cross-border transfer; consent recorded per purpose and withdrawable. **Carried from `GO_LIVE.md` S8 and the prior deferred list** | Bundling AI consent into registration is weaker than GDPR Art. 9 explicit consent requires for health data |
-| `LEG-09` | ✅ | DSAR channel (data subject requests) | — | — | — | shipped | — | `privacy_request_service.dart`, `privacy_request_screen.dart`, `admin_privacy_requests_screen.dart` | `BLK-05` | Verified present. **Carried from `FUTURE_FEATURES` L3.** The admin side is unreachable until `BLK-05`, so requests cannot currently be actioned | A DSAR channel that collects requests nobody can action is worse than none — it creates a documented failure to respond within the statutory window |
+| `LEG-09` | ✅ | DSAR channel (data subject requests) | — | — | — | shipped | — | `privacy_request_service.dart`, `privacy_request_screen.dart`, `admin_privacy_requests_screen.dart` | — | Verified present. **Carried from `FUTURE_FEATURES` L3.** The admin side is reachable now that `BLK-05` is deployed, so requests can be actioned | — |
 | `LEG-10` | ✅ | Breach response runbook (document) | — | — | — | shipped | — | `docs/` | `DOC-03` | Verified present. **Carried from `FUTURE_FEATURES` L6.** Never rehearsed | An unrehearsed runbook fails under the 72-hour notification clock |
 | `LEG-11` | ✅ | GDPR data export (`DataExportService`) | — | — | — | shipped | — | `data_export_service.dart` | `BLK-12` | Verified present but **incomplete** — see `BLK-12` (wrong chat-image prefix, missing subcollections, no Storage manifest) | An incomplete export is an Art. 20 failure |
 | `LEG-12` | ❌ | Sub-processor register and transparency | Medium | S | 1 d | v0.9.8 / M2 | Legal | `docs/COMPLIANCE.md`, privacy policy | `LEG-06` | Every sub-processor listed publicly (Google/Firebase, OpenRouter, Cloud Vision, Apple/Google billing, Open Food Facts, OpenStreetMap tiles, Nominatim geocoding) with purpose and location | Several third-party services receive user-derived data; users cannot currently see who |
@@ -2664,17 +2684,16 @@ count per slot and monitor plan variety.
 
 ## §46 — Technical Debt Register
 
-**49 items** (6 resolved this pass — `DEBT-19`, `DEBT-20`, `DEBT-51`, `DEBT-02`, `DEBT-03`, `DEBT-08`,
-moved to §46.5). Critical 5 · High 12 · Medium 18 · Low 14.
+**48 items** (7 resolved this pass — `DEBT-19`, `DEBT-20`, `DEBT-51`, `DEBT-02`, `DEBT-03`, `DEBT-08`, `DEBT-05`,
+moved to §46.5). Critical 4 · High 12 · Medium 18 · Low 14.
 Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register ≈ **28–34 engineer-weeks**.
 
 ### 46.1 🔴 Critical
 
 | ID | Debt | Why it exists | Risk | Impact | Fix | Effort | Tracked as |
 |---|---|---|---|---|---|---|---|
-| `DEBT-01` | Swallow-and-log error handling (25 bare catches + dozens of log-and-default) | Speed over observability; `debugPrint` felt like logging | **Root cause of `DEBT-04`–`DEBT-06` remaining invisible** (was also root cause of `DEBT-02`, closed with `BLK-01`). `debugPrint` is a release no-op → zero production signal | Features die silently; nobody can state what works | Route every catch to Crashlytics with context; ban bare catches via CI grep; permission-denied renders an error state, not empty | 1 w | `ARCH-01`, `OBS-03` |
+| `DEBT-01` | Swallow-and-log error handling (25 bare catches + dozens of log-and-default) | Speed over observability; `debugPrint` felt like logging | **Root cause of `DEBT-04`, `DEBT-06` remaining invisible** (was also root cause of `DEBT-02`, closed with `BLK-01`, and `DEBT-05`, closed with `BLK-05`). `debugPrint` is a release no-op → zero production signal | Features die silently; nobody can state what works | Route every catch to Crashlytics with context; ban bare catches via CI grep; permission-denied renders an error state, not empty | 1 w | `ARCH-01`, `OBS-03` |
 | `DEBT-04` | Push fan-out path mismatch; admin path unruled | Trigger written against a documented path the client never adopted | No social push; gym/coach approval batches fail | Retention loop and both ecosystems dead | Pick one path, add the rule, move authorship server-side | 2–3 d | `BLK-03` |
-| `DEBT-05` | Admin surface unreachable (`admin_roles` created by nothing) | Rule written before the provisioning path | ~7,400 LOC unusable; no moderation, approvals or cost visibility | No operational capability | `syncAdminClaim` written, custom-claim gating wired, runbook documented — **awaiting deploy**, see `BLK-05` | 1–2 d | `BLK-05` |
 | `DEBT-06` | Monetization non-functional end to end | Store setup never started; validation correctly fails closed | Zero revenue | No business | Register products, add credentials, `APP_ENV=production`, sandbox-verify | 1–2 w + store | `BLK-04` |
 | `DEBT-07` | All 18 of the project's own security gates unchecked | `GO_LIVE.md` §5S written but never worked | Unknown-unknowns across the whole surface | Compounds every other item | Work `S0`–`S17` in order; make the rules suite pass in CI | 3–4 w | §3 |
 
@@ -2762,6 +2781,7 @@ Recorded so the history is not lost. All verified fixed.
 | 🔴 | Release AI served fabricated meal plans and recipes (`DEBT-02`) | `BLK-01` — mock block deleted, both services guard `isConfigured` and rethrow, branded error states wired in `home.dart`/`explore_screen.dart`, startup Crashlytics assertion added, regression test added |
 | 🔴 | iOS photo-library permission missing — crash on 6 screens (`DEBT-03`) | `BLK-02` — `NSPhotoLibraryUsageDescription` added, 3 of 6 gallery call sites given the `PermissionService` priming they were missing, permanent preflight guard (`scripts/check_ios_permissions.sh`) in CI. Physical-device confirmation and `flutter build ipa` still owed once a signing identity exists (`BLK-16`) |
 | 🟠 | `meal_plan_history` has an index but no rule — feature permanently empty (`DEBT-08`) | `BLK-06` — owner rule added, tested (CI's `firestore-rules` job, [run #50](https://github.com/burcok/cookrange/actions/runs/30697804480)), and **deployed to production** with explicit user go-ahead. Both call sites and two adjacent screen-layer catches now report to `CrashlyticsService` |
+| 🔴 | Admin surface unreachable — `admin_roles` created by nothing (`DEBT-05`) | `BLK-05` — `syncAdminClaim` Cloud Function written, tested (CI's `firestore-rules` job, [run #52](https://github.com/burcok/cookrange/actions/runs/30701019872)), and **deployed to production** with explicit user go-ahead (`firebase functions:list` confirms it live). All three client-side admin gates re-pointed at the custom claim; `AdminStatusService`'s dead reads removed; bootstrap runbook written |
 | 🟡 | No pagination on notifications | v0.9.6 (`getNotificationsPage`) |
 | 🟢 | Stray `print()` calls throughout `lib/` (12 files) | v0.9.5 (`debugPrint`) |
 | 🟢 | Dead legacy widgets (`custom_back_button`, `gender_picker_modal`, `language_selector`) | v0.9.5 (deleted) |
@@ -3041,7 +3061,8 @@ unverified).
 surface bolted on. The prior roadmap's own assessment — *"~40 % of a great consumer nutrition app and
 ~3 % of the operating system"* — was written when `lib/` was 37,200 LOC. It is now 115,129 LOC, and the
 consumer app is closer to 85 % **written** / 45 % **verified**. The operating system is perhaps 25 %
-written and near 0 % operational, because `BLK-05` and `BLK-03` make both ecosystems unusable.
+written and still near 0 % operational — `BLK-05` is closed, but `BLK-03` alone still keeps both
+ecosystems' approval funnels dead.
 
 **A credible three-year shape, in order:**
 
@@ -3219,7 +3240,8 @@ The first ten things to do, in this order. Everything else follows from them.
    the guard just makes "alone" mean "honest error state," not "silent lie."
 7. ~~**`BLK-02`**~~ — the string plus a preflight check landed. Device/`.ipa` verification still
    owed once `BLK-16` gives a signing identity.
-8. **`BLK-05`** — one Firestore document plus a custom claim unlocks ~7,400 LOC and both ecosystems.
+8. ~~**`BLK-05`**~~ — `syncAdminClaim` deployed; ~7,400 LOC of admin surface reachable. `BLK-03` is
+   the remaining blocker for both ecosystems' approval funnels.
 9. **`BLK-03`** + **`SEC-06`** — fix the notification path and move authorship server-side in one change.
 10. **`TEST-08`** — write and execute an honest manual QA pass on physical iOS and Android devices.
     **Every one of the seven dead paths would have been caught by this. It is the cheapest and most
