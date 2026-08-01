@@ -125,7 +125,8 @@ itself a privilege-escalation surface, and the manual console step is a small, o
 environment that avoids building one.
 
 ### Known authorization holes
-- `BLK-08` — any user can mutate any post's non-content fields (like counts, announcement flag, group id)
+- ~~`BLK-08`~~ — any user could mutate any post's non-content fields (like counts, announcement flag,
+  group id); fixed in code + rules-tests, deploy pending
 - `BLK-09` — `coach_uid == 'demo'` lets any user publish into the public marketplace
 - `BLK-10` — the user doc is world-readable and carries `email`, `last_login_ip`, device fingerprints
 - 7 path/rule mismatches and 8 open-write holes remain (`TODO.md` §7.1–7.2)

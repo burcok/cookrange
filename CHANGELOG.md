@@ -437,6 +437,58 @@ and unlike `BLK-01`/`BLK-02` where the iOS Simulator offered partial verificatio
 cannot receive real APNs push at all**, so this is a harder verification ceiling than any blocker
 closed so far this session.
 
+---
+
+### Fixed — `BLK-08`: any authenticated user could mutate any post's non-content fields — NOT YET DEPLOYED (2026-08-01)
+
+The `posts` update rule was a denylist — `allow update` blocked only `authorId`/`content`/
+`imageUrls`/`tags` and let any authenticated user write **everything else**: `groupId` (hijacking a
+post into another group), `metadata`, `author_role`, or an arbitrary `likesCount`. The ticket's own
+field examples (`likeCount`, `is_announcement`) didn't quite match this collection's real schema —
+confirmed against `CommunityPost.toMap()` and the actual creation call site, the real fields are
+`likesCount`/`commentsCount`, and `is_announcement` turned out to live on a **different** collection
+entirely.
+
+Found the identical denylist pattern twice more while investigating: `posts/{id}/comments` (same
+fix) and `gyms/{gymId}/posts` (a different collection, snake_case fields — this is where
+`is_announcement`/`is_pinned` actually live; the gym-owner branch was already correct and untouched).
+
+**Fix:** each vulnerable `update` rule replaced with an allowlist of the exact fields a non-owner
+legitimately touches, confirmed against real call sites in `community_service.dart`/
+`gym_post_service.dart` rather than guessed — posts get `likesCount`/`likedUserIds`/`recentLikers`/
+`reactions`/`commentsCount`; comments get `likesCount`/`reactions`; gym posts get `like_count`/
+`liked_by_uids`/`comment_count`. The two scalar counters in each collection are constrained to move
+by **exactly ±1 per write** — a client can still like/unlike or comment, but can no longer set a
+count to an arbitrary value. Owner (and gym-owner) branches are untouched.
+
+**Not done, and explicitly not attempted:** the ticket's "Preferred" full Firestore-trigger rewrite
+(counters maintained entirely server-side, client `update` on counters `if false`). The actual client
+code denormalizes far more per like than a scalar counter — a `likedUserIds` array, a `recentLikers`
+list with name/avatar, and a per-emoji `reactions` map read-modify-written in a transaction —
+replicating all of that in a trigger is a materially larger rewrite of live, working interaction
+code, not this ticket's 1-day estimate. The rules-level fix is explicitly offered as an equally-valid
+alternative in the ticket's own acceptance criteria and closes the actual named vulnerability.
+**Residual, honestly noted:** the `reactions` map and the `likedUserIds`/`recentLikers` arrays are
+allowlisted but not delta-constrained (Firestore rules can't cheaply validate "one element changed"
+on a map/array) — a non-owner could still write an arbitrary `reactions` value in one call. Tracked
+as a future improvement rather than silently dropped.
+
+Also **not done**: a backfill to reconcile existing inflated counters — not applicable, since
+`PROJECT_STATE.md` confirms v0.9.6 has no real users yet, so there's no real inflated data. The
+Technical Notes' suggestion to bundle group `member_count` (`BE-10`) and other counter gaps (`S23`)
+into this change was **not** taken — separately-ticketed, unrelated collections; bundling them here
+would have been scope creep for a Complexity-S ticket.
+
+5 new rules tests (27 total): non-owner cannot set `groupId`/`content`/an arbitrary `likesCount`
+jump on a post; non-owner CAN make a legitimate ±1 engagement update; owner retains full update
+rights; comment-level equivalent; gym-post non-owner cannot flip `is_announcement`/`is_pinned` but
+can ±1 `like_count`, while the gym owner still can.
+
+**Verified:** `flutter analyze lib/` — 0 errors (no Dart touched — rules-only change). Rules tests
+written; cannot run locally (no Java on this machine, same constraint as every prior rules-test
+addition) — verification depends on CI's `firestore-rules` job.
+**Not deployed.** Held for explicit go-ahead, same as every other rules-only change this session.
+
 **Not deployed.** Held for explicit go-ahead, same as `BLK-05`/`BLK-06` — this changeset touches
 both a Cloud Functions deploy (8 new callables) and a Firestore rules deploy together.
 

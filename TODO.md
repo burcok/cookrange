@@ -236,7 +236,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 |---|---|---|
 | `BLK-04` | 🔥 Monetization non-functional end to end | Zero revenue capability |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | Gym setup broken; NSFW scanner watches the wrong prefix |
-| `BLK-08` | 🔥 Any user can mutate any post's non-content fields | Like-count / announcement / group integrity |
+| `BLK-08` | 🚧 Any user can mutate any post's non-content fields — code+rules written, **deploy pending** | Like-count / announcement / group integrity until deployed |
 | `BLK-09` | 🔥 `coach_uid == 'demo'` lets any user publish to the public marketplace | Content injection into a live storefront |
 | `BLK-10` | 🔥 User doc world-readable with `email`, `last_login_ip`, device fingerprints | GDPR / KVKK exposure in the primary market |
 | `BLK-11` | 🔥 Dish catalog unseedable in-app; only 75 dishes | Core feature has no content on a fresh project |
@@ -855,17 +855,22 @@ gym/coach application-document admin-access gap noted in `storage.rules`.
 
 ---
 
-#### `BLK-08` 🔥 Any authenticated user can mutate any post's non-content fields
+#### `BLK-08` 🚧 Any authenticated user can mutate any post's non-content fields — code+rules complete, deploy pending
 
-**Status** 🔥 Critical · **Priority** Critical · **Complexity** S · **Est** 1 d
+**Status** 🚧 Code, rules and rules-tests complete 2026-08-01 — **Firestore rules deploy not yet
+done**, held for explicit go-ahead (same pattern as every other rules-only change this session).
+**Priority** Critical · **Complexity** S · **Est** 1 d
 **Version** v0.9.7 · **Milestone** M1 · **Owner** Security Engineer
 **Labels** `firestore-rules` `integrity` `abuse` `community`
 **Modules** Security · Firebase · Backend
-**Files** `firestore.rules:195-199`
+**Files** `firestore.rules` (`posts/{postId}` update rule + 2 more instances of the identical bug
+found while investigating — `posts/{postId}/comments/{commentId}` and `gyms/{gymId}/posts/{postId}`;
+3 new helper functions: `canUpdatePostEngagement`, `canUpdateCommentEngagement`,
+`canUpdateGymPostEngagement`) · `test/firestore_rules/rules.test.mjs` (+5 tests)
 **Dependencies** — · **Required before** `COM-04`, `GAM-01`
 **Blocking** Community integrity; any leaderboard or ranking derived from post metrics.
 
-**What exists / what is missing**
+**What existed (as found)**
 
 ```
 allow update: if isAuthenticated()
@@ -875,25 +880,63 @@ allow update: if isAuthenticated()
 ```
 
 The intent was "let anyone bump like/reaction counters." The effect is that **any authenticated user can
-write any field not in that four-item deny-list** — `likeCount`, `commentCount`, `groupId`,
-`is_announcement`, `timestamp`, `createdAt`, `authorRole`, `metadata`. A user can inflate their own like
-counts, move another user's post into a group, or mark it as an announcement.
+write any field not in that four-item deny-list** — `groupId`, `metadata`, `author_role`, etc. (real
+field names confirmed against `CommunityPost.toMap()` and the actual creation call site — the ticket's
+own `likeCount`/`commentCount`/`is_announcement` examples don't match this collection's real field
+names, `likesCount`/`commentsCount`, and `is_announcement` turned out to belong to a **different**
+collection — see below). A user could inflate their own like count arbitrarily or hijack a post into
+another group.
 
-**Acceptance Criteria**
-- Counter updates restricted with `affectedKeys().hasOnly(['likeCount','commentCount','reactionCount'])` **and** a delta constraint (`request.resource.data.likeCount == resource.data.likeCount + 1` style), or moved entirely to a Cloud Function.
-- **Preferred:** counters maintained by a Firestore trigger on the `likes`/`reactions`/`comments` subcollections; client `update` on counters set to `if false`.
-- All other fields owner-only.
-- Rules tests: non-owner cannot change `groupId`, `is_announcement`, `timestamp`, or set `likeCount` to an arbitrary value.
-- Existing inflated counters reconciled by a one-off backfill Function (`ARCH-06` migration framework).
+**Found the identical bug twice more while investigating:**
+- `posts/{postId}/comments/{commentId}` — same denylist pattern (`authorId`, `content` only), same fix.
+- `gyms/{gymId}/posts/{postId}` — a **different collection**, snake_case fields
+  (`author_uid`/`is_announcement`/`is_pinned`/`like_count`/`comment_count`). This is where
+  `is_announcement` actually lives — the ticket's exploit example was correct in spirit, just
+  attributed to the wrong collection. Fixed with the same allowlist approach; the gym-owner branch
+  (`get(gyms/$(gymId)).data.owner_uid == request.auth.uid`) was already correct and untouched.
 
-**DoD** §0.5 plus rules tests for each forbidden field.
+**What was built**
+- Each vulnerable `update` rule replaced with an **allowlist** of the exact fields a non-owner
+  legitimately touches (confirmed against real call sites in `community_service.dart`/
+  `gym_post_service.dart`, not guessed): posts get `likesCount`/`likedUserIds`/`recentLikers`/
+  `reactions`/`commentsCount`; comments get `likesCount`/`reactions`; gym posts get
+  `like_count`/`liked_by_uids`/`comment_count`.
+- The two **scalar** counters in each collection (`likesCount`/`commentsCount`,
+  `like_count`/`comment_count`) are **delta-constrained to exactly ±1 per write** — a client can still
+  like/unlike or comment/uncomment, but can no longer set a count to an arbitrary value.
+- Owner (and, for gym posts, the gym owner) branches are **untouched** — full update rights preserved.
+
+**Acceptance criteria still open / not applicable**
+- Deploy — held for explicit go-ahead.
+- ~~Existing inflated counters reconciled by a backfill~~ — **not applicable**: v0.9.6 has no real
+  users yet (`PROJECT_STATE.md`), so there is no real inflated data to reconcile.
+- **Not done, and explicitly not attempted:** the "Preferred" full Firestore-trigger rewrite (counters
+  maintained server-side entirely, client `update` on counters `if false`). The actual client code
+  updates far more than a scalar counter per like — `likedUserIds` array, a denormalized
+  `recentLikers` list (name/avatar), and a per-emoji `reactions` map read-modify-written in a
+  transaction — replicating all of that faithfully in a trigger is a materially larger, higher-risk
+  rewrite of live, working interaction code, not a 1-day fix. The rules-level allowlist+delta approach
+  is explicitly offered as an equally-valid alternative in this ticket's own acceptance criteria, and
+  closes the actual named vulnerability (arbitrary field mutation, arbitrary counter values).
+  **Residual, honestly noted:** `reactions` (a map) and `likedUserIds`/`recentLikers` (arrays) are
+  allowlisted but not delta-constrained — Firestore rules can't cheaply validate "changed by exactly
+  one element" on a map/array the way it can for a scalar. A non-owner could still write an arbitrary
+  value into the `reactions` map in one call. Closing this fully needs the trigger-based rewrite;
+  tracked as a future improvement, not silently dropped.
+
+**DoD** §0.5 plus rules tests for each forbidden field — written (5 new, 27 total), not yet
+CI-confirmed as of this commit.
 
 **Technical Notes**
-Server-maintained counters also fix the group `member_count` client-increment noted in the Phase 13
-follow-ups, and the `checkins`/`achievement`/`squad`/`referral` counter gaps in `S23`. Do them together
-as one "counters are server-authoritative" change.
+The Technical Notes' suggestion to bundle group `member_count` (`BE-10`) and the `checkins`/
+`achievement`/`squad`/`referral` counter gaps (`S23`) into one "counters are server-authoritative"
+change was **not** taken — those are separately-ticketed, unrelated collections; bundling them here
+would have been unreviewable scope creep for a Complexity-S ticket. They remain open, tracked under
+their own IDs.
 
-**Risks** A trigger per like is a write amplification cost. Use sharded counters or debounced aggregation if volume warrants — see `PERF-06`.
+**Risks** None new from the rules change itself. The residual `reactions`/array gap above is a real,
+narrower risk than before this fix (previously ANY field was writable; now only 3-5 named engagement
+fields are) but is not fully closed — see above.
 
 ---
 
@@ -2050,7 +2093,7 @@ streak/reputation recompute (`SEC-14`), notification-path migration (`BLK-03`).
 
 | ID | Status | Hole | Rule line | Priority | Tracked as |
 |---|---|---|---|---|---|
-| `FB-05` | 🔥 | `posts` update lets any user write any non-content field | `firestore.rules:195-199` | Critical | `BLK-08` |
+| `FB-05` | 🚧 | `posts`/comments/gym-posts update now allowlisted + delta-constrained, deploy pending | `firestore.rules` (3 blocks) | Critical | `BLK-08` |
 | `FB-06` | 🔥 | `programs` create allows `coach_uid == 'demo'` from any user | `:458-460` | Critical | `BLK-09` |
 | `FB-07` | 🔥 | `users/{uid}` read exposes email, IP, device fingerprints | `:68` | Critical | `BLK-10` |
 | `FB-08` | ✅ | `users/{uid}/notifications` — path retired entirely (no rule; falls to catch-all deny), deployed | — | Critical | `SEC-06` closed |
@@ -2783,7 +2826,7 @@ Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register �
 | ID | Debt | Risk | Fix | Effort | Tracked as |
 |---|---|---|---|---|---|
 | `DEBT-09` | Gym logo writes to an unruled Storage prefix; scanner watches the same wrong prefix | Gym setup broken; NSFW scanning misaligned | Align upload, rules and `SCAN_PREFIXES`; close the `isAuthenticated()` hole | 4 h | `BLK-07` |
-| `DEBT-10` | Any user can mutate any post's non-content fields | Like-count, `groupId`, `is_announcement` integrity | `hasOnly` + delta constraints, or server-maintained counters | 1 d | `BLK-08` |
+| `DEBT-10` | Any user can mutate any post's non-content fields | Fixed in code (`BLK-08`) — `hasOnly` + delta constraints. **Deploy pending** | 1 d | `BLK-08` |
 | `DEBT-11` | **Challenge sunset incomplete while marked ✅** | `firestore.rules:296-304`, 2 composite indexes and 4 orphan i18n keys survive; `intro.page3_title` still advertises "Community & Challenges" to users | Remove the rules block, both indexes and the orphan keys; reword the intro copy | 1 h | `CHL-00`, `FB-15`, `I18N-02` |
 | `DEBT-12` | Marketplace injection via `coach_uid == 'demo'` | Any user publishes to a public storefront | Remove the exemption; seed server-side | 4 h | `BLK-09` |
 | `DEBT-13` | User doc world-readable with email, IP, device fingerprints | GDPR/KVKK exposure in the primary market | Split public/private/internal; migrate; narrow the rule | 3–5 d | `BLK-10` |

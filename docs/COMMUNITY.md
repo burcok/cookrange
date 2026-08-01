@@ -29,8 +29,13 @@ subcollection and `member_count`. A post carries an optional top-level `groupId`
 feed); `getGroupFeedStream` serves the scoped feed. Joined groups mirror onto
 `users/{uid}.group_memberships[]`. Design: [`roadmap/COMMUNITY_GROUPS.md`](roadmap/COMMUNITY_GROUPS.md).
 
-> ⚠️ `BLK-08` — **any user can mutate any post's non-content fields.** Like counts, the announcement
-> flag, and `groupId` are all writable by anyone. Fix in the rule, not the client.
+> `BLK-08` — the `posts` update rule was a denylist (only `authorId`/`content`/`imageUrls`/`tags`
+> blocked), so any authenticated user could write `groupId` or any other field. Now an allowlist:
+> non-owners may only touch engagement bookkeeping (`likesCount`/`likedUserIds`/`recentLikers`/
+> `reactions`/`commentsCount`), with the two scalar counters constrained to ±1 per write. The identical
+> bug also existed on `posts/{id}/comments` and `gyms/{id}/posts` (that's where the announcement flag
+> actually lives) — fixed the same way. Code + rules-tests done, deploy pending; see
+> `PROJECT_STATE.md`.
 
 ---
 

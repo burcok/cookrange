@@ -71,7 +71,7 @@ Full cards in [`TODO.md`](TODO.md) §2.
 |---|---|---|
 | `BLK-04` | 🔥 Monetization non-functional end to end | [Premium](docs/PREMIUM.md) |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | [Gym](docs/GYM_ECOSYSTEM.md) |
-| `BLK-08` | 🔥 Any user can mutate any post's non-content fields | [Security](docs/SECURITY.md) |
+| `BLK-08` | 🚧 Any user can mutate any post's non-content fields — code+rules complete, **deploy pending** | [Security](docs/SECURITY.md) |
 | `BLK-09` | 🔥 `coach_uid == 'demo'` lets any user publish to the public marketplace | [Coach](docs/COACH_ECOSYSTEM.md) |
 | `BLK-10` | 🔥 User doc world-readable with `email`, `last_login_ip`, device fingerprints | [Security](docs/SECURITY.md) |
 | `BLK-11` | 🔥 Dish catalog unseedable in-app; only 75 dishes | [Database](docs/DATABASE.md) |
@@ -222,7 +222,23 @@ Store review is an irreducible 1–2 weeks of wall clock.
    hardware, and the iOS Simulator cannot receive real APNs push at all — this is a harder limit than
    `BLK-01`/`BLK-02`'s partial Simulator verification. No real gym/coach approval or friend-request
    flow has been exercised end to end against the live callables yet either.
-7. Then M2 security gates in the order fixed by `GO_LIVE.md` Phase 5S — **server write paths first
+7. **`BLK-08`** — **code+rules+tests complete, deploy pending.** The `posts` update rule was a
+   denylist (only `authorId`/`content`/`imageUrls`/`tags` blocked), so any authenticated user could
+   write any other field — `groupId`, `metadata`, etc. Replaced with an allowlist of the real
+   engagement fields (confirmed against actual call sites, not guessed): `likesCount`/
+   `likedUserIds`/`recentLikers`/`reactions`/`commentsCount`, with the two scalar counters
+   delta-constrained to ±1 per write. Found and fixed the identical bug twice more while
+   investigating: `posts/{id}/comments` (same pattern) and `gyms/{id}/posts` (a different collection,
+   snake_case fields — this is where the `is_announcement` flag the ticket named actually lives, not
+   on the main `posts` collection). 5 new rules tests (27 total) written. **Not deployed** — held for
+   explicit go-ahead. **Residual, honestly noted:** the `reactions` map and `likedUserIds`/
+   `recentLikers` arrays are allowlisted but not delta-constrained (Firestore rules can't cheaply
+   validate "one element changed" on a map/array) — a non-owner could still write an arbitrary
+   `reactions` value in one call. Fully closing that needs the trigger-based rewrite the ticket
+   offered as an alternative; not attempted here since the actual client code denormalizes far more
+   per like (an array + a name/avatar list) than a simple counter, making that a materially larger,
+   separate undertaking, not this ticket's 1-day scope.
+8. Then M2 security gates in the order fixed by `GO_LIVE.md` Phase 5S — **server write paths first
    (`S2`→`S3`→`S4`), then lock the rules (`S1`, `S5`)**. Locking first breaks live flows.
 
 ---

@@ -100,8 +100,8 @@ failed_login_attempts/{id} SERVER-ONLY        brute-force tracking
 | Path | Purpose | Access (rules) |
 |---|---|---|
 | `dishes/{id}` | Recipe/dish DB (seeded; TR + intl) | Read any auth · write admin only |
-| `posts/{id}` | Community posts | Read any auth · create author · update author/counters · delete author. Content-length capped at rule level. |
-| `posts/{id}/comments/{id}` | Post comments | Read any auth · create author · update author/counter · delete author. Content-length capped. |
+| `posts/{id}` | Community posts | Read any auth · create author · update: author (any field) or any authenticated user (engagement fields only — `likesCount`/`likedUserIds`/`recentLikers`/`reactions`/`commentsCount`, scalar counters ±1/write — `BLK-08`) · delete author. Content-length capped at rule level. |
+| `posts/{id}/comments/{id}` | Post comments | Read any auth · create author · update: author (any field) or any authenticated user (`likesCount`/`reactions` only, ±1/write on `likesCount` — `BLK-08`) · delete author. Content-length capped. |
 | `posts/{id}/likes|reactions/{userId}` | Like/reaction toggles | Read any auth · write owner |
 | `chats/{id}` | Chat threads (private/group/system/gym) | Participants only |
 | `chats/{id}/messages/{id}` | Chat messages | Participants only. Content-length capped. |
@@ -113,7 +113,7 @@ failed_login_attempts/{id} SERVER-ONLY        brute-force tracking
 | `referrals/{code}` | Referral codes (owner, usedByUids, maxUses) | Read any auth · create owner · update owner/admin only with `owner_uid` pinned (immutable) |
 | `gyms/{id}` | Gym profiles | Read any auth · create owner · update owner/admin · delete owner |
 | `gyms/{id}/members/{id}` | Gym members | Read owner/member · write owner |
-| `gyms/{id}/posts/{id}` (+ `/comments`) | Gym community feed | Read any auth · create author · delete author/owner |
+| `gyms/{id}/posts/{id}` (+ `/comments`) | Gym community feed | Read any auth · create author · update: author/gym-owner (any field) or any authenticated user (`like_count`/`liked_by_uids`/`comment_count` only, ±1/write on the counters — `BLK-08`) · delete author/owner |
 | `gyms/{id}/checkins/{id}` | QR/GPS/manual check-ins | Read owner/member · create self · no update/delete |
 | `gym_wars/{id}` | Gym vs gym competition | Read any auth · create challenger · update challenger |
 | `gym_applications/{id}` | Gym owner applications | Read applicant/admin · create applicant · update admin |
