@@ -465,8 +465,10 @@ inconsistent would have meant three screens still skipping the app's own rationa
 
 #### `BLK-03` 🚧 Push notification fan-out — code+rules+tests complete, deploy pending (closed together with `SEC-06`)
 
-**Status** 🚧 Code, rules and rules-tests complete 2026-08-01 — **Cloud Functions deploy and Firestore
-rules deploy not yet done**, held for explicit go-ahead (same pattern as `BLK-05`/`BLK-06`). Physical
+**Status** 🚧 Code, rules and rules-tests complete 2026-08-01 — rules tests confirmed passing in real
+CI ([run #30704409637](https://github.com/burcok/cookrange/actions/runs/30704409637); all 4 jobs
+green). **Cloud Functions deploy and Firestore rules deploy not yet done**, held for explicit
+go-ahead (same pattern as `BLK-05`/`BLK-06`). Physical
 push delivery **cannot be verified in this environment** — no iOS/Android hardware, and the iOS
 Simulator cannot receive real APNs push at all. · **Priority** Critical · **Complexity** M · **Est** 2–3 d
 **Version** v0.9.7 · **Milestone** M1 · **Owner** Firebase Architect
@@ -537,9 +539,10 @@ worked.
   this change; still gated on push actually arriving).
 
 **DoD** §0.5 plus: 4 new Firestore rules tests (notification client-create-denied even for self,
-old-path-retired, friends-lockdown, friend_requests-lockdown) — **written, cannot run locally** (no
-Java on this machine, same limitation as prior rules-test work); verification depends on CI's
-`firestore-rules` job.
+old-path-retired, friends-lockdown, friend_requests-lockdown) — confirmed passing for real in CI's
+`firestore-rules` job ([run #30704409637](https://github.com/burcok/cookrange/actions/runs/30704409637),
+22 total assertions); not run locally, no Java on this machine (same limitation as prior rules-test
+work).
 
 **Technical Notes**
 Landed together with `SEC-06` in the same files/deploy, per that ticket's own note that fixing `BLK-03`
@@ -1457,7 +1460,9 @@ done.
 #### `SEC-06` 🚧 Server-author all social writes: notifications, friends, friend requests *(`S5`, `C9`)* — code+rules complete, deploy pending
 
 **Status** 🚧 Code, rules and rules-tests complete 2026-08-01 (landed together with `BLK-03` — same
-files, same deploy) — **not yet deployed**. · **Priority** Critical · **Complexity** M · **Est** 3–4 d
+files, same deploy) — rules tests confirmed passing in real CI
+([run #30704409637](https://github.com/burcok/cookrange/actions/runs/30704409637)) — **not yet
+deployed**. · **Priority** Critical · **Complexity** M · **Est** 3–4 d
 **Version** v0.9.7 · **Milestone** M1 (with `BLK-03`) · **Owner** Security Engineer
 **Labels** `firestore-rules` `spam` `impersonation` `push-forgery`
 **Modules** Security · Backend · Firebase
@@ -1486,11 +1491,14 @@ into anyone's friends list or friend-request queue.
 
 **Acceptance criteria still open**
 - Deploy (see `BLK-03`).
-- Verified: a crafted client write is rejected **in production**; the legitimate UI flow (send/accept/
-  reject/cancel friend request, follow/unfollow) still works end to end. Rules-test assertions are
-  written but can only run in CI (no local Java on this machine for the Firestore emulator).
+- Verified: a crafted client write is rejected **in production** (confirmed against the rules
+  themselves in CI's Firestore emulator — real production behaviour still unverified until deploy);
+  the legitimate UI flow (send/accept/reject/cancel friend request, follow/unfollow) still works end
+  to end — needs a real deploy to exercise, callables can't be hit from the emulator-only rules-test
+  suite.
 
-**DoD** §0.5 plus rules tests per path — written, CI-verification pending (this push).
+**DoD** §0.5 plus rules tests per path — confirmed passing in CI
+([run #30704409637](https://github.com/burcok/cookrange/actions/runs/30704409637)).
 **Technical Notes** Landed with `BLK-03` — same files, same deploy.
 **Risks** Latency: a callable round-trip is slower than a direct write than before. `sendFriendRequest`/
 `followUser` etc. are already fire-and-forget or awaited-with-loading-state in their call sites

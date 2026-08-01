@@ -425,12 +425,17 @@ queue.
 
 **Verified:** `flutter analyze lib/` — 0 errors (unchanged infos, none in touched files). `flutter
 test` — 79/79 pass. `node --check` on all new/modified `functions/*.js` files, plus a require-smoke
-test confirming all 8 new callables resolve through `index.js`'s exports. `dart format` applied.
-**Not verified:** the rules tests (written, cannot run locally — no Java on this machine, same
-`BLK-13` constraint as every prior rules-test addition); physical push delivery on a device — no
-iOS/Android hardware in this environment, and unlike `BLK-01`/`BLK-02` where the iOS Simulator
-offered partial verification, **the Simulator cannot receive real APNs push at all**, so this is a
-harder verification ceiling than any blocker closed so far this session.
+test confirming all 8 new callables resolve through `index.js`'s exports. `dart format` applied. All
+4 new rules tests (22 total) confirmed passing for real in CI's `firestore-rules` job
+([run #30704409637](https://github.com/burcok/cookrange/actions/runs/30704409637)) — not run
+locally, no Java on this machine (same `BLK-13` constraint as every prior rules-test addition). All
+4 CI jobs green on this push (`analyze-and-test`, `firestore-rules`, `secret-scan`,
+`build-android`); the unrelated `deploy.yml` failure is the pre-existing `BLK-16` condition (no
+signing identity), confirmed by inspecting the run, not assumed.
+**Not verified:** physical push delivery on a device — no iOS/Android hardware in this environment,
+and unlike `BLK-01`/`BLK-02` where the iOS Simulator offered partial verification, **the Simulator
+cannot receive real APNs push at all**, so this is a harder verification ceiling than any blocker
+closed so far this session.
 
 **Not deployed.** Held for explicit go-ahead, same as `BLK-05`/`BLK-06` — this changeset touches
 both a Cloud Functions deploy (8 new callables) and a Firestore rules deploy together.

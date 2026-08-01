@@ -122,7 +122,9 @@ surface yet — nobody has been console-provisioned) ·
 allergen pre-filter · prompt-injection guard · Hive AES-256 · consent registry · design system ·
 EN/TR parity (2,722 keys) · maintenance + force-update gates · feature kill-switches ·
 image upload pipeline · `pollCount` discipline · `flutter analyze lib/` 0 errors ·
-Firestore rules test suite (18 test cases, partial coverage) green in real CI ·
+Firestore rules test suite (22 test cases, partial coverage) green in real CI
+([run #30704409637](https://github.com/burcok/cookrange/actions/runs/30704409637), incl. the 4 new
+`BLK-03`/`SEC-06` assertions) ·
 **CI — all 4 jobs green** (`analyze-and-test`, `firestore-rules`, `secret-scan`, `build-android`),
 confirmed in a real run, first time in this repo's history.
 
