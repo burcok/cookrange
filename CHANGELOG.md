@@ -439,7 +439,7 @@ closed so far this session.
 
 ---
 
-### Fixed — `BLK-08`: any authenticated user could mutate any post's non-content fields — NOT YET DEPLOYED (2026-08-01)
+### Fixed — `BLK-08`: any authenticated user could mutate any post's non-content fields (2026-08-01)
 
 The `posts` update rule was a denylist — `allow update` blocked only `authorId`/`content`/
 `imageUrls`/`tags` and let any authenticated user write **everything else**: `groupId` (hijacking a
@@ -489,7 +489,10 @@ tests (27 total) confirmed passing for real in CI's `firestore-rules` job
 ([run #30708408738](https://github.com/burcok/cookrange/actions/runs/30708408738); all 4 jobs green)
 — not run locally, no Java on this machine (same `BLK-13` constraint as every prior rules-test
 addition).
-**Not deployed.** Held for explicit go-ahead, same as every other rules-only change this session.
+
+**Deployed:** `firebase deploy --only firestore:rules --project cookrange-app`, with explicit user
+go-ahead. Clean on the first attempt — "Deploy complete!" (2 pre-existing, unrelated compiler
+warnings: `hasNoExtraFields` unused, `request.` variable-name notice).
 
 ---
 

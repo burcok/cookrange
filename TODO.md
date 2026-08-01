@@ -236,7 +236,6 @@ These are code-proven **and** believed functional. Full archive with evidence in
 |---|---|---|
 | `BLK-04` | 🔥 Monetization non-functional end to end | Zero revenue capability |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | Gym setup broken; NSFW scanner watches the wrong prefix |
-| `BLK-08` | 🚧 Any user can mutate any post's non-content fields — code+rules written, **deploy pending** | Like-count / announcement / group integrity until deployed |
 | `BLK-09` | 🔥 `coach_uid == 'demo'` lets any user publish to the public marketplace | Content injection into a live storefront |
 | `BLK-10` | 🔥 User doc world-readable with `email`, `last_login_ip`, device fingerprints | GDPR / KVKK exposure in the primary market |
 | `BLK-11` | 🔥 Dish catalog unseedable in-app; only 75 dishes | Core feature has no content on a fresh project |
@@ -855,12 +854,15 @@ gym/coach application-document admin-access gap noted in `storage.rules`.
 
 ---
 
-#### `BLK-08` 🚧 Any authenticated user can mutate any post's non-content fields — code+rules complete, deploy pending
+#### `BLK-08` ✅ Any authenticated user can mutate any post's non-content fields — deployed to production
 
-**Status** 🚧 Code, rules and rules-tests complete 2026-08-01 — rules tests confirmed passing in real
-CI ([run #30708408738](https://github.com/burcok/cookrange/actions/runs/30708408738); all 4 jobs
-green). **Firestore rules deploy not yet done**, held for explicit go-ahead (same pattern as every
-other rules-only change this session). **Priority** Critical · **Complexity** S · **Est** 1 d
+**Status** ✅ Closed 2026-08-01 — code, rules, tests, and the Firestore rules deploy all done, with
+explicit user go-ahead. Rules tests confirmed passing in real CI
+([run #30708408738](https://github.com/burcok/cookrange/actions/runs/30708408738); all 4 jobs
+green). Deploy reported "Deploy complete!" cleanly (2 pre-existing, unrelated compiler warnings —
+`hasNoExtraFields` unused, `request.` variable-name notice). **Residual, not a reason this stays
+open:** the `reactions` map and `likedUserIds`/`recentLikers` arrays are allowlisted but not
+delta-constrained — see below. **Priority** Critical · **Complexity** S · **Est** 1 d
 **Version** v0.9.7 · **Milestone** M1 · **Owner** Security Engineer
 **Labels** `firestore-rules` `integrity` `abuse` `community`
 **Modules** Security · Firebase · Backend
@@ -907,8 +909,7 @@ another group.
   like/unlike or comment/uncomment, but can no longer set a count to an arbitrary value.
 - Owner (and, for gym posts, the gym owner) branches are **untouched** — full update rights preserved.
 
-**Acceptance criteria still open / not applicable**
-- Deploy — held for explicit go-ahead.
+**Not applicable / not attempted (documented, not silently dropped)**
 - ~~Existing inflated counters reconciled by a backfill~~ — **not applicable**: v0.9.6 has no real
   users yet (`PROJECT_STATE.md`), so there is no real inflated data to reconcile.
 - **Not done, and explicitly not attempted:** the "Preferred" full Firestore-trigger rewrite (counters
@@ -2095,7 +2096,7 @@ streak/reputation recompute (`SEC-14`), notification-path migration (`BLK-03`).
 
 | ID | Status | Hole | Rule line | Priority | Tracked as |
 |---|---|---|---|---|---|
-| `FB-05` | 🚧 | `posts`/comments/gym-posts update now allowlisted + delta-constrained, deploy pending | `firestore.rules` (3 blocks) | Critical | `BLK-08` |
+| `FB-05` | ✅ | `posts`/comments/gym-posts update allowlisted + delta-constrained, deployed | `firestore.rules` (3 blocks) | Critical | `BLK-08` closed |
 | `FB-06` | 🔥 | `programs` create allows `coach_uid == 'demo'` from any user | `:458-460` | Critical | `BLK-09` |
 | `FB-07` | 🔥 | `users/{uid}` read exposes email, IP, device fingerprints | `:68` | Critical | `BLK-10` |
 | `FB-08` | ✅ | `users/{uid}/notifications` — path retired entirely (no rule; falls to catch-all deny), deployed | — | Critical | `SEC-06` closed |
@@ -2828,7 +2829,7 @@ Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register �
 | ID | Debt | Risk | Fix | Effort | Tracked as |
 |---|---|---|---|---|---|
 | `DEBT-09` | Gym logo writes to an unruled Storage prefix; scanner watches the same wrong prefix | Gym setup broken; NSFW scanning misaligned | Align upload, rules and `SCAN_PREFIXES`; close the `isAuthenticated()` hole | 4 h | `BLK-07` |
-| `DEBT-10` | Any user can mutate any post's non-content fields | Fixed in code (`BLK-08`) — `hasOnly` + delta constraints. **Deploy pending** | 1 d | `BLK-08` |
+| `DEBT-10` | Any user can mutate any post's non-content fields | Fixed and deployed (`BLK-08`) — `hasOnly` + delta constraints | 1 d | `BLK-08` |
 | `DEBT-11` | **Challenge sunset incomplete while marked ✅** | `firestore.rules:296-304`, 2 composite indexes and 4 orphan i18n keys survive; `intro.page3_title` still advertises "Community & Challenges" to users | Remove the rules block, both indexes and the orphan keys; reword the intro copy | 1 h | `CHL-00`, `FB-15`, `I18N-02` |
 | `DEBT-12` | Marketplace injection via `coach_uid == 'demo'` | Any user publishes to a public storefront | Remove the exemption; seed server-side | 4 h | `BLK-09` |
 | `DEBT-13` | User doc world-readable with email, IP, device fingerprints | GDPR/KVKK exposure in the primary market | Split public/private/internal; migrate; narrow the rule | 3–5 d | `BLK-10` |
@@ -3374,8 +3375,11 @@ The first ten things to do, in this order. Everything else follows from them.
 10. **`TEST-08`** — write and execute an honest manual QA pass on physical iOS and Android devices.
     **Every one of the seven dead paths would have been caught by this. It is the cheapest and most
     effective quality intervention available.**
+11. ~~**`BLK-08`**~~ — `posts`/comments/gym-posts update rules were a denylist (any authenticated user
+    could write any non-content field); now an allowlist with ±1 delta-constrained counters, deployed.
+    Found and fixed the identical bug in 2 more collections than the ticket named.
 
-Then: `BLK-08`, `BLK-11`+`AI-03`, `BLK-14`, `BLK-15`, `BLK-17`, `DR-01`, `DR-02` → M2 legal
+Then: `BLK-11`+`AI-03`, `BLK-14`, `BLK-15`, `BLK-17`, `DR-01`, `DR-02` → M2 legal
 track (`BLK-10`, `BLK-12`, `LEG-06`, `LEG-07`) → M3 commerce (`BLK-04`) → M4 beta.
 
 ---

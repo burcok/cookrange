@@ -34,8 +34,7 @@ feed); `getGroupFeedStream` serves the scoped feed. Joined groups mirror onto
 > non-owners may only touch engagement bookkeeping (`likesCount`/`likedUserIds`/`recentLikers`/
 > `reactions`/`commentsCount`), with the two scalar counters constrained to ±1 per write. The identical
 > bug also existed on `posts/{id}/comments` and `gyms/{id}/posts` (that's where the announcement flag
-> actually lives) — fixed the same way. Code + rules-tests done, deploy pending; see
-> `PROJECT_STATE.md`.
+> actually lives) — fixed the same way. Deployed 2026-08-01; see `PROJECT_STATE.md`.
 
 ---
 
