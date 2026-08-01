@@ -286,7 +286,7 @@ with the app still alive underneath. No crash anywhere in the flow — the liter
 **Not done:** physical-iPhone confirmation and a signed `flutter build ipa` — no physical device
 available, and no Apple signing identity exists yet (`BLK-16`) regardless.
 
-### Fixed (code) — `BLK-06`: `meal_plan_history` rule written — **not yet deployed** (2026-08-01)
+### Fixed — `BLK-06`: `meal_plan_history` had no security rule, feature was permanently empty (2026-08-01)
 
 `users/{uid}/meal_plan_history/{key}` is written on every plan save and read by a 298-line history
 screen. It has a composite index. It had no security rule — catch-all deny — so the write and the
@@ -307,15 +307,14 @@ since this feature shipped.
 
 **Verified:** `flutter analyze lib/` — 0 errors, 25 infos (unchanged). `flutter test` — 79/79 pass.
 The rules test itself could not be run locally — no Java on this machine, same pre-existing
-constraint as the rest of this suite (`BLK-13`); CI's `firestore-rules` job is the authoritative
-check once pushed.
+constraint as the rest of this suite (`BLK-13`) — CI's `firestore-rules` job
+([run #50](https://github.com/burcok/cookrange/actions/runs/30697804480)) ran it for real and it
+passed.
 
-**Not done, deliberately: the rule is not deployed.** A `firestore.rules` file change has zero
-effect on the live app until someone runs `firebase deploy --only firestore:rules` (or a full
-deploy) against the real project. Right now, production is still enforcing the old (missing) rule
-— this feature is still broken for every real user. Deploying rules to the live backend is a real,
-shared-infrastructure action; it wasn't done as part of this change and is flagged for a separate,
-explicit go-ahead rather than folded in silently.
+**Deployed:** `firebase deploy --only firestore:rules --project cookrange-app`, with explicit
+user go-ahead (rules changes are live, shared-infrastructure actions — asked first rather than
+folded in silently). Confirmed by the CLI's own output: "released rules firestore.rules to
+cloud.firestore." The feature is live for real users as of this deploy.
 
 ---
 

@@ -72,7 +72,6 @@ Full cards in [`TODO.md`](TODO.md) §2.
 | `BLK-03` | 🔥 Push fan-out wired to a path nothing writes | [Community](docs/COMMUNITY.md) |
 | `BLK-04` | 🔥 Monetization non-functional end to end | [Premium](docs/PREMIUM.md) |
 | `BLK-05` | 🔥 Admin surface unreachable — `admin_roles/{uid}` created by nothing | [Security](docs/SECURITY.md) |
-| `BLK-06` | ⚠️ `meal_plan_history` rule **written, not deployed** — still permanently empty until `firebase deploy --only firestore:rules` runs | [Database](docs/DATABASE.md) |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | [Gym](docs/GYM_ECOSYSTEM.md) |
 | `BLK-08` | 🔥 Any user can mutate any post's non-content fields | [Security](docs/SECURITY.md) |
 | `BLK-09` | 🔥 `coach_uid == 'demo'` lets any user publish to the public marketplace | [Coach](docs/COACH_ECOSYSTEM.md) |
@@ -99,7 +98,6 @@ Full cards in [`TODO.md`](TODO.md) §2.
 | 🚧 Monetization (IAP client + server validation both exist) | `BLK-04` |
 | 🚧 Gym ecosystem (11 screens) · Coach ecosystem (8 screens) | `BLK-05`, `BLK-03`, `BLK-07` |
 | 🚧 Program marketplace | `BLK-09` |
-| 🚧 Meal plan history | `BLK-06` |
 | 🚧 Dish catalog | `BLK-11` |
 | 🚧 Moderation (scans wrong prefix; queue unreachable) | `BLK-05` |
 | 🚧 CD — deploy workflow (TestFlight + Play, never run) | `BLK-16` |
@@ -115,10 +113,12 @@ unconfigured, never fabricates; real proxy call path still unverified, see `BE-0
 iOS photo-picker path (`BLK-02` — `NSPhotoLibraryUsageDescription` present, all 6 gallery call sites
 prime via `PermissionService`, permanent CI guard against the string going missing again; confirmed
 crash-free on Simulator, physical-iPhone confirmation still pending a device) ·
+meal plan history (`BLK-06` — owner rule deployed to production, both read/write paths report to
+Crashlytics; rules test confirmed passing in CI, full on-device flow not separately walked) ·
 allergen pre-filter · prompt-injection guard · Hive AES-256 · consent registry · design system ·
 EN/TR parity (2,722 keys) · maintenance + force-update gates · feature kill-switches ·
 image upload pipeline · `pollCount` discipline · `flutter analyze lib/` 0 errors ·
-Firestore rules test suite (15 assertions, partial coverage) green in real CI ·
+Firestore rules test suite (16 test cases, partial coverage) green in real CI ·
 **CI — all 4 jobs green** (`analyze-and-test`, `firestore-rules`, `secret-scan`, `build-android`),
 confirmed in a real run, first time in this repo's history.
 

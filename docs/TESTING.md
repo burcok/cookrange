@@ -4,8 +4,8 @@
 > CI mechanics live in [`DEVOPS.md`](DEVOPS.md).
 >
 > ⚠️ **Coverage is still ~1 % of ~115k LOC** — line coverage hasn't moved. What changed (`BLK-13`):
-> `test/` is tracked in git, all 3 previously-failing tests now pass, and the 15-assertion Firestore
-> rules suite runs green **in a real CI run**, not just locally
+> `test/` is tracked in git, all 3 previously-failing tests now pass, and the Firestore rules suite
+> runs green **in a real CI run**, not just locally
 > ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)). Testing was the
 > lowest-scoring dimension at 2.0 / 10; it is still the highest-leverage thing anyone can improve —
 > 1 % coverage means almost everything is still unproven.
@@ -16,12 +16,12 @@
 
 | | |
 |---|---|
-| Test files | **14**, all unit tests |
+| Test files | **13** (12 Dart unit/widget + 1 Firestore rules) |
 | Coverage | **~1 %** of ~115k LOC |
 | Failing | **0** |
-| Widget tests | 1 (the Flutter scaffold default) |
+| Widget tests | 2 (`widget_test.dart`'s scaffold default; `meal_plan_ai_unavailable_test.dart`'s `AppErrorState` check, `BLK-01`) |
 | Integration tests | **0** |
-| Firestore rules tests | **15**, in version control (`test/firestore_rules/rules.test.mjs`) |
+| Firestore rules tests | **16**, in version control (`test/firestore_rules/rules.test.mjs`) |
 | **`test/` tracked in git?** | **Yes** |
 
 **Un-ignoring `test/` was the root-cause fix.** Tests written locally were never reaching the
@@ -56,13 +56,17 @@ cover, and they're good.
 | `app_lifecycle_service_test.dart` | Lifecycle transitions |
 | `i18n_parity_test.dart` | **EN/TR key parity — the one real CI gate** |
 | `widget_test.dart` | Default scaffold smoke test |
-| `firestore_rules/rules.test.mjs` | 15 assertions: economy lock, server-only ledgers, PII isolation, content caps, admin self-grant denial — runs against the emulator, not `flutter test` |
+| `meal_plan_ai_unavailable_test.dart` | `AppErrorState` renders the exact copy `home.dart` falls back to when AI is unconfigured (`BLK-01`); `onRetry` omitted — see the file's own comment for why a full `HomeScreen` mount isn't feasible (ADR-004) |
+| `firestore_rules/rules.test.mjs` | 16 test cases: economy lock, server-only ledgers, PII isolation, content caps, admin self-grant denial, owner-only `meal_plan_history` (`BLK-06`) — runs against the emulator, not `flutter test` |
 
-These share a shape worth copying: **pure Dart, no Firebase, deterministic, real edge cases.**
+These share a shape worth copying: **pure Dart, no Firebase, deterministic, real edge cases** (the one
+exception, `meal_plan_ai_unavailable_test.dart`, is a widget test — it needs no Firebase either, since
+it exercises a design-system component directly rather than a screen).
 `i18n_parity_test.dart` is the model for what a gate should be — mechanical, fast, unarguable.
-All 11 Dart files above were already accurate as "what exists" before `BLK-13` — but 3 of them
+The first 11 Dart files above were already accurate as "what exists" before `BLK-13` — but 3 of them
 (`allergen_safety_test.dart`, `ai_credit_model_test.dart`, `cost_analytics_test.dart`) existed only on
-disk, not in git, which this page did not previously say.
+disk, not in git, which this page did not previously say. `meal_plan_ai_unavailable_test.dart` was
+added after, with `BLK-01`.
 
 ---
 
@@ -81,15 +85,14 @@ disk, not in git, which this page did not previously say.
 ### Priority order
 
 1. ~~**`BLK-13`** — un-ignore `test/`, fix the 3 failures, get CI green.~~ **Fixed and confirmed**:
-   `test/` tracked, 0 local failures, rules suite green in a real CI run
-   ([#40](https://github.com/burcok/cookrange/actions/runs/30667024406)). "Get CI green" itself is
-   only 2/4 — `analyze-and-test` fails on a confirmed pre-existing, unrelated issue, tracked as
-   `CI-11`.
-2. **`TEST-01` — Firestore rules tests in version control.** Landed as part of `BLK-13` — 15
-   assertions in `test/firestore_rules/rules.test.mjs`, covering the security model directly:
-   `BLK-06`/`BLK-07`/`BLK-08`-shaped defects are exactly what this class of test catches at write
-   time, and it's now confirmed to run and pass in CI, not just locally. Still needed: extend it
-   toward all 71 rule match blocks, not just the 15 covered today.
+   `test/` tracked, 0 local failures, all 4 CI jobs green
+   ([run #46](https://github.com/burcok/cookrange/actions/runs/30690211684)) — `analyze-and-test`'s
+   `CI-11` and `build-android`'s `CI-12` were found and fixed after this card closed; see
+   `PROJECT_STATE.md` for the live count.
+2. ~~**`TEST-01` — Firestore rules tests in version control.**~~ Landed as part of `BLK-13`, since
+   grown to 16 test cases in `test/firestore_rules/rules.test.mjs` (`BLK-06` added the
+   `meal_plan_history` owner-only case), covering the security model directly. Still needed: extend
+   it toward all 71 rule match blocks, not just the 16 covered today.
 3. **`TEST-02` — widget tests** for the states that break silently: loading, empty, error, and both
    themes.
 4. **`TEST-03` — integration tests** against the emulator for the consumer path: signup → onboarding
@@ -168,7 +171,7 @@ un-ignoring `test/` makes the jobs runnable, it doesn't yet make them required.
 
 | Milestone | Target | Focus |
 |---|---|---|
-| **M1 — Truth** | `test/` tracked ✅, 3 failures fixed ✅, CI green 🚧 2/4 (`CI-11` blocks the rest) | Make the gate exist |
+| **M1 — Truth** | `test/` tracked ✅, 3 failures fixed ✅, CI green ✅ all 4 jobs | Make the gate exist |
 | **M2 — Legal** | Rules suite covering every collection | Security is only real if it's tested |
 | **M4 — Beta** | ~30 % line coverage; consumer path in integration tests | Cover what users actually touch |
 | **M6+** | ~60 % on `core/`; widget tests on all primary screens | Sustainable |
