@@ -165,8 +165,20 @@ silently.
 `ubuntu:24.04` container under `--platform linux/amd64` (matching GitHub's actual runner
 architecture), cloned Flutter `3.44.4`, and tested the **exact bytes about to be pushed** via
 `git archive` of a `git stash create` snapshot — not an approximation. `pub get`, `dart format`,
-`flutter analyze --no-fatal-infos`, and `flutter test` (78/78) all exit 0 in that container. Real CI
-confirmation for this final round is the next step.
+`flutter analyze --no-fatal-infos`, and `flutter test` (78/78) all exit 0 in that container.
+
+**Confirmed in a real CI run** ([#44](https://github.com/burcok/cookrange/actions/runs/30687453667)):
+`analyze-and-test` genuinely green end to end in 2m 29s — `Get dependencies`, `Verify formatting`,
+`Analyze code`, and `Run tests` all succeeded. `firestore-rules` and `secret-scan` green as before.
+**All three of `CI-11`'s root causes are real, fixed, and now proven, not just locally verified.**
+
+`build-android` failed on a **fourth, distinct, previously-unreachable failure** — `flutter build apk
+--debug` itself, the first time this exact step has ever executed in this repo's CI history (it was
+always blocked upstream before now). Doesn't reproduce locally (`flutter build apk --debug` succeeds
+cleanly on this machine's Android SDK in ~73s). Opened as a new item, `CI-12`, rather than chased
+further in this same pass — an Android build failure isn't inherently OS-specific like the `analyze`
+bugs were, so the likelier explanation is a GitHub-runner-specific SDK/toolchain gap, which needs
+either the real log text or a much larger Android-SDK-in-a-container setup to diagnose properly.
 
 ---
 

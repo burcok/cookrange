@@ -56,7 +56,7 @@
 | Code quality | 6.5 / 10 | Readable, null-safe; **swallow-and-log is the systemic defect** |
 | Maintainability | 5.5 / 10 | 40 files > 800 LOC, no interfaces, no test seam |
 | **Documentation** | **6.5 / 10** | Well-organised and now status-honest (this file); breadth still outruns verification |
-| **Testing** | **2.5 / 10** | **~1 % coverage** (unchanged) — but `test/` is now tracked, 0 failing, the rules suite runs green in real CI; `CI-11`'s 3 stacked root causes (stale Flutter pin, invalid CI placeholder, a real `assets/Fonts` vs `assets/fonts` case bug) all fixed and container-verified, pending final real-CI confirmation |
+| **Testing** | **3.0 / 10** | **~1 % coverage** (unchanged) — but `test/` is now tracked, 0 failing, and 3 of 4 CI jobs are **genuinely, confirmedly green** (`analyze-and-test`, `firestore-rules`, `secret-scan`). `build-android` fails on a new issue, `CI-12` |
 | Business readiness | 2.0 / 10 | **Zero revenue capability**; premium bypassable |
 | Production readiness | 2.5 / 10 | Two hard ship blockers, CI red, no monitoring, no backups |
 | **Weighted composite** | **5.4 / 10** | Strong design instincts, high velocity, **no verification discipline** |
@@ -81,7 +81,7 @@ Full cards in [`TODO.md`](TODO.md) §2.
 | `BLK-10` | 🔥 User doc world-readable with `email`, `last_login_ip`, device fingerprints | [Security](docs/SECURITY.md) |
 | `BLK-11` | 🔥 Dish catalog unseedable in-app; only 75 dishes | [Database](docs/DATABASE.md) |
 | `BLK-12` | 🔥 GDPR erasure + export incomplete | [Compliance](docs/COMPLIANCE.md) |
-| `BLK-13` | 🚧 Own defects fixed & verified in real CI; **`CI-11`** found 3 stacked root causes (stale Flutter pin; an invalid `firebase_options.dart` CI placeholder; a real `assets/Fonts`/`assets/fonts` case-sensitivity bug masked by macOS for the project's whole life) — all fixed, verified in a real Ubuntu container matching CI exactly, pending final real-CI confirmation | [Testing](docs/TESTING.md) |
+| `BLK-13` | 🚧 Own defects fixed & verified in real CI; `CI-11`'s 3 root causes (stale Flutter pin; invalid `firebase_options.dart` placeholder; `assets/Fonts`/`assets/fonts` case bug masked by macOS project-wide) all fixed and **confirmed in real CI** — 3/4 jobs genuinely green. **`CI-12`** (new, undiagnosed — `build-android`'s first-ever real run failed) is what remains | [Testing](docs/TESTING.md) |
 | `BLK-14` | 🔥 App Check not enforced (`APP_ENV=development`) | [Security](docs/SECURITY.md) |
 | `BLK-15` | 🔥 Live OpenRouter key bundled as a Flutter asset + shipped in CI artifacts | [AI](docs/AI_SYSTEM.md) |
 | `BLK-16` | 🔥 No Apple / Google enrolment, no signing identity | [DevOps](docs/DEVOPS.md) |
@@ -165,7 +165,10 @@ Store review is an irreducible 1–2 weeks of wall clock.
    until Linux (CI, real Android devices) tried to resolve it — fixed via case-only rename, plus 54
    accidentally-committed Xcode build-cache files removed along the way. Verified in a real
    `ubuntu:24.04` container matching CI's architecture exactly (no Docker Desktop here — installed
-   `colima`). **Push and get the real CI confirmation**, then add branch protection (`CI-02`).
+   `colima`). **Confirmed in real CI** ([run #44](https://github.com/burcok/cookrange/actions/runs/30687453667)):
+   `analyze-and-test`, `firestore-rules`, `secret-scan` all genuinely green. `build-android` fails on
+   a **new, 4th, undiagnosed issue** — opened as `CI-12` rather than chased further given how much
+   ground `CI-11` already covered. Branch protection (`CI-02`) waits on `CI-12`.
 4. **`BLK-02`** — add the missing iOS usage string (one line, prevents 6 crashes + rejection).
 5. **`BLK-05` / `BLK-03` / `BLK-06`** — the "shipped but dead" cluster: create `admin_roles`, point
    the push trigger at the real path, add the `meal_plan_history` rule.
