@@ -978,3 +978,6 @@ exports.deleteUserAccount = account.deleteUserAccount;
 
 const media = require('./media');
 exports.scanImage = media.scanImage;
+
+const adminRoles = require('./admin');
+exports.syncAdminClaim = adminRoles.syncAdminClaim;

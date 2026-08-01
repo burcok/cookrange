@@ -1324,8 +1324,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Admin panel (admin-only)
-                    if (userProvider.user?.hasRole(UserRole.admin) == true) ...[
+                    // Admin panel (admin-only) — gated on the `admin` custom
+                    // claim (server truth), not the client-writable user_roles
+                    // array. See UserProvider.isAdmin (BLK-05).
+                    if (userProvider.isAdmin) ...[
                       _buildGlassSection(
                         context: context,
                         title: appLoc.translate('admin.panel_title'),

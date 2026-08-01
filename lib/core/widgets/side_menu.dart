@@ -398,7 +398,9 @@ class _SidePanel extends StatelessWidget {
       BuildContext context, UserModel user, AppLocalizations l10n) {
     final cards = <Widget>[];
 
-    if (user.hasRole(UserRole.admin)) {
+    // Gated on the `admin` custom claim (server truth), not the client-writable
+    // user_roles array — see UserProvider.isAdmin (BLK-05).
+    if (context.watch<UserProvider>().isAdmin) {
       cards.add(_AdminCard(
           l10n: l10n,
           palette: palette,

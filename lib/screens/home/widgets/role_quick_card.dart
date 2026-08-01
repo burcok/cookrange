@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/providers/user_provider.dart';
 import '../../../core/services/admin_service.dart';
 import '../../../core/utils/firestore_count.dart';
 import '../../../core/widgets/ds/ds.dart';
@@ -22,7 +24,10 @@ class RoleQuickCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cards = <Widget>[];
 
-    if (user.hasRole(UserRole.admin)) cards.add(_AdminCard(user: user));
+    // Gated on the `admin` custom claim (server truth), not the client-writable
+    // user_roles array — see UserProvider.isAdmin (BLK-05).
+    if (context.watch<UserProvider>().isAdmin)
+      cards.add(_AdminCard(user: user));
     if (user.hasRole(UserRole.gymOwner)) cards.add(_GymCard(user: user));
     if (user.hasRole(UserRole.coach)) cards.add(_CoachCard(user: user));
 

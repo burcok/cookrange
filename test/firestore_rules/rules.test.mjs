@@ -187,6 +187,35 @@ test('admin/status: a user CANNOT self-grant admin', async () => {
   );
 });
 
+test('admin_roles: write is denied to everyone via client SDK, even an admin (BLK-05)', async () => {
+  // admin_roles/{uid} is console/Admin-SDK only (write: false unconditionally)
+  // — the whole bootstrap runbook depends on this being true, since it's the
+  // only thing that makes a self-granted admin claim impossible.
+  await seed('admin_roles/u1', { is_admin: true });
+  await assertFails(
+    setDoc(doc(db('u1'), 'admin_roles/u2'), { is_admin: true })
+  );
+});
+
+test('admin-only collections: provisioned admin reads, non-admin denied (BLK-05)', async () => {
+  // admin_roles/{uid} is the real admin gate (isAdmin() in firestore.rules).
+  // Seed it directly to simulate a console-provisioned admin — this is the
+  // only way it's ever created for real too. u2 has no admin_roles doc, i.e.
+  // the default state of every account before BLK-05.
+  await seed('admin_roles/u1', { is_admin: true });
+  await seed('admin_audit/a1', { action: 'test', admin_uid: 'u1' });
+  await seed('ai_usage_logs/l1', { uid: 'u2', cost: 1 });
+  await seed('admin_config/global', { maintenance_mode: false });
+
+  await assertSucceeds(getDoc(doc(db('u1'), 'admin_audit/a1')));
+  await assertSucceeds(getDoc(doc(db('u1'), 'ai_usage_logs/l1')));
+  await assertSucceeds(getDoc(doc(db('u1'), 'admin_config/global')));
+
+  await assertFails(getDoc(doc(db('u2'), 'admin_audit/a1')));
+  await assertFails(getDoc(doc(db('u2'), 'ai_usage_logs/l1')));
+  await assertFails(getDoc(doc(db('u2'), 'admin_config/global')));
+});
+
 test('unauthenticated access is denied', async () => {
   await seed('users/u1', { displayName: 'A' });
   const anon = env.unauthenticatedContext().firestore();

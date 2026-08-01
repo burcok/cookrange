@@ -31,17 +31,12 @@ class AdminStatusService {
     try {
       final rc = RemoteConfigService();
 
-      // Firestore admin_config/global takes priority over Remote Config.
-      final firestoreMaintenance = await _firestoreMaintenanceMode();
-      if (firestoreMaintenance ?? rc.maintenanceMode) {
+      if (rc.maintenanceMode) {
         _log.warning('App is in maintenance mode', service: _serviceName);
         return AdminStatus.maintenance;
       }
 
-      final firestoreMinVersion = await _firestoreMinVersion();
-      final minVersion = (firestoreMinVersion?.isNotEmpty ?? false)
-          ? firestoreMinVersion!
-          : rc.minVersion;
+      final minVersion = rc.minVersion;
       if (minVersion.isNotEmpty && await _isUpdateRequired(minVersion)) {
         _log.warning('App update required. Min: $minVersion',
             service: _serviceName);
@@ -94,24 +89,6 @@ class AdminStatusService {
     final doc = await _firestore.collection('users').doc(userId).get();
     _cachedBanStatus = doc.data()?['is_banned'] == true;
     return _cachedBanStatus!;
-  }
-
-  Future<bool?> _firestoreMaintenanceMode() async {
-    try {
-      final doc =
-          await _firestore.collection('admin_config').doc('global').get();
-      if (doc.exists) return doc.data()?['maintenance_mode'] as bool?;
-    } catch (_) {}
-    return null;
-  }
-
-  Future<String?> _firestoreMinVersion() async {
-    try {
-      final doc =
-          await _firestore.collection('admin_config').doc('global').get();
-      if (doc.exists) return doc.data()?['min_version'] as String?;
-    } catch (_) {}
-    return null;
   }
 
   void notifyBanned(String userId) {

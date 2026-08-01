@@ -50,9 +50,12 @@ service cloud.firestore {
     // self-service model lets a user become coach/gymOwner (coach_service /
     // gym_service write their own roles), and coach/gym FEATURES are gated by
     // ownership, not by this array. True admin power is gated server-side by
-    // admin/status/{uid} (deny-all to clients) — a self-written user_roles:
-    // ['admin'] only reveals client admin UI (cosmetic, M18), never real admin
-    // capability. Gating that UI on a server claim is a separate follow-up.
+    // admin_roles/{uid} (write: false — console/Admin-SDK only, see isAdmin()
+    // above) — a self-written user_roles: ['admin'] only reveals client admin
+    // UI, never real admin capability. The client now gates that UI on the
+    // `admin` custom claim that syncAdminClaim mirrors from admin_roles/{uid}
+    // (BLK-05), not on this array. (admin/status/{uid}/flags is a separate,
+    // unrelated concept — ban state, not admin-ness.)
     function touchesProtectedUserFields() {
       return request.resource.data.diff(resource.data).affectedKeys().hasAny([
         'subscription_tier', 'subscription_expires_at', 'subscription_product_id',

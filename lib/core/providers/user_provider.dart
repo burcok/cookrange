@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../models/user_nutrition_profile.dart';
 import '../services/auth_service.dart';
+import '../services/crashlytics_service.dart';
 import '../services/firestore_service.dart';
 
 /// Holds the authenticated user's public profile ([user]) plus their private
@@ -21,6 +23,7 @@ class UserProvider extends ChangeNotifier {
   UserModel? _user;
   UserNutritionProfile _nutritionProfile = UserNutritionProfile.empty;
   bool _isLoading = false;
+  bool _isAdmin = false;
 
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userDocSub;
 
@@ -32,6 +35,12 @@ class UserProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
 
+  /// True when the signed-in user's ID token carries the `admin` custom claim
+  /// (server-set by `syncAdminClaim` from `admin_roles/{uid}`, `BLK-05`). This
+  /// is the only thing the admin UI should gate on — `user.hasRole(UserRole.
+  /// admin)` reads the client-writable `user_roles` array and proves nothing.
+  bool get isAdmin => _isAdmin;
+
   // ─── Public API ─────────────────────────────────────────────────────────────
 
   Future<void> loadUser({bool silent = false}) async {
@@ -40,6 +49,7 @@ class UserProvider extends ChangeNotifier {
       await _stopLiveListener();
       _user = null;
       _nutritionProfile = UserNutritionProfile.empty;
+      _isAdmin = false;
       notifyListeners();
       return;
     }
@@ -51,6 +61,7 @@ class UserProvider extends ChangeNotifier {
 
     try {
       await _fetchAndMerge(authUser.uid);
+      await _refreshAdminClaim(authUser);
     } catch (e) {
       debugPrint('UserProvider.loadUser error: $e');
     } finally {
@@ -65,6 +76,25 @@ class UserProvider extends ChangeNotifier {
     // Start live listener after the first full load so role/subscription
     // changes (e.g. admin approval) update the app without a restart.
     _startLiveListener(authUser.uid);
+  }
+
+  /// Reads the `admin` custom claim off the cached ID token. Does **not**
+  /// force a refresh — a forced refresh on every `loadUser()` call would cost
+  /// a round trip for something that changes only when an admin is
+  /// provisioned or revoked. A newly-granted admin sees the claim after their
+  /// next natural token refresh (SDK does this hourly) or a sign-out/in.
+  /// Fails closed on error: `_isAdmin` is explicitly set to false, never left
+  /// at a possibly-stale `true` from a previous successful call.
+  Future<void> _refreshAdminClaim(User authUser) async {
+    try {
+      final result = await authUser.getIdTokenResult();
+      _isAdmin = result.claims?['admin'] == true;
+    } catch (e, stack) {
+      _isAdmin = false;
+      debugPrint('UserProvider._refreshAdminClaim error: $e');
+      unawaited(CrashlyticsService().recordError(e, stack,
+          reason: 'UserProvider._refreshAdminClaim uid=${authUser.uid}'));
+    }
   }
 
   void setUser(UserModel? user) {
