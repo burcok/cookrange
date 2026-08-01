@@ -6,7 +6,7 @@
 > Keep it **small**. Status lines only — no design, no rationale, no task detail. Full task cards
 > live in [`TODO.md`](TODO.md); decisions live in [`DECISIONS.md`](DECISIONS.md).
 
-**Last updated:** 2026-08-01 · **Source of record:** `TODO.md` §1 (audit 2026-07-31; `BLK-13` re-verified 2026-08-01)
+**Last updated:** 2026-08-01 · **Source of record:** `TODO.md` §1 (audit 2026-07-31; `BLK-13` re-verified 2026-08-01; `BLK-01` closed 2026-08-01)
 
 ---
 
@@ -48,7 +48,7 @@
 | Architecture | 6.5 / 10 | Clean layering; god objects, abandoned repository layer, no DI seam |
 | Flutter craft | 7.0 / 10 | Analyzer-clean at 115k LOC, real design system; 87 raw spinners, 334 hardcoded colours |
 | Firebase | 6.0 / 10 | 684-line rules with real field-locking; 7 path/rule mismatches, 8 open-write holes |
-| AI | 5.5 / 10 | Best-in-class quota/cost/injection/allergen layers; **fatal mock-data default** |
+| AI | 7.0 / 10 | Best-in-class quota/cost/injection/allergen layers; mock-data default fixed (`BLK-01`); real proxy E2E unverified (`BE-01`) |
 | **Security** | **4.0 / 10** | Sophisticated design; **all 18 of its own gates unchecked**, App Check unenforced |
 | Performance | 6.0 / 10 | Cached images, `pollCount`, pagination; **zero measurement anywhere** |
 | UX | 6.5 / 10 | Design system + motion + flawless i18n; accessibility 3/10, loading states 4/10 |
@@ -58,7 +58,7 @@
 | **Documentation** | **6.5 / 10** | Well-organised and now status-honest (this file); breadth still outruns verification |
 | **Testing** | **3.0 / 10** | **~1 % coverage** (unchanged) — but `test/` is now tracked, 0 failing, and **all 4 CI jobs are confirmed green** for the first time in this repo's history |
 | Business readiness | 2.0 / 10 | **Zero revenue capability**; premium bypassable |
-| Production readiness | 2.5 / 10 | Two hard ship blockers, CI red, no monitoring, no backups |
+| Production readiness | 3.0 / 10 | CI green, worst data-integrity blocker fixed; still no monitoring, no backups, no store presence |
 | **Weighted composite** | **5.4 / 10** | Strong design instincts, high velocity, **no verification discipline** |
 
 ---
@@ -69,7 +69,6 @@ Full cards in [`TODO.md`](TODO.md) §2.
 
 | ID | Blocker | Domain |
 |---|---|---|
-| `BLK-01` | 🔥 Release builds serve **hardcoded fake AI content** by default | [AI](docs/AI_SYSTEM.md) |
 | `BLK-02` | 🔥 `NSPhotoLibraryUsageDescription` missing from iOS `Info.plist` — crash + auto-rejection | [Platform](docs/PLATFORM.md) |
 | `BLK-03` | 🔥 Push fan-out wired to a path nothing writes | [Community](docs/COMMUNITY.md) |
 | `BLK-04` | 🔥 Monetization non-functional end to end | [Premium](docs/PREMIUM.md) |
@@ -95,7 +94,7 @@ Full cards in [`TODO.md`](TODO.md) §2.
 
 | System | Blocked by |
 |---|---|
-| 🚧 AI meal planning · recipe generation | `BLK-01` |
+| 🚧 AI meal planning · recipe generation — no longer fabricates when unconfigured (`BLK-01` ✅); real end-to-end generation still unverified | `BE-01` |
 | 🚧 Push notifications (chat push works; social/admin push does not) | `BLK-03` |
 | 🚧 Admin surface (~7,400 LOC, 9 screens) | `BLK-05` |
 | 🚧 Monetization (IAP client + server validation both exist) | `BLK-04` |
@@ -112,6 +111,8 @@ Auth (email/Google/Apple) · Onboarding V2 · calorie & macro maths · streak lo
 recent/favourite foods · water reminders · weight/hydration/exercise logging · shopping list ·
 cooking mode · community feed & comments & reactions · 1:1 + group chat · in-app notifications ·
 achievements · AI insight/twin/recap (all guard `isConfigured`) · AI proxy security core ·
+AI meal-plan/recipe generation degradation path (`BLK-01` — throws + branded error state when
+unconfigured, never fabricates; real proxy call path still unverified, see `BE-01`) ·
 allergen pre-filter · prompt-injection guard · Hive AES-256 · consent registry · design system ·
 EN/TR parity (2,722 keys) · maintenance + force-update gates · feature kill-switches ·
 image upload pipeline · `pollCount` discipline · `flutter analyze lib/` 0 errors ·
@@ -137,7 +138,7 @@ IDs in `TODO.md` §1.6.
 
 | Milestone | Version | Exit criterion | Est (solo) |
 |---|---|---|---|
-| **M1 — Truth** | `v0.9.7` | Every consumer-path feature demonstrated on a physical iPhone **and** Android against a production-configured backend. All 17 blockers closed (`BLK-13` ✅, 16 remain). ~~CI green~~ **✅ done** — all 4 jobs confirmed. | 4–6 w |
+| **M1 — Truth** | `v0.9.7` | Every consumer-path feature demonstrated on a physical iPhone **and** Android against a production-configured backend. All 17 blockers closed (`BLK-13` ✅, `BLK-01` ✅, 15 remain). ~~CI green~~ **✅ done** — all 4 jobs confirmed. | 4–6 w |
 | **M2 — Legal** | `v0.9.8` | `S0`–`S17` green. User doc split. Erasure + export complete. Privacy labels + Data Safety filed. DPA executed. Backups live. | 3–4 w ∥ |
 | **M3 — Commerce** | `v0.9.9` | Both stores enrolled. 3 products live. One real sandbox purchase → real entitlement. Premium gated server-side. | 3–4 w ∥ |
 | **M4 — Beta** | `v1.0.0-beta1` | 50–100 real users. Dish catalog ≥ 300. D7 measured. Crash-free > 99 %. A11y pass on 10 flows. | 4 w |
@@ -154,8 +155,12 @@ Store review is an irreducible 1–2 weeks of wall clock.
 
 1. **`S0` — rotate the leaked Firebase Admin service-account key.** Independent of everything; a live
    key bypassing all rules is the highest-severity open item.
-2. **`BLK-01`** — add the `isConfigured` guard so release builds cannot serve fabricated meal plans.
-   Fabricated health guidance is the worst failure mode this app has.
+2. ~~**`BLK-01`**~~ **Done** — mock block deleted, `isConfigured` guards added to both AI services,
+   branded error states wired in `home.dart` / `explore_screen.dart`, startup Crashlytics assertion
+   added, regression test in `test/meal_plan_ai_unavailable_test.dart`. Release builds can no longer
+   fabricate a meal plan. **Residual:** `BE-01` (deploy `aiProxy` + set `ai_proxy_url`) is now a hard
+   launch dependency instead of a silently-degraded one — without it, users see the honest error state
+   forever, not a broken app, but the feature doesn't work either.
 3. ~~**`BLK-13`** / **`CI-11`** / **`CI-12`**~~ **All done — all 4 CI jobs confirmed green**
    ([run #46](https://github.com/burcok/cookrange/actions/runs/30690211684), commit `091429e`), first
    time in this repo's history. Four stacked root causes found and fixed across the two follow-on

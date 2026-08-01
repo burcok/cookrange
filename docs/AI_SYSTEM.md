@@ -14,8 +14,8 @@ The model's output becomes **meal plans and nutrition guidance for people with a
 answer is not a bad UX — it can be a health harm. Two consequences run through this whole document:
 
 1. **Never fabricate.** An AI path that returns plausible content when it isn't actually talking to a
-   model is the worst possible failure. This is live today as `BLK-01` — release builds serve
-   hardcoded fake meal plans by default. Fix before anything else in this domain.
+   model is the worst possible failure. Release builds serving hardcoded fake meal plans by default
+   was exactly this, tracked as `BLK-01` — closed; see §9.
 2. **Never trust the model with safety.** Allergen exclusion is enforced **deterministically in Dart**,
    before and after the model — not by asking the model nicely.
 
@@ -149,8 +149,8 @@ contains `"ignore previous instructions"`.
 
 ### The degradation contract
 Every AI feature **must** no-op cleanly when `AIService().isConfigured == false` — show a real
-"unavailable" state. It must **never** substitute mock or hardcoded content. `BLK-01` is precisely
-this contract being violated in release builds.
+"unavailable" state. It must **never** substitute mock or hardcoded content. `BLK-01` was precisely
+this contract being violated in release builds; the meal-plan and recipe paths now enforce it too.
 
 Credits are rolled back server-side on a failed generation.
 
@@ -166,7 +166,6 @@ control.
 
 | ID | Issue |
 |---|---|
-| `BLK-01` 🔥 | Release builds serve hardcoded fake AI content by default — no `isConfigured` guard on the meal-plan and recipe paths |
 | `BLK-15` 🔥 | Live OpenRouter key bundled as a Flutter asset and shipped in CI artifacts |
 | `S6` | Client direct-key fallback still present; App Check unenforced; no OpenRouter spend cap |
 | `PERF-10` | `aiProxy` never load-tested under real concurrency (`scripts/load_test.js` exists, unrun) |
@@ -178,7 +177,7 @@ control.
 
 ## 10. Roadmap
 
-**Near term (M1–M2)** — close `BLK-01` and `BLK-15`; enforce App Check; set a spend cap; load-test
+**Near term (M1–M2)** — close `BLK-15`; enforce App Check; set a spend cap; load-test
 the proxy; version the contract.
 
 **Mid term** — per-type model routing to trade cost against quality (schema exists in

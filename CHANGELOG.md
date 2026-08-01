@@ -208,6 +208,51 @@ than guessed at — a stale Flutter pin, an invalid `firebase_options.dart` plac
 font-directory case mismatch, and a hardcoded local Java path. `CI-02` (branch protection) is the
 natural next step, now genuinely achievable.
 
+### Fixed — `BLK-01`: release builds silently served hardcoded fake AI meal plans and recipes (2026-08-01)
+
+The single most serious defect in the repository. `AIService.isConfigured` is
+`_proxyUrl != null || (_apiKey != null && kDebugMode)` — in a release build with no proxy URL
+resolved from Remote Config (the default), it's `false`. `generateCompletion` didn't check it: it
+returned 135 lines of hardcoded JSON — seven identical days of `geleneksel_menemen` /
+`somonlu_kinoa_bowl` / `izgara_somon_sebze` / `smoothie_bowl_protein`, and a "Mock Healthy Stir Fry"
+recipe. Every mock dish ID exists in the real catalog, so the fabricated plan rendered as a
+completely plausible one — fabricated health/nutrition guidance presented as personalised AI.
+`weekly_meal_plan_service.dart` and `recipe_generation_service.dart` had zero `isConfigured` checks.
+
+**Fix:**
+- Deleted the 135-line mock block from `ai_service.dart`; `generateCompletion` now throws
+  `AIFatalException` when `!isConfigured`.
+- `WeeklyMealPlanService` and `RecipeGenerationService` guard `isConfigured` up front and `rethrow`
+  `AIFatalException` past their generic catch instead of swallowing it to `null`/`[]`.
+- `home.dart` and `explore_screen.dart` catch `AIFatalException` specifically, log a Crashlytics
+  error, and render a branded `AppErrorState` with retry — never a plan, never a blank screen.
+  `meal_plan_comparison_sheet.dart` needed no change; its existing generic catch already handled this.
+- `AppInitializationService` logs a Crashlytics **error** at startup when a release build resolves
+  no AI proxy URL, so a misconfigured deploy is loud immediately instead of discovered from user
+  reports.
+- New regression test: `test/meal_plan_ai_unavailable_test.dart`. Scope note: it exercises
+  `AppErrorState` directly (not a fully mounted `HomeScreen`) with the retry callback omitted —
+  `AppButton` reads `ThemeProvider`, whose constructor touches `FirebaseAuth.instance` synchronously,
+  and this repo has no Firebase test mocks (ADR-004).
+- 4 new EN/TR key pairs; `i18n_parity_test.dart` passes.
+
+**Verified:** `grep -c "Mock Healthy Stir Fry\|geleneksel_menemen" ai_service.dart` → `0`.
+`flutter analyze lib/` — 0 errors, 25 infos (unchanged baseline). `flutter test` — 79/79 pass.
+Ran on the iOS Simulator with `isConfigured` temporarily forced to `false` (reverted before commit;
+a true `--release` run isn't supported on any Simulator, and `kDebugMode` is a framework constant
+this fix doesn't re-derive at runtime, so the override exercises the identical branch a release
+build would take) — no crash, no fabricated content observed. Did **not** get a live look at the
+rendered `AppErrorState` on `home.dart`: this dev account has a pre-existing cached meal plan that
+correctly short-circuits before the `isConfigured` guard (`Using cached meal plan for user ...`).
+The guard → throw → catch → render chain is verified by reading, not by a live screenshot; see
+`BLK-01`'s TODO.md card for the full honest account, including a pre-existing, unrelated finding
+that `ExploreScreen` currently has no navigation route into it at all.
+
+**Residual:** `BE-01` (deploy `aiProxy`, set `ai_proxy_url`) is now a hard launch dependency — without
+it every release build shows the honest error state, never a working plan. That's the intended
+trade: a visible failure instead of a silent lie. `AI-07` (deterministic catalog-based fallback) and
+`AI-08` (`AiChatService`'s leaking fallback string) remain open, out of scope here.
+
 ---
 
 ## [0.9.6] — 2026-07-31 — *internal alpha*

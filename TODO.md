@@ -234,7 +234,6 @@ These are code-proven **and** believed functional. Full archive with evidence in
 
 | ID | Blocker | Why it blocks |
 |---|---|---|
-| `BLK-01` | 🔥 Release builds serve **hardcoded fake AI content** by default | Fabricated health guidance presented as personalised AI |
 | `BLK-02` | 🔥 `NSPhotoLibraryUsageDescription` missing from iOS `Info.plist` | Crash on 6 screens + automatic App Store rejection |
 | `BLK-03` | 🔥 Push fan-out wired to a path nothing writes; admin path has no rule | Zero social push; gym/coach approval batches fail |
 | `BLK-04` | 🔥 Monetization non-functional end to end | Zero revenue capability |
@@ -292,50 +291,93 @@ Those screens stay in the codebase behind kill-switches (`AppConfigService.isFea
 
 ---
 
-#### `BLK-01` 🔥 Release builds silently serve hardcoded fake AI meal plans and recipes
+#### `BLK-01` ✅ Closed — Release builds silently served hardcoded fake AI meal plans and recipes
 
-**Status** 🔥 Critical · **Priority** Critical · **Complexity** S · **Est** 1–2 d
+**Status** ✅ Closed 2026-08-01 · **Priority** Critical · **Complexity** S · **Est** 1–2 d
 **Version** v0.9.7 · **Milestone** M1 · **Owner** AI Architect
 **Labels** `ai` `data-integrity` `release-blocker` `health-safety` `silent-failure`
 **Modules** AI · Frontend · Product · Security
-**Files** `lib/core/services/ai/ai_service.dart:69` · `:116-265` (the 135-line mock block) · `lib/core/services/weekly_meal_plan_service.dart` · `lib/core/services/recipe_generation_service.dart` · `lib/core/services/remote_config_service.dart:23` · `lib/core/models/app_config_model.dart:208`
+**Files** `lib/core/services/ai/ai_service.dart` · `lib/core/services/weekly_meal_plan_service.dart` ·
+`lib/core/services/recipe_generation_service.dart` · `lib/core/services/app_initialization_service.dart` ·
+`lib/screens/home/home.dart` · `lib/screens/explore/explore_screen.dart` ·
+`test/meal_plan_ai_unavailable_test.dart` (new)
 **Dependencies** — · **Required before** `BLK-04`, `STORE-01`, `AI-02`, everything in M4
-**Blocking** The entire v1 launch. This is the single most serious defect in the repository.
+**Blocking** Was the entire v1 launch. The single most serious defect in the repository.
 
-**What exists / what is missing**
+**What was wrong**
 
 `isConfigured` is defined as `_proxyUrl != null || (_apiKey != null && kDebugMode)`. `_proxyUrl` is
 populated from `RemoteConfigService().aiProxyUrl` (defaults `''`) and `AppConfig.aiProxyUrl` (defaults
-`''`). Therefore **in a release build with default configuration `isConfigured == false`**, and
-`generateCompletion` returns 135 lines of hardcoded JSON: seven identical days of
+`''`). So **in a release build with default configuration `isConfigured == false`**, and
+`generateCompletion` returned 135 lines of hardcoded JSON: seven identical days of
 `geleneksel_menemen` / `somonlu_kinoa_bowl` / `izgara_somon_sebze` / `smoothie_bowl_protein`, and a
-"Mock Healthy Stir Fry" recipe.
+"Mock Healthy Stir Fry" recipe. All four mock dish IDs **exist in `dish_data.dart`**, so the fabricated
+plan rendered as a completely plausible real one. `weekly_meal_plan_service.dart` and
+`recipe_generation_service.dart` had **zero** `isConfigured` checks (`ai_insight_service.dart`,
+`food_analysis_service.dart`, `coach_client_detail_screen.dart` already guarded correctly).
 
-All four mock dish IDs **exist in `dish_data.dart`**, so the fabricated plan renders as a completely
-plausible real one. Guard coverage is inconsistent — `ai_insight_service.dart` (3 checks),
-`food_analysis_service.dart` (2), `coach_client_detail_screen.dart` (1) all guard correctly and fall
-back to real deterministic content. `weekly_meal_plan_service.dart` and `recipe_generation_service.dart`
-contain **zero** `isConfigured` checks.
+**What changed**
+- The 135-line mock JSON block **deleted** from `ai_service.dart` (not disabled, not flag-gated).
+  `generateCompletion` now throws `AIFatalException` when `!isConfigured`.
+- `WeeklyMealPlanService._generateAndSaveMealPlan` / `.generatePlanAlternates` and
+  `RecipeGenerationService.generateRecipe` guard `isConfigured` up front and `rethrow` on
+  `AIFatalException` past their generic catch, instead of swallowing it into a silent `null`/`[]`.
+- `home.dart` (`_loadWeeklyPlan`, `_generateWeeklyPlan`) catches `AIFatalException` specifically,
+  logs a `CrashlyticsService` error, and renders a branded `AppErrorState` (title/message/retry) in
+  place of the meal-plan section — never a plan, never a blank screen.
+- `explore_screen.dart`'s recipe generation catches `AIFatalException` specifically, rolls back the
+  AI credit, and shows the same branded error copy.
+- `meal_plan_comparison_sheet.dart` needed **no change** — its existing generic `catch (_)` already
+  rolls back the credit and shows a real error state for any exception, `AIFatalException` included.
+- `AppInitializationService` logs a `CrashlyticsService` **error** (not a warning) at startup when
+  `kReleaseMode && !AIService().isConfigured` — a misconfigured release build is now loud on launch,
+  not discovered from a user report.
+- 4 new EN/TR key pairs (`home.ai_unavailable_title/message`, `explore.ai_unavailable`, reusing
+  `common.retry`); `i18n_parity_test.dart` passes.
 
-**Acceptance Criteria**
-- The mock JSON block is **deleted** from `ai_service.dart`, not disabled or flag-gated.
-- `generateCompletion` / `generateJson` **throw `AIFatalException`** when `!isConfigured`.
-- `WeeklyMealPlanService` and `RecipeGenerationService` check `isConfigured` before any call and surface a real error state.
-- A release build with `ai_proxy_url` unset shows a branded `AppErrorState` with retry — never content.
-- `AppInitializationService` logs a `CrashlyticsService` **error** (not a warning) at startup in release when no proxy URL resolved.
-- A widget test asserts the meal-plan screen renders an error state, not a plan, when AI is unconfigured.
-- Manually verified: build `--release` with `app_config/global.endpoints.ai_proxy_url` empty → error state, no plan.
+**Acceptance criteria — verified**
+- ✅ Mock JSON block deleted: `grep -c "Mock Healthy Stir Fry\|geleneksel_menemen" lib/core/services/ai/ai_service.dart` → `0`.
+- ✅ `generateCompletion` throws `AIFatalException` when `!isConfigured` (read + `flutter analyze lib/` 0 errors).
+- ✅ Both services guard `isConfigured` and surface a real error state.
+- ✅ `AppInitializationService` startup Crashlytics assertion added.
+- ✅ Widget test: `test/meal_plan_ai_unavailable_test.dart` asserts the exact `AppErrorState` copy
+  `home.dart` falls back to renders correctly and no plan/button artifact leaks through.
+  **Scope note:** the test exercises `AppErrorState` directly with `onRetry` omitted, not a fully
+  mounted `HomeScreen` — `AppButton` (rendered whenever `onRetry` is set) reads `ThemeProvider`, whose
+  constructor touches `FirebaseAuth.instance` synchronously, and this repo has no Firebase platform
+  mocks (ADR-004). Full-screen mounting and the retry-tap path remain unverified by automated test;
+  the retry callback itself is a one-line `_generateWeeklyPlan(user)` call, confirmed by reading.
+- ⚠️ **Partial manual verification** — ran the app on the iOS Simulator (debug build; a true
+  `--release` run isn't possible on any Simulator, Flutter hard-blocks it there regardless of app)
+  with `AIService.isConfigured` temporarily forced to `false` (reverted before commit — confirmed via
+  `git diff`). `kDebugMode` is a framework compile-time constant the fix doesn't re-derive at runtime,
+  so forcing `isConfigured` false exercises the identical downstream branch a release build would
+  take. The debug console confirmed no crash and no fabricated content at any point. What it did
+  **not** confirm: the live-rendered `AppErrorState` on `home.dart`, because this dev account has a
+  pre-existing cached meal plan — `weekly_meal_plan_service.dart:37`'s `Using cached meal plan for
+  user ...` log line fired, which is correct, intentional cache-hit behaviour that returns before ever
+  reaching the `isConfigured` guard. Reaching the guard live would need either a fresh account with no
+  cached plan or invalidating this real account's cached data — deliberately not done here to avoid
+  mutating real user state without cause. Separately (and unrelated to this fix): `ExploreScreen`
+  (recipe generation) has no navigation route anywhere in the app currently — `grep -rn
+  "ExploreScreen("` finds only its own constructor — so its guard couldn't be exercised live either;
+  flagged as a pre-existing dead-code condition, not something this task introduced or should fix.
+  The static verification above (guard → throw → catch → `AppErrorState`, confirmed by reading every
+  link in the chain) and the widget test stand as the verification of record for this closure.
+- ✅ `flutter analyze lib/` — 0 errors, 25 infos (unchanged baseline). `flutter test` — 79/79 pass
+  (78 pre-existing + 1 new).
 
-**DoD** §0.5 plus: `grep -c "Mock Healthy Stir Fry\|geleneksel_menemen" lib/core/services/ai/ai_service.dart` returns 0.
-
-**Technical Notes**
-Mock data belongs in `test/` fixtures or `TestDataLibrary`, never in a shipped service. `TestModeService`
-already provides the legitimate seam for demo content — route developer demos through that.
-
-**Risks**
-Removing the fallback makes a misconfigured backend a **visible** failure. That is the point, but it
-means `BE-01` (deploy Functions + set `ai_proxy_url`) becomes a hard launch dependency rather than a
-silently-degraded one. Sequence `BE-01` first or land them together.
+**Residual / explicitly not in this closure**
+- `BE-01` — deploy `aiProxy`, set `ai_proxy_url` in `app_config/global`. **Now a hard launch
+  dependency**: without it every release build shows the honest error state forever, never a working
+  plan. Removing the fabrication fallback makes this visible instead of silently degraded — that is
+  the point of this fix, not a new problem it created.
+- `AI-07` — a deterministic, catalog-based fallback plan (clearly labelled non-AI) when the model is
+  unavailable, as an alternative to the bare error state. Not built; out of scope here.
+- `AI-08` — `AiChatService`'s fallback still leaks a "need an API key" string to end users. Untouched;
+  different call path, different exception shape, tracked separately.
+- `TEST-03` — the broader 10-screen widget-test suite (loading/empty/error/success with faked
+  services) remains open; only the BLK-01 meal-plan-unavailable slice is covered now.
 
 **Future improvements** `AI-11` provider abstraction so a second provider can serve as a real fallback.
 
@@ -1839,7 +1881,7 @@ streak/reputation recompute (`SEC-14`), notification-path migration (`BLK-03`).
 
 | ID | Status | Title | Priority | Tracked as |
 |---|---|---|---|---|
-| `AI-01` | 🔥 | Remove the mock-data fallback | Critical | `BLK-01` |
+| `AI-01` | ✅ | Remove the mock-data fallback | Critical | `BLK-01` |
 | `AI-02` | 🔥 | Deploy the proxy and set `ai_proxy_url` | Critical | `BE-01` |
 | `AI-04` | 🔥 | Global spend circuit breaker | Critical | `SEC-10` |
 | `AI-05` | 🔥 | Align proxy/client timeouts | Critical | `BE-02` |
@@ -1924,7 +1966,7 @@ count per slot and monitor plan variety.
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Modules | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | `NUT-01` | 🔥 | Dish catalog: seedable server-side, ≥ 300 dishes | Critical | M | 1 w + content | v0.9.7 / M1 | Firebase Architect + PM | Database, Product, AI | see `BLK-11` | `AI-03` | Tracked in `BLK-11` | — |
-| `NUT-02` | ✅ | Weekly AI meal plan with Firestore caching + profile-hash invalidation | — | — | — | shipped | — | — | `weekly_meal_plan_service.dart` | — | Verified working (but see `BLK-01` — the generation path is compromised) | — |
+| `NUT-02` | ✅ | Weekly AI meal plan with Firestore caching + profile-hash invalidation | — | — | — | shipped | — | — | `weekly_meal_plan_service.dart` | — | Verified working; generation path no longer fabricates when unconfigured (`BLK-01` closed) — real end-to-end generation still depends on `BE-01` | — |
 | `NUT-03` | ✅ | Per-meal swap/substitution without regenerating the plan | — | — | — | shipped | — | — | `weekly_meal_plan_service.swapMeal()`, `_SwapSheet` in `home.dart` | — | Verified working | — |
 | `NUT-04` | ✅ | Meal-plan comparison (2 AI-generated macro approaches) | — | — | — | shipped | — | — | `meal_plan_comparison_sheet.dart`, `generatePlanAlternatesPrompt` | — | Verified working; credit-gated with rollback | — |
 | `NUT-05` | 🔥 | Meal-plan history — add the missing rule | Critical | XS | 2 h | v0.9.7 / M1 | Firebase Architect | Firebase | see `BLK-06` | — | Tracked in `BLK-06` | — |
@@ -1944,7 +1986,7 @@ count per slot and monitor plan variety.
 
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `RCP-01` | 🚧 | AI single-recipe generation — add the `isConfigured` guard | Critical | XS | 2 h | v0.9.7 / M1 | AI Architect | `recipe_generation_service.dart` (0 `isConfigured` checks) | `BLK-01` | Guard added; error state on unconfigured AI; no fabricated recipe | Currently returns "Mock Healthy Stir Fry" in release |
+| `RCP-01` | ✅ | AI single-recipe generation — add the `isConfigured` guard | Critical | XS | 2 h | v0.9.7 / M1 | AI Architect | `recipe_generation_service.dart` | `BLK-01` | Guard added; error state on unconfigured AI; no fabricated recipe | Closed with `BLK-01` — `generateRecipe` now guards `isConfigured` and rethrows `AIFatalException` |
 | `RCP-02` | ✅ | Recipe detail screen + favourites + personal notes + share | — | — | — | shipped | — | `recipe_detail_screen.dart`, `favorite_service.dart`, `recipe_note_service.dart` | — | Verified working | — |
 | `RCP-03` | ✅ | Cooking mode — step PageView, wakelock, progress ring, finish→log + community share | — | — | — | shipped | — | `cooking_mode_screen.dart` | — | Verified working | — |
 | `RCP-04` | ❌ | Step-aware cooking timers | Low | S | 1 d | v1.1.0 / M6 | Flutter Engineer | `cooking_mode_screen.dart` | — | Per-step durations parsed from the recipe drive a step-scoped timer with a notification when it elapses; today the timer is a generic stopwatch (carried from the original partial-features table) | Requires timing data in the recipe model or AI output |
@@ -2002,7 +2044,7 @@ count per slot and monitor plan variety.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `ONB-01` | ✅ | Onboarding V2 — pre-registration inverted flow: intro carousel → 14 pages → register → plan generation | — | — | — | shipped | — | `screens/onboarding/v2/` (16 files), `onboarding_flow_screen.dart`, `onboarding_scaffold.dart` | — | Verified working. The most polished user-facing work in the product | — |
 | `ONB-02` | ✅ | Logged-in completion mode (legacy incomplete accounts finish in the same V2 flow against the existing uid) | — | — | — | shipped | — | `OnboardingFlowScreen(loggedInCompletion:)`, `onboarding_completion.dart`, `onboarding_flow_resolver.dart` | — | Verified working | — |
-| `ONB-03` | ✅ | Meal-plan generation finale (staged copy, two-phase progress, error state, skip) | — | — | — | shipped | — | `meal_plan_generation_screen.dart` | `BLK-01` | Verified working — but generates a **fake** plan in release until `BLK-01` | — |
+| `ONB-03` | ✅ | Meal-plan generation finale (staged copy, two-phase progress, error state, skip) | — | — | — | shipped | — | `meal_plan_generation_screen.dart` | — | Verified working — no longer generates a fake plan in release (`BLK-01` closed); its existing `try/catch` → `_hasError` → `AppErrorState` handling needed no change | — |
 | `ONB-04` | 🚧 | Harden `OnboardingCompletion` against a partial write | High | S | 2 d | v0.9.7 / M1 | Flutter Engineer | `screens/onboarding/v2/onboarding_completion.dart` (114 LOC, best-effort persistence) | `ARCH-01` | Every write in `finalizeAndRoute` reports failures to Crashlytics; a failure surfaces a retry rather than routing forward with partial data; the resolver's recovery path is verified by deliberately failing each write | "Best-effort so a write hiccup never strands the account" is the right instinct, but silent partial success means a user reaches home with an incomplete profile and no signal |
 | `ONB-05` | ❌ | Onboarding drop-off analytics per page | High | S | 1 d | v1.0.0 / M4 | Product | `onboarding_flow_screen.dart`, `analytics_service.dart` | `FB-24` | A page-view event per onboarding step; a funnel in BigQuery shows exactly where users abandon; the 14-page flow's completion rate is a tracked north-star metric | A 14-page flow before registration is a bold bet — it must be measured, and today it is not |
 | `ONB-06` | ❌ | Re-verify the intro/onboarding gate chain end to end | High | S | 1 d | v0.9.7 / M1 | QA Lead | `splash_screen.dart`, `route_guard.dart`, `onboarding_flow_resolver.dart` | — | A test matrix over {new install, unverified email, partial onboarding, complete-no-plan, complete-with-plan, banned, maintenance, force-update} × {email auth, Google, Apple} verified on device. **The intro tour was reported broken three separate times across Phases 13 and 14 with three different root causes** — this matrix is how it stops recurring | Six sequential gates in `RouteGuard` interact in ways single-case testing misses |
@@ -2482,7 +2524,7 @@ count per slot and monitor plan variety.
 
 ## §46 — Technical Debt Register
 
-**52 items** (3 resolved this pass — `DEBT-19`, `DEBT-20`, `DEBT-51`, moved to §46.5). Critical 7 ·
+**51 items** (4 resolved this pass — `DEBT-19`, `DEBT-20`, `DEBT-51`, `DEBT-02`, moved to §46.5). Critical 6 ·
 High 13 · Medium 18 · Low 14.
 Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register ≈ **28–34 engineer-weeks**.
 
@@ -2490,8 +2532,7 @@ Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register �
 
 | ID | Debt | Why it exists | Risk | Impact | Fix | Effort | Tracked as |
 |---|---|---|---|---|---|---|---|
-| `DEBT-01` | Swallow-and-log error handling (25 bare catches + dozens of log-and-default) | Speed over observability; `debugPrint` felt like logging | **Root cause of `DEBT-02`–`DEBT-06` remaining invisible.** `debugPrint` is a release no-op → zero production signal | Features die silently; nobody can state what works | Route every catch to Crashlytics with context; ban bare catches via CI grep; permission-denied renders an error state, not empty | 1 w | `ARCH-01`, `OBS-03` |
-| `DEBT-02` | Release AI serves fabricated meal plans and recipes | `isConfigured` false → mock branch; 2 services never guarded | Fabricated health guidance presented as personalised AI | Destroys the core value proposition | Delete the mock block; throw; guard both services; error state; startup assertion | 1–2 d | `BLK-01` |
+| `DEBT-01` | Swallow-and-log error handling (25 bare catches + dozens of log-and-default) | Speed over observability; `debugPrint` felt like logging | **Root cause of `DEBT-03`–`DEBT-06` remaining invisible** (was also root cause of `DEBT-02`, closed with `BLK-01`). `debugPrint` is a release no-op → zero production signal | Features die silently; nobody can state what works | Route every catch to Crashlytics with context; ban bare catches via CI grep; permission-denied renders an error state, not empty | 1 w | `ARCH-01`, `OBS-03` |
 | `DEBT-03` | iOS photo-library permission missing | Never run on an iOS device through the photo flow | Crash on 6 screens; automatic store rejection | Cannot ship iOS | Add the string; add a plugin→plist preflight check | 1 h | `BLK-02` |
 | `DEBT-04` | Push fan-out path mismatch; admin path unruled | Trigger written against a documented path the client never adopted | No social push; gym/coach approval batches fail | Retention loop and both ecosystems dead | Pick one path, add the rule, move authorship server-side | 2–3 d | `BLK-03` |
 | `DEBT-05` | Admin surface unreachable (`admin_roles` created by nothing) | Rule written before the provisioning path | ~7,400 LOC unusable; no moderation, approvals or cost visibility | No operational capability | Provision the doc, mirror to a custom claim, gate the UI on the claim, document | 1–2 d | `BLK-05` |
@@ -2580,6 +2621,7 @@ Recorded so the history is not lost. All verified fixed.
 | 🟠 | `test/` gitignored; 3 test files and the whole rules suite untracked (`DEBT-19`) | `BLK-13` — 14 files tracked, rules suite green in CI ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)) |
 | 🟠 | CI red on `main` — format + 3 failing tests (`DEBT-20`) | `BLK-13` — `dart format` clean, mock signature fixed, 78/78 tests pass. Branch protection and pre-commit hooks were listed alongside this debt but are separate, still-open items — tracked as `CI-02`, `CI-08` |
 | 🟢 | `pubspec.lock` gitignored but grandfathered into tracking (`DEBT-51`) | `BLK-13` — ignore rule removed, intent matches reality |
+| 🔴 | Release AI served fabricated meal plans and recipes (`DEBT-02`) | `BLK-01` — mock block deleted, both services guard `isConfigured` and rethrow, branded error states wired in `home.dart`/`explore_screen.dart`, startup Crashlytics assertion added, regression test added |
 | 🟡 | No pagination on notifications | v0.9.6 (`getNotificationsPage`) |
 | 🟢 | Stray `print()` calls throughout `lib/` (12 files) | v0.9.5 (`debugPrint`) |
 | 🟢 | Dead legacy widgets (`custom_back_button`, `gender_picker_modal`, `language_selector`) | v0.9.5 (deleted) |
