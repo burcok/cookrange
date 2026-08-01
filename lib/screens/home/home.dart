@@ -17,7 +17,9 @@ import '../../core/providers/user_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/admin_status_service.dart';
+import '../../core/services/ai/ai_service.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/crashlytics_service.dart';
 import '../../core/services/food_analysis_service.dart';
 import '../../core/services/permission_service.dart';
 import '../ai/widgets/ai_credits_sheet.dart';
@@ -70,6 +72,9 @@ class _HomeScreenState extends State<HomeScreen>
   WeeklyMealPlanModel? _weeklyPlan;
   int _selectedDayIndex = 0;
   bool _isLoadingPlan = false;
+  // Set when AI is unconfigured (BLK-01) — distinct from "no plan yet" so the
+  // UI shows a real error state with retry, never a blank/empty invitation.
+  bool _planUnavailable = false;
 
   // Cache for dishes to avoid repeated fetches
   final Map<String, DishModel> _dishCache = {};
@@ -374,7 +379,10 @@ class _HomeScreenState extends State<HomeScreen>
     if (user == null) return;
     final locale = context.read<LanguageProvider>().currentLocale.languageCode;
 
-    setState(() => _isLoadingPlan = true);
+    setState(() {
+      _isLoadingPlan = true;
+      _planUnavailable = false;
+    });
 
     try {
       final plan = await _mealPlanRepo.getWeeklyPlan(user, locale: locale);
@@ -398,6 +406,10 @@ class _HomeScreenState extends State<HomeScreen>
           });
         }
       }
+    } on AIFatalException catch (e, stackTrace) {
+      unawaited(CrashlyticsService().recordError(e, stackTrace,
+          reason: 'Meal plan load: AI not configured'));
+      if (mounted) setState(() => _planUnavailable = true);
     } finally {
       if (mounted) setState(() => _isLoadingPlan = false);
     }
@@ -434,7 +446,10 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _generateWeeklyPlan(UserModel user,
       {bool forceRefresh = true}) async {
     final locale = context.read<LanguageProvider>().currentLocale.languageCode;
-    setState(() => _isLoadingPlan = true);
+    setState(() {
+      _isLoadingPlan = true;
+      _planUnavailable = false;
+    });
     unawaited(AnalyticsService().logEvent(name: 'ai_meal_plan_started'));
     try {
       final plan = await _mealPlanRepo.getWeeklyPlan(user,
@@ -454,6 +469,10 @@ class _HomeScreenState extends State<HomeScreen>
           });
         }
       }
+    } on AIFatalException catch (e, stackTrace) {
+      unawaited(CrashlyticsService().recordError(e, stackTrace,
+          reason: 'Meal plan generation: AI not configured'));
+      if (mounted) setState(() => _planUnavailable = true);
     } finally {
       if (mounted) setState(() => _isLoadingPlan = false);
       if (mounted) await context.read<UserProvider>().refreshUser();
@@ -1232,6 +1251,22 @@ class _HomeScreenState extends State<HomeScreen>
       BuildContext context, UserModel user, AppLocalizations l10n) {
     if (_isLoadingPlan) {
       return const AppSkeletonMealCard();
+    }
+
+    if (_planUnavailable) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(context, l10n),
+          SizedBox(height: 16.h),
+          AppErrorState(
+            title: l10n.translate('home.ai_unavailable_title'),
+            message: l10n.translate('home.ai_unavailable_message'),
+            retryLabel: l10n.translate('common.retry'),
+            onRetry: () => _generateWeeklyPlan(user),
+          ),
+        ],
+      );
     }
 
     if (_weeklyPlan == null) {

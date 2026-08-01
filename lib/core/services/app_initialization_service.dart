@@ -86,6 +86,18 @@ class AppInitializationService {
       // Step 6: Services initialization
       await _initializeServices();
 
+      // BLK-01: a release build with no AI proxy URL resolved would otherwise
+      // fail silently on first AI use. Surface it immediately as a real error
+      // (not a warning) so it shows up instead of hiding behind user reports.
+      if (kReleaseMode && !AIService().isConfigured) {
+        unawaited(CrashlyticsService().recordError(
+          const AIFatalException(
+              'No AI proxy URL resolved at startup in release'),
+          StackTrace.current,
+          reason: 'AppInitializationService: AI unconfigured in release',
+        ));
+      }
+
       // Step 7: Connectivity check
       await _checkConnectivity();
 

@@ -104,6 +104,12 @@ class _ExploreScreenState extends State<ExploreScreen>
       if (mounted && uid != null) {
         unawaited(AiCreditsSheet.show(context, uid: uid, isPremium: isPremium));
       }
+    } on AIFatalException {
+      if (uid != null) unawaited(AiCreditService().rollbackCredit(uid));
+      if (mounted) {
+        setState(() => _error =
+            AppLocalizations.of(context).translate('explore.ai_unavailable'));
+      }
     } catch (e) {
       if (uid != null) unawaited(AiCreditService().rollbackCredit(uid));
       if (mounted) setState(() => _error = e.toString());

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'ai/ai_service.dart';
 import 'ai/prompt_service.dart';
 import '../models/recipe_model.dart';
@@ -21,6 +22,9 @@ class RecipeGenerationService {
     String? difficulty,
     String locale = 'en',
   }) async {
+    if (!_aiService.isConfigured) {
+      throw const AIFatalException('AI is not configured');
+    }
     try {
       final prompt = _promptService.generateRecipePrompt(
         ingredients: ingredients,
@@ -81,8 +85,10 @@ class RecipeGenerationService {
         instructions: List<String>.from(jsonResponse['instructions'] as List),
         tags: List<String>.from(jsonResponse['tags'] as List),
       );
+    } on AIFatalException {
+      rethrow;
     } catch (e) {
-      // debugPrint('Recipe Generation Failed: $e');
+      debugPrint('RecipeGenerationService.generateRecipe error: $e');
       return null;
     }
   }

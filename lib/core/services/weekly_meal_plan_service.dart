@@ -65,6 +65,9 @@ class WeeklyMealPlanService {
 
   Future<WeeklyMealPlanModel?> _generateAndSaveMealPlan(UserModel user,
       {String locale = 'en'}) async {
+    if (!_aiService.isConfigured) {
+      throw const AIFatalException('AI is not configured');
+    }
     try {
       debugPrint('Generating new AI meal plan for user ${user.uid}...');
 
@@ -201,6 +204,8 @@ class WeeklyMealPlanService {
       }).catchError((e) => debugPrint('History archive error: $e')));
 
       return plan;
+    } on AIFatalException {
+      rethrow;
     } catch (e) {
       debugPrint('Error generating meal plan: $e');
       return null;
@@ -374,6 +379,8 @@ class WeeklyMealPlanService {
           .map(PlanAlternate.fromJson)
           .where((a) => a.name.isNotEmpty)
           .toList();
+    } on AIFatalException {
+      rethrow;
     } catch (e) {
       debugPrint('WeeklyMealPlanService.generatePlanAlternates error: $e');
       return [];
