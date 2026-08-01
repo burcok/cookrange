@@ -11,8 +11,8 @@
 
 ## 1. Surface overview
 
-**13 deployed functions.** Project `cookrange-app`, region `us-central1` (Firestore is in
-`europe-west10` — see §7).
+**13 deployed functions, 1 written and pending deploy** (`syncAdminClaim`, `BLK-05`). Project
+`cookrange-app`, region `us-central1` (Firestore is in `europe-west10` — see §7).
 
 | Function | Kind | Auth | File |
 |---|---|---|---|
@@ -26,6 +26,7 @@
 | `onInAppNotificationCreated` | Firestore trigger | — | `index.js` |
 | `onChatMessageCreated` | Firestore trigger | — | `index.js` |
 | `onBroadcastCreated` | Firestore trigger | — | `index.js` |
+| `syncAdminClaim` | Firestore trigger | — (Admin SDK, not client-invocable) | `admin.js` |
 | `drainScheduledBroadcasts` | Scheduled | — | `index.js` |
 | `streakAtRiskNotifier` | Scheduled, daily 17:00 UTC | — | `index.js` |
 | `weeklyPlanReadyNotifier` | Scheduled, Mon 07:00 UTC | — | `index.js` |

@@ -90,10 +90,39 @@ Two independent layers; **both** must hold.
 `UserRole { consumer, gymOwner, coach, admin }`, multi-valued on `user_roles`. Roles are added by
 admin review, not self-assignment.
 
-> ⚠️ `user_roles` is deliberately **not** field-locked, because true admin power is gated separately
-> by `admin/status/{uid}`. That indirection only works if the admin doc exists — and **nothing
-> currently creates `admin_roles/{uid}`**, which makes the entire admin surface unreachable
-> (`BLK-05`). Fixing this must not become "just trust `user_roles`."
+`user_roles` is deliberately **not** field-locked, because true admin power is gated separately by
+`admin_roles/{uid}` (`is_admin: true`, `write: false` in rules — console/Admin-SDK only, never
+client-writable even by an admin). A self-written `user_roles: ['admin']` only ever revealed the
+client admin UI, never real capability, because every real admin-gated read is enforced server-side
+by `isAdmin()` regardless of what the client believes. `BLK-05` closed the gap between "reveals the
+UI" and "the UI actually works": nothing wrote `admin_roles/{uid}` at all (the collection was defined
+in rules but never provisioned), so the whole admin surface 403'd for the one person it was
+provisioned for, too. See below for the bootstrap runbook and how the client now agrees with the
+server.
+
+> (`admin/status/{uid}/flags` is a separate, unrelated concept — ban state, not admin-ness. Don't
+> confuse the two; this doc previously did.)
+
+#### Bootstrapping the first admin (runbook)
+
+`admin_roles/{uid}` is `write: false` in `firestore.rules` — deliberately unwritable from any client,
+including an already-authenticated admin's. The **only** way to create it is the Firebase Console:
+
+1. Firebase Console → Firestore Database → Start collection.
+2. Collection ID: `admin_roles`. Document ID: the target user's **Firebase Auth UID** (Authentication
+   tab → Users → copy the UID column, not the email).
+3. Add one field: `is_admin` (boolean) = `true`.
+4. Save. The `syncAdminClaim` Cloud Function (Firestore trigger on `admin_roles/{uid}`, `functions/admin.js`)
+   fires automatically and sets the `admin: true` custom claim on that user's Firebase Auth record.
+5. The target user must get a fresh ID token to see the claim client-side — sign out and back in, or
+   wait for the SDK's automatic hourly token refresh. There is no way to force this from the console.
+
+To **revoke** admin: delete the `admin_roles/{uid}` document (or set `is_admin: false`) the same way.
+`syncAdminClaim` clears the custom claim on any write where `is_admin` isn't `true`, including delete.
+
+There is no callable/`functions:shell` bootstrap path by design — a function that can grant admin is
+itself a privilege-escalation surface, and the manual console step is a small, one-time cost per
+environment that avoids building one.
 
 ### Known authorization holes
 - `BLK-08` — any user can mutate any post's non-content fields (like counts, announcement flag, group id)

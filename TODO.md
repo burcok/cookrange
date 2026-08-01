@@ -236,7 +236,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 |---|---|---|
 | `BLK-03` | 🔥 Push fan-out wired to a path nothing writes; admin path has no rule | Zero social push; gym/coach approval batches fail |
 | `BLK-04` | 🔥 Monetization non-functional end to end | Zero revenue capability |
-| `BLK-05` | 🔥 Admin surface unreachable — `admin_roles/{uid}` created by nothing | No moderation, no approvals, no cost visibility |
+| `BLK-05` | ⚠️ Admin surface — client + rules + function **written**, `syncAdminClaim` **not deployed** | No moderation, no approvals, no cost visibility until deployed |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | Gym setup broken; NSFW scanner watches the wrong prefix |
 | `BLK-08` | 🔥 Any user can mutate any post's non-content fields | Like-count / announcement / group integrity |
 | `BLK-09` | 🔥 `coach_uid == 'demo'` lets any user publish to the public marketplace | Content injection into a live storefront |
@@ -567,53 +567,118 @@ real-world coaching services through a payout provider (`REF-04`). Legal review 
 
 ---
 
-#### `BLK-05` 🔥 The entire admin surface is unreachable — `admin_roles/{uid}` is created by nothing
+#### `BLK-05` ⚠️ Code complete, `syncAdminClaim` NOT DEPLOYED — the entire admin surface is unreachable
 
-**Status** 🔥 Critical · **Priority** Critical · **Complexity** S · **Est** 1–2 d
+**Status** ⚠️ Code + tests + docs done 2026-08-01 — **Cloud Function not yet deployed**, held for
+explicit go-ahead (deploying live, privileged, auto-triggered code is a bigger risk than a rules-only
+change; asked separately from this pass) · **Priority** Critical · **Complexity** S · **Est** 1–2 d
 **Version** v0.9.7 · **Milestone** M1 · **Owner** Security Engineer
 **Labels** `admin` `authorization` `security` `operations` `doc-drift`
 **Modules** Security · Firebase · Frontend · Documentation
-**Files** `firestore.rules:27-35` (`isAdmin()`) · `lib/core/widgets/side_menu.dart:401` (client gate) · `firestore.rules:45-56` (the deliberate `user_roles` non-lock) · `lib/core/services/admin_status_service.dart` · `CLAUDE.md` (documents the wrong path)
+**Files** `firestore.rules:27-35,45-60` (`isAdmin()` + corrected comment) · `functions/admin.js` (new —
+`syncAdminClaim`) · `functions/index.js` (export) · `lib/core/providers/user_provider.dart` (`isAdmin`
+state) · `lib/core/widgets/side_menu.dart:401`, `lib/screens/home/widgets/role_quick_card.dart:25`,
+`lib/screens/profile/settings_screen.dart:1328` (3 client gates, re-pointed) ·
+`lib/core/services/admin_status_service.dart` (dead reads removed) · `docs/SECURITY.md` §4 (runbook +
+corrected path) · `docs/DATABASE.md`, `docs/API.md` (schema/surface entries) ·
+`test/firestore_rules/rules.test.mjs` (3 new tests)
 **Dependencies** — · **Required before** `BLK-03`, `MOD-01`, `GYM-02`, `COA-02`, `ADM-*`
-**Blocking** All moderation, all application review, all cost visibility, all operational capability.
+**Blocking** All moderation, all application review, all cost visibility, all operational capability —
+**still blocking in production** until `syncAdminClaim` is deployed; see below.
 
-**What exists / what is missing**
+**What was wrong**
 
 `isAdmin()` requires `admin_roles/{uid}.is_admin == true`. `grep -rn "admin_roles" lib/ functions/`
-returns **zero results** — nothing in the client or in any Cloud Function creates that document.
+returned **zero results** — nothing in the client or in any Cloud Function created that document.
 
-Meanwhile the client shows the admin UI based on `user.hasRole(UserRole.admin)`, reading `user_roles`
-from the **client-writable** user doc. The rules deliberately leave `user_roles` unlocked (documented at
-`firestore.rules:45-56` with the reasoning that real admin power is server-gated, so a self-written
-`user_roles: ['admin']` is "cosmetic").
+Meanwhile the client showed the admin UI based on `user.hasRole(UserRole.admin)`, reading `user_roles`
+from the **client-writable** user doc — confirmed at **three** call sites, not just the one originally
+named (`side_menu.dart`, plus `role_quick_card.dart` and `settings_screen.dart`, found while fixing the
+first). The rules deliberately leave `user_roles` unlocked (documented at `firestore.rules:45-56` with
+the reasoning that real admin power is server-gated, so a self-written `user_roles: ['admin']` is
+"cosmetic").
 
-Net effect: **anyone can summon the admin UI; nobody can use it.** ~7,400 LOC across 9 admin screens
-presents a fully-populated interface that fails with permission-denied on every read.
+Net effect: **anyone could summon the admin UI; nobody could use it.** ~7,400 LOC across 9 admin
+screens presented a fully-populated interface that failed with permission-denied on every read.
 
-Compounding: `CLAUDE.md` documents the gate as `admin/status/{uid}` — a third path.
-`AdminStatusService._firestoreMaintenanceMode()` reads `admin_config/global`, which is admin-read-only,
-so every normal user's call is denied and swallowed by `catch (_) {}` — a permanently dead code path
-that silently falls back to Remote Config.
+Compounding: the "wrong path" documentation drift wasn't in `CLAUDE.md` (checked — it doesn't mention
+either path currently, so that specific claim in this card was already stale by the time this pass
+started). It **was** live in two other places: `firestore.rules`'s own comment at line 53, and
+`docs/SECURITY.md` §4 — both said admin power was gated by `admin/status/{uid}` (actually ban state,
+an unrelated concept) when `isAdmin()` has always checked `admin_roles/{uid}`. Both fixed.
+`AdminStatusService._firestoreMaintenanceMode()`/`_firestoreMinVersion()` read `admin_config/global`,
+which is admin-read-only, so every normal user's call was denied and swallowed by `catch (_) {}` — a
+permanently dead code path silently falling back to Remote Config.
 
-**Acceptance Criteria**
-- `admin_roles/{uid}` documented as a deliberate console-provisioned collection, **with a runbook** in `docs/`.
-- A bootstrap path exists: either a documented console step **or** a `firebase functions:shell` callable that grants the first admin.
-- Client admin UI gated on a **Firebase Auth custom claim** (`admin: true`), not the writable user doc.
-- A Cloud Function sets the custom claim when `admin_roles/{uid}` is written, so client and server agree.
-- `AdminStatusService`'s dead `admin_config/global` reads removed (folded into `ADM-09` / `DEBT-14`).
-- `CLAUDE.md` corrected to name `admin_roles/{uid}`.
-- Verified: a provisioned admin can list users, review an application, view the cost dashboard and edit app config. A non-admin who self-writes `user_roles: ['admin']` sees **no** admin UI.
+**What changed**
+- New Cloud Function `syncAdminClaim` (`functions/admin.js`): Firestore `onWrite` trigger on
+  `admin_roles/{uid}` that mirrors `is_admin` onto a Firebase Auth custom claim (`admin: true`, or
+  cleared entirely on non-admin/delete) via `admin.auth().setCustomUserClaims()`. No other custom
+  claims exist anywhere in this codebase (confirmed by grep), so a full replace is safe — noted in
+  the function's own comment in case that ever changes.
+- `UserProvider` gained `isAdmin`, populated from `getIdTokenResult().claims['admin']` after every
+  `loadUser()` (not force-refreshed — a newly-granted admin sees it after their next natural hourly
+  token refresh or a sign-out/in, not instantly; documented as a real, acceptable limitation, not a
+  bug). Fails closed on any error.
+- All three client-side gates switched from `user.hasRole(UserRole.admin)` to
+  `context.watch<UserProvider>().isAdmin` (or the already-in-scope `userProvider.isAdmin` in
+  `settings_screen.dart`). `profile_screen.dart`'s role chip and `create_post_card.dart`'s
+  author-badge exclusion are display-only, not security gates — confirmed by reading, left alone.
+- `AdminStatusService`'s two dead `admin_config/global` reads deleted outright; `checkStatus` now
+  reads Remote Config directly, matching what every real call already fell back to.
+- `docs/SECURITY.md` §4 gained the bootstrap runbook: `admin_roles/{uid}` is `write: false`
+  unconditionally (even for an admin) — the console is the **only** way to create it. No
+  `functions:shell` callable was built; a function that can grant admin is itself a
+  privilege-escalation surface, and the acceptance criteria only asked for one **or** the other.
+- 3 new rules tests: `admin_roles` denies client writes even from a seeded admin; a
+  console-provisioned admin (`admin_roles/{uid}` seeded directly, the only way it's ever created for
+  real too) can read `admin_audit`/`ai_usage_logs`/`admin_config`; a non-admin is denied on all three.
 
-**DoD** §0.5 plus a rules test asserting a non-admin is denied on `admin_audit`, `ai_usage_logs`, `admin_config`.
+**Acceptance criteria — status**
+- ✅ `admin_roles/{uid}` documented with a runbook (`docs/SECURITY.md` §4).
+- ✅ Bootstrap path: console step only, by design (see Technical Notes below for why not a callable).
+- ✅ Client admin UI gated on the `admin` custom claim, all three call sites.
+- ✅ `syncAdminClaim` written — sets the claim when `admin_roles/{uid}` is written.
+  **⚠️ Not deployed** — see Residual below.
+- ✅ `AdminStatusService`'s dead reads removed.
+- ✅ `CLAUDE.md` — no change needed, confirmed it doesn't currently reference either path.
+- ⚠️ **Not verified end-to-end** (provisioned admin can list users / review / cost dashboard / edit
+  config; non-admin sees no UI) — this needs `syncAdminClaim` live and a real admin session, neither
+  possible before the deploy. The client-gate logic is verified by reading and by `flutter analyze`;
+  the rule logic is verified by the new rules tests (CI-confirmed once pushed).
+
+**DoD** §0.5 plus a rules test asserting a non-admin is denied on `admin_audit`, `ai_usage_logs`,
+`admin_config` — **met**, see above.
 
 **Technical Notes**
-Three parallel admin/config identity concepts exist (`admin_roles`, `admin/status`, `user_roles`).
-Collapse to two: `admin_roles/{uid}` (server truth) + a mirrored custom claim (client truth). Ban state
-stays separate at `admin/status/{uid}`.
+Three parallel admin/config identity concepts existed (`admin_roles`, `admin/status`, `user_roles`).
+Collapsed to two: `admin_roles/{uid}` (server truth) + a mirrored custom claim (client truth). Ban
+state stays separate at `admin/status/{uid}` — confirmed still correctly used only for that, by
+`admin_service.dart`'s ban-flag read/write.
+
+No bootstrap callable was built. A `functions:shell`/HTTPS callable that can grant admin is a new
+privilege-escalation surface with its own hard design questions (self-destruct after first use? IP
+allowlist? time-boxed?) — the acceptance criteria explicitly offered a console step as an alternative,
+and it's simpler and has no new attack surface. If a fresh-environment bootstrap becomes a recurring
+pain point, revisit as a separate, carefully-scoped follow-up.
+
+**Residual — the actual production fix is not live yet**
+`syncAdminClaim` has zero effect until deployed (`firebase deploy --only functions`). Until then,
+`admin_roles/{uid}` can still be created via the Console (per the runbook), but the custom claim
+won't sync automatically — the client would need `user.getIdTokenResult(true)` forced after a manual
+claim-setting workaround, which defeats the point. **This is intentionally the one piece of BLK-05
+left for a human decision**: deploying a new, automatically-triggered Cloud Function that grants
+admin access is a materially bigger risk than a declarative rules change (arbitrary code execution
+with full Admin SDK privileges vs. a syntax-checked, easily-diffed rules file), so it's flagged
+separately rather than folded into this pass. Once deployed and confirmed, the ~30 downstream
+`ADM-*`/`MOD-01`/`GYM-02`/`COA-02`/etc. cards that are "code-verified, unreachable until `BLK-05`"
+should be revisited in one pass — not done here to avoid a premature update that would need
+re-walking if the deploy surfaces something.
 
 **Risks**
-Granting the first admin is a manual console step. Document it precisely or a fresh environment is
-un-administrable — which is exactly the failure mode M1 must eliminate.
+Granting the first admin is a manual console step by design (see Technical Notes). Document it
+precisely or a fresh environment is un-administrable — the runbook in `docs/SECURITY.md` §4 is that
+documentation.
 
 ---
 
@@ -2535,7 +2600,8 @@ count per slot and monitor plan variety.
 
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `DOC-01` | 🔥 | Reconcile documentation with reality | Critical | M | 2 d | v0.9.7 / M1 | Technical Writer | `CLAUDE.md` (49 KB), `README.md` (22 KB), `ARCHITECTURE.md`, `AGENTS.md`, `docs/*` (486 KB total) | `CHL-00`, `BLK-05` | Every false claim corrected: (a) "challenges fully shipped" — **deliberately sunset in Phase 13.2**; (b) admin gate documented as `admin/status/{uid}` — rules use `admin_roles/{uid}`; (c) `meal_plan_history` documented as working — no rule; (d) `notifications/{uid}/items` documented as the in-app path — the client writes `users/{uid}/notifications`; (e) "10/12 functions deployed" — unverifiable, and `APP_ENV=development` makes App Check and purchases inert regardless; (f) "accessibility semantics" listed as shipped — 32 sites in 329 files. **Documentation that confidently describes non-existent features is worse than no documentation, because it prevents discovery** | The docs are the primary onboarding artifact for any future engineer and for AI-assisted work. Wrong docs actively cause defects |
+| `DOC-01` | 🔥 | Reconcile documentation with reality | Critical | M | 2 d | v0.9.7 / M1 | Technical Writer | `CLAUDE.md` (49 KB), `README.md` (22 KB), `ARCHITECTURE.md`, `AGENTS.md`, `docs/*` (486 KB total) | `CHL-00`, `BLK-05` | Every false claim corrected: (a) "challenges fully shipped" — **deliberately sunset in Phase 13.2**; ~~(b) admin gate documented as `admin/status/{uid}` — rules use `admin_roles/{uid}`~~ **fixed** —
+`firestore.rules`'s own comment and `docs/SECURITY.md` §4 both corrected with `BLK-05`; ~~(c) `meal_plan_history` documented as working — no rule~~ **fixed** — rule written, tested, and deployed with `BLK-06`; (d) `notifications/{uid}/items` documented as the in-app path — the client writes `users/{uid}/notifications`; (e) "10/12 functions deployed" — unverifiable, and `APP_ENV=development` makes App Check and purchases inert regardless; (f) "accessibility semantics" listed as shipped — 32 sites in 329 files. **Documentation that confidently describes non-existent features is worse than no documentation, because it prevents discovery** | The docs are the primary onboarding artifact for any future engineer and for AI-assisted work. Wrong docs actively cause defects |
 | `DOC-02` | ❌ | Rewrite the README to match the product | High | S | 1 d | v1.0.0 / M5 | Technical Writer | `README.md` | `DOC-01` | The README describes **the consumer nutrition app that will actually ship**, with the "Fitness Operating System" framing clearly marked as vision. Features described but absent (XP/levels, challenges, payouts, white-label, supplements) moved to a clearly-labelled roadmap section. **Carried from the prior roadmap's own founder recommendation: "the README is a vision doc; don't let it set the v1 scope"** | A README selling an OS while the app ships a meal planner damages credibility with both users and investors |
 | `DOC-03` | ❌ | Runbooks | High | M | 3 d | v0.9.7 / M1 | Technical Writer | `docs/` | `ADM-12`, `DR-02` | Runbooks for: fresh-environment bootstrap (incl. the first admin and the dish seed), deploy + verify, rollback via force-update, restore from backup, incident response, DSAR handling, key rotation, account-takeover response. **None exist** | Every operational task is currently tribal knowledge held by one person |
 | `DOC-04` | ❌ | Architecture Decision Records | Medium | S | 2 d ongoing | v0.9.8 / M2 | Software Architect | `docs/adr/` | — | ADRs for the decisions this backlog forces: repository layer (`ARCH-03`), config consolidation (`ARCH-05`), notification path (`BLK-03`), user-doc split (`BLK-10`), consumer-only v1 scope (§1.9), offline strategy (`ARCH-07`) | Undocumented decisions get re-litigated and silently reversed |
@@ -2608,7 +2674,7 @@ Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register �
 |---|---|---|---|---|---|---|---|
 | `DEBT-01` | Swallow-and-log error handling (25 bare catches + dozens of log-and-default) | Speed over observability; `debugPrint` felt like logging | **Root cause of `DEBT-04`–`DEBT-06` remaining invisible** (was also root cause of `DEBT-02`, closed with `BLK-01`). `debugPrint` is a release no-op → zero production signal | Features die silently; nobody can state what works | Route every catch to Crashlytics with context; ban bare catches via CI grep; permission-denied renders an error state, not empty | 1 w | `ARCH-01`, `OBS-03` |
 | `DEBT-04` | Push fan-out path mismatch; admin path unruled | Trigger written against a documented path the client never adopted | No social push; gym/coach approval batches fail | Retention loop and both ecosystems dead | Pick one path, add the rule, move authorship server-side | 2–3 d | `BLK-03` |
-| `DEBT-05` | Admin surface unreachable (`admin_roles` created by nothing) | Rule written before the provisioning path | ~7,400 LOC unusable; no moderation, approvals or cost visibility | No operational capability | Provision the doc, mirror to a custom claim, gate the UI on the claim, document | 1–2 d | `BLK-05` |
+| `DEBT-05` | Admin surface unreachable (`admin_roles` created by nothing) | Rule written before the provisioning path | ~7,400 LOC unusable; no moderation, approvals or cost visibility | No operational capability | `syncAdminClaim` written, custom-claim gating wired, runbook documented — **awaiting deploy**, see `BLK-05` | 1–2 d | `BLK-05` |
 | `DEBT-06` | Monetization non-functional end to end | Store setup never started; validation correctly fails closed | Zero revenue | No business | Register products, add credentials, `APP_ENV=production`, sandbox-verify | 1–2 w + store | `BLK-04` |
 | `DEBT-07` | All 18 of the project's own security gates unchecked | `GO_LIVE.md` §5S written but never worked | Unknown-unknowns across the whole surface | Compounds every other item | Work `S0`–`S17` in order; make the rules suite pass in CI | 3–4 w | §3 |
 

@@ -71,7 +71,7 @@ Full cards in [`TODO.md`](TODO.md) §2.
 |---|---|---|
 | `BLK-03` | 🔥 Push fan-out wired to a path nothing writes | [Community](docs/COMMUNITY.md) |
 | `BLK-04` | 🔥 Monetization non-functional end to end | [Premium](docs/PREMIUM.md) |
-| `BLK-05` | 🔥 Admin surface unreachable — `admin_roles/{uid}` created by nothing | [Security](docs/SECURITY.md) |
+| `BLK-05` | ⚠️ Admin surface — client/rules/function written, `syncAdminClaim` **not deployed** | [Security](docs/SECURITY.md) |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | [Gym](docs/GYM_ECOSYSTEM.md) |
 | `BLK-08` | 🔥 Any user can mutate any post's non-content fields | [Security](docs/SECURITY.md) |
 | `BLK-09` | 🔥 `coach_uid == 'demo'` lets any user publish to the public marketplace | [Coach](docs/COACH_ECOSYSTEM.md) |
@@ -179,12 +179,15 @@ Store review is an irreducible 1–2 weeks of wall clock.
    string can't recur silently. **Residual:** physical-iPhone confirmation and a signed
    `flutter build ipa` are still owed — verified on the Simulator only (no crash, correct primer +
    Settings-redirect flow), and a real device needs `BLK-16` (no signing identity yet) regardless.
-5. The "shipped but dead" cluster: `BLK-05` (create `admin_roles` + custom claim) and `BLK-03` (point
-   the push trigger at the real path) both need a **Cloud Functions deploy to production** and
-   security-sensitive custom-claims work — flagged for a check-in rather than done unilaterally.
-   ~~`BLK-06`~~ **rule written** (`meal_plan_history`) — **awaiting your go-ahead to
-   `firebase deploy --only firestore:rules`**; code side is done, the feature stays empty in
-   production until that one command runs.
+5. ~~`BLK-06`~~ **done** — `meal_plan_history` rule deployed to production with your go-ahead, rules
+   test confirmed green in CI.
+   ~~`BLK-05`~~ **code complete** — `admin_roles` custom-claim sync (`syncAdminClaim`), all three
+   client gates, the bootstrap runbook, and rules tests are all written and pushed.
+   **`firebase deploy --only functions` is the one step not taken** — a new, automatically-triggered
+   Cloud Function with full Admin SDK privileges that grants admin access is a bigger risk than a
+   declarative rules change, so it's held for your explicit go-ahead rather than folded in
+   unilaterally. `BLK-03` (push notification fan-out) is the remaining item in this cluster — also
+   needs a Cloud Functions deploy, not yet started.
 6. Then M2 security gates in the order fixed by `GO_LIVE.md` Phase 5S — **server write paths first
    (`S2`→`S3`→`S4`), then lock the rules (`S1`, `S5`)**. Locking first breaks live flows.
 

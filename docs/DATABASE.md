@@ -128,6 +128,7 @@ failed_login_attempts/{id} SERVER-ONLY        brute-force tracking
 | `ai_usage_stats/{doc}` | Aggregated AI usage rollups: `global` + `day_YYYY-MM-DD` buckets (total cost/requests/tokens, by_model, by_type) | **Server write only** · admin read |
 | `entitlements/{uid}` | Premium entitlement (tier, expiry) — source of truth for paid access; server mirrors `subscription_tier` to the user doc | Owner read · **server/admin write only** |
 | `processed_purchases/{id}` | Purchase-token replay guard (dedupes IAP tokens so a receipt can't be redeemed twice) | **Fully server-only** (no client read or write) |
+| `admin_roles/{uid}` | The real admin gate (`is_admin: true`) — mirrored onto a Firebase Auth custom claim by `syncAdminClaim` (`functions/admin.js`) so the client can verify it via the ID token. Console/Admin-SDK provisioned only — see the runbook in `docs/SECURITY.md` §4 | Owner or admin read · **write: false unconditionally**, even for an admin |
 | `admin_audit/{id}` | Append-only admin action log | Create admin · read admin · no update/delete |
 | `admin_config/{doc}` | Feature flags, maintenance, AI model, blocked keywords | Admin only |
 | `app_config/global` | Remote App Config — `ai` (models/limits/toggles), `version` (min/latest per platform, force_update, store URLs, update_message i18n), `maintenance`, `announcement`, `features` (kill-switches), `rollout`, `limits`, `endpoints.ai_proxy_url`. **No secrets.** | **Public read** · admin write |
@@ -279,8 +280,9 @@ Add an index here for **every new query shape** (`where` + `orderBy` combos). Cu
 ## 7. Security-Rule Conventions (when adding a path)
 - Default deny. Every new collection gets an explicit rule — never leave one unguarded.
 - Owner-only for anything user-private; `request.auth.uid` checks.
-- Admin gate via the admin claim/doc check used in `firestore.rules` (see `admin_audit`,
-  `admin_config`, `reports`).
+- Admin gate via `isAdmin()` in `firestore.rules`, which checks `admin_roles/{uid}` (see
+  `admin_audit`, `admin_config`, `reports`). The client mirrors the same decision via the `admin`
+  custom claim (`BLK-05`) — never gate UI on `user_roles`, which is client-writable.
 - Counters (likes/reactions) get narrow update rules so users can only mutate the counter, not
   the whole doc.
 - Immutable collections (reviews, audit) deny update/delete.

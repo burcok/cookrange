@@ -316,6 +316,48 @@ user go-ahead (rules changes are live, shared-infrastructure actions — asked f
 folded in silently). Confirmed by the CLI's own output: "released rules firestore.rules to
 cloud.firestore." The feature is live for real users as of this deploy.
 
+### Fixed (code) — `BLK-05`: the entire admin surface was unreachable — `syncAdminClaim` NOT YET DEPLOYED (2026-08-01)
+
+`isAdmin()` in `firestore.rules` requires `admin_roles/{uid}.is_admin == true`. Nothing anywhere —
+not the client, not any Cloud Function — ever created that document. Meanwhile the client showed
+the admin UI based on the client-writable `user_roles` array, at **three** call sites (only one was
+previously tracked; found the other two — `role_quick_card.dart`, `settings_screen.dart` — while
+fixing the first). Net effect: anyone could summon the admin UI; nobody could use it. ~7,400 LOC
+across 9 admin screens presented a fully-populated interface that failed permission-denied on every
+read.
+
+**Fix:**
+- New Cloud Function `syncAdminClaim` (`functions/admin.js`): a Firestore trigger on
+  `admin_roles/{uid}` that mirrors `is_admin` onto a Firebase Auth custom claim
+  (`admin.auth().setCustomUserClaims()`), so the client can verify admin-ness itself via the ID
+  token instead of trusting a document it can write.
+- `UserProvider` gained `isAdmin`, read from `getIdTokenResult().claims['admin']` on every user
+  load; fails closed on any error. All three client gates now watch this instead of
+  `user.hasRole(UserRole.admin)`.
+- `AdminStatusService`'s two dead `admin_config/global` reads (always permission-denied for a
+  normal user, silently swallowed, silently falling back to Remote Config) deleted outright.
+- Fixed a stale "admin power is gated by `admin/status/{uid}`" claim in two places —
+  `firestore.rules`'s own comment and `docs/SECURITY.md` §4 — `admin/status/{uid}/flags` is ban
+  state, an unrelated concept; `isAdmin()` has always checked `admin_roles/{uid}`.
+- New bootstrap runbook in `docs/SECURITY.md` §4: `admin_roles/{uid}` is `write: false`
+  unconditionally, even for an admin, so the Firebase Console is the only way to create it. No
+  callable bootstrap function was built — one that can grant admin is itself a privilege-escalation
+  surface, and the acceptance criteria only asked for a console step **or** a callable, not both.
+- 3 new rules tests: a seeded admin still can't write `admin_roles` via the client SDK; a
+  console-provisioned admin can read `admin_audit`/`ai_usage_logs`/`admin_config`; a non-admin is
+  denied on all three.
+
+**Verified:** `flutter analyze lib/` — 0 errors, 25 infos (unchanged). `flutter test` — 79/79 pass.
+Rules tests written and syntax-checked; not run locally (no Java, same `BLK-13` constraint) — CI's
+`firestore-rules` job is the authoritative check once pushed.
+
+**Not deployed — deliberately.** `syncAdminClaim` has zero effect until
+`firebase deploy --only functions` runs. Unlike the `meal_plan_history` rule (a declarative,
+easily-diffed change), this deploys new, automatically-triggered, privileged code — a materially
+bigger risk. Held for a separate, explicit go-ahead rather than folded into this pass. Until
+deployed, `admin_roles/{uid}` can still be created via the Console runbook, but the custom claim
+won't sync automatically, so the fix isn't complete in production yet.
+
 ---
 
 ## [0.9.6] — 2026-07-31 — *internal alpha*
