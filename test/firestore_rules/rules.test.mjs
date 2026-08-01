@@ -149,6 +149,21 @@ test('private nutrition PII: only the owner can read', async () => {
   await assertSucceeds(getDoc(doc(db('u1'), 'users/u1/private/nutrition')));
 });
 
+test('meal_plan_history: owner-only read and write (BLK-06)', async () => {
+  // Regression test — this path had no rule at all until BLK-06, so every
+  // read and write hit the catch-all deny silently (swallowed by
+  // debugPrint), and the history feature never worked.
+  await seed('users/u1/meal_plan_history/2026-01-05', { archivedAt: 1 });
+  await assertFails(getDoc(doc(db('u2'), 'users/u1/meal_plan_history/2026-01-05')));
+  await assertSucceeds(getDoc(doc(db('u1'), 'users/u1/meal_plan_history/2026-01-05')));
+  await assertFails(
+    setDoc(doc(db('u2'), 'users/u1/meal_plan_history/2026-01-06'), { archivedAt: 2 })
+  );
+  await assertSucceeds(
+    setDoc(doc(db('u1'), 'users/u1/meal_plan_history/2026-01-06'), { archivedAt: 2 })
+  );
+});
+
 // ─── Content caps + privilege ────────────────────────────────────────────────
 
 test('posts: oversized content is rejected, normal content allowed', async () => {

@@ -9,6 +9,7 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/models/weekly_meal_plan_model.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/services/crashlytics_service.dart';
 import '../../core/services/weekly_meal_plan_service.dart';
 import '../../core/widgets/ds/ds.dart';
 
@@ -46,8 +47,10 @@ class _MealPlanHistoryScreenState extends State<MealPlanHistoryScreen> {
           _hasMore = plans.length >= 10;
         });
       }
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('MealPlanHistoryScreen load error: $e');
+      unawaited(CrashlyticsService().recordError(e, stack,
+          reason: 'MealPlanHistoryScreen._loadHistory uid=$uid'));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -85,11 +88,17 @@ class _MealPlanHistoryScreenState extends State<MealPlanHistoryScreen> {
 
     if (confirmed == true && mounted) {
       unawaited(HapticFeedback.mediumImpact());
-      await _service.restorePlan(uid, plan);
-      if (mounted) {
-        AppSnackBar.success(context,
-            AppLocalizations.of(context).translate('meal_history.loaded'));
-        Navigator.pop(context, true); // signal caller to reload
+      try {
+        await _service.restorePlan(uid, plan);
+        if (mounted) {
+          AppSnackBar.success(context,
+              AppLocalizations.of(context).translate('meal_history.loaded'));
+          Navigator.pop(context, true); // signal caller to reload
+        }
+      } catch (e, stack) {
+        debugPrint('MealPlanHistoryScreen restore error: $e');
+        unawaited(CrashlyticsService().recordError(e, stack,
+            reason: 'MealPlanHistoryScreen._restorePlan uid=$uid'));
       }
     }
   }

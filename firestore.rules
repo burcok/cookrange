@@ -103,6 +103,11 @@ service cloud.firestore {
         allow read, write: if isOwner(uid);
       }
 
+      // Archived weekly meal plans (history): strictly owner-only
+      match /meal_plan_history/{historyId} {
+        allow read, write: if isOwner(uid);
+      }
+
       // Food logs: strictly owner-only
       match /food_logs/{logId} {
         allow read, write: if isOwner(uid);

@@ -8,6 +8,7 @@ import '../models/user_model.dart';
 import '../models/user_nutrition_profile.dart';
 import '../utils/calorie_calculator.dart';
 import '../utils/allergen_safety.dart';
+import 'crashlytics_service.dart';
 import 'dish_service.dart';
 import 'ai/ai_service.dart';
 import 'ai/prompt_service.dart';
@@ -201,7 +202,12 @@ class WeeklyMealPlanService {
         ...plan.toJson(),
         'id': historyKey,
         'archivedAt': FieldValue.serverTimestamp()
-      }).catchError((e) => debugPrint('History archive error: $e')));
+      }).catchError((e, stack) {
+        debugPrint('History archive error: $e');
+        unawaited(CrashlyticsService().recordError(e, stack,
+            reason:
+                'WeeklyMealPlanService._generateAndSaveMealPlan history archive uid=${user.uid}'));
+      }));
 
       return plan;
     } on AIFatalException {
@@ -334,8 +340,10 @@ class WeeklyMealPlanService {
       return snap.docs
           .map((d) => WeeklyMealPlanModel.fromFirestore(d))
           .toList();
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('WeeklyMealPlanService.getMealPlanHistory error: $e');
+      unawaited(CrashlyticsService().recordError(e, stack,
+          reason: 'WeeklyMealPlanService.getMealPlanHistory userId=$userId'));
       return [];
     }
   }
