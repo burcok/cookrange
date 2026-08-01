@@ -14,6 +14,7 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/models/gym_model.dart';
 import '../../core/services/gym_application_service.dart';
 import '../../core/services/gym_service.dart';
+import '../../core/services/permission_service.dart';
 import '../../core/services/storage_upload_service.dart';
 import '../../core/widgets/ds/ds.dart';
 import 'gym_application_pending_screen.dart';
@@ -882,6 +883,8 @@ class _LogoPickerSection extends StatelessWidget {
 
   Future<void> _pickImage(BuildContext context) async {
     try {
+      final granted = await PermissionService().requestPhotos(context);
+      if (!context.mounted || !granted) return;
       final picker = ImagePicker();
       final picked = await picker.pickImage(
         source: ImageSource.gallery,

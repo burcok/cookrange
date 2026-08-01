@@ -17,6 +17,7 @@ import '../../core/services/consent_service.dart';
 import '../../core/services/food_analysis_service.dart';
 import '../../core/services/food_analysis_history_service.dart';
 import '../../core/services/food_log_service.dart';
+import '../../core/services/permission_service.dart';
 import '../../core/utils/meal_time_util.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../ai/widgets/ai_credit_badge.dart';
@@ -163,6 +164,10 @@ class _FoodScanScreenState extends State<FoodScanScreen>
   }
 
   Future<void> _pickPhoto(ImageSource source) async {
+    final granted = source == ImageSource.camera
+        ? await PermissionService().requestCamera(context)
+        : await PermissionService().requestPhotos(context);
+    if (!mounted || !granted) return;
     try {
       final file = await _picker.pickImage(
         source: source,

@@ -15,6 +15,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check iOS permission strings (BLK-02)
+        run: scripts/check_ios_permissions.sh
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:

@@ -9,6 +9,7 @@ import 'package:cookrange/core/models/message_model.dart';
 import 'package:cookrange/core/services/chat_service.dart';
 import 'package:cookrange/core/services/firestore_service.dart';
 import 'package:cookrange/core/models/user_model.dart';
+import 'package:cookrange/core/services/permission_service.dart';
 import 'package:cookrange/core/services/storage_upload_service.dart';
 import 'package:cookrange/core/utils/profile_navigation.dart';
 import 'package:cookrange/core/widgets/ds/ds.dart';
@@ -114,6 +115,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Future<void> _pickAndSendImage() async {
+    final granted = await PermissionService().requestPhotos(context);
+    if (!mounted || !granted) return;
     final picker = ImagePicker();
     final picked =
         await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);

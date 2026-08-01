@@ -62,6 +62,8 @@
 		<false/>
 		<key>NSCameraUsageDescription</key>
 		<string>Camera is used to scan food barcodes and gym check-in QR codes.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Used to select photos for your profile picture, food logging, community posts, gym logos, and coach applications.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>Your location is used to verify you are at the gym for GPS check-in.</string>
 		<key>NSMicrophoneUsageDescription</key>
