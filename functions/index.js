@@ -486,51 +486,116 @@ const TYPE_TO_MUTE_GROUP = {
   weeklyPlanReady: 'reminders',
 };
 
-/** Returns the English push title + body for a given notification type. */
-function getPushText(type, actorName, metadata) {
-  const name = actorName || 'Someone';
+/**
+ * Returns the push title + body for a given notification type, localized to
+ * the recipient's `locale` ('tr' or default 'en'). Wording mirrors the
+ * in-app copy in assets/localization/{en,tr}.json under `notifications.feed.*`
+ * (NotificationPresenter) so push and in-app text never diverge.
+ */
+function getPushText(type, actorName, metadata, locale, customTitle, customBody) {
+  const tr = locale === 'tr';
+  const name = actorName || (tr ? 'Biri' : 'Someone');
+  const emoji = (metadata && metadata.emoji) || '❤️';
+  const hasCommentId = !!(metadata && metadata.commentId);
+  const days = (metadata && (metadata.streakDays || metadata.rewardDays)) || '';
+  const system = tr
+    ? { title: 'Bildirim', body: 'Yeni bir güncellemen var.' }
+    : { title: 'Notification', body: 'You have a new update.' };
+
   switch (type) {
     case 'likePost':
     case 'like':
-      return { title: `${name} liked your post`, body: '' };
+      return tr
+        ? { title: `${name} gönderini beğendi`, body: '' }
+        : { title: `${name} liked your post`, body: '' };
     case 'likeComment':
-      return { title: `${name} liked your comment`, body: '' };
-    case 'reaction': {
-      const emoji = (metadata && metadata.emoji) || '❤️';
-      return { title: `${name} reacted ${emoji}`, body: '' };
-    }
+      return tr
+        ? { title: `${name} yorumunu beğendi`, body: '' }
+        : { title: `${name} liked your comment`, body: '' };
+    case 'reaction':
+      if (hasCommentId) {
+        return tr
+          ? { title: `${name} yorumuna ${emoji} tepkisi verdi`, body: '' }
+          : { title: `${name} reacted ${emoji} to your comment`, body: '' };
+      }
+      return tr
+        ? { title: `${name} gönderine ${emoji} tepkisi verdi`, body: '' }
+        : { title: `${name} reacted ${emoji} to your post`, body: '' };
     case 'comment':
-      return { title: `${name} commented`, body: '' };
+      return tr
+        ? { title: `${name} gönderine yorum yaptı`, body: '' }
+        : { title: `${name} commented on your post`, body: '' };
     case 'friendRequest':
-      return { title: 'Friend Request', body: `${name} wants to connect` };
+      return tr
+        ? { title: `${name} sana arkadaşlık isteği gönderdi`, body: '' }
+        : { title: `${name} sent you a friend request`, body: '' };
     case 'friendAccepted':
-      return { title: 'New Friend!', body: `${name} accepted your request` };
+      return tr
+        ? { title: `${name} arkadaşlık isteğini kabul etti`, body: '' }
+        : { title: `${name} accepted your friend request`, body: '' };
     case 'follow':
-      return { title: `${name} is following you`, body: '' };
-    case 'streakMilestone': {
-      const days = (metadata && metadata.streakDays) || '';
-      return { title: '🔥 Streak Milestone!', body: days ? `${days} day streak — keep going!` : 'New streak milestone!' };
-    }
+      return tr
+        ? { title: `${name} seni takip etmeye başladı`, body: '' }
+        : { title: `${name} started following you`, body: '' };
+    case 'streakMilestone':
+      return tr
+        ? { title: `${days} günlük seri! 🔥`, body: `${days} gündür üst üste giriş yaptın. Böyle devam et!` }
+        : { title: `${days}-day streak! 🔥`, body: `You've logged in ${days} days in a row. Keep it up!` };
     case 'mealPlan':
-      return { title: 'Meal Plan Ready', body: 'Your weekly plan has been updated' };
+      return tr
+        ? { title: 'Yemek planın hazır', body: 'Hedeflerine uygun yeni bir haftalık beslenme planı hazırlandı.' }
+        : { title: 'Your meal plan is ready', body: 'A fresh weekly nutrition plan has been prepared for your goals.' };
     case 'referral':
-      return { title: 'Referral Reward!', body: `${name} used your referral code` };
+      return tr
+        ? { title: 'Davet ödülü 🎉', body: `Biri kodunu kullandı — ikiniz de ${days} günlük Premium kazandınız!` }
+        : { title: 'Referral reward 🎉', body: `Someone used your code — you both earned ${days} days of Premium!` };
     case 'coachApplicationApproved':
-      return { title: 'Application Approved ✅', body: 'Your coach profile is now live' };
+      return tr
+        ? { title: 'Antrenör başvurun onaylandı! 🎉', body: '' }
+        : { title: 'Your coach application was approved! 🎉', body: '' };
     case 'coachApplicationRejected':
-      return { title: 'Application Update', body: 'Check your coach application status' };
+      return tr
+        ? { title: 'Antrenör başvurun incelendi', body: '' }
+        : { title: 'Your coach application was reviewed', body: '' };
     case 'gymApplicationApproved':
-      return { title: 'Application Approved ✅', body: 'Your gym is now live on Cookrange' };
+      return tr
+        ? { title: 'Salon başvurun onaylandı! 🎉', body: '' }
+        : { title: 'Your gym application was approved! 🎉', body: '' };
     case 'gymApplicationRejected':
-      return { title: 'Application Update', body: 'Check your gym application status' };
+      return tr
+        ? { title: 'Salon başvurun incelendi', body: '' }
+        : { title: 'Your gym application was reviewed', body: '' };
+    case 'streakFreezeUsed':
+      return tr
+        ? { title: 'Seriniz bir dondurmayla kurtarıldı ❄️', body: `Bir dondurma jetonu ${days} günlük serini korudu.` }
+        : { title: 'Your streak was saved by a freeze ❄️', body: `A freeze token protected your ${days}-day streak.` };
+    case 'achievementEarned': {
+      const achName = (metadata && metadata.achievementName) || '';
+      const desc = (metadata && metadata.achievementDesc) || '';
+      return tr
+        ? { title: `Yeni başarım: ${achName} 🏅`, body: desc }
+        : { title: `New achievement: ${achName} 🏅`, body: desc };
+    }
     case 'mealReminder':
-      return { title: '🍽 Time to log your meal!', body: "Don't forget to track what you ate" };
+      return tr
+        ? { title: '🍽 Öğününü kaydetme zamanı!', body: 'Beslenme hedeflerinde kalmak için yediklerini takip et' }
+        : { title: '🍽 Time to log your meal!', body: "Don't forget to track what you ate" };
     case 'streakAtRisk':
-      return { title: '🔥 Streak At Risk!', body: 'Log a meal today to keep your streak alive' };
+      return tr
+        ? { title: '🔥 Seriniz tehlikede!', body: 'Serinizi korumak için bugün bir öğün kaydedin' }
+        : { title: '🔥 Streak at risk!', body: 'Log a meal today to keep your streak alive' };
     case 'weeklyPlanReady':
-      return { title: '📅 New Week, New Plan!', body: "Your weekly meal plan is ready — let's make it count" };
+      return tr
+        ? { title: '📅 Yeni hafta, yeni plan!', body: 'Haftalık yemek planın hazır — hadi başlayalım' }
+        : { title: '📅 New week, new plan!', body: "Your weekly meal plan is ready — let's make it count" };
+    case 'system':
+      // Admin free-text message (sendAdminNotification's 'system' branch)
+      // carries its own title/body — always shown verbatim, no locale switch,
+      // since the admin authored it in whatever language they typed.
+      if (customTitle && customBody) return { title: customTitle, body: customBody };
+      return system;
     default:
-      return { title: 'Cookrange', body: 'You have a new notification' };
+      return system;
   }
 }
 
@@ -588,12 +653,18 @@ exports.onInAppNotificationCreated = functions
     const uid = context.params.uid;
     const doc = snap.data();
     const type = doc.type || '';
+
+    // executeBroadcast() writes this same doc shape for the in-app feed but
+    // already sends its own per-locale push directly — fall through here
+    // would double-send with generic (non-localized) text.
+    if (type === 'broadcast') return;
+
     const actorName = doc.actorName || '';
     const relatedId = doc.relatedId || '';
     const actorUid = doc.actorUid || '';
     const metadata = doc.metadata || {};
 
-    // Fetch recipient — need their FCM token and mute prefs
+    // Fetch recipient — need their FCM token, locale and mute prefs
     const userSnap = await admin.firestore().collection('users').doc(uid).get();
     if (!userSnap.exists) return;
     const userData = userSnap.data();
@@ -614,7 +685,8 @@ exports.onInAppNotificationCreated = functions
       }
     }
 
-    const { title, body } = getPushText(type, actorName, metadata);
+    const locale = userData.locale || 'en';
+    const { title, body } = getPushText(type, actorName, metadata, locale, doc.title, doc.body);
     const sent = await sendFcm(uid, token, title, body, {
       type,
       relatedId,
@@ -744,7 +816,7 @@ async function executeBroadcast(broadcastId, broadcastData) {
         relatedId: broadcastId,
         metadata: { titleEn, bodyEn },
         isRead: false,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       // FCM push (best-effort; don't block batch on this)
@@ -905,7 +977,7 @@ exports.streakAtRiskNotifier = functions
 
       if (!logsSnap.empty) return; // Already logged today — streak is safe
 
-      const { title, body } = getPushText('streakAtRisk', '', {});
+      const { title, body } = getPushText('streakAtRisk', '', {}, userData.locale || 'en');
       const sent = await sendFcm(uid, token, title, body, { type: 'streakAtRisk' });
       if (sent) sentCount++;
     }));
@@ -951,7 +1023,7 @@ exports.weeklyPlanReadyNotifier = functions
       const mutedMap = userData.notification_muted || {};
       if (mutedMap['reminders'] === true) return;
 
-      const { title, body } = getPushText('weeklyPlanReady', '', {});
+      const { title, body } = getPushText('weeklyPlanReady', '', {}, userData.locale || 'en');
       const sent = await sendFcm(uid, token, title, body, { type: 'weeklyPlanReady' });
       if (sent) sentCount++;
     }));
@@ -981,3 +1053,15 @@ exports.scanImage = media.scanImage;
 
 const adminRoles = require('./admin');
 exports.syncAdminClaim = adminRoles.syncAdminClaim;
+
+const notifications = require('./notifications');
+exports.createNotification = notifications.createNotification;
+exports.retractNotification = notifications.retractNotification;
+exports.sendAdminNotification = notifications.sendAdminNotification;
+
+const social = require('./social');
+exports.followUser = social.followUser;
+exports.unfollowUser = social.unfollowUser;
+exports.sendFriendRequest = social.sendFriendRequest;
+exports.respondToFriendRequest = social.respondToFriendRequest;
+exports.cancelFriendRequest = social.cancelFriendRequest;

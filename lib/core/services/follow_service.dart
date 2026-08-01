@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
-import '../models/notification_model.dart';
-import 'auth_service.dart';
-import 'notification_service.dart';
+import 'crashlytics_service.dart';
 
 /// Manages unidirectional follow relationships.
 ///
@@ -13,14 +12,16 @@ import 'notification_service.dart';
 ///
 /// Follow is instant (no approval step) and completely separate from the
 /// bidirectional friends system.
+///
+/// Writes go through the `followUser`/`unfollowUser` Cloud Functions (SEC-06)
+/// so the edge write and the follow notification commit atomically, with the
+/// actor always derived server-side from the caller's own auth identity.
 class FollowService {
   static final FollowService _instance = FollowService._internal();
   factory FollowService() => _instance;
   FollowService._internal();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final AuthService _auth = AuthService();
-  final NotificationService _notificationService = NotificationService();
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -32,45 +33,49 @@ class FollowService {
 
   // ─── Write operations ──────────────────────────────────────────────────────
 
-  /// Follows [targetUid] as [currentUid]. Writes both sides in a single batch
-  /// and sends a follow notification (fire-and-forget).
+  /// Follows [targetUid] as [currentUid] (the currently authenticated user —
+  /// the server derives the real actor from the auth token regardless).
   Future<void> follow(String currentUid, String targetUid) async {
     if (currentUid == targetUid) return;
     debugPrint('FollowService.follow: $currentUid → $targetUid');
 
     try {
-      final batch = _firestore.batch();
-      final followedAtPayload = {'followedAt': FieldValue.serverTimestamp()};
-
-      // users/{currentUid}/following/{targetUid}
-      batch.set(_following(currentUid).doc(targetUid), followedAtPayload);
-      // users/{targetUid}/followers/{currentUid}
-      batch.set(_followers(targetUid).doc(currentUid), followedAtPayload);
-
-      await batch.commit();
-      debugPrint('FollowService.follow: batch committed');
-
-      // Fire-and-forget notification fan-out
-      unawaited(_sendFollowNotification(currentUid, targetUid));
+      await FirebaseFunctions.instance
+          .httpsCallable('followUser')
+          .call({'targetUid': targetUid});
+      debugPrint('FollowService.follow: done');
+    } on FirebaseFunctionsException catch (e, st) {
+      debugPrint('FollowService.follow error: ${e.code} ${e.message}');
+      unawaited(CrashlyticsService().recordError(e, st,
+          reason: 'FollowService.follow targetUid=$targetUid'));
+      rethrow;
     } catch (e, st) {
       debugPrint('FollowService.follow error: $e\n$st');
+      unawaited(CrashlyticsService().recordError(e, st,
+          reason: 'FollowService.follow targetUid=$targetUid'));
       rethrow;
     }
   }
 
-  /// Unfollows [targetUid] as [currentUid]. Deletes both sides in a batch.
+  /// Unfollows [targetUid] as [currentUid].
   Future<void> unfollow(String currentUid, String targetUid) async {
     if (currentUid == targetUid) return;
     debugPrint('FollowService.unfollow: $currentUid ↛ $targetUid');
 
     try {
-      final batch = _firestore.batch();
-      batch.delete(_following(currentUid).doc(targetUid));
-      batch.delete(_followers(targetUid).doc(currentUid));
-      await batch.commit();
-      debugPrint('FollowService.unfollow: batch committed');
+      await FirebaseFunctions.instance
+          .httpsCallable('unfollowUser')
+          .call({'targetUid': targetUid});
+      debugPrint('FollowService.unfollow: done');
+    } on FirebaseFunctionsException catch (e, st) {
+      debugPrint('FollowService.unfollow error: ${e.code} ${e.message}');
+      unawaited(CrashlyticsService().recordError(e, st,
+          reason: 'FollowService.unfollow targetUid=$targetUid'));
+      rethrow;
     } catch (e, st) {
       debugPrint('FollowService.unfollow error: $e\n$st');
+      unawaited(CrashlyticsService().recordError(e, st,
+          reason: 'FollowService.unfollow targetUid=$targetUid'));
       rethrow;
     }
   }
@@ -115,26 +120,6 @@ class FollowService {
     } catch (e) {
       debugPrint('FollowService.getFollowingCount error: $e');
       return 0;
-    }
-  }
-
-  // ─── Notification ──────────────────────────────────────────────────────────
-
-  Future<void> _sendFollowNotification(
-      String actorUid, String targetUid) async {
-    try {
-      final actorData = await _auth.getUserData(actorUid);
-      await _notificationService.sendNotification(
-        targetUserId: targetUid,
-        type: NotificationType.follow,
-        actorUid: actorUid,
-        actorName: actorData?.displayName,
-        actorPhotoUrl: actorData?.photoURL,
-        relatedId: actorUid,
-      );
-      debugPrint('FollowService: follow notification sent to $targetUid');
-    } catch (e) {
-      debugPrint('FollowService._sendFollowNotification error: $e');
     }
   }
 }

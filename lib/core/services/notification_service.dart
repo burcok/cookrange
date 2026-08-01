@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import '../models/notification_model.dart';
 import 'auth_service.dart';
+import 'crashlytics_service.dart';
 
 class NotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -9,9 +13,11 @@ class NotificationService {
 
   String? get currentUserId => _auth.currentUser?.uid;
 
-  // Collection reference
+  // Canonical path (BLK-03) — matches the onInAppNotificationCreated Cloud
+  // Function trigger. Client `create` is denied by firestore.rules; writes go
+  // through the createNotification/retractNotification callables below.
   CollectionReference<Map<String, dynamic>> _userNotifications(String uid) {
-    return _firestore.collection('users').doc(uid).collection('notifications');
+    return _firestore.collection('notifications').doc(uid).collection('items');
   }
 
   // Get notifications stream
@@ -105,8 +111,14 @@ class NotificationService {
     );
   }
 
-  /// Create a structured notification. The display text is rendered on the
-  /// client (see `NotificationPresenter`) — only structured data is persisted.
+  /// Create a structured notification. Written server-side (BLK-03) by the
+  /// `createNotification` callable, which derives the actor from the caller's
+  /// own auth identity and re-fetches their current name/photo — the client
+  /// can no longer inject an arbitrary actorName. Display text is rendered on
+  /// the client (see `NotificationPresenter`) from the structured data.
+  ///
+  /// [actorUid]/[actorName]/[actorPhotoUrl] are accepted for call-site source
+  /// compatibility but ignored: the callable always uses `context.auth.uid`.
   Future<void> sendNotification({
     required String targetUserId,
     required NotificationType type,
@@ -117,18 +129,22 @@ class NotificationService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      await _userNotifications(targetUserId).add({
+      await FirebaseFunctions.instance
+          .httpsCallable('createNotification')
+          .call({
+        'targetUid': targetUserId,
         'type': type.name,
-        'timestamp': FieldValue.serverTimestamp(),
-        'isRead': false,
-        if (actorUid != null) 'actorUid': actorUid,
-        if (actorName != null) 'actorName': actorName,
-        if (actorPhotoUrl != null) 'actorPhotoUrl': actorPhotoUrl,
         if (relatedId != null) 'relatedId': relatedId,
         if (metadata != null) 'metadata': metadata,
       });
-    } catch (e) {
+    } on FirebaseFunctionsException catch (e, stack) {
+      debugPrint('Error sending notification: ${e.code} ${e.message}');
+      unawaited(CrashlyticsService().recordError(e, stack,
+          reason: 'NotificationService.sendNotification type=${type.name}'));
+    } catch (e, stack) {
       debugPrint('Error sending notification: $e');
+      unawaited(CrashlyticsService().recordError(e, stack,
+          reason: 'NotificationService.sendNotification type=${type.name}'));
     }
   }
 
@@ -171,23 +187,35 @@ class NotificationService {
     await batch.commit();
   }
 
-  // Delete notification by relatedId and type (used to undo like/reaction fan-out)
+  /// Undoes a [sendNotification] call (e.g. un-like, un-react) by deleting
+  /// the matching doc(s) from [targetUserId]'s inbox. Server-side (BLK-03) via
+  /// the `retractNotification` callable — the caller can only retract
+  /// notifications whose `actorUid` matches their own auth identity, so one
+  /// user can never delete another user's unrelated notifications.
   Future<void> deleteNotificationByRelatedId({
     required String targetUserId,
     required String relatedId,
     required NotificationType type,
   }) async {
     try {
-      final snapshot = await _userNotifications(targetUserId)
-          .where('relatedId', isEqualTo: relatedId)
-          .where('type', isEqualTo: type.name)
-          .get();
-
-      for (var doc in snapshot.docs) {
-        await doc.reference.delete();
-      }
-    } catch (e) {
+      await FirebaseFunctions.instance
+          .httpsCallable('retractNotification')
+          .call({
+        'targetUid': targetUserId,
+        'relatedId': relatedId,
+        'type': type.name,
+      });
+    } on FirebaseFunctionsException catch (e, stack) {
+      debugPrint(
+          'Error deleting notification by relatedId: ${e.code} ${e.message}');
+      unawaited(CrashlyticsService().recordError(e, stack,
+          reason:
+              'NotificationService.deleteNotificationByRelatedId type=${type.name}'));
+    } catch (e, stack) {
       debugPrint('Error deleting notification by relatedId: $e');
+      unawaited(CrashlyticsService().recordError(e, stack,
+          reason:
+              'NotificationService.deleteNotificationByRelatedId type=${type.name}'));
     }
   }
 }

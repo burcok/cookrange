@@ -77,29 +77,32 @@ service cloud.firestore {
         || isAdmin();
       allow delete: if isOwner(uid);
 
-      // Friends subcollection: owner reads; either party can create; owner can delete
+      // Friends subcollection (BLK-03/SEC-06): owner reads; mutation is
+      // server-only (functions/social.js: sendFriendRequest,
+      // respondToFriendRequest) — a bare isAuthenticated() create let any
+      // signed-in user write into anyone's friends list. Delete stays
+      // client-side (removeFriend) — it only ever affects the caller's own
+      // subtree, so no forgery is possible there.
       match /friends/{friendId} {
         allow read: if isOwner(uid);
-        allow create: if isAuthenticated();
-        allow update: if isAuthenticated();
+        allow create, update: if false;
         allow delete: if isOwner(uid);
       }
 
-      // Friend requests subcollection
+      // Friend requests subcollection (BLK-03/SEC-06): fully server-authored.
+      // functions/social.js validates, writes both sides, and cleans up on
+      // accept/reject/cancel — no legitimate client write path remains.
       match /friend_requests/{requestId} {
         allow read: if isOwner(uid);
-        allow create: if isAuthenticated();
-        allow update: if isAuthenticated();
-        allow delete: if isOwner(uid) || isOwner(requestId);
+        allow create, update, delete: if false;
       }
 
-      // Notifications: owner reads; any authenticated user can create (for sending notifs to others)
-      match /notifications/{notifId} {
-        allow read: if isOwner(uid);
-        allow create: if isAuthenticated();
-        allow update: if isOwner(uid);
-        allow delete: if isOwner(uid);
-      }
+      // Notifications (BLK-03/SEC-06): this old path (users/{uid}/notifications)
+      // is retired — the canonical path is the top-level
+      // notifications/{uid}/items/{docId} rule below, matching the Cloud
+      // Function trigger that fans out push. No data migration was needed:
+      // v0.9.6 has no real users yet (PROJECT_STATE.md). Falls through to the
+      // catch-all deny.
 
       // Meal plans: strictly owner-only
       match /meal_plans/{planId} {
@@ -682,6 +685,19 @@ service cloud.firestore {
     match /ai_usage_stats/{doc} {
       allow read: if isAdmin();
       allow write: if false;
+    }
+
+    // ─── Notifications (canonical path; BLK-03/SEC-06) ───────────────────────
+    // Fans out to push via the onInAppNotificationCreated trigger. Written only
+    // by Cloud Functions (functions/notifications.js, social.js, economy.js,
+    // index.js broadcast) — actorName/actorPhotoUrl are always re-fetched
+    // server-side there, never trusted from a client payload. Owner may mark
+    // read (update) and dismiss (delete) their own notifications directly.
+    match /notifications/{uid}/items/{docId} {
+      allow read: if isOwner(uid);
+      allow create: if false;
+      allow update: if isOwner(uid);
+      allow delete: if isOwner(uid);
     }
 
     // ─── Deny everything else ─────────────────────────────────────────────────

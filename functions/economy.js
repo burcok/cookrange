@@ -14,6 +14,7 @@ const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const { grantPremium } = require('./entitlements');
 const { APP_CHECK_ENFORCE } = require('./config');
+const { writeNotification } = require('./notifications');
 
 const REFERRAL_REWARD_DAYS = 7;
 const REFERRAL_MAX_USES = 10;
@@ -82,13 +83,12 @@ exports.applyReferral = functions.https.onCall(async (data, context) => {
   });
 
   // Structured notification to the referrer (rendered in their language).
-  await db.collection('notifications').doc(ownerUid).collection('items').add({
+  await writeNotification(db, {
+    targetUid: ownerUid,
     type: 'referral',
     actorUid: uid,
     relatedId: code,
     metadata: { rewardDays: REFERRAL_REWARD_DAYS },
-    isRead: false,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
   functions.logger.info('applyReferral: ok', { uid, ownerUid, code });

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
@@ -8,6 +9,7 @@ import '../models/privacy_request_model.dart';
 import '../models/report_model.dart';
 import '../utils/firestore_count.dart';
 import 'analytics_service.dart';
+import 'crashlytics_service.dart';
 import '../models/coach_profile_model.dart';
 import '../models/gym_application_model.dart';
 import '../models/gym_model.dart';
@@ -230,24 +232,15 @@ class AdminService {
       'user_role': 'coach',
     });
 
-    // 4. Send notification
-    final notifRef = _db
-        .collection('notifications')
-        .doc(app.applicantUid)
-        .collection('items')
-        .doc();
-    batch.set(notifRef, {
-      'type': 'coachApplicationApproved',
-      'actorUid': adminUid,
-      'actorName': 'Cookrange Team',
-      'actorPhotoUrl': null,
-      'relatedId': app.id,
-      'read': false,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
     await batch.commit();
     debugPrint('AdminService: coach application ${app.id} approved');
+
+    // 4. Notify the applicant — server-authored (BLK-03/SEC-06)
+    await _sendAdminNotification(
+      targetUid: app.applicantUid,
+      type: 'coachApplicationApproved',
+      relatedId: app.id,
+    );
   }
 
   // ── Approve Gym ─────────────────────────────────────────────────────────────
@@ -312,24 +305,15 @@ class AdminService {
       'user_role': 'gym_owner',
     });
 
-    // 4. Notification
-    final notifRef = _db
-        .collection('notifications')
-        .doc(app.applicantUid)
-        .collection('items')
-        .doc();
-    batch.set(notifRef, {
-      'type': 'gymApplicationApproved',
-      'actorUid': adminUid,
-      'actorName': 'Cookrange Team',
-      'actorPhotoUrl': null,
-      'relatedId': app.id,
-      'read': false,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
     await batch.commit();
     debugPrint('AdminService: gym application ${app.id} approved');
+
+    // 4. Notify the applicant — server-authored (BLK-03/SEC-06)
+    await _sendAdminNotification(
+      targetUid: app.applicantUid,
+      type: 'gymApplicationApproved',
+      relatedId: app.id,
+    );
   }
 
   // ── Reject Application ─────────────────────────────────────────────────────
@@ -350,24 +334,15 @@ class AdminService {
       'reviewerNotes': notes,
     });
 
-    final notifRef = _db
-        .collection('notifications')
-        .doc(app.applicantUid)
-        .collection('items')
-        .doc();
-    batch.set(notifRef, {
-      'type': 'coachApplicationRejected',
-      'actorUid': adminUid,
-      'actorName': 'Cookrange Team',
-      'actorPhotoUrl': null,
-      'relatedId': app.id,
-      'metadata': {'notes': notes},
-      'read': false,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
     await batch.commit();
     debugPrint('AdminService: coach application ${app.id} rejected');
+
+    await _sendAdminNotification(
+      targetUid: app.applicantUid,
+      type: 'coachApplicationRejected',
+      relatedId: app.id,
+      notes: notes,
+    );
   }
 
   Future<void> rejectGymApplication(
@@ -384,23 +359,14 @@ class AdminService {
       'reviewerNotes': notes,
     });
 
-    final notifRef = _db
-        .collection('notifications')
-        .doc(app.applicantUid)
-        .collection('items')
-        .doc();
-    batch.set(notifRef, {
-      'type': 'gymApplicationRejected',
-      'actorUid': adminUid,
-      'actorName': 'Cookrange Team',
-      'actorPhotoUrl': null,
-      'relatedId': app.id,
-      'metadata': {'notes': notes},
-      'read': false,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
     await batch.commit();
+
+    await _sendAdminNotification(
+      targetUid: app.applicantUid,
+      type: 'gymApplicationRejected',
+      relatedId: app.id,
+      notes: notes,
+    );
   }
 
   // ── Request More Info ──────────────────────────────────────────────────────
@@ -531,31 +497,60 @@ class AdminService {
     );
   }
 
-  /// Sends a direct (admin → single user) notification. Written as a legacy
-  /// title/body doc so `NotificationPresenter` shows the custom message
-  /// verbatim (no actorUid/metadata → renders stored title/body).
+  /// Server-authored application-decision notification (BLK-03/SEC-06). Fired
+  /// after the review batch above already committed the status/role change —
+  /// a best-effort follow-up, not part of that transaction: if this throws,
+  /// the approval/rejection itself has already succeeded, so we log and swallow
+  /// rather than surface a false failure to the admin.
+  Future<void> _sendAdminNotification({
+    required String targetUid,
+    required String type,
+    String? relatedId,
+    String? notes,
+  }) async {
+    try {
+      await FirebaseFunctions.instance
+          .httpsCallable('sendAdminNotification')
+          .call({
+        'targetUid': targetUid,
+        'type': type,
+        if (relatedId != null) 'relatedId': relatedId,
+        if (notes != null) 'notes': notes,
+      });
+    } catch (e, st) {
+      debugPrint('AdminService: _sendAdminNotification failed type=$type: $e');
+      unawaited(CrashlyticsService().recordError(e, st,
+          reason:
+              'AdminService._sendAdminNotification type=$type targetUid=$targetUid'));
+    }
+  }
+
+  /// Sends a direct (admin → single user) free-text notification. Server-
+  /// authored (BLK-03/SEC-06) via the same admin-only callable, using its
+  /// legacy title/body branch so `NotificationPresenter` shows the message
+  /// verbatim.
   Future<void> sendNotificationToUser({
     required String uid,
     required String title,
     required String body,
   }) async {
-    final adminUid = _auth.currentUser?.uid;
-    if (adminUid == null) throw Exception('AdminService: not authenticated');
-
     debugPrint('AdminService: sendNotificationToUser uid=$uid');
-    await _db.collection('users').doc(uid).collection('notifications').add({
+    await FirebaseFunctions.instance
+        .httpsCallable('sendAdminNotification')
+        .call({
+      'targetUid': uid,
       'type': 'system',
       'title': title,
       'body': body,
-      'timestamp': FieldValue.serverTimestamp(),
-      'isRead': false,
     });
 
-    await logAuditAction(
-      action: 'send_notification',
-      targetUid: uid,
-      metadata: {'title': title},
-    );
+    // Audit doc is written server-side (sendAdminNotification's 'system'
+    // branch); the analytics event stays client-side since Cloud Functions
+    // can't emit to this device's Firebase Analytics SDK.
+    unawaited(AnalyticsService().logEvent(
+      name: 'admin_action',
+      parameters: {'action': 'send_notification', 'target_uid': uid},
+    ));
   }
 
   // ── Application History ────────────────────────────────────────────────────

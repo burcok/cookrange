@@ -21,7 +21,7 @@ import {
   assertFails,
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RULES = readFileSync(join(__dirname, '..', '..', 'firestore.rules'), 'utf8');
@@ -214,6 +214,68 @@ test('admin-only collections: provisioned admin reads, non-admin denied (BLK-05)
   await assertFails(getDoc(doc(db('u2'), 'admin_audit/a1')));
   await assertFails(getDoc(doc(db('u2'), 'ai_usage_logs/l1')));
   await assertFails(getDoc(doc(db('u2'), 'admin_config/global')));
+});
+
+// ─── Notifications / friends / follow (BLK-03, SEC-06) ──────────────────────
+
+test('notifications: client CANNOT create even for themselves; owner reads/marks-read/dismisses', async () => {
+  // Canonical path notifications/{uid}/items/{docId} — the whole point of
+  // BLK-03 is that this is Cloud-Functions-only, so even u1 creating their
+  // OWN notification doc must fail (that used to be exactly how a forged
+  // actorName got into someone else's inbox on the old path).
+  await assertFails(
+    setDoc(doc(db('u1'), 'notifications/u1/items/n1'), {
+      type: 'system',
+      isRead: false,
+      actorName: 'Forged Name',
+    })
+  );
+
+  await seed('notifications/u1/items/n1', {
+    type: 'follow',
+    isRead: false,
+    actorUid: 'u2',
+    actorName: 'B',
+  });
+  await assertSucceeds(getDoc(doc(db('u1'), 'notifications/u1/items/n1')));
+  await assertSucceeds(
+    updateDoc(doc(db('u1'), 'notifications/u1/items/n1'), { isRead: true })
+  );
+  await assertFails(getDoc(doc(db('u2'), 'notifications/u1/items/n1')));
+  await assertFails(
+    setDoc(doc(db('u2'), 'notifications/u1/items/n2'), { type: 'system' })
+  );
+});
+
+test('notifications: old users/{uid}/notifications path is retired (BLK-03)', async () => {
+  // This path was the original forgery hole (allow create: if isAuthenticated(),
+  // no field checks). It has no rule at all now — falls to the catch-all deny,
+  // same as any other unmodelled path.
+  await assertFails(
+    setDoc(doc(db('u1'), 'users/u1/notifications/n1'), { type: 'system' })
+  );
+});
+
+test('friends: client CANNOT create/update another user into their list; owner CAN still unfriend (delete)', async () => {
+  await assertFails(
+    setDoc(doc(db('u1'), 'users/u2/friends/u1'), { since: 1 })
+  );
+  await seed('users/u1/friends/u2', { since: 1 });
+  await assertFails(
+    updateDoc(doc(db('u1'), 'users/u1/friends/u2'), { since: 2 })
+  );
+  await assertSucceeds(deleteDoc(doc(db('u1'), 'users/u1/friends/u2')));
+});
+
+test('friend_requests: fully server-only — client CANNOT create, update or delete (SEC-06)', async () => {
+  await assertFails(
+    setDoc(doc(db('u1'), 'users/u2/friend_requests/u1'), { type: 'incoming' })
+  );
+  await seed('users/u1/friend_requests/u2', { type: 'outgoing' });
+  await assertFails(
+    updateDoc(doc(db('u1'), 'users/u1/friend_requests/u2'), { type: 'incoming' })
+  );
+  await assertFails(deleteDoc(doc(db('u1'), 'users/u1/friend_requests/u2')));
 });
 
 test('unauthenticated access is denied', async () => {

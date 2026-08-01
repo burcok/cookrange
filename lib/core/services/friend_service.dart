@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
-import '../models/notification_model.dart';
 import '../services/auth_service.dart';
-import '../services/notification_service.dart';
+import 'crashlytics_service.dart';
 
 enum FriendshipStatus {
   none,
@@ -12,10 +13,18 @@ enum FriendshipStatus {
   friends,
 }
 
+/// Manages the bidirectional friends system (requests, accept/reject, unfriend).
+///
+/// Mutation (send/accept/reject/cancel) goes through Cloud Functions callables
+/// (SEC-06: `functions/social.js`) — firestore.rules denies client `create` on
+/// `friends`/`friend_requests` unconditionally. The server re-verifies status,
+/// writes both sides atomically, and sends the notification with the actor
+/// derived from the caller's own auth identity. `removeFriend` stays
+/// client-direct: it only ever deletes the caller's own subtree on both
+/// sides, already safe under the owner-scoped delete rule.
 class FriendService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _auth = AuthService();
-  final NotificationService _notificationService = NotificationService();
 
   String? get currentUserId => _auth.currentUser?.uid;
 
@@ -38,7 +47,7 @@ class FriendService {
     final nameOriginalQuery = _firestore
         .collection('users')
         .where('displayName', isGreaterThanOrEqualTo: qOriginal)
-        .where('displayName', isLessThan: '$qOriginal\uf8ff')
+        .where('displayName', isLessThan: '$qOriginal')
         .limit(10)
         .get();
 
@@ -46,7 +55,7 @@ class FriendService {
     final nameLowerQuery = _firestore
         .collection('users')
         .where('displayName', isGreaterThanOrEqualTo: qLower)
-        .where('displayName', isLessThan: '$qLower\uf8ff')
+        .where('displayName', isLessThan: '$qLower')
         .limit(10)
         .get();
 
@@ -54,7 +63,7 @@ class FriendService {
     final emailPrefixQuery = _firestore
         .collection('users')
         .where('email', isGreaterThanOrEqualTo: qLower)
-        .where('email', isLessThan: '$qLower\uf8ff')
+        .where('email', isLessThan: '$qLower')
         .limit(10)
         .get();
 
@@ -128,36 +137,21 @@ class FriendService {
     final uid = currentUserId;
     if (uid == null) return;
 
-    // Check if already friends or pending
+    // Quick client-side check for responsive UX — the callable re-verifies
+    // authoritatively, so this is an optimization, not the security boundary.
     final status = await checkFriendshipStatus(targetUserId);
     if (status != FriendshipStatus.none) return;
 
-    // 1. Create outgoing request (sender's side)
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('friend_requests')
-        .doc(targetUserId)
-        .set({'type': 'outgoing', 'timestamp': FieldValue.serverTimestamp()});
-
-    // 2. Create incoming request (target's side)
-    await _firestore
-        .collection('users')
-        .doc(targetUserId)
-        .collection('friend_requests')
-        .doc(uid)
-        .set({'type': 'incoming', 'timestamp': FieldValue.serverTimestamp()});
-
-    // 3. Send Notification (structured — rendered on the recipient's device)
-    final currentUserData = await _auth.getUserData(uid);
-    await _notificationService.sendNotification(
-      targetUserId: targetUserId,
-      type: NotificationType.friendRequest,
-      actorUid: uid,
-      actorName: currentUserData?.displayName,
-      actorPhotoUrl: currentUserData?.photoURL,
-      relatedId: uid, // Sender ID (used by accept/reject actions)
-    );
+    try {
+      await FirebaseFunctions.instance
+          .httpsCallable('sendFriendRequest')
+          .call({'targetUid': targetUserId});
+    } on FirebaseFunctionsException catch (e, st) {
+      debugPrint('sendFriendRequest error: ${e.code} ${e.message}');
+      unawaited(CrashlyticsService().recordError(e, st,
+          reason: 'FriendService.sendFriendRequest targetUid=$targetUserId'));
+      rethrow;
+    }
   }
 
   // Accept Friend Request
@@ -166,74 +160,50 @@ class FriendService {
     final uid = currentUserId;
     if (uid == null) return;
 
-    // 1. Add to my friends
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('friends')
-        .doc(senderUserId)
-        .set({'since': FieldValue.serverTimestamp()});
-
-    // 2. Add me to their friends
-    await _firestore
-        .collection('users')
-        .doc(senderUserId)
-        .collection('friends')
-        .doc(uid)
-        .set({'since': FieldValue.serverTimestamp()});
-
-    // 3. Delete request docs
-    await _deleteRequestDocs(uid, senderUserId);
-
-    // 4. Notify sender (structured — rendered on the recipient's device)
-    final currentUserData = await _auth.getUserData(uid);
-    await _notificationService.sendNotification(
-      targetUserId: senderUserId,
-      type: NotificationType.friendAccepted,
-      actorUid: uid,
-      actorName: currentUserData?.displayName,
-      actorPhotoUrl: currentUserData?.photoURL,
-      relatedId: uid,
-    );
-
-    // 5. Delete the original friend request notification for the receiver (me)
-    await _notificationService.deleteNotificationByRelatedId(
-      targetUserId: uid,
-      relatedId: senderUserId,
-      type: NotificationType.friendRequest,
-    );
+    try {
+      await FirebaseFunctions.instance
+          .httpsCallable('respondToFriendRequest')
+          .call({'senderUid': senderUserId, 'accept': true});
+    } on FirebaseFunctionsException catch (e, st) {
+      debugPrint('acceptFriendRequest error: ${e.code} ${e.message}');
+      unawaited(CrashlyticsService().recordError(e, st,
+          reason: 'FriendService.acceptFriendRequest senderUid=$senderUserId'));
+      rethrow;
+    }
   }
 
   // Reject Friend Request
   Future<void> rejectFriendRequest(String senderUserId) async {
     final uid = currentUserId;
     if (uid == null) return;
-    await _deleteRequestDocs(uid, senderUserId);
+
+    try {
+      await FirebaseFunctions.instance
+          .httpsCallable('respondToFriendRequest')
+          .call({'senderUid': senderUserId, 'accept': false});
+    } on FirebaseFunctionsException catch (e, st) {
+      debugPrint('rejectFriendRequest error: ${e.code} ${e.message}');
+      unawaited(CrashlyticsService().recordError(e, st,
+          reason: 'FriendService.rejectFriendRequest senderUid=$senderUserId'));
+      rethrow;
+    }
   }
 
   // Cancel Sent Request
   Future<void> cancelFriendRequest(String targetUserId) async {
     final uid = currentUserId;
     if (uid == null) return;
-    await _deleteRequestDocs(uid, targetUserId);
-  }
 
-  Future<void> _deleteRequestDocs(String uid1, String uid2) async {
-    // Delete for user 1
-    await _firestore
-        .collection('users')
-        .doc(uid1)
-        .collection('friend_requests')
-        .doc(uid2)
-        .delete();
-
-    // Delete for user 2
-    await _firestore
-        .collection('users')
-        .doc(uid2)
-        .collection('friend_requests')
-        .doc(uid1)
-        .delete();
+    try {
+      await FirebaseFunctions.instance
+          .httpsCallable('cancelFriendRequest')
+          .call({'targetUid': targetUserId});
+    } on FirebaseFunctionsException catch (e, st) {
+      debugPrint('cancelFriendRequest error: ${e.code} ${e.message}');
+      unawaited(CrashlyticsService().recordError(e, st,
+          reason: 'FriendService.cancelFriendRequest targetUid=$targetUserId'));
+      rethrow;
+    }
   }
 
   // Check Status
