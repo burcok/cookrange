@@ -174,11 +174,39 @@ architecture), cloned Flutter `3.44.4`, and tested the **exact bytes about to be
 
 `build-android` failed on a **fourth, distinct, previously-unreachable failure** — `flutter build apk
 --debug` itself, the first time this exact step has ever executed in this repo's CI history (it was
-always blocked upstream before now). Doesn't reproduce locally (`flutter build apk --debug` succeeds
-cleanly on this machine's Android SDK in ~73s). Opened as a new item, `CI-12`, rather than chased
-further in this same pass — an Android build failure isn't inherently OS-specific like the `analyze`
-bugs were, so the likelier explanation is a GitHub-runner-specific SDK/toolchain gap, which needs
-either the real log text or a much larger Android-SDK-in-a-container setup to diagnose properly.
+always blocked upstream before now). Opened as `CI-12`.
+
+### Fixed — `CI-12`: hardcoded local Java path broke `build-android` (2026-08-01)
+
+**Root cause confirmed by reproduction.** Set up a real Android SDK (platform 36, NDK 28.2.13676358,
+build-tools 36.0.0, licenses accepted) inside a fresh `ubuntu:24.04` container and hit the exact
+error CI showed:
+
+```
+Value '/Applications/Android Studio.app/Contents/jbr/Contents/Home' given for
+org.gradle.java.home Gradle property is invalid (Java home supplied is invalid)
+```
+
+`android/gradle.properties` hardcoded `org.gradle.java.home` to an absolute macOS-only path —
+Android Studio's bundled JBR. It worked silently on this one machine (that exact path genuinely
+exists here, with a real JBR) and would fail identically everywhere else: every CI runner, any
+teammate's machine, any Mac without Android Studio installed at that exact location. Same failure
+class as `CI-11`'s `assets/Fonts` case bug — a value true on exactly one machine. Git history shows
+this line has **never** been portable: it previously hardcoded a different local path
+(`/opt/homebrew/opt/openjdk@17`) before being swapped to the Android Studio path.
+
+**Fix:** removed the line entirely rather than substituting another hardcoded path, letting Gradle
+use the ambient `JAVA_HOME` that `ci.yml`'s own "Set up Java" step already sets correctly. Verified
+the fix doesn't break the local Mac build (still succeeds, ~62s).
+
+**Confirmed in real CI**: [run #46](https://github.com/burcok/cookrange/actions/runs/30690211684) —
+`build-android` succeeded. **All four CI jobs green for the first time in this repo's history.**
+
+`BLK-13`, `CI-11`, and `CI-12` are now fully closed. Four independent, stacked root causes found and
+fixed across the three cards, every one confirmed by reproducing it in a real environment rather
+than guessed at — a stale Flutter pin, an invalid `firebase_options.dart` placeholder, a repo-wide
+font-directory case mismatch, and a hardcoded local Java path. `CI-02` (branch protection) is the
+natural next step, now genuinely achievable.
 
 ---
 

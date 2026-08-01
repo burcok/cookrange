@@ -112,7 +112,7 @@ codebase starts telling you the truth.
 | Code quality | 6.5 / 10 | Readable, consistent, null-safe; **swallow-and-log is the systemic defect** |
 | Maintainability | 5.5 / 10 | 40 files > 800 LOC, no interfaces, no test seam |
 | Documentation | 5.5 / 10 | 486 KB, well-organised — and **it asserts features that do not exist** |
-| Testing | 2.0 / 10 | **1.05 % coverage**, 3 failing tests, `test/` gitignored |
+| Testing | 3.0 / 10 | **~1 % coverage** (unchanged) — but `test/` tracked, 0 failing, and **all 4 CI jobs confirmed green** (first time ever) |
 | Business readiness | 2.0 / 10 | **Zero revenue capability**; premium bypassable |
 | Production readiness | 2.5 / 10 | Two hard ship blockers, CI red, no monitoring, no backups |
 | **Weighted composite** | **5.4 / 10** | Strong design instincts, high velocity, **no verification discipline** |
@@ -177,6 +177,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | ✅ Image display — 48 `CachedNetworkImage` + 14 `AppImage`, only 3 raw | codebase-wide |
 | ✅ Count discipline — `pollCount()` in 28 sites, zero count anti-patterns | `utils/firestore_count.dart` |
 | ✅ `flutter analyze lib/` — 0 errors, 0 warnings, 25 infos | verified 2026-07-31 |
+| ✅ CI/CD — all 4 jobs green (`analyze-and-test`, `firestore-rules`, `secret-scan`, `build-android`) | [run #46](https://github.com/burcok/cookrange/actions/runs/30690211684), verified 2026-08-01, `BLK-13`/`CI-11`/`CI-12` |
 
 ### 1.5 Partially completed systems
 
@@ -199,7 +200,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | 🚧 **Challenge sunset** | Screens, model, service, deep links, lib refs removed | **`DEBT-11`** — rules block + 2 indexes + 4 orphan i18n keys survive; old roadmap claimed complete |
 | 🚧 **Accessibility** | DS-level semantics on ~6 components, reduced-motion in 2 widgets | 32 sites across 329 files; no screen-reader / contrast / touch-target pass |
 | 🚧 **Dark mode** | Both themes fully defined, `ThemeProvider` live | 120 hex + 214 `Colors.white/black` literals in `lib/screens` |
-| 🚧 **CI/CD** | 4 CI jobs + full TestFlight/Play deploy workflow | `BLK-13` + **`CI-11`** fully fixed and **confirmed in real CI** — 3/4 jobs genuinely green (`analyze-and-test`, `firestore-rules`, `secret-scan`); **`CI-12`** (new, undiagnosed — `build-android`'s first-ever real run failed) blocks the last one; no store secrets set |
+| 🚧 **CD (deploy workflow)** | Full TestFlight/Play deploy workflow (CI itself moved to §1.4 — all 4 jobs green) | `BLK-16` — no signing identity, no store secrets set; has never run |
 
 ### 1.6 Missing systems — no implementation exists
 
@@ -245,7 +246,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | `BLK-10` | 🔥 User doc world-readable with `email`, `last_login_ip`, device fingerprints | GDPR / KVKK exposure in the primary market |
 | `BLK-11` | 🔥 Dish catalog unseedable in-app; only 75 dishes | Core feature has no content on a fresh project |
 | `BLK-12` | 🔥 GDPR erasure + export incomplete | Art. 17 / Art. 20 non-compliance |
-| `BLK-13` | 🚧 Own defects fixed (test/ tracked, 3 failures fixed, format clean, rules suite green); `CI-11`'s 3 stacked root causes all fixed and **confirmed in real CI** | 3/4 CI jobs genuinely green, confirmed. `build-android` fails on a new, separate issue — `CI-12` |
+| `BLK-13` | ✅ Closed — all four CI jobs confirmed green in real CI, first time in this repo's history | `CI-11` (3 root causes) and `CI-12` (1 root cause) both fixed and confirmed |
 | `BLK-14` | 🔥 App Check not enforced (`APP_ENV=development`) | Proxy and Functions open to unattested clients |
 | `BLK-15` | 🔥 Live OpenRouter key bundled as a Flutter asset + shipped in CI artifacts | Key extraction / denial-of-wallet |
 | `BLK-16` | 🔥 No Apple / Google developer programme enrolment, no signing identity | Cannot produce a distributable build |
@@ -843,17 +844,18 @@ comment threads). Decide explicitly and write it into the privacy policy.
 
 ---
 
-#### `BLK-13` 🚧 CI is red on `main` and `test/` is gitignored
+#### `BLK-13` ✅ CI is red on `main` and `test/` is gitignored
 
-**Status** 🚧 Partial — this card's own defects are fixed and verified; blocked from full-green by a
-newly discovered, pre-existing, unrelated defect (`CI-11`) · **Priority** Critical · **Complexity** S
-· **Est** 4 h (actual: ~4 h of fixes + diagnosis)
+**Status** ✅ Closed — **all four CI jobs confirmed green in a real run**
+([run #46](https://github.com/burcok/cookrange/actions/runs/30690211684), commit `091429e`) · **Priority**
+Critical · **Complexity** S (actual: grew into a multi-session diagnosis across `CI-11`/`CI-12`) ·
+**Est** 4 h (actual: ~10 h across this card + `CI-11` + `CI-12`)
 **Version** v0.9.7 · **Milestone** M1 · **Owner** DevOps Lead
 **Labels** `ci` `testing` `quality-gate` `git-hygiene`
 **Modules** DevOps · Testing
-**Files** `.gitignore` · `test/app_lifecycle_service_test.dart` · 44 files in `lib/` · `.github/workflows/ci.yml` · `test/firestore_rules/rules.test.mjs`
+**Files** `.gitignore` · `test/app_lifecycle_service_test.dart` · 44 files in `lib/` · `.github/workflows/ci.yml` · `test/firestore_rules/rules.test.mjs` · `android/gradle.properties`
 **Dependencies** — · **Required before** every other task's DoD
-**Blocking** Any trustworthy statement about code quality — **substantially unblocked**; see below.
+**Blocking** Any trustworthy statement about code quality — **fully unblocked**.
 
 **What exists / what is missing**
 
@@ -880,32 +882,39 @@ this repo's history — both **fixed and reverified 15/15 locally + confirmed gr
    fixed to the valid 4-segment form `firestore.rules:32`'s own comment already describes
    (`admin/status/{uid}/flags`) — exercises the same real implicit default-deny.
 
-**Was out of this card's scope, tracked and fixed separately as `CI-11`:**
+**Was out of this card's scope, tracked and fixed separately as `CI-11` and `CI-12`:**
 `analyze-and-test` failed across **three independent, stacked root causes**, each hiding the next
 until the previous was fixed: a stale Flutter CI pin (`pub get` failed), a `firebase_options.dart`
 CI placeholder that was never valid Dart (`analyze` failed with undefined-name errors), and a
 repo-wide `assets/Fonts/` vs `assets/fonts/` case mismatch invisible on macOS's case-insensitive
 filesystem for the project's entire life (`analyze` failed on a missing-asset-directory warning).
-All three fixed and verified in a real `ubuntu:24.04` container matching CI's exact architecture —
-`pub get`, `format`, `analyze`, `test` (78/78) all exit 0 against the precise snapshot about to be
-pushed. See `CI-11` for the full diagnosis; this is genuinely worth reading, not routine.
+Then, once `analyze-and-test` finally passed for the first time, `build-android` ran its actual APK
+build for the first time ever and hit a **fourth**: `android/gradle.properties` hardcoded
+`org.gradle.java.home` to an absolute macOS-only path (Android Studio's bundled JBR) — worked
+silently on the one machine that happened to have Android Studio installed exactly there, invalid
+everywhere else including every CI runner. All four fixed; `analyze-and-test` verified in a real
+`ubuntu:24.04` container matching CI's architecture before pushing, `build-android` confirmed
+directly against real CI after a real Android SDK (platform 36, NDK 28.2, build-tools 36.0.0) was
+set up in a container to reproduce it first. See `CI-11` and `CI-12` for the full diagnoses — both
+are genuinely worth reading, not routine.
 
 **Acceptance Criteria**
 - ✅ `test/` removed from `.gitignore`; all 14 files (11 Dart + 3 `firestore_rules/`) committed.
 - ✅ `test/firestore_rules/node_modules` excluded specifically.
 - ✅ `dart format lib/` applied; formatting job green.
 - ✅ The 3 `app_lifecycle_service_test` failures fixed.
-- 🚧 **All four CI jobs green on `main`** — 3/4 confirmed green in a real run (`analyze-and-test`,
-  `firestore-rules`, `secret-scan` — [run #44](https://github.com/burcok/cookrange/actions/runs/30687453667)).
-  `build-android` fails on a **new**, separate, undiagnosed issue (`CI-12`) unrelated to anything
-  `BLK-13`/`CI-11` touched. **This bullet is why the card stays 🚧, not ✅** — `CI-12` is what's left.
-- 📋 Branch protection requiring all four — not yet done; blocked on the above being real first.
+- ✅ **All four CI jobs green on `main`** — confirmed in a real run
+  ([run #46](https://github.com/burcok/cookrange/actions/runs/30690211684)): `analyze-and-test`,
+  `firestore-rules`, `secret-scan`, `build-android` all `success`. **First time in this repo's
+  history all four have passed.**
+- 📋 Branch protection requiring all four — not yet done. Now achievable; recommend as the immediate
+  next step, but it's a repository-settings change and wasn't asked for as part of this card, so
+  flagged rather than done unprompted.
 - ✅ `pubspec.lock` tracking made deliberate — see `DEBT-51`, now closed.
 - 🚧 `lib/firebase_options.dart` generation documented — see `DEBT-52`, mostly closed (the CI
   placeholder itself is now fixed as part of `CI-11`; committing the real file remains open).
 
-**DoD** §0.5 partially: every locally-checkable item passed; the "green CI run linked in the commit"
-bullet is linked above and is honestly not fully green — 2 of 4 jobs, for reasons outside this card.
+**DoD** §0.5 — met. Green CI run linked above, all four jobs, confirmed by observation, not assumed.
 
 **Technical Notes**
 `.gitignore` also lists `macos/` and `/lib/firebase_options.dart` (deliberately, unrelated to this
@@ -2374,7 +2383,7 @@ count per slot and monitor plan variety.
 
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `CI-01` | 🚧 | Get all four CI jobs green | Critical | S | 4 h | v0.9.7 / M1 | DevOps | see `BLK-13`, `CI-11`, `CI-12` | `CI-12` | 3/4 confirmed green in real CI (`analyze-and-test`, `firestore-rules`, `secret-scan`). `build-android` fails on a new issue tracked as `CI-12` | — |
+| `CI-01` | ✅ | Get all four CI jobs green | Critical | S | 4 h | v0.9.7 / M1 | DevOps | see `BLK-13`, `CI-11`, `CI-12` | — | **All four confirmed green in real CI** ([run #46](https://github.com/burcok/cookrange/actions/runs/30690211684)) — `analyze-and-test`, `firestore-rules`, `secret-scan`, `build-android`. First time in this repo's history | — |
 | `CI-02` | ❌ | Branch protection requiring green CI | Critical | XS | 30 m | v0.9.7 / M1 | DevOps | GitHub settings | `CI-01` | `main` protected; all four checks required; no direct pushes; the 97-commit history shows direct commits to `main` throughout | Without protection, a red `main` recurs immediately |
 | `CI-03` | 🚧 | Rules tests running in CI | Critical | L | 1 w | v0.9.7 / M1 | QA Lead | see `FB-18`; `.github/workflows/ci.yml` `firestore-rules` job | `BLK-13` | **The job now runs and is green** (15/15, real CI run linked in `FB-18`). Full-coverage bar tracked in `FB-18` | — |
 | `CI-04` | ❌ | Verify the deploy workflow end to end | High | S | 1 d | v0.9.9 / M3 | DevOps | `.github/workflows/deploy.yml` | `BLK-16` | One successful TestFlight upload and one Play internal upload from CI; the keychain cleanup step verified; secret rotation documented | A 200-line signing workflow that has never run will not work first time — budget for iteration |
@@ -2385,7 +2394,7 @@ count per slot and monitor plan variety.
 | `CI-09` | ❌ | Dependabot / dependency update automation | Medium | XS | 1 h | v0.9.8 / M2 | DevOps | `.github/dependabot.yml` | `SEC-28` | Dependabot on `pub` and `npm`; weekly PRs; security advisories reviewed. `flutter pub outdated` previously reported 78 newer versions | Manual dependency review does not happen |
 | `CI-10` | ❌ | Emulator-based integration tests in CI | Medium | M | 3 d | v1.1.0 / M6 | QA Lead | see `TEST-02`; `INF-02` | `TEST-02` | Tracked in `TEST-02` | — |
 | `CI-11` | ✅ | `analyze-and-test` job failed in CI across 3 separate, unrelated root causes | Critical | L (grew well past the original S–M estimate) | ~6 h total | v0.9.7 / M1 | DevOps | `.github/workflows/ci.yml` (Flutter pin, firebase_options placeholder — both jobs) · `.gitignore` (`**/build/`) · `assets/Fonts/` → `assets/fonts/` (17-file case rename) | — | **Fully diagnosed and fixed, verified in a real Ubuntu container matching CI's exact architecture — not guessed.** Three independent bugs stacked on top of each other, each one hiding the next until the previous was fixed: **(1)** `flutter pub get` failed — 9 direct dependencies bumped past what the never-updated Flutter `3.24.0` pin's Dart 3.5.0 supports (`dependency_overrides`/`DEBT-42` was a red herring; overrides bypass version-solve checking). Fixed by bumping the pin to `3.44.4`, matching local dev — **confirmed green in [run #42](https://github.com/burcok/cookrange/actions/runs/30669425771)**. **(2)** With `pub get` fixed, `flutter analyze` then failed with 3 "Undefined name 'DefaultFirebaseOptions'" errors (`lib/main.dart`, `app_initialization_service.dart`, `seed_db.dart`) — `ci.yml`'s placeholder for the gitignored `lib/firebase_options.dart` was literally just a comment, never a real stub (`DEBT-52`'s real severity: it doesn't just block a device build, it fails static analysis outright). This has been broken since `ci.yml` was created — invisible until (1) was fixed, since analyze was never reached before. Fixed with a minimal valid `DefaultFirebaseOptions.currentPlatform` stub, added to **both** `analyze-and-test` and `build-android` (which had no placeholder step at all — silently broken the same way). **(3)** Analyze then failed once more on `warning • The asset directory 'assets/fonts/' doesn't exist`. Root cause: git tracks `assets/**F**onts/` (capital F) but all 17 `pubspec.yaml` font declarations say `assets/**f**onts/` (lowercase) — a genuine, repo-wide case mismatch invisible for the project's entire life because **macOS's filesystem is case-insensitive** (every local dev machine silently resolved the mismatch) while Linux (CI, and every real Android device) is not. Fixed via a case-only `git mv` (two-step, since a direct rename no-ops on a case-insensitive filesystem). Also found and removed while in that directory: 54 accidentally-committed Xcode build-cache files (47 under `assets/Fonts/build/`, 7 under `android/build/` — a misconfigured derived-data path, unrelated to the case bug) — `.gitignore` broadened from `/build/` (root-only) to `**/build/` so this can't recur silently. **Verification methodology**: installed `colima`+`docker` (no Docker Desktop on this machine), ran a real `ubuntu:24.04` container under `--platform linux/amd64` (matching GitHub's actual runner architecture, not just "some Linux"), cloned Flutter `3.44.4` and the actual repo state via `git archive` of a `git stash create` snapshot — i.e. tested the **exact bytes about to be pushed**, not an approximation. `pub get`, `dart format`, `flutter analyze --no-fatal-infos`, and `flutter test` all exit 0 in that container. **All 3 fixes confirmed in a real CI run** ([#44](https://github.com/burcok/cookrange/actions/runs/30687453667)): `analyze-and-test` genuinely green end to end (2m 29s — `Get dependencies`, `Verify formatting`, `Analyze code`, `Run tests` all succeeded), `firestore-rules` and `secret-scan` green as before. This card's own scope is complete | `deploy.yml` deliberately **not** given the same `firebase_options.dart` placeholder — it builds real release artifacts for actual store distribution, so a fake-credentials stub would be actively wrong, not just incomplete; that gap stays tracked under `DEBT-52`/`BLK-16`'s existing scope. Font-rendering correctness itself (as opposed to the analyzer/asset-declaration check) is unverified on a real device — worth a spot-check next time the app runs on Android. **`build-android` now fails on a 4th, distinct issue — see `CI-12`, opened separately rather than folded in here** |
-| `CI-12` | 🔥 | `build-android`'s `flutter build apk --debug` step fails in CI — first time this step has ever executed | Critical | S–M, undiagnosed | — | v0.9.7 / M1 | DevOps | `.github/workflows/ci.yml` (`build-android` job) · `android/` (Gradle/AGP/Kotlin/NDK config) | `CI-11` | **Newly surfaced, not a regression** — `build-android` `needs: analyze-and-test`, which has never passed before `CI-11`'s fixes landed, so this step has genuinely never run in this repo's CI history until [run #44](https://github.com/burcok/cookrange/actions/runs/30687453667). Fails after 37s at "Build APK (debug)" with only "Process completed with exit code 1" visible (no sign-in for full logs this session). **Does not reproduce locally** — `flutter build apk --debug` succeeds cleanly on this machine (macOS, local Android SDK, ~73s Gradle build, only Kotlin-Gradle-Plugin and Java-8-source deprecation warnings, no errors). Unlike the `analyze` bugs, an Android build isn't inherently OS-specific — the Gradle/AGP/Kotlin/NDK config lives in committed `android/` files, so the likelier explanation is an environment gap specific to the GitHub-hosted runner (e.g. a missing SDK platform/build-tools component, an unaccepted SDK license, or a version the runner's pre-installed Android SDK doesn't have cached) rather than a code defect. The `2026-06-27 build-system pass` (historical debt log) fixed this exact class of problem locally; CI may need an equivalent — never verified there before | Diagnosis needs either the real CI log text or setting up a full Android SDK inside the `colima`/`docker` Ubuntu container already used for `CI-11` — a materially bigger lift (SDK + licenses + platform/build-tools components) than anything done so far, deliberately not started without checking in given how much scope `CI-11` already grew |
+| `CI-12` | ✅ | `build-android`'s `flutter build apk --debug` step failed in CI — first time this step had ever executed | Critical | S–M | ~2 h diagnosis + fix | v0.9.7 / M1 | DevOps | `android/gradle.properties` (1 line removed) | — | **Root cause confirmed by reproduction, not guessed.** Set up a real Android SDK (platform 36, NDK 28.2.13676358, build-tools 36.0.0, licenses accepted) inside a fresh `ubuntu:24.04` container and hit the *exact* same error CI showed: `Value '/Applications/Android Studio.app/Contents/jbr/Contents/Home' given for org.gradle.java.home Gradle property is invalid`. Real cause: `android/gradle.properties` hardcoded `org.gradle.java.home` to an absolute macOS-only path — Android Studio's bundled JBR. It worked silently on this one machine (confirmed: that exact path genuinely exists here, with a real JBR) and would fail identically on **any** other environment — every CI runner, any teammate's machine, any Mac without Android Studio installed at that exact location. Git history shows this line has **never** been portable — it previously hardcoded a different local path (`/opt/homebrew/opt/openjdk@17`, commit `3000ba7`) before being swapped to the Android Studio JBR path — same failure class as `CI-11`'s `assets/Fonts` case bug: a value true on exactly one machine. **Fix:** removed the line entirely rather than replacing it with yet another hardcoded path, letting Gradle use the ambient `JAVA_HOME` that `ci.yml`'s own "Set up Java" step already sets correctly. Verified the fix doesn't break the local Mac build either (still succeeds, ~62s). **Confirmed in real CI**: [run #46](https://github.com/burcok/cookrange/actions/runs/30690211684) — `build-android` `success`, all four jobs green for the first time in this repo's history | An arm64-native container was tried first for faster iteration but hit an unrelated snag (AAPT2 ships x86_64-only native binaries; the arm64 image lacked x86_64 emulation library support) — reverted to `--platform linux/amd64` (matching CI/GitHub exactly) for the real confirmation, which is the only one that counts |
 
 ---
 
@@ -2602,7 +2611,7 @@ Recorded so the history is not lost. All verified fixed.
 | B10 | Community feed pagination | `community_service.fetchPostsPage` |
 | B11 | Dark-mode correctness | `main_scaffold.dart` dynamic background |
 | B12 | Legal: Privacy Policy + Terms | `legal_screen.dart` — **drafts pending lawyer review (`LEG-07`)** |
-| B13 | CI pipeline | `.github/workflows/ci.yml` — `BLK-13` + `CI-11` confirmed in real CI; 3/4 jobs genuinely green. `build-android` fails on a new issue — `CI-12` |
+| B13 | CI pipeline | `.github/workflows/ci.yml` — **all 4 jobs confirmed green in real CI**, first time ever. `BLK-13` + `CI-11` + `CI-12` all closed |
 
 ### 47.2 Phase-by-phase delivery record
 
@@ -3015,8 +3024,9 @@ The first ten things to do, in this order. Everything else follows from them.
 2. **`ARCH-01` / `DEBT-01`** — kill swallow-and-log. This converts remaining unknown-unknowns into
    visible failures and is the reason seven defects hid for months.
 3. ~~**`BLK-13`** — un-ignore `test/`, fix 3 tests, format 44 files, get CI green, protect `main`.~~
-   Done except "protect `main`" (now blocked on `CI-12` — `build-android`'s new failure — reaching
-   green; don't require a job that can't pass. `CI-11`'s 3 root causes are confirmed fixed).
+   **Fully done** — all 4 jobs confirmed green in real CI. "Protect `main`" (`CI-02`) is now genuinely
+   achievable and recommended as the next step, not yet done (a repository-settings change, flagged
+   rather than made unprompted).
 4. ~~**`TEST-01` / `FB-18`** — commit and run the rules suite. It would have caught 5 of the 17 blockers.~~
    Committed and running green in CI for its current 15-assertion scope; extending to all 71 match
    blocks is still open.
