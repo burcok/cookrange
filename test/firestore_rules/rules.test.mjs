@@ -176,6 +176,83 @@ test('posts: oversized content is rejected, normal content allowed', async () =>
   );
 });
 
+// ─── Post/comment/gym-post engagement lockdown (BLK-08) ─────────────────────
+
+test('posts: non-owner CANNOT touch groupId, content, or make an arbitrary likesCount jump', async () => {
+  await seed('posts/p1', {
+    authorId: 'u1', content: 'hi', likesCount: 0, commentsCount: 0,
+  });
+  // The exploit this ticket exists for: hijacking a post into another group.
+  await assertFails(
+    updateDoc(doc(db('u2'), 'posts/p1'), { groupId: 'some-group' })
+  );
+  await assertFails(
+    updateDoc(doc(db('u2'), 'posts/p1'), { content: 'hacked' })
+  );
+  await assertFails(
+    updateDoc(doc(db('u2'), 'posts/p1'), { likesCount: 99999 })
+  );
+});
+
+test('posts: non-owner CAN make a legitimate +1/-1 engagement update', async () => {
+  await seed('posts/p1', {
+    authorId: 'u1', content: 'hi', likesCount: 0, commentsCount: 0,
+  });
+  await assertSucceeds(
+    updateDoc(doc(db('u2'), 'posts/p1'), {
+      likesCount: 1, likedUserIds: ['u2'], recentLikers: [{ id: 'u2' }],
+    })
+  );
+  await assertSucceeds(
+    updateDoc(doc(db('u2'), 'posts/p1'), { commentsCount: 1 })
+  );
+});
+
+test('posts: owner retains full update rights (unaffected by the engagement allowlist)', async () => {
+  await seed('posts/p1', {
+    authorId: 'u1', content: 'hi', likesCount: 0, commentsCount: 0,
+  });
+  await assertSucceeds(
+    updateDoc(doc(db('u1'), 'posts/p1'), { content: 'edited by owner', tags: ['x'] })
+  );
+});
+
+test('post comments: non-owner CANNOT rewrite content or jump likesCount, CAN +1 it', async () => {
+  await seed('posts/p1/comments/c1', { authorId: 'u1', content: 'hi', likesCount: 0 });
+  await assertFails(
+    updateDoc(doc(db('u2'), 'posts/p1/comments/c1'), { content: 'hacked' })
+  );
+  await assertFails(
+    updateDoc(doc(db('u2'), 'posts/p1/comments/c1'), { likesCount: 500 })
+  );
+  await assertSucceeds(
+    updateDoc(doc(db('u2'), 'posts/p1/comments/c1'), { likesCount: 1 })
+  );
+});
+
+test('gym posts: non-owner/non-author CANNOT flip is_announcement or is_pinned, CAN +1 like_count', async () => {
+  await seed('gyms/g1', { owner_uid: 'owner1' });
+  await seed('gyms/g1/posts/p1', {
+    author_uid: 'u1', content: 'hi', is_announcement: false, is_pinned: false,
+    like_count: 0, comment_count: 0,
+  });
+  await assertFails(
+    updateDoc(doc(db('u2'), 'gyms/g1/posts/p1'), { is_announcement: true })
+  );
+  await assertFails(
+    updateDoc(doc(db('u2'), 'gyms/g1/posts/p1'), { is_pinned: true })
+  );
+  await assertSucceeds(
+    updateDoc(doc(db('u2'), 'gyms/g1/posts/p1'), {
+      like_count: 1, liked_by_uids: ['u2'],
+    })
+  );
+  // The gym owner still has unrestricted access (separate branch, untouched).
+  await assertSucceeds(
+    updateDoc(doc(db('owner1'), 'gyms/g1/posts/p1'), { is_pinned: true })
+  );
+});
+
 test('admin/status: a user CANNOT self-grant admin', async () => {
   // admin/status/{uid}/flags (per firestore.rules:32) — 4 segments, a valid
   // document reference. No match block exists for this path at all (only

@@ -20,6 +20,51 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == postData.authorId;
     }
 
+    // BLK-08: lets a non-owner adjust only engagement bookkeeping on a post —
+    // like/reaction counters and their denormalized user-id lists — never
+    // authorId/content/imageUrls/tags/groupId/metadata/etc. The two scalar
+    // counters may only move by exactly one per write (no arbitrary count
+    // injection); reactions/likedUserIds/recentLikers aren't delta-checked
+    // (Firestore rules can't cheaply diff map/array magnitude) — narrower than
+    // ideal, but a client can no longer touch any field outside this list.
+    function canUpdatePostEngagement() {
+      let diff = request.resource.data.diff(resource.data).affectedKeys();
+      return isAuthenticated()
+        && diff.hasOnly(['likesCount', 'likedUserIds', 'recentLikers', 'reactions', 'commentsCount'])
+        && (!diff.hasAny(['likesCount'])
+            || request.resource.data.likesCount == resource.data.likesCount + 1
+            || request.resource.data.likesCount == resource.data.likesCount - 1)
+        && (!diff.hasAny(['commentsCount'])
+            || request.resource.data.commentsCount == resource.data.commentsCount + 1
+            || request.resource.data.commentsCount == resource.data.commentsCount - 1);
+    }
+
+    // BLK-08: same idea for a comment — only its own like counter + per-emoji
+    // reaction map, never authorId/content.
+    function canUpdateCommentEngagement() {
+      let diff = request.resource.data.diff(resource.data).affectedKeys();
+      return isAuthenticated()
+        && diff.hasOnly(['likesCount', 'reactions'])
+        && (!diff.hasAny(['likesCount'])
+            || request.resource.data.likesCount == resource.data.likesCount + 1
+            || request.resource.data.likesCount == resource.data.likesCount - 1);
+    }
+
+    // BLK-08: gym post equivalent — snake_case field names, and the gym owner
+    // (checked separately at the call site) already has unrestricted access,
+    // so this only needs to cover the "any member" engagement path.
+    function canUpdateGymPostEngagement() {
+      let diff = request.resource.data.diff(resource.data).affectedKeys();
+      return isAuthenticated()
+        && diff.hasOnly(['like_count', 'liked_by_uids', 'comment_count'])
+        && (!diff.hasAny(['like_count'])
+            || request.resource.data.like_count == resource.data.like_count + 1
+            || request.resource.data.like_count == resource.data.like_count - 1)
+        && (!diff.hasAny(['comment_count'])
+            || request.resource.data.comment_count == resource.data.comment_count + 1
+            || request.resource.data.comment_count == resource.data.comment_count - 1);
+    }
+
     function isSignalOwner(signalData) {
       return isAuthenticated() && request.auth.uid == signalData.userId;
     }
@@ -203,11 +248,13 @@ service cloud.firestore {
       allow create: if isAuthenticated()
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.get('content', '').size() <= 5000;
+      // BLK-08: update was a denylist (only authorId/content/imageUrls/tags
+      // blocked) so any authenticated user could write ANY other field —
+      // groupId, is_announcement-style flags, metadata, timestamp, etc.
+      // Now an allowlist: non-owners may only adjust engagement bookkeeping,
+      // and the two scalar counters may only move by exactly one per write.
       allow update: if isAuthenticated()
-        && (isPostOwner(resource.data)
-          // Allow like/reaction counter updates from any authenticated user
-          || (!request.resource.data.diff(resource.data).affectedKeys()
-               .hasAny(['authorId', 'content', 'imageUrls', 'tags'])));
+        && (isPostOwner(resource.data) || canUpdatePostEngagement());
       allow delete: if isAuthenticated() && isPostOwner(resource.data);
 
       // Comments
@@ -216,10 +263,10 @@ service cloud.firestore {
         allow create: if isAuthenticated()
           && request.resource.data.authorId == request.auth.uid
           && request.resource.data.get('content', '').size() <= 2000;
+        // BLK-08: same denylist bug as the post-level rule above.
         allow update: if isAuthenticated()
           && (resource.data.authorId == request.auth.uid
-            || (!request.resource.data.diff(resource.data).affectedKeys()
-                 .hasAny(['authorId', 'content'])));
+            || canUpdateCommentEngagement());
         allow delete: if isAuthenticated()
           && resource.data.authorId == request.auth.uid;
 
@@ -393,12 +440,12 @@ service cloud.firestore {
         allow create: if isAuthenticated()
           && request.resource.data.author_uid == request.auth.uid;
         // Author can update their own post content; owner can update any field;
-        // any authenticated user can update like fields only
+        // any authenticated user can update like/comment counters only (BLK-08:
+        // was a denylist that let anyone flip is_announcement/is_pinned too).
         allow update: if isAuthenticated()
           && (resource.data.author_uid == request.auth.uid
             || get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
-            || !request.resource.data.diff(resource.data).affectedKeys()
-                 .hasAny(['author_uid', 'content', 'is_announcement']));
+            || canUpdateGymPostEngagement());
         allow delete: if isAuthenticated()
           && (resource.data.author_uid == request.auth.uid
             || get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid);
