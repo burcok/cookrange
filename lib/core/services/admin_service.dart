@@ -272,7 +272,17 @@ class AdminService {
       address: app.address,
       city: app.city,
       country: 'Türkiye',
-      logoUrl: app.photoUrls.isNotEmpty ? app.photoUrls.first : null,
+      // Faz 0 §0.7: photoUrls is [businessDocUrl, idDocUrl] — private
+      // verification documents submitted for admin review
+      // (application_review_screen.dart), never a logo image. Using
+      // photoUrls.first here put a business license (or, if none was
+      // submitted, the applicant's ID document) into the gym's PUBLIC
+      // logo field. The real logo path already exists and is correct:
+      // gym_setup_screen.dart's Edit Gym Profile → StorageUploadService
+      // .uploadGymLogo() → gyms/{gymId}/logo.jpg → logo_url. So a
+      // freshly-approved gym simply starts with no logo; the owner sets
+      // one afterward via that existing flow.
+      logoUrl: null,
       tags: app.tags,
       isPublic: true,
       memberCount: 1,
@@ -407,7 +417,8 @@ class AdminService {
         .where('displayName', isLessThan: end)
         .limit(20)
         .get();
-    return snap.docs.map((d) => {'uid': d.id, ...d.data()}).toList();
+    final users = snap.docs.map((d) => {'uid': d.id, ...d.data()}).toList();
+    return _enrichWithPrivateAccount(users);
   }
 
   Stream<List<Map<String, dynamic>>> getUsersStream() {
@@ -422,7 +433,33 @@ class AdminService {
         .orderBy('created_at', descending: true)
         .limit(50)
         .snapshots()
-        .map((s) => s.docs.map((d) => {'uid': d.id, ...d.data()}).toList());
+        .asyncMap((s) async {
+      final users = s.docs.map((d) => {'uid': d.id, ...d.data()}).toList();
+      return _enrichWithPrivateAccount(users);
+    });
+  }
+
+  /// Enriches each admin-visible user row with `email` from the owner-(+
+  /// admin-)only `private/account` subcollection (audit N1 \u2014 email no longer
+  /// lives on the world-readable main doc, so it's absent from a plain
+  /// `...d.data()` spread). Bounded to admin-screen result sizes (\u226450, an
+  /// admin support tool rather than a hot path) so the extra per-row read is
+  /// an acceptable trade for closing the leak.
+  Future<List<Map<String, dynamic>>> _enrichWithPrivateAccount(
+      List<Map<String, dynamic>> users) {
+    return Future.wait(users.map((u) async {
+      final uid = u['uid'] as String?;
+      if (uid == null) return u;
+      final snap = await _db
+          .collection('users')
+          .doc(uid)
+          .collection('private')
+          .doc('account')
+          .get();
+      final email = snap.data()?['email'];
+      if (email != null) return {...u, 'email': email};
+      return u;
+    }));
   }
 
   Future<void> banUser(String uid, String reason) async {
@@ -855,7 +892,12 @@ class AdminService {
   Stream<List<Map<String, dynamic>>> referralsStream({int limit = 50}) {
     return _db
         .collection('referrals')
-        .orderBy('createdAt', descending: true)
+        // Faz 0 §0.7: real docs only ever write created_at (snake_case —
+        // see ReferralService.getOrCreateCode / functions/economy.js).
+        // orderBy('createdAt') excluded every doc (Firestore drops docs
+        // missing the ordered-on field), so this list was permanently
+        // empty.
+        .orderBy('created_at', descending: true)
         .limit(limit)
         .snapshots()
         .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList())
@@ -866,7 +908,10 @@ class AdminService {
 
   Future<void> voidReferralCode(String code) async {
     debugPrint('AdminService: voidReferralCode code=$code');
-    await _db.collection('referrals').doc(code).update({'maxUses': 0});
+    // Faz 0 §0.7: applyReferral (functions/economy.js) only ever reads
+    // ref.max_uses (snake_case). Writing 'maxUses' added a dead sibling
+    // field that nothing checks — a voided code kept working server-side.
+    await _db.collection('referrals').doc(code).update({'max_uses': 0});
     await logAuditAction(
       action: 'void_referral_code',
       targetUid: code,

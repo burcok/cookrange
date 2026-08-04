@@ -62,9 +62,13 @@ class _GymSetupScreenState extends State<GymSetupScreen>
   bool _verifyingOtp = false;
 
   // ── Step 4: Documents ───────────────────────────────────────────────────────
+  // Faz 0 §0.7: _taxDocFile removed — GymApplicationModel never had a tax-
+  // document field (only business license + ID, matching "2 belge" in the
+  // application flow), so a picked file here was silently discarded on
+  // submit. The picker UI is removed below rather than wired up, since no
+  // document type or requirement was ever actually defined for it.
   File? _businessLicenseFile;
   File? _idDocFile;
-  File? _taxDocFile;
 
   static const _gymTags = [
     'CrossFit',
@@ -532,11 +536,9 @@ class _GymSetupScreenState extends State<GymSetupScreen>
                   _Step4Documents(
                     businessLicenseFile: _businessLicenseFile,
                     idDocFile: _idDocFile,
-                    taxDocFile: _taxDocFile,
                     onBusinessLicensePicked: (f) =>
                         setState(() => _businessLicenseFile = f),
                     onIdDocPicked: (f) => setState(() => _idDocFile = f),
-                    onTaxDocPicked: (f) => setState(() => _taxDocFile = f),
                     palette: palette,
                     isDark: isDark,
                     primary: primary,
@@ -1488,10 +1490,8 @@ class _Step3Phone extends StatelessWidget {
 class _Step4Documents extends StatelessWidget {
   final File? businessLicenseFile;
   final File? idDocFile;
-  final File? taxDocFile;
   final ValueChanged<File?> onBusinessLicensePicked;
   final ValueChanged<File?> onIdDocPicked;
-  final ValueChanged<File?> onTaxDocPicked;
   final AppPalette palette;
   final bool isDark;
   final Color primary;
@@ -1500,10 +1500,8 @@ class _Step4Documents extends StatelessWidget {
   const _Step4Documents({
     required this.businessLicenseFile,
     required this.idDocFile,
-    required this.taxDocFile,
     required this.onBusinessLicensePicked,
     required this.onIdDocPicked,
-    required this.onTaxDocPicked,
     required this.palette,
     required this.isDark,
     required this.primary,
@@ -1628,19 +1626,6 @@ class _Step4Documents extends StatelessWidget {
             file: idDocFile,
             isRequired: true,
             onTap: () => _pickFile(context, onIdDocPicked),
-            palette: palette,
-            primary: primary,
-          ),
-          const SizedBox(height: 14),
-
-          // Tax certificate (optional)
-          _DocUploadCard(
-            label: l10n.translate('gym.docs_tax'),
-            tapLabel: l10n.translate('gym.docs_tap_upload'),
-            uploadedLabel: l10n.translate('gym.docs_uploaded'),
-            file: taxDocFile,
-            isRequired: false,
-            onTap: () => _pickFile(context, onTaxDocPicked),
             palette: palette,
             primary: primary,
           ),

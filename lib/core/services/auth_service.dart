@@ -183,8 +183,11 @@ class AuthService {
 
   void _startSessionMonitoring(String uid) {
     _sessionSubscription?.cancel();
+    // `current_session_id` lives on `private/account`, not the main doc
+    // (audit N1) — it's a session/device fingerprint, the same class of
+    // data the rest of that migration moved off the world-readable doc.
     _sessionSubscription =
-        _firestoreService.getUserStream(uid).listen((snapshot) {
+        _firestoreService.getPrivateAccountStream(uid).listen((snapshot) {
       if (!snapshot.exists || snapshot.data() == null) return;
 
       final data = snapshot.data() as Map<String, dynamic>;

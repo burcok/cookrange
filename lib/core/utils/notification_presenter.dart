@@ -82,6 +82,11 @@ class NotificationPresenter {
         return l10n.translate('notifications.feed.streak_at_risk_title');
       case NotificationType.weeklyPlanReady:
         return l10n.translate('notifications.feed.weekly_plan_ready_title');
+      case NotificationType.gymWarEnded:
+        final won = n.metadata?['won'] == true;
+        return l10n.translate(won
+            ? 'notifications.feed.gym_war_ended_won_title'
+            : 'notifications.feed.gym_war_ended_lost_title');
     }
   }
 
@@ -119,6 +124,11 @@ class NotificationPresenter {
         return l10n.translate('notifications.feed.streak_at_risk_body');
       case NotificationType.weeklyPlanReady:
         return l10n.translate('notifications.feed.weekly_plan_ready_body');
+      case NotificationType.gymWarEnded:
+        final myScore = n.metadata?['myScore']?.toString() ?? '0';
+        final otherScore = n.metadata?['otherScore']?.toString() ?? '0';
+        return l10n.translate('notifications.feed.gym_war_ended_body',
+            variables: {'myScore': myScore, 'otherScore': otherScore});
       default:
         return null;
     }
@@ -159,6 +169,8 @@ class NotificationPresenter {
       case NotificationType.streakAtRisk:
       case NotificationType.weeklyPlanReady:
         return l10n.translate('notifications.feed.cat_reminders');
+      case NotificationType.gymWarEnded:
+        return l10n.translate('notifications.feed.cat_reward');
     }
   }
 
@@ -201,6 +213,8 @@ class NotificationPresenter {
         return Icons.local_fire_department_rounded;
       case NotificationType.weeklyPlanReady:
         return Icons.calendar_today_rounded;
+      case NotificationType.gymWarEnded:
+        return Icons.emoji_events_rounded;
     }
   }
 
@@ -244,6 +258,8 @@ class NotificationPresenter {
         return palette.warning;
       case NotificationType.weeklyPlanReady:
         return primary;
+      case NotificationType.gymWarEnded:
+        return palette.warning;
     }
   }
 }

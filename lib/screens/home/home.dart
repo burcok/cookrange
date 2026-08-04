@@ -19,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/admin_status_service.dart';
 import '../../core/services/ai/ai_service.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/remote_config_service.dart';
 import '../../core/services/crashlytics_service.dart';
 import '../../core/services/food_analysis_service.dart';
 import '../../core/services/permission_service.dart';
@@ -1374,23 +1375,25 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
 
-        // Analytics — primary action, always visible
-        GestureDetector(
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const NutritionAnalyticsScreen())),
-          child: Container(
-            width: 36.w,
-            height: 36.w,
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
+        // Analytics — gated on the feature_nutrition_analytics remote-config
+        // flag (audit N2 — previously unused, so this was unconditional).
+        if (RemoteConfigService().featureNutritionAnalytics) ...[
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const NutritionAnalyticsScreen())),
+            child: Container(
+              width: 36.w,
+              height: 36.w,
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.bar_chart_rounded,
+                  size: AppSize.iconSm, color: primary),
             ),
-            child: Icon(Icons.bar_chart_rounded,
-                size: AppSize.iconSm, color: primary),
           ),
-        ),
-
-        SizedBox(width: AppSpacing.xs.w),
+          SizedBox(width: AppSpacing.xs.w),
+        ],
 
         // History — always visible
         _MealIconBtn(

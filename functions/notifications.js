@@ -26,6 +26,17 @@ async function fetchActor(db, uid) {
   };
 }
 
+/**
+ * Reads a recipient's FCM token from `users/{uid}/private/account` (audit
+ * N1 — the token used to live on the world-readable main user doc; a push
+ * token is a device fingerprint, the same class of data as email/IP/device
+ * history that migration moved off it). Returns null if absent.
+ */
+async function getFcmToken(db, uid) {
+  const snap = await db.collection('users').doc(uid).collection('private').doc('account').get();
+  return snap.exists ? (snap.data().fcm_token || null) : null;
+}
+
 /** Writes one notification doc at the canonical path. Admin-SDK only. */
 async function writeNotification(db, {
   targetUid, type, actorUid, actorName, actorPhotoUrl, relatedId, metadata,
@@ -231,3 +242,4 @@ exports.sendAdminNotification = functions.https.onCall(async (data, context) => 
 module.exports.writeNotification = writeNotification;
 module.exports.fetchActor = fetchActor;
 module.exports.assertCallable = assertCallable;
+module.exports.getFcmToken = getFcmToken;

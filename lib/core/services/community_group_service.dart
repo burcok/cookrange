@@ -52,8 +52,15 @@ class CommunityGroupService {
       lastActivityAt: now,
     );
 
+    // The parent doc is created FIRST and awaited on its own — NOT batched
+    // together with the owner's membership doc below. firestore.rules'
+    // members-create check must confirm a self-assigned role:'owner' by
+    // reading the parent's owner_uid via get(); that has to observe an
+    // already-committed document rather than depend on same-batch write
+    // visibility, which this codebase doesn't rely on anywhere else.
+    await doc.set(group.toFirestore());
+
     final batch = _db.batch();
-    batch.set(doc, group.toFirestore());
     batch.set(
       _members(doc.id).doc(user.uid),
       CommunityGroupMemberModel(

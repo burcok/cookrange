@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/localization/app_localizations.dart';
@@ -545,7 +546,21 @@ class _HeatmapCard extends StatelessWidget {
       l10n.translate('gym.analytics_heatmap_evening'),
       l10n.translate('gym.analytics_heatmap_night'),
     ];
-    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    // Faz 0 §8.1: was a hardcoded English array regardless of app
+    // language; now uses intl's locale-aware weekday abbreviation.
+    // dayLabels[0] must stay Monday (see List.generate(7, (d) => ...)
+    // below, which indexes checkInHeatmap the same way) — anchoring off
+    // the current week's own Monday keeps this correct without hardcoding
+    // a specific calendar date.
+    final locale = Localizations.localeOf(context).languageCode;
+    final now = DateTime.now();
+    final anchorMonday = now.subtract(Duration(days: now.weekday - 1));
+    final dayLabels = List.generate(
+      7,
+      (d) => DateFormat('E', locale)
+          .format(anchorMonday.add(Duration(days: d)))
+          .substring(0, 3),
+    );
     final maxVal = analytics.heatmapMax;
 
     return AppCard(

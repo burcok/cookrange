@@ -6,6 +6,7 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/feature_gate_service.dart';
+import '../../core/utils/feature_flags.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../coach/coach_discovery_screen.dart';
 import '../leaderboard/leaderboard_screen.dart';
@@ -88,34 +89,41 @@ class DiscoverHubScreen extends StatelessWidget {
                     mainAxisSpacing: 12.h,
                   ),
                   delegate: SliverChildListDelegate([
-                    _DiscoverCard(
-                      icon: Icons.fitness_center_rounded,
-                      title: l10n.translate('discover.gym'),
-                      tagline: l10n.translate('discover.gym_tagline'),
-                      accentColor: palette.info,
-                      onTap: () => Navigator.of(context).push(
-                        AppTransitions.slideRight(const GymDiscoveryScreen()),
+                    // Audit N2 — hidden entirely when kill-switched; these
+                    // are pushed as direct widgets so this is the actual
+                    // choke point (RouteGuard can't see un-named pushes).
+                    if (FeatureFlags.isEnabled(FeatureFlags.gym))
+                      _DiscoverCard(
+                        icon: Icons.fitness_center_rounded,
+                        title: l10n.translate('discover.gym'),
+                        tagline: l10n.translate('discover.gym_tagline'),
+                        accentColor: palette.info,
+                        onTap: () => Navigator.of(context).push(
+                          AppTransitions.slideRight(const GymDiscoveryScreen()),
+                        ),
                       ),
-                    ),
-                    _DiscoverCard(
-                      icon: Icons.person_rounded,
-                      title: l10n.translate('discover.coach'),
-                      tagline: l10n.translate('discover.coach_tagline'),
-                      accentColor: const Color(0xFF6366F1),
-                      onTap: () => Navigator.of(context).push(
-                        AppTransitions.slideRight(const CoachDiscoveryScreen()),
+                    if (FeatureFlags.isEnabled(FeatureFlags.coach))
+                      _DiscoverCard(
+                        icon: Icons.person_rounded,
+                        title: l10n.translate('discover.coach'),
+                        tagline: l10n.translate('discover.coach_tagline'),
+                        accentColor: const Color(0xFF6366F1),
+                        onTap: () => Navigator.of(context).push(
+                          AppTransitions.slideRight(
+                              const CoachDiscoveryScreen()),
+                        ),
                       ),
-                    ),
-                    _DiscoverCard(
-                      icon: Icons.school_rounded,
-                      title: l10n.translate('discover.programs'),
-                      tagline: l10n.translate('discover.program_tagline'),
-                      accentColor: palette.success,
-                      onTap: () => Navigator.of(context).push(
-                        AppTransitions.slideRight(
-                            const ProgramMarketplaceScreen()),
+                    if (FeatureFlags.isEnabled(FeatureFlags.programs))
+                      _DiscoverCard(
+                        icon: Icons.school_rounded,
+                        title: l10n.translate('discover.programs'),
+                        tagline: l10n.translate('discover.program_tagline'),
+                        accentColor: palette.success,
+                        onTap: () => Navigator.of(context).push(
+                          AppTransitions.slideRight(
+                              const ProgramMarketplaceScreen()),
+                        ),
                       ),
-                    ),
                     _DiscoverCard(
                       icon: Icons.leaderboard_rounded,
                       title: l10n.translate('discover.leaderboard'),

@@ -1,8 +1,5 @@
-import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
-import 'achievement_service.dart';
 
 enum ReputationTier { newcomer, active, contributor, expert, legend }
 
@@ -43,15 +40,19 @@ class ReputationData {
   }
 }
 
+/// Reputation is server-computed and server-cached (audit N2/Faz-0 §0.4,
+/// `syncProgress` in `functions/progress.js`) — `firestore.rules` denies
+/// client writes to `reputation_score`/`reputation_updated_at`
+/// unconditionally, closing a self-grant hole (any user could previously
+/// write their own score directly via `_cacheScore`). The formula itself
+/// (`streak × 2 + postCount × 5`) is unchanged and still lives here too
+/// ([_tierFromScore], used by the pure/no-network helpers below); the
+/// server independently re-derives the same formula from the target's own
+/// stored streak and a real post-count aggregation, never a client number.
 class ReputationService {
   static final ReputationService _instance = ReputationService._internal();
   factory ReputationService() => _instance;
   ReputationService._internal();
-
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-
-  static const int _pointsPerStreakDay = 2;
-  static const int _pointsPerPost = 5;
 
   static ReputationTier _tierFromScore(int score) {
     if (score >= 700) return ReputationTier.legend;
@@ -61,34 +62,40 @@ class ReputationService {
     return ReputationTier.newcomer;
   }
 
-  /// Compute reputation for a user given their streak and post count.
+  /// Triggers a server-side re-sync for [uid] (any signed-in caller may
+  /// refresh another user's cached reputation this way — e.g. viewing their
+  /// profile — since it's derived entirely from that user's own already-
+  /// public streak + post count; the server never grants event-flag
+  /// badges on their behalf, only tier/streak badges intrinsic to them) and
+  /// returns the freshly computed score/tier. [streak] and [postCount] are
+  /// accepted for source compatibility with existing call sites but are no
+  /// longer sent — the server always re-derives both itself.
   Future<ReputationData> computeReputation({
     required String uid,
     required int streak,
     required int postCount,
   }) async {
-    final score = streak * _pointsPerStreakDay + postCount * _pointsPerPost;
-
-    final tier = _tierFromScore(score);
-    await _cacheScore(uid, score);
-    unawaited(AchievementService().checkAndGrant(uid, tier: tier));
+    final result = await FirebaseFunctions.instance
+        .httpsCallable('syncProgress')
+        .call<Map<String, dynamic>>({'targetUid': uid});
+    final data = result.data;
+    final score = (data['score'] as num).toInt();
+    final tierName = data['tier'] as String;
+    final tier = ReputationTier.values.firstWhere(
+      (t) => t.name == tierName,
+      orElse: () => _tierFromScore(score),
+    );
+    // Note: no separate AchievementService().checkAndGrant call needed here
+    // (unlike the pre-N2 version) — syncProgress already grants tier-based
+    // badges as part of every runSync, so a second round-trip would just
+    // repeat the same idempotent work.
     return ReputationData(score: score, tier: tier);
   }
 
-  /// Quick compute without Firestore calls (e.g. for post cards from cached score).
+  /// Quick compute without a network call (e.g. for post cards from a
+  /// cached score already present on a fetched document).
   static ReputationData fromCachedScore(int score) {
     return ReputationData(score: score, tier: _tierFromScore(score));
-  }
-
-  Future<void> _cacheScore(String uid, int score) async {
-    try {
-      await _db.collection('users').doc(uid).update({
-        'reputation_score': score,
-        'reputation_updated_at': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      debugPrint('ReputationService: cache write error: $e');
-    }
   }
 
   /// Read cached reputation from user doc (fast, no computation).

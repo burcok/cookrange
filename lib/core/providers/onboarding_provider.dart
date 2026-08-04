@@ -216,9 +216,6 @@ class OnboardingProvider with ChangeNotifier {
       'activity_level': _activityLevelId,
       'cooking_level': _cookingLevelId,
       'kitchen_equipments': _kitchenEquipmentIds,
-      // V2 additions
-      'main_goal': _mainGoal,
-      'target_weight': _targetWeight,
       'water_reminder': {
         'enabled': _waterReminderEnabled,
         'target_ml': _waterDailyTargetMl,
@@ -248,6 +245,10 @@ class OnboardingProvider with ChangeNotifier {
       }).toList(),
       'allergies': _allergyIds,
       'dietary_restrictions': _dietaryRestrictionIds,
+      // V2 additions (audit N1 — these were misclassified as non-PII and
+      // stored on the world-readable main doc; ADR-009 forbids this).
+      'main_goal': _mainGoal,
+      'target_weight': _targetWeight,
     };
   }
 

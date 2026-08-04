@@ -113,12 +113,15 @@ class _PremiumUpgradeSheetState extends State<PremiumUpgradeSheet> {
     final palette = AppPalette.of(context);
     final t = AppText.of(context);
 
+    // Faz 0 §0.6 (audit A8/AT-43): reduced from 5 to 3 — the removed two
+    // ("Priority AI processing" — rate limit is identical for both tiers;
+    // "Detailed nutrition analytics" — available free too) were the exact
+    // false promises the audit flagged on this payment-taking screen. Only
+    // list what's actually true and enforced today: the daily AI quota.
     final features = [
       'ai.paywall_feature1',
       'ai.paywall_feature2',
       'ai.paywall_feature3',
-      'ai.paywall_feature4',
-      'ai.paywall_feature5',
     ];
 
     return SingleChildScrollView(

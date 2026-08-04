@@ -1,15 +1,16 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/gym_model.dart';
 import '../models/gym_member_model.dart';
 import '../models/checkin_model.dart';
-import '../models/user_model.dart';
+import '../models/gym_qr_token_model.dart';
 import '../data/test_data_library.dart';
+import '../utils/haversine.dart';
 import 'analytics_service.dart';
-import 'firestore_service.dart';
 import 'test_mode_service.dart';
 
 class GymService {
@@ -29,63 +30,14 @@ class GymService {
       _gyms.doc(gymId).collection('checkins');
 
   // ── Create / Update ──────────────────────────────────────────────────────────
-
-  /// Creates a new gym for the current user and promotes their role to gymOwner.
-  Future<GymModel> createGym({
-    required String name,
-    String? description,
-    String? address,
-    String? city,
-    String? country,
-    bool isPublic = true,
-    List<String> tags = const [],
-    double? latitude,
-    double? longitude,
-  }) async {
-    final uid = _uid;
-    if (uid == null) throw Exception('Not authenticated');
-
-    final now = DateTime.now();
-    final doc = _gyms.doc();
-
-    final gym = GymModel(
-      id: doc.id,
-      ownerUid: uid,
-      name: name,
-      description: description,
-      address: address,
-      city: city,
-      country: country,
-      isPublic: isPublic,
-      memberCount: 1,
-      subscriptionTier: GymSubscriptionTier.free,
-      tags: tags,
-      createdAt: now,
-      updatedAt: now,
-      latitude: latitude,
-      longitude: longitude,
-    );
-
-    final batch = _db.batch();
-    // Write gym document
-    batch.set(doc, gym.toFirestore());
-    // Add owner as first member
-    batch.set(
-      _members(doc.id).doc(uid),
-      GymMemberModel(
-        uid: uid,
-        joinedAt: now,
-        tier: GymMemberTier.premium,
-      ).toFirestore(),
-    );
-    await batch.commit();
-
-    // Promote user role to gym_owner (additive — preserves existing roles)
-    await FirestoreService().addUserRole(uid, UserRole.gymOwner);
-
-    debugPrint('[GymService] Created gym ${doc.id} for owner $uid');
-    return gym;
-  }
+  //
+  // Faz 0 §0.7: removed createGym() and updateGymLogo() — both had zero
+  // callers anywhere in lib/. The real gym-creation path is
+  // AdminService.approveGymApplication (constructs GymModel + writes
+  // directly, since a gym only ever comes into existence via an approved
+  // application, never a direct self-serve create), and the real logo path
+  // is gym_setup_screen.dart's Edit Gym Profile calling updateGym directly
+  // (below) with {'logo_url': url} after an upload.
 
   Future<void> updateGym(
     String gymId,
@@ -98,10 +50,6 @@ class GymService {
       'updated_at': FieldValue.serverTimestamp(),
     });
     debugPrint('[GymService] Updated gym $gymId');
-  }
-
-  Future<void> updateGymLogo(String gymId, String logoUrl) async {
-    await updateGym(gymId, {'logo_url': logoUrl});
   }
 
   // ── Read ─────────────────────────────────────────────────────────────────────
@@ -344,28 +292,19 @@ class GymService {
         .map((s) => s.docs.map(GymMemberModel.fromFirestore).toList());
   }
 
-  // ── Haversine distance ────────────────────────────────────────────────────────
-
-  double _haversineDistance(
-      double lat1, double lng1, double lat2, double lng2) {
-    const R = 6371000.0;
-    final dLat = (lat2 - lat1) * (pi / 180);
-    final dLng = (lng2 - lng1) * (pi / 180);
-    final a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1 * (pi / 180)) *
-            cos(lat2 * (pi / 180)) *
-            sin(dLng / 2) *
-            sin(dLng / 2);
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return R * c;
-  }
-
   // ── Check-in ─────────────────────────────────────────────────────────────────
+  //
+  // Faz 0 §0.7: removed checkIn() (the CheckInMethod.manual entry point) —
+  // zero callers anywhere in lib/, no UI ever offered a manual check-in
+  // button. CheckInMethod.manual itself is left in place (checkin_model.dart)
+  // since firestore.rules' checkins-create allowlist still names it and a
+  // future front-desk/admin flow may want it — only the unreachable client
+  // method is removed.
 
-  Future<void> checkIn(String gymId) async {
-    await _recordCheckIn(gymId, CheckInMethod.manual);
-  }
-
+  /// Faz 0 §0.7: writes to gyms/{gymId}/private/qr_token (owner/admin-read-
+  /// only), not the public gym doc — see GymQrToken's doc comment. Only the
+  /// owner/admin can call this (firestore.rules), matching who could
+  /// previously update() the public doc's qr_token field.
   Future<String> generateQRToken(String gymId) async {
     const chars =
         'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -374,30 +313,39 @@ class GymService {
         List.generate(32, (_) => chars[rng.nextInt(chars.length)]).join();
     final expiresAt = DateTime.now().add(const Duration(hours: 24));
 
-    await _gyms.doc(gymId).update({
-      'qr_token': token,
-      'qr_token_expires_at': Timestamp.fromDate(expiresAt),
+    await _gyms.doc(gymId).collection('private').doc('qr_token').set({
+      'token': token,
+      'expires_at': Timestamp.fromDate(expiresAt),
     });
     debugPrint(
         '[GymService] Generated QR token for gym $gymId (expires $expiresAt)');
     return token;
   }
 
-  Future<void> validateQRCheckIn(String gymId, String token) async {
-    final doc = await _gyms.doc(gymId).get();
-    if (!doc.exists) throw Exception('Gym not found');
-    final data = doc.data()!;
-    final storedToken = data['qr_token'] as String?;
-    final expiresAt = data['qr_token_expires_at'] is Timestamp
-        ? (data['qr_token_expires_at'] as Timestamp).toDate()
-        : null;
+  /// Live stream of the gym's current QR token — owner/admin only
+  /// (firestore.rules gates the read; a non-owner call simply errors).
+  /// Used by GymQrScreen to render/re-render the QR image and its
+  /// expiry countdown.
+  Stream<GymQrToken> getQrTokenStream(String gymId) {
+    return _gyms
+        .doc(gymId)
+        .collection('private')
+        .doc('qr_token')
+        .snapshots()
+        .map(GymQrToken.fromFirestore);
+  }
 
-    if (storedToken != token ||
-        expiresAt == null ||
-        expiresAt.isBefore(DateTime.now())) {
-      throw Exception('Invalid or expired QR code');
-    }
-    await _recordCheckIn(gymId, CheckInMethod.qr);
+  /// Faz 0 §0.7: validation moved server-side (functions/gym.js). The
+  /// client used to read the token straight off the public gym doc and
+  /// compare it itself — trivially bypassable (the doc was readable by any
+  /// authenticated user, and nothing stopped a modified client from calling
+  /// _recordCheckIn directly regardless of the comparison's outcome).
+  /// validateGymCheckin now re-verifies membership + token + expiry with
+  /// the Admin SDK and is the only writer of a QR-method check-in.
+  Future<void> validateQRCheckIn(String gymId, String token) async {
+    await FirebaseFunctions.instance
+        .httpsCallable('validateGymCheckin')
+        .call<Map<String, dynamic>>({'gymId': gymId, 'token': token});
   }
 
   Future<void> gpsCheckIn(
@@ -408,7 +356,10 @@ class GymService {
     double userLng,
     int radiusMeters,
   ) async {
-    final distanceM = _haversineDistance(gymLat, gymLng, userLat, userLng);
+    // Faz 0 §0.7: was a private re-implementation of the same formula
+    // already shared as haversineKm (core/utils/haversine.dart, also used
+    // by coach/gym discovery's distance sort) — now reuses it directly.
+    final distanceM = haversineKm(gymLat, gymLng, userLat, userLng) * 1000;
     if (distanceM <= radiusMeters) {
       await _recordCheckIn(gymId, CheckInMethod.gps);
     } else {
@@ -423,16 +374,22 @@ class GymService {
 
     final batch = _db.batch();
     final checkinDoc = _checkins(gymId).doc();
-    batch.set(
-        checkinDoc,
-        CheckInModel(
-          id: checkinDoc.id,
-          uid: uid,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          timestamp: DateTime.now(),
-          method: method,
-        ).toFirestore());
+    // The `timestamp` field is overridden to a server timestamp after
+    // building the map — firestore.rules requires
+    // `request.resource.data.timestamp == request.time` on create, so a
+    // client-supplied DateTime would be rejected. The DateTime.now() above
+    // only satisfies CheckInModel's local (non-nullable) constructor field
+    // and is never read back before being overwritten here.
+    final checkinData = CheckInModel(
+      id: checkinDoc.id,
+      uid: uid,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      timestamp: DateTime.now(),
+      method: method,
+    ).toFirestore()
+      ..['timestamp'] = FieldValue.serverTimestamp();
+    batch.set(checkinDoc, checkinData);
     batch.update(_members(gymId).doc(uid), {
       'last_check_in': FieldValue.serverTimestamp(),
     });

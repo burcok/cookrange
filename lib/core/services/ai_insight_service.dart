@@ -171,9 +171,12 @@ ${PromptService().localeInstruction(locale)}''';
           ? (recentWeights.last['weight'] as num).toDouble()
           : currentWeight;
 
+      // Faz 0 §0.7: read via the typed profile (UserNutritionProfile.
+      // targetWeightKg) instead of an inline raw-map cast — keeps this in
+      // sync with the same field _generateProfileHash now watches for
+      // changes (weekly_meal_plan_service.dart).
       final targetWeight =
-          (user.onboardingData?['target_weight'] as num?)?.toDouble() ??
-              currentWeight;
+          user.profile.targetWeightKg?.toDouble() ?? currentWeight;
 
       final profile = user.profile;
       double bmr = 1800;

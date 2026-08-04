@@ -24,13 +24,17 @@ service cloud.firestore {
     // like/reaction counters and their denormalized user-id lists — never
     // authorId/content/imageUrls/tags/groupId/metadata/etc. The two scalar
     // counters may only move by exactly one per write (no arbitrary count
-    // injection); reactions/likedUserIds/recentLikers aren't delta-checked
-    // (Firestore rules can't cheaply diff map/array magnitude) — narrower than
-    // ideal, but a client can no longer touch any field outside this list.
+    // injection); reactions/likedUserIds/recentLikers/reactionUserIds aren't
+    // delta-checked (Firestore rules can't cheaply diff map/array magnitude)
+    // — narrower than ideal, but a client can no longer touch any field
+    // outside this list. `reactionUserIds` (Faz 0 audit fix): toggleReaction's
+    // post-level write touches `reactionUserIds.$emoji` via dot-path update —
+    // affectedKeys() reports the top-level `reactionUserIds` field, which was
+    // missing from this allowlist, so a non-author's reaction was rejected.
     function canUpdatePostEngagement() {
       let diff = request.resource.data.diff(resource.data).affectedKeys();
       return isAuthenticated()
-        && diff.hasOnly(['likesCount', 'likedUserIds', 'recentLikers', 'reactions', 'commentsCount'])
+        && diff.hasOnly(['likesCount', 'likedUserIds', 'recentLikers', 'reactions', 'reactionUserIds', 'commentsCount'])
         && (!diff.hasAny(['likesCount'])
             || request.resource.data.likesCount == resource.data.likesCount + 1
             || request.resource.data.likesCount == resource.data.likesCount - 1)
@@ -69,6 +73,38 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == signalData.userId;
     }
 
+    // Faz 0 (audit fix): lets a non-owner bump a gym's `member_count` by
+    // exactly ±1 (join/leave) — nothing else on the gym doc. Without this,
+    // joinGym/leaveGym's `member_count` update was owner-only and the whole
+    // batch (which also writes the member doc) failed for every non-owner.
+    function canUpdateGymMemberCount() {
+      let diff = request.resource.data.diff(resource.data).affectedKeys();
+      return isAuthenticated()
+        && diff.hasOnly(['member_count'])
+        && (request.resource.data.member_count == resource.data.member_count + 1
+            || request.resource.data.member_count == resource.data.member_count - 1);
+    }
+
+    // Same idea for community_groups — narrower than the pre-existing
+    // hasOnly(...) check, which let a member set member_count to anything.
+    function canUpdateGroupCounters() {
+      let diff = request.resource.data.diff(resource.data).affectedKeys();
+      return isAuthenticated()
+        && diff.hasOnly(['member_count', 'last_activity_at', 'updated_at'])
+        && (!diff.hasAny(['member_count'])
+            || request.resource.data.member_count == resource.data.member_count + 1
+            || request.resource.data.member_count == resource.data.member_count - 1);
+    }
+
+    // A chat participant may update anything EXCEPT participants/type/
+    // createdBy — no adding/removing members, changing a chat's kind, or
+    // forging who created it. (Full message-level immutability is a
+    // separate, larger rewrite tracked for the chat-model overhaul.)
+    function canUpdateChatMeta() {
+      let diff = request.resource.data.diff(resource.data).affectedKeys();
+      return !diff.hasAny(['participants', 'type', 'createdBy']);
+    }
+
     function isAdmin() {
       // Admin-ness lives in a dead-simple top-level doc: `admin_roles/{uid}` with
       // `is_admin: true`. Trivial to create in the console (one collection, one
@@ -105,7 +141,12 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasAny([
         'subscription_tier', 'subscription_expires_at', 'subscription_product_id',
         'subscription_purchase_token', 'ai_credits_used', 'ai_credits_reset_at',
-        'ai_credits_bonus', 'referral_used', 'is_banned'
+        'ai_credits_bonus', 'referral_used', 'is_banned',
+        // Faz 0 §0.4: reputation is now computed + written only by the
+        // syncProgress Cloud Function (functions/progress.js) — previously
+        // client-writable, so any user could set their own reputation_score
+        // directly (ReputationService._cacheScore, before this fix).
+        'reputation_score', 'reputation_updated_at'
       ]);
     }
 
@@ -159,9 +200,15 @@ service cloud.firestore {
         allow read, write: if isOwner(uid);
       }
 
-      // Food logs: strictly owner-only
+      // Food logs: create + read only. Same immutability pattern as
+      // `checkins` (S6) — a logged meal is a historical record that backs
+      // streaks, the leaderboard, and achievements; letting it be edited or
+      // deleted after the fact let those be gamed. `removeLog`
+      // (food_log_service.dart) is dead code (0 UI call sites) so this
+      // closes a real hole without touching a live feature.
       match /food_logs/{logId} {
-        allow read, write: if isOwner(uid);
+        allow read, create: if isOwner(uid);
+        allow update, delete: if false;
       }
 
       // Favorites (bookmarked recipes): strictly owner-only
@@ -208,6 +255,21 @@ service cloud.firestore {
       // readable by other authenticated users regardless of friendship status.
       match /private/{docId} {
         allow read, write: if isOwner(uid);
+      }
+
+      // Private account subcollection (audit N1): email, login/device/
+      // session history, current app version, FCM token — previously on the
+      // world-readable main doc (firestore.rules read rule above is
+      // document-level and can't hide individual fields; the only real fix
+      // is not storing them there). Admin may additionally READ (support:
+      // email lookup, password reset) but never write — an admin has no
+      // legitimate reason to forge someone's login history or push token.
+      // This is additive to the wildcard /private/{docId} rule above (both
+      // apply; Firestore rules are a union of every matching block), so
+      // /private/nutrition stays exactly as strict as before.
+      match /private/account {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if isOwner(uid);
       }
     }
 
@@ -295,7 +357,9 @@ service cloud.firestore {
       allow read: if isAuthenticated() && isParticipant(resource.data);
       allow create: if isAuthenticated()
         && request.auth.uid in request.resource.data.participants;
-      allow update: if isAuthenticated() && isParticipant(resource.data);
+      allow update: if isAuthenticated()
+        && isParticipant(resource.data)
+        && canUpdateChatMeta();
       allow delete: if false; // Chats are never deleted client-side
 
       match /messages/{messageId} {
@@ -381,7 +445,6 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ─── Gyms ────────────────────────────────────────────────────────────────
     // ─── Community Groups ─────────────────────────────────────────────────────
     match /community_groups/{groupId} {
       // Any authenticated user can read groups (discovery).
@@ -390,20 +453,43 @@ service cloud.firestore {
       allow create: if isAuthenticated()
         && request.resource.data.owner_uid == request.auth.uid;
       // Owner/admin can edit freely; any member may bump only the counter
-      // fields (member_count / last_activity_at) on join/leave/post.
+      // fields (member_count / last_activity_at) on join/leave/post, and
+      // member_count only by ±1 per write (canUpdateGroupCounters).
       allow update: if isAuthenticated()
         && (resource.data.owner_uid == request.auth.uid
             || isAdmin()
-            || request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['member_count', 'last_activity_at', 'updated_at']));
+            || canUpdateGroupCounters());
       allow delete: if isAuthenticated()
         && (resource.data.owner_uid == request.auth.uid || isAdmin());
 
-      // Members subcollection: a user manages their own membership doc;
-      // the group owner (and admin) may manage any.
+      // Members subcollection: a user manages their own membership doc, but
+      // may only ever self-assign role 'member' — UNLESS they are the
+      // group's real owner_uid. (createGroup creates the parent doc first,
+      // awaited, THEN the owner's own 'owner' membership doc in a second
+      // write — deliberately not one batch, so this get() always reads an
+      // already-committed parent rather than depending on same-batch write
+      // visibility.) 'moderator' can only be granted by the owner/admin
+      // branch below, never by self-write (closes a privilege-escalation
+      // hole: previously any authenticated user could self-write
+      // role: 'owner' on their own membership doc in ANY group).
       match /members/{memberId} {
         allow read: if isAuthenticated();
-        allow write: if isAuthenticated()
+
+        allow create: if isAuthenticated()
+          && ((request.auth.uid == memberId
+                && (request.resource.data.role == 'member'
+                    || (request.resource.data.role == 'owner'
+                        && get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid)))
+              || get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
+              || isAdmin());
+
+        // No self-update flow exists today (join = create, leave = delete);
+        // role changes (e.g. promoting a moderator) are owner/admin-only.
+        allow update: if isAuthenticated()
+          && (get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
+              || isAdmin());
+
+        allow delete: if isAuthenticated()
           && (request.auth.uid == memberId
               || get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
               || isAdmin());
@@ -416,19 +502,44 @@ service cloud.firestore {
       // Only the gym owner can create/update their gym
       allow create: if isAuthenticated()
         && request.resource.data.owner_uid == request.auth.uid;
-      // Owner updates gym; admin may set is_verified badge.
+      // Owner updates gym; admin may set is_verified badge; any authenticated
+      // user may bump member_count by ±1 (join/leave — canUpdateGymMemberCount).
       allow update: if isAuthenticated()
-        && (resource.data.owner_uid == request.auth.uid || isAdmin());
+        && (resource.data.owner_uid == request.auth.uid
+            || isAdmin()
+            || canUpdateGymMemberCount());
       allow delete: if isAuthenticated()
         && resource.data.owner_uid == request.auth.uid;
 
-      // Gym members subcollection — owner manages, members can read their own entry
+      // Gym members subcollection. Previously write required gym-owner-or-
+      // admin, which meant a member could never write their OWN membership
+      // doc — joinGym/leaveGym/_recordCheckIn all failed outright (audit:
+      // the entire gym ecosystem was unreachable past this rule). Now a
+      // member may self-create (standard tier only — no client-side
+      // escalation to premium), self-delete (leave), and self-update ONLY
+      // their own `last_check_in` as a server timestamp (records a
+      // check-in). Owner/admin retain full control (tier changes, forced
+      // removal, admin backfill).
       match /members/{memberId} {
         allow read: if isAuthenticated()
           && (get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
               || request.auth.uid == memberId);
-        allow write: if isAuthenticated()
-          && (get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
+
+        allow create: if isAuthenticated()
+          && ((request.auth.uid == memberId && request.resource.data.tier == 'standard')
+              || get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
+              || isAdmin());
+
+        allow update: if isAuthenticated()
+          && ((request.auth.uid == memberId
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['last_check_in'])
+                && request.resource.data.last_check_in == request.time)
+              || get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
+              || isAdmin());
+
+        allow delete: if isAuthenticated()
+          && (request.auth.uid == memberId
+              || get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
               || isAdmin());
       }
 
@@ -463,13 +574,38 @@ service cloud.firestore {
         }
       }
 
-      // Check-in records
+      // Owner-only QR check-in token (Faz 0 §0.7). Previously the token
+      // lived directly on the public gyms/{gymId} doc (`qr_token`/
+      // `qr_token_expires_at`) — any authenticated user could read it with
+      // a plain get(), defeating "you must physically scan the printed QR
+      // code" entirely. It now lives here (doc id `qr_token`), readable
+      // only by the gym's own owner/admin — they render it as an image via
+      // qr_flutter; members never read this path directly, they obtain the
+      // token exclusively by scanning that image. validateGymCheckin
+      // (Cloud Function, Admin SDK) is the only thing that ever compares a
+      // scanned token against the stored value and writes the resulting
+      // check-in — see functions/gym.js.
+      match /private/{docId} {
+        allow read, write: if isAuthenticated()
+          && (get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
+              || isAdmin());
+      }
+
+      // Check-in records. `timestamp == request.time` requires the client
+      // write a serverTimestamp() sentinel (GymService._recordCheckIn does)
+      // rather than a spoofable client clock value; `method` is restricted
+      // to the values CheckInMethod actually produces client-side. The
+      // 'qr' method is now written only by validateGymCheckin (Admin SDK,
+      // bypasses this rule) — this create rule still gates the 'gps'/
+      // 'manual' paths, which remain direct client writes (Faz 1.5).
       match /checkins/{checkinId} {
         allow read: if isAuthenticated()
           && (get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
               || request.auth.uid == resource.data.uid);
         allow create: if isAuthenticated()
-          && request.resource.data.uid == request.auth.uid;
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.timestamp == request.time
+          && request.resource.data.method in ['qr', 'gps', 'manual'];
         allow update, delete: if false;
       }
     }
@@ -579,9 +715,14 @@ service cloud.firestore {
       allow read, write: if isAuthenticated() && request.auth.uid == uid;
     }
 
-    // ─── Achievements / badges (owner-only) ───────────────────────────────────
+    // ─── Achievements / badges ─────────────────────────────────────────────────
+    // Faz 0 §0.4: previously owner-writable — any authenticated user could
+    // self-grant any badge (e.g. write users/{own uid}/achievements/streak100
+    // directly, no streak required). Granted only by the syncProgress /
+    // backfillProgress Cloud Functions (functions/progress.js) now.
     match /users/{uid}/achievements/{achievementKey} {
-      allow read, write: if isAuthenticated() && request.auth.uid == uid;
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      allow write: if false;
     }
 
     // ─── Consent records (KVKK/GDPR — demonstrable, versioned, owner-only) ─────

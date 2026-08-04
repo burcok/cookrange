@@ -11,6 +11,7 @@ import '../theme/app_palette.dart';
 import '../../screens/coach/coach_dashboard_screen.dart';
 import '../../screens/gym/gym_dashboard_screen.dart';
 import '../../screens/gym/gym_discovery_screen.dart';
+import '../utils/feature_flags.dart';
 import '../../screens/home/food_scan_screen.dart';
 import '../../screens/home/barcode_scan_screen.dart';
 import '../../screens/nutrition_hub/nutrition_hub_screen.dart';
@@ -417,8 +418,12 @@ class _QuickActionsGrid extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final palette = AppPalette.of(context);
     final currentUser = context.watch<UserProvider>().user;
-    final isGymOwner = currentUser?.hasRole(UserRole.gymOwner) ?? false;
-    final isCoach = currentUser?.hasRole(UserRole.coach) ?? false;
+    // Audit N2 — an incident-response kill-switch should hide the surface
+    // for existing gym owners/coaches too, not just block new registrations.
+    final isGymOwner = (currentUser?.hasRole(UserRole.gymOwner) ?? false) &&
+        FeatureFlags.isEnabled(FeatureFlags.gym);
+    final isCoach = (currentUser?.hasRole(UserRole.coach) ?? false) &&
+        FeatureFlags.isEnabled(FeatureFlags.coach);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 36),
@@ -488,7 +493,12 @@ class _QuickActionsGrid extends StatelessWidget {
                 onTap: () => onInner(const NutritionHubScreen(initialTab: 1)),
               ),
               // Role-aware 6th tile: gym owner → My Gym, coach → My Coaching,
-              // everyone else → Find a Gym
+              // everyone else → Find a Gym. Audit N2: each branch already
+              // implies its feature is enabled (isGymOwner/isCoach fold the
+              // flag in above); the fallback checks gym directly since it
+              // has no role precondition. Leaves a blank 6th grid cell in
+              // the rare case both are kill-switched — acceptable over
+              // linking to a disabled feature.
               if (isGymOwner)
                 _ActionTile(
                   icon: Icons.fitness_center_rounded,
@@ -507,7 +517,7 @@ class _QuickActionsGrid extends StatelessWidget {
                   palette: palette,
                   onTap: () => onInner(const CoachDashboardScreen()),
                 )
-              else
+              else if (FeatureFlags.isEnabled(FeatureFlags.gym))
                 _ActionTile(
                   icon: Icons.fitness_center_rounded,
                   color: const Color(0xFF10B981),

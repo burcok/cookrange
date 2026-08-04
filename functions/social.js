@@ -175,3 +175,47 @@ exports.cancelFriendRequest = functions.https.onCall(async (data, context) => {
   await deleteRequestPair(admin.firestore(), uid, targetUid);
   return { ok: true };
 });
+
+/**
+ * Exact-match email lookup for the in-app "add friend" search (audit N1).
+ *
+ * Email moved off the world-readable main user doc to the owner-(+admin-)
+ * only `private/account` subcollection, so the client can no longer run its
+ * old `users.where('email', ...)` query directly. This callable does the
+ * lookup server-side via a collection-group query (Admin SDK — bypasses
+ * client rules) and returns only what a search-result row needs.
+ *
+ * Deliberately EXACT-MATCH only — the old client query also did a prefix
+ * range scan (`isGreaterThanOrEqualTo`/`isLessThan`), which let anyone
+ * enumerate the user base's emails alphabetically. That capability is not
+ * reintroduced here: the caller already knows the exact email they typed, so
+ * echoing it back for a genuine match isn't a new disclosure the way
+ * scanning a range of everyone else's emails would be.
+ */
+exports.searchUsersByEmail = functions.https.onCall(async (data, context) => {
+  assertCallable(context);
+  const rawEmail = (data && typeof data.email === 'string') ? data.email.trim().toLowerCase() : '';
+  if (!rawEmail) return { users: [] };
+
+  const db = admin.firestore();
+  const snap = await db.collectionGroup('account')
+    .where('email', '==', rawEmail)
+    .limit(5)
+    .get();
+
+  const users = await Promise.all(snap.docs.map(async (accountDoc) => {
+    const userRef = accountDoc.ref.parent.parent; // users/{uid}
+    if (!userRef) return null;
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) return null;
+    const userData = userSnap.data();
+    return {
+      uid: userRef.id,
+      displayName: userData.displayName || null,
+      photoURL: userData.photoURL || null,
+      email: accountDoc.data().email || null,
+    };
+  }));
+
+  return { users: users.filter(Boolean) };
+});

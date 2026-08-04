@@ -87,6 +87,14 @@ class FirestoreService {
 
   /// Handles user document creation or update upon a successful login.
   /// Also logs every successful login to a dedicated history collection.
+  ///
+  /// Fields are split between the world-readable main doc (only presence +
+  /// streak state — needed by chat presence, "last seen", leaderboards) and
+  /// the owner-(+admin-)only `private/account` subcollection (email, IP,
+  /// device, session and app-version history). Audit N1: these all used to
+  /// sit on the main doc, readable by any authenticated user via
+  /// `firestore.rules:115` (a document-level rule — it can't hide individual
+  /// fields, so the only real fix is not storing them there at all).
   Future<void> handleUserLogin(User user, {String? sessionId}) async {
     _log.info('Handling login for user: ${user.uid}, session: $sessionId',
         service: _serviceName);
@@ -94,11 +102,19 @@ class FirestoreService {
       final systemContext = await _log.getSystemContext();
 
       final userDocRef = _firestore.collection('users').doc(user.uid);
-      final userDoc = await userDocRef.get();
+      final privateAccountRef = _privateAccountRef(user.uid);
+      final snaps =
+          await Future.wait([userDocRef.get(), privateAccountRef.get()]);
+      final userDoc = snaps[0];
+      final privateAccountDoc = snaps[1];
 
-      final loginData = {
+      final publicLoginData = <String, dynamic>{
         'last_login_at': FieldValue.serverTimestamp(),
         'last_active_at': FieldValue.serverTimestamp(),
+        'is_online': true,
+      };
+
+      final privateLoginData = <String, dynamic>{
         'last_login_ip': systemContext['ip_address'],
         'last_login_device': systemContext['device_model'],
         'last_login_device_type': systemContext['device_type'],
@@ -107,22 +123,24 @@ class FirestoreService {
         'last_login_os_version': systemContext['os_version'],
         'last_login_app_version': systemContext['app_version'],
         'last_login_build_number': systemContext['build_number'],
-        'is_online': true,
       };
 
       if (sessionId != null) {
-        loginData['current_session_id'] = sessionId;
+        privateLoginData['current_session_id'] = sessionId;
       }
 
-      // Only update app version info if it has changed
-      final currentAppVersion = userDoc.data()?['app_version'] as String?;
-      final currentBuildNumber = userDoc.data()?['build_number'] as String?;
+      // Only update app version info if it has changed — compared against
+      // the private doc now, since app_version/build_number live there.
+      final currentAppVersion =
+          privateAccountDoc.data()?['app_version'] as String?;
+      final currentBuildNumber =
+          privateAccountDoc.data()?['build_number'] as String?;
 
       if (currentAppVersion != systemContext['app_version'] ||
           currentBuildNumber != systemContext['build_number']) {
-        loginData['app_version'] = systemContext['app_version'];
-        loginData['build_number'] = systemContext['build_number'];
-        loginData['version_updated_at'] = FieldValue.serverTimestamp();
+        privateLoginData['app_version'] = systemContext['app_version'];
+        privateLoginData['build_number'] = systemContext['build_number'];
+        privateLoginData['version_updated_at'] = FieldValue.serverTimestamp();
       }
 
       if (!userDoc.exists) {
@@ -130,29 +148,42 @@ class FirestoreService {
         // Initialize streak for new user
         final onboardingData = <String, dynamic>{'streak': 1};
 
-        await userDocRef.set({
-          'email': user.email,
-          'displayName': user.displayName,
-          'photoURL': user.photoURL,
-          'created_at': FieldValue.serverTimestamp(),
-          'onboarding_completed': false,
-          'onboarding_data': onboardingData,
-          'streak_freeze_count': 1, // welcome gift for new users
-          ...loginData,
-          'login_ips': FieldValue.arrayUnion([systemContext['ip_address']]),
-          'login_devices':
-              FieldValue.arrayUnion([systemContext['device_model']]),
-          'login_device_types':
-              FieldValue.arrayUnion([systemContext['device_type']]),
-          'login_device_models':
-              FieldValue.arrayUnion([systemContext['device_model']]),
-          'login_device_os':
-              FieldValue.arrayUnion([systemContext['device_os']]),
-          'login_app_versions':
-              FieldValue.arrayUnion([systemContext['app_version']]),
-          'login_build_numbers':
-              FieldValue.arrayUnion([systemContext['build_number']]),
-        }, SetOptions(merge: true));
+        final batch = _firestore.batch();
+        batch.set(
+          userDocRef,
+          {
+            'displayName': user.displayName,
+            'photoURL': user.photoURL,
+            'created_at': FieldValue.serverTimestamp(),
+            'onboarding_completed': false,
+            'onboarding_data': onboardingData,
+            'streak_freeze_count': 1, // welcome gift for new users
+            ...publicLoginData,
+          },
+          SetOptions(merge: true),
+        );
+        batch.set(
+          privateAccountRef,
+          {
+            'email': user.email,
+            ...privateLoginData,
+            'login_ips': FieldValue.arrayUnion([systemContext['ip_address']]),
+            'login_devices':
+                FieldValue.arrayUnion([systemContext['device_model']]),
+            'login_device_types':
+                FieldValue.arrayUnion([systemContext['device_type']]),
+            'login_device_models':
+                FieldValue.arrayUnion([systemContext['device_model']]),
+            'login_device_os':
+                FieldValue.arrayUnion([systemContext['device_os']]),
+            'login_app_versions':
+                FieldValue.arrayUnion([systemContext['app_version']]),
+            'login_build_numbers':
+                FieldValue.arrayUnion([systemContext['build_number']]),
+          },
+          SetOptions(merge: true),
+        );
+        await batch.commit();
         _log.info('New user document created for: ${user.uid}',
             service: _serviceName);
       } else {
@@ -184,8 +215,8 @@ class FirestoreService {
               // Missed a day — check for streak freeze
               final freezeCount = data['streak_freeze_count'] as int? ?? 0;
               if (freezeCount > 0) {
-                loginData['streak_freeze_count'] = freezeCount - 1;
-                loginData['streak_freeze_used_at'] =
+                publicLoginData['streak_freeze_count'] = freezeCount - 1;
+                publicLoginData['streak_freeze_used_at'] =
                     FieldValue.serverTimestamp();
                 _log.info(
                     'Streak freeze consumed for ${user.uid}; remaining: ${freezeCount - 1}',
@@ -198,7 +229,7 @@ class FirestoreService {
           }
 
           // Use dot notation to update nested field without overwriting entire map
-          loginData['onboarding_data.streak'] = currentStreak;
+          publicLoginData['onboarding_data.streak'] = currentStreak;
           unawaited(AchievementService()
               .checkAndGrant(user.uid, streak: currentStreak));
         } catch (e) {
@@ -208,7 +239,10 @@ class FirestoreService {
         }
 
         // Update last login info for an existing user
-        await userDocRef.update(loginData);
+        final batch = _firestore.batch();
+        batch.update(userDocRef, publicLoginData);
+        batch.set(privateAccountRef, privateLoginData, SetOptions(merge: true));
+        await batch.commit();
         _log.info('User document updated for: ${user.uid}',
             service: _serviceName);
       }
@@ -268,13 +302,15 @@ class FirestoreService {
   }
 
   /// Creates a user document during the initial registration process.
+  /// `email` goes to the owner-only `private/account` subcollection, not the
+  /// world-readable main doc (audit N1).
   Future<void> createUserDocumentOnRegister(
       User user, Map<String, dynamic>? onboardingData) async {
     _log.info('Creating user document on register for: ${user.uid}',
         service: _serviceName);
     try {
-      await _firestore.collection('users').doc(user.uid).set({
-        'email': user.email,
+      final batch = _firestore.batch();
+      batch.set(_firestore.collection('users').doc(user.uid), {
         'displayName': user.displayName,
         'photoURL': user.photoURL,
         'onboarding_completed': onboardingData != null,
@@ -283,6 +319,8 @@ class FirestoreService {
         'last_login_at': FieldValue.serverTimestamp(),
         'user_verified': false,
       });
+      batch.set(_privateAccountRef(user.uid), {'email': user.email});
+      await batch.commit();
       _log.info('Successfully created user document for: ${user.uid}',
           service: _serviceName);
       // Populate login/device info and trigger logging system
@@ -529,6 +567,61 @@ class FirestoreService {
     }
   }
 
+  // ── Private account subcollection (audit N1) ────────────────────────────────
+  // Email, IP/device/session history and the FCM token used to live on the
+  // world-readable main user doc — any authenticated user could read any
+  // other user's email + full login history (`firestore.rules:115`,
+  // `allow read: if isAuthenticated()`, is document-level and can't hide
+  // individual fields — the only real fix is not storing them on a broadly
+  // readable document at all). Moved to this owner-(+ admin-, for support)
+  // -only subcollection. No lazy-migration path needed here (contrast
+  // `getPrivateNutritionData`'s migrate-on-read): v0.9.6 has no real users
+  // yet (PROJECT_STATE.md) — same precedent already used for the BLK-03 cutover.
+
+  DocumentReference<Map<String, dynamic>> _privateAccountRef(String uid) =>
+      _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('private')
+          .doc('account');
+
+  /// Reads `users/{uid}/private/account` (email, login/device history,
+  /// current app version, FCM token). Null if it doesn't exist yet.
+  Future<Map<String, dynamic>?> getPrivateAccountData(String uid) async {
+    _log.info('getPrivateAccountData: $uid', service: _serviceName);
+    try {
+      final snap = await _privateAccountRef(uid).get();
+      return snap.exists ? snap.data() : null;
+    } catch (e, s) {
+      _log.error('getPrivateAccountData error for $uid',
+          service: _serviceName, error: e, stackTrace: s);
+      return null;
+    }
+  }
+
+  /// Merges [data] into `users/{uid}/private/account`. Does NOT write
+  /// anything to the main user document.
+  Future<void> savePrivateAccountData(
+      String uid, Map<String, dynamic> data) async {
+    _log.info('savePrivateAccountData: $uid', service: _serviceName);
+    try {
+      await _privateAccountRef(uid).set(data, SetOptions(merge: true));
+    } catch (e, s) {
+      _log.error('savePrivateAccountData error for $uid',
+          service: _serviceName, error: e, stackTrace: s);
+      rethrow;
+    }
+  }
+
+  /// Live stream of `users/{uid}/private/account` — used by
+  /// `AuthService._startSessionMonitoring` to detect a `current_session_id`
+  /// mismatch (forced logout from another device) without watching the
+  /// (now-public-fields-only) main user doc.
+  Stream<DocumentSnapshot<Map<String, dynamic>>> getPrivateAccountStream(
+      String uid) {
+    return _privateAccountRef(uid).snapshots();
+  }
+
   /// Overwrites the user's free-form avoid-ingredients list.
   /// Writes to the owner-only private/nutrition subcollection.
   Future<void> updateAvoidIngredients(
@@ -756,7 +849,11 @@ class FirestoreService {
         service: _serviceName);
     try {
       final userDocRef = _firestore.collection('users').doc(uid);
-      final userDoc = await userDocRef.get();
+      final privateAccountRef = _privateAccountRef(uid);
+      final snaps =
+          await Future.wait([userDocRef.get(), privateAccountRef.get()]);
+      final userDoc = snaps[0];
+      final privateAccountDoc = snaps[1];
 
       if (!userDoc.exists) {
         _log.warning(
@@ -766,18 +863,22 @@ class FirestoreService {
 
       final data = userDoc.data()!;
       final Map<String, dynamic> updates = {};
+      final Map<String, dynamic> privateUpdates = {};
 
       // Data-completeness guarantee: backfill identity fields from FirebaseAuth
       // when they're missing, so an account has the SAME core data regardless of
       // how it registered (email vs Google/Apple, or a login that skipped the
       // register-onboarding flow). Safe: only fills blanks, never overwrites.
+      // `email` is repaired on `private/account` (audit N1) — checking/writing
+      // it on the main doc here would silently re-leak it on every login,
+      // since the main doc's `email` is now permanently blank by design.
       final authUser = FirebaseAuth.instance.currentUser;
       if (authUser != null && authUser.uid == uid) {
         bool blank(dynamic v) => v == null || (v is String && v.isEmpty);
-        if (blank(data['email']) &&
+        if (blank(privateAccountDoc.data()?['email']) &&
             authUser.email != null &&
             authUser.email!.isNotEmpty) {
-          updates['email'] = authUser.email;
+          privateUpdates['email'] = authUser.email;
         }
         if (blank(data['displayName']) &&
             authUser.displayName != null &&
@@ -808,10 +909,16 @@ class FirestoreService {
         updates['onboarding_completed'] = false;
       }
 
-      if (updates.isNotEmpty) {
-        _log.warning('Repairing user document for $uid with updates: $updates',
+      if (updates.isNotEmpty || privateUpdates.isNotEmpty) {
+        _log.warning(
+            'Repairing user document for $uid with updates: $updates, private: $privateUpdates',
             service: _serviceName);
-        await userDocRef.update(updates);
+        final batch = _firestore.batch();
+        if (updates.isNotEmpty) batch.update(userDocRef, updates);
+        if (privateUpdates.isNotEmpty) {
+          batch.set(privateAccountRef, privateUpdates, SetOptions(merge: true));
+        }
+        await batch.commit();
         _log.info('Successfully repaired data for user: $uid',
             service: _serviceName);
       } else {

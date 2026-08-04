@@ -8,6 +8,7 @@ import 'package:cookrange/screens/admin/admin_panel_screen.dart';
 import 'package:cookrange/screens/admin/admin_reports_screen.dart';
 import 'package:cookrange/screens/admin/admin_privacy_requests_screen.dart';
 import '../../core/services/admin_service.dart';
+import '../../core/utils/feature_flags.dart';
 import 'package:cookrange/screens/coach/coach_clients_screen.dart';
 import 'package:cookrange/screens/coach/coach_dashboard_screen.dart';
 import 'package:cookrange/screens/coach/coach_discovery_screen.dart';
@@ -317,41 +318,51 @@ class _SidePanel extends StatelessWidget {
                         palette: palette,
                         isDark: isDark,
                         primary: primary),
-                    _NavTile(
-                        icon: Icons.groups_2_rounded,
-                        label: l10n.translate('squad.title'),
-                        onTap: () => onPush(const StreakSquadScreen()),
-                        palette: palette,
-                        isDark: isDark,
-                        primary: primary),
-                    _NavTile(
-                        icon: Icons.library_books_rounded,
-                        label: l10n.translate('program.my_programs'),
-                        onTap: () => onPush(const MyProgramsScreen()),
-                        palette: palette,
-                        isDark: isDark,
-                        primary: primary),
-                    _NavTile(
-                        icon: Icons.store_rounded,
-                        label: l10n.translate('menu.program_marketplace'),
-                        onTap: () => onPush(const ProgramMarketplaceScreen()),
-                        palette: palette,
-                        isDark: isDark,
-                        primary: primary),
-                    _NavTile(
-                        icon: Icons.fitness_center_rounded,
-                        label: l10n.translate('menu.find_gym'),
-                        onTap: () => onPush(const GymDiscoveryScreen()),
-                        palette: palette,
-                        isDark: isDark,
-                        primary: primary),
-                    _NavTile(
-                        icon: Icons.sports_rounded,
-                        label: l10n.translate('menu.find_coach'),
-                        onTap: () => onPush(const CoachDiscoveryScreen()),
-                        palette: palette,
-                        isDark: isDark,
-                        primary: primary),
+                    // Audit N2 — these four entry points are the actual
+                    // choke point for gym/coach/programs/squad (they're
+                    // pushed as direct widgets, not named routes, so
+                    // RouteGuard can't gate them). Hidden entirely when the
+                    // admin panel's feature flag is off.
+                    if (FeatureFlags.isEnabled(FeatureFlags.squad))
+                      _NavTile(
+                          icon: Icons.groups_2_rounded,
+                          label: l10n.translate('squad.title'),
+                          onTap: () => onPush(const StreakSquadScreen()),
+                          palette: palette,
+                          isDark: isDark,
+                          primary: primary),
+                    if (FeatureFlags.isEnabled(FeatureFlags.programs)) ...[
+                      _NavTile(
+                          icon: Icons.library_books_rounded,
+                          label: l10n.translate('program.my_programs'),
+                          onTap: () => onPush(const MyProgramsScreen()),
+                          palette: palette,
+                          isDark: isDark,
+                          primary: primary),
+                      _NavTile(
+                          icon: Icons.store_rounded,
+                          label: l10n.translate('menu.program_marketplace'),
+                          onTap: () => onPush(const ProgramMarketplaceScreen()),
+                          palette: palette,
+                          isDark: isDark,
+                          primary: primary),
+                    ],
+                    if (FeatureFlags.isEnabled(FeatureFlags.gym))
+                      _NavTile(
+                          icon: Icons.fitness_center_rounded,
+                          label: l10n.translate('menu.find_gym'),
+                          onTap: () => onPush(const GymDiscoveryScreen()),
+                          palette: palette,
+                          isDark: isDark,
+                          primary: primary),
+                    if (FeatureFlags.isEnabled(FeatureFlags.coach))
+                      _NavTile(
+                          icon: Icons.sports_rounded,
+                          label: l10n.translate('menu.find_coach'),
+                          onTap: () => onPush(const CoachDiscoveryScreen()),
+                          palette: palette,
+                          isDark: isDark,
+                          primary: primary),
 
                     const SizedBox(height: 18),
 
@@ -398,6 +409,12 @@ class _SidePanel extends StatelessWidget {
       BuildContext context, UserModel user, AppLocalizations l10n) {
     final cards = <Widget>[];
 
+    // Audit N2: an existing gym owner/coach's own dashboard now also
+    // respects the kill-switch — an incident-response disable should hide
+    // the surface for everyone, not just new registrations.
+    final gymEnabled = FeatureFlags.isEnabled(FeatureFlags.gym);
+    final coachEnabled = FeatureFlags.isEnabled(FeatureFlags.coach);
+
     // Gated on the `admin` custom claim (server truth), not the client-writable
     // user_roles array — see UserProvider.isAdmin (BLK-05).
     if (context.watch<UserProvider>().isAdmin) {
@@ -408,7 +425,7 @@ class _SidePanel extends StatelessWidget {
           primary: primary,
           onPush: onPush));
     }
-    if (user.hasRole(UserRole.gymOwner)) {
+    if (user.hasRole(UserRole.gymOwner) && gymEnabled) {
       cards.add(_GymCard(
           l10n: l10n,
           palette: palette,
@@ -416,7 +433,7 @@ class _SidePanel extends StatelessWidget {
           primary: primary,
           onPush: onPush));
     }
-    if (user.hasRole(UserRole.coach)) {
+    if (user.hasRole(UserRole.coach) && coachEnabled) {
       cards.add(_CoachCard(
           l10n: l10n,
           palette: palette,
@@ -427,10 +444,11 @@ class _SidePanel extends StatelessWidget {
 
     // Always show the "grow" card so any user (admin, gym owner, etc.) can still
     // register for roles they don't have yet. Hidden only when the user already
-    // holds both roles (nothing left to grow into).
+    // holds both roles (nothing left to grow into), or both are kill-switched.
     final isGymOwner = user.hasRole(UserRole.gymOwner);
     final isCoach = user.hasRole(UserRole.coach);
-    final needsGrowCard = !isGymOwner || !isCoach;
+    final needsGrowCard =
+        (!isGymOwner && gymEnabled) || (!isCoach && coachEnabled);
 
     if (cards.isEmpty && needsGrowCard) {
       return _ConsumerCard(
@@ -440,8 +458,8 @@ class _SidePanel extends StatelessWidget {
           isDark: isDark,
           primary: primary,
           onPush: onPush,
-          hideGym: isGymOwner,
-          hideCoach: isCoach);
+          hideGym: isGymOwner || !gymEnabled,
+          hideCoach: isCoach || !coachEnabled);
     }
     if (cards.isEmpty) return const SizedBox.shrink();
 
@@ -454,8 +472,8 @@ class _SidePanel extends StatelessWidget {
           isDark: isDark,
           primary: primary,
           onPush: onPush,
-          hideGym: isGymOwner,
-          hideCoach: isCoach));
+          hideGym: isGymOwner || !gymEnabled,
+          hideCoach: isCoach || !coachEnabled));
     }
 
     if (allCards.length == 1) return allCards.first;

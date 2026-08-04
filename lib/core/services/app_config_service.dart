@@ -128,4 +128,16 @@ class AppConfigService {
     final bucket = (('$feature:$uid').hashCode & 0x7fffffff) % 100;
     return bucket < pct;
   }
+
+  /// Single entry point combining the kill-switch (`isFeatureEnabled`) and
+  /// gradual-rollout (`isInRollout`) checks — audit N2: both existed but had
+  /// zero callers anywhere in the app, so gym/coach/programs/squad were
+  /// always fully live regardless of what the admin panel's toggles said.
+  /// [uid] is optional: pass null to skip the rollout bucket check (e.g. for
+  /// a logged-out context) — the kill-switch alone still applies.
+  bool isAvailable(String feature, {String? uid}) {
+    if (!_current.isFeatureEnabled(feature)) return false;
+    if (uid == null) return true;
+    return isInRollout(feature, uid);
+  }
 }

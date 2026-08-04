@@ -4,6 +4,7 @@ const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const fetch = require('node-fetch');
 const { APP_CHECK_ENFORCE } = require('./config');
+const { getFcmToken, writeNotification } = require('./notifications');
 
 admin.initializeApp();
 
@@ -484,6 +485,7 @@ const TYPE_TO_MUTE_GROUP = {
   mealReminder: 'reminders',
   streakAtRisk: 'reminders',
   weeklyPlanReady: 'reminders',
+  gymWarEnded: 'system',
 };
 
 /**
@@ -588,6 +590,17 @@ function getPushText(type, actorName, metadata, locale, customTitle, customBody)
       return tr
         ? { title: '📅 Yeni hafta, yeni plan!', body: 'Haftalık yemek planın hazır — hadi başlayalım' }
         : { title: '📅 New week, new plan!', body: "Your weekly meal plan is ready — let's make it count" };
+    case 'gymWarEnded': {
+      const myScore = (metadata && metadata.myScore) || 0;
+      const otherScore = (metadata && metadata.otherScore) || 0;
+      const won = !!(metadata && metadata.won);
+      const wonTitle = tr ? '🏆 Salon savaşını kazandın!' : '🏆 You won the gym war!';
+      const lostTitle = tr ? 'Salon savaşı bitti' : 'Gym war ended';
+      const body = tr
+        ? `${myScore} - ${otherScore} check-in ile bitti.`
+        : `Ended ${myScore}-${otherScore} in check-ins.`;
+      return { title: won ? wonTitle : lostTitle, body };
+    }
     case 'system':
       // Admin free-text message (sendAdminNotification's 'system' branch)
       // carries its own title/body — always shown verbatim, no locale switch,
@@ -630,7 +643,8 @@ async function sendFcm(uid, token, title, body, data) {
       e.code === 'messaging/invalid-registration-token'
     ) {
       functions.logger.info('Removing stale FCM token', { uid });
-      await db.collection('users').doc(uid).update({
+      // Lives on private/account, not the main doc (audit N1).
+      await db.collection('users').doc(uid).collection('private').doc('account').update({
         fcm_token: admin.firestore.FieldValue.delete(),
       });
     } else {
@@ -664,12 +678,13 @@ exports.onInAppNotificationCreated = functions
     const actorUid = doc.actorUid || '';
     const metadata = doc.metadata || {};
 
-    // Fetch recipient — need their FCM token, locale and mute prefs
+    // Fetch recipient — need their locale and mute prefs; FCM token lives
+    // separately on private/account (audit N1).
     const userSnap = await admin.firestore().collection('users').doc(uid).get();
     if (!userSnap.exists) return;
     const userData = userSnap.data();
 
-    const token = userData.fcm_token;
+    const token = await getFcmToken(admin.firestore(), uid);
     if (!token) {
       functions.logger.info('No FCM token for user', { uid, type });
       return;
@@ -725,9 +740,7 @@ exports.onChatMessageCreated = functions
     if (!recipients.length) return;
 
     await Promise.all(recipients.map(async (uid) => {
-      const userSnap = await admin.firestore().collection('users').doc(uid).get();
-      if (!userSnap.exists) return;
-      const token = userSnap.data().fcm_token;
+      const token = await getFcmToken(admin.firestore(), uid);
       if (!token) return;
 
       await sendFcm(uid, token, senderName, text || '📷 Image', {
@@ -759,11 +772,15 @@ async function resolveBroadcastAudience(audience) {
     return uid ? [uid] : [];
   }
 
+  // Faz 0 §0.5 fix: the user doc has no top-level `role` field — roles live
+  // in the `user_roles` array (values 'coach'/'gym_owner', snake_case; see
+  // UserRoleX.firestoreValue). This previously matched zero documents, so
+  // every 'coaches'/'gymOwners' broadcast silently reached nobody.
   let query = db.collection('users').limit(MAX);
   if (audience === 'coaches') {
-    query = query.where('role', '==', 'coach');
+    query = query.where('user_roles', 'array-contains', 'coach');
   } else if (audience === 'gymOwners') {
-    query = query.where('role', '==', 'gymOwner');
+    query = query.where('user_roles', 'array-contains', 'gym_owner');
   }
   // 'all' — no filter, just limit
 
@@ -797,8 +814,13 @@ async function executeBroadcast(broadcastId, broadcastData) {
     const batch = db.batch();
 
     await Promise.all(chunk.map(async (uid) => {
-      // Fetch user to get FCM token and locale
-      const userSnap = await db.collection('users').doc(uid).get();
+      // Fetch user for locale; FCM token lives separately on private/account
+      // (audit N1) — read in parallel, not sequentially, to avoid doubling
+      // this fan-out's latency per recipient.
+      const [userSnap, token] = await Promise.all([
+        db.collection('users').doc(uid).get(),
+        getFcmToken(db, uid),
+      ]);
       if (!userSnap.exists) return;
       const userData = userSnap.data();
 
@@ -820,7 +842,6 @@ async function executeBroadcast(broadcastId, broadcastData) {
       });
 
       // FCM push (best-effort; don't block batch on this)
-      const token = userData.fcm_token;
       if (token) {
         sendFcm(uid, token, title, body, {
           type: 'broadcast',
@@ -961,7 +982,9 @@ exports.streakAtRiskNotifier = functions
     await Promise.all(usersSnap.docs.map(async (userDoc) => {
       const uid = userDoc.id;
       const userData = userDoc.data();
-      const token = userData.fcm_token;
+      // FCM token lives on private/account, not this already-fetched query
+      // result (audit N1).
+      const token = await getFcmToken(db, uid);
       if (!token) return;
 
       // Respect reminders mute preference
@@ -1016,7 +1039,9 @@ exports.weeklyPlanReadyNotifier = functions
     await Promise.all(usersSnap.docs.map(async (userDoc) => {
       const uid = userDoc.id;
       const userData = userDoc.data();
-      const token = userData.fcm_token;
+      // FCM token lives on private/account, not this already-fetched query
+      // result (audit N1).
+      const token = await getFcmToken(db, uid);
       if (!token) return;
 
       // Respect reminders mute preference
@@ -1031,6 +1056,92 @@ exports.weeklyPlanReadyNotifier = functions
     functions.logger.info('weeklyPlanReadyNotifier: done', {
       processed: usersSnap.size, sent: sentCount,
     });
+  });
+
+/**
+ * Hourly cron: closes any gym war whose end_date has passed but is still
+ * 'active' (Faz 0 §0.6 / S18 — GymLeaderboardService.endWar() existed with
+ * zero callers, so a war's status never actually changed once its time was
+ * up, and the audit-flagged "coming soon" framing around gym wars — which
+ * this repo could not locate live in the current code — is moot once wars
+ * visibly conclude on their own). Computes each side's final check-in count
+ * within the war window via a real `.count()` aggregation (matches
+ * GymLeaderboardService.getWarScore's own logic), records the result, and
+ * notifies both gym owners.
+ */
+exports.endExpiredGymWars = functions
+  .pubsub
+  .schedule('every 60 minutes')
+  .onRun(async (_context) => {
+    const db = admin.firestore();
+    const now = admin.firestore.Timestamp.now();
+
+    const snap = await db.collection('gym_wars')
+      .where('status', '==', 'active')
+      .where('end_date', '<=', now)
+      .limit(100)
+      .get();
+
+    if (snap.empty) {
+      functions.logger.info('endExpiredGymWars: no expired wars');
+      return;
+    }
+
+    let ended = 0;
+    for (const warDoc of snap.docs) {
+      const war = warDoc.data();
+      try {
+        const [scoreASnap, scoreBSnap] = await Promise.all([
+          db.collection('gyms').doc(war.gym_a_id).collection('checkins')
+            .where('timestamp', '>=', war.start_date)
+            .where('timestamp', '<=', war.end_date)
+            .count().get(),
+          db.collection('gyms').doc(war.gym_b_id).collection('checkins')
+            .where('timestamp', '>=', war.start_date)
+            .where('timestamp', '<=', war.end_date)
+            .count().get(),
+        ]);
+        const scoreA = scoreASnap.data().count || 0;
+        const scoreB = scoreBSnap.data().count || 0;
+        const winnerGymId = scoreA === scoreB ? null : (scoreA > scoreB ? war.gym_a_id : war.gym_b_id);
+
+        await warDoc.ref.update({
+          status: 'ended',
+          final_score_a: scoreA,
+          final_score_b: scoreB,
+          winner_gym_id: winnerGymId,
+          ended_at: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        const [gymASnap, gymBSnap] = await Promise.all([
+          db.collection('gyms').doc(war.gym_a_id).get(),
+          db.collection('gyms').doc(war.gym_b_id).get(),
+        ]);
+        const sides = [
+          { ownerUid: gymASnap.exists ? gymASnap.data().owner_uid : null, myScore: scoreA, otherScore: scoreB },
+          { ownerUid: gymBSnap.exists ? gymBSnap.data().owner_uid : null, myScore: scoreB, otherScore: scoreA },
+        ];
+        for (const side of sides) {
+          if (!side.ownerUid) continue;
+          await writeNotification(db, {
+            targetUid: side.ownerUid,
+            type: 'gymWarEnded',
+            relatedId: warDoc.id,
+            metadata: {
+              myScore: side.myScore,
+              otherScore: side.otherScore,
+              won: side.myScore > side.otherScore,
+            },
+          });
+        }
+
+        ended++;
+      } catch (e) {
+        functions.logger.error('endExpiredGymWars: failed for war', { warId: warDoc.id, error: e.message });
+      }
+    }
+
+    functions.logger.info('endExpiredGymWars: done', { processed: snap.size, ended });
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1054,6 +1165,10 @@ exports.scanImage = media.scanImage;
 const adminRoles = require('./admin');
 exports.syncAdminClaim = adminRoles.syncAdminClaim;
 
+const progress = require('./progress');
+exports.syncProgress = progress.syncProgress;
+exports.backfillProgress = progress.backfillProgress;
+
 const notifications = require('./notifications');
 exports.createNotification = notifications.createNotification;
 exports.retractNotification = notifications.retractNotification;
@@ -1065,3 +1180,7 @@ exports.unfollowUser = social.unfollowUser;
 exports.sendFriendRequest = social.sendFriendRequest;
 exports.respondToFriendRequest = social.respondToFriendRequest;
 exports.cancelFriendRequest = social.cancelFriendRequest;
+exports.searchUsersByEmail = social.searchUsersByEmail;
+
+const gym = require('./gym');
+exports.validateGymCheckin = gym.validateGymCheckin;

@@ -84,6 +84,12 @@ class CommunityComment {
   Map<String, dynamic> toMap() {
     return {
       'author': author.toMap(),
+      // firestore.rules requires a top-level `authorId` on create/update/
+      // delete (matching the post-level rule's `isPostOwner` pattern) —
+      // without this, comment writes are silently denied. Kept alongside
+      // the nested `author.id` rather than replacing it, since the nested
+      // map is still the read-side shape `fromMap` expects.
+      'authorId': author.id,
       'content': content,
       'timestamp': Timestamp.fromDate(timestamp),
       'likesCount': likesCount,

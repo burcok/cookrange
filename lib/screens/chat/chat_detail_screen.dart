@@ -157,18 +157,29 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         date1.day == date2.day;
   }
 
+  // Faz 0 §0.7: was entirely hardcoded Turkish regardless of device locale
+  // ("Az önce", "X dk önce", "X saat önce", "Dün HH:mm") — the wrapping
+  // `profile.chat.last_active_at` key was correctly localized, but the
+  // {time} value plugged into it never was. Reuses the same chat.time.*
+  // keys chat_list_screen.dart's _formatTime already relies on.
   String _formatLastActive(BuildContext context, DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
+    final l10n = AppLocalizations.of(context);
 
     if (difference.inMinutes < 1) {
-      return "Az önce";
+      return l10n.translate('chat.time.now');
     } else if (difference.inMinutes < 60) {
-      return "${difference.inMinutes} dk önce";
+      return l10n.translate('chat.time.mins_ago',
+          variables: {'m': difference.inMinutes.toString()});
     } else if (difference.inHours < 24 && _isSameDay(now, timestamp)) {
-      return "${difference.inHours} saat önce";
+      return l10n.translate('chat.time.hours_ago',
+          variables: {'h': difference.inHours.toString()});
     } else if (difference.inDays < 1 && !_isSameDay(now, timestamp)) {
-      return "Dün ${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}";
+      final time =
+          '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+      return l10n
+          .translate('chat.time.yesterday_at', variables: {'time': time});
     } else {
       return "${timestamp.day}/${timestamp.month}/${timestamp.year}";
     }
@@ -266,7 +277,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         await FirebaseFirestore.instance
                             .collection('reports')
                             .add({
-                          'reportedBy':
+                          // firestore.rules requires `reporterId` on create
+                          // (matching ReportModel / the community report
+                          // paths) — 'reportedBy' was silently rejected.
+                          'reporterId':
                               FirebaseAuth.instance.currentUser?.uid ?? '',
                           'targetId': _otherUserId,
                           'targetType': 'user',
@@ -346,7 +360,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     title: StreamBuilder<DocumentSnapshot>(
                         stream: _otherUserStream,
                         builder: (context, snapshot) {
-                          String chatTitle = widget.chat.name ?? 'Chat';
+                          String chatTitle = widget.chat.name ??
+                              AppLocalizations.of(context)
+                                  .translate('chat.unnamed_user');
                           String? chatImage = widget.chat.image;
                           bool isOnline = false;
                           DateTime? lastActiveAt;
@@ -408,7 +424,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                       if (widget.chat.type == ChatType.private)
                                         if (isOnline)
                                           Text(
-                                            'Online',
+                                            localizations
+                                                .translate('chat.online'),
                                             style: TextStyle(
                                               color: palette.success,
                                               fontSize: 12,
@@ -510,7 +527,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     if (!snapshot.hasData || snapshot.data!.isEmpty) {
                       return Center(
                         child: Text(
-                          'No messages yet',
+                          localizations.translate('chat.no_messages_yet'),
                           style: TextStyle(color: palette.textTertiary),
                         ),
                       );
@@ -674,7 +691,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      "Yazıyor...",
+                                      localizations.translate('chat.typing'),
                                       style: TextStyle(
                                         color: palette.textSecondary,
                                         fontSize: 12,

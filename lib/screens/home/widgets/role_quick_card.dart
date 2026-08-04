@@ -6,6 +6,7 @@ import '../../../core/localization/app_localizations.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/providers/user_provider.dart';
 import '../../../core/services/admin_service.dart';
+import '../../../core/utils/feature_flags.dart';
 import '../../../core/utils/firestore_count.dart';
 import '../../../core/widgets/ds/ds.dart';
 import '../../admin/admin_panel_screen.dart';
@@ -28,8 +29,16 @@ class RoleQuickCard extends StatelessWidget {
     // user_roles array — see UserProvider.isAdmin (BLK-05).
     if (context.watch<UserProvider>().isAdmin)
       cards.add(_AdminCard(user: user));
-    if (user.hasRole(UserRole.gymOwner)) cards.add(_GymCard(user: user));
-    if (user.hasRole(UserRole.coach)) cards.add(_CoachCard(user: user));
+    // Audit N2 — an incident-response kill-switch should hide the surface
+    // for existing gym owners/coaches too, not just block new registrations.
+    if (user.hasRole(UserRole.gymOwner) &&
+        FeatureFlags.isEnabled(FeatureFlags.gym)) {
+      cards.add(_GymCard(user: user));
+    }
+    if (user.hasRole(UserRole.coach) &&
+        FeatureFlags.isEnabled(FeatureFlags.coach)) {
+      cards.add(_CoachCard(user: user));
+    }
 
     if (cards.isEmpty) return const SizedBox.shrink();
     if (cards.length == 1) return cards.first;

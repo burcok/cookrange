@@ -28,7 +28,7 @@ class SignalService {
 
     final signal = SignalModel(
       id: id,
-      senderId: user.uid,
+      userId: user.uid,
       senderName: userData?.displayName ?? 'Anonymous',
       senderImage: userData?.photoURL,
       type: type,
@@ -63,7 +63,7 @@ class SignalService {
       return snapshot.docs
           .map((doc) => SignalModel.fromJson(doc.data(), doc.id))
           .where((signal) =>
-                  signal.senderId !=
+                  signal.userId !=
                       uid && // Don't show my own signals in the "Help Needed" list (optional)
                   !signal.ignoredBy.contains(uid) // Filter ignored
               )

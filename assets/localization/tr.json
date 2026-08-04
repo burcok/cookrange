@@ -495,15 +495,9 @@
         "badge": "Premium",
         "title": "Cookrange'in tamamını aç, {name}",
         "subtitle": "Onu tamamen sana ait kılan iki dokunuş daha.",
-        "locked_requests_title": "Özel istekler",
-        "locked_requests_desc": "“Sadece yeşillik”, “tavuk ama kırmızı et yok” — yapay zekâya tam olarak ne istediğini söyle.",
-        "locked_icon_title": "Kişiye özel uygulama simgesi",
-        "locked_icon_desc": "Ana ekran simgeni tarzına göre yeniden renklendir.",
-        "benefit1": "Sınırsız yapay zekâ planı ve özel istekler",
-        "benefit2": "Barkod ve fotoğrafla yiyecek tarama",
-        "benefit3": "Salonunda kimin çalıştığını gör",
-        "benefit4": "Kişiye özel simge ve temalar",
-        "benefit5": "İstediğin zaman iptal — taahhüt yok",
+        "benefit1": "Günde 20 yapay zekâ üretimi",
+        "benefit2": "Daha sık yeniden planlama, daha detaylı gerekçelendirme",
+        "benefit3": "İstediğin zaman iptal — taahhüt yok",
         "cta": "Premium'a Geç",
         "free": "Ücretsiz sürümle devam et"
       },
@@ -698,24 +692,24 @@
         "december": "Aralık"
       }
     },
-    "online": "Online",
-    "last_seen": "Last seen: {time}",
-    "offline": "Offline",
+    "online": "Çevrimiçi",
+    "last_seen": "Son görülme: {time}",
+    "offline": "Çevrimdışı",
     "friends_modal": {
-      "title": "Friends",
-      "search_hint": "Search friends...",
-      "manage": "Manage",
-      "unfriend": "Unfriend",
-      "no_friends": "No friends found"
+      "title": "Arkadaşlar",
+      "search_hint": "Arkadaş ara...",
+      "manage": "Yönet",
+      "unfriend": "Arkadaşlıktan Çıkar",
+      "no_friends": "Arkadaş bulunamadı"
     },
     "friend_actions": {
-      "add": "Add Friend",
-      "sent": "Request Sent",
-      "received_text": "Wants to add you as a friend",
-      "accept": "Accept",
-      "reject": "Reject",
-      "message": "Message",
-      "already_friends": "Friends"
+      "add": "Arkadaş Ekle",
+      "sent": "İstek Gönderildi",
+      "received_text": "Seni arkadaş olarak eklemek istiyor",
+      "accept": "Kabul Et",
+      "reject": "Reddet",
+      "message": "Mesaj",
+      "already_friends": "Zaten Arkadaş"
     },
     "chat": {
       "today": "Bugün",
@@ -849,16 +843,16 @@
     },
     "premium": {
       "badge": "Premium'a Geç",
-      "title": "Limitsiz Özellikler",
-      "description": "Reklamsız deneyim, detaylı analizler ve özel tariflere erişim kazanın.",
+      "title": "Premium Avantajları",
+      "description": "Günde 20 yapay zekâ üretimi, daha sık yeniden planlama ve daha detaylı gerekçelendirme.",
       "button": "Premium Satın Al",
       "paywall_title": "Premium'a Yükselt",
       "paywall_subtitle": "Tüm özelliklerin kilidini açın ve Cookrange'den en iyi şekilde yararlanın.",
       "upgrade_btn": "Şimdi Yükselt",
       "maybe_later": "Belki daha sonra",
-      "perk_meal_plans": "Sınırsız Plan",
-      "perk_ai_chat": "Yapay Zeka Sohbet",
-      "perk_analytics": "Gelişmiş İstatistik"
+      "perk_meal_plans": "Daha Fazla Üretim",
+      "perk_ai_chat": "Daha Sık Sohbet",
+      "perk_analytics": "Daha Detaylı Gerekçe"
     },
     "privacy": {
       "title": "Gizlilik Ayarları",
@@ -1051,7 +1045,10 @@
       "streak_at_risk_body": "Serinizi korumak için bugün bir öğün kaydedin",
       "weekly_plan_ready_title": "📅 Yeni hafta, yeni plan!",
       "weekly_plan_ready_body": "Haftalık yemek planın hazır — hadi başlayalım",
-      "cat_reminders": "Hatırlatıcılar"
+      "cat_reminders": "Hatırlatıcılar",
+      "gym_war_ended_won_title": "🏆 Salon savaşını kazandın!",
+      "gym_war_ended_lost_title": "Salon savaşı bitti",
+      "gym_war_ended_body": "{myScore} - {otherScore} check-in ile bitti."
     }
   },
   "common": {
@@ -1632,8 +1629,12 @@
     }
   },
   "chat": {
-    "list_title": "Cookrange Chat",
-    "no_chats_found": "Sohbet bulunamadı. Yeni bir tane oluşturun!",
+    "actions": {
+      "new_chat": "Yeni Sohbet",
+      "share_meal": "Öğün Paylaş",
+      "send_signal": "Sinyal Gönder",
+      "placeholder_message_input": "Mesaj yazın..."
+    },
     "filter_title": "Sohbet Filtreleri",
     "filters": {
       "all": "Hepsi",
@@ -1641,16 +1642,7 @@
       "nutrition": "Beslenme",
       "private": "Özel"
     },
-    "meal_share": "Öğün Paylaş",
-    "meal_share_soon": "Öğün Paylaş özelliği yakında!",
-    "new_chat": "Yeni Sohbet",
-    "new_group": "Yeni Grup",
-    "no_friends": "Henüz arkadaşınız yok.",
-    "no_results": "Sonuç bulunamadı.",
-    "offline": "Çevrimdışı",
-    "online": "Çevrimiçi",
-    "search_friend_hint": "Arkadaş ara...",
-    "signal_send": "Sinyal Gönder",
+    "find_friends_cta": "Arkadaş Bul",
     "group": {
       "create_title": "Yeni Grup Sohbeti",
       "name_hint": "Grup adı (örn. Antrenman Arkadaşları)",
@@ -1660,32 +1652,33 @@
       "create_btn": "Grup Oluştur",
       "no_friends": "Grup oluşturmak için önce arkadaş ekleyin."
     },
-    "unnamed_user": "İsimsiz Kullanıcı",
+    "list_title": "Cookrange Chat",
+    "meal_share": "Öğün Paylaş",
+    "meal_share_soon": "Öğün Paylaş özelliği yakında!",
+    "more_options": "Daha Fazla Seçenek",
+    "new_chat": "Yeni Sohbet",
+    "new_group": "Yeni Grup",
+    "no_chats_found": "Sohbet bulunamadı. Yeni bir tane oluşturun!",
+    "no_friends": "Henüz arkadaşınız yok.",
+    "no_messages_yet": "Henüz mesaj yok",
+    "no_results": "Sonuç bulunamadı.",
+    "offline": "Çevrimdışı",
+    "online": "Çevrimiçi",
+    "recipe_group": {
+      "new_recipes": "{count} Yeni Tarif"
+    },
+    "search_friend_hint": "Arkadaş ara...",
+    "signal_send": "Sinyal Gönder",
+    "system_message_fallback": "Sistem Mesajı",
     "time": {
       "days_ago": "{d}g önce",
       "hours_ago": "{h}s önce",
       "mins_ago": "{m}d önce",
-      "now": "Şimdi"
+      "now": "Şimdi",
+      "yesterday_at": "Dün {time}"
     },
-    "needs_help": {
-      "title": "{name}, {activity} için\ndestek bekliyor!",
-      "location": "MacFit - Peron 3",
-      "button": "YOLDAYIM"
-    },
-    "status": {
-      "person_training": "{count} Kişi Antrenmanda",
-      "equipment_repair": "{equipment} Tamirde",
-      "training": "Antrenmanda",
-      "resting": "Dinleniyor"
-    },
-    "actions": {
-      "new_chat": "Yeni Sohbet",
-      "share_meal": "Öğün Paylaş",
-      "send_signal": "Sinyal Gönder",
-      "placeholder_message_input": "Mesaj yazın..."
-    },
-    "find_friends_cta": "Arkadaş Bul",
-    "more_options": "Daha Fazla Seçenek",
+    "typing": "Yazıyor...",
+    "unnamed_user": "İsimsiz Kullanıcı",
     "view_profile": "Profili Görüntüle"
   },
   "signal": {
@@ -1711,6 +1704,9 @@
       "meal_3": "Sağlıklı tarif denedim, ikram etmek isterim.",
       "general_1": "Motivasyon lazım!",
       "general_2": "Bugün salona giden var mı?"
+    },
+    "banner": {
+      "ignore": "Yoksay"
     }
   },
   "tracking": {
@@ -1759,16 +1755,16 @@
   },
   "premium": {
     "badge": "Premium'a Geç",
-    "title": "Limitsiz Özellikler",
-    "description": "Reklamsız deneyim, detaylı analizler ve özel tariflere erişim kazanın.",
+    "title": "Premium Avantajları",
+    "description": "Günde 20 yapay zekâ üretimi, daha sık yeniden planlama ve daha detaylı gerekçelendirme.",
     "button": "Premium Satın Al",
     "paywall_title": "Premium'a Yükselt",
     "paywall_subtitle": "Tüm özelliklerin kilidini açın ve Cookrange'den en iyi şekilde yararlanın.",
     "upgrade_btn": "Şimdi Yükselt",
     "maybe_later": "Belki daha sonra",
-    "perk_meal_plans": "Sınırsız Plan",
-    "perk_ai_chat": "Yapay Zeka Sohbet",
-    "perk_analytics": "Gelişmiş İstatistikler"
+    "perk_meal_plans": "Daha Fazla Üretim",
+    "perk_ai_chat": "Daha Sık Sohbet",
+    "perk_analytics": "Daha Detaylı Gerekçe"
   },
   "billing": {
     "monthly": "Aylık",
@@ -1986,8 +1982,6 @@
     "setup_status": "KURULMADI",
     "setup_subtitle": "Üyeleri yönetmeye, katılımı takip etmeye ve güçlü analizlere erişmeye başlamak için salonunuzu kurun.",
     "setup_cta": "Salonumu Kur",
-    "setup_coming_soon": "Salon kurulumu yakında geliyor!",
-    "coming_features": "YAKINDA GELECEK",
     "stat_members": "Üye",
     "stat_active_today": "Bugün Aktif",
     "stat_retention": "Elde Tutma",
@@ -2181,7 +2175,6 @@
     "docs_info": "Spor salonunuzu açabilmek için aşağıdaki belgeleri yüklemeniz gerekmektedir.",
     "docs_business_license": "İşletme Ruhsatı",
     "docs_id": "Kimlik Belgesi (TC)",
-    "docs_tax": "Vergi Levhası (isteğe bağlı)",
     "docs_tap_upload": "Yüklemek için dokunun (PDF veya görsel)",
     "docs_uploaded": "Yüklendi",
     "docs_required_warning": "Lütfen gerekli belgeleri yükleyin.",
@@ -2483,10 +2476,8 @@
     "paywall_buy_cta": "Premium'u Al",
     "paywall_restore": "Satın Alımları Geri Yükle",
     "paywall_feature1": "Günde 20 AI kullanımı",
-    "paywall_feature2": "Öncelikli AI işleme",
-    "paywall_feature3": "Gelişmiş öğün özelleştirme",
-    "paywall_feature4": "Detaylı beslenme analitiği",
-    "paywall_feature5": "Yeni özelliklere erken erişim",
+    "paywall_feature2": "Daha sık yeniden planlama",
+    "paywall_feature3": "Daha detaylı yapay zekâ gerekçelendirmesi",
     "paywall_processing": "İşleniyor...",
     "paywall_not_available": "Bu cihazda satın alma kullanılamıyor.",
     "paywall_restore_success": "Satın alımlar başarıyla geri yüklendi!",
@@ -2594,7 +2585,7 @@
     },
     "location": {
       "title": "Konum Erişimi",
-      "rationale": "Cookrange, GPS check-in sırasında spor salonunda olduğunuzu doğrulamak için konumunuza ihtiyaç duyar. Konumun yalnızca check-in doğrulaması için kullanılır ve sonrasında sunucularımızda saklanmaz.",
+      "rationale": "Cookrange, GPS check-in sırasında spor salonunda olduğunuzu doğrulamak ve yakındaki salon ve koçları mesafeye göre sıralamak için konumunuza ihtiyaç duyar. Konumun yalnızca bunlar için, cihazınız üzerinde hesaplanarak kullanılır ve sunucularımızda saklanmaz.",
       "rationale_stored_note": "Konumun yalnızca check-in doğrulaması için kullanılır ve sonrasında sunucularımızda saklanmaz."
     },
     "notifications": {
@@ -3074,7 +3065,7 @@
   "squad": {
     "title": "Seri Ekipleri",
     "empty_title": "Henüz Ekip Yok",
-    "empty_msg": "Bir ekip oluştur veya davet kodu ile katıl, seriyi birlikte sürdürün.",
+    "empty_msg": "Serilerinizi yan yana görün.",
     "join_action": "Ekibe Katıl",
     "create_title": "Ekip Oluştur",
     "join_title": "Ekibe Katıl",

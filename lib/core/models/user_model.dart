@@ -154,6 +154,22 @@ class UserModel {
     return copyWith(onboardingData: merged);
   }
 
+  /// Returns a copy of this model with `email`/`appVersion`/`buildNumber`
+  /// filled in from the owner-(+admin-)only `users/{uid}/private/account`
+  /// subcollection (audit N1 — these no longer live on the world-readable
+  /// main doc). Used by [UserProvider] right after [withPrivateNutrition], so
+  /// the handful of call sites reading `user.email` keep working unchanged
+  /// for the OWNER's own model; any other user's [UserModel] (search
+  /// results, friend lists, chat presence, etc.) is never merged this way and
+  /// so correctly has `email == null`.
+  UserModel withPrivateAccount(Map<String, dynamic> privateAccountData) {
+    return copyWith(
+      email: privateAccountData['email'] as String?,
+      appVersion: privateAccountData['app_version'] as String?,
+      buildNumber: privateAccountData['build_number'] as String?,
+    );
+  }
+
   /// Typed entitlements for the user's current subscription tier.
   Entitlements get entitlements => Entitlements(subscriptionTier);
 

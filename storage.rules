@@ -76,11 +76,15 @@ service firebase.storage {
     }
 
     // ─── Gym Logos ────────────────────────────────────────────────────────────
-    // Path: gym_logos/{gymId}/{filename}
+    // Path: gyms/{gymId}/{filename} — matches StorageUploadService.uploadGymLogo
+    // (gyms/$gymId/logo.jpg). BLK-07: this rule used to guard `gym_logos/{gymId}`,
+    // a path nothing ever wrote to — the real upload path was unruled and
+    // denied by the catch-all, and (separately) unwatched by the NSFW
+    // scanner's SCAN_PREFIXES, which does include 'gyms/'.
     // Any authenticated user can view gym logos (public discovery).
     // Any authenticated user can upload — gym owner enforced app-side for MVP;
     // tighten to owner-only once gymId→ownerUid is resolvable in storage rules.
-    match /gym_logos/{gymId}/{fileName} {
+    match /gyms/{gymId}/{fileName} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated()
         && request.resource.size < 5 * 1024 * 1024

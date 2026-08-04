@@ -3,6 +3,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+// Prefixed: intl also exports a TextDirection, which collides with
+// material's (used below by TextPainter).
+import 'package:intl/intl.dart' as intl;
 import 'package:provider/provider.dart';
 
 import '../../core/localization/app_localizations.dart';
@@ -393,6 +396,7 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
                     progress: _barAnim.value,
                     primaryColor: primary,
                     palette: palette,
+                    locale: Localizations.localeOf(context).languageCode,
                   ),
                 ),
               ),
@@ -449,6 +453,7 @@ class _BarChartPainter extends CustomPainter {
   final double progress;
   final Color primaryColor;
   final AppPalette palette;
+  final String locale;
 
   const _BarChartPainter({
     required this.days,
@@ -456,6 +461,7 @@ class _BarChartPainter extends CustomPainter {
     required this.progress,
     required this.primaryColor,
     required this.palette,
+    required this.locale,
   });
 
   @override
@@ -511,10 +517,14 @@ class _BarChartPainter extends CustomPainter {
 
       canvas.drawRRect(rRect, Paint()..color = barColor);
 
-      // Day label (Mon, Tue …)
-      final dayNames = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-      final dayOfWeek = DateTime.tryParse(day.date)?.weekday ?? 1;
-      final label = dayNames[(dayOfWeek - 1) % 7];
+      // Day label (Mon, Tue …) — Faz 0 §8.1: was a hardcoded English
+      // array regardless of app language; now uses intl's locale-aware
+      // weekday abbreviation, matching the pattern already established in
+      // bugun_recap_card.dart.
+      final parsedDate = DateTime.tryParse(day.date);
+      final label = parsedDate != null
+          ? intl.DateFormat('E', locale).format(parsedDate).substring(0, 2)
+          : '';
 
       final tp = TextPainter(
         text: TextSpan(

@@ -28,22 +28,23 @@ class FriendService {
 
   String? get currentUserId => _auth.currentUser?.uid;
 
-  // Search users by name or email
+  // Search users by name or email.
+  //
+  // Email matching goes through the `searchUsersByEmail` callable (audit
+  // N1): email moved off the world-readable main user doc to the owner-(+
+  // admin-)only `private/account` subcollection, so a client-side
+  // `where('email', ...)` query can no longer see it at all. The callable is
+  // exact-match only — the old email-prefix range query here also let
+  // anyone enumerate the user base's emails alphabetically, and that
+  // capability is not reintroduced. displayName search is unaffected and
+  // stays client-side (displayName is meant to be publicly searchable).
   Future<List<UserModel>> searchUsers(String query) async {
     if (query.isEmpty) return [];
 
     final String qLower = query.toLowerCase();
     final String qOriginal = query;
 
-    // We do multiple queries as Firestore doesn't support "OR" between fields with prefix match easily
-    // 1. Search by exact email first (often what's wanted)
-    final emailQuery = _firestore
-        .collection('users')
-        .where('email', isEqualTo: qLower)
-        .limit(5)
-        .get();
-
-    // 2. Search by displayName prefix (Original Case)
+    // 1. Search by displayName prefix (Original Case)
     final nameOriginalQuery = _firestore
         .collection('users')
         .where('displayName', isGreaterThanOrEqualTo: qOriginal)
@@ -51,7 +52,7 @@ class FriendService {
         .limit(10)
         .get();
 
-    // 3. Search by displayName prefix (Lowercase - works better if stored names are lowercase or for specific matches)
+    // 2. Search by displayName prefix (Lowercase - works better if stored names are lowercase or for specific matches)
     final nameLowerQuery = _firestore
         .collection('users')
         .where('displayName', isGreaterThanOrEqualTo: qLower)
@@ -59,21 +60,17 @@ class FriendService {
         .limit(10)
         .get();
 
-    // 4. Search by email prefix
-    final emailPrefixQuery = _firestore
-        .collection('users')
-        .where('email', isGreaterThanOrEqualTo: qLower)
-        .where('email', isLessThan: '$qLower')
-        .limit(10)
-        .get();
+    // 3. Exact-email match, server-side (see doc comment above).
+    final emailMatchFuture = FirebaseFunctions.instance
+        .httpsCallable('searchUsersByEmail')
+        .call<Map<String, dynamic>>({'email': qLower});
 
     try {
       final results = await Future.wait([
-        emailQuery,
         nameOriginalQuery,
         nameLowerQuery,
-        emailPrefixQuery,
       ]);
+      final emailResult = await emailMatchFuture;
 
       final Map<String, UserModel> usersMap = {};
       final String? myUid = currentUserId;
@@ -86,6 +83,23 @@ class FriendService {
             usersMap[doc.id] = UserModel.fromFirestore(doc);
           }
         }
+      }
+
+      final emailMatches = (emailResult.data['users'] as List?) ?? const [];
+      for (final raw in emailMatches) {
+        final u = raw as Map<String, dynamic>;
+        final uid = u['uid'] as String?;
+        if (uid == null || uid == myUid || usersMap.containsKey(uid)) {
+          continue;
+        }
+        usersMap[uid] = UserModel(
+          uid: uid,
+          email: u['email'] as String?,
+          displayName: u['displayName'] as String?,
+          photoURL: u['photoURL'] as String?,
+          isOnline: false,
+          onboardingCompleted: true,
+        );
       }
 
       return usersMap.values.toList();

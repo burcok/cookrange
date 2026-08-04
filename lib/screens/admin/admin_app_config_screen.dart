@@ -67,6 +67,13 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
     'food_scan',
     'marketplace',
     'referral',
+    // Audit N2 — consumer-only v1 scope (ADR-012) defers these to M6; now
+    // actually wired to their entry points (side menu, quick actions,
+    // discover hub, role card) instead of existing only as unused toggles.
+    'gym',
+    'coach',
+    'programs',
+    'squad',
   ];
   final Map<String, bool> _features = {};
 

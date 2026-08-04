@@ -9,12 +9,15 @@ class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Uuid _uuid = const Uuid();
 
-  // Get all chats for a user, sorted by update time
-  Stream<List<ChatModel>> getUserChats(String userId) {
+  // Get all chats for a user, sorted by update time. Capped (Faz 0 §0.5 —
+  // this had no bound at all; also the underlying stream for
+  // getUserChatsWithStatus below, so this is the real chat-list path).
+  Stream<List<ChatModel>> getUserChats(String userId, {int limit = 200}) {
     return _firestore
         .collection('chats')
         .where('participants', arrayContains: userId)
         .orderBy('updatedAt', descending: true)
+        .limit(limit)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs

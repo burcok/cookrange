@@ -9,6 +9,7 @@ import 'community/community_screen.dart';
 import 'profile/profile_screen.dart';
 import '../core/providers/navigation_provider.dart';
 import '../core/providers/user_provider.dart';
+import '../core/services/remote_config_service.dart';
 import '../core/services/whats_new_service.dart';
 import '../core/widgets/quick_actions_sheet.dart';
 import '../core/widgets/voice_assistant_overlay.dart';
@@ -159,11 +160,17 @@ class _MainScaffoldState extends State<MainScaffold>
             ),
 
             // ── Voice assistant overlay ──────────────────────────────────────
+            // Gated on feature_voice_assistant (audit N2 — previously
+            // unused, so this was unconditional regardless of the flag).
+            // Checked here rather than at each of its two open-triggers
+            // (ai_chat_screen.dart, quick_actions_sheet.dart) — a single
+            // choke point that also covers any future trigger.
             Selector<NavigationProvider, bool>(
               selector: (_, nav) => nav.isVoiceAssistantOpen,
-              builder: (_, isOpen, __) => isOpen
-                  ? const VoiceAssistantOverlay()
-                  : const SizedBox.shrink(),
+              builder: (_, isOpen, __) =>
+                  isOpen && RemoteConfigService().featureVoiceAssistant
+                      ? const VoiceAssistantOverlay()
+                      : const SizedBox.shrink(),
             ),
 
             // ── Side menu — kept in tree (Offstage) for zero-rebuild opens ──

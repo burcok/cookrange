@@ -181,8 +181,6 @@ class _ChatListScreenState extends State<ChatListScreen>
                                 padding:
                                     const EdgeInsets.fromLTRB(16, 0, 16, 100),
                                 children: [
-                                  if (_searchQuery.isEmpty)
-                                    _buildSupportToast(context, palette),
                                   const SizedBox(height: 32),
                                   _buildEmptyStateWithGlow(context, palette, t),
                                 ],
@@ -509,7 +507,9 @@ class _ChatListScreenState extends State<ChatListScreen>
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Text(
-          chat.lastMessage?.text ?? 'System Message',
+          chat.lastMessage?.text ??
+              AppLocalizations.of(context)
+                  .translate('chat.system_message_fallback'),
           style: TextStyle(color: palette.textPrimary),
         ),
       ),
@@ -851,150 +851,12 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildSupportToast(BuildContext context, AppPalette palette) {
-    return Dismissible(
-      key: const Key('support_toast'),
-      onDismissed: (direction) {},
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: LinearGradient(
-            colors: [
-              palette.error.withValues(alpha: 0.12),
-              palette.error.withValues(alpha: 0.06),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: palette.error.withValues(alpha: 0.15),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: Stack(
-            children: [
-              Container(
-                color: palette.surface.withValues(alpha: 0.2),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Stack(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: palette.warning.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                            border:
-                                Border.all(color: palette.surface, width: 2),
-                          ),
-                          child: Center(
-                            child: Icon(Icons.person, color: palette.warning),
-                          ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: Container(
-                            width: 18,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              color: palette.error,
-                              shape: BoxShape.circle,
-                              border:
-                                  Border.all(color: palette.surface, width: 2),
-                            ),
-                            child: Center(
-                              child: Text(
-                                "!",
-                                style: TextStyle(
-                                  color: palette.textInverse,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Caner, destek bekliyor!",
-                            style: TextStyle(
-                              color: palette.textPrimary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "Bench Press\nMacFit - Peron 3",
-                            style: TextStyle(
-                              color: palette.error.withValues(alpha: 0.8),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            AppPalette.sunsetB,
-                            AppPalette.sunsetC,
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppPalette.brand.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        children: [
-                          Text(
-                            "YOLDAYIM",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                          SizedBox(width: 4),
-                          Text("✋", style: TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // Faz 0 §0.7: removed _buildSupportToast — a fully fabricated card (fake
+  // person "Caner", fake gym "MacFit - Peron 3", a "YOLDAYIM" button with no
+  // onTap at all) shown unconditionally whenever the chat list was empty.
+  // Zero backing data (git blame: rode in on an unrelated localization
+  // commit and was never wired up or cleaned up). _buildEmptyStateWithGlow
+  // right below it is the real, honest empty state and now stands alone.
 
   Widget _buildGymChatCard(BuildContext context, ChatModel chat,
       AppPalette palette, String currentUserId) {
@@ -1026,19 +888,6 @@ class _ChatListScreenState extends State<ChatListScreen>
                       : Icon(Icons.fitness_center, color: palette.textPrimary),
                 ),
               ),
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: palette.error,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: palette.surface, width: 2),
-                  ),
-                ),
-              ),
             ],
           ),
           const SizedBox(width: 16),
@@ -1051,7 +900,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                   children: [
                     Expanded(
                       child: Text(
-                        chat.name ?? 'Gym Chat',
+                        chat.name ??
+                            AppLocalizations.of(context)
+                                .translate('chat.unnamed_user'),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -1059,45 +910,55 @@ class _ChatListScreenState extends State<ChatListScreen>
                         ),
                       ),
                     ),
-                    Text(
-                      "10:42",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: palette.textTertiary,
-                        fontWeight: FontWeight.w500,
+                    if (chat.lastMessage != null)
+                      Text(
+                        _formatTime(context, chat.lastMessage!.timestamp),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: palette.textTertiary,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Text("🔥", style: TextStyle(fontSize: 12)),
-                    const SizedBox(width: 6),
-                    Text(
-                      chat.metadata?['status_text'] ?? "14 Kişi Antrenmanda",
-                      style: TextStyle(
-                        color: palette.textSecondary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                // Faz 0 §0.7: status_text/event_text are never written by
+                // any code path today (checked functions/ and lib/) — the
+                // old fallbacks ("14 Kişi Antrenmanda" / "Etkinlik Günü:
+                // Yoga") rendered on literally every gym chat, unconditional
+                // and fake. Only shown now when a real value exists.
+                if (chat.metadata?['status_text'] != null) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Text("🔥", style: TextStyle(fontSize: 12)),
+                      const SizedBox(width: 6),
+                      Text(
+                        chat.metadata!['status_text'] as String,
+                        style: TextStyle(
+                          color: palette.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Text("🗓️", style: TextStyle(fontSize: 12)),
-                    const SizedBox(width: 6),
-                    Text(
-                      chat.metadata?['event_text'] ?? "Etkinlik Günü: Yoga",
-                      style: TextStyle(
-                        color: palette.textTertiary,
-                        fontSize: 13,
+                    ],
+                  ),
+                ],
+                if (chat.metadata?['event_text'] != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Text("🗓️", style: TextStyle(fontSize: 12)),
+                      const SizedBox(width: 6),
+                      Text(
+                        chat.metadata!['event_text'] as String,
+                        style: TextStyle(
+                          color: palette.textTertiary,
+                          fontSize: 13,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -1173,7 +1034,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      chat.name ?? 'User',
+                      chat.name ??
+                          AppLocalizations.of(context)
+                              .translate('chat.unnamed_user'),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -1259,7 +1122,9 @@ class _ChatListScreenState extends State<ChatListScreen>
                   children: [
                     Expanded(
                       child: Text(
-                        chat.name ?? 'Group',
+                        chat.name ??
+                            AppLocalizations.of(context)
+                                .translate('chat.unnamed_user'),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -1267,51 +1132,59 @@ class _ChatListScreenState extends State<ChatListScreen>
                         ),
                       ),
                     ),
-                    Text(
-                      "08:30",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: palette.textTertiary,
+                    if (chat.lastMessage != null)
+                      Text(
+                        _formatTime(context, chat.lastMessage!.timestamp),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: palette.textTertiary,
+                        ),
                       ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: palette.warning.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                            color: palette.warning.withValues(alpha: 0.3)),
+                // Faz 0 §0.7: new_recipes_count is never written by any
+                // code path today, so this literally rendered "null Yeni
+                // Tarif" on every recipe chat — now shown only for a real
+                // positive count. The unconditional "~ Popüler" tag next to
+                // it had no backing popularity signal at all and is
+                // removed rather than translated/kept.
+                if ((chat.metadata?['new_recipes_count'] as num?) != null &&
+                    (chat.metadata!['new_recipes_count'] as num) > 0) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: palette.warning.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: palette.warning.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Text("🥕", style: TextStyle(fontSize: 10)),
+                            const SizedBox(width: 4),
+                            Text(
+                              AppLocalizations.of(context).translate(
+                                'chat.recipe_group.new_recipes',
+                                variables: {
+                                  'count':
+                                      '${chat.metadata!['new_recipes_count']}',
+                                },
+                              ),
+                              style: TextStyle(
+                                  color: palette.warning,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          const Text("🥕", style: TextStyle(fontSize: 10)),
-                          const SizedBox(width: 4),
-                          Text(
-                            "${chat.metadata?['new_recipes_count']} Yeni Tarif",
-                            style: TextStyle(
-                                color: palette.warning,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      "~ Popüler",
-                      style: TextStyle(
-                          color: palette.success,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Text(
                   chat.lastMessage?.text ?? '',

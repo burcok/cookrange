@@ -16,8 +16,15 @@ class RemoteConfigService {
     'min_version': '1.0.0',
     'ai_model': 'deepseek/deepseek-r1t-chimera:free',
     'max_meal_retries': 3,
-    'feature_voice_assistant': false,
-    'feature_nutrition_analytics': false,
+    // Audit N2: these two were unused (no call site ever read them), so the
+    // `false` default never actually applied — voice assistant and
+    // nutrition analytics have been fully live for every user the whole
+    // time. Now that home.dart/main_scaffold.dart actually gate on them,
+    // the default is flipped to `true` so wiring the check doesn't silently
+    // hide two already-shipped, working features. `false` remains available
+    // as a real remote kill-switch from here on.
+    'feature_voice_assistant': true,
+    'feature_nutrition_analytics': true,
     // Set to the deployed Cloud Function URL to move the AI key off-device.
     // Empty string = fall back to direct OpenRouter with the local .env key.
     'ai_proxy_url': '',

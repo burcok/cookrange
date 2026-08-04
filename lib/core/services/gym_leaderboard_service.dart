@@ -29,12 +29,19 @@ class GymLeaderboardService {
 
     final weekStart = _currentWeekStart();
 
+    // Faz 0 §0.5 fix: this listener had no bound at all — a very active gym
+    // re-reads and re-counts an ever-growing week's worth of check-ins on
+    // every single new check-in. 5000/week is generous headroom over the
+    // realistic ceiling (200 members × ~7/week), logged if ever hit rather
+    // than silently under-counting.
+    const checkinCap = 5000;
     return _db
         .collection('gyms')
         .doc(gymId)
         .collection('checkins')
         .where('timestamp',
             isGreaterThanOrEqualTo: Timestamp.fromDate(weekStart))
+        .limit(checkinCap)
         .snapshots()
         .asyncMap((checkinSnap) async {
       // Build uid → count map from this week's check-ins
@@ -42,6 +49,10 @@ class GymLeaderboardService {
       for (final doc in checkinSnap.docs) {
         final m = CheckInModel.fromFirestore(doc);
         counts[m.uid] = (counts[m.uid] ?? 0) + 1;
+      }
+      if (checkinSnap.docs.length >= checkinCap) {
+        debugPrint(
+            '[GymLeaderboardService] checkin count capped at $checkinCap for $gymId this week — leaderboard may undercount');
       }
 
       // Fetch the member list (single read per checkins emission), capped.

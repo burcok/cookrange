@@ -1,15 +1,20 @@
 # KVKK Aydınlatma Metni
 
-Son güncelleme: 29 Haziran 2026
+Son güncelleme: 4 Ağustos 2026
 
 İşbu Aydınlatma Metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu'nun ("KVKK") 10. maddesi ile
 "Aydınlatma Yükümlülüğünün Yerine Getirilmesinde Uyulacak Usul ve Esaslar Hakkında Tebliğ" uyarınca,
 veri sorumlusu sıfatıyla Cookrange tarafından hazırlanmıştır.
 
+> **⚠ Yayına hazır değil — taslak.** Bu belge, şirketin resmi tescil bilgileri (unvan, adres, MERSİS,
+> vergi no) eklenmeden yayına alınmamalıdır. Bu eksiklik sitenin kendi KVKK aydınlatma metninde zaten
+> açıkça belirtiliyor; bu belge şimdiye kadar aynı eksikliği belirtmiyordu — düzeltildi.
+
 ## 1. Veri Sorumlusunun Kimliği
 
-Veri sorumlusu, Burak Dereli tarafından işletilen **Cookrange**'dir. İletişim:
-**privacy@cookrangeapp.com**.
+Veri sorumlusu, Burak Dereli tarafından işletilen **Cookrange**'dir. Şirketin resmi tescil bilgileri
+(unvan, adres, MERSİS numarası, vergi numarası) bir avukat incelemesi sonrasında bu bölüme eklenecektir.
+İletişim: **privacy@cookrangeapp.com**.
 
 ## 2. İşlenen Kişisel Veriler
 

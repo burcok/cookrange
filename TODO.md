@@ -3396,3 +3396,78 @@ in here, it is not planned.*
 
 
 
+
+
+---
+
+<!-- ===== DENETİM EKİ · 2026-08-04 · üç kaynaklı doğruluk denetimi ===== -->
+<!-- Bu bölüm mevcut hiçbir satırı değiştirmeden EKLENMİŞTİR. Kaynak: denetim/ klasörü. -->
+
+## Denetim bulguları — 2026-08-04
+
+### ŞİMDİ (v1.0 öncesi — en fazla 2)
+- [ ] [S] [ŞİMDİ] N1 Kişisel veri sızıntısını kapat: users/{uid} kök dokümanından email, login_ips, fcm_token, target_weight, main_goal → private/ altına; firestore.rules:115 daralt. İkincil: food_logs update/delete kısıtı (firestore.rules:163-165). ENGELLEYİCİ
+- [ ] [M] [ŞİMDİ] N2 Özellik bayraklarını bağla: isFeatureEnabled/isInRollout'u salon (13 ekran), koç (8), program (3), squad yüzeylerine ve router guard'a tak; Test Modu anahtarını kDebugMode+isAdmin arkasına al (settings_screen.dart:1191-1213). ENGELLEYİCİ
+
+### SONRA (v1.1–1.2)
+- [ ] [M] [SONRA] S1 Rıza geri çekmeyi koda bağla; location+notifications rıza kaydını yaz (consent_service.dart:73-100). v1.0 halka açık lansman engelleyicisi
+- [ ] [M] [SONRA] S2 Koç rıza akışı: ConsentPurpose'a koç erişimi, coach_client_detail_screen.dart:100-152 kapısı
+- [ ] [S] [SONRA] S3 Kilo ve su verisini Hive'dan Firestore private/ altına taşı (storage_service.dart:20)
+- [ ] [M] [SONRA] S4 Squad'ı çalışır hâle getir: inviteCode kural+indeks, üye tavanı, ortak seri (streak_squad_service.dart:82-113)
+- [ ] [L] [SONRA] S5 Uyum motoru: yakılan kaloriyi hedefe bağla, kalan öğünleri yeniden hesapla (weekly_meal_plan_service.dart:316-321)
+- [ ] [S] [SONRA] S6 Değişmezlik kuralı: food_logs update/delete kısıtı
+- [ ] [S] [SONRA] S7 swapMeal sonrası total_calories ve macros yeniden hesaplansın (weekly_meal_plan_service.dart:259-277)
+- [ ] [S] [SONRA] S8 Ingredient modeline kategori alanı + 7 reyon eşlemesi (ingredient_model.dart)
+- [ ] [M] [SONRA] S9 Salon doluluk sayacı: check-out kaydı ya da oturum penceresi
+- [ ] [S] [SONRA] S10 Salon analitiğinde sayfalama; CSV tüm zamanları çekmesin (gym_analytics_service.dart:38-48, :139)
+- [ ] [M] [SONRA] S11 Check-in yarıçapını sunucu tarafında doğrula (firestore.rules:471-472)
+- [ ] [M] [SONRA] S12 Seri tabanını girişten kayda çevir (firestore_service.dart:180-191)
+- [ ] [M] [SONRA] S13 Projeksiyon grafiği (30/60/90, kesikli) — S3'e bağımlı
+- [ ] [M] [SONRA] S14 Hesap silmede eksik kalan koleksiyonlar (functions/account.js:63-85)
+- [ ] [S] [SONRA] S15 i18n değer paritesi testi + çevrilmemiş TR dizeleri (6 doğrulanmış, üst sınır 15) + 3 dosyada sabit İngilizce etiket
+- [ ] [S] [SONRA] S16 Android minSdkVersion 26 sabitle; bundle id çelişkisini gider (build.gradle:79, pubspec.yaml:16)
+- [ ] [M] [SONRA] S17 Kayıt boşluğu telafisi: 500 kullanıcı tavanını kaldır, üç parçayı birleştir (functions/index.js:941)
+- [ ] [S] [SONRA] S18 Salon savaşlarındaki "YAKINDA" etiketini kaldır, otomatik bitiş ekle (gym.feature_challenges)
+- [ ] [S] [SONRA] S19 Topluluk akışı ve yapay zekâ sohbetini siteye ekle (kaybedilen değer, TİP B)
+
+### DEĞERLENDİR
+- [ ] [L] [DEĞERLENDİR] D1 Sponsorlu ürün katmanı: yapılacak mı? Ücretsiz katmanın finansman beyanı buna dayanıyor, kodda hiç yok
+- [ ] [?] [DEĞERLENDİR] D2 Salon gelir modeli (TODO.md:2496 GYM-07 — "no revenue model defined")
+- [ ] [L] [DEĞERLENDİR] D3 Ücretli koçluk + program satışı: payout sağlayıcı, komisyon, marketplace_terms sunumu
+- [ ] [?] [DEĞERLENDİR] D4 Bütçeye göre plan — D1'e bağımlı (fiyat verisi kaynağı)
+- [ ] [M] [DEĞERLENDİR] D5 Hane modu (veri toplanıyor, ölçekleme rafta — onboarding_provider.dart:44)
+- [ ] [M] [DEĞERLENDİR] D6 Ramazan / özel dönem modları (TODO.md:3158 ICE-21) — Ramazan 2027 için v1.2
+- [ ] [?] [DEĞERLENDİR] D7 Diyetisyen onay katmanı: önce standart, sonra kod (TODO.md:2513 COA-04)
+- [ ] [?] [DEĞERLENDİR] D8 Seri neyi ödüllendiriyor: uygulamayı açmayı mı, kayıt tutmayı mı? (S12'nin karar adımı — ayrı iş değil)
+
+### REDDET
+- [ ] [—] [REDDET] R1 Salon TV modu — kodda ve backlog'da iz yok, doluluk sayacına bağımlı, talep kanıtı yok
+- [ ] [—] [REDDET] R2 Market listesi → online sipariş sepeti (TODO.md:3159 ICE-22) — market entegrasyonu alfa yükü değil
+- [ ] [—] [REDDET] R3 Salonlar arası meydan okuma "yapımı" — zaten var, iş S18'de
+- [ ] [—] [REDDET] R4 Sponsorlu ödül / indirim kodu — D1 kararından önce yapılamaz
+
+### METİN İŞLERİ (kod değil — 05 ve 06 numaralı denetim dosyaları)
+- [ ] [ACİL] 17 çekirdek TİP A iddiası siteden kaldırılsın: bütçe (05), ikame (07), reyon+34 ürün (08), serbest metinle plan özelleştirme (09), uyum motoru (11), değişmezlik (12), tarif arama (15), TR barkod veritabanı+2,4 sn (17), doluluk (22), ücretli koçluk kipi (31), squad altı kişi+tek seri (36), ağırlık takibi (40), kesikli çizgi+kilo değerleri (41), sponsorlu katmanın tamamı (44-47)
+- [ ] [ACİL] "12.400 sütun" kaldırılsın (hero-data.ts:699)
+- [ ] [ACİL] Premium ekranındaki 5 yanlış vaat düzeltilsin (tr.json / en.json)
+- [ ] [ACİL] Salon veri sınırı gerçeğe göre yazılsın (faq salon-veri-erisimi, guvenlik.astro:31)
+- [ ] [ACİL] Veri dışa aktarma SSS'si düzeltilsin: uygulamada 24 kaynaklı tek-tuş ihracat VAR, site "yok" diyor (faq/tr/veri-disa-aktarma.md)
+- [ ] [ACİL] KVKK metnindeki 1.000 hesaplık kohort maddesi çıkarılsın (mekanizma yok)
+- [ ] [ACİL] yol-haritasi.astro:11 "tamamlandı" iddiası düzeltilsin
+- [ ] [YÜKSEK] Alt işleyici listesine OpenRouter, Apple/Google Play, OpenStreetMap eklensin
+- [ ] [YÜKSEK] applicationCategory HealthApplication → LifestyleApplication (schema.ts:68)
+- [ ] [YÜKSEK] 30 gelecek tarihli blog yazısı draft:true ya da tarih filtresi
+- [ ] [YÜKSEK] Aşama adı tek ada indirilsin: "v0.9.6 dahili alfa" (16 yerde "private beta" geçiyor)
+- [ ] [ORTA] pubspec.yaml version 1.0.0+1 → 0.9.6
+- [ ] [ORTA] schema.ts offers kaldırılsın ya da locale'e göre TRY/USD + ComingSoon
+- [ ] [ORTA] inLanguage sabiti düzeltilsin (schema.ts:191 — EN yazılar tr-TR beyan ediyor)
+- [ ] [ORTA] www canonical yönlendirmesi (vercel.json)
+- [ ] [ORTA] MyFitnessPal karşılaştırma tablosuna tarih ve kaynak; "Salon entegrasyonu: Yok" yumuşatılsın
+- [ ] [ORTA] Persona B2B etkinlik vaadi ("salona gitme sıklığını artırıyor") kaynaklandırılsın ya da koşullu kipe çevrilsin
+
+> Kanıt ve gerekçeler: `denetim/00-YONETICI-OZETI.md`, `denetim/02-CAKISMA-RAPORU.md`,
+> `denetim/03-SOZLUK.md` (terminoloji kilidi — yeni metin yazarken bağlayıcı),
+> `denetim/04-URUN-YOL-HARITASI.md`, `denetim/05-SITE-DUZELTME-LISTESI.md`,
+> `denetim/06-RISK-RAPORU.md`, `denetim/07-VARSAYIMLAR.md`.
+> Bulgular 4 Ağustos 2026'da bağımsız bir çürütme turundan geçti; düzeltilen 7 iddia `07-VARSAYIMLAR.md` Bölüm E'de.
+> Denetim salt-okunurdu: `lib/`, `functions/`, `assets/` ve site kaynağında hiçbir dosya değiştirilmedi.

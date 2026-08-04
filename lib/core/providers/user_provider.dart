@@ -15,7 +15,11 @@ import '../services/firestore_service.dart';
 /// All downstream code (home dashboard, meal plan service, etc.) should read
 /// `user` — which already has the private nutrition data merged into
 /// `onboardingData` via [UserModel.withPrivateNutrition] — so existing call
-/// sites require no changes.
+/// sites require no changes. `user` also has `email`/`appVersion`/
+/// `buildNumber` merged in from the owner-(+admin-)only
+/// `users/{uid}/private/account` subcollection via [UserModel.withPrivateAccount]
+/// (audit N1) — these are only ever populated for the signed-in owner's own
+/// model, never for another user's.
 ///
 /// A live Firestore stream watches the user document and auto-refreshes when
 /// role/subscription fields change (e.g., admin approves a coach application).
@@ -204,12 +208,21 @@ class UserProvider extends ChangeNotifier {
   Future<void> _fetchAndMerge(String uid) async {
     final base = await AuthService().getUserData(uid);
     if (base != null) {
-      final privateData = await FirestoreService().getPrivateNutritionData(uid);
-      if (privateData != null && privateData.isNotEmpty) {
-        _user = base.withPrivateNutrition(privateData);
-      } else {
-        _user = base;
+      final results = await Future.wait([
+        FirestoreService().getPrivateNutritionData(uid),
+        FirestoreService().getPrivateAccountData(uid),
+      ]);
+      final privateNutritionData = results[0];
+      final privateAccountData = results[1];
+
+      var merged = base;
+      if (privateNutritionData != null && privateNutritionData.isNotEmpty) {
+        merged = merged.withPrivateNutrition(privateNutritionData);
       }
+      if (privateAccountData != null && privateAccountData.isNotEmpty) {
+        merged = merged.withPrivateAccount(privateAccountData);
+      }
+      _user = merged;
       _nutritionProfile =
           UserNutritionProfile.fromOnboardingData(_user!.onboardingData);
     } else {

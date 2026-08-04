@@ -7,6 +7,12 @@ class UserNutritionProfile {
   final DateTime? birthDate;
   final int? heightCm;
   final int? weightKg;
+
+  /// Goal weight set during onboarding (`target_weight`, private/nutrition).
+  /// Always a whole-kg int at the source (rounded slider value) — see
+  /// `OnboardingProvider.setTargetWeight`. Faz 0 §0.7: added so
+  /// `_generateProfileHash` can detect goal-weight changes.
+  final int? targetWeightKg;
   final String activityLevel;
   final List<String> primaryGoals;
   final List<String> allergyIds;
@@ -25,6 +31,7 @@ class UserNutritionProfile {
     this.birthDate,
     this.heightCm,
     this.weightKg,
+    this.targetWeightKg,
     this.activityLevel = 'sedentary',
     this.primaryGoals = const [],
     this.allergyIds = const [],
@@ -53,6 +60,10 @@ class UserNutritionProfile {
       birthDate: _parseDate(personalInfo['birth_date']),
       heightCm: _int(personalInfo, 'height'),
       weightKg: _int(personalInfo, 'weight'),
+      // target_weight lives at the top level of the merged onboarding_data
+      // map (private/nutrition), not nested under personal_info — matches
+      // the existing raw read in OnboardingProvider.initializeFromFirestore.
+      targetWeightKg: _int(raw, 'target_weight'),
       activityLevel: _extractId(raw['activity_level']) ?? 'sedentary',
       primaryGoals: _extractIds(raw['primary_goals']),
       allergyIds: _extractIds(raw['allergies']),

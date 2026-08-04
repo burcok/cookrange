@@ -16,14 +16,20 @@ import 'sharing_service.dart';
 ///     Settings → calls [applyCode("AB3X9K", uidOfB)].
 ///  4. Both A and B receive a 7-day premium trial.
 ///
-/// Firestore schema:
-///  `referrals/{code}` → { ownerUid, createdAt, usedByUids: [], maxUses: 10 }
+/// Firestore schema (snake_case, matches functions/economy.js's reads —
+/// Faz 0 §0.7: this comment previously said camelCase, contradicting the
+/// code below, and had misled a camelCase admin-panel read into a
+/// permanently-empty list / a no-op void action):
+///  `referrals/{code}` → { owner_uid, created_at, used_by_uids: [], max_uses: 10 }
 class ReferralService {
   ReferralService._internal();
   static final ReferralService _instance = ReferralService._internal();
   factory ReferralService() => _instance;
 
-  static const _maxUses = 10;
+  /// Default use-cap for a newly-created referral code. Public so other
+  /// referral-code issuers (e.g. CoachService's vanity codes) stay
+  /// consistent without duplicating the literal.
+  static const defaultMaxUses = 10;
 
   final _db = FirebaseFirestore.instance;
 
@@ -47,7 +53,7 @@ class ReferralService {
         'owner_uid': uid,
         'created_at': FieldValue.serverTimestamp(),
         'used_by_uids': <String>[],
-        'max_uses': _maxUses,
+        'max_uses': defaultMaxUses,
       }),
     ]);
     debugPrint('ReferralService: created code $code for $uid');

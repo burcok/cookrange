@@ -33,29 +33,53 @@ class GymAnalyticsService {
     final since14 = now.subtract(const Duration(days: 14));
     final since7 = now.subtract(const Duration(days: 7));
 
-    // Parallel Firestore reads
-    final results = await Future.wait([
-      _db.collection('gyms').doc(gymId).collection('members').get(),
-      _db
-          .collection('gyms')
-          .doc(gymId)
-          .collection('checkins')
-          .where('timestamp',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(since60))
-          .orderBy('timestamp')
-          .get(),
-    ]);
+    // Faz 0 §0.5 fix: both reads were unbounded `.get()` calls — the entire
+    // members subcollection and the entire 60-day check-in window, on every
+    // dashboard open (cost + performance risk on any gym past a trivial
+    // size). `totalMembers` now comes from a cheap, always-accurate
+    // `.count()` aggregation regardless of scale; the detailed member list
+    // (needed for the atRisk/top-5 breakdowns below, which need real
+    // records, not just a count) and the check-in window are capped at
+    // generous limits and logged — not silently truncated — if ever hit.
+    const memberCap = 500;
+    const checkinCap = 5000;
+    final countFuture =
+        _db.collection('gyms').doc(gymId).collection('members').count().get();
+    final membersFuture = _db
+        .collection('gyms')
+        .doc(gymId)
+        .collection('members')
+        .limit(memberCap)
+        .get();
+    final checkinsFuture = _db
+        .collection('gyms')
+        .doc(gymId)
+        .collection('checkins')
+        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(since60))
+        .orderBy('timestamp')
+        .limit(checkinCap)
+        .get();
 
-    final membersSnap = results[0];
-    final checkinsSnap = results[1];
+    final totalCountSnap = await countFuture;
+    final membersSnap = await membersFuture;
+    final checkinsSnap = await checkinsFuture;
 
     final members = membersSnap.docs.map(GymMemberModel.fromFirestore).toList();
     final checkins = checkinsSnap.docs.map(CheckInModel.fromFirestore).toList();
 
+    if (members.length >= memberCap) {
+      debugPrint(
+          '[GymAnalyticsService] member list capped at $memberCap for $gymId — atRisk/top5 may be incomplete');
+    }
+    if (checkins.length >= checkinCap) {
+      debugPrint(
+          '[GymAnalyticsService] checkin list capped at $checkinCap for $gymId (60d window) — heatmap/trend may undercount');
+    }
+
     debugPrint(
         '[GymAnalyticsService] members=${members.length} checkins=${checkins.length}');
 
-    final total = members.length;
+    final total = totalCountSnap.count ?? members.length;
 
     // Active sets
     final uidsThisWeek = checkins
@@ -134,12 +158,33 @@ class GymAnalyticsService {
 
   // ── CSV export ──────────────────────────────────────────────────────────────
 
-  Future<String> exportCsv(String gymId, List<GymMemberModel> members) async {
+  /// Exports check-in history as CSV. Defaults to the last 90 days — a
+  /// generous "recent activity" window — rather than the previous unbounded
+  /// read of the entire checkins collection regardless of a gym's age
+  /// (cost/performance risk, audit S10/C16e). Pass [since] for a different
+  /// window; [limit] still logs — never silently drops — if hit.
+  Future<String> exportCsv(
+    String gymId,
+    List<GymMemberModel> members, {
+    DateTime? since,
+    int limit = 20000,
+  }) async {
     debugPrint('[GymAnalyticsService] exportCsv start: $gymId');
 
-    final snap =
-        await _db.collection('gyms').doc(gymId).collection('checkins').get();
+    final cutoff = since ?? DateTime.now().subtract(const Duration(days: 90));
+    final snap = await _db
+        .collection('gyms')
+        .doc(gymId)
+        .collection('checkins')
+        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(cutoff))
+        .orderBy('timestamp')
+        .limit(limit)
+        .get();
     final checkins = snap.docs.map(CheckInModel.fromFirestore).toList();
+    if (checkins.length >= limit) {
+      debugPrint(
+          '[GymAnalyticsService] exportCsv capped at $limit rows for $gymId');
+    }
 
     final counts = <String, int>{};
     final lastSeen = <String, DateTime>{};

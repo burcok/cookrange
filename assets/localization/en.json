@@ -495,15 +495,9 @@
         "badge": "Premium",
         "title": "Unlock the full Cookrange, {name}",
         "subtitle": "Two more touches that make it truly yours.",
-        "locked_requests_title": "Custom requests",
-        "locked_requests_desc": "“Only greens”, “chicken but no red meat” — tell the AI exactly what you want.",
-        "locked_icon_title": "Personalized app icon",
-        "locked_icon_desc": "Recolor your home-screen icon to match your style.",
-        "benefit1": "Unlimited AI meal plans & custom requests",
-        "benefit2": "Barcode & photo food scanning",
-        "benefit3": "See who's training at your gym",
-        "benefit4": "Personalized app icon & themes",
-        "benefit5": "Cancel anytime — no commitment",
+        "benefit1": "20 AI generations a day",
+        "benefit2": "More frequent replanning, more detailed reasoning",
+        "benefit3": "Cancel anytime — no commitment",
         "cta": "Get Premium",
         "free": "Continue with the free version"
       },
@@ -849,16 +843,16 @@
     },
     "premium": {
       "badge": "Get Premium",
-      "title": "Unlimited Features",
-      "description": "Get ad-free experience, detailed analytics and access to special recipes.",
+      "title": "Premium Perks",
+      "description": "20 AI generations a day, more frequent replanning, and more detailed reasoning.",
       "button": "Buy Premium",
       "paywall_title": "Upgrade to Premium",
       "paywall_subtitle": "Unlock all features and get the most out of Cookrange.",
       "upgrade_btn": "Upgrade Now",
       "maybe_later": "Maybe later",
-      "perk_meal_plans": "Unlimited Plans",
-      "perk_ai_chat": "AI Chat",
-      "perk_analytics": "Advanced Stats"
+      "perk_meal_plans": "More Generations",
+      "perk_ai_chat": "More Frequent Chat",
+      "perk_analytics": "More Detailed Reasoning"
     },
     "privacy": {
       "title": "Privacy Settings",
@@ -1051,7 +1045,10 @@
       "streak_at_risk_body": "Log a meal today to keep your streak alive",
       "weekly_plan_ready_title": "📅 New week, new plan!",
       "weekly_plan_ready_body": "Your weekly meal plan is ready — let's make it count",
-      "cat_reminders": "Reminders"
+      "cat_reminders": "Reminders",
+      "gym_war_ended_won_title": "🏆 You won the gym war!",
+      "gym_war_ended_lost_title": "Gym war ended",
+      "gym_war_ended_body": "Ended {myScore}-{otherScore} in check-ins."
     }
   },
   "common": {
@@ -1632,25 +1629,20 @@
     }
   },
   "chat": {
-    "list_title": "Cookrange Chat",
+    "actions": {
+      "new_chat": "New Chat",
+      "share_meal": "Share Meal",
+      "send_signal": "Send Signal",
+      "placeholder_message_input": "Type a message..."
+    },
     "filter_title": "Chat Filters",
-    "no_chats_found": "No chats found. Create a new one!",
     "filters": {
       "all": "All",
       "gym": "My Gym",
       "nutrition": "Nutrition",
       "private": "Private"
     },
-    "meal_share": "Share Meal",
-    "meal_share_soon": "Meal Share feature coming soon!",
-    "new_chat": "New Chat",
-    "new_group": "New Group",
-    "no_friends": "No friends yet.",
-    "no_results": "No results found.",
-    "offline": "Offline",
-    "online": "Online",
-    "search_friend_hint": "Search friend...",
-    "signal_send": "Send Signal",
+    "find_friends_cta": "Find Friends",
     "group": {
       "create_title": "New Group Chat",
       "name_hint": "Group name (e.g. Workout Buddies)",
@@ -1660,32 +1652,33 @@
       "create_btn": "Create Group",
       "no_friends": "Add some friends first to create a group."
     },
-    "unnamed_user": "Unnamed User",
+    "list_title": "Cookrange Chat",
+    "meal_share": "Share Meal",
+    "meal_share_soon": "Meal Share feature coming soon!",
+    "more_options": "More Options",
+    "new_chat": "New Chat",
+    "new_group": "New Group",
+    "no_chats_found": "No chats found. Create a new one!",
+    "no_friends": "No friends yet.",
+    "no_messages_yet": "No messages yet",
+    "no_results": "No results found.",
+    "offline": "Offline",
+    "online": "Online",
+    "recipe_group": {
+      "new_recipes": "{count} New Recipes"
+    },
+    "search_friend_hint": "Search friend...",
+    "signal_send": "Send Signal",
+    "system_message_fallback": "System Message",
     "time": {
       "days_ago": "{d}d ago",
       "hours_ago": "{h}h ago",
       "mins_ago": "{m}m ago",
-      "now": "Just now"
+      "now": "Just now",
+      "yesterday_at": "Yesterday {time}"
     },
-    "needs_help": {
-      "title": "{name} is waiting for help\nwith {activity}!",
-      "location": "MacFit - Platform 3",
-      "button": "ON MY WAY"
-    },
-    "status": {
-      "person_training": "{count} People Training",
-      "equipment_repair": "{equipment} Under Repair",
-      "training": "Training",
-      "resting": "Resting"
-    },
-    "actions": {
-      "new_chat": "New Chat",
-      "share_meal": "Share Meal",
-      "send_signal": "Send Signal",
-      "placeholder_message_input": "Type a message..."
-    },
-    "find_friends_cta": "Find Friends",
-    "more_options": "More Options",
+    "typing": "Typing...",
+    "unnamed_user": "Unnamed User",
     "view_profile": "View Profile"
   },
   "signal": {
@@ -1711,6 +1704,9 @@
       "meal_3": "Tried a healthy recipe, want to share.",
       "general_1": "Need motivation!",
       "general_2": "Anyone going to the gym today?"
+    },
+    "banner": {
+      "ignore": "Dismiss"
     }
   },
   "tracking": {
@@ -1759,16 +1755,16 @@
   },
   "premium": {
     "badge": "Get Premium",
-    "title": "Unlimited Features",
-    "description": "Get ad-free experience, detailed analytics and access to special recipes.",
+    "title": "Premium Perks",
+    "description": "20 AI generations a day, more frequent replanning, and more detailed reasoning.",
     "button": "Buy Premium",
     "paywall_title": "Upgrade to Premium",
     "paywall_subtitle": "Unlock all features and get the most out of Cookrange.",
     "upgrade_btn": "Upgrade Now",
     "maybe_later": "Maybe later",
-    "perk_meal_plans": "Unlimited Plans",
-    "perk_ai_chat": "AI Chat",
-    "perk_analytics": "Advanced Stats"
+    "perk_meal_plans": "More Generations",
+    "perk_ai_chat": "More Frequent Chat",
+    "perk_analytics": "More Detailed Reasoning"
   },
   "billing": {
     "monthly": "Monthly",
@@ -1986,8 +1982,6 @@
     "setup_status": "NOT SET UP",
     "setup_subtitle": "Set up your gym to start managing members, tracking attendance, and accessing powerful analytics.",
     "setup_cta": "Set Up My Gym",
-    "setup_coming_soon": "Gym setup is coming in the next update!",
-    "coming_features": "COMING FEATURES",
     "stat_members": "Members",
     "stat_active_today": "Active Today",
     "stat_retention": "Retention",
@@ -2181,7 +2175,6 @@
     "docs_info": "To open your gym, you must upload the required documents below.",
     "docs_business_license": "Business License",
     "docs_id": "National ID / Passport",
-    "docs_tax": "Tax Certificate (optional)",
     "docs_tap_upload": "Tap to upload (PDF or image)",
     "docs_uploaded": "Uploaded",
     "docs_required_warning": "Please upload all required documents.",
@@ -2483,10 +2476,8 @@
     "paywall_buy_cta": "Get Premium",
     "paywall_restore": "Restore Purchases",
     "paywall_feature1": "20 AI generations per day",
-    "paywall_feature2": "Priority AI processing",
-    "paywall_feature3": "Advanced meal customization",
-    "paywall_feature4": "Detailed nutrition analytics",
-    "paywall_feature5": "Early access to new features",
+    "paywall_feature2": "More frequent replanning",
+    "paywall_feature3": "More detailed AI reasoning",
     "paywall_processing": "Processing...",
     "paywall_not_available": "Purchases unavailable on this device.",
     "paywall_restore_success": "Purchases restored successfully!",
@@ -2594,7 +2585,7 @@
     },
     "location": {
       "title": "Location Access",
-      "rationale": "Cookrange needs your location to verify you're at the gym for GPS check-in. Your location is used only to verify check-in and is not stored on our servers afterwards.",
+      "rationale": "Cookrange uses your location to verify you're at the gym for GPS check-in, and to sort nearby gyms and coaches by distance. Your location is used only for these, computed on your device, and is not stored on our servers.",
       "rationale_stored_note": "Your location is used only to verify check-in and is not stored on our servers afterwards."
     },
     "notifications": {
@@ -3074,7 +3065,7 @@
   "squad": {
     "title": "Streak Squads",
     "empty_title": "No Squads Yet",
-    "empty_msg": "Create a squad or join one with an invite code to keep your streak going together.",
+    "empty_msg": "See your friends' streaks side by side.",
     "join_action": "Join Squad",
     "create_title": "Create Squad",
     "join_title": "Join Squad",

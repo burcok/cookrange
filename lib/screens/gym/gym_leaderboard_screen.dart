@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/gym_war_model.dart';
 import '../../core/models/leaderboard_entry_model.dart';
@@ -211,30 +212,22 @@ class _WeekHeader extends StatelessWidget {
 
   const _WeekHeader({required this.palette, required this.l10n});
 
-  String _weekLabel() {
+  // Faz 0 §8.1: was a hardcoded English month-abbreviation array
+  // regardless of app language; now uses intl's locale-aware month
+  // abbreviation, matching the pattern already established elsewhere
+  // (e.g. bugun_recap_card.dart's day-abbreviation formatting).
+  String _weekLabel(String locale) {
     final now = DateTime.now();
     final monday = now.subtract(Duration(days: now.weekday - 1));
     final sunday = monday.add(const Duration(days: 6));
-    final months = [
-      '',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    return '${months[monday.month]} ${monday.day} – ${months[sunday.month]} ${sunday.day}';
+    final mondayMonth = DateFormat('MMM', locale).format(monday);
+    final sundayMonth = DateFormat('MMM', locale).format(sunday);
+    return '$mondayMonth ${monday.day} – $sundayMonth ${sunday.day}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final locale = Localizations.localeOf(context).languageCode;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Row(
@@ -250,7 +243,7 @@ class _WeekHeader extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            '· ${_weekLabel()}',
+            '· ${_weekLabel(locale)}',
             style: TextStyle(
               fontSize: 11,
               color: palette.textTertiary,

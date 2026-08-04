@@ -33,6 +33,11 @@ enum NotificationType {
   mealReminder,
   streakAtRisk,
   weeklyPlanReady,
+  // Faz 0 §0.6 (S18): gym_wars had no automatic end — endWar() existed
+  // with zero callers, so a war's status stayed 'active' forever past its
+  // end_date. endExpiredGymWars (functions/index.js) now closes it and
+  // notifies both gym owners of the result.
+  gymWarEnded,
 }
 
 extension NotificationTypeX on NotificationType {

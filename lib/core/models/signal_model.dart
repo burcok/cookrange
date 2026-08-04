@@ -8,7 +8,10 @@ enum SignalType {
 
 class SignalModel {
   final String id;
-  final String senderId;
+  // Named `userId` (not `senderId`) to match firestore.rules' `isSignalOwner`
+  // check and the `signals` create rule — the rename was needed for signal
+  // creation to actually pass rules at all (previously denied).
+  final String userId;
   final String senderName;
   final String? senderImage;
   final SignalType type;
@@ -21,7 +24,7 @@ class SignalModel {
 
   SignalModel({
     required this.id,
-    required this.senderId,
+    required this.userId,
     required this.senderName,
     this.senderImage,
     required this.type,
@@ -35,7 +38,7 @@ class SignalModel {
   factory SignalModel.fromJson(Map<String, dynamic> json, String id) {
     return SignalModel(
       id: id,
-      senderId: json['senderId'] ?? '',
+      userId: json['userId'] ?? '',
       senderName: json['senderName'] ?? 'User',
       senderImage: json['senderImage'],
       type: SignalType.values.firstWhere(
@@ -59,7 +62,7 @@ class SignalModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'senderId': senderId,
+      'userId': userId,
       'senderName': senderName,
       'senderImage': senderImage,
       'type': type.name,

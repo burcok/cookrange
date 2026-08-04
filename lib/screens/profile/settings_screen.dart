@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -1185,35 +1186,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 24),
-
-                    // Developer Section
-                    _buildGlassSection(
-                      context: context,
-                      title: appLoc.translate('settings.developer.title'),
-                      palette: palette,
-                      children: [
-                        _buildSettingsRow(
-                          context,
-                          icon: Icons.bug_report_outlined,
-                          iconColor: palette.fat,
-                          iconBgColor: palette.isDark
-                              ? palette.fat.withValues(alpha: 0.3)
-                              : palette.fat.withValues(alpha: 0.15),
-                          title:
-                              appLoc.translate('settings.developer.test_mode'),
-                          subtitle: appLoc.translate(
-                              'settings.developer.test_mode_subtitle'),
-                          palette: palette,
-                          trailing: Switch.adaptive(
-                            value: testModeProvider.isActive,
-                            onChanged: (_) => testModeProvider.toggle(),
-                            activeTrackColor: palette.fat,
-                            activeThumbColor: Colors.white,
+                    // Developer Section — audit C16i / N2: Test Mode was
+                    // reachable by every end user; enabling it makes gym
+                    // discovery, coach discovery, the leaderboard, the meal
+                    // plan, the shopping list and the dish catalog all
+                    // return FAKE data (TestDataLibrary/TestModeService),
+                    // which is a real trust hazard if a real user finds this
+                    // switch. Gated behind kDebugMode (never true in a
+                    // release build) AND the server-verified admin claim
+                    // (UserProvider.isAdmin, BLK-05) — never the
+                    // client-writable user_roles array.
+                    if (kDebugMode && userProvider.isAdmin) ...[
+                      const SizedBox(height: 24),
+                      _buildGlassSection(
+                        context: context,
+                        title: appLoc.translate('settings.developer.title'),
+                        palette: palette,
+                        children: [
+                          _buildSettingsRow(
+                            context,
+                            icon: Icons.bug_report_outlined,
+                            iconColor: palette.fat,
+                            iconBgColor: palette.isDark
+                                ? palette.fat.withValues(alpha: 0.3)
+                                : palette.fat.withValues(alpha: 0.15),
+                            title: appLoc
+                                .translate('settings.developer.test_mode'),
+                            subtitle: appLoc.translate(
+                                'settings.developer.test_mode_subtitle'),
+                            palette: palette,
+                            trailing: Switch.adaptive(
+                              value: testModeProvider.isActive,
+                              onChanged: (_) => testModeProvider.toggle(),
+                              activeTrackColor: palette.fat,
+                              activeThumbColor: Colors.white,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
 
                     const SizedBox(height: 24),
 

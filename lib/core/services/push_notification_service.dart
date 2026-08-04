@@ -404,7 +404,15 @@ class PushNotificationService {
       // Upsert (merge) — the FCM token can be saved on app init / token refresh
       // before the user doc exists (sign-up race), so update() would throw
       // [cloud_firestore/not-found]. merge is safe whether or not it exists.
-      await _db.collection('users').doc(uid).set({
+      // Lives on `private/account`, not the main doc (audit N1) — a device
+      // push token is a fingerprint any authenticated user could otherwise
+      // read off a world-readable document.
+      await _db
+          .collection('users')
+          .doc(uid)
+          .collection('private')
+          .doc('account')
+          .set({
         'fcm_token': token,
         'fcm_token_updated_at': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -419,7 +427,12 @@ class PushNotificationService {
     if (uid == null) return;
     try {
       await _fcm.deleteToken();
-      await _db.collection('users').doc(uid).update({
+      await _db
+          .collection('users')
+          .doc(uid)
+          .collection('private')
+          .doc('account')
+          .update({
         'fcm_token': FieldValue.delete(),
       });
     } catch (e) {

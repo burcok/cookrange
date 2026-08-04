@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/gym_model.dart';
+import '../../core/models/gym_qr_token_model.dart';
 import '../../core/services/gym_service.dart';
 import '../../core/widgets/ds/ds.dart';
 
@@ -28,7 +29,9 @@ class _GymQrScreenState extends State<GymQrScreen>
   late Animation<double> _fadeIn;
 
   StreamSubscription<GymModel>? _gymSub;
+  StreamSubscription<GymQrToken>? _qrSub;
   GymModel? _gym;
+  GymQrToken _qrToken = GymQrToken.empty;
   bool _loading = true;
   bool _generating = false;
   Timer? _countdownTimer;
@@ -51,7 +54,6 @@ class _GymQrScreenState extends State<GymQrScreen>
         setState(() {
           _gym = gym;
           _loading = false;
-          _updateCountdown(gym);
         });
         if (!_animController.isCompleted) _animController.forward();
       },
@@ -59,19 +61,32 @@ class _GymQrScreenState extends State<GymQrScreen>
         if (mounted) setState(() => _loading = false);
       },
     );
+    // Faz 0 §0.7: the token itself now lives at gyms/{gymId}/private/
+    // qr_token (owner/admin-read-only), a separate doc from the public gym
+    // profile above — see GymQrToken's doc comment.
+    _qrSub = GymService().getQrTokenStream(widget.gymId).listen(
+      (qr) {
+        if (!mounted) return;
+        setState(() {
+          _qrToken = qr;
+          _updateCountdown(qr);
+        });
+      },
+      onError: (_) {},
+    );
   }
 
-  void _updateCountdown(GymModel gym) {
+  void _updateCountdown(GymQrToken qr) {
     _countdownTimer?.cancel();
-    if (!gym.qrValid) {
+    if (!qr.isValid) {
       _remaining = Duration.zero;
       return;
     }
-    _remaining = gym.qrTokenExpiresAt!.difference(DateTime.now());
+    _remaining = qr.expiresAt!.difference(DateTime.now());
     _countdownTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (!mounted) return;
       setState(() {
-        _remaining = gym.qrTokenExpiresAt!.difference(DateTime.now());
+        _remaining = qr.expiresAt!.difference(DateTime.now());
         if (_remaining.isNegative) {
           _remaining = Duration.zero;
           _countdownTimer?.cancel();
@@ -83,6 +98,7 @@ class _GymQrScreenState extends State<GymQrScreen>
   @override
   void dispose() {
     _gymSub?.cancel();
+    _qrSub?.cancel();
     _countdownTimer?.cancel();
     _animController.dispose();
     super.dispose();
@@ -169,7 +185,7 @@ class _GymQrScreenState extends State<GymQrScreen>
     AppLocalizations l10n,
   ) {
     final gym = _gym!;
-    final hasValidQr = gym.qrValid;
+    final hasValidQr = _qrToken.isValid;
 
     return Column(
       children: [
@@ -198,7 +214,7 @@ class _GymQrScreenState extends State<GymQrScreen>
     GymModel gym,
     AppLocalizations l10n,
   ) {
-    final qrData = 'cookrange:checkin:${gym.id}:${gym.qrToken}';
+    final qrData = 'cookrange:checkin:${gym.id}:${_qrToken.token}';
     final countdown = _formatCountdown();
 
     return Column(

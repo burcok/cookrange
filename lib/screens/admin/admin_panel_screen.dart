@@ -2008,12 +2008,18 @@ class _CreditsAndCodesTabState extends State<_CreditsAndCodesTab> {
           itemBuilder: (context, i) {
             final d = codes[i];
             final code = d['id'] as String? ?? '';
-            final maxUses = d['maxUses'] as int? ?? 10;
-            final usedCount = (d['usedByUids'] as List<dynamic>?)?.length ?? 0;
+            // Faz 0 §0.7: real docs write max_uses/used_by_uids/owner_uid
+            // (snake_case — see ReferralService.getOrCreateCode /
+            // functions/economy.js). The camelCase reads below always
+            // missed, so every code showed as non-voided with 0 uses and
+            // no owner.
+            final maxUses = d['max_uses'] as int? ?? 10;
+            final usedCount =
+                (d['used_by_uids'] as List<dynamic>?)?.length ?? 0;
             final isVoided = maxUses == 0;
             return _ReferralCodeCard(
               code: code,
-              ownerUid: d['ownerUid'] as String? ?? '',
+              ownerUid: d['owner_uid'] as String? ?? '',
               usedCount: usedCount,
               maxUses: maxUses,
               isVoided: isVoided,

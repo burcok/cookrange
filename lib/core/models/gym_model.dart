@@ -37,8 +37,6 @@ class GymModel {
   final double? latitude;
   final double? longitude;
   final int checkInRadius;
-  final String? qrToken;
-  final DateTime? qrTokenExpiresAt;
   final String? brandColor;
   final bool isVerified;
 
@@ -61,8 +59,6 @@ class GymModel {
     this.latitude,
     this.longitude,
     this.checkInRadius = 100,
-    this.qrToken,
-    this.qrTokenExpiresAt,
     this.brandColor,
     this.isVerified = false,
   });
@@ -91,10 +87,9 @@ class GymModel {
       latitude: (d['latitude'] as num?)?.toDouble(),
       longitude: (d['longitude'] as num?)?.toDouble(),
       checkInRadius: d['check_in_radius'] as int? ?? 100,
-      qrToken: d['qr_token'] as String?,
-      qrTokenExpiresAt: d['qr_token_expires_at'] is Timestamp
-          ? (d['qr_token_expires_at'] as Timestamp).toDate()
-          : null,
+      // Faz 0 §0.7: qr_token/qr_token_expires_at moved off this public doc
+      // to gyms/{gymId}/private/qr_token (owner/admin-read-only) — see
+      // GymQrToken / GymService.getQrTokenStream. No longer parsed here.
       brandColor: d['brand_color'] as String?,
       isVerified: d['is_verified'] as bool? ?? false,
     );
@@ -137,8 +132,6 @@ class GymModel {
     double? latitude,
     double? longitude,
     int? checkInRadius,
-    String? qrToken,
-    DateTime? qrTokenExpiresAt,
     String? brandColor,
   }) =>
       GymModel(
@@ -160,8 +153,6 @@ class GymModel {
         latitude: latitude ?? this.latitude,
         longitude: longitude ?? this.longitude,
         checkInRadius: checkInRadius ?? this.checkInRadius,
-        qrToken: qrToken ?? this.qrToken,
-        qrTokenExpiresAt: qrTokenExpiresAt ?? this.qrTokenExpiresAt,
         brandColor: brandColor ?? this.brandColor,
       );
 
@@ -171,11 +162,6 @@ class GymModel {
   }
 
   bool get hasLocation => latitude != null && longitude != null;
-
-  bool get qrValid =>
-      qrToken != null &&
-      qrTokenExpiresAt != null &&
-      qrTokenExpiresAt!.isAfter(DateTime.now());
 }
 
 extension GymModelBrandingX on GymModel {

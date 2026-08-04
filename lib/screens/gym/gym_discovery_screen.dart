@@ -1160,45 +1160,11 @@ class _FilterBar extends StatelessWidget {
     );
   }
 
-  void _showDistrictPicker(BuildContext context) {
-    if (selectedCity == null) return;
-    final districts = TurkishLocations.districtsOf(selectedCity!);
-    AppSheet.show(
-      context: context,
-      title: l10n.translate('discovery.filter_district'),
-      child: ListView(
-        shrinkWrap: true,
-        children: [
-          ListTile(
-            leading: Icon(Icons.clear_rounded,
-                size: 18.r, color: palette.textTertiary),
-            title: Text(l10n.translate('discovery.filter_all'),
-                style: TextStyle(color: palette.textSecondary)),
-            onTap: () {
-              Navigator.pop(context);
-              onDistrictChanged(null);
-            },
-          ),
-          ...districts.map((d) => ListTile(
-                title: Text(d,
-                    style: TextStyle(
-                      color: palette.textPrimary,
-                      fontWeight: selectedDistrict == d
-                          ? FontWeight.w700
-                          : FontWeight.normal,
-                    )),
-                trailing: selectedDistrict == d
-                    ? Icon(Icons.check_rounded, color: palette.info, size: 18.r)
-                    : null,
-                onTap: () {
-                  Navigator.pop(context);
-                  onDistrictChanged(d);
-                },
-              )),
-        ],
-      ),
-    );
-  }
+  // _showDistrictPicker removed (Faz 0 §0.5) — its only trigger (the
+  // district filter pill) is hidden until Faz 1.1 adds a district field to
+  // gym setup; selectedDistrict/onDistrictChanged stay on this widget's API
+  // since the parent still threads that state through, but nothing in this
+  // widget currently opens the picker.
 
   @override
   Widget build(BuildContext context) {
@@ -1216,22 +1182,16 @@ class _FilterBar extends StatelessWidget {
               active: selectedCity != null,
               onTap: () => _showCityPicker(context),
             ),
-            if (selectedCity != null)
-              AppFilterPill.picker(
-                icon: Icons.map_outlined,
-                label: selectedDistrict ??
-                    l10n.translate('discovery.filter_district'),
-                active: selectedDistrict != null,
-                onTap: () => _showDistrictPicker(context),
-              ),
+            // Faz 0 §0.5: district is hidden until Faz 1.1 adds the field to
+            // gym setup — GymModel.district is read/indexed/filterable but
+            // gym_setup_screen.dart never collects it, so selecting any
+            // district here always returned zero results.
+            // Faz 0 §0.5: "Top Rated" is hidden until a real gym-rating
+            // feature ships — no gym document has ever had `avg_rating`
+            // (that field is real for coach_profiles, not gyms), so this
+            // sort always returned zero results.
             const AppFilterDivider(),
             // ── Sort chips ───────────────────────────────────────────
-            AppFilterPill(
-              icon: Icons.star_rounded,
-              label: l10n.translate('discovery.sort_top_rated'),
-              active: sortBy == 'avg_rating',
-              onTap: () => onSortChanged('avg_rating'),
-            ),
             AppFilterPill(
               icon: Icons.local_fire_department_rounded,
               label: l10n.translate('discovery.sort_popular'),

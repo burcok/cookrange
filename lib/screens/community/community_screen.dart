@@ -14,6 +14,7 @@ import 'widgets/glass_post_card.dart';
 import 'widgets/create_post_card.dart';
 import 'widgets/glass_refresher.dart';
 import 'widgets/weekly_highlights_card.dart';
+import 'widgets/active_signals_banner.dart';
 import 'post_detail_screen.dart';
 
 import 'package:provider/provider.dart';
@@ -307,6 +308,11 @@ class _CommunityScreenState extends State<CommunityScreen>
                         ),
                 ),
               ),
+
+              // Active Signals — ambient "someone needs something" strip.
+              // Collapses to nothing on its own (see widget doc), so no
+              // spacing reservation is needed around it.
+              const SliverToBoxAdapter(child: ActiveSignalsBanner()),
 
               const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
 

@@ -634,12 +634,17 @@ class CommunityService {
   ///
   /// Reaction sub-reads are skipped here to keep the stream fast; they are
   /// fetched on demand when the user interacts with a specific comment.
-  Stream<List<CommunityComment>> commentsStream(String postId) {
+  /// Capped (Faz 0 §0.5 — this had no bound at all; a heavily-commented post
+  /// re-read and re-rendered its entire comment history on every new
+  /// comment). [getCommentsPage] exists for true pagination beyond this cap.
+  Stream<List<CommunityComment>> commentsStream(String postId,
+      {int limit = 500}) {
     return _firestore
         .collection('posts')
         .doc(postId)
         .collection('comments')
         .orderBy('timestamp', descending: false)
+        .limit(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => CommunityComment.fromMap(doc.data(), doc.id))
@@ -746,13 +751,25 @@ class CommunityService {
       final uid = currentUserId;
       if (uid.isEmpty) return false;
 
-      // Note: Ideally verify ownership before delete
-      await _firestore
+      final commentRef = _firestore
           .collection('posts')
           .doc(postId)
           .collection('comments')
-          .doc(commentId)
-          .delete();
+          .doc(commentId);
+
+      // Verify ownership before delete — firestore.rules already enforces
+      // this (authorId == request.auth.uid) so a non-owner's delete would
+      // be rejected either way, but failing fast client-side avoids a raw
+      // permission-denied surfacing to the UI.
+      final snap = await commentRef.get();
+      final authorId = snap.data()?['authorId'] as String?;
+      if (authorId != uid) {
+        debugPrint(
+            'deleteComment: not the owner (comment=$commentId, uid=$uid)');
+        return false;
+      }
+
+      await commentRef.delete();
 
       // Decrement comment count
       await _firestore.collection('posts').doc(postId).update({
@@ -936,11 +953,17 @@ class CommunityService {
   }) async {
     if (reporterUid == 'guest' || reporterUid.isEmpty) return;
     try {
+      // Field names match the canonical `reports/{id}` shape ReportModel and
+      // firestore.rules expect (reporterId/targetType/authorId) — this used
+      // to write reporterUid/type/targetAuthorUid, which firestore.rules'
+      // `request.resource.data.reporterId == request.auth.uid` check
+      // silently rejected, so squad and generic-post reports never reached
+      // Firestore at all.
       await _firestore.collection('reports').add({
-        'type': type,
+        'reporterId': reporterUid,
+        'targetType': type,
         'targetId': targetId,
-        'targetAuthorUid': targetAuthorUid,
-        'reporterUid': reporterUid,
+        'authorId': targetAuthorUid,
         'reason': reason,
         'status': 'pending',
         'timestamp': FieldValue.serverTimestamp(),
@@ -1063,9 +1086,19 @@ class CommunityService {
   /// Returns the post with the highest [likesCount] created in the last 7 days,
   /// or null when no posts exist in that window.
   ///
-  /// Requires a composite index on `posts`: createdAt ASC + likesCount DESC.
-  /// The query uses `timestamp` (the field used everywhere else in this service)
-  /// and falls back to null on any error so the card simply hides itself.
+  /// Faz 0 §0.5 fix: Firestore requires the first `orderBy` to match an
+  /// inequality filter's field, so "highest likesCount within the last 7
+  /// days" cannot be expressed as a single compound-sorted query — the
+  /// previous `.orderBy('timestamp').orderBy('likesCount')` was ordered
+  /// PRIMARILY by timestamp (ties broken by likes), so it returned the
+  /// OLDEST post in the window, not the most-liked one this card is meant
+  /// to show (and had no composite index actually deployed for that shape
+  /// either — `firestore.indexes.json` has never had one). Fixed by reading
+  /// a bounded, timestamp-ordered page (single-field query, no composite
+  /// index needed) and re-sorting by likesCount client-side. 200 is a
+  /// reasonable cap for a "highlight of the week" card — if the real top
+  /// post falls outside the 200 most recent that week, that's an acceptable
+  /// trade for a decorative feature, not a page that needs to be exhaustive.
   Future<CommunityPost?> getTopPostThisWeek() async {
     try {
       final cutoff = Timestamp.fromDate(
@@ -1074,15 +1107,18 @@ class CommunityService {
       final snap = await _firestore
           .collection('posts')
           .where('timestamp', isGreaterThanOrEqualTo: cutoff)
-          .orderBy('timestamp', descending: false)
-          .orderBy('likesCount', descending: true)
-          .limit(1)
+          .orderBy('timestamp', descending: true)
+          .limit(200)
           .get();
 
       if (snap.docs.isEmpty) return null;
-      final doc = snap.docs.first;
       final userId = _currentUserId;
-      return CommunityPost.fromMap(doc.data(), doc.id, currentUserId: userId);
+      final posts = snap.docs
+          .map((d) =>
+              CommunityPost.fromMap(d.data(), d.id, currentUserId: userId))
+          .toList()
+        ..sort((a, b) => b.likesCount.compareTo(a.likesCount));
+      return posts.first;
     } catch (e) {
       _logger.error('getTopPostThisWeek failed', error: e);
       return null;

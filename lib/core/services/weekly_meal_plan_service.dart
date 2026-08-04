@@ -219,6 +219,14 @@ class WeeklyMealPlanService {
   }
 
   /// Replaces a single meal in the stored plan without regenerating the whole week.
+  ///
+  /// Faz 0 §0.7 (S7) fix: this used to copy the OLD day's total_calories/
+  /// macros verbatim onto the new meal set — swapping a 300kcal breakfast
+  /// for an 800kcal one left every displayed total wrong, at both the day
+  /// and plan level. Both are now recomputed from the dish catalog after
+  /// the swap (a scoped fix here; Faz 3's `PlanNutritionCalculator` will
+  /// become the single shared place this logic lives, alongside the plan
+  /// builder and the template offer preview).
   Future<WeeklyMealPlanModel?> swapMeal({
     required String userId,
     required DateTime dayDate,
@@ -235,30 +243,70 @@ class WeeklyMealPlanService {
       if (!doc.exists) return null;
 
       final plan = WeeklyMealPlanModel.fromFirestore(doc);
-      final updatedDays = plan.days.map((d) {
+      final updatedDays = <DayMealPlan>[];
+      for (final d in plan.days) {
         final sameDay = d.date.year == dayDate.year &&
             d.date.month == dayDate.month &&
             d.date.day == dayDate.day;
-        if (!sameDay) return d;
+        if (!sameDay) {
+          updatedDays.add(d);
+          continue;
+        }
+
         final newMeals = Map<String, String>.from(d.meals);
         newMeals[mealType] = newDishId;
-        return DayMealPlan(
+
+        double dayCalories = 0;
+        final dayMacros = <String, double>{'protein': 0, 'carbs': 0, 'fat': 0};
+        for (final dishId in newMeals.values) {
+          final dish = await _dishService.getDishById(dishId);
+          if (dish == null) continue;
+          dayCalories += dish.calories;
+          dayMacros['protein'] = (dayMacros['protein'] ?? 0) + dish.protein;
+          dayMacros['carbs'] = (dayMacros['carbs'] ?? 0) + dish.carbs;
+          dayMacros['fat'] = (dayMacros['fat'] ?? 0) + dish.fat;
+        }
+
+        updatedDays.add(DayMealPlan(
           date: d.date,
           dayName: d.dayName,
           meals: newMeals,
-          totalCalories: d.totalCalories,
-          macros: d.macros,
-        );
-      }).toList();
+          totalCalories: dayCalories,
+          macros: dayMacros,
+        ));
+      }
+
+      // Plan-level totals: sum/average across all days, mirroring the shape
+      // the AI produces at generation time.
+      final planTotalCalories =
+          updatedDays.fold<double>(0, (sum, d) => sum + d.totalCalories);
+      final planAvgDailyCalories =
+          updatedDays.isEmpty ? 0.0 : planTotalCalories / updatedDays.length;
+      final planAvgMacros = <String, double>{
+        'protein': 0,
+        'carbs': 0,
+        'fat': 0
+      };
+      for (final d in updatedDays) {
+        planAvgMacros['protein'] =
+            (planAvgMacros['protein'] ?? 0) + (d.macros['protein'] ?? 0);
+        planAvgMacros['carbs'] =
+            (planAvgMacros['carbs'] ?? 0) + (d.macros['carbs'] ?? 0);
+        planAvgMacros['fat'] =
+            (planAvgMacros['fat'] ?? 0) + (d.macros['fat'] ?? 0);
+      }
+      if (updatedDays.isNotEmpty) {
+        planAvgMacros.updateAll((_, v) => v / updatedDays.length);
+      }
 
       final updatedPlan = WeeklyMealPlanModel(
         id: plan.id,
         userId: plan.userId,
         weekStartDate: plan.weekStartDate,
         days: updatedDays,
-        totalCalories: plan.totalCalories,
-        avgDailyCalories: plan.avgDailyCalories,
-        avgMacros: plan.avgMacros,
+        totalCalories: planTotalCalories,
+        avgDailyCalories: planAvgDailyCalories,
+        avgMacros: planAvgMacros,
         createdAt: plan.createdAt,
         expiresAt: plan.expiresAt,
         generationPromptHash: plan.generationPromptHash,
@@ -274,6 +322,9 @@ class WeeklyMealPlanService {
                   'macros': d.macros,
                 })
             .toList(),
+        'total_calories': planTotalCalories,
+        'avg_daily_calories': planAvgDailyCalories,
+        'avg_macros': planAvgMacros,
       });
 
       return updatedPlan;
@@ -313,10 +364,22 @@ class WeeklyMealPlanService {
     return CalorieCalculator.adjustTDEEForGoal(tdee: tdee, primaryGoal: goal);
   }
 
+  // Faz 0 §0.7: the original six inputs (goals/activity/dislikes/avoid/
+  // allergies/dietary restrictions) never included body composition, so a
+  // user could log a weight/goal-weight change and the cached plan would
+  // never be marked stale — the audit's "uyum motoru" (adaptation engine)
+  // claim was hollow at the root, since calorie targets derive from these
+  // fields (see _computeTargetCalories above) but a change to them alone
+  // never invalidated the hash. Weight/height/age/gender/target weight are
+  // added below. This is hash integrity only — the adaptation engine itself
+  // (proactively regenerating when body data changes, vs. only on the next
+  // scheduled refresh) is separate, out-of-scope work.
   String _generateProfileHash(UserModel user) {
     final p = user.profile;
-    final rawString =
-        '${p.primaryGoals}-${p.activityLevel}-${p.dislikedFoodKeys}-${p.avoidIngredients}-${p.allergyIds}-${p.dietaryRestrictionIds}';
+    final rawString = '${p.primaryGoals}-${p.activityLevel}-'
+        '${p.dislikedFoodKeys}-${p.avoidIngredients}-${p.allergyIds}-'
+        '${p.dietaryRestrictionIds}-${p.weightKg}-${p.heightCm}-${p.age}-'
+        '${p.gender}-${p.targetWeightKg}';
     return md5.convert(utf8.encode(rawString)).toString();
   }
 

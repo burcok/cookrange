@@ -374,13 +374,6 @@ class _StatsRow extends StatelessWidget {
           ),
           _VertDivider(),
           _Stat(
-            icon: Icons.workspace_premium_rounded,
-            value: gym.subscriptionTier.displayName,
-            label: l10n.translate('gym.stats_tier'),
-            accent: AppPalette.energyDark,
-          ),
-          _VertDivider(),
-          _Stat(
             icon: Icons.public_rounded,
             value: gym.isPublic ? 'Public' : 'Private',
             label: l10n.translate('gym.stats_access'),

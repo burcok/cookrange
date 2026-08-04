@@ -8,6 +8,7 @@ import '../models/user_model.dart';
 import '../data/test_data_library.dart';
 import 'analytics_service.dart';
 import 'firestore_service.dart';
+import 'referral_service.dart';
 import 'test_mode_service.dart';
 
 class CoachService {
@@ -79,7 +80,21 @@ class CoachService {
     if (vanityCode != null && vanityCode.isNotEmpty) {
       batch.set(
         _db.collection('referrals').doc(vanityCode),
-        {'owner_uid': user.uid, 'type': 'coach_vanity'},
+        {
+          'owner_uid': user.uid,
+          'type': 'coach_vanity',
+          // Faz 0 §0.7: without created_at, AdminService.referralsStream's
+          // orderBy('created_at') silently excluded every coach vanity
+          // code from the admin referral list (a doc missing the
+          // ordered-on field is dropped from results). max_uses/
+          // used_by_uids also added so this doc behaves identically to a
+          // regular referral code (applyReferral already defaults them
+          // safely when absent, but the admin list's usedCount/isVoided
+          // read them directly).
+          'created_at': FieldValue.serverTimestamp(),
+          'max_uses': ReferralService.defaultMaxUses,
+          'used_by_uids': <String>[],
+        },
         SetOptions(merge: true),
       );
     }
