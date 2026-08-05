@@ -120,6 +120,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _toggleAutoAcceptFriendRequests(
+      BuildContext context, bool val) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    // Optimistic update so the switch flips immediately
+    final userProvider = context.read<UserProvider>();
+    final previousUser = userProvider.user;
+    if (previousUser != null) {
+      userProvider
+          .setUser(previousUser.copyWith(autoAcceptFriendRequests: val));
+    }
+
+    try {
+      await FirestoreService()
+          .updateUserData(uid, {'auto_accept_friend_requests': val});
+      // Optimistic update already applied; no server re-read to avoid race
+    } catch (e) {
+      debugPrint('SettingsScreen._toggleAutoAcceptFriendRequests error: $e');
+      if (context.mounted && previousUser != null) {
+        context.read<UserProvider>().setUser(previousUser);
+      }
+    }
+  }
+
   Future<void> _showNotificationPreferences(BuildContext context) async {
     final svc = NotificationPreferencesService();
     final prefs = await svc.getPreferences();
@@ -890,23 +915,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               : palette.success.withValues(alpha: 0.15),
                           title: appLoc
                               .translate('settings.privacy.friend_requests'),
+                          subtitle: appLoc.translate(
+                              'settings.privacy.friend_requests_subtitle'),
                           palette: palette,
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                appLoc.translate(
-                                    'settings.privacy.friend_requests_subtitle'),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: palette.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(Icons.chevron_right,
-                                  color: palette.textSecondary),
-                            ],
+                          trailing: Switch.adaptive(
+                            value:
+                                userProvider.user?.autoAcceptFriendRequests ??
+                                    false,
+                            onChanged: (val) => unawaited(
+                                _toggleAutoAcceptFriendRequests(context, val)),
+                            activeTrackColor: primaryColor,
+                            activeThumbColor: Colors.white,
                           ),
                         ),
                       ],

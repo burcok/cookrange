@@ -14,6 +14,7 @@ import '../../screens/gym/gym_discovery_screen.dart';
 import '../utils/feature_flags.dart';
 import '../../screens/home/food_scan_screen.dart';
 import '../../screens/home/barcode_scan_screen.dart';
+import '../../screens/home/widgets/quick_add_sheet.dart';
 import '../../screens/nutrition_hub/nutrition_hub_screen.dart';
 import '../../screens/shopping/shopping_list_screen.dart';
 
@@ -123,6 +124,13 @@ class _QuickActionsSheetState extends State<QuickActionsSheet> {
                         onInner: (page) {
                           _collapse(context);
                           Navigator.of(context).push(_slideUp(page));
+                        },
+                        // QuickAddSheet is itself a modal sheet (AppSheet.show),
+                        // not a page — collapse then present it directly rather
+                        // than routing it through the slide-up page transition.
+                        onQuickAdd: () {
+                          _collapse(context);
+                          QuickAddSheet.show(context);
                         },
                       ),
                     ),
@@ -406,11 +414,13 @@ class _QuickActionsGrid extends StatelessWidget {
   final bool isDark;
   final void Function(Widget page) onFullScreen;
   final void Function(Widget page) onInner;
+  final VoidCallback onQuickAdd;
 
   const _QuickActionsGrid({
     required this.isDark,
     required this.onFullScreen,
     required this.onInner,
+    required this.onQuickAdd,
   });
 
   @override
@@ -444,7 +454,7 @@ class _QuickActionsGrid extends StatelessWidget {
             ),
           ),
 
-          // 3 × 2 action grid
+          // 3-column action grid (7 tiles: 2 full rows + a role-aware 7th)
           GridView.count(
             crossAxisCount: 3,
             shrinkWrap: true,
@@ -467,6 +477,14 @@ class _QuickActionsGrid extends StatelessWidget {
                 isDark: isDark,
                 palette: palette,
                 onTap: () => onFullScreen(const BarcodeScanScreen()),
+              ),
+              _ActionTile(
+                icon: Icons.bolt_rounded,
+                color: const Color(0xFFF59E0B),
+                label: l10n.translate('quick_actions.quick_add'),
+                isDark: isDark,
+                palette: palette,
+                onTap: onQuickAdd,
               ),
               _ActionTile(
                 icon: Icons.shopping_basket_rounded,

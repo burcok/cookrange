@@ -767,6 +767,7 @@
     "equipment_empty": "Ekipman listelenmemiş",
     "disliked_foods_title": "Sevilmeyen Yiyecekler",
     "friend_request_sent": "{name} kişisine istek gönderildi",
+    "friend_added": "Artık {name} ile arkadaşsınız",
     "share_profile": "Profili Paylaş",
     "level_badge": "Seviye {level} · {into}/{forNext} XP",
     "pro_verified_badge": "Pro"
@@ -1370,7 +1371,8 @@
     "ai_assistant": "AI Asistan",
     "gym_dashboard": "Salonum",
     "my_coaching": "Antrenörlüğüm",
-    "foods_nutrition": "Yemekler & Beslenme"
+    "foods_nutrition": "Yemekler & Beslenme",
+    "quick_add": "Hızlı Ekle"
   },
   "community": {
     "title": "Topluluk",

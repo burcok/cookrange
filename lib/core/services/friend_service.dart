@@ -145,21 +145,32 @@ class FriendService {
     });
   }
 
-  // Send Friend Request
-  Future<void> sendFriendRequest(
+  // Send Friend Request.
+  //
+  // Returns true if the target has `auto_accept_friend_requests` enabled and
+  // the request was accepted immediately server-side (functions/social.js) —
+  // i.e. the two users are now friends directly, with no pending
+  // friend_requests state ever created. Returns false for the normal
+  // pending-request flow. Callers that optimistically cache
+  // `FriendshipStatus` (e.g. user_search_screen.dart) should use this to
+  // avoid showing a stale "pending" badge when the request actually resolved
+  // to "friends" instantly.
+  Future<bool> sendFriendRequest(
       BuildContext context, String targetUserId) async {
     final uid = currentUserId;
-    if (uid == null) return;
+    if (uid == null) return false;
 
     // Quick client-side check for responsive UX — the callable re-verifies
     // authoritatively, so this is an optimization, not the security boundary.
     final status = await checkFriendshipStatus(targetUserId);
-    if (status != FriendshipStatus.none) return;
+    if (status != FriendshipStatus.none) return false;
 
     try {
-      await FirebaseFunctions.instance
+      final result = await FirebaseFunctions.instance
           .httpsCallable('sendFriendRequest')
           .call({'targetUid': targetUserId});
+      final data = result.data;
+      return data is Map && data['autoAccepted'] == true;
     } on FirebaseFunctionsException catch (e, st) {
       debugPrint('sendFriendRequest error: ${e.code} ${e.message}');
       unawaited(CrashlyticsService().recordError(e, st,

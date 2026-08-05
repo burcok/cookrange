@@ -767,6 +767,7 @@
     "equipment_empty": "No equipment listed",
     "disliked_foods_title": "Disliked Foods",
     "friend_request_sent": "Request sent to {name}",
+    "friend_added": "You and {name} are now friends",
     "share_profile": "Share Profile",
     "level_badge": "Lvl {level} · {into}/{forNext} XP",
     "pro_verified_badge": "Pro"
@@ -1370,7 +1371,8 @@
     "ai_assistant": "AI Assistant",
     "gym_dashboard": "My Gym",
     "my_coaching": "My Coaching",
-    "foods_nutrition": "Foods & Nutrition"
+    "foods_nutrition": "Foods & Nutrition",
+    "quick_add": "Quick Add"
   },
   "community": {
     "title": "Community",

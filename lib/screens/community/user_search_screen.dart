@@ -81,9 +81,12 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
     if (_pendingRequest.contains(user.uid)) return;
     setState(() => _pendingRequest.add(user.uid));
     try {
-      await _friendService.sendFriendRequest(context, user.uid);
+      final autoAccepted =
+          await _friendService.sendFriendRequest(context, user.uid);
       if (mounted) {
-        setState(() => _statusCache[user.uid] = FriendshipStatus.pendingSent);
+        setState(() => _statusCache[user.uid] = autoAccepted
+            ? FriendshipStatus.friends
+            : FriendshipStatus.pendingSent);
       }
     } catch (e) {
       if (mounted) AppSnackBar.error(context, e.toString());

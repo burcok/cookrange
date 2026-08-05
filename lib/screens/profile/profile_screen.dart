@@ -2290,11 +2290,14 @@ class _FriendsManagerSheetState extends State<_FriendsManagerSheet> {
 
   Future<void> _sendRequest(UserModel user) async {
     try {
-      await _friendService.sendFriendRequest(context, user.uid);
+      final autoAccepted =
+          await _friendService.sendFriendRequest(context, user.uid);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(AppLocalizations.of(context).translate(
-                'profile.friend_request_sent',
+                autoAccepted
+                    ? 'profile.friend_added'
+                    : 'profile.friend_request_sent',
                 variables: {'name': user.displayName ?? ''}))));
       }
     } catch (e) {

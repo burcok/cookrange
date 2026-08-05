@@ -17,23 +17,40 @@ import '../models/dish_model.dart';
 class AllergenSafety {
   AllergenSafety._();
 
+  /// Shared gluten/wheat term list — kept as one constant and referenced by
+  /// both the `gluten` and `wheat` synonym keys below so they can never
+  /// drift apart (see the `wheat` key doc for why both keys must exist).
+  static const List<String> _glutenTerms = [
+    'gluten',
+    'wheat',
+    'flour',
+    'bread',
+    'barley',
+    'rye',
+    'pasta',
+    'bulgur',
+    'buğday',
+    'un',
+    'ekmek',
+    'makarna',
+    'arpa'
+  ];
+
   /// Common allergen category → concrete ingredient terms (EN + TR), lower-case.
+  ///
+  /// Every key here must be a substring of the corresponding stored
+  /// `allergy_*` onboarding id (see `OnboardingOptions.allergies`) — that is
+  /// how [_expand] recognises which group to pull in. 8 of the 9 onboarding
+  /// allergy ids satisfy this for free (e.g. `'dairy'` ⊂ `'allergy_dairy'`),
+  /// but `'allergy_wheat'` does NOT contain `'gluten'`, so a dedicated
+  /// `wheat` key is required — without it, a user's wheat allergy silently
+  /// never expanded to flour/bread/pasta/buğday/un/ekmek/etc., only to the
+  /// literal token "wheat" picked up separately by [_expand]'s snake_case
+  /// splitting. Both keys point at the same [_glutenTerms] list so gluten
+  /// and wheat stay identical allergen groups.
   static const Map<String, List<String>> _synonyms = {
-    'gluten': [
-      'gluten',
-      'wheat',
-      'flour',
-      'bread',
-      'barley',
-      'rye',
-      'pasta',
-      'bulgur',
-      'buğday',
-      'un',
-      'ekmek',
-      'makarna',
-      'arpa'
-    ],
+    'gluten': _glutenTerms,
+    'wheat': _glutenTerms,
     'dairy': [
       'dairy',
       'milk',

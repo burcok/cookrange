@@ -38,6 +38,12 @@ class UserModel {
   final Timestamp? userVerified;
   final Map<String, bool>? profileVisibility; // Field: isVisible
   final bool isPrivate;
+  // When true, incoming friend requests to this user are accepted
+  // automatically by `sendFriendRequest` (functions/social.js) instead of
+  // entering the normal pending friend_requests state. Owner-writable like
+  // `isPrivate` — not in firestore.rules' touchesProtectedUserFields()
+  // denylist.
+  final bool autoAcceptFriendRequests;
   final int? primaryColor;
   final SubscriptionTier subscriptionTier;
   final int streakFreezeCount;
@@ -67,6 +73,7 @@ class UserModel {
     this.userVerified,
     this.profileVisibility,
     this.isPrivate = false,
+    this.autoAcceptFriendRequests = false,
     this.primaryColor,
     this.subscriptionTier = SubscriptionTier.free,
     this.streakFreezeCount = 0,
@@ -115,6 +122,8 @@ class UserModel {
         (key, value) => MapEntry(key, value as bool),
       ),
       isPrivate: data['is_private'] as bool? ?? false,
+      autoAcceptFriendRequests:
+          data['auto_accept_friend_requests'] as bool? ?? false,
       primaryColor: data['primary_color'] as int?,
       subscriptionTier:
           SubscriptionTier.fromString(data['subscription_tier'] as String?),
@@ -190,6 +199,7 @@ class UserModel {
     Timestamp? userVerified,
     Map<String, bool>? profileVisibility,
     bool? isPrivate,
+    bool? autoAcceptFriendRequests,
     int? primaryColor,
     SubscriptionTier? subscriptionTier,
     int? streakFreezeCount,
@@ -216,6 +226,8 @@ class UserModel {
       userVerified: userVerified ?? this.userVerified,
       profileVisibility: profileVisibility ?? this.profileVisibility,
       isPrivate: isPrivate ?? this.isPrivate,
+      autoAcceptFriendRequests:
+          autoAcceptFriendRequests ?? this.autoAcceptFriendRequests,
       primaryColor: primaryColor ?? this.primaryColor,
       subscriptionTier: subscriptionTier ?? this.subscriptionTier,
       streakFreezeCount: streakFreezeCount ?? this.streakFreezeCount,

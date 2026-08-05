@@ -76,10 +76,11 @@ exports.sendFriendRequest = functions.https.onCall(async (data, context) => {
   const usersRef = db.collection('users');
 
   // Re-verify server-side — never trust the client's own status check.
-  const [friendDoc, reqOutDoc, reqInDoc] = await Promise.all([
+  const [friendDoc, reqOutDoc, reqInDoc, targetDoc] = await Promise.all([
     usersRef.doc(uid).collection('friends').doc(targetUid).get(),
     usersRef.doc(uid).collection('friend_requests').doc(targetUid).get(),
     usersRef.doc(targetUid).collection('friend_requests').doc(uid).get(),
+    usersRef.doc(targetUid).get(),
   ]);
   if (friendDoc.exists) {
     throw new functions.https.HttpsError('failed-precondition', 'already_friends');
@@ -89,6 +90,42 @@ exports.sendFriendRequest = functions.https.onCall(async (data, context) => {
   }
 
   const now = admin.firestore.FieldValue.serverTimestamp();
+
+  // settings_screen.dart's Privacy Settings > "Friend Requests" toggle
+  // (`auto_accept_friend_requests`, owner-writable main user-doc field). When
+  // the RECIPIENT has it on, skip the pending friend_requests state entirely
+  // and create the friendship directly — mirrors respondToFriendRequest's
+  // accept branch below, just triggered from the sender's call instead of a
+  // separate accept call from the recipient.
+  const autoAccept = !!(targetDoc.exists && targetDoc.data().auto_accept_friend_requests === true);
+
+  if (autoAccept) {
+    const batch = db.batch();
+    batch.set(usersRef.doc(uid).collection('friends').doc(targetUid), { since: now });
+    batch.set(usersRef.doc(targetUid).collection('friends').doc(uid), { since: now });
+    await batch.commit();
+
+    // Notify the sender that their request resolved immediately — same
+    // notification shape respondToFriendRequest sends on manual accept, so
+    // no client-side rendering change is needed. Deliberately NOT sending a
+    // `friendRequest` notification to the recipient here: that type renders
+    // Accept/Reject buttons (notification_screen.dart) backed by a
+    // friend_requests doc that, in this branch, never exists — sending it
+    // would reintroduce a dead affordance identical in spirit to the one
+    // this feature fixed on the settings screen.
+    const actor = await fetchActor(db, targetUid);
+    await writeNotification(db, {
+      targetUid: uid,
+      type: 'friendAccepted',
+      actorUid: targetUid,
+      actorName: actor.displayName,
+      actorPhotoUrl: actor.photoURL,
+      relatedId: targetUid,
+    });
+
+    return { ok: true, autoAccepted: true };
+  }
+
   const batch = db.batch();
   batch.set(usersRef.doc(uid).collection('friend_requests').doc(targetUid), { type: 'outgoing', timestamp: now });
   batch.set(usersRef.doc(targetUid).collection('friend_requests').doc(uid), { type: 'incoming', timestamp: now });
@@ -104,7 +141,7 @@ exports.sendFriendRequest = functions.https.onCall(async (data, context) => {
     relatedId: uid, // sender's uid — used by the client's accept/reject actions
   });
 
-  return { ok: true };
+  return { ok: true, autoAccepted: false };
 });
 
 /** Deletes both sides of a pending friend_requests pair. */
