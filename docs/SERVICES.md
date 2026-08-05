@@ -1,7 +1,7 @@
 # SERVICES.md — Services & Cloud Functions
 
 > All business logic lives here. UI never calls Firebase directly — it goes through a service.
-> 75 Dart singletons in `lib/core/services/**` + **22 deployed** Cloud Functions in `functions/`.
+> 88 Dart singletons in `lib/core/services/**` + **22 deployed** Cloud Functions in `functions/`.
 > **Cloud Function *contracts* (request/response, auth, error codes) are owned by
 > [`API.md`](API.md)** — this file covers what each service/function *does*.
 > **Security-authoritative state lives server-side**: premium in `entitlements/{uid}`, AI credits in

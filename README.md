@@ -88,7 +88,7 @@ Complete catalog with per-feature state: [`docs/FEATURES.md`](docs/FEATURES.md).
 | **AI** | OpenRouter, proxied server-side with per-user quota and real cost metering |
 | **Local storage** | Hive (AES-256 encrypted) + SharedPreferences |
 | **Localization** | English + Turkish, parity enforced in CI |
-| **Scale** | ~115k LOC · 329 files · 42 models · 75 services · 95 screens |
+| **Scale** | ~139k LOC · 394 files · 62 models · 88 services · 95 screens |
 
 ---
 
@@ -178,8 +178,8 @@ Detail: [`PROJECT_STATE.md`](PROJECT_STATE.md) · [`docs/roadmap/GO_LIVE.md`](do
 ## Premium
 
 Free accounts get the whole product — logging, meal plans, recipes, community, streaks — with **2 AI
-generations per day**. Premium raises that to **20 per day** and adds advanced meal customization,
-full analytics history, and coach-visibility perks. One-off credit packs top up AI generations
+generations per day**. Premium raises that to **20 per day** and adds a 30-day nutrition trend and a
+detailed AI fitness breakdown. One-off credit packs top up AI generations
 without a subscription, and a referral code gives both people a 7-day trial.
 
 The principle: **the core product is free and complete.** Premium buys more AI, not access to your

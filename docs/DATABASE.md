@@ -49,6 +49,29 @@ users/{uid}                                   public profile + onboarding_data, 
   ├─ (root) .group_top3_streak / .group_top3_streak_week_key   Faz 5 §5.3 — consecutive-week
                                                 group-contribution streak counter, field-locked like
                                                 xp/level above. Server-write only (bumpGroupTop3Streak)
+  ├─ (root) .streak_freeze_count                 SEC-14 — login streak-freeze count, field-locked
+                                                like xp/level above. `onboarding_data.streak` (line 18)
+                                                is ALSO field-locked as of SEC-14 despite living
+                                                nested inside the otherwise client-writable
+                                                onboarding_data map (meal_reminder/water_reminder
+                                                stay client-writable — see firestore.rules'
+                                                onboardingStreakChanged()). Server-write only
+                                                (processStreakLogin); create is additionally bounded
+                                                to the <=1 welcome-gift shape for both fields.
+                                                SEC-31 extended the same server-write-only lock to
+                                                `.last_login_at` (processStreakLogin's SOLE input for
+                                                the days-since-last-login diff — previously forgeable
+                                                to an arbitrary past Timestamp via the raw SDK) and
+                                                `.streak_freeze_used_at` (the freeze-consumed
+                                                timestamp). Both are written only inside
+                                                processStreakLogin's own transaction; the client's
+                                                former redundant write of last_login_at
+                                                (firestore_service.dart's handleUserLogin,
+                                                existing-user branch) was removed. last_login_at is
+                                                deliberately left unbounded on `create` — see that
+                                                rule's own SEC-31 comment for the arithmetic showing
+                                                the existing streak_freeze_count/onboarding_data.streak
+                                                create bounds already neutralize it
   ├─ credit_moderation/{autoId}                  Faz 5 §5.2 — shadow-restriction restrict/lift log,
                                                 account-scoped equivalent of community_groups'
                                                 moderation/{autoId} below. Server/admin-write only
@@ -152,7 +175,7 @@ failed_login_attempts/{id} SERVER-ONLY        brute-force tracking
 ### User-scoped (under `users/{uid}`)
 | Path | Purpose | Access (rules) |
 |---|---|---|
-| `users/{uid}` | Public profile + onboarding_data (streak, goals, activity, role, tier) | Read: any auth · Create/Update: owner or admin · Delete: owner. **FIELD-LOCKED**: clients cannot write `subscription_tier`/`subscription_*`/`ai_credits_*`/`referral_used`/`is_banned`/`reputation_score`/`reputation_updated_at`/**`xp`/`level`/`level_updated_at`** (Faz 5 §5.1) / **`group_top3_streak`/`group_top3_streak_week_key`** (Faz 5 §5.3) — these are server/admin-only (entitlements + economy + XP + the group-contribution streak are all server-authoritative). |
+| `users/{uid}` | Public profile + onboarding_data (streak, goals, activity, role, tier) | Read: any auth · Create: owner (bounded, see below) · Update: owner or admin · Delete: owner. **FIELD-LOCKED**: clients cannot write `subscription_tier`/`subscription_*`/`ai_credits_*`/`referral_used`/`is_banned`/`reputation_score`/`reputation_updated_at`/**`xp`/`level`/`level_updated_at`** (Faz 5 §5.1) / **`group_top3_streak`/`group_top3_streak_week_key`** (Faz 5 §5.3) / **`streak_freeze_count`/`onboarding_data.streak`** (`SEC-14`, written only by `processStreakLogin`) / **`last_login_at`/`streak_freeze_used_at`** (`SEC-31`, same writer — `last_login_at` is `processStreakLogin`'s sole input for the streak diff, so leaving it client-writable let the whole `SEC-14` lock be bypassed one hop removed) — these are server/admin-only (entitlements + economy + XP + the group-contribution streak + the login streak/freeze are all server-authoritative). `onboarding_data`'s other keys (`meal_reminder`/`water_reminder`) remain client-writable — only the nested `streak` value is locked. `create` is additionally bounded: `streak_freeze_count` and `onboarding_data.streak` must each be an int in `[0, 1]` if present, so a client can't self-create a doc with an inflated starting value; `last_login_at` is left unbounded on `create` (see `firestore.rules`' `SEC-31` comment — the existing two bounds already cap any gain from a forged value there). **`SEC-29`**: `create` additionally rejects the payload outright if it contains ANY of the other 16 FIELD-LOCKED keys above (`xp`/`level`/`level_updated_at`/`reputation_score`/`reputation_updated_at`/`subscription_*`/`ai_credits_*`/`referral_used`/`is_banned`/`group_top3_streak`/`group_top3_streak_week_key`) — before `SEC-29`, `create` had **zero** constraint on any of them (only the two `SEC-14` bounds existed), so a direct Firestore SDK call could self-create a doc with e.g. `xp: 999999` or `subscription_tier: 'premium'` already baked in. No legitimate client creation path ever sets these at creation time, so they are forbidden outright rather than bounded. |
 | `users/{uid}/private/nutrition` | **PII**: height/weight/gender/birth_date, allergies, dietary restrictions, disliked foods, avoid ingredients | Owner only |
 | `users/{uid}/private/account` | **PII** (N1): email, login/device/session history, current app version, FCM token | Owner read/write · admin read (never write) |
 | `users/{uid}/private/presence_prefs` | Faz 1 §1.4: per-gym auto-check-in toggle (`gym_tracking_enabled` map) + `notify_friends_enabled`. Covered by the generic `private/{docId}` owner-only rule, no dedicated rule block | Owner only |
@@ -259,7 +282,7 @@ failed_login_attempts/{id} SERVER-ONLY        brute-force tracking
 
 ---
 
-## 2. Models (`lib/core/models/`, 42 files)
+## 2. Models (`lib/core/models/`, 62 files)
 
 ### User & profile
 - **user_model.dart** `UserModel` → `users/{uid}`. Fields: uid, email, displayName, photoURL,
@@ -563,9 +586,10 @@ Add an index here for **every new query shape** (`where` + `orderBy` combos). Cu
 - **Server-authoritative state is never client-writable.** Entitlements (`entitlements`, the user
   doc's `subscription_*`/`subscription_tier`), AI credits (`ai_credits`, the user doc's
   `ai_credits_*`), economy (`commissions`), and trust flags (`is_banned`, `referral_used`) are
-  written only by Cloud Functions / admin. The public user doc is **field-locked**: client updates
-  must not touch any of those fields. IAP grants flow through a server purchase verifier guarded by
-  `processed_purchases` (replay protection).
+  written only by Cloud Functions / admin. The public user doc is **field-locked**: client creates or
+  updates must not touch any of those fields (`SEC-29` closed the `create`-time gap — until then,
+  `create` had no constraint on them at all). IAP grants flow through a server purchase verifier
+  guarded by `processed_purchases` (replay protection).
 - Content-length caps belong in the rule (`request.resource.data.<field>.size() < N`) for any
   user-authored free text — posts, comments, chat messages, signals.
 

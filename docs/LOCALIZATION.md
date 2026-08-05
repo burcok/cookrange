@@ -15,8 +15,9 @@
   - Arrays: `translateArray('key')` returns `List<String>`.
 - **Locale state:** `LanguageProvider` (persists `language_code` in SharedPreferences; defaults to
   device language tr→tr else en). Settings has a language picker sheet (EN/TR with flag + checkmark).
-- ~**2,200** keys across ~65 top-level sections (splash, onboarding, auth, home, community, gym,
-  coach, ai, admin, …).
+- ~**3,233** keys across **83** top-level sections (splash, onboarding, auth, home, community, gym,
+  coach, ai, admin, …). (Re-counted 2026-08-06 via `test/i18n_parity_test.dart`'s own flatten logic
+  against the live JSON files — this doc and `FEATURES.md` had both drifted to a stale ~2,200–2,722.)
 
 ## 2. Adding a string (the ONLY correct way — R9)
 **Never** edit the JSON with `sed` or a raw patch (silent key-loss risk). Always a sequential

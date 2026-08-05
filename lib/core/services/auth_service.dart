@@ -244,9 +244,24 @@ class AuthService {
 
       if (result.user != null) {
         final onboardingData = await getOnboardingData();
-        // Create user document via FirestoreService
-        await _firestoreService.createUserDocumentOnRegister(
-            result.user!, onboardingData);
+        // Create user document via FirestoreService.
+        // SEC-30: this can now throw instead of silently swallowing a
+        // failure. Caught separately from the generic handler below because
+        // the Auth account IS already real at this point — unlike every
+        // other failure case in this method, "just retry registerWithEmail"
+        // would now hit email-already-in-use instead of actually recovering.
+        try {
+          await _firestoreService.createUserDocumentOnRegister(
+              result.user!, onboardingData);
+        } catch (e, s) {
+          _log.error(
+              'createUserDocumentOnRegister failed for ${result.user!.uid}: '
+              'Auth account was created but the Firestore user document was not',
+              service: _serviceName,
+              error: e,
+              stackTrace: s);
+          throw AuthException('user-doc-creation-failed');
+        }
         // Non-blocking: if the verification email fails (e.g. App Check not
         // configured for release, Dynamic Links missing on Android), the account
         // is still usable and the verify-email screen offers a resend button.
@@ -271,6 +286,14 @@ class AuthService {
           "Firebase Auth Error during register: ${e.code} - ${e.message}",
           service: _serviceName);
       throw AuthException(e.code);
+    } on AuthException {
+      // SEC-30: an AuthException deliberately thrown above (e.g.
+      // 'user-doc-creation-failed', 'user-creation-failed') must reach the
+      // caller with its own specific code — without this, the generic
+      // `catch (e, s)` below would catch it too (it matches everything) and
+      // downgrade it to the uninformative 'error-unknown', losing exactly
+      // the distinction this fix exists to preserve.
+      rethrow;
     } catch (e, s) {
       _log.error('Unexpected error during registration for $email',
           service: _serviceName, error: e, stackTrace: s);

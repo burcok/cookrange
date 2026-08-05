@@ -11,8 +11,8 @@
 A **Flutter** mobile app (iOS + Android) backed by **Firebase** and a small **Node.js
 Cloud Functions** layer, with **OpenRouter** for LLM inference (proxied server-side).
 
-- **274** Dart files · ~**100K** LOC
-- **42** models · **75** services · **7** providers · **95** screens · **25+** DS widgets
+- **394** Dart files · ~**139K** LOC
+- **62** models · **88** services · **7** providers · **95** screens · **25+** DS widgets
 - **State:** Provider (`ChangeNotifier`) — *not* Riverpod/Bloc
 - **Backend:** Firestore (source of truth) + Storage + Auth + Messaging + Remote Config +
   Crashlytics + Performance + App Check
@@ -42,7 +42,7 @@ Cloud Functions** layer, with **OpenRouter** for LLM inference (proxied server-s
                                  │  Service() singletons
                                  ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  SERVICES                 lib/core/services/** (75 singletons)     │
+│  SERVICES                 lib/core/services/** (88 singletons)     │
 │  ALL business logic + Firebase/network access. Auth, Firestore,   │
 │  AI, food, social, coach/gym, billing, admin, infra. See          │
 │  docs/SERVICES.md. UI must go through these.                      │
@@ -79,11 +79,11 @@ lib/
 ├── main.dart                  App entry: Firebase init → MultiProvider → MaterialApp
 ├── constants.dart             Legacy color consts (prefer AppPalette)
 ├── core/
-│   ├── models/                42 data models (Firestore ↔ app boundary)
+│   ├── models/                62 data models (Firestore ↔ app boundary)
 │   ├── data/                  dish_data.dart (seed dishes), turkish_locations.dart (81 il + ilçe)
 │   ├── repositories/          DishRepository, FoodLogRepository, MealPlanRepository, ShoppingRepository (in-memory caches)
 │   ├── providers/             7 ChangeNotifier providers (state layer)
-│   ├── services/              75 singletons (business logic) — see docs/SERVICES.md
+│   ├── services/              88 singletons (business logic) — see docs/SERVICES.md
 │   │   └── ai/                AIService, AiChatService, AiChatHistoryService, PromptService
 │   ├── theme/                 Design tokens: palette, typography, dimensions, gradients, theme
 │   ├── widgets/               Shared widgets; ds/ = the design system component library

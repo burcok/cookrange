@@ -201,6 +201,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | 🚧 **Accessibility** | DS-level semantics on ~6 components, reduced-motion in 2 widgets | 32 sites across 329 files; no screen-reader / contrast / touch-target pass |
 | 🚧 **Dark mode** | Both themes fully defined, `ThemeProvider` live | 120 hex + 214 `Colors.white/black` literals in `lib/screens` |
 | 🚧 **CD (deploy workflow)** | Full TestFlight/Play deploy workflow (CI itself moved to §1.4 — all 4 jobs green) | `BLK-16` — no signing identity, no store secrets set; has never run |
+| 🚧 **Streak / streak-freeze integrity** | Server-authoritative computation + write (`SEC-14`, new `processStreakLogin` Cloud Function); `firestore.rules` now blocks direct client writes to `streak_freeze_count`/`onboarding_data.streak` on both `update` and `create`, plus closes the broader 16-field create-time lock gap (`SEC-29`), a null-`onboarding_data` create-time bug in the same rule (`SEC-30`), the `last_login_at`/`streak_freeze_used_at` residual unlocked-input gap found in a `SEC-14` doc-audit (`SEC-31`), and the same null-safety bug's `update`-side sibling (`SEC-32`); local rules-emulator suite passing (202/202) | Not deployed to the live project yet; no reconciliation pass for values users already inflated before this fix landed |
 
 ### 1.6 Missing systems — no implementation exists
 
@@ -219,7 +220,6 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | ❌ XP / levels gamification layer | `GAM-01` |
 | ❌ White-label beyond per-gym brand colour | `PTR-02` |
 | ❌ Auth rate limiting / lockout / MFA | `AUTH-04`, `AUTH-05` |
-| ❌ Server-authoritative streak + reputation | `SEC-14` |
 | ❌ Data-migration framework (versioned, idempotent, logged) | `ARCH-06` |
 | ❌ Load testing of `aiProxy` under real concurrency | `PERF-10` |
 | ❌ API versioning on the proxy contract | `BE-07` |
@@ -1750,32 +1750,358 @@ Gaps:
 
 #### `SEC-14` Server-authoritative streak and reputation
 
-**Status** ❌ Missing · **Priority** High · **Complexity** M · **Est** 1 w
+**Status** 🚧 Partial — reputation/XP were already made server-authoritative in an earlier session
+(Faz 0 §0.4 / Faz 5 §5.1, see `touchesProtectedUserFields()`); **this session closes the remaining
+gap**, the streak/streak-freeze half: `onboarding_data.streak` and `streak_freeze_count` are now
+server-write-only too, written only by the new `processStreakLogin` Cloud Function. Code-complete
+and passing the full local rules-emulator suite (189/189); **not yet deployed** to the live project,
+and the reconciliation pass in the acceptance criteria below (for users who already inflated their
+value before this fix landed) was not built — out of this session's scope.
+**Priority** High · **Complexity** M · **Est** 1 w
 **Version** v1.0.0 · **Milestone** M4 · **Owner** Backend
 **Labels** `integrity` `gamification` `leaderboard` `abuse`
 **Modules** Security · Backend · Firebase
-**Files** `lib/core/services/firestore_service.dart` (streak computed and written client-side) · `lib/core/services/reputation_service.dart` (`score = streak×2 + posts×5 + challenges×10`, cached to the user doc) · `lib/core/services/leaderboard_service.dart`
+**Files** `firestore.rules` (`touchesProtectedUserFields()` + new `onboardingStreakChanged()` helper + `users/{uid}`'s now-bounded `allow create`) · `functions/progress.js` (`processStreakLogin`, new) · `functions/index.js` (export) · `lib/core/services/firestore_service.dart` (`handleUserLogin` now calls `processStreakLogin` instead of computing the streak/freeze transition client-side; `grantStreakFreeze` deleted — dead code, 0 callers, see `GAM-06`) · `lib/core/services/reputation_service.dart` (`score` is now an `xp` mirror, not the old formula — landed in an earlier session) · `test/firestore_rules/rules.test.mjs` (3 new test blocks)
 **Dependencies** `BLK-08` · **Required before** `GAM-01` · **Blocking** Leaderboards meaning anything
 
 **What exists / what is missing**
-Both streak and reputation are computed and written by the client. `firestore.rules` deliberately does
-**not** lock `streak` or `reputation` (`GO_LIVE.md` lists this as deferred). Any user can set an arbitrary
-streak and top the global leaderboard. Since `LeaderboardService` orders by
-`onboarding_data.streak`, the leaderboard is trivially gameable — as is the achievement catalogue and
-reputation tier that derive from it.
+Reputation (`reputation_score`) and XP/level were already migrated to server-only computation in an
+earlier session — see `functions/progress.js`'s `syncProgress`/`runSync`, which also folded the old
+`streak×2 + posts×5 + challenges×10` formula into a single XP-derived score ("no two parallel score
+systems survive this task" — that file's own header comment). What remained genuinely client-writable
+until this session: `streak_freeze_count` (missing from `touchesProtectedUserFields()`'s denylist
+entirely) and `onboarding_data.streak` (nested inside the otherwise client-writable `onboarding_data`
+map alongside `meal_reminder`/`water_reminder`, so a blanket denylist entry would have wrongly blocked
+those two as well — it needed its own `onboardingStreakChanged()` diff helper instead). Both are now
+written only by `processStreakLogin`; `users/{uid}`'s `allow create` is also now bounded (each field
+capped at `<= 1`, the welcome-gift value) so a self-created doc can't start with an inflated value
+either — previously **zero** field constraints existed on create. `LeaderboardService` ordering by
+`onboarding_data.streak` is consequently no longer trivially gameable **going forward** — see the
+reconciliation gap below for values set before this fix.
 
 **Acceptance Criteria**
-- Streak advanced by a Function on the day's first qualifying event (login or food log), using server time.
-- Streak-freeze consumption server-side.
-- Reputation recomputed by a Function from server-counted posts/logs/achievements.
-- `streak`, `reputation_score`, `streak_freeze_count` added to `touchesProtectedUserFields()`.
-- A one-off reconciliation pass recomputes every existing user's values and logs corrections.
-- Rules tests: client cannot write any of the three fields.
-- Verified: a crafted client write is rejected; the legitimate flow still advances the streak.
+- ✅ Streak advanced by a Function on the day's first qualifying event — **login only**; the "or food
+  log" alternative trigger was never built, neither before this fix nor after (the original client
+  logic `processStreakLogin` mirrors was also login-only) — a pre-existing scope gap, not introduced
+  or closed by this session.
+- ✅ Streak-freeze consumption server-side (`processStreakLogin`).
+- ✅ Reputation recomputed by a Function from server-counted truth — done in an earlier session (`syncProgress`).
+- ✅ `reputation_score` (earlier session) and, this session, `onboarding_data.streak` +
+  `streak_freeze_count` all added to `touchesProtectedUserFields()` (the nested streak field via the
+  new `onboardingStreakChanged()` helper, the freeze count via a plain `hasAny()` entry).
+- ❌ **Not done**: the one-off reconciliation pass for existing users. Anyone who inflated their
+  `streak_freeze_count`/`onboarding_data.streak` before this fix landed keeps that value — the fix
+  only stops the bleeding going forward. This is the one remaining gap before the leaderboard can be
+  trusted retroactively; needs its own pass (read every user doc, clamp/recompute, log corrections).
+- ✅ Rules tests: client cannot write any of the three fields (`test/firestore_rules/rules.test.mjs` —
+  the pre-existing `reputation_score` test plus 3 new SEC-14 test blocks covering
+  `streak_freeze_count`/`onboarding_data.streak` on both `update` and `create`, including a regression
+  guard proving `onboarding_data.meal_reminder`/`water_reminder` stay client-writable). Full suite:
+  189/189 passing locally.
+- ⚠️ **Partially verified**: a crafted client write is rejected — proven (local rules-emulator run).
+  "The legitimate flow still advances the streak" was verified by a manual trace of the rule logic
+  against both critical cases (streak-only change vs. meal_reminder/water_reminder-only change) plus
+  `flutter analyze` (0 errors) on the Dart call site — **not** verified by actually invoking the
+  deployed `processStreakLogin` end-to-end on a device/emulator (nothing is deployed yet).
 
-**DoD** §0.5 plus a rules test and a reconciliation report.
+**DoD** §0.5 plus a rules test (done) and a reconciliation report (**not done** — see above).
 **Technical Notes** Land with `BLK-08` — both are "counters and progression are server-authoritative."
-**Risks** Timezone semantics. Streaks are user-perceived in local time; store the user's timezone and evaluate against it, not UTC, or users lose streaks at midnight UTC.
+`processStreakLogin` deliberately also writes `last_login_at` itself, redundant with the Dart client's
+own separate write of the same field — purely so the callable is idempotent against a client-side
+retry landing before that second write commits (see the function's own doc comment).
+**Risks** Timezone semantics. Streaks are user-perceived in local time; store the user's timezone and
+evaluate against it, not UTC, or users lose streaks at midnight UTC. (Pre-existing risk, unchanged by
+this session — `processStreakLogin` reimplements the exact same UTC-midnight diffing the original
+client code used, neither introducing nor resolving this.)
+
+---
+
+#### `SEC-29` Close the `users/{uid}` create-time field-lock gap (companion to `SEC-14`)
+
+**Status** 🚧 Partial — code-complete, full local rules-emulator suite passing (191/191); **not yet
+deployed** to the live project (same caveat as `SEC-14`, same uncommitted rule file)
+**Priority** High · **Complexity** XS · **Est** 2 h
+**Version** v1.0.0 · **Milestone** M4 · **Owner** Backend
+**Labels** `integrity` `firestore-rules` `entitlements` `abuse`
+**Modules** Security · Firebase
+**Files** `firestore.rules` (`users/{uid}`'s `allow create` — new `hasAny([...])` forbid-list; `touchesProtectedUserFields()` — new cross-reference comment only, no logic change) · `test/firestore_rules/rules.test.mjs` (2 new test blocks)
+**Dependencies** — (same rule block as `SEC-14`, lands together) · **Required before** — · **Blocking** —
+
+**What exists / what is missing**
+`touchesProtectedUserFields()` locks 16 server-authoritative fields — `xp`/`level`/`level_updated_at`,
+`reputation_score`/`reputation_updated_at`, the four `subscription_*` entitlement fields, the three
+`ai_credits_*` fields, `referral_used`, `is_banned`, `group_top3_streak`/`group_top3_streak_week_key` —
+against client `update()`. But that function's `diff()` is `request.resource.data.diff(resource.data)`,
+which only makes sense (and only ever runs) on `update` — `create` never called it at all. Until this
+fix, `users/{uid}`'s `allow create` had exactly two field constraints (`SEC-14`'s
+`streak_freeze_count`/`onboarding_data.streak` bounds) and **zero** constraint on any of the other 16 —
+a technical user could bypass the app and call the Firestore client SDK directly to CREATE their own
+user document with e.g. `xp: 999999`, `subscription_tier: 'premium'`, or `ai_credits_bonus: 999999`
+already baked in, sidestepping every server-side entitlement/economy/XP control this repo otherwise
+enforces. No `functions.auth.user().onCreate` trigger exists anywhere in `functions/` — the base
+`users/{uid}` document is created directly by client code (`firestore_service.dart`'s `handleUserLogin`
+new-user branch and `createUserDocumentOnRegister`), so the create path genuinely had no other gate.
+
+Verified (grep across `lib/`): none of the 16 fields are ever legitimately present in any real
+account-creation payload today — not in `handleUserLogin`'s new-user branch, not in
+`createUserDocumentOnRegister`, not in `notification_preferences_service.dart`'s mute-preference writes
+(the only other client `.set()` touching a `users/{uid}` doc). So the fix is a flat `create`-time
+forbid-list — reject the write outright if the payload contains any of the 16 keys — rather than
+per-field bounds. It is kept as its own literal list rather than reusing
+`touchesProtectedUserFields()`'s list directly, since that list also contains `streak_freeze_count`,
+which needs the opposite treatment (bounded-creatable at the welcome-gift value, not forbidden outright)
+— a shared abstraction wouldn't cleanly fit both. Each function now carries a comment cross-referencing
+the other, so a future maintainer adding a new protected field to one is prompted to consider the other.
+
+**Acceptance Criteria**
+- ✅ `create` rejects a payload containing any of the 16 fields — exercised individually (16 single-field
+  `assertFails` cases, one per literal field-name string, so a typo in the rule's list would show up as
+  a failing assertion instead of passing silently).
+- ✅ A normal legitimate creation payload with none of the 16 forbidden keys still succeeds — regression
+  guard proving the new constraint doesn't accidentally block real account creation.
+- ✅ Pre-existing `SEC-14` create-time tests (`streak_freeze_count`/`onboarding_data.streak` bounds) still
+  pass unmodified.
+- ✅ Full local rules-emulator suite: 191/191 passing (189 pre-existing + 2 new), 0 regressions.
+- ✅ Verified by manual trace against the CURRENT `firestore_service.dart` content (re-read directly, not
+  assumed from an earlier session's notes): `handleUserLogin`'s new-user branch and
+  `createUserDocumentOnRegister`'s real payloads both still satisfy the rule.
+
+**DoD** §0.5 minus the Dart-specific gates (`flutter analyze`/`dart format`/`flutter test`) — no Dart file
+needed to change; the vulnerability was purely at the rules layer, and no legitimate Dart code path sets
+any of the 16 newly-forbidden fields at creation time.
+**Technical Notes** Found while re-auditing `SEC-14`'s new `allow create` rule for completeness — `SEC-14`
+only ever bounded the two streak-related fields it was scoped to fix, and never widened to cover the 16
+fields `touchesProtectedUserFields()` already protected on `update`. Lands together with `SEC-14` (same
+uncommitted rule block, same file).
+**Risks** None identified — a pure narrowing of what `create` accepts, and no legitimate flow sets any of
+these 16 fields at creation time today (verified by grep, not assumed). If a future feature legitimately
+needs to seed one of these 16 fields at creation (e.g. a promo that grants bonus AI credits on sign-up),
+this forbid-list must be relaxed for that ONE field with a proper bound at that time — not silently
+removed wholesale.
+
+---
+
+#### `SEC-30` Fix `onboarding_data: null` denying `users/{uid}` create outright (companion to `SEC-14`)
+
+**Status** ✅ Code-complete, full local rules-emulator suite passing (194/194 — 191 pre-existing + 3 new,
+0 regressions); **not yet deployed** to the live project (same caveat as `SEC-14`/`SEC-29`, same
+uncommitted rule file). `flutter analyze lib/`: 0 errors. `dart format` applied to both touched Dart files.
+**Priority** High · **Complexity** S · **Est** 3 h
+**Version** v1.0.0 · **Milestone** M4 · **Owner** Backend
+**Labels** `integrity` `firestore-rules` `availability` `registration`
+**Modules** Security · Firebase · Backend
+**Files** `firestore.rules` (`users/{uid}`'s `allow create` — the `onboarding_data` bound now guards with
+an explicit `is map` check before descending) · `lib/core/services/firestore_service.dart`
+(`createUserDocumentOnRegister` — omits `onboarding_data` entirely when null instead of writing an
+explicit `null`; no longer swallows a batch-commit failure) · `lib/core/services/auth_service.dart`
+(`registerWithEmail` — catches that failure distinctly as `AuthException('user-doc-creation-failed')`
+instead of logging/returning as if registration had fully succeeded) · `test/firestore_rules/rules.test.mjs`
+(3 new test blocks)
+**Dependencies** `SEC-14`, `SEC-29` (same rule block) · **Required before** — · **Blocking** —
+
+**What exists / what is missing**
+`SEC-14`'s `onboarding_data.streak` create-time bound assumed `onboarding_data`, when present, is always a
+map: `!('onboarding_data' in request.resource.data) || !('streak' in request.resource.data.onboarding_data)
+|| (...)`. But `createUserDocumentOnRegister` passes through whatever `getOnboardingData()` returns —
+`null` on a SharedPreferences cache miss or parse failure, both real, reachable paths (read directly, not
+assumed). The key IS present when that happens, so the first disjunct doesn't short-circuit, and Firestore
+Rules then evaluates `'streak' in null`, which raises a runtime "Null value error" — an ERRORING condition
+denies the entire `create`, not just the unbounded field. Confirmed empirically against the emulator: the
+Auth account gets created but the `users/{uid}` doc (and `private/account`, same batch) silently never
+does — and `createUserDocumentOnRegister`'s catch-and-log (no rethrow) meant `registerWithEmail` logged
+success and returned a live `User` regardless.
+
+Also confirmed empirically (a throwaway emulator probe — this is easy to get wrong by assumption alone)
+that reusing `onboardingStreakChanged()`'s established `.get(key, default)` safe-default idiom verbatim
+does **not** fix this: `.get` substitutes the default only for a **missing** key, not one present with
+value `null` — `request.resource.data.get('onboarding_data', {}).get('streak', ...)` still throws the
+identical error. The fix instead adds an explicit `is map` disjunct, which does short-circuit correctly —
+and additionally covers any non-map value, not only `null` (also probed and tested).
+
+Separately investigated whether "register with no onboarding data yet" is a real, supported state or a
+contrived edge case, per this task's own instruction rather than assumed: `saveOnboardingData()` — the
+only writer of the SharedPreferences cache `getOnboardingData()` reads — has **zero callers anywhere in
+`lib/`**. The live V2 onboarding flow (`onboarding_provider.dart`/`onboarding_completion.dart`) persists
+onboarding data via a separate **post-registration** `updateUserData` merge-write (`persistV2Profile`),
+never through this legacy cache. So `null` here is not a rare corner case — it is, in the current
+codebase, what `getOnboardingData()` returns on **every** call, making this a live availability bug,
+not a hypothetical one.
+
+**Acceptance Criteria**
+- ✅ `create` with `onboarding_data: null` present succeeds (previously errored/denied).
+- ✅ `create` with a non-map `onboarding_data` (e.g. a string) succeeds — same class of bug, not just the
+  one reported symptom.
+- ✅ End-to-end batch test mirroring `createUserDocumentOnRegister`'s exact real post-fix payload (both
+  `users/{uid}` and `private/account`, `onboarding_data` key omitted) succeeds, and the created doc is read
+  back and confirmed to actually exist with the right shape.
+- ✅ Pre-existing `SEC-14`/`SEC-29` create-time tests still pass unmodified. Full suite: 194/194, 0
+  regressions.
+- ✅ `registerWithEmail` can now tell `createUserDocumentOnRegister` failed (no longer silently swallowed)
+  and surfaces a distinct `AuthException('user-doc-creation-failed')` instead of a false success. Needed an
+  `on AuthException` passthrough clause too, or the pre-existing trailing generic `catch` would have
+  downgraded it to the uninformative `'error-unknown'` — a latent quirk that already affected the
+  pre-existing `'user-creation-failed'` case too, fixed here as a side effect.
+
+**DoD** §0.5.
+**Technical Notes** Deliberately did **not** touch `onboardingStreakChanged()` (the `update`-side sibling
+using the same `.get(key, default)` idiom) — grepped every `update`/merge-set write of `onboarding_data` in
+`lib/` and confirmed none ever sends an explicit `null` today, so that helper's analogous latent gap isn't
+currently reachable by any real code path. Flagged separately rather than fixed here, to keep this change
+scoped to the confirmed, reachable bug.
+**Risks** None identified beyond the pre-existing `SEC-14`/`SEC-29` deployment caveat (not yet live). The
+new `AuthException('user-doc-creation-failed')` code is unmapped in `AuthErrorHandler` and falls through to
+its existing generic-message-plus-raw-code default — consistent with how `'user-creation-failed'`/
+`'error-unknown'` are already handled today, so no new localization entry is needed.
+
+---
+
+#### `SEC-31` Close `last_login_at`/`streak_freeze_used_at` — the residual unlocked input to `processStreakLogin` (companion to `SEC-14`)
+
+**Status** ✅ Code-complete, full local rules-emulator suite passing (197/197 — 194 pre-existing + 3 new, 0
+regressions); **not yet deployed** to the live project (same caveat as `SEC-14`/`SEC-29`/`SEC-30`, same
+uncommitted rule file). `flutter analyze lib/`: 0 errors. `dart format` applied to the touched Dart file.
+**Priority** High · **Complexity** XS · **Est** 2 h
+**Version** v1.0.0 · **Milestone** M4 · **Owner** Backend
+**Labels** `integrity` `firestore-rules` `security` `streak`
+**Modules** Security · Firebase · Backend
+**Files** `firestore.rules` (`touchesProtectedUserFields()` — two new denylist entries) ·
+`lib/core/services/firestore_service.dart` (`handleUserLogin`, existing-user branch — strips
+`last_login_at` from `publicLoginData` before that branch's own `batch.update()`) ·
+`test/firestore_rules/rules.test.mjs` (3 new test blocks)
+**Dependencies** `SEC-14` (same rule function) · **Required before** — · **Blocking** —
+
+**What exists / what is missing**
+Found during a documentation-consistency audit of `SEC-14`: `processStreakLogin` (`functions/progress.js`)
+reads `before.last_login_at` as its SOLE input for the days-since-last-login diff that drives the whole
+increment/freeze-consume/reset decision — but `last_login_at` was never added to
+`touchesProtectedUserFields()`'s denylist (grep confirmed zero mentions in `firestore.rules`). Any
+authenticated user could `.update()` their own `last_login_at` to an arbitrary `Timestamp` via the raw SDK
+(not just the app's `FieldValue.serverTimestamp()` convention — nothing enforced that over a fabricated
+literal) and call `processStreakLogin` repeatedly — inflating `onboarding_data.streak` without waiting real
+days, or farming/draining `streak_freeze_count` on demand. Defeated `SEC-14` one hop removed from the
+fields it actually locked.
+
+Not a simple denylist addition: `last_login_at` is also written completely legitimately by the client on
+every login (`handleUserLogin`'s new-user create branch, and — until this fix — its existing-user
+`batch.update()` too, via the shared `publicLoginData` map). `processStreakLogin` already writes
+`last_login_at` itself inside its own transaction for its own retry-idempotency, making the existing-user
+branch's client-side write of the same field redundant by the time it ran. Removed it there
+(`publicLoginData.remove('last_login_at')`, unconditionally after the callable call, covering both its
+success and error paths — the rule denies a client-supplied `last_login_at` either way) before adding the
+rule, or the rule change alone would have denied the whole existing-user login update outright (one
+forbidden key in an `update` diff denies the entire write, not just that key) and broken login for every
+existing user. The new-user branch is untouched — `touchesProtectedUserFields()` only gates `update`, not
+`create`.
+
+`streak_freeze_used_at` (the companion timestamp `processStreakLogin` sets alongside a freeze consumption)
+had the identical gap — confirmed via grep that no client code writes it (the client-side freeze logic
+that used to was deleted by the original `SEC-14` fix) — so it was addable outright with no Dart-side
+change needed.
+
+Evaluated whether `last_login_at` also needs a `create`-time bound (mirroring `streak_freeze_count`/
+`onboarding_data.streak`'s `SEC-14` `<= 1` bounds): concluded no. A forged past `last_login_at` at `create`
+wins at most one single increment/freeze-consume step above whatever the existing `<= 1` create bounds
+already allow, because `processStreakLogin` immediately overwrites `last_login_at` to the real server time
+on every call that has a prior value to diff against — a second call always sees a fresh timestamp and
+no-ops. Repeating via delete+recreate doesn't compound either: each `create` re-applies the same `<= 1`
+bound fresh, so there is no persistent state to ratchet upward. The ceiling this allows (`streak` capped at
+2) is trivially reachable anyway by just logging in on two real consecutive days, so `create` is left
+unconstrained for this field.
+
+**Acceptance Criteria**
+- ✅ Direct client `update()` setting `last_login_at` to an arbitrary timestamp on the owner's own doc is
+  rejected.
+- ✅ Direct client `update()` setting `streak_freeze_used_at` is rejected.
+- ✅ A normal existing-user login update (`last_active_at` + `is_online`, no `last_login_at`) still
+  succeeds — matches the fixed Dart code's real output, confirmed by re-reading the file after the edit,
+  not guessed.
+- ✅ Full suite 197/197, 0 regressions against the 194-test `SEC-14`/`SEC-29`/`SEC-30` baseline.
+- ✅ Traced end-to-end by hand, not just inferred from tests: an existing user logging in still gets
+  `processStreakLogin` called first (streak/freeze computed and written server-side), then the client's own
+  `batch.update()` still lands `last_active_at`/`is_online` — `last_login_at` is now written exactly once,
+  server-side, per login.
+
+**DoD** §0.5.
+**Technical Notes** Deliberately left `create` unconstrained for `last_login_at` (see reasoning above)
+rather than adding a third `SEC-14`-style bound — the existing `streak_freeze_count`/`onboarding_data.streak`
+create bounds already neutralize any arithmetic gain. Did not modify `processStreakLogin` itself: its
+no-prior-`last_login_at` branch intentionally skips writing the field at all (idempotency for retries, per
+that function's own comment) — a latent, pre-existing, non-security nuance (a doc that somehow reached
+"exists" with no `last_login_at` at all would no longer get one backfilled by the client either), but no
+current legitimate code path ever creates such a doc, and it isn't exploitable either way — flagged rather
+than fixed here to keep this change scoped to the confirmed, reachable gap.
+**Risks** None identified beyond the pre-existing `SEC-14`/`SEC-29`/`SEC-30` deployment caveat (not yet
+live).
+
+---
+
+#### `SEC-32` Fix `onboarding_data: null` erroring in `onboardingStreakChanged()` on `update` (companion to `SEC-30`)
+
+**Status** ✅ Code-complete, full local rules-emulator suite passing (202/202 — 197 pre-existing + 5 new, 0
+regressions); **not yet deployed** to the live project (same caveat as `SEC-14`/`SEC-29`/`SEC-30`/`SEC-31`,
+same uncommitted rule file). No Dart changes — confirmed not currently reachable by any real `lib/` write
+path (grep, see below).
+**Priority** Low · **Complexity** XS · **Est** 1 h
+**Version** v1.0.0 · **Milestone** M4 · **Owner** Backend
+**Labels** `integrity` `firestore-rules` `defense-in-depth`
+**Modules** Security · Firebase
+**Files** `firestore.rules` (`onboardingStreakChanged()` — same `is map` guard as `SEC-30`, applied on both
+sides of the diff) · `test/firestore_rules/rules.test.mjs` (5 new test blocks)
+**Dependencies** `SEC-14`, `SEC-30` (same rule function / same bug class) · **Required before** — ·
+**Blocking** —
+
+**What exists / what is missing**
+`SEC-30` fixed this exact null-safety bug on `users/{uid}`'s `allow create` block, but deliberately left its
+`update`-side sibling `onboardingStreakChanged()` untouched — that ticket's own Technical Notes flagged it
+explicitly: "that helper's analogous latent gap isn't currently reachable by any real code path... flagged
+separately rather than fixed here." `onboardingStreakChanged()` used the same `.get(key, default)`
+safe-default idiom `SEC-30` already proved insufficient: `.get` only substitutes the default for a MISSING
+key, not one present with value `null`. If `onboarding_data` is explicitly `null` on either side of an
+`update` diff, `resource.data.get('onboarding_data', {})` evaluates to `null` itself, and the chained
+`.get('streak', null)` on that `null` raises a Firestore Rules runtime "Null value error" — an ERRORING
+condition denies the whole `update`, not just this field's check.
+
+Confirmed via grep (same methodology as `SEC-30`) that this is **not** a currently-reachable bug: no
+`update`/`set(merge:true)` write of `onboarding_data` anywhere in `lib/` (`firestore_service.dart`'s
+`updateUserData`, `onboarding_provider.dart`'s `persistV2Profile`, `settings_screen.dart`'s water/meal
+reminder writes) ever sends an explicit `null` — all either send a real map or omit the key entirely. Pure
+defense-in-depth: closing a latent gap before anything hits it, not fixing an active exploit.
+
+Fixed identically to `SEC-30`: an explicit `is map` guard before descending into `.get('streak', ...)`,
+applied on both sides of the comparison (`let oldStreak = ... is map ? ...get('streak', null) : null`,
+mirrored for `newStreak`). The candidate `let`/ternary syntax was verified against the real emulator before
+being trusted, not assumed to compile — confirmed via a throwaway probe (deleted after use, not part of the
+committed suite) that it both compiles and, critically, that the "evaluation error" noise the emulator's
+debug trace shows for EVERY denied `update` on this rule (even a completely unrelated `xp` denial) is
+ambient and present regardless of this fix; only the literal "Null value error." text (present under the
+old code, absent under the new, confirmed by toggling the fix on/off against the same probe) distinguishes
+a genuine crash from an ordinary clean denial.
+
+**Judgment call**: a real prior streak value going to `null` is DENIED, not allowed through this check —
+see the test file's own `SEC-32` comment block for the full reasoning, but in short: this function already
+treats any change to the effective streak value (including it disappearing entirely) as "changed," and a
+"smarter" variant that carved out an exception for the null-transition specifically would reopen a two-step
+forgery (null it out, then set to any value in a second write, since the reference doc would then read as
+non-map and a naive "both sides must be a map" gate would skip the comparison on that follow-up write).
+Confirmed empirically, not just reasoned through, via a dedicated two-step test.
+
+**Acceptance Criteria**
+- ✅ `update` setting `onboarding_data: null` when a real streak value already exists no longer errors —
+  it's cleanly DENIED (same as any other streak-changing update), not a Rules-runtime crash.
+- ✅ `update` setting `onboarding_data: null` (or a non-map value) when no prior streak value exists cleanly
+  SUCCEEDS — the test that actually proves the crash is gone, since a crash can only manifest as a denial,
+  never a success.
+- ✅ Normal legitimate update (unrelated field changes, `onboarding_data` untouched) still succeeds.
+- ✅ Two-step forgery (null out, then re-set to an arbitrary value) confirmed still blocked end-to-end.
+- ✅ Full suite 202/202, 0 regressions against the 197-test `SEC-14`/`SEC-29`/`SEC-30`/`SEC-31` baseline.
+- ✅ No Dart changes needed — confirmed by grep, not assumed.
+
+**DoD** §0.5.
+**Technical Notes** This closes the exact gap `SEC-30`'s own Technical Notes flagged and deferred. Nothing
+else deferred from this fix — the `is map` guard covers the same non-map class `SEC-30` covers on `create`,
+applied symmetrically to both sides of the `update`-side diff.
+**Risks** None identified beyond the pre-existing `SEC-14`/`SEC-29`/`SEC-30`/`SEC-31` deployment caveat (not
+yet live). Purely defense-in-depth — no behavior change for any real, currently-existing client code path.
 
 ---
 
@@ -2501,10 +2827,10 @@ count per slot and monitor plan variety.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `GAM-01` | 📋 | XP / levels layer (Rookie → Legend) | Low | M | 1–2 w | v1.2.0 / M7 | PM | new; `users/{uid}.xp`, `.level`, `users/{uid}/badges/{id}` | `SEC-14`, `BLK-08` | XP granted **server-side** by a Function on qualifying events (log, post, streak milestone, achievement); level thresholds; a badge cabinet and profile level chip. **Carried from `FUTURE_FEATURES` D3 and the README's Rookie→Legend description, which today has no implementation** | **Grant server-side or it is cheated on day one** — the exact mistake made with streak and reputation |
 | `GAM-02` | ✅ | Achievements — 11-badge catalogue, idempotent `earn`, `checkAndGrant` from every success path, `backfillForUser`, live stream, profile grid with bounce unlock | — | — | — | shipped | — | `achievement_service.dart`, `achievement_model.dart` (`kAchievementCatalog`), `achievements_grid.dart` | `SEC-14` | Verified working — but badges derived from streak are only as trustworthy as the streak (`SEC-14`) | — |
-| `GAM-03` | ✅ | Streaks with milestone notifications, tier badges (Bronze/Silver/Gold/Diamond), streak-freeze count + auto-consume + welcome gift + snowflake chip | — | — | — | shipped | — | `firestore_service.dart`, `home.dart` welcome header | `SEC-14` | Verified working; **client-computed** — see `SEC-14` | — |
+| `GAM-03` | ✅ | Streaks with milestone notifications, tier badges (Bronze/Silver/Gold/Diamond), streak-freeze count + auto-consume + welcome gift + snowflake chip | — | — | — | shipped | — | `firestore_service.dart`, `home.dart` welcome header | `SEC-14` | Verified working; was client-computed, now server-computed via `processStreakLogin` (`SEC-14` — code-complete, deploy pending) | — |
 | `GAM-04` | ✅ | Reputation system (`streak×2 + posts×5`, 5 tiers, cached to the user doc) | — | — | — | shipped | — | `reputation_service.dart` | `SEC-14` | Verified working; **client-computed** — see `SEC-14`. Note the formula still references challenges (`×10`), which no longer exist — verify and correct | — |
 | `GAM-05` | ✅ | Leaderboards (global + friends streak) | — | — | — | shipped | — | `leaderboard_service.dart`, `leaderboard_screen.dart` | `SEC-14`, `PERF-09` | Verified working — **trivially gameable** until `SEC-14`; needs redesign for scale at `PERF-09` | — |
-| `GAM-06` | ❌ | Streak-freeze earn rules | Low | S | 1–2 d | v1.1.0 / M6 | PM | `firestore_service.grantStreakFreeze` (API exists; only the 1-freeze welcome gift grants) | `SEC-14` | Defined earn rules (e.g. 7 consecutive logged days grants 1, cap 3); granted server-side; surfaced in the UI. **Carried from Phase 15.5: "Only UI + earn-rules missing"** — the UI shipped, the earn rules did not | A freeze that can never be earned is a dead-end mechanic |
+| `GAM-06` | ❌ | Streak-freeze earn rules | Low | S | 1–2 d | v1.1.0 / M6 | PM | none — `firestore_service.grantStreakFreeze` was deleted as dead code (`SEC-14`, 0 callers); `streak_freeze_count` is now server-write-only, so any new earn path must be a Cloud Function, not a client `.update()` | `SEC-14` | Defined earn rules (e.g. 7 consecutive logged days grants 1, cap 3); granted server-side (new Cloud Function — `grantStreakFreeze` no longer exists to build on); surfaced in the UI. **Carried from Phase 15.5: "Only UI + earn-rules missing"** — the UI shipped, the earn rules did not | A freeze that can never be earned is a dead-end mechanic |
 
 ---
 
@@ -2868,7 +3194,7 @@ Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register �
 | `DEBT-17` | Non-AI premium gated client-side only | Paywall bypassable in a repackaged build | Enforce server-side at the cost boundary; publish an enforcement inventory | 1 w | `SEC-16` |
 | `DEBT-18` | AI proxy timeout mismatch (30 s server / 90 s client) | Retries stack onto server-killed requests, burning quota | Align both to 60 s | 1 h | `BE-02` |
 | `DEBT-21` | `usesCleartextTraffic="true"` in the release manifest | MITM exposure app-wide | Set `false`; verify every network path is HTTPS | 2 h | `SEC-17` |
-| `DEBT-22` | Streak and reputation client-written | Leaderboards, achievements and reputation tiers trivially gameable | Move to Functions; add to the protected-field list; reconcile existing values | 1 w | `SEC-14` |
+| `DEBT-22` | Streak was client-written (now server-computed, `SEC-14`, code-complete/deploy pending); reputation already fixed in an earlier session | Was trivially gameable via streak — closed going forward once deployed; pre-existing inflated values are uncorrected | Reconcile existing values — the only piece left (move-to-Functions and protected-field-list work are done) | 1 w | `SEC-14` |
 
 ### 46.3 🟡 Medium
 
@@ -3258,7 +3584,7 @@ surface this wide.
 | Prior | Title | Now |
 |---|---|---|
 | `S0` | Rotate the leaked Admin SA key + secret-scan CI | `BLK-15` |
-| `S1` | Lock the `users/{uid}` rule (field whitelist) | `BLK-10`, `SEC-04`, `SEC-14` |
+| `S1` | Lock the `users/{uid}` rule (field whitelist) | `BLK-10`, `SEC-04`, `SEC-14`, `SEC-29`, `SEC-30` |
 | `S2` | Server-authoritative AI credit + entitlement ledger | ✅ `MON-03`, `AI-20` (rules verified present) |
 | `S3` | Server-side purchase validation | `BLK-04`, `MON-13` |
 | `S4` | Server-authoritative economy | ✅ `REF-01` (done) + `SEC-15` (fraud resistance) |

@@ -17,12 +17,12 @@ project's own dependency versions and made `flutter pub get` fail outright in CI
 dart format --set-exit-if-changed   →   flutter analyze   →   flutter test   →   Android debug APK
 ```
 
-> **2 of 4 jobs are confirmed green** (`firestore-rules`, `secret-scan` —
-> [run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)). `analyze-and-test` still
-> fails at its `Get dependencies` step — confirmed **pre-existing**, unrelated to `BLK-13` (reproduces
-> identically on the commit before it). Tracked as `CI-11`. `build-android` is skipped, downstream of
-> that failure. A green local run is still not the same claim as a green pipeline — this is what
-> checking the real one found.
+> **All 4 jobs are confirmed green** (`analyze-and-test`, `firestore-rules`, `secret-scan`,
+> `build-android` — [run #46](https://github.com/burcok/cookrange/actions/runs/30690211684)), the
+> first time in this repo's history. `analyze-and-test` had failed at `Get dependencies` on 3 stacked
+> root causes (tracked as `CI-11`); `build-android` failed downstream of it, plus one root cause of its
+> own (`CI-12`). Both are fixed and confirmed — see `PROJECT_STATE.md`/`CHANGELOG.md` for the detail.
+> A green local run is still not the same claim as a green pipeline — always check the real one.
 
 Match CI locally before calling a task done:
 
@@ -157,8 +157,8 @@ before your code runs. All real auth is in-code — the standard Firebase-callab
 
 ```
 1. All Definition-of-Done boxes green (CLAUDE.md §11)
-2. CI green on main                                   ← 2/4 (firestore-rules, secret-scan); analyze-
-                                                          and-test + build-android blocked on CI-11
+2. CI green on main                                   ← all 4 jobs confirmed (run #46; `CI-11`/`CI-12`
+                                                          closed)
 3. Bump version in pubspec.yaml
 4. Update CHANGELOG.md
 5. Update PROJECT_STATE.md — version, milestone, blockers

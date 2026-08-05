@@ -1315,6 +1315,7 @@ exports.syncAdminClaim = adminRoles.syncAdminClaim;
 const progress = require('./progress');
 exports.syncProgress = progress.syncProgress;
 exports.backfillProgress = progress.backfillProgress;
+exports.processStreakLogin = progress.processStreakLogin;
 
 const notifications = require('./notifications');
 exports.createNotification = notifications.createNotification;

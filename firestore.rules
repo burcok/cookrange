@@ -381,6 +381,16 @@ service cloud.firestore {
     // `admin` custom claim that syncAdminClaim mirrors from admin_roles/{uid}
     // (BLK-05), not on this array. (admin/status/{uid}/flags is a separate,
     // unrelated concept — ban state, not admin-ness.)
+    //
+    // SEC-29 cross-reference: this function's `diff()` only ever runs on
+    // `update` (resource.data doesn't exist pre-create) — it does NOT
+    // protect `create` at all. `users/{uid}`'s `allow create` block below
+    // has its OWN, separate forbid-list covering the same fields (minus
+    // streak_freeze_count, which create bounds instead of forbidding — see
+    // that rule's comment for why). If you add a new server-authoritative
+    // field to THIS list, also consider whether the create-time forbid-list
+    // needs it, and vice versa — the two are intentionally parallel but not
+    // mechanically shared.
     function touchesProtectedUserFields() {
       return request.resource.data.diff(resource.data).affectedKeys().hasAny([
         'subscription_tier', 'subscription_expires_at', 'subscription_product_id',
@@ -402,8 +412,71 @@ service cloud.firestore {
         // gates the `groupStreak4` badge exactly like every other reward-
         // gating counter in this list. Written only by
         // `bumpGroupTop3Streak` (functions/engagement_credit.js).
-        'group_top3_streak', 'group_top3_streak_week_key'
-      ]);
+        'group_top3_streak', 'group_top3_streak_week_key',
+        // SEC-14: streak-freeze count is a reward-gating counter exactly
+        // like the others above — server-write-only via the
+        // `processStreakLogin` Cloud Function (functions/progress.js).
+        // `onboarding_data.streak` is the other half of this fix but can't
+        // be a bare entry in this list (see `onboardingStreakChanged()`
+        // below): `onboarding_data` also holds the client-writable
+        // `meal_reminder`/`water_reminder` settings, and `affectedKeys()`
+        // only sees the top-level `onboarding_data` key, so a blanket entry
+        // here would wrongly block those too.
+        'streak_freeze_count',
+        // SEC-31: SEC-14 locked streak_freeze_count/onboarding_data.streak
+        // themselves but missed the one input processStreakLogin actually
+        // reads to decide which branch to take — `last_login_at`. Before
+        // this, a client could call the raw SDK directly (not just the
+        // app's own FieldValue.serverTimestamp() convention — nothing at
+        // the rules level enforced that over a fabricated literal
+        // Timestamp) to set last_login_at to an arbitrary past value, then
+        // call processStreakLogin repeatedly to farm streak increments or
+        // drain/refill streak_freeze_count on demand — defeating SEC-14 one
+        // hop removed from the fields it actually locked. last_login_at is
+        // legitimately written server-side by processStreakLogin's own
+        // transaction (functions/progress.js) whenever it has a prior value
+        // to diff against; the client's own former write of the same field
+        // (firestore_service.dart's handleUserLogin, existing-user branch)
+        // was already redundant by the time it ran and has been removed
+        // there. streak_freeze_used_at is the companion timestamp
+        // processStreakLogin sets alongside a freeze consumption — same
+        // server-write-only shape, and no client code writes it (the
+        // client-side freeze logic that used to was deleted by the
+        // original SEC-14 fix — confirmed by grep, zero remaining writers).
+        'last_login_at', 'streak_freeze_used_at'
+      ]) || onboardingStreakChanged();
+    }
+
+    // SEC-14: `onboarding_data.streak` is server-write-only (written only by
+    // `processStreakLogin`, functions/progress.js) even though its parent map
+    // `onboarding_data` is otherwise client-writable (meal_reminder/
+    // water_reminder). Since affectedKeys() can't see inside the map, this
+    // diffs the nested value directly instead.
+    //
+    // SEC-32 (companion to SEC-30, same bug class, this function's `update`-
+    // side instead of that rule's `create`-side): a bare `.get(key, default)`
+    // — the idiom this function used originally — only substitutes the
+    // default for a MISSING key, not one present with value `null`. If
+    // `onboarding_data` is explicitly `null` on either side of the diff,
+    // `.get('onboarding_data', {})` evaluates to `null` itself (not `{}`),
+    // and the chained `.get('streak', null)` on that `null` raises a
+    // Firestore Rules runtime "Null value error" — an ERRORING condition
+    // denies the whole `update`. Not reachable by any current `lib/` write
+    // path (grepped, same as SEC-30) — defense-in-depth, not a live bug.
+    // Fixed with the same explicit `is map` guard SEC-30 uses on `create`,
+    // applied on both sides since this function diffs two snapshots. Once
+    // guarded, a real streak value going to `null`/non-map is DENIED (not
+    // specially allowed through) — consistent with this function already
+    // treating any change to the effective streak value, including it
+    // disappearing entirely, as "changed" (see `test/firestore_rules/
+    // rules.test.mjs`'s SEC-32 block for the full reasoning, including why
+    // a more permissive variant would reopen a two-step forgery).
+    function onboardingStreakChanged() {
+      let oldStreak = resource.data.get('onboarding_data', {}) is map
+        ? resource.data.get('onboarding_data', {}).get('streak', null) : null;
+      let newStreak = request.resource.data.get('onboarding_data', {}) is map
+        ? request.resource.data.get('onboarding_data', {}).get('streak', null) : null;
+      return oldStreak != newStreak;
     }
 
     // ─── Users ──────────────────────────────────────────────────────────────
@@ -411,7 +484,82 @@ service cloud.firestore {
       // Users can read any profile (needed for search, friend lists, chat presence)
       allow read: if isAuthenticated();
       // Only the owner can create/update their own document.
-      allow create: if isOwner(uid);
+      // SEC-14: a brand-new doc must never start with more than the
+      // legitimate welcome-gift values. Bounded to <= 1 rather than "must
+      // equal exactly 1" because two different client doc-creation paths
+      // exist (firestore_service.dart): `handleUserLogin`'s new-user branch
+      // explicitly sets streak_freeze_count: 1 / onboarding_data.streak: 1,
+      // while `createUserDocumentOnRegister` omits streak_freeze_count
+      // entirely and passes through a caller-supplied onboarding_data map.
+      // This tolerates both legitimate shapes without auditing every caller,
+      // while still mechanically blocking any large/attacker-supplied value.
+      allow create: if isOwner(uid)
+        && (!('streak_freeze_count' in request.resource.data)
+            || (request.resource.data.streak_freeze_count is int
+                && request.resource.data.streak_freeze_count >= 0
+                && request.resource.data.streak_freeze_count <= 1))
+        // SEC-30: `onboarding_data` can legitimately be an explicit `null` —
+        // `createUserDocumentOnRegister` (firestore_service.dart) passes
+        // through whatever `getOnboardingData()` returns, which is `null`
+        // on a SharedPreferences cache miss or parse failure (both real,
+        // reachable paths — not contrived). The KEY is still present when
+        // that happens, so `!('onboarding_data' in request.resource.data)`
+        // alone does not short-circuit, and `'streak' in null` then raises a
+        // Firestore Rules runtime "Null value error" — an ERRORING condition
+        // denies the whole `create`, so a legitimate registration was
+        // rejected outright (not merely left unbounded). Confirmed
+        // empirically that reusing `onboardingStreakChanged()`'s
+        // `.get(key, default)` idiom verbatim does NOT fix this: `.get`
+        // substitutes the default only for a MISSING key, not a key present
+        // with value `null` — `request.resource.data.get('onboarding_data',
+        // {})` still evaluates to `null` here, and `.get('streak', ...)` on
+        // that `null` still throws the identical error. The explicit
+        // `is map` check below is the part that actually short-circuits
+        // before ever indexing into `null`.
+        && (!('onboarding_data' in request.resource.data)
+            || !(request.resource.data.onboarding_data is map)
+            || !('streak' in request.resource.data.onboarding_data)
+            || (request.resource.data.onboarding_data.streak is int
+                && request.resource.data.onboarding_data.streak >= 0
+                && request.resource.data.onboarding_data.streak <= 1))
+        // SEC-29: the two bounds above (SEC-14) were the ONLY create-time
+        // constraints that existed until now. Every OTHER field
+        // touchesProtectedUserFields() locks against `update` (xp/level,
+        // reputation, the whole subscription/ai_credits entitlement group,
+        // referral_used, is_banned, the group streak pair) was completely
+        // unconstrained on `create` — that function's diff() only runs on
+        // `update`, never `create`. A technical user could bypass the app
+        // and call the Firestore client SDK directly to CREATE their own
+        // users/{uid} doc with e.g. `xp: 999999`,
+        // `subscription_tier: 'premium'`, or `ai_credits_bonus: 999999`
+        // already baked in.
+        //
+        // Verified (grep across lib/): no legitimate client doc-creation
+        // path — handleUserLogin's new-user branch,
+        // createUserDocumentOnRegister, or
+        // notification_preferences_service.dart's mute-preference writes —
+        // ever sets any of these fields at creation time. Since there is
+        // zero legitimate reason for a client to ever set them at create,
+        // forbidding their presence outright is strictly safer than trying
+        // to bound each one (the way streak_freeze_count/
+        // onboarding_data.streak are handled above) and cannot break any
+        // real flow.
+        //
+        // Kept as a literal list rather than reusing
+        // touchesProtectedUserFields()'s list directly: that list ALSO
+        // contains streak_freeze_count, which needs different treatment
+        // here (creatable at a bounded value for the welcome gift, not
+        // forbidden outright) — a shared abstraction wouldn't cleanly fit
+        // both cases. See touchesProtectedUserFields()'s own comment for
+        // the reverse cross-reference.
+        && !request.resource.data.keys().hasAny([
+             'xp', 'level', 'level_updated_at',
+             'reputation_score', 'reputation_updated_at',
+             'subscription_tier', 'subscription_expires_at', 'subscription_product_id', 'subscription_purchase_token',
+             'ai_credits_used', 'ai_credits_reset_at', 'ai_credits_bonus',
+             'referral_used', 'is_banned',
+             'group_top3_streak', 'group_top3_streak_week_key'
+           ]);
       // Owner may update only NON-privileged fields; privileged fields
       // (entitlements/credits/roles/ban/referral) are server/admin-written and
       // rejected here for clients. Admin (server) retains full update.

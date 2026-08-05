@@ -165,12 +165,13 @@ cd ../.. && firebase emulators:exec --only firestore --project demo-cookrange \
 `.github/workflows/ci.yml` on every PR: `dart format --set-exit-if-changed` → `flutter analyze` →
 `flutter test` → Android debug build. Mechanics: [`DEVOPS.md`](DEVOPS.md).
 
-> The format, test, and rules jobs were all failing (`BLK-13`) — confirmed fixed in a **real CI run**,
-> not just locally: `dart format`/`flutter test` (78/78) and `firestore-rules` (15/15) are green
-> ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)). `secret-scan` was already
-> green. `analyze-and-test` still fails, but on a **confirmed pre-existing, unrelated** issue
-> (`Get dependencies` — tracked as `CI-11`), and `build-android` is skipped downstream of it. 2 of 4
-> green is real progress, not full green — check `PROJECT_STATE.md` for the current count.
+> The format, test, and rules jobs were all failing (`BLK-13`) — confirmed fixed in a **real CI run**:
+> `dart format`/`flutter test` (78/78) and `firestore-rules` (15/15) went green first
+> ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)), with `secret-scan` already
+> green. `analyze-and-test` (`CI-11`, 3 stacked root causes) and `build-android` (`CI-12`) were fixed
+> next — **all 4 jobs are now confirmed green**
+> ([run #46](https://github.com/burcok/cookrange/actions/runs/30690211684)), first time in this repo's
+> history. Check `PROJECT_STATE.md` for the current, most authoritative count.
 
 **Definition of a working gate:** CI is green on `main` · a PR that breaks a test cannot merge · the
 rules suite runs on every change to `firestore.rules` · coverage is reported and does not silently

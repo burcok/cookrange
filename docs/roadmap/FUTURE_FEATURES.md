@@ -128,13 +128,15 @@ structured challenges (7-day reset, 30-day fat loss, sponsored).
 - **Data:** revive a lean `challenges/` schema (template, metric, dates, sponsor, participants subcol).
 - **Effort:** L. **Dep:** sponsor/reward economics.
 
-### D3. 🟢 Gamification Layer (XP / Levels / Badges) — M
-**Problem:** README describes XP/levels (Rookie→Legend); only streaks + reputation exist today.
-**Scope:** XP from actions (log, post, streak, challenge), level thresholds, badge cabinet, profile
-level chip.
-- **Data:** `users/{uid}.xp`, `level`, `users/{uid}/badges/{id}`; server-side XP grant to prevent
-  cheating (Cloud Function on qualifying events).
-- **Effort:** M. **Risk:** anti-abuse (grant server-side, not client).
+### D3. ✅ Gamification Layer (XP / Levels / Badges) — SHIPPED (Faz 5 §5.1)
+**Done:** `users/{uid}.xp`/`.level`, an immutable `xp_events` ledger, and `awardXp`/`syncProgress`
+(`functions/progress.js`) grant XP entirely server-side — the client can only report *which* momentary
+event happened, never a point value; `streak_day`/`achievement_earned` XP is derived from the target's
+own stored truth and never accepted from a request at all. Level-up notification + a profile level
+chip both ship. Level thresholds use a triangular-number curve (`XpLevelCurve`, unit-tested:
+`xp_level_curve_test.dart`). See `DECISIONS.md` ADR-020 and `PROJECT_STATE.md` §4 for the full design
+and current verification status (code-complete and rules-tested; no live Cloud Function traffic has
+been observed through it yet in this environment).
 
 ---
 

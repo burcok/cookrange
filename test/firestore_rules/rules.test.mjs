@@ -13,6 +13,7 @@
 // roles) still work.
 
 import { test, before, after, beforeEach } from 'node:test';
+import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -23,7 +24,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   doc, getDoc, getDocs, collection, setDoc, updateDoc, deleteDoc,
-  serverTimestamp, deleteField,
+  serverTimestamp, deleteField, writeBatch,
 } from 'firebase/firestore';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -108,6 +109,384 @@ test('owner CANNOT self-grant group_top3_streak directly (Faz 5 §5.3)', async (
   );
   await assertFails(
     updateDoc(doc(db('u1'), 'users/u1'), { group_top3_streak_week_key: '2026-08-03' })
+  );
+});
+
+test('owner CANNOT self-grant streak_freeze_count or onboarding_data.streak directly (SEC-14)', async () => {
+  await seed('users/u1', {
+    displayName: 'A',
+    streak_freeze_count: 0,
+    onboarding_data: { streak: 1 },
+  });
+  await assertFails(
+    updateDoc(doc(db('u1'), 'users/u1'), { streak_freeze_count: 999 })
+  );
+  await assertFails(
+    updateDoc(doc(db('u1'), 'users/u1'), { 'onboarding_data.streak': 999 })
+  );
+});
+
+test('owner CAN still update onboarding_data.meal_reminder/water_reminder without touching streak (SEC-14)', async () => {
+  // Regression guard for the wrong fix: a blanket hasAny(['onboarding_data'])
+  // would reject this too, since meal_reminder/water_reminder live in the
+  // same top-level map as the now-protected streak. Uses set(merge:true),
+  // not a plain updateDoc() — mirrors the real write path exactly
+  // (firestore_service.dart's updateUserData -> set(merge:true);
+  // settings_screen.dart writes {'onboarding_data': {'water_reminder': map}}
+  // specifically so it recursively merges into the sibling map instead of
+  // replacing the whole onboarding_data field — see that file's own comment).
+  await seed('users/u1', {
+    displayName: 'A',
+    onboarding_data: { streak: 5, meal_reminder: { enabled: false } },
+  });
+  await assertSucceeds(
+    setDoc(doc(db('u1'), 'users/u1'), {
+      onboarding_data: { meal_reminder: { enabled: true, times: ['08:00'] } },
+    }, { merge: true })
+  );
+  await assertSucceeds(
+    setDoc(doc(db('u1'), 'users/u1'), {
+      onboarding_data: { water_reminder: { enabled: true, target_ml: 2000 } },
+    }, { merge: true })
+  );
+});
+
+test('users/{uid} create is bounded to the welcome-gift shape (SEC-14)', async () => {
+  // Legitimate shape: handleUserLogin's new-user branch (firestore_service.dart)
+  // sets exactly these two welcome-gift values on first sign-in.
+  await assertSucceeds(
+    setDoc(doc(db('u1'), 'users/u1'), {
+      displayName: 'A',
+      streak_freeze_count: 1,
+      onboarding_data: { streak: 1 },
+    })
+  );
+  // Attacker-supplied streak_freeze_count far beyond the welcome gift.
+  await assertFails(
+    setDoc(doc(db('u2'), 'users/u2'), {
+      displayName: 'B',
+      streak_freeze_count: 999999,
+    })
+  );
+  // Attacker-supplied onboarding_data.streak far beyond the welcome gift.
+  await assertFails(
+    setDoc(doc(db('u3'), 'users/u3'), {
+      displayName: 'C',
+      onboarding_data: { streak: 50 },
+    })
+  );
+});
+
+// SEC-30: `createUserDocumentOnRegister` (firestore_service.dart) used to pass
+// through a caller-supplied `onboardingData` map AS-IS, including an explicit
+// `null` (a real, reachable value on a getOnboardingData() cache-miss/parse
+// failure — see that method). The KEY is present in that case, so the SEC-14
+// bound above's `!('onboarding_data' in request.resource.data)` guard doesn't
+// short-circuit, and the old rule then evaluated `'streak' in null`, which
+// raises a Firestore Rules runtime "Null value error" — an ERRORING condition
+// denies the whole `create`, not just the unbounded field. So a legitimate
+// registration was rejected outright: Firebase Auth created the account, but
+// the Firestore users/{uid} doc silently never was. Confirmed empirically
+// (throwaway probe against this same emulator) that reusing
+// onboardingStreakChanged()'s `.get(key, default)` idiom verbatim does NOT
+// fix this — `.get` only substitutes the default for a MISSING key, not one
+// present with value `null`, so it still throws the identical error. The
+// rule now guards with an explicit `is map` type check instead.
+test('users/{uid} create SUCCEEDS with onboarding_data: null present (SEC-30)', async () => {
+  await assertSucceeds(
+    setDoc(doc(db('u4'), 'users/u4'), {
+      displayName: 'D',
+      onboarding_data: null,
+    })
+  );
+});
+
+// Same class of bug, not just the one reported symptom: any non-map value —
+// not only `null` — would hit the exact same `'streak' in <non-map>` runtime
+// error under the old rule. The `is map` guard (rather than a narrower
+// `== null` check) closes the whole class, not just the confirmed case.
+test('users/{uid} create SUCCEEDS with a non-map onboarding_data value (SEC-30)', async () => {
+  await assertSucceeds(
+    setDoc(doc(db('u5'), 'users/u5'), {
+      displayName: 'E',
+      onboarding_data: 'not-a-map',
+    })
+  );
+});
+
+// End-to-end shape check: the exact batch `createUserDocumentOnRegister`
+// (firestore_service.dart) now sends on a getOnboardingData() cache-miss —
+// `onboarding_data` OMITTED entirely (not even present as `null`), across
+// BOTH documents of its real batch.commit() (main doc + private/account),
+// exactly as the Dart fix emits it. Proves the full real-world failure
+// scenario end-to-end, not just the synthetic null/non-map probes above.
+test('users/{uid} create batch SUCCEEDS end-to-end matching createUserDocumentOnRegister with no onboarding data (SEC-30)', async () => {
+  const uid = 'u6-e2e-register';
+  const firestore = db(uid); // one instance, reused for batch + every doc()
+  const batch = writeBatch(firestore);
+  batch.set(doc(firestore, `users/${uid}`), {
+    displayName: null,
+    photoURL: null,
+    onboarding_completed: false,
+    // onboarding_data intentionally absent — matches the Dart fix's
+    // `if (onboardingData != null) 'onboarding_data': onboardingData`.
+    created_at: serverTimestamp(),
+    last_login_at: serverTimestamp(),
+    user_verified: false,
+  });
+  batch.set(doc(firestore, `users/${uid}/private/account`), {
+    email: 'newuser@example.com',
+  });
+  await assertSucceeds(batch.commit());
+  // The main doc must be readable back and genuinely exist post-fix — this
+  // is the concrete "did the Firestore doc actually get created" check.
+  const snap = await getDoc(doc(firestore, `users/${uid}`));
+  assert.strictEqual(snap.exists(), true);
+  assert.strictEqual(snap.data().onboarding_completed, false);
+  assert.strictEqual('onboarding_data' in snap.data(), false);
+});
+
+// SEC-29: `create` had NO constraint at all on the 16 fields
+// touchesProtectedUserFields() (above) locks against `update` — only the two
+// SEC-14 bounds just above (streak_freeze_count / onboarding_data.streak)
+// existed. A technical user could bypass the app and call the Firestore
+// client SDK directly to self-create a `users/{uid}` doc with e.g.
+// `xp: 999999` or `subscription_tier: 'premium'` already baked in.
+// firestore.rules now rejects `create` outright if the payload contains ANY
+// of these 16 keys — no legitimate client creation flow ever sets them (see
+// the rule's own comment), so forbidding their presence is strictly safer
+// than trying to bound each one individually.
+test('users/{uid} create REJECTS any of the 16 server-authoritative fields (SEC-29)', async () => {
+  // One single-field payload per forbidden key — exercises the LITERAL
+  // STRING of every entry in firestore.rules' new hasAny([...]) list, so a
+  // typo there (which would silently leave exactly one field unprotected)
+  // shows up as a failing assertion instead of passing silently.
+  const forbiddenFieldPayloads = {
+    xp: 1,
+    level: 1,
+    level_updated_at: new Date(),
+    reputation_score: 100,
+    reputation_updated_at: new Date(),
+    subscription_tier: 'premium',
+    subscription_expires_at: new Date(),
+    subscription_product_id: 'com.cookrange.premium.annual',
+    subscription_purchase_token: 'forged-token',
+    ai_credits_used: -100,
+    ai_credits_reset_at: new Date(),
+    ai_credits_bonus: 999999,
+    referral_used: true,
+    is_banned: false,
+    group_top3_streak: 5,
+    group_top3_streak_week_key: '2026-08-03',
+  };
+
+  let i = 0;
+  for (const [field, value] of Object.entries(forbiddenFieldPayloads)) {
+    i += 1;
+    const uid = `sec29-forbidden-${i}`;
+    await assertFails(
+      setDoc(doc(db(uid), `users/${uid}`), {
+        displayName: 'Attacker',
+        [field]: value,
+      })
+    );
+  }
+});
+
+test('users/{uid} create still SUCCEEDS for a normal legitimate payload with none of the 16 forbidden keys (SEC-29)', async () => {
+  // Regression guard for the new forbid-list: a brand-new doc shaped like
+  // handleUserLogin's new-user branch (firestore_service.dart) — displayName
+  // + onboarding_data + streak_freeze_count within the SEC-14 bound, none of
+  // the SEC-29 forbidden keys — must still be creatable.
+  await assertSucceeds(
+    setDoc(doc(db('legit-newuser'), 'users/legit-newuser'), {
+      displayName: 'Legit User',
+      photoURL: null,
+      created_at: serverTimestamp(),
+      onboarding_completed: false,
+      onboarding_data: { streak: 1 },
+      streak_freeze_count: 1,
+      last_login_at: serverTimestamp(),
+      last_active_at: serverTimestamp(),
+      is_online: true,
+    })
+  );
+});
+
+// SEC-31: SEC-14 locked streak_freeze_count/onboarding_data.streak (the
+// OUTPUTS of processStreakLogin, functions/progress.js) but missed the one
+// field that function reads as its SOLE input to decide which branch to
+// take — last_login_at. Before this, a client could call the raw SDK
+// directly (not just the app's own FieldValue.serverTimestamp() convention —
+// nothing at the rules level enforced that over a fabricated literal
+// Timestamp) to set last_login_at to an arbitrary past value, then call
+// processStreakLogin repeatedly to farm streak increments or drain/refill
+// streak_freeze_count on demand — defeating SEC-14 one hop removed from the
+// fields it actually locked.
+test('owner CANNOT self-grant an arbitrary last_login_at directly (SEC-31)', async () => {
+  await seed('users/u1', { displayName: 'A', last_login_at: new Date() });
+  await assertFails(
+    updateDoc(doc(db('u1'), 'users/u1'), {
+      last_login_at: new Date('2020-01-01'),
+    })
+  );
+});
+
+test('owner CANNOT self-grant streak_freeze_used_at directly (SEC-31)', async () => {
+  // streak_freeze_used_at is the companion timestamp processStreakLogin
+  // writes alongside a freeze consumption (functions/progress.js) — same
+  // server-write-only shape as last_login_at above, closed for the same
+  // reason. No client code has ever written this field directly (the
+  // client-side freeze logic that used to was deleted by the original
+  // SEC-14 fix).
+  await seed('users/u1', { displayName: 'A' });
+  await assertFails(
+    updateDoc(doc(db('u1'), 'users/u1'), {
+      streak_freeze_used_at: serverTimestamp(),
+    })
+  );
+});
+
+test('owner CAN still perform a normal existing-user login update (last_active_at + is_online, no last_login_at) after SEC-31', async () => {
+  // Matches the ACTUAL fixed handleUserLogin existing-user branch
+  // (firestore_service.dart) exactly: publicLoginData starts life with
+  // last_login_at/last_active_at/is_online, but last_login_at is now
+  // stripped via publicLoginData.remove('last_login_at') before this
+  // branch's own batch.update() call — processStreakLogin (called just
+  // before, in its own transaction) already wrote last_login_at
+  // authoritatively, so the client's own write of it is now both redundant
+  // and forbidden by the rule above. Regression guard: proves the new rule
+  // doesn't collateral-damage the two fields that DO still legitimately
+  // update on every single login.
+  await seed('users/u1', {
+    displayName: 'A',
+    last_login_at: new Date(),
+    last_active_at: new Date(),
+    is_online: false,
+  });
+  await assertSucceeds(
+    updateDoc(doc(db('u1'), 'users/u1'), {
+      last_active_at: serverTimestamp(),
+      is_online: true,
+    })
+  );
+});
+
+// SEC-32: `onboardingStreakChanged()` (the `update`-side sibling of SEC-30's
+// `create`-time fix — same file, same root cause) has the identical
+// `.get(key, default)` null-safety bug SEC-30 fixed there, proven
+// empirically during that fix's own investigation but deliberately left
+// unfixed on this sibling at the time ("that helper's analogous latent gap
+// isn't currently reachable by any real code path... flagged separately
+// rather than fixed here"). `.get(key, default)` only substitutes `default`
+// for a MISSING key, not one present with value `null` — if
+// `onboarding_data` is explicitly `null` on either side of an `update`
+// diff, `resource.data.get('onboarding_data', {})` (or the
+// `request.resource.data` equivalent) evaluates to `null` itself (not
+// `{}`), and the chained `.get('streak', null)` on that `null` raises the
+// same Firestore Rules runtime "Null value error" — an ERRORING condition
+// denies the whole `update`, not just this one field's check. Confirmed via
+// grep (same methodology as SEC-30): no `update`/`set(merge:true)` call
+// anywhere in `lib/` (`firestore_service.dart`'s `updateUserData`,
+// `onboarding_provider.dart`'s `persistV2Profile`, `settings_screen.dart`'s
+// reminder writes) ever sends an explicit `null` — this is pure
+// defense-in-depth, not a currently-reachable bug.
+//
+// Fixed the same way as SEC-30: an explicit `is map` guard before
+// descending into `.get('streak', ...)`, applied on BOTH sides of the
+// comparison (this function diffs two document snapshots, not one
+// create-time payload, so it needs the guard twice — `let oldStreak =
+// resource.data.get('onboarding_data', {}) is map ? ...get('streak', null)
+// : null`, mirrored for `newStreak` against `request.resource.data`).
+// Confirmed empirically against the emulator (a throwaway probe, same
+// methodology SEC-30's own fix used) that this eliminates the runtime
+// error entirely, for a non-map value too, not only `null` — and confirmed
+// the `let`/ternary syntax itself actually compiles and runs (not assumed).
+//
+// Judgment call — the null-transition is DENIED, not allowed through this
+// check, once a real streak value already exists. `onboardingStreakChanged()`
+// already treats ANY change to the effective streak value as "changed" and
+// blocks it, including a value disappearing entirely: an update that kept
+// `onboarding_data` a map but dropped just the `streak` key was ALREADY
+// blocked before this fix, unrelated to the null-safety bug (`5 != null` is
+// the same comparison whether `streak` vanishes because the key was
+// dropped or because the whole map became `null`). Denying here is
+// consistent with that pre-existing precedent — and empirically confirmed
+// below to also be the *safer* choice, not just the simpler one: a
+// tempting "smarter" variant that let the null-transition through this
+// check (e.g. by requiring both sides to be a map before comparing at all)
+// would reopen a two-step forgery — null the map out in one write (which
+// that variant must allow, to grant the exception), then set
+// `onboarding_data: {streak: <anything>}` in a second write, where the
+// reference doc's `onboarding_data` is now non-map, so that variant's
+// "both sides must be a map" gate would ALSO skip the comparison on the
+// follow-up write, letting the value land unchecked two writes removed
+// from the lock instead of one. The plain symmetric fix (substitute `null`
+// for a non-map side, then always compare) closes both the single- and
+// two-step versions at once, with no special-casing — matching SEC-30's
+// own preference for the explicit, simple guard over a cleverer variant.
+test('users/{uid} update REJECTS onboarding_data: null when a real streak value already exists (SEC-32)', async () => {
+  await seed('users/sec32-u1', { displayName: 'A', onboarding_data: { streak: 5 } });
+  // Must be a clean, intentional denial (streak effectively 5 -> null is
+  // "changed", same as any other streak diff) — not the old Rules-runtime
+  // crash. The no-crash half of that claim is what the next test actually
+  // proves (see its own comment).
+  await assertFails(
+    updateDoc(doc(db('sec32-u1'), 'users/sec32-u1'), { onboarding_data: null })
+  );
+});
+
+test('users/{uid} update SUCCEEDS setting onboarding_data: null when no prior streak value exists (SEC-32)', async () => {
+  // This is the test that actually proves the Rules-runtime crash is gone,
+  // not just that the write above is denied for some unspecified reason: a
+  // crash always manifests as a denial, never as a success, so the OLD,
+  // unfixed `.get(key, default)` chain hitting a bare `null` here would
+  // make this assertSucceeds() fail too (not merely fail for a different
+  // reason) — exactly like SEC-30's create-time analog test. Both sides
+  // resolve to "no streak" here (old: key absent entirely; new:
+  // onboarding_data explicitly null) — no diff, so nothing to protect
+  // against, and no error should reach the client.
+  await seed('users/sec32-u2', { displayName: 'B' });
+  await assertSucceeds(
+    updateDoc(doc(db('sec32-u2'), 'users/sec32-u2'), { onboarding_data: null })
+  );
+});
+
+test('users/{uid} update SUCCEEDS setting a non-map onboarding_data when no prior streak value exists (SEC-32)', async () => {
+  // Same class of bug as SEC-30, not just the one reported symptom: a
+  // non-map value (not only `null`) hits the identical `.get` chain. The
+  // `is map` guard (rather than a narrower `== null` check) closes the
+  // whole class, exactly as SEC-30's own equivalent test confirmed on the
+  // create side.
+  await seed('users/sec32-u3', { displayName: 'C' });
+  await assertSucceeds(
+    updateDoc(doc(db('sec32-u3'), 'users/sec32-u3'), { onboarding_data: 'not-a-map' })
+  );
+});
+
+test('owner CAN still update an unrelated field while a real onboarding_data.streak is present, untouched (SEC-32)', async () => {
+  // Regression guard: the ordinary "streak present, unrelated field
+  // changes" path must still work. onboarding_data isn't mentioned in the
+  // update at all, so request.resource.data carries the exact same streak
+  // value forward unchanged (old === new, no diff, nothing flagged).
+  await seed('users/sec32-u4', { displayName: 'A', onboarding_data: { streak: 5 } });
+  await assertSucceeds(
+    updateDoc(doc(db('sec32-u4'), 'users/sec32-u4'), { displayName: 'Z' })
+  );
+});
+
+test('owner CANNOT bypass the streak lock by nulling onboarding_data then re-setting it in a second write (SEC-32)', async () => {
+  // Empirical confirmation of the DENY judgment call's own reasoning above,
+  // not just an assertion of it: proves the two-step forgery path a
+  // "smarter" allow-the-null-transition variant would have reopened is not
+  // actually reachable through the fix as implemented, because step one
+  // alone is already denied.
+  await seed('users/sec32-u5', { displayName: 'A', onboarding_data: { streak: 5 } });
+  await assertFails(
+    updateDoc(doc(db('sec32-u5'), 'users/sec32-u5'), { onboarding_data: null })
+  );
+  await assertFails(
+    updateDoc(doc(db('sec32-u5'), 'users/sec32-u5'), { onboarding_data: { streak: 999999 } })
   );
 });
 

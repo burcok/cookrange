@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'analytics_service.dart';
 import 'log_service.dart';
@@ -189,55 +190,60 @@ class FirestoreService {
             service: _serviceName);
       } else {
         // Calculate Streak
+        //
+        // SEC-14: this used to compute the streak/freeze transition
+        // client-side and write it via the plain `batch.update()` below —
+        // neither `onboarding_data.streak` nor `streak_freeze_count` was in
+        // `touchesProtectedUserFields()`'s denylist, so a client could
+        // trivially skip the "reset to 1" branch, or refill its own freeze
+        // count, by calling `.update()` directly. Both fields are now
+        // server-write-only (firestore.rules); `processStreakLogin`
+        // (functions/progress.js) is the only writer and independently
+        // re-derives the exact same diff-days logic that used to live here.
         try {
-          final data = userDoc.data()!;
-          final lastLoginTs = data['last_login_at'] as Timestamp?;
-          final currentOnboardingData =
-              data['onboarding_data'] as Map<String, dynamic>? ?? {};
-          int currentStreak = currentOnboardingData['streak'] as int? ?? 1;
-
-          if (lastLoginTs != null) {
-            final lastLoginDate = lastLoginTs.toDate();
-            final now = DateTime.now();
-
-            // Normalize dates to midnight for comparsion
-            final lastLoginMidnight = DateTime(
-                lastLoginDate.year, lastLoginDate.month, lastLoginDate.day);
-            final todayMidnight = DateTime(now.year, now.month, now.day);
-
-            final difference =
-                todayMidnight.difference(lastLoginMidnight).inDays;
-
-            if (difference == 1) {
-              // Consecutive day
-              currentStreak++;
-              _maybeSendStreakMilestone(user.uid, currentStreak);
-            } else if (difference > 1) {
-              // Missed a day — check for streak freeze
-              final freezeCount = data['streak_freeze_count'] as int? ?? 0;
-              if (freezeCount > 0) {
-                publicLoginData['streak_freeze_count'] = freezeCount - 1;
-                publicLoginData['streak_freeze_used_at'] =
-                    FieldValue.serverTimestamp();
-                _log.info(
-                    'Streak freeze consumed for ${user.uid}; remaining: ${freezeCount - 1}',
-                    service: _serviceName);
-              } else {
-                currentStreak = 1;
-              }
-            }
-            // If difference == 0, same day, do nothing
+          final result = await FirebaseFunctions.instance
+              .httpsCallable('processStreakLogin')
+              .call<Map<String, dynamic>>();
+          // `as num).toInt()`, not a bare `as int` — matches
+          // reputation_service.dart's identical defensive cast on the
+          // sibling `syncProgress` callable's numeric fields (the platform
+          // channel doesn't guarantee `int` vs `double` for a JS number).
+          final newStreak = (result.data['streak'] as num).toInt();
+          // Only fire the milestone notification on a genuine consecutive-day
+          // increment — matches the ORIGINAL client-side behavior exactly,
+          // which only ever called _maybeSendStreakMilestone from inside the
+          // `difference == 1` branch, never on a freeze-preserved or reset
+          // day. `incremented` (not `!freezeConsumed`) is what distinguishes
+          // that case, since a reset-to-1 or same-day no-op is also not a
+          // freeze consumption but must not notify either.
+          final incremented = result.data['incremented'] as bool? ?? false;
+          if (incremented) {
+            _maybeSendStreakMilestone(user.uid, newStreak);
           }
-
-          // Use dot notation to update nested field without overwriting entire map
-          publicLoginData['onboarding_data.streak'] = currentStreak;
-          unawaited(AchievementService()
-              .checkAndGrant(user.uid, streak: currentStreak));
+          unawaited(
+              AchievementService().checkAndGrant(user.uid, streak: newStreak));
         } catch (e) {
-          _log.error('Error calculating streak for ${user.uid}',
+          _log.error('Error processing streak login for ${user.uid}',
               service: _serviceName, error: e);
           // Fallback if something fails, don't crash login
         }
+
+        // SEC-31: `last_login_at` is now server-write-only
+        // (firestore.rules' touchesProtectedUserFields()) — processStreakLogin
+        // above already wrote it authoritatively inside its own transaction
+        // (see that function's own comment in functions/progress.js), so this
+        // branch's own write of the same field via publicLoginData is not
+        // just redundant now but actively forbidden: touchesProtectedUserFields()
+        // denies the WHOLE update if `last_login_at` is present in the diff,
+        // which would take last_active_at/is_online down with it too, every
+        // single login. Stripped unconditionally here — both on the success
+        // path above and after the catch block below — because the rule
+        // denies a client-supplied last_login_at either way; whether
+        // processStreakLogin succeeded doesn't change that. The new-user
+        // branch above is untouched: it still needs last_login_at at document
+        // creation, and touchesProtectedUserFields() only gates `update`, not
+        // `create`.
+        publicLoginData.remove('last_login_at');
 
         // Update last login info for an existing user
         final batch = _firestore.batch();
@@ -293,18 +299,21 @@ class FirestoreService {
     unawaited(AchievementService().checkAndGrant(uid, streak: streak));
   }
 
-  /// Grants [count] streak freezes to [userId] (for referrals, rewards, etc.).
-  Future<void> grantStreakFreeze(String userId, {int count = 1}) async {
-    await _firestore.collection('users').doc(userId).update({
-      'streak_freeze_count': FieldValue.increment(count),
-    });
-    _log.info('Granted $count streak freeze(s) to $userId',
-        service: _serviceName);
-  }
-
   /// Creates a user document during the initial registration process.
   /// `email` goes to the owner-only `private/account` subcollection, not the
   /// world-readable main doc (audit N1).
+  ///
+  /// SEC-30: [onboardingData] is `null` on a `getOnboardingData()`
+  /// cache-miss/parse-failure (a real, reachable path — see that method) —
+  /// the key is omitted entirely rather than written as an explicit `null`,
+  /// matching how every reader of this field already treats an absent key
+  /// as the normal case (`as Map<String,dynamic>? ?? {}` elsewhere). An
+  /// explicit `null` value used to reach `firestore.rules`' `users/{uid}`
+  /// `allow create` check, which raised a Rules runtime "Null value error"
+  /// on `'streak' in null` — an erroring rule denies the whole write, so the
+  /// Firebase Auth account was created but this Firestore doc silently never
+  /// was. See that rule's own SEC-30 comment for the rules-side half of this
+  /// fix.
   Future<void> createUserDocumentOnRegister(
       User user, Map<String, dynamic>? onboardingData) async {
     _log.info('Creating user document on register for: ${user.uid}',
@@ -315,7 +324,7 @@ class FirestoreService {
         'displayName': user.displayName,
         'photoURL': user.photoURL,
         'onboarding_completed': onboardingData != null,
-        'onboarding_data': onboardingData,
+        if (onboardingData != null) 'onboarding_data': onboardingData,
         'created_at': FieldValue.serverTimestamp(),
         'last_login_at': FieldValue.serverTimestamp(),
         'user_verified': false,
@@ -329,6 +338,12 @@ class FirestoreService {
     } catch (e, s) {
       _log.error('Error creating user document for ${user.uid}',
           service: _serviceName, error: e, stackTrace: s);
+      // SEC-30: previously swallowed here — registerWithEmail (auth_service.dart)
+      // would log "Successfully registered" and hand back a live User even
+      // though the users/{uid} doc (and private/account, same batch) never
+      // got created. Rethrow so that caller can tell this failed and decide
+      // what to do, instead of silently proceeding on a half-created account.
+      rethrow;
     }
   }
 

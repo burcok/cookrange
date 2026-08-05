@@ -12,7 +12,7 @@
 Cloud Functions backend + OpenRouter LLM behind a server-side proxy. Bilingual EN/TR. Turkey is the
 primary market, so **KVKK and GDPR are release blockers, not features**.
 
-~115k LOC · 329 files · 42 models · 75 services · 95 screens · Provider state · server-authoritative
+~139k LOC · 394 files · 62 models · 88 services · 95 screens · Provider state · server-authoritative
 trust model.
 
 **Current state: `v0.9.6` internal alpha.** Much of the surface is written but unverified.

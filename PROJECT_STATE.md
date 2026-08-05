@@ -119,8 +119,9 @@ cooking mode · community feed & comments & reactions · 1:1 + group chat · in-
 achievements (grant + display verified — 15-badge catalog, idempotent server grant, wired into
 profile; **but** its own celebration notifications, `achievementEarned`/`streakFreezeUsed`, are dead
 code — full enum/presenter/push-text support, zero `writeNotification` call sites anywhere in
-`functions/`, confirmed by a full grep of every call site; `streak_freeze_count` is also absent from
-`touchesProtectedUserFields()`'s denylist and so is currently client-writable; see
+`functions/`, confirmed by a full grep of every call site; `streak_freeze_count`/`onboarding_data.streak`
+are now server-write-only (`SEC-14` — code-complete, not yet deployed; previously absent from
+`touchesProtectedUserFields()`'s denylist and client-writable); see
 `docs/roadmap/PHASE_15_ENGAGEMENT.md` §15.5) · AI insight/twin/recap (all guard `isConfigured`) · AI
 proxy security core ·
 AI meal-plan/recipe generation degradation path (`BLK-01` — throws + branded error state when

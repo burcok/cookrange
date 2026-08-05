@@ -1,6 +1,7 @@
 # Onboarding V2 — Pre-Registration Personalized Flow
 
-> **Status:** 🚧 In progress (started 2026-06-29). Replaces the legacy 6-step post-registration onboarding.
+> **Status:** ✅ Shipped (started 2026-06-29; phases P0–P9 and all follow-ups complete — see §6).
+> Replaces the legacy 6-step post-registration onboarding, which has since been deleted from the codebase.
 > **Owner doc:** this file is the single source of truth for the V2 flow. Update it as phases land.
 
 ---

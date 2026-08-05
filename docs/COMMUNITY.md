@@ -6,7 +6,7 @@
 > **Owns:** `community_service.dart`, `chat_service.dart`, `follow_service.dart`,
 > `friend_service.dart`, `community_group_service.dart`, `notification_service.dart`,
 > `signal_service.dart`, `streak_squad_service.dart`, `achievement_service.dart`,
-> `reputation_service.dart`, moderation paths.
+> `reputation_service.dart`, `moderation_appeal_service.dart`, moderation paths.
 
 ---
 
@@ -24,10 +24,36 @@
 - **@mentions** — autocomplete, highlight, notification fan-out
 - **Pagination** — cursor-based `fetchPostsPage` with `startAfter`; filter-aware
 
-**Groups.** `community_groups/{groupId}` are location-based (city/district) with a members
-subcollection and `member_count`. A post carries an optional top-level `groupId` (null = global
-feed); `getGroupFeedStream` serves the scoped feed. Joined groups mirror onto
-`users/{uid}.group_memberships[]`. Design: [`roadmap/COMMUNITY_GROUPS.md`](roadmap/COMMUNITY_GROUPS.md).
+**Groups.** `community_groups/{groupId}` is a single unified entity for BOTH gym-affiliated groups
+AND regular, user-created groups — they are not separate systems. `GroupKind` is `public` /
+`private` / `gym`: a `gym`-kind group is auto-created by `AdminService.approveGymApplication` the
+moment a gym application is approved (the gym's owner becomes the group's owner), is deliberately
+excluded from general discovery (`isPublic: false`), and is reached only from the gym's own screen
+— everything else about it (chat, moderation, membership) is identical machinery to a `public`/
+`private` group created by any user via `CreateGroupScreen`. Every group has:
+
+- A **members** subcollection + `member_count`, mirrored onto `users/{uid}.group_memberships[]`.
+- A **`GroupJoinPolicy`**: `open` (self-join), `request` (queues a `join_requests/{uid}` doc for
+  owner/admin approve/decline), or `invite` (redeemed via a server-validated `group_invites/{code}`
+  callable, `functions/groups.js: redeemGroupInvite` — the code itself never lives on the
+  client-readable group doc). All three are wired end to end, including the request queue UI
+  (`group_members_screen.dart`'s "Pending requests" section) and code redemption.
+- An **`announcementOnly`** toggle: only the owner/a group-level `admin` may post; everyone else
+  still reads and reacts — enforced server-side by `canPostInGroup()`, not just hidden in the UI.
+  `GroupMemberRole` is `owner` / `admin` / `moderator` / `member`, though only owner/admin are ever
+  actually assigned by any service method today.
+- **Moderation**: owner/group-admin kick/ban/mute/unmute (`group_members_screen.dart`), logged
+  to an append-only `moderation/{autoId}` subcollection the target can read their own entries from,
+  plus a `moderation_appeals` path to contest an action (§7).
+- Its own **chat** (see §3) and, for public groups, an **activity-ranked discovery carousel**:
+  `activity_score` is computed every 15 minutes by `computeGroupActivityScores`
+  (`functions/groups.js` — messages×1 + posts×3 + comments×2 + new-members×5, decayed with a
+  6-hour half-life over a 24h window), never client-computed.
+
+A post carries an optional top-level `groupId` (null = global feed); `getGroupFeedStream` serves
+the scoped feed. Design origin: [`roadmap/COMMUNITY_GROUPS.md`](roadmap/COMMUNITY_GROUPS.md) (the
+original, simpler location-based-only design — superseded in practice by the unified model above;
+kept for historical context, not as the current contract).
 
 > `BLK-08` — the `posts` update rule was a denylist (only `authorId`/`content`/`imageUrls`/`tags`
 > blocked), so any authenticated user could write `groupId` or any other field. Now an allowlist:
@@ -66,18 +92,48 @@ is already owner-scoped-safe.
 
 ## 3. Chat
 
-`chats/{id}` (participants, `lastMessage`, `unreadCounts`, type, `typingUsers`) with
-`chats/{id}/messages/{id}`.
+`chats/{id}` (participants, `lastMessage`, `unreadCounts`, type, `typingUsers`, `pinnedMessageId`,
+optional `groupId`) with `chats/{id}/messages/{id}`. One collection, one `ChatService`, three
+`ChatType`s — **not** a DM-only collection:
 
-Types: **private** (1:1) · **group** · **system** · **gym**. Supports typing indicators, image
-messages, read status, and unread counts. Content-length capped at the rules layer.
+- **`private`** — a genuine 1:1 direct message. `ChatService.createOrGetPrivateChat` reuses an
+  existing 2-participant chat rather than duplicating it. This is the app's only DM surface — there
+  is no separate "direct message" data model or service.
+- **`group`** — either an ad-hoc multi-person chat (`ChatService.createGroupChat`, participants
+  array only) or the paired chat every `community_groups` doc gets on creation (`chatId == groupId`;
+  §1). For a group-backed chat, `firestore.rules`' `canAccessGroupChat()`/`canPostInGroup()` grant
+  the **whole group's membership** read/post access keyed off `groupId`, not the `participants`
+  array (which only ever holds the group's owner for these).
+- **`gym`** — the paired chat for a `kind:'gym'` community group. Was rendered by
+  `chat_list_screen.dart` with zero real producers before Faz 2 §2.3; now real. (A `system` type was
+  removed — it was rendered but never produced by any writer.)
+
+**Message model v2** (Faz 2 §2.1, `message_model.dart`) is genuinely WhatsApp-level, not just
+text + image: attachments (image, with room for other kinds), **reply** (denormalized quote
+snapshot), **forward** (with a visible hop count), per-message **reactions**, **edit** (sender-only,
+15-minute window, rules-enforced), **delete** — "for everyone" (sender-only, same window, clears
+body/attachments) or "for me" (any participant, hides only for them) — per-recipient **delivered/
+read receipts**, **typing indicators**, **@mentions**, a single **pinned message** per chat, and a
+personal **star/bookmark** (`users/{uid}/starred_messages`). Cursor-paginated history
+(`getMessagesPage`), jump-to-date (`getMessagesAround`), a bounded in-chat search (300-message
+client-side scan, no text-search backend exists), and a dedicated media gallery
+(`getChatMediaPage`) are all real, not aspirational. None of this is end-to-end encrypted —
+messages are deliberately server-readable so reporting and moderator takedown (below) can work.
+
+In a group-backed chat, a group owner/admin (or site admin) can additionally take down another
+member's message (`ChatService.deleteMessageAsModerator` — flips `is_deleted` only, never rewrites
+`body`) without needing the sender-only edit/delete path. Per-user chat-list prefs (pin/archive/
+mute/delete-for-me, `chat_prefs`, Faz 2 §2.4) are independent of the shared chat doc.
 
 Chat images use a **participants-only scoped path** with unguessable random filenames, plus
 client-side EXIF/GPS stripping on upload.
 
-**Chat push works** — `onChatMessageCreated` is wired correctly. It was the only push path that did
-until `BLK-03` (fan-out fix, §4) deployed 2026-08-01 — every notification type now has a
-server-authored writer, though physical push delivery is unverified in this environment (no device).
+**Chat push works** — `onChatMessageCreated` is wired correctly, and (Faz 2 §2.4) now sources a
+group-backed chat's recipients from `community_groups/{id}/members` rather than the `participants`
+array, so real group members are actually counted/notified, not just the owner. It was the only
+push path that worked at all until `BLK-03` (fan-out fix, §4) deployed 2026-08-01 — every
+notification type now has a server-authored writer, though physical push delivery is unverified in
+this environment (no device).
 
 ---
 
@@ -116,10 +172,16 @@ it renders as a raw key (in-app) / generic text (push).
 
 ## 5. Ephemeral & group accountability
 
-- **Signals** — `signals/{id}`, short-lived broadcasts with a TTL via `expiresAt`. Content-capped.
-  Needs a Firestore TTL policy so they actually expire and stop costing storage.
-- **Streak Squads** — `squads/{id}`, small accountability groups with invite codes and a shared
-  leaderboard.
+- **Signals** — `signals/{id}`, short-lived broadcasts with a TTL via `expiresAt` (`gymHelp` /
+  `mealShare` / `general`). Content-capped. Needs a Firestore TTL policy so they actually expire and
+  stop costing storage. Currently visible to the whole community — no friends-only/gym-only scope
+  yet.
+- **Streak Squads** — `squads/{id}` (`StreakSquadService`/`StreakSquadModel`), a small group joined
+  via a 6-char invite code. There is **no shared/pooled streak** — each member keeps their own
+  individual streak (`users/{uid}.onboarding_data.streak`); the squad's entire job is showing
+  members' streaks side by side, ranked, so someone noticing a friend's column flatten is the
+  mechanism, not a group streak that resets for everyone. No squad-level chat exists — accountability
+  is visibility only.
 
 ---
 
@@ -128,16 +190,23 @@ it renders as a raw key (in-app) / generic text (push).
 | System | Mechanic |
 |---|---|
 | **Streaks** | Daily streak with freeze consumption; milestone banners. Unit-tested |
-| **Achievements** | 11 badges, `kAchievementCatalog`. `earn(uid, key)` is idempotent; `checkAndGrant` fires from every success path; `backfillForUser` for existing accounts. Profile grid with a reduced-motion-aware unlock animation |
-| **Reputation** | Score and badges derived from activity |
-| **Leaderboards** | Global + friends; gym leaderboards are separate |
+| **Achievements** | 15 badges, `kAchievementCatalog` — the original 11 (first meal/photo/post/cook, streak 7/30/100, tier active/contributor/expert/legend) plus 4 added in Faz 5 §5.3 (`level50`, `groupTop3`, `groupStreak4`, `gymRegular`). `earn(uid, key)` is idempotent; `checkAndGrant` fires from every success path; `backfillForUser` for existing accounts. Profile grid with a reduced-motion-aware unlock animation |
+| **Reputation** | A tier (`newcomer`/`active`/`contributor`/`expert`/`legend`) derived from XP-level bands (`ReputationService._tierFromLevel`) |
+| **XP & levels** | Faz 5 §5.1 — a server-owned points/caps ledger (`functions/progress.js`'s `awardXp`), idempotent per event, increasing-interval level curve |
+| **Leaderboards** | All-time streak (global + friends, `LeaderboardService`) **and** a separate weekly-reset, XP-based ranking (community-wide and per-gym, `community_weekly_xp/{weekKey}`) — plus each group's own weekly contribution leaderboard (§1) |
 | **Weekly recap** | AI-generated week score, wins, challenges, trend |
 
-> ⚠️ `streak` and `reputation` are **client-computed and client-written** (`SEC-14`) — both are
-> forgeable. Moving them server-side is deferred but required before anything of value depends on them.
+> ⚠️ **Superseded finding, kept for history:** `streak` and `reputation`/`reputation_score` used to be
+> client-computed and client-written (`SEC-14`) and forgeable. **Both are now closed.** Reputation is
+> derived server-side from the XP ledger (`firestore.rules` denies client writes to
+> `xp`/`level`/`reputation_score` unconditionally). The daily login streak's increment/reset/freeze
+> logic now lives exclusively in the `processStreakLogin` callable (`functions/progress.js`,
+> `firestore_service.dart:handleUserLogin` just calls it and reads back the result) — `update`s to
+> `onboarding_data.streak`/`streak_freeze_count` are server-write-only by rule; the client only ever
+> writes the seed value (`streak: 1`) once, at brand-new-account **creation**, which `create` rules
+> don't gate the same way `update` does and isn't a meaningful forgery vector.
 > **Challenges are deliberately sunset** (ADR-012 era) — screens and lib references are removed, but a
-> rules block, two indexes, and four orphan i18n keys survive (`DEBT-11`). An XP/levels layer is
-> proposed, not built (`GAM-01`).
+> rules block, two indexes, and four orphan i18n keys survive (`DEBT-11`).
 
 ---
 
@@ -152,15 +221,31 @@ it renders as a raw key (in-app) / generic text (push).
 2. **Content-length caps** — enforced in `firestore.rules` on posts, comments, chat, signals.
 3. **Image scanning** — `scanImage` runs Cloud Vision SafeSearch on upload and deletes unsafe
    objects. Best-effort until the Vision API is enabled.
-4. **User reports** — `reports/{id}` (`status`, `targetType`, `reason`) → admin queue with dismiss,
+4. **Group-level moderation** (Faz 2 §2.6) — a group owner/group-admin (or site admin) can
+   kick/ban/mute/unmute a member (`CommunityGroupService`, `group_members_screen.dart`, reason
+   prompt + duration chips on mute) and take down another member's message in that group's chat
+   without editing it (`ChatService.deleteMessageAsModerator`). Every action is logged to an
+   append-only `community_groups/{id}/moderation/{autoId}` entry the target can read their own copy
+   of. A member can contest one via `moderation_appeals/{id}` (doc id == the moderation action's own
+   id, one appeal per action) — filed from `ModerationAppealScreen`, resolved by an admin
+   (`AdminService.resolveModerationAppeal`); upholding an appeal auto-reverses the mute/ban.
+5. **User reports** — `reports/{id}` (`status`, `targetType`, `reason`) → admin queue with dismiss,
    remove, and bulk actions, plus an audit entry.
-5. **Admin enforcement** — ban/unban, force logout, content takedown, broadcasts.
+6. **Platform-level admin enforcement** — `AdminService.banUser`/`unbanUser` (writes
+   `users/{uid}.is_banned` + an `admin/status/{uid}/flags` record, audit-logged), force logout,
+   content takedown, broadcasts.
 
-> `BLK-05` (admin surface unreachable) is closed and deployed. `scanImage` still watches the wrong
-> prefix (`BLK-07`). There is also **no per-uid UGC rate limiter** (spam, mass friend-requests, signal
-> flooding are all unthrottled) — `SEC-06`'s callables re-verify identity and state server-side but add
-> no throttling. A real sliding-window limiter needs UGC creates routed through a callable — scope it
-> before community GA.
+> `BLK-05` (admin surface unreachable) is closed and deployed — the report queue, ban/unban, and
+> appeal resolution are all reachable through it today (though no real admin session has exercised
+> them against live traffic yet). `scanImage`'s prefix mismatch (`BLK-07`) is **also closed** —
+> `storage.rules`'s guarded path now matches the real `gyms/{gymId}/logo.jpg` upload path, so the
+> scanner and the rule watch the same prefix.
+>
+> Reports, group moderation actions, and moderation appeals each now have their own per-uid
+> sliding-window rate limit (`functions/rate_limit.js`, `rate_limits/{uid}`, fully server-only) —
+> but this is narrower than a general UGC limiter: ordinary post/comment/signal creation and
+> friend-requests are still unthrottled. A broad UGC limiter would need those creates routed through
+> a callable too — scope it before community GA.
 
 ---
 

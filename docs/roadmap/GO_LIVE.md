@@ -242,10 +242,15 @@
 >   client-side EXIF/GPS stripping on every image upload (chat/post/profile/gym); server `scanImage`
 >   Cloud Function runs Cloud Vision SafeSearch and deletes unsafe uploads (best-effort until the
 >   Vision API is enabled — enable it in production).
-> - 🔲 **Deferred (need broader refactor; tracked):** S5 full server-authored notifications/friends;
->   S8 point-of-use consent enforcement for AI/photo processing (the analytics half is done); S10
->   minimize the world-readable user doc (move email/IP/fcm_token off it); and moving
->   `streak`/`reputation` server-side. NSFW enforcement requires enabling the **Cloud Vision API**.
+> - ✅ **S5 done — closed AND deployed** (2026-08-01, `BLK-03`/`SEC-06`): `notifications/{uid}/items`,
+>   `friends`, `friend_requests`, and `failed_login_attempts` are now server-authored only via 8 new
+>   Cloud Functions (`notifications.js`/`social.js`), confirmed live via `firebase functions:list`;
+>   rules deployed. This is the only gate on this list that is live in production today, not merely
+>   code-complete — see `docs/SECURITY.md` §8 / `PROJECT_STATE.md`.
+> - 🔲 **Deferred (need broader refactor; tracked):** S8 point-of-use consent enforcement for AI/photo
+>   processing (the analytics half is done); S10 minimize the world-readable user doc (move
+>   email/IP/fcm_token off it); and moving `streak`/`reputation` server-side. NSFW enforcement requires
+>   enabling the **Cloud Vision API**.
 > - ✅ **Text moderation now live for all users** *(audit M7)*: the blocked-keyword list is mirrored
 >   to the **public-read** `settings/content_filter` doc (admins write it via `admin_config/global`);
 >   `CommunityService._checkContent` reads it there, so the filter no longer fails open for non-admins.
@@ -295,12 +300,15 @@
 - **Why:** Today commissions are forgeable at any amount and payouts pay a self-computed balance —
   direct fraud once payouts launch.
 
-#### S5 🤖+👤 Close the open Firestore create rules *(audit C9)*
-- **What:** `notifications/{uid}/items`, `users/{uid}/friends`, `friend_requests`,
-  `failed_login_attempts` → **server-authored only** (`create: if false` + Cloud Function that derives
-  the actor from `request.auth` and verifies the underlying edge). Re-fetch `actorName` server-side.
-- **Why:** Any user can currently push-spam/impersonate any other user and write into anyone's
-  friend/notification subcollections.
+#### S5 ✅ Close the open Firestore create rules *(audit C9)* — DONE, deployed 2026-08-01
+- **Done:** `notifications/{uid}/items`, `users/{uid}/friends`, `friend_requests`,
+  `failed_login_attempts` are now **server-authored only** — 8 new Cloud Functions in
+  `notifications.js`/`social.js` (`createNotification`, `retractNotification`,
+  `sendAdminNotification`, `followUser`, `unfollowUser`, `sendFriendRequest`,
+  `respondToFriendRequest`, `cancelFriendRequest`) derive the actor from `request.auth` server-side and
+  write the edge + notification atomically; the old open `create` rules are closed. Deployed and
+  confirmed live via `firebase functions:list` (`BLK-03`/`SEC-06`). Physical push delivery is still
+  unverified in this environment (no device) — see `PROJECT_STATE.md`.
 
 #### S6 ✅+👤 Hardened AI proxy + App Check enforcement *(audit C3, C4, C5)*
 - ✅ Done: model allowlist, payload/token caps, fail-closed quota, per-uid rate limit, mandatory
@@ -372,7 +380,7 @@
 
 ### 5S.✓ Security go-live gate (all P0 + P1 must be ✅ before production)
 - [ ] S0 SA key rotated + secret-scan CI · [ ] S1 user-doc rule locked (after S2–S4) · [ ] S2 ledger rules deployed
-- [ ] S3 purchase validation sandbox-passed · [ ] S4 economy server-authored · [ ] S5 open creates closed
+- [ ] S3 purchase validation sandbox-passed · [ ] S4 economy server-authored · [x] S5 open creates closed — done 2026-08-01 (`BLK-03`/`SEC-06`)
 - [ ] S6 proxy deployed + App Check enforced + key fallback removed + OpenRouter spend cap
 - [ ] S7 server-side erasure + Storage cleanup · [ ] S8 consent enforced + cross-border DPA + age gate
 - [ ] S9 storage scoped + scanned · [ ] S10 user doc minimized · [ ] S11 export complete · [ ] S12 auth abuse controls

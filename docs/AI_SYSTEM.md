@@ -76,7 +76,8 @@ Every call carries a `type` that flows to the proxy for per-request cost attribu
 
 | Type | Service | What it generates |
 |---|---|---|
-| `meal_plan` | `WeeklyMealPlanService` | Full week of meals from a filtered dish pool |
+| `meal_plan` | `WeeklyMealPlanService` | Full week of meals from a filtered dish pool. `generatePlanAlternates`'s ephemeral 2-option "what-if" comparison (never written to Firestore) also tags itself `meal_plan` — same bucket |
+| `meal_plan_template` | `MealPlanTemplateService` | A gym/coach's reusable plan template, AI-generated for later editing/sending as an offer. Reuses `PromptService.generateWeeklyMealPlanPrompt` (same allergen pre-filter, same prompt shape as `meal_plan`) but tagged as its own `type` for separate cost attribution — not previously listed in this table |
 | `recipe` | `RecipeGenerationService` | A structured recipe from constraints |
 | `insight` | `AiInsightService` | Daily accountability nudge; 30/60/90-day fitness twin |
 | `weekly_recap` | `AiInsightService` | Week score, wins, challenges, recommendation |
@@ -178,6 +179,7 @@ control.
 | `BE-07` | No API versioning on the proxy contract |
 | — | 180-dish prompt ceiling caps meal-plan variety |
 | — | Push/notification copy from Functions has no localization path |
+| — | `AllergenSafety._expand()` (§8) expands a synonym group only when the user's full stored allergy id *contains* that group's map key as a substring — true for 8 of 9 allergens (`dairy`⊂`allergy_dairy`, `fish`⊂`allergy_fish`, `shellfish`⊂`allergy_shellfish`, `tree_nuts`⊂`allergy_tree_nuts`, `peanut`⊂`allergy_peanuts`, `egg`⊂`allergy_eggs`, `soy`⊂`allergy_soy`, `sesame`⊂`allergy_sesame`) but not wheat: the synonym key is `gluten`, and `allergy_wheat` doesn't contain that substring. A wheat allergy is left matching only the literal token "wheat" — dishes whose only wheat-bearing ingredient is "flour"/"bread"/"pasta"/"buğday"/"un"/"ekmek" (plausible for a TR/EN dish catalog) would not be excluded. Traced directly in the two source files; not yet verified against live dish-catalog data |
 
 ---
 

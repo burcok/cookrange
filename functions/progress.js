@@ -665,6 +665,105 @@ exports.backfillProgress = functions.https.onCall(async (data, context) => {
   });
 });
 
+/**
+ * Server-authoritative daily login streak + freeze processing (SEC-14).
+ *
+ * This used to be computed AND written entirely client-side
+ * (`firestore_service.dart`'s `handleUserLogin`, existing-user branch) via a
+ * plain `batch.update()` — neither `onboarding_data.streak` nor
+ * `streak_freeze_count` was in `touchesProtectedUserFields()`'s denylist, so
+ * a client could skip the "reset to 1" branch and just keep incrementing/
+ * preserving its own streak, or refill its own freeze count, directly.
+ * `firestore.rules` now denies both client writes unconditionally; this is
+ * the only writer. Mirrors the ORIGINAL Dart logic exactly:
+ *   diff == 1             → streak + 1
+ *   diff > 1, freeze > 0  → freeze - 1, streak preserved, streak_freeze_used_at set
+ *   diff > 1, freeze == 0 → streak resets to 1
+ *   diff == 0 (or no prior last_login_at) → no-op
+ *
+ * Only ever affects the CALLER's own doc — no `targetUid` param, unlike
+ * `syncProgress` (advancing a login streak never makes sense for anyone but
+ * the caller themselves).
+ *
+ * Returns `incremented` (true only for the `diff == 1` case) separately from
+ * `freezeConsumed` so the client can decide whether to fire its streak-
+ * milestone notification with the exact same precision the original
+ * client-side code had — that code only ever notified on a consecutive-day
+ * increment, never on a freeze-preserved (or reset, or same-day-no-op) day.
+ */
+exports.processStreakLogin = functions.https.onCall(async (data, context) => {
+  const uid = assertCallable(context);
+  const db = admin.firestore();
+  const userRef = db.collection('users').doc(uid);
+
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(userRef);
+    if (!snap.exists) {
+      throw new functions.https.HttpsError('failed-precondition', 'User document does not exist');
+    }
+    const before = snap.data();
+    const lastLoginAt = before.last_login_at ? before.last_login_at.toDate() : null;
+    const currentStreak = (before.onboarding_data && typeof before.onboarding_data.streak === 'number')
+      ? before.onboarding_data.streak : 1;
+    const freezeCount = typeof before.streak_freeze_count === 'number' ? before.streak_freeze_count : 0;
+
+    const now = admin.firestore.Timestamp.now();
+    const nowDate = now.toDate();
+
+    // This function also writes last_login_at itself, even though the Dart
+    // client keeps its own separate, unchanged write of
+    // last_login_at/last_active_at/is_online in its own batch right after
+    // calling this. That's a deliberate harmless redundant write, not a
+    // conflict — it exists purely for THIS function's own idempotency: if
+    // the callable is retried (network blip, client-side retry logic)
+    // before the client's own subsequent batch commits, a second invocation
+    // reads the now-just-set last_login_at (≈ "now"), computes diffDays ===
+    // 0 against itself, and correctly no-ops instead of double-consuming a
+    // freeze or double-incrementing the streak.
+    const update = { last_login_at: now };
+
+    if (!lastLoginAt) {
+      // No prior login timestamp recorded — nothing to diff against, leave
+      // streak as-is. Matches the original Dart behavior: the whole
+      // `if (lastLoginTs != null)` block (increment/freeze/reset, and the
+      // milestone notification nested inside it) was skipped entirely in
+      // this case, and no state actually changes — so, unlike the branches
+      // below, this path doesn't need the idempotency write above; a retry
+      // just recomputes the same no-op again.
+      return { streak: currentStreak, freezeConsumed: false, freezeCount, incremented: false };
+    }
+
+    const todayMidnight = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate());
+    const lastMidnight = new Date(lastLoginAt.getFullYear(), lastLoginAt.getMonth(), lastLoginAt.getDate());
+    const diffDays = Math.round((todayMidnight - lastMidnight) / 86400000);
+
+    let newStreak = currentStreak;
+    let newFreezeCount = freezeCount;
+    let freezeConsumed = false;
+    const incremented = diffDays === 1;
+
+    if (diffDays === 1) {
+      newStreak = currentStreak + 1;
+    } else if (diffDays > 1) {
+      if (freezeCount > 0) {
+        newFreezeCount = freezeCount - 1;
+        freezeConsumed = true;
+        update.streak_freeze_used_at = now;
+      } else {
+        newStreak = 1;
+      }
+    }
+    // diffDays === 0 (or negative, e.g. clock skew) → no-op on streak/freeze,
+    // matching the original Dart behavior's "same day, do nothing".
+
+    if (newStreak !== currentStreak) update['onboarding_data.streak'] = newStreak;
+    if (newFreezeCount !== freezeCount) update.streak_freeze_count = newFreezeCount;
+
+    tx.update(userRef, update);
+    return { streak: newStreak, freezeConsumed, freezeCount: newFreezeCount, incremented };
+  });
+});
+
 // Exported for direct, in-process use by other trigger/callable modules
 // that award XP for a SERVER-VERIFIED event of their own (never a client
 // payload) — presence.js's closeSession (check_in via geofence/manual),

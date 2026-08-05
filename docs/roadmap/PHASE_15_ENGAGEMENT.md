@@ -30,7 +30,7 @@ app. Secondary: daily-logging rate (meals logged / active day) and weekly-recap 
 | Local + scheduled notifications, timezone-aware, ID-block reservation, `spreadReminderTimes()` pure fn | `push_notification_service.dart` (water reminder block `7001–7012`) | **Mirror** for meal/streak reminders (new ID blocks) |
 | In-app structured notifications + presenter + mute groups | `notification_service.dart`, `notification_presenter.dart`, `notification_preferences_service.dart` | **Extend** enum + presenter + one new mute group |
 | Cloud Functions: `broadcasts` collection + 5-min `drainScheduledBroadcasts` + `sendNotificationOnCreate` (mute-aware FCM) | `functions/index.js` | **Reuse** for server-side weekly-plan/streak fan-out |
-| `streak_freeze_count` field, auto-consume on gap, `grantStreakFreeze(uid, count)`, 1-freeze welcome gift | `firestore_service.dart` | Streak-freeze **backend done** → only UI + earn-rules missing |
+| `streak_freeze_count` field + `onboarding_data.streak`, auto-consume on gap — now server-authoritative (`SEC-14`: `functions/progress.js`'s `processStreakLogin`); `grantStreakFreeze` deleted as dead code (0 callers), the 1-freeze welcome gift itself is unchanged | `firestore_service.dart`, `functions/progress.js` | Streak-freeze **backend done** → only UI + earn-rules missing |
 | `TodaySummaryCard` (calories/streak/water/next-meal 2×2) | `home/widgets/today_summary_card.dart` | **Enhance**, don't replace — add yesterday + 7-day trend |
 | Photo→nutrition flow: `analyzeFoodPhoto` → `NutritionEstimate` → `logScannedFood`, credit-metered | `food_scan_screen.dart`, `food_analysis_service.dart`, `food_log_service.dart` | One-tap photo log = **streamline** existing flow |
 | Daily AI insight + risk detection + fitness-twin pattern (locale-aware, cached, persisted) | `ai_insight_service.dart`, `ai_insight_card.dart` | Weekly recap = **new method following the twin pattern** |
@@ -339,17 +339,24 @@ that half. `AchievementsGrid` (`screens/profile/widgets/achievements_grid.dart`)
 shown via a snowflake glyph on the home streak chip (`StreakChip`, `streak_calendar_sheet.dart:
 112-135`, rendered at `home.dart:955`) exactly as asked. **Not built:** the "ways to earn freezes
 (milestones, premium grant)" the PM section asks for — `TODO.md`'s own `GAM-06` independently found
-the same thing ("the UI shipped, the earn rules did not"); `grantStreakFreeze` is still only ever
-called for the one-time welcome gift. **Confirmed broken, flagged not fixed:**
+the same thing ("the UI shipped, the earn rules did not"); `grantStreakFreeze` was only ever called
+for the one-time welcome gift, and has since been deleted outright as dead code (`SEC-14`) — the
+welcome gift itself is unchanged, written inline by `handleUserLogin`'s new-user branch; any future
+earn-rules work needs a new server-side grant path (`GAM-06`). **Confirmed broken, flagged not fixed:**
 `NotificationType.achievementEarned` and `.streakFreezeUsed` have full enum/presenter/push-text
 support (`notification_model.dart:31-32`, 5 presenter switch statements, `functions/index.js:
 576-580`) but are never actually triggered — every `writeNotification(db, {...})` call site across
 all of `functions/*.js` (15 checked) was read; none passes either type. `grantAchievementIfNew`
-(`functions/progress.js:384-395`) awards XP on a new badge but never notifies. Separately,
-`streak_freeze_count` is absent from `touchesProtectedUserFields()`'s denylist
-(`firestore.rules:384-406`) — unlike the structurally identical `group_top3_streak` counter one entry
-below it — so it is currently client-writable: any authenticated user can set their own streak-freeze
-count to any value today.
+(`functions/progress.js:384-395`) awards XP on a new badge but never notifies. **Fixed (`SEC-14`):**
+`streak_freeze_count` was absent from `touchesProtectedUserFields()`'s denylist entirely — unlike the
+structurally identical `group_top3_streak` counter entry — and `onboarding_data.streak` was also
+client-writable (nested inside the otherwise-legitimately-client-writable `onboarding_data` map
+alongside `meal_reminder`/`water_reminder`, so closing it needed its own `onboardingStreakChanged()`
+diff helper rather than a blanket denylist entry — see `firestore.rules`). Both fields are now
+server-write-only, written only by the new `processStreakLogin` Cloud Function
+(`functions/progress.js`); `users/{uid}`'s `allow create` is also now bounded so a client can't
+self-create a doc with either field pre-inflated. Not yet deployed to the live project; no
+reconciliation pass exists for values a user may have already inflated before this fix landed.
 
 ### PM
 **Problem:** streaks reset harshly (churn trigger) and there's no collectible sense of progress.
@@ -363,8 +370,11 @@ count to any value today.
 first open), locked-state copy. **Success metric:** streak-survival rate; achievements earned per user.
 
 ### Architect
-- **Streak freeze backend is done** (`streak_freeze_count`, auto-consume, `grantStreakFreeze`). Work is
+- **Streak freeze backend is done** (`streak_freeze_count`, auto-consume). Work is
   **UI + earn rules** only. Add `NotificationType.streakFreezeUsed` (optional) for the save moment.
+  (Historical note: `grantStreakFreeze`, named here at proposal time, was dead code — 0 callers beyond
+  the welcome gift — and has since been deleted; server-side computation moved to `processStreakLogin`
+  as part of `SEC-14`. Any new earn-rules grant path needs a new Cloud Function, not this name.)
 - **Achievements (greenfield):**
   - Model `achievement_model.dart`: `id, key, titleKey, descKey, icon/emoji, type, pointsAwarded,
     earnedAt`. Definitions live in a static catalog (code constant) — no remote config needed for v1.

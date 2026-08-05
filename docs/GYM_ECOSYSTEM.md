@@ -1,14 +1,26 @@
 # GYM_ECOSYSTEM.md — Gyms, Attendance & Gym Communities
 
 > The gym side of the three-sided marketplace: gym profiles, membership, check-in, branded
-> communities, and analytics.
+> communities, presence/geofencing, and analytics.
 >
-> ⚠️ **Deferred to M6** (ADR-012). ~11 screens exist and stay in the codebase behind
-> `AppConfigService.isFeatureEnabled` kill-switches — **not deleted**. This document describes how it
-> is built; it makes no claim that it runs. Status: [`../PROJECT_STATE.md`](../PROJECT_STATE.md).
+> **Built and live in the shipped client — this is not deferred or kill-switched off today.**
+> ADR-012 (2026-07-31, [`../DECISIONS.md`](../DECISIONS.md)) planned to gate gym/coach/programs
+> behind `AppConfigService.isFeatureEnabled` kill-switches and hold public launch for M6. In the
+> code as it stands: the switch (`FeatureFlags.gym`, `lib/core/utils/feature_flags.dart`) defaults
+> to **enabled** — `AppConfig.isFeatureEnabled` (`app_config_model.dart`) returns `true` for any key
+> with no explicit admin override — and it now gates the real entry points a user would actually
+> reach this from (side menu, Discover hub, quick-actions sheet, the home role card). Nothing in
+> this codebase indicates an admin has ever set `app_config/global.features.gym = false`. Whole new
+> gym subsystems (presence/geofence auto check-in, invite-code attribution + revenue share) were
+> designed and shipped well *after* ADR-012's cut date — the build never actually paused. Read "M6"
+> below as the remaining **go-to-market** milestone (pilot with 5–10 real gyms, close the
+> live-traffic/hardware verification gaps this doc calls out) rather than a technical
+> unavailability. Status: [`../PROJECT_STATE.md`](../PROJECT_STATE.md).
 >
 > **Owns:** `lib/screens/gym/`, `gym_service.dart`, `gym_leaderboard_service.dart`,
-> `gym_analytics_service.dart`, `gym_application_service.dart`, `gym_post_service.dart`.
+> `gym_analytics_service.dart`, `gym_application_service.dart`, `gym_post_service.dart`,
+> `gym_presence_service.dart`, `geofence_service.dart`, and `consent_service.dart`'s
+> `ConsentPurpose.gymPresence` path.
 
 ---
 
@@ -16,8 +28,11 @@
 
 A consumer nutrition tracker competes with a dozen apps. A platform that also serves **gyms** and
 **coaches** is a three-sided marketplace those trackers don't attempt — the most strategically
-valuable asset in this codebase. That is precisely why it launches *after* the consumer product
-proves retention, not alongside an unvalidated one.
+valuable asset in this codebase. ADR-012's original reasoning was to sequence its *public
+go-to-market* — real pilots, marketing — after the consumer product proves retention, rather than
+launching commercially alongside an unvalidated one. That sequencing decision, not a code gate, is
+what "M6" still refers to (see the banner above): engineering on this domain never actually
+stopped, and it's reachable in the app today.
 
 ---
 

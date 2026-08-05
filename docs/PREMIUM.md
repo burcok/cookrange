@@ -153,6 +153,11 @@ Applying a code calls the **`applyReferral`** callable, which server-validates n
 one-per-account, and `max_uses`, then grants a **7-day premium trial to both parties** and writes the
 commission entry. Deep-linkable and shareable via `SharingService`.
 
+> This is the **personal / coach-vanity code** path. A `type:'gym'` code (Faz 6 §6.1) is a different
+> mechanism entirely — redeeming one writes a `gym_attributions/{uid}` record instead of granting
+> either party a trial, and its own commission (`gymPremiumShare`) only accrues after a later, real
+> store purchase. See [`GYM_ECOSYSTEM.md`](GYM_ECOSYSTEM.md) §9.
+
 **Coach commissions** (₺5 per premium referral, plus session/program commissions) are tracked by
 `CommissionService` and surfaced in the affiliate earnings screen.
 
