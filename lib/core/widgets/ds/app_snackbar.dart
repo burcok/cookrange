@@ -46,7 +46,7 @@ class AppSnackBar {
             ? SnackBarAction(
                 label: actionLabel,
                 onPressed: onAction ?? () {},
-                textColor: Colors.transparent,
+                textColor: _accentColor(AppPalette.of(context), variant),
               )
             : null,
       ),
@@ -81,6 +81,18 @@ class AppSnackBar {
           {String? actionLabel, VoidCallback? onAction}) =>
       show(context,
           message: message, actionLabel: actionLabel, onAction: onAction);
+
+  /// Same per-variant accent used for the icon in [_AppSnackBarContent] —
+  /// shared so the action button's `textColor` (previously hardcoded to
+  /// `Colors.transparent`, making any `actionLabel` invisible) matches it
+  /// instead of needing its own color decision.
+  static Color _accentColor(AppPalette palette, AppSnackBarVariant variant) =>
+      switch (variant) {
+        AppSnackBarVariant.success => palette.success,
+        AppSnackBarVariant.error => palette.error,
+        AppSnackBarVariant.warning => palette.warning,
+        AppSnackBarVariant.info => palette.info,
+      };
 }
 
 class _AppSnackBarContent extends StatelessWidget {

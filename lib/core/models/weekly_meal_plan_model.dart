@@ -11,6 +11,14 @@ class WeeklyMealPlanModel {
   final double avgDailyCalories;
   final Map<String, double> avgMacros;
 
+  // Faz 3 §3.4: fiber, summed/averaged by PlanNutritionCalculator alongside
+  // calories/macros. Optional + defaulted to 0 (not `required`) so every
+  // pre-existing plan doc (and AI-generation call site, which doesn't
+  // source fiber from the LLM response) keeps parsing/constructing
+  // unchanged — only a post-swap recompute actually populates a real value.
+  final double totalFiber;
+  final double avgDailyFiber;
+
   // Caching Metadata
   final DateTime createdAt;
   final DateTime? regeneratedAt;
@@ -29,6 +37,8 @@ class WeeklyMealPlanModel {
     required this.totalCalories,
     required this.avgDailyCalories,
     required this.avgMacros,
+    this.totalFiber = 0.0,
+    this.avgDailyFiber = 0.0,
     required this.createdAt,
     this.regeneratedAt,
     required this.expiresAt,
@@ -58,6 +68,8 @@ class WeeklyMealPlanModel {
       avgMacros: (json['avg_macros'] as Map).map(
         (k, v) => MapEntry(k.toString(), (v as num).toDouble()),
       ),
+      totalFiber: (json['total_fiber'] as num?)?.toDouble() ?? 0.0,
+      avgDailyFiber: (json['avg_daily_fiber'] as num?)?.toDouble() ?? 0.0,
       createdAt: (json['created_at'] as Timestamp).toDate(),
       regeneratedAt: json['regenerated_at'] != null
           ? (json['regenerated_at'] as Timestamp).toDate()
@@ -78,6 +90,8 @@ class WeeklyMealPlanModel {
       'total_calories': totalCalories,
       'avg_daily_calories': avgDailyCalories,
       'avg_macros': avgMacros,
+      'total_fiber': totalFiber,
+      'avg_daily_fiber': avgDailyFiber,
       'created_at': Timestamp.fromDate(createdAt),
       'regenerated_at':
           regeneratedAt != null ? Timestamp.fromDate(regeneratedAt!) : null,
@@ -97,12 +111,17 @@ class DayMealPlan {
   final double totalCalories;
   final Map<String, double> macros;
 
+  // Faz 3 §3.4: optional, defaulted — see WeeklyMealPlanModel.totalFiber's
+  // doc comment for why this isn't `required`.
+  final double fiber;
+
   DayMealPlan({
     required this.date,
     required this.dayName,
     required this.meals,
     required this.totalCalories,
     required this.macros,
+    this.fiber = 0.0,
   });
 
   factory DayMealPlan.fromJson(Map<String, dynamic> json) {
@@ -114,6 +133,7 @@ class DayMealPlan {
       macros: (json['macros'] as Map).map(
         (k, v) => MapEntry(k.toString(), (v as num).toDouble()),
       ),
+      fiber: (json['fiber'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -124,6 +144,7 @@ class DayMealPlan {
       'meals': meals,
       'total_calories': totalCalories,
       'macros': macros,
+      'fiber': fiber,
     };
   }
 }

@@ -66,6 +66,7 @@ class AdminPanelScreen extends StatelessWidget {
       // Standalone sections own their screens and never route through here.
       case AdminSection.reports:
       case AdminSection.privacy:
+      case AdminSection.moderationAppeals:
       case AdminSection.users:
       case AdminSection.dishes:
       case AdminSection.cost:

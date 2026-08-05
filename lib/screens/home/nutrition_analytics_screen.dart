@@ -12,6 +12,8 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/repositories/food_log_repository.dart';
+import '../../core/services/feature_gate_service.dart';
+import '../../core/services/food_log_service.dart';
 import '../../core/services/nutrition_analytics_service.dart';
 import '../../core/utils/calorie_calculator.dart';
 import '../../core/widgets/ds/ds.dart';
@@ -38,6 +40,16 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
   bool _loading = true;
   double _targetCalories = 2000;
 
+  // Faz 5 §5.4 — Entitlements.advancedTrends: the free weekly summary above
+  // stays exactly as-is; this is a NEW, additive 30-day view (nothing free
+  // users had before is removed). Null until first requested; `_loadingTrend`
+  // covers the fetch; `_trendUnlocked` records that the gate already passed
+  // this screen visit so re-expanding doesn't re-show the paywall sheet.
+  WeeklyNutritionSummary? _trendSummary;
+  bool _loadingTrend = false;
+  bool _trendUnlocked = false;
+  bool _trendExpanded = false;
+
   late final AnimationController _animController;
   late final Animation<double> _barAnim;
 
@@ -62,6 +74,19 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
   Future<void> _load() async {
     final user = context.read<UserProvider>().user;
     if (user == null) return;
+
+    // Faz 5 §5.4 — Entitlements.nutritionAnalytics is `true` for every tier
+    // ("free feature" per that getter's own doc comment) — this call never
+    // blocks anyone today. It's the single, correct entry point for this
+    // screen's core feature so the getter isn't dead scaffolding, and so a
+    // future change to that business rule has exactly one place to take
+    // effect, matching FeatureGateService's documented "single entry point"
+    // contract (see feature_gate_service.dart).
+    if (!await FeatureGateService()
+        .check(context, (e) => e.nutritionAnalytics)) {
+      return;
+    }
+    if (!mounted) return;
 
     final profile = user.profile;
     final bmr = CalorieCalculator.calculateBMR(
@@ -91,6 +116,61 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
       _loading = false;
     });
     unawaited(_animController.forward());
+  }
+
+  /// Faz 5 §5.4 — "detaylı analitik" (docs/PREMIUM.md §1 "Full nutrition
+  /// analytics history"), gated on Entitlements.advancedTrends. Free users
+  /// keep the full weekly summary above unchanged; this is a NEW,
+  /// additive 30-day view reusing `NutritionAnalyticsService.
+  /// computeWeeklySummary` — that method is generic over whatever date-keyed
+  /// log map it's given (see its own body: no assumption of exactly 7
+  /// entries), so no new aggregation logic is needed, only a wider fetch
+  /// (`FoodLogService.getLogsForDateRange`, the same 30-day call
+  /// `AiInsightService.generateFitnessTwin` already uses).
+  Future<void> _toggleTrend() async {
+    if (_trendExpanded) {
+      setState(() => _trendExpanded = false);
+      return;
+    }
+    if (_trendUnlocked && _trendSummary != null) {
+      setState(() => _trendExpanded = true);
+      return;
+    }
+
+    final user = context.read<UserProvider>().user;
+    if (user == null) return;
+    if (!await FeatureGateService().check(
+      context,
+      (e) => e.advancedTrends,
+      featureName: AppLocalizations.of(context)
+          .translate('analytics.trend_paywall_title'),
+      featureDescription: AppLocalizations.of(context)
+          .translate('analytics.trend_paywall_desc'),
+    )) {
+      return;
+    }
+    if (!mounted) return;
+
+    setState(() => _loadingTrend = true);
+    try {
+      final now = DateTime.now();
+      final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+      final logs = await FoodLogService()
+          .getLogsForDateRange(user.uid, thirtyDaysAgo, now);
+      if (!mounted) return;
+      final summary =
+          _analyticsService.computeWeeklySummary(logs, _targetCalories);
+      setState(() {
+        _trendSummary = summary;
+        _trendUnlocked = true;
+        _trendExpanded = true;
+        _loadingTrend = false;
+      });
+    } catch (e) {
+      debugPrint('NutritionAnalyticsScreen._toggleTrend error: $e');
+      if (!mounted) return;
+      setState(() => _loadingTrend = false);
+    }
   }
 
   @override
@@ -179,7 +259,110 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
           _buildStatCards(l10n, palette, t, primary, summary),
           SizedBox(height: AppSpacing.md.h),
           _buildBarChart(l10n, palette, t, primary, summary),
+          SizedBox(height: AppSpacing.md.h),
+          _buildTrendSection(l10n, palette, t, primary),
           SizedBox(height: AppSpacing.xl.h),
+        ],
+      ),
+    );
+  }
+
+  /// Faz 5 §5.4 — premium-exclusive 30-day trend, additive to (never a
+  /// replacement for) the free weekly view above. See [_toggleTrend].
+  Widget _buildTrendSection(
+      AppLocalizations l10n, AppPalette palette, AppText t, Color primary) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(AppSpacing.lg.r),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card.r),
+        boxShadow: [
+          BoxShadow(
+            color: palette.shadow.withValues(alpha: AppElevation.opacityLight),
+            blurRadius: AppElevation.blurMd,
+            offset: AppElevation.offsetMd,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: _loadingTrend ? null : _toggleTrend,
+            borderRadius: BorderRadius.circular(AppRadius.card.r),
+            child: Row(
+              children: [
+                Icon(Icons.workspace_premium_rounded,
+                    size: AppSize.iconSm.sp, color: primary),
+                SizedBox(width: AppSpacing.xs.w),
+                Expanded(
+                  child: Text(
+                    l10n.translate('analytics.trend_30day_title'),
+                    style: t.titleL,
+                  ),
+                ),
+                if (_loadingTrend)
+                  SizedBox(
+                    width: 18.r,
+                    height: 18.r,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: primary),
+                  )
+                else
+                  Icon(
+                    _trendExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: palette.textTertiary,
+                  ),
+              ],
+            ),
+          ),
+          if (!_trendExpanded)
+            Padding(
+              padding: EdgeInsets.only(top: AppSpacing.xxs.h),
+              child: Text(
+                l10n.translate('analytics.trend_30day_subtitle'),
+                style: t.labelS.copyWith(color: palette.textSecondary),
+              ),
+            ),
+          if (_trendExpanded && _trendSummary != null) ...[
+            SizedBox(height: AppSpacing.md.h),
+            if (_trendSummary!.loggedDays == 0)
+              Text(l10n.translate('analytics.no_data'), style: t.bodyM)
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: _TrendStat(
+                      label: l10n.translate('analytics.avg_calories'),
+                      value:
+                          '${_trendSummary!.avgCalories.round()} ${l10n.translate('analytics.kcal')}',
+                      t: t,
+                      palette: palette,
+                    ),
+                  ),
+                  Expanded(
+                    child: _TrendStat(
+                      label: l10n.translate('analytics.consistency_score'),
+                      value: '${_trendSummary!.consistencyScore}',
+                      t: t,
+                      palette: palette,
+                    ),
+                  ),
+                  Expanded(
+                    child: _TrendStat(
+                      label:
+                          l10n.translate('analytics.trend_days_logged_label'),
+                      value: '${_trendSummary!.loggedDays}/30',
+                      t: t,
+                      palette: palette,
+                    ),
+                  ),
+                ],
+              ),
+          ],
         ],
       ),
     );
@@ -404,6 +587,33 @@ class _NutritionAnalyticsScreenState extends State<NutritionAnalyticsScreen>
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One label/value pair inside the 30-day trend card ([_buildTrendSection]).
+class _TrendStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final AppText t;
+  final AppPalette palette;
+
+  const _TrendStat({
+    required this.label,
+    required this.value,
+    required this.t,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(value, style: t.titleL),
+        SizedBox(height: AppSpacing.xxxs.h),
+        Text(label, style: t.labelS.copyWith(color: palette.textSecondary)),
+      ],
     );
   }
 }

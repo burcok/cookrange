@@ -15,6 +15,11 @@ consent at any time**.
   AI insights;
 - **Location data:** processing your location in "gyms near me" and GPS check-in to sort gyms and verify
   your presence (this location is not stored on our servers);
+- **Gym presence detection (separate consent):** unlike the items above, your consent for this
+  processing is given not by starting to use the feature, but only by tapping "Allow" on its own
+  dedicated screen — processing your location for automatic background entry/exit detection at the
+  boundary of a gym you're a member of (your latitude/longitude is never sent to or stored on our
+  servers; only the gym's name and your entry/exit time are stored);
 - **AI processing:** sending your prompts and relevant profile context to our AI provider (OpenRouter)
   to generate results;
 - **International transfer:** processing your data on the overseas servers of providers such as Google

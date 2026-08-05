@@ -489,6 +489,9 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                                   final shouldShare =
                                                       shareToComm;
                                                   final recipe = widget.recipe;
+                                                  final l10n =
+                                                      AppLocalizations.of(
+                                                          context);
                                                   try {
                                                     final uid = FirebaseAuth
                                                         .instance
@@ -502,9 +505,28 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                                             selectedMealType,
                                                         recipe: recipe,
                                                       );
+                                                      // Sharing is
+                                                      // deliberately allowed
+                                                      // to fail independently
+                                                      // of the log above —
+                                                      // "cooking.share_error"
+                                                      // says as much
+                                                      // ("meal still
+                                                      // logged"). Awaited
+                                                      // (not fire-and-forget)
+                                                      // so that promise can
+                                                      // actually be shown
+                                                      // before this sheet's
+                                                      // context goes away —
+                                                      // previously it was
+                                                      // `unawaited`, so a
+                                                      // share failure was
+                                                      // both unreported to
+                                                      // the user AND
+                                                      // unlogged.
                                                       if (shouldShare) {
-                                                        unawaited(
-                                                          CommunityService()
+                                                        try {
+                                                          await CommunityService()
                                                               .createPost(
                                                             caption.isEmpty
                                                                 ? recipe.title
@@ -533,8 +555,27 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                                                     recipe
                                                                         .imageUrl,
                                                             },
-                                                          ),
-                                                        );
+                                                          );
+                                                          if (mounted &&
+                                                              ctx.mounted) {
+                                                            AppSnackBar.success(
+                                                              ctx,
+                                                              l10n.translate(
+                                                                  'cooking.share_success'),
+                                                            );
+                                                          }
+                                                        } catch (e) {
+                                                          debugPrint(
+                                                              'CookingModeScreen: createPost failed: $e');
+                                                          if (mounted &&
+                                                              ctx.mounted) {
+                                                            AppSnackBar.error(
+                                                              ctx,
+                                                              l10n.translate(
+                                                                  'cooking.share_error'),
+                                                            );
+                                                          }
+                                                        }
                                                       }
                                                     }
                                                     if (mounted &&
@@ -542,10 +583,17 @@ class _CookingModeScreenState extends State<CookingModeScreen>
                                                       sheetNav.pop();
                                                       nav.pop();
                                                     }
-                                                  } catch (_) {
+                                                  } catch (e) {
+                                                    debugPrint(
+                                                        'CookingModeScreen: logRecipe failed: $e');
                                                     if (ctx.mounted) {
                                                       setSheetState(() =>
                                                           isLogging = false);
+                                                      AppSnackBar.error(
+                                                        ctx,
+                                                        l10n.translate(
+                                                            'errors.general'),
+                                                      );
                                                     }
                                                   }
                                                 },

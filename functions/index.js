@@ -52,8 +52,12 @@ const RATE_WINDOW_MS = 60 * 1000;
 const RATE_MAX_IN_WINDOW = 12;
 
 // Query-type allowlist for usage logging (client-supplied `type`, defaulted).
+// 'coach_report' — Faz 4 §4.2: generateMemberProgressSummary (functions/
+// summaries.js) tags its AI calls with this so cost attribution buckets them
+// separately from 'other' instead of silently falling into it (confirmed:
+// this entry was missing before this change).
 const ALLOWED_TYPES = new Set([
-  'meal_plan', 'recipe', 'insight', 'weekly_recap', 'food_photo', 'chat', 'other',
+  'meal_plan', 'recipe', 'insight', 'weekly_recap', 'food_photo', 'chat', 'coach_report', 'other',
 ]);
 
 // Per-model price in USD per 1,000,000 tokens (input / output). Approximate
@@ -486,6 +490,8 @@ const TYPE_TO_MUTE_GROUP = {
   streakAtRisk: 'reminders',
   weeklyPlanReady: 'reminders',
   gymWarEnded: 'system',
+  friendAtGym: 'presence',
+  progressShareInviteRequested: 'system',
 };
 
 /**
@@ -578,6 +584,17 @@ function getPushText(type, actorName, metadata, locale, customTitle, customBody)
         ? { title: `Yeni başarım: ${achName} 🏅`, body: desc }
         : { title: `New achievement: ${achName} 🏅`, body: desc };
     }
+    case 'levelUp': {
+      // Faz 5 §5.1 — mirrors achievementEarned's push treatment exactly,
+      // including its absence from TYPE_TO_MUTE_GROUP above: a level-up is
+      // a rare, big celebration moment, always shown, same as an
+      // achievement unlock.
+      const level = (metadata && metadata.level) || '';
+      const xp = (metadata && metadata.xp) || 0;
+      return tr
+        ? { title: `Seviye ${level}'e ulaştın! 🎖️`, body: `Toplam ${xp} XP topladın.` }
+        : { title: `You reached Level ${level}! 🎖️`, body: `You've earned ${xp} XP in total.` };
+    }
     case 'mealReminder':
       return tr
         ? { title: '🍽 Öğününü kaydetme zamanı!', body: 'Beslenme hedeflerinde kalmak için yediklerini takip et' }
@@ -601,6 +618,36 @@ function getPushText(type, actorName, metadata, locale, customTitle, customBody)
         : `Ended ${myScore}-${otherScore} in check-ins.`;
       return { title: won ? wonTitle : lostTitle, body };
     }
+    case 'friendAtGym': {
+      const gymName = (metadata && metadata.gymName) || (tr ? 'salonda' : 'the gym');
+      return tr
+        ? { title: `${name} şu an ${gymName} salonunda`, body: '' }
+        : { title: `${name} is at ${gymName} right now`, body: '' };
+    }
+    case 'progressShareInviteRequested': {
+      // Gym scope: the business name (metadata.gymName) is what the member
+      // recognizes, not the owner's personal displayName. Coach scope: the
+      // coach IS an individual, so `name` (actorName) is already correct.
+      const who = (metadata && metadata.gymName) || name;
+      return tr
+        ? {
+            title: `${who} ilerlemeni paylaşmanı istiyor`,
+            body: 'İlerleme paylaşımını Rıza Merkezi\'nden açabilirsin.',
+          }
+        : {
+            title: `${who} would like you to share your progress`,
+            body: 'You can turn on progress sharing from the Consent Center.',
+          };
+    }
+    case 'gymAttribution':
+      // Faz 6 §6.5 — sent to the GYM OWNER when their invite code is
+      // redeemed. Deliberately generic, exactly like 'referral' above never
+      // names the redeemer either — "bireysel kullanıcı kimliği salona
+      // gitmez" (individual identity never reaches the gym) applies to push
+      // text too, not just the in-app feed.
+      return tr
+        ? { title: 'Yeni bir kayıt! 🎉', body: 'Davet kodunla biri Cookrange\'e katıldı.' }
+        : { title: 'New sign-up! 🎉', body: 'Someone joined Cookrange using your invite code.' };
     case 'system':
       // Admin free-text message (sendAdminNotification's 'system' branch)
       // carries its own title/body — always shown verbatim, no locale switch,
@@ -712,8 +759,83 @@ exports.onInAppNotificationCreated = functions
   });
 
 /**
- * Firestore trigger: sends a push notification to every chat participant
- * (excluding the sender) whenever a new message is created.
+ * Resolves who should be fanned out to (push + unreadCounts) for a new
+ * message in [chatId], excluding [senderId].
+ *
+ * Faz 2 §2.4 fix: a group-backed chat's `participants` array holds ONLY the
+ * group's owner — see `CommunityGroupService.createGroup`'s doc comment —
+ * because it's set once at chat-creation time and never touched again by
+ * `joinGroup`/`approveJoinRequest`/`redeemGroupInvite`/`kickMember`/
+ * `banMember` (all of those write `community_groups/{groupId}/members`, not
+ * this chat doc). Before this fix, every one of those real members had no
+ * key in `unreadCounts` at all and never received a push — the group's
+ * owner (or whoever else happened to still be in that stale array) was the
+ * ONLY recipient, for every group/gym chat.
+ *
+ * The fix sources recipients from the SAME place firestore.rules'
+ * `canAccessGroupChat()` already treats as authoritative for group-chat
+ * access — the `members` subcollection — rather than trying to keep
+ * `participants` in sync at every membership-change call site. That
+ * alternative was rejected: `canUpdateChatMeta()` in firestore.rules already
+ * makes `participants` client-immutable on purpose (Faz 2 §2.1, closing a
+ * chat-hijack hole), so keeping it "correct" for groups would mean either
+ * punching a hole back through that rule or funnelling every join/leave/
+ * kick/ban/invite-redeem through a new server path — for a value this
+ * function can already read directly, with zero rules risk, via the Admin
+ * SDK (which bypasses rules entirely). A banned member is excluded (they've
+ * lost `canAccessGroupChat()` and can't open the chat); a muted member is
+ * NOT excluded (`muted_until` only blocks posting, never reading).
+ *
+ * No `.limit()` on the members query, deliberately: this is a full
+ * membership enumeration required for fan-out correctness (miss one and
+ * that member silently never gets notified — the exact silent-exclusion
+ * class this codebase's own query-cap convention exists to avoid elsewhere),
+ * not a UI page: cost is O(group size) either way, the same order as the
+ * FCM/unread work already done per-recipient below. `.select('banned')`
+ * limits the read to that one field per doc (the uid is the doc id already).
+ */
+async function resolveChatRecipients(chatId, chatData, senderId) {
+  const groupId = chatData.groupId;
+  if (groupId) {
+    const membersSnap = await admin.firestore()
+      .collection('community_groups').doc(groupId).collection('members')
+      .select('banned')
+      .get();
+    return membersSnap.docs
+      .filter((d) => d.data().banned !== true)
+      .map((d) => d.id)
+      .filter((uid) => uid !== senderId);
+  }
+  const participants = chatData.participants || [];
+  return participants.filter((p) => p !== senderId);
+}
+
+/**
+ * Firestore trigger: on every new `chats/{chatId}/messages/{msgId}` doc,
+ * (1) fans out a push notification to every other real recipient, and
+ * (2) increments `chats/{chatId}.unreadCounts` for every recipient.
+ *
+ * Faz 2 §2.1: (2) is new — unreadCounts increments moved here (server-only)
+ * so a participant can never forge their own or anyone else's count;
+ * `ChatService.sendMessage` no longer touches unreadCounts at all, and
+ * `ChatService.markChatAsRead` may only ever zero its OWN key
+ * (firestore.rules' canMarkOwnUnreadZero()). Both this function and that
+ * client write share this same chat doc but never the same field-write, so
+ * there's no double-counting.
+ *
+ * Faz 2 §2.4: "recipients" is no longer just `chatData.participants` — see
+ * `resolveChatRecipients`'s doc comment for the group-chat gap this closes.
+ * This is also what makes `ChatService.getUnreadMessageCountStream` (the
+ * plan's "sunucu tarafı toplam okunmamış sayacı") correct for group/gym
+ * chats, not just DMs: that stream just sums `unreadCounts[uid]` across the
+ * caller's chats, so once this function populates a real key for every real
+ * member, the sum is automatically right — no client-side change needed.
+ *
+ * `msg.body` replaces the old `msg.text` read for the push preview (the v2
+ * schema renamed the field) — `msg.text` is kept as a fallback purely so a
+ * pre-migration doc (impossible to actually hit here, since onCreate only
+ * ever fires for brand-new docs, but kept defensive/cheap) never regresses
+ * to a blank preview.
  */
 exports.onChatMessageCreated = functions
   .firestore
@@ -722,13 +844,21 @@ exports.onChatMessageCreated = functions
     const chatId = context.params.chatId;
     const msg = snap.data();
     const senderId = msg.senderId;
-    const text = (msg.text || '').slice(0, 100);
+    const text = (msg.body || msg.text || '').slice(0, 100);
     if (!senderId) return;
 
-    // Fetch chat doc to get participants list
     const chatSnap = await admin.firestore().collection('chats').doc(chatId).get();
     if (!chatSnap.exists) return;
-    const participants = chatSnap.data().participants || [];
+    const chatData = chatSnap.data();
+
+    const recipients = await resolveChatRecipients(chatId, chatData, senderId);
+    if (!recipients.length) return;
+
+    // Faz 2 §2.1: server-only unreadCounts increment — see doc comment above.
+    const unreadIncrements = {};
+    for (const uid of recipients) {
+      unreadIncrements[`unreadCounts.${uid}`] = admin.firestore.FieldValue.increment(1);
+    }
 
     // Fetch sender display name (one extra read; cached inside Promises below)
     const senderSnap = await admin.firestore().collection('users').doc(senderId).get();
@@ -736,21 +866,23 @@ exports.onChatMessageCreated = functions
       ? (senderSnap.data().displayName || 'Someone')
       : 'Someone';
 
-    const recipients = participants.filter((p) => p !== senderId);
-    if (!recipients.length) return;
+    await Promise.all([
+      admin.firestore().collection('chats').doc(chatId).update(unreadIncrements),
+      ...recipients.map(async (uid) => {
+        const token = await getFcmToken(admin.firestore(), uid);
+        if (!token) return;
 
-    await Promise.all(recipients.map(async (uid) => {
-      const token = await getFcmToken(admin.firestore(), uid);
-      if (!token) return;
+        await sendFcm(uid, token, senderName, text || '📷 Image', {
+          type: 'chat',
+          chatId,
+          actorUid: senderId,
+        });
+      }),
+    ]);
 
-      await sendFcm(uid, token, senderName, text || '📷 Image', {
-        type: 'chat',
-        chatId,
-        actorUid: senderId,
-      });
-    }));
-
-    functions.logger.info('onChatMessageCreated', { chatId, recipients: recipients.length });
+    functions.logger.info('onChatMessageCreated', {
+      chatId, recipients: recipients.length, groupBacked: !!chatData.groupId,
+    });
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -967,8 +1099,15 @@ exports.streakAtRiskNotifier = functions
     const db = admin.firestore();
     const today = todayKey();
 
+    // Faz 0 (found during N1 PII migration, fixed separately to keep that
+    // change scoped): was querying a top-level `streak` field that no user
+    // document has ever had — the real field is nested at
+    // onboarding_data.streak (firestore_service.dart's handleUserLogin
+    // writes it via dot-notation). Firestore excludes any doc missing the
+    // field used in a where()/orderBy(), so this always returned an empty
+    // snapshot — the cron has silently never sent a single notification.
     const usersSnap = await db.collection('users')
-      .where('streak', '>', 0)
+      .where('onboarding_data.streak', '>', 0)
       .limit(500)
       .get();
 
@@ -1013,8 +1152,15 @@ exports.streakAtRiskNotifier = functions
 /**
  * Weekly cron: every Monday at 07:00 UTC.
  *
- * Notifies all users (up to 500 for MVP) that a new week has started and their
- * weekly meal plan is ready to regenerate. Respects the `reminders` mute
+ * Notifies users who have actually generated a weekly meal plan at least
+ * once (up to 500 for MVP) that their plan is ready. Queries
+ * `meal_plan_generated == true` (set by `meal_plan_generation_screen.dart`
+ * on first real generation) — NOT `onboarding_completed`, which a user can
+ * satisfy without ever generating a plan. The push copy itself says
+ * "Haftalık yemek planın hazır" / "Your weekly meal plan is ready" — a
+ * definite, present-tense claim, so sending it to someone with no plan at
+ * all would be sending a false notification (found during a docs
+ * reconciliation pass, Faz 15 §15.1). Respects the `reminders` mute
  * preference.
  */
 exports.weeklyPlanReadyNotifier = functions
@@ -1025,7 +1171,7 @@ exports.weeklyPlanReadyNotifier = functions
     const db = admin.firestore();
 
     const usersSnap = await db.collection('users')
-      .where('onboarding_completed', '==', true)
+      .where('meal_plan_generated', '==', true)
       .limit(500)
       .get();
 
@@ -1155,6 +1301,7 @@ exports.playRtdn = purchases.playRtdn;
 
 const economy = require('./economy');
 exports.applyReferral = economy.applyReferral;
+exports.previewReferralCode = economy.previewReferralCode;
 
 const account = require('./account');
 exports.deleteUserAccount = account.deleteUserAccount;
@@ -1184,3 +1331,70 @@ exports.searchUsersByEmail = social.searchUsersByEmail;
 
 const gym = require('./gym');
 exports.validateGymCheckin = gym.validateGymCheckin;
+
+const presence = require('./presence');
+exports.recordPresenceEvent = presence.recordPresenceEvent;
+exports.closeStalePresenceSessions = presence.closeStalePresenceSessions;
+exports.onGymPresenceCreated = presence.onGymPresenceCreated;
+
+const groups = require('./groups');
+exports.redeemGroupInvite = groups.redeemGroupInvite;
+exports.computeGroupActivityScores = groups.computeGroupActivityScores;
+exports.seedOfficialGroups = groups.seedOfficialGroups;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Meal plan templates (Faz 3 §3.2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const templates = require('./templates');
+exports.sendPlanOffer = templates.sendPlanOffer;
+exports.onPlanOfferResponded = templates.onPlanOfferResponded;
+exports.expirePlanOffers = templates.expirePlanOffers;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Automated moderation (Faz 2 §2.6)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const moderation = require('./moderation');
+exports.onReportCreated = moderation.onReportCreated;
+exports.onGroupModerationActionCreated = moderation.onGroupModerationActionCreated;
+exports.onModerationAppealCreated = moderation.onModerationAppealCreated;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Progress-sharing summaries (Faz 4 §4.1/§4.2)
+// ─────────────────────────────────────────────────────────────────────────────
+// summaries.js is a FACTORY (not a plain trigger object) so it can reuse the
+// aiProxy quota/cost helpers already defined above (getAppConfig, isPremium,
+// enforceRateLimitAndQuota, rollbackConsume, recordUsage) by direct
+// reference — no duplication of that "SECURITY MODEL (do not regress)"
+// block, no circular require. See functions/summaries.js's header comment.
+
+const createSummariesModule = require('./summaries');
+const summaries = createSummariesModule({
+  getAppConfig, isPremium, enforceRateLimitAndQuota, rollbackConsume, recordUsage,
+  DEFAULT_MODEL, OPENROUTER_URL,
+});
+exports.generateMemberProgressSummary = summaries.generateMemberProgressSummary;
+exports.onProgressSharingWrite = summaries.onProgressSharingWrite;
+exports.expireMemberProgressSummaries = summaries.expireMemberProgressSummaries;
+// Faz 4 §4.3
+exports.sendProgressShareInvite = summaries.sendProgressShareInvite;
+exports.getConsentingMemberUids = summaries.getConsentingMemberUids;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Received-engagement AI credit (Faz 5 §5.2) — distinct-account reaction/
+// like thresholds, template-usage credit (hooked from templates.js), and the
+// weekly group-contribution top-3 sweep. See engagement_credit.js's header
+// comment for the full data model and anti-abuse design.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const engagementCredit = require('./engagement_credit');
+exports.onPostReactionCreated = engagementCredit.onPostReactionCreated;
+exports.onCommentLikeCreated = engagementCredit.onCommentLikeCreated;
+exports.onGroupChatMessageCreatedForContribution = engagementCredit.onGroupChatMessageCreatedForContribution;
+exports.onGroupPostCreatedForContribution = engagementCredit.onGroupPostCreatedForContribution;
+exports.onGroupCommentCreatedForContribution = engagementCredit.onGroupCommentCreatedForContribution;
+exports.awardWeeklyGroupTop3 = engagementCredit.awardWeeklyGroupTop3;
+// Faz 5 §5.3 — denormalized group-contribution leaderboard (see
+// engagement_credit.js's header comment for the data model).
+exports.computeGroupContributionLeaderboards = engagementCredit.computeGroupContributionLeaderboards;

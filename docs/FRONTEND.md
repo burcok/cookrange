@@ -74,7 +74,8 @@
 ## 5. Community Tab
 | Screen | File | Route | Notes |
 |---|---|---|---|
-| Community | `community/community_screen.dart` | tab 1 | Feed; filters (Latest/Global/Friends/Following/Gym/Saved); topic chips; weekly highlights; `GlassPostCard`; filter-aware pagination |
+| Community | `community/community_screen.dart` | tab 1 | `ActiveGroupsSection` (Faz 2 §2.5 — most-active-today + city strip, replaces the old dead `getGroups()`-backed carousel) directly below the header; feed filters (Latest/Global/Friends/Following/Gym/Saved); topic chips; weekly highlights; `GlassPostCard`; filter-aware pagination |
+| Group Members | `community/groups/group_members_screen.dart` | push (groupId), from `GroupDetailScreen`'s people-icon action | Faz 2 §2.6: member list; owner/group-admin/site-admin kick/ban/mute/unmute/unban (reason prompt, mute duration chips) + moderation-history sheet + premium CSV export (`Entitlements.exportData`, Faz 5 §5.4). "Pending requests" section (this task) — Approve/Decline cards on `CommunityGroupService.getPendingJoinRequestsStream`/`approveJoinRequest`/`declineJoinRequest`, shown only when the group's `join_policy == 'request'` — was the last unwired piece of that flow; `GroupDetailScreen`'s Join button already handles the requesting side |
 | Post Detail | `community/post_detail_screen.dart` (~1650 LOC) | push (postId) | Full-screen image carousel (pinch-zoom), comments stream, draggable reactions, inline edit |
 | User Search | `community/user_search_screen.dart` | `userSearch` | Debounced (400ms) friend search + status |
 | Streak Squads | `community/streak_squad_screen.dart` | `streakSquads` | Create/join squads, leaderboard, mesh-glow |
@@ -103,8 +104,9 @@
 |---|---|---|---|
 | AI Chat | `chat/ai_chat_screen.dart` | `aiChat` | Nutrition coach chat, credit-gated, typing indicator, history singleton |
 | AI Fitness Twin | `ai/ai_fitness_twin_screen.dart` | push | 30/60/90-day projection; credit-gated; fade reveal |
-| Chat List | `chat/chat_list_screen.dart` | `chatList` | DM/group filters, power FAB (4 actions), search |
-| Chat Detail | `chat/chat_detail_screen.dart` | `chatDetail` | Messages, typing, image send, read status |
+| Chat List | `chat/chat_list_screen.dart` | `chatList` | Faz 2 §2.4 rebuild: segmented filter (All/Groups/Gym/DM via `ChatListSegment`, `AppFilterBar`) + independent Unread toggle, search (name + `lastMessage.body`, client-side over the loaded set), pin/archive/mute (per-user `chat_prefs`, pinned-first sort), swipe-to-archive (`Dismissible`, endToStart, toggle-then-snap-back), long-press action sheet (pin/archive/mute/delete), "Archived (N)" entry sheet, delete-for-me (hides until new activity reopens it). Filtering/sorting is the pure, unit-tested `ChatListFilter.apply`. Power FAB (4 actions) unchanged. Every string localized; the old hardcoded demo cards (Faz 0 §0.7) stay gone |
+| Chat Detail | `chat/chat_detail_screen.dart` | `chatDetail` | Faz 2 §2.2 rebuild on `lib/core/widgets/ds/chat/` components: cursor-paginated history (`ChatService.getMessagesPage`, live stream + "load more" on scroll), long-press context menu (reply/forward/copy/react/pin/star/edit/delete/report), swipe-to-reply, pinned-message banner, @mention autocomplete, multi-image attach (camera + `pickMultiImage`), in-chat search (bounded 300-message client-side scan), jump-to-date (`getMessagesAround`), group typing indicator (bounded name resolution), reduced-motion + haptics throughout |
+| Media Gallery | `chat/widgets/media_gallery_screen.dart` | push (from Chat Detail "···") | Faz 2 §2.2 — every image ever sent in a chat, cursor-paginated via the `messages(type,timestamp)` composite index (not just whatever's loaded in the main view); full-screen pinch-zoom viewer |
 | Notifications | `notifications/notification_screen.dart` | push | Filtered, paginated, auto-mark-read, glass refresh |
 | Leaderboard | `leaderboard/leaderboard_screen.dart` | push | Global/Friends tabs, current-user highlight |
 | Discover Hub | `discover/discover_hub_screen.dart` | `discover` | 2×2 grid (Gym/Coach/Programs/Leaderboard) + premium banner |
@@ -118,7 +120,7 @@
 ### Gym (`screens/gym/`) — role: gymOwner / member / consumer-applying
 | Screen | Purpose | Role |
 |---|---|---|
-| `gym_dashboard_screen.dart` | Setup CTA or active dashboard (stats grid, 6 quick actions, weekly attendance chart) | gymOwner |
+| `gym_dashboard_screen.dart` | Setup CTA or active dashboard (stats grid, 7 quick actions incl. meal-plan templates behind `FeatureFlags.mealPlanTemplates`, weekly attendance chart) | gymOwner |
 | `gym_setup_screen.dart` (~1880 LOC) | Create/edit gym (name, location, tags, logo, brand color) | gymOwner |
 | `gym_members_screen.dart` | Member list + details | gymOwner |
 | `gym_discovery_screen.dart` (~1280 LOC) | Browse gyms; city/district/sort filters | all |
@@ -134,7 +136,7 @@
 ### Coach (`screens/coach/`) — role: coach / consumer-applying
 | Screen | Purpose | Role |
 |---|---|---|
-| `coach_dashboard_screen.dart` | Setup CTA or dashboard (client stats, at-risk, active) | coach |
+| `coach_dashboard_screen.dart` | Setup CTA or dashboard (client stats, at-risk, active; meal-plan templates action behind `FeatureFlags.mealPlanTemplates`) | coach |
 | `coach_application_screen.dart` (~1135 LOC) | Multi-step apply (specializations, certs, references) | consumer |
 | `coach_application_pending_screen.dart` | Status (pending/approved/rejected/needsMoreInfo) | consumer |
 | `coach_profile_setup_screen.dart` | Profile completion (2-step) | coach |
@@ -142,6 +144,21 @@
 | `coach_discovery_screen.dart` (~1270 LOC) | Browse coaches; Top Coaches/Rising Stars; filters; rank badges | all |
 | `coach_clients_screen.dart` | Client roster (active/pending/completed) | coach |
 | `coach_client_detail_screen.dart` | Client workspace (progress, logs, AI report, rate coach) | coach |
+
+### Meal plan templates (`screens/meal_plan_templates/`) — Faz 3 §3.3, role: gym/coach
+Reached from the gym/coach dashboards above (both gated by the same
+`FeatureFlags.mealPlanTemplates`, independent of `gym`/`coach` themselves so template generation can be
+killed without taking down either dashboard).
+
+| Screen | Purpose | Role |
+|---|---|---|
+| `template_library_screen.dart` | Search/tag-filter the author's own `meal_plan_templates`; duplicate/export/delete; "+" opens the creator | gym/coach |
+| `template_creator_screen.dart` | ONE screen, 3 creation paths (AI-generate / from scratch / fork existing) that all converge into the same live editor: details form, day tabs w/ copy-paste, `TemplateNutritionPanel`, `TemplateAllergenPanel`, `TemplateDayEditor` | gym/coach |
+| `widgets/template_day_editor.dart` | One day's breakfast/lunch/dinner/snack sections; add/remove/replace via `DishPickerSheet`; reorder within a section via `ReorderableListView.onReorderItem` | — |
+| `widgets/dish_picker_sheet.dart` | Client-side dish search (name/category/tags) + free-text custom-food entry | — |
+| `widgets/template_nutrition_panel.dart` | Day/week toggle over `AppCalorieRing` + macro bars + `PlanNutritionCalculator.classifyDeviation`-driven colored badge | — |
+| `widgets/template_allergen_panel.dart` | Red-warning banner via `AllergenSafety`, checked against the signed-in author's own profile only — see the file's doc comment for why a per-member preview picker was investigated and NOT built (the data it would need lives in the owner-only `private/nutrition`, with no admin/coach override and no Faz 4 consent gate yet) | — |
+| `widgets/template_source_picker_sheet.dart` | Fork source picker: Mine / My gym's shared pool / Public, backed by `MealPlanTemplateService`'s three query shapes | — |
 
 ### Programs (`screens/programs/`)
 | Screen | Purpose | Role |

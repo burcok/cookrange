@@ -57,7 +57,16 @@ class Entitlements {
   bool get advancedTrends => tier.isPremiumOrAbove;
 
   // ─── Community ────────────────────────────────────────────────────────────
-  bool get groupChat => tier.isPremiumOrAbove;
+  /// Faz 5 §5.4: this getter predates Faz 2 (K5/K8), which shipped group
+  /// chat as a core, free-for-everyone retention feature ("WhatsApp seviyesi
+  /// sohbet") — `community_groups`' paired chat doc has no tier check
+  /// anywhere (`CommunityGroupService`/`firestore.rules`' `canAccessGroupChat()`
+  /// gate on membership only). Gating basic group-chat access behind
+  /// `premiumOrAbove` now would revoke something every free member already
+  /// has — a regression, not a paywall. Corrected to match shipped reality
+  /// (`docs/PREMIUM.md` §1: "Community, chat, streaks, achievements ✅ ✅")
+  /// rather than left at its stale, never-wired original value.
+  bool get groupChat => true;
   bool get verifiedBadge => tier.isPro;
 
   // ─── Export ───────────────────────────────────────────────────────────────

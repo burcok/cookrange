@@ -71,6 +71,35 @@ class PermissionService {
     return _showPrimer(context, type: _PermType.location);
   }
 
+  /// Faz 1 §1.2: requests "Always" location access for background gym
+  /// geofencing. Distinct from [showLocationPrimer] (foreground-only) — this
+  /// is a materially bigger ask, so it gets its own rationale copy, on top
+  /// of (not instead of) [GymPresenceConsentScreen]'s KVKK-level consent
+  /// screen, which the caller is expected to have already shown.
+  ///
+  /// On Android 10+, granting "Always" is a two-step OS flow: this may only
+  /// be able to get the foreground grant here, with "Allow all the time"
+  /// requiring a Settings redirect — [status.isGranted] afterwards tells the
+  /// caller which case happened.
+  Future<PermissionStatus> requestLocationAlways(BuildContext context) async {
+    final status = await Permission.locationAlways.status;
+    if (status.isGranted) return status;
+    if (status.isPermanentlyDenied) {
+      if (context.mounted) {
+        _showSettingsSheet(context, _PermType.locationAlways);
+      }
+      return status;
+    }
+    if (!context.mounted) return status;
+    final proceed = await _showPrimer(context, type: _PermType.locationAlways);
+    if (!proceed) return status;
+    final result = await Permission.locationAlways.request();
+    if (!result.isGranted && context.mounted && result.isPermanentlyDenied) {
+      _showSettingsSheet(context, _PermType.locationAlways);
+    }
+    return result;
+  }
+
   // ── Notifications ──────────────────────────────────────────────────────────
 
   /// Shows notification rationale primer (once only), then requests permission.
@@ -137,13 +166,14 @@ class PermissionService {
 
 // ── Enum helpers ────────────────────────────────────────────────────────────
 
-enum _PermType { camera, photos, location, notifications }
+enum _PermType { camera, photos, location, locationAlways, notifications }
 
 extension _PermTypeExt on _PermType {
   IconData get icon => switch (this) {
         _PermType.camera => Icons.camera_alt_rounded,
         _PermType.photos => Icons.photo_library_rounded,
         _PermType.location => Icons.location_on_rounded,
+        _PermType.locationAlways => Icons.fitness_center_rounded,
         _PermType.notifications => Icons.notifications_rounded,
       };
 
@@ -151,6 +181,7 @@ extension _PermTypeExt on _PermType {
         _PermType.camera => AppPalette.of(context).info,
         _PermType.photos => AppPalette.of(context).success,
         _PermType.location => AppPalette.of(context).warning,
+        _PermType.locationAlways => AppPalette.of(context).warning,
         _PermType.notifications => Theme.of(context).primaryColor,
       };
 
@@ -158,6 +189,7 @@ extension _PermTypeExt on _PermType {
         _PermType.camera => 'permission.camera.title',
         _PermType.photos => 'permission.photos.title',
         _PermType.location => 'permission.location.title',
+        _PermType.locationAlways => 'permission.location_always.title',
         _PermType.notifications => 'permission.notifications.title',
       };
 
@@ -165,6 +197,7 @@ extension _PermTypeExt on _PermType {
         _PermType.camera => 'permission.camera.rationale',
         _PermType.photos => 'permission.photos.rationale',
         _PermType.location => 'permission.location.rationale',
+        _PermType.locationAlways => 'permission.location_always.rationale',
         _PermType.notifications => 'permission.notifications.rationale',
       };
 }

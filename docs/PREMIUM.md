@@ -19,16 +19,40 @@
 | | Free | Premium |
 |---|---|---|
 | **AI generations / day** | **2** | **20** |
-| Meal plans, food logging, recipes, analytics | ✅ | ✅ |
+| Meal plans (incl. templates), food logging, recipes, analytics | ✅ | ✅ |
 | Community, chat, streaks, achievements | ✅ | ✅ |
-| Advanced meal customization | — | ✅ |
-| Full nutrition analytics history | — | ✅ |
-| Coach-visibility perks | — | ✅ |
+| 30-day nutrition trend history | — | ✅ |
+| Detailed AI breakdown (BMR/TDEE/logged-calorie numbers) | — | ✅ |
+| 2× engagement-credit multiplier + cap (Faz 5 §5.2) | — | ✅ |
+| Group member-list CSV export (group owner/admin) | — | ✅ |
 | Bonus AI credits (IAP top-up) | ✅ purchasable | ✅ purchasable |
+
+> **Faz 5 §5.4 correction:** the two rows this table used to carry — "Advanced meal customization"
+> and "Coach-visibility perks" — were aspirational, never enforced (0 call sites), and turned out
+> not to hold up: Faz 3's template builder is free for **every** tier by deliberate design (template
+> *authorship* is gated by `author_type in ['gym','coach','admin']`, not subscription tier — so
+> "premium" was never the differentiator there), and Faz 4's progress-sharing tiers are gated by the
+> *member's own consent level*, not the viewing gym/coach's subscription. Replaced with the four rows
+> above, each of which now has a real, verified call site (see below).
 
 Entitlements derive from the tier via `Entitlements` in `subscription_model.dart`
 (`isPaid`, `isPremiumOrAbove`, `isPro`, `weeklyMealPlanGenerations`, …). Gate features through
 `FeatureGateService`, which also owns `showPaywall()` — **never** branch on a raw tier string in UI.
+
+**All 8 `Entitlements` gates now have a real call site** (Faz 5 §5.4 — Faz 0 §0.3 built
+`FeatureGateService` itself but left every gate unwired; that was re-verified empirically, still
+true, immediately before this task):
+
+| Gate | Call site | Notes |
+|---|---|---|
+| `nutritionAnalytics` | `NutritionAnalyticsScreen._load()` | Always `true` ("free feature") — never blocks; the single entry point if that ever changes |
+| `advancedTrends` | `NutritionAnalyticsScreen._buildTrendSection` (new) | Real gate: 30-day trend, additive to the free weekly view |
+| `advancedAIAnalysis` | `AiFitnessTwinScreen._buildDetailedBreakdown` (new) | Real gate: BMR/TDEE/logged-calorie numbers, additive to the free projection |
+| `groupChat` | `chat_list_screen.dart`'s chat-row tap (group chats only) | Corrected from `premiumOrAbove` to `true` — Faz 2 (K5/K8) shipped group chat as free for everyone; the old value would have been a regression, not a paywall |
+| `verifiedBadge` | `profile_screen.dart`'s role-chip row (new `_ProBadgeChip`) | Renders nothing today — no `pro` account exists yet |
+| `exportData` | `GroupMembersScreen._exportMembers` (new) → `CommunityGroupService.exportMembersCsv` (new) | Real gate: group member-list CSV, the answer found for the plan's undefined "premium grup admin araçları" scope |
+| `weeklyMealPlanGenerations` | `MealPlanTemplateCreatorScreen._generate()` | Tier-existence check (`> 0`) only — always passes today. The unified `ai_credits` ledger (2/20 daily) is what actually throttles this call; this int getter predates that system and is not a second, competing quota |
+| `dailyAIChatMessages` | `AIChatScreen._sendMessage()` | Same tier-existence pattern as above, same reason — `ai_credits` is the real throttle |
 
 ---
 
@@ -81,7 +105,14 @@ Paywall / credits sheet
         ├─ dedupe purchase token via processed_purchases   (replay guard)
         ├─ entitlements.js → entitlements/{uid}   { tier, expires_at, product_id, source }
         ├─ entitlements.js → ai_credits/{uid}     (consumables only)
-        └─ mirror subscription_tier onto users/{uid}  (UI convenience only)
+        ├─ mirror subscription_tier onto users/{uid}  (UI convenience only)
+        └─ Faz 6 §6.6: subscription grants ONLY (never the AI-credits consumable) also call
+           economy.js's maybeAwardGymCommission(uid, productId, platform, token) — best-effort,
+           never fails an already-valid purchase response. No-ops unless gym_attributions/{uid}
+           exists (the overwhelming common case); otherwise accrues a flat gymPremiumShare
+           commission to the attributing gym owner's users/{gymOwnerUid}/commissions ledger,
+           tagged with a purchase_key (platform/token, for exactly this) so a later refund can
+           find and reverse it. See DATABASE.md/SERVICES.md/GYM_ECOSYSTEM.md §9 for the mechanism.
    → client re-reads entitlement; paywall closes
 ```
 
@@ -89,6 +120,9 @@ Paywall / credits sheet
 
 **Revocation** is webhook-driven: `appStoreNotifications` / `playRtdn` revoke on refund, chargeback,
 or expiry. Both are pending go-live — until then, **a refunded subscription keeps its entitlement**.
+A genuine refund/chargeback (deliberately never a plain expiry — see `DECISIONS.md` ADR-022) also
+reverses any `gymPremiumShare` commission tied to that purchase (`entitlements.js`'s
+`reverseCommissionsForPurchase`).
 
 **Restore purchases** is available in `AiCreditsSheet` — an App Store review requirement.
 

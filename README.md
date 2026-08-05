@@ -192,7 +192,9 @@ server-side. Details: [`docs/PREMIUM.md`](docs/PREMIUM.md).
 
 Gyms get a real presence rather than a listing: a branded profile, QR and GPS check-ins, a
 members-only community feed in the gym's colours, member leaderboards, and attendance analytics
-showing active members, peak hours, and retention.
+showing active members, peak hours, and retention. A gym can also print its own QR invite codes to
+bring in new app users, see an aggregate signup → Premium-conversion funnel (never an individual's
+identity), and earn a manually-paid commission when someone who joined through their code upgrades.
 
 The longer-term vision is white-label — a gym running its own branded experience on Cookrange's
 infrastructure — plus class scheduling, gym-to-gym competitions, and formal gym↔coach

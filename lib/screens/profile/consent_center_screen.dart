@@ -8,10 +8,15 @@ import 'package:intl/intl.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/consent_model.dart';
 import '../../core/providers/theme_provider.dart';
+import '../../core/services/auth_service.dart';
 import '../../core/services/consent_service.dart';
+import '../../core/services/firestore_service.dart';
+import '../../core/services/gym_presence_service.dart';
 import '../../core/widgets/ds/ds.dart';
 import 'package:provider/provider.dart';
+import '../gym/gym_presence_consent_screen.dart';
 import '../legal/legal_screen.dart';
+import 'progress_sharing_consent_screen.dart';
 
 /// Single, auditable surface where the user grants/withdraws each consent.
 /// Decisions are recorded (timestamp + policy version) via [ConsentService]
@@ -27,6 +32,47 @@ class _ConsentCenterScreenState extends State<ConsentCenterScreen> {
   final _service = ConsentService();
   final _saving = <ConsentPurpose>{};
 
+  // Faz 1 §1.7, toggle (a): "never let my friends be notified when I
+  // arrive." Loaded once — not part of the ConsentPurpose stream since it
+  // lives on presence_prefs, not a consent doc.
+  bool _notifyFriendsEnabled = false;
+  bool _notifyFriendsSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final uid = AuthService().currentUser?.uid;
+    if (uid != null) {
+      FirestoreService().getGymPresencePrefs(uid).then((prefs) {
+        if (mounted) {
+          setState(() => _notifyFriendsEnabled = prefs.notifyFriendsEnabled);
+        }
+      });
+    }
+  }
+
+  Future<void> _toggleNotifyFriends(bool next) async {
+    final uid = AuthService().currentUser?.uid;
+    if (uid == null || _notifyFriendsSaving) return;
+    final l10n = AppLocalizations.of(context);
+    unawaited(HapticFeedback.selectionClick());
+    setState(() {
+      _notifyFriendsSaving = true;
+      _notifyFriendsEnabled = next;
+    });
+    try {
+      await FirestoreService().setNotifyFriendsEnabled(uid, next);
+      if (!mounted) return;
+      AppSnackBar.success(context, l10n.translate('consent.saved'));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _notifyFriendsEnabled = !next);
+      AppSnackBar.error(context, l10n.translate('consent.save_error'));
+    } finally {
+      if (mounted) setState(() => _notifyFriendsSaving = false);
+    }
+  }
+
   IconData _icon(ConsentPurpose p) => switch (p) {
         ConsentPurpose.healthData => Icons.favorite_rounded,
         ConsentPurpose.location => Icons.location_on_rounded,
@@ -35,11 +81,29 @@ class _ConsentCenterScreenState extends State<ConsentCenterScreen> {
         ConsentPurpose.analytics => Icons.bar_chart_rounded,
         ConsentPurpose.notifications => Icons.notifications_rounded,
         ConsentPurpose.marketing => Icons.campaign_rounded,
+        ConsentPurpose.gymPresence => Icons.fitness_center_rounded,
       };
 
   Future<void> _toggle(ConsentModel current, bool next) async {
     if (_saving.contains(current.purpose)) return;
     final l10n = AppLocalizations.of(context);
+
+    // Faz 1 §1.3: granting gym-presence consent always routes through its
+    // own full explanation screen (not a bare toggle flip), even when
+    // entered from the Consent Center rather than a gym's own "enable auto
+    // check-in" control. GymPresenceConsentScreen persists the decision
+    // itself, so just refresh saving-state here and return.
+    if (next && current.purpose == ConsentPurpose.gymPresence) {
+      setState(() => _saving.add(current.purpose));
+      try {
+        await Navigator.of(context).push<bool>(MaterialPageRoute(
+          builder: (_) => const GymPresenceConsentScreen(),
+        ));
+      } finally {
+        if (mounted) setState(() => _saving.remove(current.purpose));
+      }
+      return;
+    }
 
     // Withdrawing a sensitive consent asks for confirmation.
     if (!next && current.purpose.isSensitive && current.granted) {
@@ -51,6 +115,18 @@ class _ConsentCenterScreenState extends State<ConsentCenterScreen> {
     setState(() => _saving.add(current.purpose));
     try {
       await _service.setConsent(current.purpose, next);
+      // Revoking the BROAD gym-presence consent must also clear every
+      // currently-tracked gym's on-device geofence region — the in-app copy
+      // (gym_presence_consent.revoke_body) promises this happens immediately,
+      // and until now only the per-gym toggle (gym_member_home_screen.dart)
+      // actually did it. Best-effort: the Firestore consent flag above is
+      // already saved regardless of whether the on-device cleanup succeeds,
+      // since `recordPresenceEvent` re-checks consent server-side on every
+      // call anyway — this is defense in depth, not the only thing stopping
+      // new records.
+      if (!next && current.purpose == ConsentPurpose.gymPresence) {
+        unawaited(GymPresenceService().disableTrackingForAllGyms());
+      }
       if (!mounted) return;
       AppSnackBar.success(context, l10n.translate('consent.saved'));
     } catch (_) {
@@ -90,6 +166,12 @@ class _ConsentCenterScreenState extends State<ConsentCenterScreen> {
         ],
       ),
     );
+  }
+
+  void _openProgressSharing() {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => const ProgressSharingConsentScreen(),
+    ));
   }
 
   void _openDocuments() {
@@ -171,8 +253,23 @@ class _ConsentCenterScreenState extends State<ConsentCenterScreen> {
                     saving: _saving.contains(purpose),
                     onChanged: (v) => _toggle(
                         consents[purpose] ?? ConsentModel.unset(purpose), v),
+                    notifyFriendsEnabled: purpose == ConsentPurpose.gymPresence
+                        ? _notifyFriendsEnabled
+                        : null,
+                    notifyFriendsSaving: _notifyFriendsSaving,
+                    onNotifyFriendsChanged:
+                        purpose == ConsentPurpose.gymPresence
+                            ? _toggleNotifyFriends
+                            : null,
                   ),
                 ),
+              // Faz 4 §4.1/§4.2/§4.3 — a separate entry point, not another
+              // card in the loop above: progress sharing is a per-scope
+              // TIER (0-3), not a global bool purpose, so it doesn't fit
+              // ConsentModel's shape. Same "entry point → dedicated screen"
+              // pattern the gymPresence card above already uses for its own
+              // full flow (GymPresenceConsentScreen).
+              _ProgressSharingEntryCard(onTap: _openProgressSharing),
             ],
           );
         },
@@ -238,12 +335,21 @@ class _ConsentCard extends StatelessWidget {
   final IconData icon;
   final bool saving;
   final ValueChanged<bool> onChanged;
+  // Faz 1 §1.7, toggle (a) — only non-null for the gymPresence card, and
+  // only rendered while that consent is actually granted (the sub-toggle is
+  // meaningless with presence tracking off).
+  final bool? notifyFriendsEnabled;
+  final bool notifyFriendsSaving;
+  final ValueChanged<bool>? onNotifyFriendsChanged;
 
   const _ConsentCard({
     required this.model,
     required this.icon,
     required this.saving,
     required this.onChanged,
+    this.notifyFriendsEnabled,
+    this.notifyFriendsSaving = false,
+    this.onNotifyFriendsChanged,
   });
 
   @override
@@ -358,6 +464,40 @@ class _ConsentCard extends StatelessWidget {
             _note(context, palette.textTertiary, Icons.lock_outline_rounded,
                 l10n.translate('consent.required_note')),
           ],
+          if (model.granted && notifyFriendsEnabled != null) ...[
+            Padding(
+              padding: EdgeInsets.only(top: 10.h),
+              child: Divider(height: 1, color: palette.divider),
+            ),
+            Padding(
+              padding: EdgeInsets.only(top: 10.h),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l10n.translate('consent.gym_presence_notify_friends'),
+                      style: t.bodyM.copyWith(color: palette.textPrimary),
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  notifyFriendsSaving
+                      ? SizedBox(
+                          width: 20.r,
+                          height: 20.r,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(
+                                context.read<ThemeProvider>().primaryColor),
+                          ),
+                        )
+                      : AppToggle(
+                          value: notifyFriendsEnabled!,
+                          onChanged: onNotifyFriendsChanged!,
+                        ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -375,6 +515,60 @@ class _ConsentCard extends StatelessWidget {
               Text(text, style: t.labelS.copyWith(color: color, height: 1.4)),
         ),
       ],
+    );
+  }
+}
+
+/// Entry point into [ProgressSharingConsentScreen] — see that screen's own
+/// header comment for why progress sharing isn't just another card in the
+/// `ConsentPurpose` loop above.
+class _ProgressSharingEntryCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ProgressSharingEntryCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    final l10n = AppLocalizations.of(context);
+    final t = AppText.of(context);
+    final primary = context.watch<ThemeProvider>().primaryColor;
+
+    return AppCard(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+        child: Row(
+          children: [
+            Container(
+              width: 38.r,
+              height: 38.r,
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.sm.r),
+              ),
+              child: Icon(Icons.insights_rounded, color: primary, size: 20.sp),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.translate('consent.progress_sharing_entry_title'),
+                    style: t.titleM.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    l10n.translate('consent.progress_sharing_entry_subtitle'),
+                    style: t.bodyM.copyWith(color: palette.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: palette.textTertiary),
+          ],
+        ),
+      ),
     );
   }
 }

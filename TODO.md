@@ -192,7 +192,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | 🚧 **Gym ecosystem** (11 screens) | Discovery, map, setup, dashboard, analytics, QR, members, community, leaderboard | `BLK-05` + `BLK-03` closed and deployed — no real approval has been exercised end to end yet; `BLK-07` (logo upload denied) remains |
 | 🚧 **Coach ecosystem** (8 screens) | Discovery, application, profile, dashboard, clients, reviews | `BLK-05` + `BLK-03` closed and deployed — no real approval has been exercised end to end yet; paid programs and payouts absent |
 | 🚧 **Program marketplace** | Model, content weeks, enrolment, My Programs | `BLK-09` open-write hole; paid gate stubbed |
-| 🚧 **Dish catalog** | 75 dishes, seeder, admin editor | **`BLK-11`** — unseedable in-app; 75 is too few; 180-dish prompt ceiling |
+| 🚧 **Dish catalog** | 100 dishes (Faz 3 §3.6: 75→100, snacks 3→28), seeder, admin editor | **`BLK-11`** open — still 100 vs. ≥300 target, seeding still client-triggered not admin-callable; 180-dish prompt ceiling now guarded client-side (no more HTTP 413) but `AI-03`'s real candidate selector still missing |
 | 🚧 **Moderation** | Keyword filter, report queue, Vision SafeSearch function | Scans the wrong prefix; admin queue now reachable (`BLK-05` closed) but unstaffed |
 | 🚧 **Analytics** | ~35 typed events, offline queue, consent-gated | No BigQuery export, no funnels, no dashboards, no taxonomy doc |
 | 🚧 **Crashlytics** | Correct single-owner wiring, custom keys, consent gate | **Blinded** by swallow-and-log (`DEBT-01`); no release symbol upload |
@@ -1082,6 +1082,14 @@ Playbook.
 - A documented bootstrap runbook exists for a fresh environment.
 - Verified on a **clean Firebase project**: run the seeder → generate a plan → 7 distinct days with no repeats.
 
+**Partial progress (Faz 3 §3.6, this card NOT closed):** catalog 75→100 dishes (snack pool 3→28,
+the worst single gap); `seedIfEmpty` upgraded from "no-op unless the collection is totally empty"
+to an idempotent upsert-missing (still client-triggered on every boot, still `isAdmin()`-gated —
+**not** the admin-callable/off-client-path fix this card's AC calls for); also fixed 5 ids each
+silently shared by 2-3 source dishes (7 entries were overwriting each other, so only 68 of 75 ever
+actually reached Firestore — see `test/dish_data_test.dart`). ≥300 dishes, bounded/paginated
+`getAllDishes`, and the admin-callable seeding path are all still open.
+
 **DoD** §0.5 plus a fresh-project bootstrap verified end to end.
 
 **Technical Notes**
@@ -1777,7 +1785,11 @@ reputation tier that derive from it.
 **Version** v1.1.0 · **Milestone** M6 · **Owner** Security Engineer
 **Labels** `fraud` `economy` `referral` `payout`
 **Modules** Security · Backend · Monetization
-**Files** `functions/economy.js` (`applyReferral` — server-validated) · `firestore.rules` (`commissions` server-write-only, `referrals` owner/admin update with `owner_uid` pinned) · `lib/core/services/commission_service.dart`
+**Files** `functions/economy.js` (`applyReferral` — server-validated, `maybeAwardGymCommission`) ·
+`functions/entitlements.js` (`purchaseCorrelationKey`, `reverseCommissionsForPurchase`) ·
+`functions/purchases.js` (the 3 revocation call sites) · `firestore.rules` (`commissions`
+server-write-only, `referrals` owner/admin update with `owner_uid` pinned) ·
+`lib/core/services/commission_service.dart`
 **Dependencies** `REF-04` · **Required before** any real payout · **Blocking** Turning on payouts safely
 
 **What exists / what is missing**
@@ -1785,9 +1797,18 @@ The server-side foundation is real: `applyReferral` rejects self-referral, enfor
 `max_uses`, grants both sides, and writes the commission ledger. `commissions` is server-write-only.
 
 Missing for real money movement: no velocity limits (one device creating many accounts), no device or
-payment fingerprinting, no manual-review queue for suspicious referral clusters, no clawback mechanism
-when a referred account is refunded or banned, no double-entry ledger, and the payout balance is not yet
-computed server-side from approved commissions minus prior payouts (that arrives with `REF-04`).
+payment fingerprinting, no manual-review queue for suspicious referral clusters, no double-entry ledger,
+and the payout balance is not yet computed server-side from approved commissions minus prior payouts
+(that arrives with `REF-04`).
+
+Clawback-on-refund is now real but **partial**, not the full second bullet below: `entitlements.js`'s
+`reverseCommissionsForPurchase` (called from all three of `purchases.js`'s revocation paths) reverses a
+`gymPremiumShare` commission tied to a specific store purchase — a still-pending entry flips to
+`rejected`, an already-paid one gets a negative offsetting entry rather than being rewritten (see
+`DECISIONS.md` ADR-022). Still missing: the pre-existing `referral` commission type has no purchase to
+correlate against at all (granted at code-redemption, never at a store purchase — see `applyReferral`'s
+own comment) and stays unaddressed; and there is still no clawback of any kind triggered by an account
+being **banned** (a separate, unrelated trigger path this change never touched).
 
 **Acceptance Criteria**
 - Referral velocity limits per device/IP; clusters flagged for review.
@@ -2207,6 +2228,14 @@ model sees it. Extend that idea from safety to relevance.
 - Plan quality manually reviewed against the current output for 5 diverse profiles — variety must not regress.
 
 **DoD** §0.5 plus the 1,000-dish bound test.
+
+**Partial mitigation (Faz 3 §3.6, this card still ❌ Missing):** `generateWeeklyMealPlanPrompt` now
+hard-caps the candidate pool at 180 (round-robin by `meal_type` so a positional truncation can't
+zero out a whole meal type — see `docs/AI_SYSTEM.md`, `docs/SERVICES.md`), so exceeding the ceiling
+degrades to a smaller candidate pool instead of the proxy returning HTTP 413. That is a safety net,
+**not** this card's relevance-based 40–60 candidate selector — no allergen/restriction/calorie-band/
+category-variety filtering was added, no seed-based determinism, no 1,000-dish synthetic test. This
+card's full scope remains open and is still required before `BLK-11`'s ≥300-dish target.
 
 **Technical Notes**
 Land this **before** expanding the catalog, or expansion breaks generation. Also fixes the unbounded
@@ -2834,7 +2863,7 @@ Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register �
 | `DEBT-12` | Marketplace injection via `coach_uid == 'demo'` | Any user publishes to a public storefront | Remove the exemption; seed server-side | 4 h | `BLK-09` |
 | `DEBT-13` | User doc world-readable with email, IP, device fingerprints | GDPR/KVKK exposure in the primary market | Split public/private/internal; migrate; narrow the rule | 3–5 d | `BLK-10` |
 | `DEBT-14` | Three overlapping config systems, one permanently denied | Unclear precedence on safety levers; `ai_proxy_url` resolvable from two places (and `BLK-01` makes that dangerous) | Consolidate on `AppConfigService`; delete the dead paths | 3 d | `ARCH-05` |
-| `DEBT-15` | Dish catalog unseedable in-app; 75 dishes; 180-dish prompt ceiling | Core feature has no content on a fresh project; visible repetition; growth blocked | Server-side seeding; `AI-03` pre-filter; expand to ≥ 300 | 1 w + content | `BLK-11`, `AI-03` |
+| `DEBT-15` | Dish catalog unseedable in-app; 100 dishes (Faz 3 §3.6: was 75); 180-dish prompt ceiling (client-side guard added, real fix still `AI-03`) | Core feature has no content on a fresh project; visible repetition (much less acute for snacks post-§3.6); growth blocked | Server-side seeding; `AI-03` pre-filter; expand to ≥ 300 | 1 w + content | `BLK-11`, `AI-03` |
 | `DEBT-16` | GDPR erasure and export incomplete | Residual personal data after a deletion request | Fix the chat-image enumeration; purge `ai_usage_logs`; clean cross-user artefacts | 3–4 d | `BLK-12` |
 | `DEBT-17` | Non-AI premium gated client-side only | Paywall bypassable in a repackaged build | Enforce server-side at the cost boundary; publish an enforcement inventory | 1 w | `SEC-16` |
 | `DEBT-18` | AI proxy timeout mismatch (30 s server / 90 s client) | Retries stack onto server-killed requests, burning quota | Align both to 60 s | 1 h | `BE-02` |

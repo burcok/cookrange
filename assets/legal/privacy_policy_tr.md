@@ -1,6 +1,6 @@
 # Gizlilik Politikası
 
-Son güncelleme: 29 Haziran 2026
+Son güncelleme: 5 Ağustos 2026
 
 Bu Gizlilik Politikası, **Cookrange** ("Cookrange", "biz") mobil uygulamasını ve ilgili hizmetleri
 ("Uygulama") kullandığınızda kişisel verilerinizi nasıl topladığımızı, kullandığımızı, paylaştığımızı
@@ -31,6 +31,17 @@ Yalnızca Uygulamayı sunmak için gerekeni toplarız. Kategoriler:
   etkin olarak kullandığınızda yaklaşık cihaz konumu. "Yakınımdaki salonlar" için kullanılan konum,
   salonları mesafeye göre sıralamak amacıyla **cihazınızda işlenir ve sunucularımıza gönderilmez veya
   saklanmaz**.
+- **Salon varlık verisi (hassas, ayrı rıza):** yalnızca bu özelliği kendi ekranından ayrıca
+  açtığınızda, üyesi olduğunuz bir salonun sınırına girip çıktığınız an bilgisi. Enlem/boylam
+  koordinatınız **hiçbir zaman sunucularımıza gönderilmez veya saklanmaz** — yalnızca salonun adı ve
+  giriş/çıkış saati saklanır. Bu izin varsayılan olarak kapalıdır, aynı anda en fazla 3 salon için ayrı
+  ayrı açılır ve Rıza Merkezi'nden kapattığınız an sunucu sizin için yeni bir kayıt oluşturmaz.
+  Ayrıntılı açıklama için **KVKK Aydınlatma Metni**'ne bakınız.
+- **Kademeli ilerleme paylaşımı verisi (hassas, ayrı rıza, salon/antrenör başına):** yalnızca bir
+  salonunuz/antrenörünüzle aranızdaki ilişki için açıkça izin verirseniz, izin verdiğiniz kademedeki
+  check-in/katılım bilginiz, kayıt düzenliliğiniz ve (en üst kademede) kilonuzun yönü — asla ham kilo
+  geçmişiniz değil. Her ilişki için varsayılan kademe kapalıdır; siz izin vermeden salon/antrenör
+  hiçbir şey göremez. Ayrıntılı açıklama için **KVKK Aydınlatma Metni**'ne bakınız.
 - **Sosyal ve içerik verileri:** oluşturmayı seçtiğiniz gönderiler, yorumlar, tepkiler, sohbet
   mesajları, arkadaşlar/takipçiler ve topluluk etkinliği.
 - **Cihaz ve kullanım verileri:** cihaz modeli, işletim sistemi, uygulama sürümü, dil ve Uygulamayı
@@ -50,6 +61,8 @@ işlemeyi tercih ederiz.
 | Hesabınızı oluşturmak/işletmek; temel Uygulama işlevlerini sunmak | Sözleşmenin ifası |
 | Kişiselleştirilmiş öğün planı, tarif, analiz ve AI içgörüleri üretmek | Açık rızanız (sağlık verisi) |
 | Yakındaki salonları gösterme / GPS check-in | Açık rızanız (konum) |
+| Arka planda salon varlık tespiti ile otomatik giriş kaydı | Ayrı ve açık rızanız (salon varlığı) |
+| Salonunuza/antrenörünüze kademeli ilerleme özeti sunma | Her ilişki için ayrı ve açık rızanız (paylaşım kademesi) |
 | Onay verdiğiniz anlık bildirimleri göndermek | Rızanız |
 | Uygulamayı güvende tutmak; dolandırıcılık/kötüye kullanımı önlemek; çökme teşhisi | Meşru menfaatimiz |
 | Abonelikleri işlemek ve mali kayıt tutmak | Sözleşme / yasal yükümlülük |
@@ -65,9 +78,14 @@ etkilemez.
   tutulur.
 - En az yetki ilkesi, uygulama bütünlüğü doğrulaması (App Check) uygularız ve üçüncü taraf API
   anahtarlarını hiçbir zaman Uygulamaya gömmeyiz.
-- Verilerinizi hesabınız etkin olduğu sürece saklarız. Hesabınızı sildiğinizde kişisel verileriniz
-  sistemlerimizden **30 gün** içinde kalıcı olarak silinir (mali kayıtlar, yasa gerektirdiğinde daha
-  uzun süre saklanabilir).
+- Verilerinizi hesabınız etkin olduğu sürece saklarız. **Ayarlar → Hesabı Sil**'i kullandığınızda
+  hesabınıza bağlı kişisel verileriniz — Firebase kimlik doğrulama kaydınız dahil — aynı işlem
+  içinde, ek bir bekleme süresi olmadan sunucularımızdan silinir. Sınırlı bazı istisnalar ayrıca
+  saklanabilir: mali kayıtlar ilgili mevzuatın öngördüğü süre boyunca, bir salonun kendi check-in/
+  üyelik kayıtları o salonun işletme kaydının parçası olarak, ve antrenör/salon ilerleme özetleri en
+  fazla 7 gün (ya da paylaşım kademenizi değiştirene/geri çekene kadar, hangisi önceyse). Bu
+  istisnaların tam dökümü **KVKK Aydınlatma Metni**'nin "Kişisel Verilerinizin Saklama Süreleri"
+  bölümündedir.
 
 ## 5. Yapay Zekâ ve Otomatik İşleme
 
@@ -101,7 +119,9 @@ sağlayıcılarla (veri işleyenlerle) paylaşırız:
 - **Ödeme sağlayıcı** (gelecekte) — antrenör/iş ortağı ödemeleri ve kimlik doğrulama.
 
 Paylaştığınız topluluk içeriği, tasarımı gereği diğer kimliği doğrulanmış kullanıcılara görünür.
-Özel beslenme verileriniz asla başka kullanıcılara gösterilmez.
+Özel beslenme verileriniz asla başka kullanıcılara gösterilmez — tek istisna, yukarıda açıklanan
+kademeli ilerleme paylaşımıdır: yalnızca siz açıkça izin verirseniz, izin verdiğiniz kademedeki sınırlı
+veri yalnızca ilgili salon/antrenörle paylaşılır ve siz izin verene kadar hiçbir şey görünmez.
 
 ## 8. Yurt Dışına Veri Aktarımı
 

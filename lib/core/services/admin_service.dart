@@ -5,12 +5,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/coach_application_model.dart';
+import '../models/moderation_appeal_model.dart';
 import '../models/privacy_request_model.dart';
 import '../models/report_model.dart';
 import '../utils/firestore_count.dart';
 import 'analytics_service.dart';
+import 'community_group_service.dart';
 import 'crashlytics_service.dart';
+import '../models/chat_model.dart';
 import '../models/coach_profile_model.dart';
+import '../models/community_group_model.dart';
 import '../models/gym_application_model.dart';
 import '../models/gym_model.dart';
 import '../models/user_model.dart';
@@ -85,6 +89,13 @@ class AdminService {
         _db.collection('reports').where('status', isEqualTo: 'pending'),
       );
 
+  /// Count of pending moderation appeals via aggregation (Faz 2 §2.6).
+  Stream<int> pendingModerationAppealCountStream() => pollCount(
+        _db
+            .collection('moderation_appeals')
+            .where('status', isEqualTo: 'pending'),
+      );
+
   // ── Reports ────────────────────────────────────────────────────────────────
 
   Stream<List<ReportModel>> pendingReportsStream() {
@@ -154,6 +165,140 @@ class AdminService {
       targetUid: req.uid,
       metadata: {'requestId': req.id, 'type': req.type.key},
     ));
+  }
+
+  // ── Moderation appeals (Faz 2 §2.6 — "itiraz yolu") ─────────────────────────
+  // Mirrors the DSAR flow immediately above: a member files their own
+  // appeal against a specific group moderation action; admin reviews and
+  // resolves it here. See docs/COMPLIANCE.md §7 for why this pattern (not a
+  // new one) was reused.
+
+  Stream<List<ModerationAppealModel>> pendingModerationAppealsStream() {
+    return _db
+        .collection('moderation_appeals')
+        .where('status', isEqualTo: 'pending')
+        .orderBy('created_at', descending: true)
+        .limit(100)
+        .snapshots()
+        .map((s) => s.docs.map(ModerationAppealModel.fromFirestore).toList());
+  }
+
+  Stream<List<ModerationAppealModel>> reviewedModerationAppealsStream() {
+    return _db
+        .collection('moderation_appeals')
+        .where('status', whereIn: ['upheld', 'denied'])
+        .orderBy('created_at', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((s) => s.docs.map(ModerationAppealModel.fromFirestore).toList());
+  }
+
+  /// Resolves an appeal. When [status] is `upheld` and the underlying action
+  /// is `mute`/`ban`, this ALSO reverses it via the existing
+  /// `CommunityGroupService.unmuteMember`/`unbanMember` — an "upheld" appeal
+  /// that doesn't actually restore anything would be a hollow gesture. A
+  /// `kick` has no persistent restriction to lift (the member can simply be
+  /// re-added or can re-request to join), so upholding a kick appeal is
+  /// admin-note-only. Always notifies the appellant of the outcome via the
+  /// existing free-text admin-notification path (`sendNotificationToUser`) —
+  /// deliberately not a new `NotificationType` for one admin-authored
+  /// message, mirroring how coach/gym rejection notes already work.
+  ///
+  /// Faz 5 §5.2: [appeal.isCreditRestriction] (a shadow-restriction appeal,
+  /// not a group action) reverses via [_liftCreditRestriction] instead —
+  /// `appeal.action`/`appeal.groupId` are meaningless placeholders for this
+  /// appeal kind (see `ModerationAppealModel`'s doc comment), so this branch
+  /// must come BEFORE the mute/ban check below, which would otherwise
+  /// misread the placeholder `action` value.
+  Future<void> resolveModerationAppeal(
+    ModerationAppealModel appeal,
+    ModerationAppealStatus status, {
+    String? adminNote,
+    required String notifyTitle,
+    required String notifyBody,
+  }) async {
+    final adminUid = _auth.currentUser?.uid;
+    if (adminUid == null) return;
+    debugPrint(
+        'AdminService: resolveModerationAppeal id=${appeal.id} -> ${status.key}');
+
+    await _db.collection('moderation_appeals').doc(appeal.id).update({
+      'status': status.key,
+      'resolved_by': adminUid,
+      'resolved_at': FieldValue.serverTimestamp(),
+      if (adminNote != null) 'admin_note': adminNote,
+    });
+
+    if (status == ModerationAppealStatus.upheld) {
+      try {
+        if (appeal.isCreditRestriction) {
+          await _liftCreditRestriction(appeal.uid, adminUid);
+        } else if (appeal.action == GroupModerationAction.ban) {
+          await CommunityGroupService().unbanMember(appeal.groupId, appeal.uid);
+        } else if (appeal.action == GroupModerationAction.mute) {
+          await CommunityGroupService()
+              .unmuteMember(appeal.groupId, appeal.uid);
+        }
+      } catch (e, st) {
+        debugPrint('AdminService: resolveModerationAppeal reversal failed: $e');
+        unawaited(CrashlyticsService().recordError(e, st,
+            reason: 'AdminService.resolveModerationAppeal reversal'));
+      }
+    }
+
+    unawaited(logAuditAction(
+      action: 'resolve_moderation_appeal_${status.key}',
+      targetUid: appeal.uid,
+      metadata: {
+        'appealId': appeal.id,
+        'groupId': appeal.groupId,
+        // rawAction, not appeal.action.value — the latter is a meaningless
+        // placeholder for a credit-restriction appeal (see
+        // ModerationAppealModel's doc comment); rawAction is correct for
+        // both appeal kinds.
+        'action': appeal.rawAction,
+      },
+    ));
+
+    await sendNotificationToUser(
+      uid: appeal.uid,
+      title: notifyTitle,
+      body: notifyBody,
+    );
+  }
+
+  /// Faz 5 §5.2 — reverses a shadow restriction on an upheld appeal: writes
+  /// a `lift` entry to the same immutable `users/{uid}/credit_moderation`
+  /// log `engagement_credit.js`'s `bumpSuspicionFlag` writes `restrict`
+  /// entries to, then clears `is_shadow_restricted` AND resets `flag_count`
+  /// to 0 on `credit_restrictions/{uid}` — a genuine clean slate, since
+  /// leaving the counter at/above the auto-restrict threshold would let the
+  /// very next flagged event immediately re-restrict an account whose
+  /// appeal was just upheld (i.e. judged UNWARRANTED). Both writes are
+  /// legitimate here because `isAdmin()` is exempted on both collections in
+  /// firestore.rules, exactly like every other admin-override path in this
+  /// file (e.g. `unmuteMember`/`unbanMember` above).
+  Future<void> _liftCreditRestriction(String uid, String adminUid) async {
+    final logRef =
+        _db.collection('users').doc(uid).collection('credit_moderation').doc();
+    final batch = _db.batch();
+    batch.set(logRef, {
+      'action': 'lift',
+      'reason': 'appeal_upheld',
+      'issued_by': adminUid,
+      'created_at': FieldValue.serverTimestamp(),
+    });
+    batch.set(
+      _db.collection('credit_restrictions').doc(uid),
+      {
+        'is_shadow_restricted': false,
+        'flag_count': 0,
+        'lifted_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+    await batch.commit();
   }
 
   Future<void> removeReportedContent(ReportModel report) async {
@@ -292,6 +437,18 @@ class AdminService {
       latitude: app.latitude,
       longitude: app.longitude,
       brandColor: app.brandColor,
+      // Faz 1.1: contactPhone genuinely exists on GymApplicationModel (it's
+      // required there) and was simply never carried over to the approved
+      // GymModel — fixed here. district/checkInRadius/openingHours/capacity/
+      // geofenceEnabled are NOT set below because GymApplicationModel has no
+      // fields for them (see gym_application_model.dart) — the application
+      // flow never collects a district or a custom radius, so there is
+      // nothing to carry over yet. Same precedent as logoUrl above: a
+      // freshly-approved gym starts with GymModel's defaults (checkInRadius
+      // 100, district/openingHours/capacity unset, geofenceEnabled false) and
+      // the owner sets real values afterward via gym_setup_screen.dart's Edit
+      // Gym Profile flow.
+      contactPhone: app.contactPhone,
     );
     batch.set(_db.collection('gyms').doc(gymId), gym.toFirestore());
 
@@ -309,10 +466,73 @@ class AdminService {
       },
     );
 
-    // 3. Update user roles (additive — preserves existing roles)
+    // 2b. Faz 2 §2.3 — auto-create the gym's community group (kind:'gym',
+    // owner = gym owner, gym_id back-reference). Uses the SAME gymId as the
+    // doc id — a gym and its group are 1:1, created together, and never
+    // exist independently, so reusing the id avoids a second lookup
+    // anywhere that already has one of them. isPublic:false keeps it out of
+    // the general discovery carousel (CommunityGroupModel.kind doc comment)
+    // — members reach it from the gym's own screen, not groups discovery.
+    // The community_groups create rule's `owner_uid == auth.uid || isAdmin()`
+    // branch is what makes this legal: this batch runs under the APPROVING
+    // ADMIN's auth context, not the gym owner's, so owner_uid (the gym
+    // owner) necessarily differs from request.auth.uid (the admin) here.
+    final group = CommunityGroupModel(
+      id: gymId,
+      name: app.gymName,
+      description: app.description,
+      city: app.city,
+      ownerUid: app.applicantUid,
+      isPublic: false,
+      tags: app.tags,
+      createdAt: gymNow,
+      updatedAt: gymNow,
+      lastActivityAt: gymNow,
+      chatId: gymId,
+      kind: GroupKind.gym,
+      gymId: gymId,
+    );
+    batch.set(
+        _db.collection('community_groups').doc(gymId), group.toFirestore());
+    batch.set(
+      _db
+          .collection('community_groups')
+          .doc(gymId)
+          .collection('members')
+          .doc(app.applicantUid),
+      CommunityGroupMemberModel(
+        uid: app.applicantUid,
+        joinedAt: gymNow,
+        role: GroupMemberRole.owner,
+      ).toFirestore(),
+    );
+
+    // 2c. Paired chat doc (chatId == gymId) — makes ChatType.gym real.
+    // `participants` holds only the owner (chats/{chatId}'s create rule
+    // needs SOME initial participant; the whole group's membership gets
+    // access via `groupId` → firestore.rules' `canAccessGroupChat()`, not
+    // this array — see ChatModel.groupId's doc comment).
+    final gymChat = ChatModel(
+      id: gymId,
+      participants: [app.applicantUid],
+      unreadCounts: {app.applicantUid: 0},
+      type: ChatType.gym,
+      updatedAt: gymNow,
+      name: app.gymName,
+      groupId: gymId,
+    );
+    batch.set(_db.collection('chats').doc(gymId), gymChat.toJson());
+
+    // 3. Update user roles (additive — preserves existing roles) and record
+    // the owner's own gym on their own user doc — matches the exact
+    // gym_memberships arrayUnion mechanism GymService.joinGym already uses
+    // for regular joining members; previously only non-owner joiners got
+    // this, so an owner's own gym never appeared in their own "your gyms"
+    // list.
     batch.update(_db.collection('users').doc(app.applicantUid), {
       'user_roles': FieldValue.arrayUnion(['gym_owner']),
       'user_role': 'gym_owner',
+      'gym_memberships': FieldValue.arrayUnion([gymId]),
     });
 
     await batch.commit();

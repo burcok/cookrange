@@ -10,6 +10,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import '../../core/data/turkish_locations.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/gym_model.dart';
 import '../../core/services/gym_application_service.dart';
@@ -18,6 +19,41 @@ import '../../core/services/permission_service.dart';
 import '../../core/services/storage_upload_service.dart';
 import '../../core/widgets/ds/ds.dart';
 import 'gym_application_pending_screen.dart';
+
+/// Local editing state for one weekday's opening hours in the setup wizard
+/// (Faz 1.1). [closed] true means the gym is closed that day; otherwise
+/// [open]/[close] are the operating hours. Converted to the
+/// `{"open": "HH:mm", "close": "HH:mm"}` (or `null` when closed) shape
+/// documented on [GymModel.openingHours] at save time.
+class _DayHours {
+  bool closed;
+  TimeOfDay open;
+  TimeOfDay close;
+
+  _DayHours({
+    this.closed = false,
+    this.open = const TimeOfDay(hour: 7, minute: 0),
+    this.close = const TimeOfDay(hour: 23, minute: 0),
+  });
+}
+
+/// Zero-padded 24h "HH:mm" formatter — matches [GymModel.openingHours]'s
+/// documented shape and avoids locale-dependent AM/PM ambiguity.
+String _fmtHHmm(TimeOfDay t) =>
+    '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+/// Parses a "HH:mm" string (as read back from Firestore) into a [TimeOfDay].
+/// Returns null on any malformed input rather than throwing, since this only
+/// ever feeds a UI default.
+TimeOfDay? _parseHHmm(String? s) {
+  if (s == null) return null;
+  final parts = s.split(':');
+  if (parts.length != 2) return null;
+  final h = int.tryParse(parts[0]);
+  final m = int.tryParse(parts[1]);
+  if (h == null || m == null) return null;
+  return TimeOfDay(hour: h, minute: m);
+}
 
 /// Gym profile create / edit screen — 5-step form.
 /// Pass [existingGym] to enter edit mode.
@@ -52,6 +88,14 @@ class _GymSetupScreenState extends State<GymSetupScreen>
   String? _resolvedAddress;
   bool _geocodingInProgress = false;
   Timer? _geocodeDebounce;
+  // Faz 1.1: district + check-in radius
+  String? _selectedDistrict;
+  // True once the owner has picked a district manually — prevents the
+  // reverse-geocode auto-fill (see _onLocationPinned) from clobbering an
+  // explicit choice on a later pin move, matching the "auto-fill, but let
+  // the owner override" behavior described in the Faz 1.1 plan.
+  bool _districtManuallyEdited = false;
+  int _checkInRadius = 100;
 
   // ── Step 3: Phone verification ──────────────────────────────────────────────
   final _phoneCtrl = TextEditingController();
@@ -69,6 +113,14 @@ class _GymSetupScreenState extends State<GymSetupScreen>
   // document type or requirement was ever actually defined for it.
   File? _businessLicenseFile;
   File? _idDocFile;
+
+  // ── Step 5: Settings (Faz 1.1 additions) ────────────────────────────────────
+  final _capacityCtrl = TextEditingController();
+  bool _geofenceEnabled = false;
+  static const _weekdayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  final Map<String, _DayHours> _openingHours = {
+    for (final d in _weekdayKeys) d: _DayHours(),
+  };
 
   static const _gymTags = [
     'CrossFit',
@@ -104,6 +156,30 @@ class _GymSetupScreenState extends State<GymSetupScreen>
         final parsed = int.tryParse(g.brandColor!);
         if (parsed != null) _selectedBrandColor = Color(parsed);
       }
+      // Faz 1.1: district/radius/opening hours/capacity/geofence
+      _selectedDistrict = g.district;
+      // A district already on the gym doc counts as settled — the geocode
+      // auto-fill on a later pin move shouldn't override it.
+      _districtManuallyEdited = g.district != null;
+      _checkInRadius = g.checkInRadius;
+      _capacityCtrl.text = g.capacity?.toString() ?? '';
+      _geofenceEnabled = g.geofenceEnabled;
+      final hours = g.openingHours;
+      if (hours != null) {
+        for (final day in _weekdayKeys) {
+          final raw = hours[day];
+          if (raw == null) {
+            _openingHours[day] = _DayHours(closed: true);
+          } else if (raw is Map) {
+            _openingHours[day] = _DayHours(
+              open: _parseHHmm(raw['open'] as String?) ??
+                  const TimeOfDay(hour: 7, minute: 0),
+              close: _parseHHmm(raw['close'] as String?) ??
+                  const TimeOfDay(hour: 23, minute: 0),
+            );
+          }
+        }
+      }
     }
   }
 
@@ -114,6 +190,7 @@ class _GymSetupScreenState extends State<GymSetupScreen>
     _descCtrl.dispose();
     _phoneCtrl.dispose();
     _otpCtrl.dispose();
+    _capacityCtrl.dispose();
     _geocodeDebounce?.cancel();
     super.dispose();
   }
@@ -191,31 +268,70 @@ class _GymSetupScreenState extends State<GymSetupScreen>
     });
     _geocodeDebounce?.cancel();
     _geocodeDebounce = Timer(const Duration(milliseconds: 500), () async {
-      final address = await _reverseGeocode(lat, lng);
+      final (address, district) = await _reverseGeocode(lat, lng);
       if (mounted) {
         setState(() {
           _resolvedAddress = address;
           _geocodingInProgress = false;
+          // Faz 1.1: auto-fill the district guess from the same
+          // reverse-geocode call, but never clobber a value the owner
+          // already picked manually.
+          if (district != null && !_districtManuallyEdited) {
+            _selectedDistrict = district;
+          }
         });
       }
     });
   }
 
-  Future<String?> _reverseGeocode(double lat, double lng) async {
+  /// Reverse-geocodes [lat]/[lng] via Nominatim, returning both the
+  /// human-readable address (as before) and a best-effort district (ilçe)
+  /// guess (Faz 1.1) — reusing this same call/debounce rather than firing a
+  /// second network request.
+  ///
+  /// Nominatim's Turkish address breakdown is inconsistent about which key
+  /// holds the ilçe: metropolitan districts commonly land in `county`, but
+  /// `city_district`/`town`/`suburb` show up too depending on the area. Each
+  /// candidate is only accepted if it matches a real district of the
+  /// currently-selected city (per [TurkishLocations]), so an unrelated
+  /// neighbourhood/suburb name never gets auto-filled — the owner can always
+  /// pick manually via the district dropdown regardless.
+  Future<(String? address, String? district)> _reverseGeocode(
+      double lat, double lng) async {
     try {
       final url = Uri.parse(
-        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&accept-language=tr',
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&addressdetails=1&accept-language=tr',
       );
       final response =
           await http.get(url, headers: {'User-Agent': 'CookrangeApp/1.0'});
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
-        return data['display_name'] as String?;
+        final displayName = data['display_name'] as String?;
+
+        String? district;
+        final addr = data['address'] as Map<String, dynamic>?;
+        if (addr != null && _selectedCity != null) {
+          final validDistricts = TurkishLocations.districtsOf(_selectedCity!);
+          for (final key in [
+            'county',
+            'city_district',
+            'town',
+            'district',
+            'suburb',
+          ]) {
+            final candidate = addr[key] as String?;
+            if (candidate != null && validDistricts.contains(candidate)) {
+              district = candidate;
+              break;
+            }
+          }
+        }
+        return (displayName, district);
       }
     } catch (e) {
       debugPrint('GymSetupScreen: Reverse geocode error: $e');
     }
-    return null;
+    return (null, null);
   }
 
   Future<void> _sendOtp() async {
@@ -319,6 +435,18 @@ class _GymSetupScreenState extends State<GymSetupScreen>
     }
   }
 
+  /// Builds the `opening_hours` Firestore payload (Faz 1.1) from the wizard's
+  /// per-day editing state — see [GymModel.openingHours] for the shape.
+  Map<String, dynamic> _buildOpeningHoursPayload() => {
+        for (final entry in _openingHours.entries)
+          entry.key: entry.value.closed
+              ? null
+              : {
+                  'open': _fmtHHmm(entry.value.open),
+                  'close': _fmtHHmm(entry.value.close),
+                },
+      };
+
   Future<void> _save() async {
     if (_saving) return;
     setState(() => _saving = true);
@@ -328,6 +456,7 @@ class _GymSetupScreenState extends State<GymSetupScreen>
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
       if (_isEditMode) {
+        final capacityText = _capacityCtrl.text.trim();
         await GymService().updateGym(widget.existingGym!.id, {
           'name': _nameCtrl.text.trim(),
           'description': _descCtrl.text.trim(),
@@ -339,6 +468,12 @@ class _GymSetupScreenState extends State<GymSetupScreen>
           'brand_color': _brandColorHex,
           if (_selectedLat != null) 'latitude': _selectedLat,
           if (_selectedLng != null) 'longitude': _selectedLng,
+          // Faz 1.1
+          'district': _selectedDistrict,
+          'check_in_radius': _checkInRadius,
+          'opening_hours': _buildOpeningHoursPayload(),
+          'capacity': capacityText.isEmpty ? null : int.tryParse(capacityText),
+          'geofence_enabled': _geofenceEnabled,
         });
         if (_logoFile != null) {
           await _uploadLogoAndUpdate(widget.existingGym!.id);
@@ -366,6 +501,16 @@ class _GymSetupScreenState extends State<GymSetupScreen>
           );
         }
 
+        // Faz 1.1: district/checkInRadius/openingHours/capacity/
+        // geofenceEnabled collected in steps 2 & 5 above are intentionally
+        // NOT sent to submitApplication — GymApplicationModel has no fields
+        // for them (see gym_application_model.dart), so there is nothing to
+        // carry through the application flow yet. Same precedent as the gym
+        // logo (see the comment at the GymModel(...) construction site in
+        // AdminService.approveGymApplication): a freshly-approved gym starts
+        // with GymModel's defaults, and the owner sets real values via this
+        // same screen's Edit Gym Profile flow once the application is
+        // approved and a real gym document exists to write to.
         await GymApplicationService().submitApplication(
           applicantUid: uid,
           gymName: _nameCtrl.text.trim(),
@@ -481,15 +626,28 @@ class _GymSetupScreenState extends State<GymSetupScreen>
                   selectedLng: _selectedLng,
                   resolvedAddress: _resolvedAddress,
                   geocodingInProgress: _geocodingInProgress,
+                  selectedDistrict: _selectedDistrict,
+                  checkInRadius: _checkInRadius,
                   onCityChanged: (city, lat, lng) {
                     setState(() {
                       _selectedCity = city;
                       _selectedLat = lat;
                       _selectedLng = lng;
                       _resolvedAddress = null;
+                      // Faz 1.1: district is scoped to a city — reset it
+                      // (matching create_group_screen.dart's cascading
+                      // city/district picker) so a district from the
+                      // previous city can't linger.
+                      _selectedDistrict = null;
+                      _districtManuallyEdited = false;
                     });
                   },
                   onLocationPinned: _onLocationPinned,
+                  onDistrictChanged: (d) => setState(() {
+                    _selectedDistrict = d;
+                    _districtManuallyEdited = true;
+                  }),
+                  onRadiusChanged: (r) => setState(() => _checkInRadius = r),
                   palette: palette,
                   isDark: isDark,
                   primary: primary,
@@ -515,6 +673,21 @@ class _GymSetupScreenState extends State<GymSetupScreen>
                         }
                       });
                     },
+                    openingHours: _openingHours,
+                    onDayClosedToggled: (day) => setState(() =>
+                        _openingHours[day]!.closed =
+                            !_openingHours[day]!.closed),
+                    onDayTimePicked: (day, isOpenField, time) => setState(() {
+                      if (isOpenField) {
+                        _openingHours[day]!.open = time;
+                      } else {
+                        _openingHours[day]!.close = time;
+                      }
+                    }),
+                    capacityCtrl: _capacityCtrl,
+                    geofenceEnabled: _geofenceEnabled,
+                    onGeofenceChanged: (v) =>
+                        setState(() => _geofenceEnabled = v),
                   )
                 else ...[
                   // Step 3: Phone verification (create only)
@@ -563,6 +736,21 @@ class _GymSetupScreenState extends State<GymSetupScreen>
                         }
                       });
                     },
+                    openingHours: _openingHours,
+                    onDayClosedToggled: (day) => setState(() =>
+                        _openingHours[day]!.closed =
+                            !_openingHours[day]!.closed),
+                    onDayTimePicked: (day, isOpenField, time) => setState(() {
+                      if (isOpenField) {
+                        _openingHours[day]!.open = time;
+                      } else {
+                        _openingHours[day]!.close = time;
+                      }
+                    }),
+                    capacityCtrl: _capacityCtrl,
+                    geofenceEnabled: _geofenceEnabled,
+                    onGeofenceChanged: (v) =>
+                        setState(() => _geofenceEnabled = v),
                   ),
                 ],
               ],
@@ -1009,8 +1197,12 @@ class _Step2Location extends StatefulWidget {
   final double? selectedLng;
   final String? resolvedAddress;
   final bool geocodingInProgress;
+  final String? selectedDistrict;
+  final int checkInRadius;
   final void Function(String city, double lat, double lng) onCityChanged;
   final void Function(double lat, double lng) onLocationPinned;
+  final ValueChanged<String?> onDistrictChanged;
+  final ValueChanged<int> onRadiusChanged;
   final AppPalette palette;
   final bool isDark;
   final Color primary;
@@ -1022,8 +1214,12 @@ class _Step2Location extends StatefulWidget {
     required this.selectedLng,
     required this.resolvedAddress,
     required this.geocodingInProgress,
+    required this.selectedDistrict,
+    required this.checkInRadius,
     required this.onCityChanged,
     required this.onLocationPinned,
+    required this.onDistrictChanged,
+    required this.onRadiusChanged,
     required this.palette,
     required this.isDark,
     required this.primary,
@@ -1130,6 +1326,15 @@ class _Step2LocationState extends State<_Step2Location> {
     return null;
   }
 
+  // Faz 1.1: district options are scoped to the selected city — the same
+  // TurkishLocations utility used by other city/district pickers in this
+  // app (e.g. create_group_screen.dart). _turkishCities above and
+  // TurkishLocations.provinces use identical Turkish province name strings,
+  // so widget.selectedCity cross-references cleanly.
+  List<String> get _districtsForSelectedCity => widget.selectedCity == null
+      ? const []
+      : TurkishLocations.districtsOf(widget.selectedCity!);
+
   @override
   Widget build(BuildContext context) {
     final palette = widget.palette;
@@ -1222,6 +1427,67 @@ class _Step2LocationState extends State<_Step2Location> {
 
           const SizedBox(height: 20),
 
+          // District dropdown (Faz 1.1) — auto-filled from the reverse
+          // geocode on map tap (see _reverseGeocode), owner can override.
+          Text(
+            l10n.translate('gym.location_district_label').toUpperCase(),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: palette.textSecondary.withValues(alpha: 0.6),
+              letterSpacing: 1.3,
+            ),
+          ),
+          const SizedBox(height: 10),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value:
+                    _districtsForSelectedCity.contains(widget.selectedDistrict)
+                        ? widget.selectedDistrict
+                        : null,
+                hint: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    l10n.translate('gym.location_district_hint'),
+                    style: AppText.of(context).bodyM.copyWith(
+                          color: palette.textTertiary,
+                        ),
+                  ),
+                ),
+                icon: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Icon(Icons.keyboard_arrow_down_rounded,
+                      color: palette.textSecondary),
+                ),
+                dropdownColor: palette.surface,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                style: AppText.of(context).bodyM.copyWith(
+                      color: palette.textPrimary,
+                    ),
+                items: _districtsForSelectedCity.map((d) {
+                  return DropdownMenuItem<String>(
+                    value: d,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(d),
+                    ),
+                  );
+                }).toList(),
+                onChanged: widget.selectedCity == null
+                    ? null
+                    : (d) {
+                        HapticFeedback.selectionClick();
+                        widget.onDistrictChanged(d);
+                      },
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
           // Map
           if (coords != null) ...[
             Text(
@@ -1255,6 +1521,23 @@ class _Step2LocationState extends State<_Step2Location> {
                       userAgentPackageName: 'com.cookrange.app',
                       maxZoom: 19,
                     ),
+                    // Faz 1.1: check-in radius preview — drawn under the pin
+                    // marker so the marker icon stays on top.
+                    if (widget.selectedLat != null &&
+                        widget.selectedLng != null)
+                      CircleLayer(
+                        circles: [
+                          CircleMarker(
+                            point: LatLng(
+                                widget.selectedLat!, widget.selectedLng!),
+                            radius: widget.checkInRadius.toDouble(),
+                            useRadiusInMeter: true,
+                            color: primary.withValues(alpha: 0.15),
+                            borderColor: primary,
+                            borderStrokeWidth: 2,
+                          ),
+                        ],
+                      ),
                     MarkerLayer(
                       markers: [
                         if (widget.selectedLat != null &&
@@ -1272,6 +1555,51 @@ class _Step2LocationState extends State<_Step2Location> {
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 16),
+
+            // Check-in radius slider (Faz 1.1) — updates the CircleLayer
+            // above live so the owner can see the check-in zone size.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  l10n.translate('gym.checkin_radius_label'),
+                  style: AppText.of(context).labelS.copyWith(
+                        color: palette.textSecondary,
+                      ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.button),
+                  ),
+                  child: Text(
+                    '${widget.checkInRadius} ${l10n.translate('gym.checkin_radius_unit_m')}',
+                    style: AppText.of(context).labelM.copyWith(
+                          color: primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            Slider(
+              value: widget.checkInRadius.toDouble().clamp(50, 300),
+              min: 50,
+              max: 300,
+              divisions: 25,
+              activeColor: primary,
+              inactiveColor: palette.border,
+              onChanged: (v) => widget.onRadiusChanged(v.round()),
+            ),
+            Text(
+              l10n.translate('gym.checkin_radius_caption'),
+              style: AppText.of(context).labelS.copyWith(
+                    color: palette.textTertiary,
+                  ),
             ),
             const SizedBox(height: 12),
 
@@ -1758,6 +2086,13 @@ class _Step5Settings extends StatelessWidget {
   final AppLocalizations l10n;
   final ValueChanged<bool> onPublicChanged;
   final ValueChanged<String> onTagToggled;
+  final Map<String, _DayHours> openingHours;
+  final void Function(String day) onDayClosedToggled;
+  final void Function(String day, bool isOpenField, TimeOfDay time)
+      onDayTimePicked;
+  final TextEditingController capacityCtrl;
+  final bool geofenceEnabled;
+  final ValueChanged<bool> onGeofenceChanged;
 
   const _Step5Settings({
     required this.isPublic,
@@ -1769,6 +2104,12 @@ class _Step5Settings extends StatelessWidget {
     required this.l10n,
     required this.onPublicChanged,
     required this.onTagToggled,
+    required this.openingHours,
+    required this.onDayClosedToggled,
+    required this.onDayTimePicked,
+    required this.capacityCtrl,
+    required this.geofenceEnabled,
+    required this.onGeofenceChanged,
   });
 
   @override
@@ -1890,6 +2231,252 @@ class _Step5Settings extends StatelessWidget {
                 ),
               );
             }).toList(),
+          ),
+          const SizedBox(height: 24),
+          // Opening hours (Faz 1.1)
+          Text(
+            l10n.translate('gym.field_opening_hours').toUpperCase(),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: palette.textSecondary.withValues(alpha: 0.6),
+              letterSpacing: 1.3,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _OpeningHoursSection(
+            hours: openingHours,
+            onClosedToggled: onDayClosedToggled,
+            onTimePicked: onDayTimePicked,
+            palette: palette,
+            primary: primary,
+            l10n: l10n,
+          ),
+          const SizedBox(height: 24),
+          // Capacity (Faz 1.1)
+          AppTextField(
+            controller: capacityCtrl,
+            labelText: l10n.translate('gym.field_capacity'),
+            hintText: l10n.translate('gym.field_capacity_hint'),
+            prefixIcon: const Icon(Icons.groups_rounded),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
+          const SizedBox(height: 24),
+          // Geofence opt-in (Faz 1.1) — owner-side preference only; the
+          // background detection feature itself ships separately.
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: AppToggle(
+              value: geofenceEnabled,
+              onChanged: onGeofenceChanged,
+              label: l10n.translate('gym.field_geofence'),
+              description: l10n.translate('gym.field_geofence_caption'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Opening Hours Section (Faz 1.1) ───────────────────────────────────────────
+
+class _OpeningHoursSection extends StatelessWidget {
+  final Map<String, _DayHours> hours;
+  final void Function(String day) onClosedToggled;
+  final void Function(String day, bool isOpenField, TimeOfDay time)
+      onTimePicked;
+  final AppPalette palette;
+  final Color primary;
+  final AppLocalizations l10n;
+
+  static const _dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+  const _OpeningHoursSection({
+    required this.hours,
+    required this.onClosedToggled,
+    required this.onTimePicked,
+    required this.palette,
+    required this.primary,
+    required this.l10n,
+  });
+
+  Future<void> _pickTime(
+    BuildContext context,
+    String day,
+    bool isOpenField,
+    TimeOfDay initial,
+  ) async {
+    final picked = await showTimePicker(context: context, initialTime: initial);
+    if (picked != null) {
+      unawaited(HapticFeedback.selectionClick());
+      onTimePicked(day, isOpenField, picked);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        children: [
+          for (final day in _dayKeys) ...[
+            _DayRow(
+              label: l10n.translate('gym.day_$day'),
+              dayHours: hours[day]!,
+              openLabel: l10n.translate('gym.opening_hours_open_label'),
+              closeLabel: l10n.translate('gym.opening_hours_close_label'),
+              closedLabel: l10n.translate('gym.opening_hours_closed'),
+              palette: palette,
+              primary: primary,
+              onClosedToggled: () => onClosedToggled(day),
+              onPickOpen: () => _pickTime(context, day, true, hours[day]!.open),
+              onPickClose: () =>
+                  _pickTime(context, day, false, hours[day]!.close),
+            ),
+            if (day != _dayKeys.last)
+              Divider(height: 1, color: palette.border.withValues(alpha: 0.4)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DayRow extends StatelessWidget {
+  final String label;
+  final _DayHours dayHours;
+  final String openLabel;
+  final String closeLabel;
+  final String closedLabel;
+  final AppPalette palette;
+  final Color primary;
+  final VoidCallback onClosedToggled;
+  final VoidCallback onPickOpen;
+  final VoidCallback onPickClose;
+
+  const _DayRow({
+    required this.label,
+    required this.dayHours,
+    required this.openLabel,
+    required this.closeLabel,
+    required this.closedLabel,
+    required this.palette,
+    required this.primary,
+    required this.onClosedToggled,
+    required this.onPickOpen,
+    required this.onPickClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isClosed = dayHours.closed;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.of(context).bodyM.copyWith(
+                    color: palette.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+          Expanded(
+            flex: 5,
+            child: isClosed
+                ? Text(
+                    closedLabel,
+                    textAlign: TextAlign.center,
+                    style: AppText.of(context).labelS.copyWith(
+                          color: palette.textTertiary,
+                        ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _TimeChip(
+                        label: openLabel,
+                        time: dayHours.open,
+                        palette: palette,
+                        onTap: onPickOpen,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Text(
+                          '–',
+                          style: TextStyle(color: palette.textTertiary),
+                        ),
+                      ),
+                      _TimeChip(
+                        label: closeLabel,
+                        time: dayHours.close,
+                        palette: palette,
+                        onTap: onPickClose,
+                      ),
+                    ],
+                  ),
+          ),
+          AppToggle(
+            value: !isClosed,
+            onChanged: (_) => onClosedToggled(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimeChip extends StatelessWidget {
+  final String label;
+  final TimeOfDay time;
+  final AppPalette palette;
+  final VoidCallback onTap;
+
+  const _TimeChip({
+    required this.label,
+    required this.time,
+    required this.palette,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: palette.textTertiary,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: palette.surfaceVariant,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              border: Border.all(color: palette.border),
+            ),
+            child: Text(
+              _fmtHHmm(time),
+              style: AppText.of(context).labelM.copyWith(
+                    color: palette.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
           ),
         ],
       ),

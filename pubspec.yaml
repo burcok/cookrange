@@ -1,7 +1,7 @@
 name: cookrange
-description: Cookrange is an innovative mobile application that creates artificial intelligence-powered, personalised meal plans. It offers practical, flexible and smart solutions for individuals who want to eat healthy and regularly in the modern pace of life. Cookrange is not only a meal planner, but also a personal nutrition assistant that understands you, adapts to your habits and facilitates your transition to healthy living.
+description: Cookrange is a mobile application that creates AI-powered, personalized weekly meal plans and tracks meals, workouts, gym check-ins and streaks in one place. v0.9.6 internal alpha.
 publish_to: 'none'
-version: 1.0.0+1
+version: 0.9.6+1
 environment:
   sdk: ">=3.0.0 <4.0.0"
 
@@ -88,6 +88,11 @@ dependencies:
   geolocator: ^13.0.2
   qr_flutter: ^4.1.0
   uuid: any
+  # Faz 1 §1.2: background geofence enter/exit/dwell, works while the app is
+  # backgrounded or fully killed (CLCircularRegion on iOS, GeofencingClient on
+  # Android) — verified pub.dev-healthy 2026-08-04 (v1.3.1, 160 pub points,
+  # verified publisher, iOS 14+/Android API 23+, MIT license).
+  native_geofence: ^1.3.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

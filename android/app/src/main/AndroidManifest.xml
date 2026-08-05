@@ -17,6 +17,12 @@
          permission (SCHEDULE_EXACT_ALARM) is intentionally NOT requested. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Faz 1 §1.2: background gym-presence geofencing (native_geofence).
+         ACCESS_BACKGROUND_LOCATION is Android 10+'s own separate, second
+         permission dialog — requested only after the foreground FINE/COARSE
+         permission above is already granted, never bundled with it. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
     <application
         android:label="cookrange"
@@ -108,6 +114,21 @@
         <receiver
             android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"/>
+
+        <!-- Faz 1 §1.2: required by native_geofence (its own documented
+             setup) — receives geofence transitions and re-registers geofences
+             after a reboot, and promotes to a foreground service so Android
+             doesn't kill the process mid-callback. -->
+        <receiver android:name="com.chunkytofustudios.native_geofence.receivers.NativeGeofenceBroadcastReceiver"
+                  android:exported="true"/>
+        <receiver android:name="com.chunkytofustudios.native_geofence.receivers.NativeGeofenceRebootBroadcastReceiver"
+                  android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"></action>
+            </intent-filter>
+        </receiver>
+        <service android:name="com.chunkytofustudios.native_geofence.NativeGeofenceForegroundService"
+                  android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true"/>
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

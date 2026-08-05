@@ -13,83 +13,41 @@ class CommissionService {
   CollectionReference<Map<String, dynamic>> _commissions(String uid) =>
       _db.collection('users').doc(uid).collection('commissions');
 
-  // ── Write ──────────────────────────────────────────────────────────────────
-
-  /// Records a ₺5 referral commission for the code owner when their code is used.
-  Future<void> recordReferralCommission({
-    required String ownerUid,
-    required String refereeUid,
-    required String refereeName,
-    double amount = 5.0,
-  }) async {
-    try {
-      final model = CommissionModel(
-        id: '',
-        ownerUid: ownerUid,
-        refereeUid: refereeUid,
-        refereeName: refereeName,
-        type: CommissionType.referral,
-        status: CommissionStatus.pending,
-        amount: amount,
-        description: 'Premium referral: $refereeName',
-        createdAt: DateTime.now(),
-      );
-      await _commissions(ownerUid).add(model.toFirestore());
-      debugPrint(
-          '[CommissionService] Referral commission ₺$amount recorded for $ownerUid (referee: $refereeUid)');
-    } catch (e) {
-      debugPrint(
-          '[CommissionService] Failed to record referral commission: $e');
-    }
-  }
-
-  /// Records a coaching session commission for the coach.
-  Future<void> recordCoachSessionCommission({
-    required String coachUid,
-    required String clientUid,
-    required String clientName,
-    required double amount,
-  }) async {
-    try {
-      final model = CommissionModel(
-        id: '',
-        ownerUid: coachUid,
-        refereeUid: clientUid,
-        refereeName: clientName,
-        type: CommissionType.coachSession,
-        status: CommissionStatus.pending,
-        amount: amount,
-        description: 'Coaching session: $clientName',
-        createdAt: DateTime.now(),
-      );
-      await _commissions(coachUid).add(model.toFirestore());
-      debugPrint(
-          '[CommissionService] Coach session commission ₺$amount recorded for $coachUid (client: $clientUid)');
-    } catch (e) {
-      debugPrint(
-          '[CommissionService] Failed to record coach session commission: $e');
-    }
-  }
-
   // ── Read ───────────────────────────────────────────────────────────────────
 
   /// Streams the most recent 50 commissions for the given user, newest first.
-  Stream<List<CommissionModel>> getCommissionsStream(String uid) {
+  ///
+  /// [types], when non-null, scopes the stream to only those commission
+  /// types (Faz 6 §6.6 — `GymEarningsScreen` passes `[CommissionType.
+  /// gymPremiumShare]` so a gym owner's panel shows only gym-sourced revenue,
+  /// never any personal referral/coaching commissions mixed into the same
+  /// `users/{uid}/commissions` wallet). Filtered client-side after the same
+  /// bounded `.limit(50)` fetch, not via an extra Firestore `where` — this
+  /// collection is a single user's own commission history (never large
+  /// enough to need a composite index for this), and every existing caller
+  /// (personal `AffiliateEarningsScreen`) keeps working unfiltered.
+  Stream<List<CommissionModel>> getCommissionsStream(String uid,
+      {List<CommissionType>? types}) {
     return _commissions(uid)
         .orderBy('created_at', descending: true)
         .limit(50)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => CommissionModel.fromFirestore(doc))
+            .where((c) => types == null || types.contains(c.type))
             .toList());
   }
 
-  /// Computes earnings aggregates for the given user.
-  Future<EarningsSummaryModel> getEarningsSummary(String uid) async {
+  /// Computes earnings aggregates for the given user, optionally scoped to
+  /// [types] (see [getCommissionsStream]'s doc comment).
+  Future<EarningsSummaryModel> getEarningsSummary(String uid,
+      {List<CommissionType>? types}) async {
     try {
       final snap = await _commissions(uid).get();
-      final commissions =
-          snap.docs.map((doc) => CommissionModel.fromFirestore(doc)).toList();
+      final commissions = snap.docs
+          .map((doc) => CommissionModel.fromFirestore(doc))
+          .where((c) => types == null || types.contains(c.type))
+          .toList();
 
       double totalEarned = 0;
       double pendingAmount = 0;

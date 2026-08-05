@@ -80,7 +80,7 @@ Bundan sonra uygulama ekran metni, site metni ve pazarlama metni yazılırken ka
 **Tanım:** Yemeğin fotoğrafını çekip kalori, makro ve alerjen tahminini alma.
 **Kanonik rakam:** **4 makro + 7 zenginleştirilmiş alan** (lif, şeker, sodyum, sağlık puanı, alerjen, güven skoru, gram)
 **Kanıt:** `lib/core/services/ai_service.dart` `analyzeFoodPhoto`
-**Durum:** TAM VAR — sitede yeterince anlatılmıyor (TİP B)
+**Durum:** TAM VAR — Faz 8 §8.2 ile zengin çıktı (4 makro + 7 alan) `ozellikler/beslenme-ve-planlama.astro`'da anlatılıyor
 **Not:** Yurt dışı aktarım bilgilendirmesi mevcut ✅
 
 ### Tarif üretimi · Recipe generation
@@ -96,7 +96,7 @@ Bundan sonra uygulama ekran metni, site metni ve pazarlama metni yazılırken ka
 **Tanım:** Profil bağlamını bilen yapay zekâya beslenme ve antrenman sorusu sorma; yazıyla ya da sesle.
 **Kanonik rakam:** ücretsiz **günde 2** · Premium **günde 20** · geçmiş kalıcı değil
 **Kanıt:** `lib/core/services/ai_chat_service.dart:29-57` · `lib/core/widgets/voice_assistant_overlay.dart` · `functions/index.js:30-31` (sunucu) · `lib/core/models/ai_credit_model.dart:10-11` (kullanıcıya gösterilen)
-**Durum:** TAM VAR — **sitede hiç anılmıyor** (TİP B, kaybedilen değer)
+**Durum:** TAM VAR — Faz 8 §8.2 ile siteye eklendi: `ozellikler/yapay-zeka-koc.astro` / `en/features/ai-coach.astro`
 
 ---
 
@@ -142,7 +142,9 @@ Bundan sonra uygulama ekran metni, site metni ve pazarlama metni yazılırken ka
 **Tanım:** İki salonun belirli bir süre boyunca check-in sayısıyla yarıştığı meydan okuma.
 **Kanonik rakam:** varsayılan süre **7 gün** · metrik **check-in sayısı** · otomatik bitiş **yok**
 **Kanıt:** `lib/core/services/gym_leaderboard_service.dart:98-104` · `lib/screens/gym/gym_leaderboard_screen.dart:120-132, 623-830`
-**Durum:** TAM VAR — uygulamada yanlışlıkla **"YAKINDA GELECEK"** etiketli (`gym.feature_challenges`), sitede hiç anılmıyor, dokümanda "effectively unbuilt" yazıyor
+**Durum:** TAM VAR — "YAKINDA GELECEK" etiketi kaldırıldı (Faz 0 §0.6), siteye eklendi (Faz 8 §8.2/§8.3:
+`salon-ekosistemi.astro`/`gym-ecosystem.astro`'da "Salon savaşı kendi kendine sonuçlanır" bölümü),
+`docs/GYM_ECOSYSTEM.md`'deki "effectively unbuilt" satırı düzeltildi
 **Kullanılmayacak:** "yakında" · "coming soon"
 
 ### Karşılıklı arkadaşlık · Mutual friendship
@@ -156,7 +158,7 @@ Bundan sonra uygulama ekran metni, site metni ve pazarlama metni yazılırken ka
 **Tanım:** Öğün, antrenman ve ilerleme gönderilerinin paylaşıldığı, yorum ve tepki alan akış.
 **Kanonik rakam:** **4 gönderi tipi** · öğün gönderisinde **4 makro alanı** · `community.*` **67 localization anahtarı**
 **Kanıt:** `lib/screens/community/widgets/create_post_card.dart:745-753` · `lib/core/services/community_service.dart:102-110`
-**Durum:** TAM VAR — **sitede hiç anılmıyor** (TİP B)
+**Durum:** TAM VAR — Faz 8 §8.2 ile siteye eklendi: `ozellikler/topluluk-ve-squad.astro` / `en/features/community-squad.astro`
 **Kullanılmayacak:** "üç kapsam: salon, ilçe, şehir" (kapsam enum'u yok)
 
 ### Paylaş ve kaydet · Share and log
@@ -170,20 +172,52 @@ Bundan sonra uygulama ekran metni, site metni ve pazarlama metni yazılırken ka
 ## 5. SALON VE KOÇ
 
 ### Salon check-in · Gym check-in
-**Tanım:** QR okutarak ya da salonun yakınında GPS ile salona giriş kaydı.
-**Kanonik rakam:** GPS yarıçapı **100 m** · QR jetonu **32 karakter / 24 saat**
-**Kanıt:** `lib/core/models/gym_model.dart:63`, `:93` · `lib/core/services/gym_service.dart:369-380`, `:403-418`
-**Durum:** TAM VAR
-**Kullanılmayacak:** "otomatik check-in" · "geofence" (yok — elle tetikleniyor)
-**Uyarı:** Yarıçap yalnızca istemcide doğrulanıyor (`firestore.rules:471-472` yalnızca uid eşleşmesi arıyor) → salona satılan "doğrulama" sahtelenebilir. Bkz. 06 numaralı dosya R14.
+**Tanım:** QR okutarak, salonun yakınında GPS ile, ya da (Faz 1, §1.4/1.5) salonun geofence sınırına
+girip 5 dakika içeride kalarak (dwell) otomatik salona giriş kaydı.
+**Kanonik rakam:** GPS yarıçapı **100 m** · QR jetonu **32 karakter / 24 saat** · geofence dwell eşiği
+**5 dk** · çıkış debounce **3 dk** · aynı salona yeniden giriş hız limiti **10 dk**
+**Kanıt:** `lib/core/models/gym_model.dart:63`, `:93` · `lib/core/services/gym_service.dart:369-380`,
+`:403-418` · `functions/presence.js` (`recordPresenceEvent`) · `firestore.rules` `gyms/{gymId}/presence`
+**Durum:** KISMEN VAR — sunucu tarafı (doğrulama, veri modeli, kurallar) **TAM VAR**; istemci tarafı
+(arka planda gerçek geofence tetikleyicisi, Faz 1 §1.2) **henüz yazılmadı**. `recordPresenceEvent`
+bugün ancak elle çağrılabilir bir uç nokta — kimse arka planda otomatik tetiklemiyor.
+**Artık kullanılabilir:** "otomatik check-in" · "geofence" — ~~önceden yasaktı~~, sunucu tarafı hazır
+olduğu için kanonik terime döndü (istemci tarafı bitene kadar yalnızca dahili/teknik dokümanda,
+kullanıcıya açık site metninde DEĞİL — bkz. Faz 8.3, mekanizma canlı olmadan siteye çıkmaz).
+**Uyarı (güncellendi):** Yarıçap (GPS check-in) hâlâ yalnızca istemcide doğrulanıyor — bu, GPS/manual
+yolları için hâlâ geçerli bir uyarı. Geofence yolu içinse bu artık **çözüldü**: `recordPresenceEvent`
+üyeliği, `geofence_enabled`'ı, rızayı, hız limitini ve saat sapmasını sunucu tarafında doğruluyor;
+oturum kapanınca check-in'i de sunucu yazıyor (`method: 'geofence'`). Bkz. 06 numaralı dosya R14 —
+geofence yolu için kapandı, GPS/manual yolları için hâlâ açık.
 
 ### Salon paneli · Gym dashboard
-**Tanım:** Salonun kendi üye listesini, check-in geçmişini ve yoğun saat desenini gördüğü ekran.
-**Kanonik rakam:** yoğun saat penceresi **60 gün** · **4 zaman dilimi** (06-12 / 12-18 / 18-22 / 22-05) · ısı haritası **7×4 = 28 hücre** · üye listesi sayfası **20**
+**Tanım:** Salonun kendi üye listesini, check-in geçmişini, yoğun saat desenini ve (Faz 1, §1.4-1.6)
+anlık doluluğunu gördüğü ekran.
+**Kanonik rakam:** yoğun saat penceresi **60 gün** · **4 zaman dilimi** (06-12 / 12-18 / 18-22 / 22-05) ·
+ısı haritası **7×4 = 28 hücre** · üye listesi sayfası **20**
 **Kanıt:** `lib/core/services/gym_analytics_service.dart:18-23`, `:77-86` · `gym_service.dart:174`
 **Durum:** KISMEN VAR
-**Kullanılmayacak:** **"doluluk"** / "occupancy" / "doluluk görünürlüğü" / "anlık doluluk" · "gelir paneli" · "kadro paneli"
-**Gerekçe:** `occupancy|capacity|doluluk` → `lib/` genelinde 0 eşleşme; check-out kaydı yok, dolayısıyla "içeride kaç kişi var" hesaplanamaz.
+**Kullanılmayacak:** "gelir paneli" · "kadro paneli"
+
+### Doluluk · Live occupancy
+**Tanım:** Bir salonda o anda içeride bulunan üye sayısı (ve varsa `capacity` alanına göre yüzdesi).
+Check-out kaydı olmadan hesaplanamayacağı için önceden yasaktı — Faz 1 §1.4/1.5'in geofence
+oturum(giriş+çıkış) modeli bunu gerçek hâle getirdi.
+**Mekanizma:** geofence dwell ile açılan bir oturum, çıkış (veya zaman aşımı) ile kapanır; her
+açılış/kapanış `gyms/{gymId}.live_occupancy` sayacını sunucu tarafında ±1 günceller (transaction).
+**Kaynak alanı:** `gyms/{gymId}.live_occupancy` (server-only — `firestore.rules`'daki
+`touchesProtectedGymFields()` sahibin bile doğrudan yazmasını engelliyor).
+**Kanıt:** `functions/presence.js` · `firestore.rules` `touchesProtectedGymFields()` ·
+`lib/core/models/gym_model.dart:63` (`capacity`)
+**Durum:** KISMEN VAR — sayaç ve kural **TAM VAR**; sayacı gerçekten hareket ettirecek istemci
+geofence tetikleyicisi (Faz 1 §1.2) ve salon paneli görünümü (Faz 1 §1.6) yazılana kadar
+`live_occupancy` her salonda **0'da sabit kalır**. Bu satır, panel görünümü ve gerçek trafik
+üretmeye başladıkça TAM VAR'a çekilecek.
+**Artık kullanılabilir:** "doluluk" / "occupancy" / "anlık doluluk" — ~~önceden yasaktı~~, mekanizma
+sunucu tarafında kanıtlanabilir olduğu için kanonik terime döndü (kullanıcıya açık site metninde
+DEĞİL — bkz. Faz 8.3, istemci tetikleyicisi ve panel görünümü canlı olmadan siteye çıkmaz).
+**Gerekçe (tarihsel, artık geçersiz):** `occupancy|capacity|doluluk` → `lib/` genelinde 0 eşleşme
+uyarısı bu tarihte yazılmıştı; `capacity`/`live_occupancy` artık gerçek alanlar.
 
 ### Yoğun saat deseni · Peak-hour pattern
 **Tanım:** Son 60 günün check-in dağılımını gün × zaman dilimi ısı haritası olarak gösteren görünüm.
@@ -191,19 +225,27 @@ Bundan sonra uygulama ekran metni, site metni ve pazarlama metni yazılırken ka
 **Durum:** TAM VAR ✅ — kanonik adı bu; "doluluk" değil
 
 ### Liderlik tablosu · Leaderboard
-**Tanım:** Check-in sayısına göre canlı sıralama.
-**Kanonik rakam:** salon **200** üye tavanı · global **50** · arkadaş **30** · salon içi haftalık, pazartesi 00:00 yerel saat
-**Kanıt:** `lib/core/services/gym_leaderboard_service.dart:32-38` · `leaderboard_service.dart:38-44`, `:63-64` · `gym_service.dart:337`
-**Durum:** TAM VAR ✅
-**Kullanılmayacak:** "tüm üyeler" (200 tavanı var)
+**Tanım:** Haftalık XP'ye göre canlı sıralama (Faz 5 §5.3 ile check-in sayısından çevrildi — bkz.
+`gym_leaderboard_service.dart:25-31`'in kendi yorumu).
+**Kanonik rakam:** salon üye listesi sayfası **200** · global **50** · arkadaş **30** · haftalık,
+pazartesi 00:00 yerel saat (`LocalWeek`/`localWeekKey`)
+**Kanıt:** `lib/core/services/gym_leaderboard_service.dart:32-38`, `:94-115` · `leaderboard_service.dart:83-115` ·
+`functions/progress.js`'in `awardXp`'si `community_weekly_xp/{weekKey}/members/{uid}`'i XP'yle aynı
+transactionda yazıyor
+**Durum:** TAM VAR ✅ — **düzeltme (Faz 8 §8.3'te bulundu, aynı oturumda kapatıldı):** UI/model/kural
+üçü de gerçekti ama `awardXp` bu koleksiyona hiç yazmıyordu, bu yüzden hem topluluk hem salon içi
+haftalık liderlik tablosu Faz 5'in kendi sevkiyatından beri **hep boş** görünüyordu; yazma yolu artık
+eklendi (syntax/modül doğrulandı, **henüz canlı trafik görmedi** — bu depodaki her Cloud Function
+değişikliğinin standart uyarısı)
+**Kullanılmayacak:** "tüm üyeler" (200 tavanı var) · "check-in sayısına göre" (artık XP tabanlı)
 
 ### Danışan listesi · Client list
 **Tanım:** Koçun kendi danışanlarını ve ilerlemelerini gördüğü liste.
-**Kanonik rakam:** rapora giren alan **3** · izin adımı **0**
-**Kanıt:** `lib/screens/coach/coach_client_detail_screen.dart:100-152`
-**Durum:** SADECE ARAYÜZ VAR (rıza kontrolü yok — ACİL, bkz. 06 numaralı dosya R3)
+**Kanonik rakam:** rıza kademesi **0-3** (Faz 4 §4.1) · izin adımı artık **1** (kademe 0 ise sunucu reddeder)
+**Kanıt:** `lib/screens/coach/coach_client_detail_screen.dart` (`progress_sharing_service.dart` üzerinden kademe okur) · `functions/summaries.js`'in `generateMemberProgressSummary`'si `progress_sharing/{scopeId}` kademesini sunucuda doğrulayıp kademe 0'ı reddediyor
+**Durum:** TAM VAR — Faz 4 §4.1/§4.2 ile izin kontrolü sunucuya taşındı (önceden "ACİL" işaretliydi, artık değil)
 **Kanonik ad değişikliği:** ~~"kadro" / "roster"~~ → **"danışan listesi" / "client list"**
-**Gerekçe (K4):** "Kadro"/"roster" salon personeli panelini çağırıyor; o panel yok (`staff|kadro|personel` → 0 eşleşme).
+**Gerekçe (K4):** "Kadro"/"roster" salon personeli panelini çağırıyor; o panel yok (`staff|kadro|personel` → 0 eşleşme). `assets/localization/en.json:924`'teki "build your roster" ifadesi bu yüzden §8.4'te değiştirilecek.
 
 ### Program pazarı · Program marketplace
 **Tanım:** Koçların hazırladığı antrenman ve beslenme programlarının listelendiği alan.
@@ -215,10 +257,11 @@ Bundan sonra uygulama ekran metni, site metni ve pazarlama metni yazılırken ka
 
 ### Salon kodu · Gym code
 **Tanım:** Bir üyenin hangi salon üzerinden kaydolduğunu belirleyen atıf kodu.
-**Kanonik rakam:** — (özellik yok)
-**Durum:** **YOK** — `gym_model.dart:22-43` 22 alan, kod alanı yok; `gym_code` → 0 eşleşme
-**Kullanılmayacak:** "salona özel kod" · "kodla kayıt" · "salona gelir" (gelir modeli yok: `TODO.md:2496` GYM-07, "Files: none")
-**Var olan ilgili şey:** referans kazancı **kişi/koç başına ₺5** (`functions/economy.js:21`) — bu salon geliri değil, kullanıcı referansı
+**Kanonik rakam:** varsayılan kullanım tavanı **5.000** · komisyon **`GYM_COMMISSION_TRY`** (sabit, `functions/economy.js`)
+**Kanıt:** `referrals/{code}` (`type: 'gym'`) · `gym_attributions/{uid}` (değişmez, sunucu yazar) · `functions/economy.js` (`type === 'gym'` dalı) · `GymInviteCodesScreen` + `GymInviteCodeDetailScreen` (QR/poster export) · site: `davet/[code].astro`
+**Durum:** TAM VAR (Faz 6 §6.1/§6.5/§6.6) — kod üretme, atfetme kaydı, komisyon tetiklemesi hepsi sunucu tarafında; **ödeme hâlâ elle** (`GymEarningsScreen`'in "payouts are processed manually" bandı — payout rail kasıtlı olarak kapsam dışı, K1)
+**Kullanılmayacak:** "otomatik ödeme" / "anlık komisyon transferi" (ödeme elle yapılıyor) · "salon kimliği görür" (salon bireysel atfetme kaydını hiç göremez — yalnızca toplam sayaç)
+**Kullanılabilir artık:** "salon kodu" / "gym code" · "salon atfetmesi" / "gym attribution" — ~~önceden yasaktı~~, Faz 6 ile kanonik terime döndü
 
 ---
 

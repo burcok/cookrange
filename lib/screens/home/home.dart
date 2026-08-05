@@ -39,6 +39,7 @@ import 'widgets/role_quick_card.dart';
 import 'widgets/meal_breakdown_card.dart';
 import 'widgets/exercise_log_sheet.dart';
 import 'widgets/meal_plan_comparison_sheet.dart';
+import 'widgets/plan_offer_inbox_banner.dart';
 import 'food_scan_screen.dart';
 import '../../core/models/exercise_log_model.dart';
 import '../../core/services/exercise_log_service.dart';
@@ -896,6 +897,13 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
         SizedBox(height: 32.h),
+        // Faz 3 §3.5 — pending plan-offer discovery nudge, directly above
+        // the meal-plan section it's about. Renders nothing when there are
+        // zero pending offers (own internal StreamBuilder + early return).
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: PlanOfferInboxBanner(uid: userModel.uid),
+        ),
         _buildMealPlanSection(context, userModel, l10n),
         SizedBox(height: 32.h),
       ],

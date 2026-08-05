@@ -18,6 +18,7 @@ import 'pages/metrics_page.dart';
 import 'pages/motivation_page.dart';
 import 'pages/name_page.dart';
 import 'pages/premium_page.dart';
+import 'pages/referral_page.dart';
 import 'pages/report_page.dart';
 import 'pages/target_weight_page.dart';
 import 'pages/trust_page.dart';
@@ -40,6 +41,14 @@ class OnboardingFlowScreen extends StatefulWidget {
     loggedInCompletionArg: true,
   };
 
+  /// True while an [OnboardingFlowScreen] is the active route (Faz 6 §6.3).
+  /// [DeepLinkService] checks this before routing an `/invite/{code}` link
+  /// with no signed-in session: if onboarding is already in progress, it
+  /// stages the code into [OnboardingProvider] only — pushing a SECOND flow
+  /// instance on top would look like the user's in-progress answers were
+  /// lost. Mirrors [OnboardingCompletion.isFinalizing]'s static-flag pattern.
+  static bool isActive = false;
+
   /// When true, the flow finalizes against the CURRENT account (persists the
   /// collected profile to the existing uid) instead of handing off to
   /// registration. See [OnboardingCompletion.finalizeAndRoute].
@@ -60,6 +69,12 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
 
   /// One-shot guard so the logged-in prefill below runs only once.
   bool _prefilled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    OnboardingFlowScreen.isActive = true;
+  }
 
   @override
   void didChangeDependencies() {
@@ -93,12 +108,13 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
 
   @override
   void dispose() {
+    OnboardingFlowScreen.isActive = false;
     _ctrl.dispose();
     super.dispose();
   }
 
   List<Widget> _buildPages() {
-    const total = 14;
+    const total = 15;
     Widget at(int i, Widget Function(int step) build) => build(i);
     return [
       at(
@@ -155,13 +171,17 @@ class _OnboardingFlowScreenState extends State<OnboardingFlowScreen> {
               step: s, totalSteps: total, onNext: _next, onBack: _back)),
       at(
           13,
+          (s) => OnboardingReferralPage(
+              step: s, totalSteps: total, onNext: _next, onBack: _back)),
+      at(
+          14,
           (s) => OnboardingReportPage(
               step: s, totalSteps: total, onNext: _next, onBack: _back)),
     ];
   }
 
   void _next() {
-    if (_index < 13) {
+    if (_index < 14) {
       _ctrl.nextPage(duration: AppMotion.normal, curve: AppMotion.emphasized);
     } else {
       _complete();

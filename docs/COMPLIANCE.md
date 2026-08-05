@@ -61,6 +61,7 @@ Cross-reference `docs/DATABASE.md` for exact Firestore paths.
 | AI inputs | prompts, profile context sent to OpenRouter | Yes (derived) | Explicit consent | Not persisted by us beyond the call; processor sees it | Per processor policy |
 | Payment | purchase receipts, subscription tier | No (handled by store/PSP) | Contract / legal obligation | Store + `users/{uid}` flags | Per tax law |
 | Commissions/payouts | earnings, payout account (future) | No | Contract / legal obligation | `commissions`, future PSP | Per tax law |
+| Gym attribution (Faz 6 §6.5) | which gym's invite code a user redeemed, when, via which campaign | No (not special-category — no health/location/biometric) | Contract (consequence of redeeming a code) | `gym_attributions/{uid}` (owner-read-only; gym owner never reads it directly — see `DATABASE.md`) | Until account deletion; user-side display can be hidden earlier (`private/attribution_prefs`), record itself stays so the gym's already-earned commission isn't retroactively undermined |
 
 ## 5. Third-Party Processors (sub-processors — must be disclosed in Privacy Policy)
 - **Google Firebase** (Auth, Firestore, Storage, FCM, Crashlytics, Analytics, Performance, Remote
@@ -144,9 +145,15 @@ headings, bullets, tables, bold, rules). Entry points: Register screen + Setting
 3. ✅ **KVKK Aydınlatma Metni** (`kvkk_aydinlatma_{tr,en}.md`) — TR statutory clarification + EN courtesy.
 4. ✅ **Açık Rıza Beyanı** (`explicit_consent_{tr,en}.md`) — explicit consent for health data, location,
    AI processing, cross-border transfer, notifications; withdrawable; TR + EN.
-5. ⏳ **Coach & Marketplace Agreement** (`marketplace_terms_{en,tr}.md`) — drafted EN+TR (provider
-   status, fees/commission, payouts/KYC, taxes, refunds, conduct, liability). **Wires into the UI when
-   payments/payouts ship (roadmap A1/L7).**
+5. **Coach & Marketplace Agreement** (`marketplace_terms_{en,tr}.md`) — drafted EN+TR (provider
+   status, fees/commission, payouts/KYC, taxes, refunds, conduct, liability). Was drafted but genuinely
+   unreferenced from any screen until Faz 6 §6.6, which closed that specific gap (audit finding C16a):
+   §10/§11 (added this task — gym QR-attribution commission mechanism, rate/currency/tax/refund/manual-
+   payout terms) is now real, linked from `GymEarningsScreen`'s "View gym partner agreement" row, and
+   describes a mechanism that is actually live (`functions/economy.js`'s `maybeAwardGymCommission`).
+   ⏳ The REST of the document (coach program marketplace sales fees, KYC payouts) still ⏳ **wires into
+   the UI when payments/payouts ship more broadly** (roadmap A1/L7) — only the gym-commission section
+   is live today; do not read this document's link existing as evidence the whole marketplace is.
 
 ⚠️ **All drafts are baseline text authored by an AI and MUST be reviewed by a qualified lawyer before
 public launch.** Do not copy another app's contracts verbatim (copyright + practice mismatch) — these

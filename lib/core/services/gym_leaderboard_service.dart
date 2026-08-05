@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart';
 import '../data/test_data_library.dart';
 import '../models/gym_war_model.dart';
 import '../models/leaderboard_entry_model.dart';
-import '../models/checkin_model.dart';
 import '../models/gym_member_model.dart';
+import '../utils/local_week.dart';
 import 'test_mode_service.dart';
 
 class GymLeaderboardService {
@@ -21,72 +21,67 @@ class GymLeaderboardService {
   // ── Leaderboard ──────────────────────────────────────────────────────────────
 
   /// Streams the weekly leaderboard for [gymId].
-  /// Combines real-time check-in counts (this week) with member list.
+  ///
+  /// Faz 5 §5.3: sourced from THIS WEEK'S XP (`community_weekly_xp/
+  /// {weekKey}`), not raw check-in counts — `functions/progress.js`'s
+  /// `awardXp` bumps that rollup inside the SAME transaction that awards XP
+  /// for ANY kind (meal logs, posts, check-ins, template acceptances, ...),
+  /// so this now reflects a member's full weekly engagement, not just gym
+  /// visits. The weekly reset boundary is unchanged (`LocalWeek`, same
+  /// Monday-00:00-local math `_currentWeekStart()` always used).
+  ///
+  /// Live trigger: the gym's OWN member roster (`.snapshots()`) — reacts
+  /// immediately to joins/leaves, exactly like every other gym-scoped
+  /// listener in this file. The per-member XP figures are refetched
+  /// (one-shot, chunked `whereIn` reads — never a `.snapshots()` per member,
+  /// which would mean up to 7 concurrent listeners for a 200-member gym)
+  /// on every roster emission. Documented trade-off, not silently accepted:
+  /// this is not sub-second-live the way the old checkins listener was —
+  /// XP now accrues from many action types across the whole app, not just
+  /// visible-in-gym check-ins, so a member re-opening this screen (which
+  /// resubscribes) is the realistic refresh path, not a number ticking up
+  /// while they watch.
   Stream<List<LeaderboardEntryModel>> getWeeklyLeaderboardStream(String gymId) {
     if (TestModeService().isActive) {
       return Stream.value(TestDataLibrary.gymLeaderboard());
     }
 
-    final weekStart = _currentWeekStart();
+    final weekKey = LocalWeek.key(DateTime.now());
 
-    // Faz 0 §0.5 fix: this listener had no bound at all — a very active gym
-    // re-reads and re-counts an ever-growing week's worth of check-ins on
-    // every single new check-in. 5000/week is generous headroom over the
-    // realistic ceiling (200 members × ~7/week), logged if ever hit rather
-    // than silently under-counting.
-    const checkinCap = 5000;
     return _db
         .collection('gyms')
         .doc(gymId)
-        .collection('checkins')
-        .where('timestamp',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(weekStart))
-        .limit(checkinCap)
+        .collection('members')
+        .limit(200)
         .snapshots()
-        .asyncMap((checkinSnap) async {
-      // Build uid → count map from this week's check-ins
-      final counts = <String, int>{};
-      for (final doc in checkinSnap.docs) {
-        final m = CheckInModel.fromFirestore(doc);
-        counts[m.uid] = (counts[m.uid] ?? 0) + 1;
-      }
-      if (checkinSnap.docs.length >= checkinCap) {
-        debugPrint(
-            '[GymLeaderboardService] checkin count capped at $checkinCap for $gymId this week — leaderboard may undercount');
-      }
-
-      // Fetch the member list (single read per checkins emission), capped.
-      final membersSnap = await _db
-          .collection('gyms')
-          .doc(gymId)
-          .collection('members')
-          .limit(200)
-          .get();
-
+        .asyncMap((membersSnap) async {
       final members =
           membersSnap.docs.map(GymMemberModel.fromFirestore).toList();
+      final xpByUid = await _fetchWeeklyXp(
+        members.map((m) => m.uid).toList(),
+        weekKey,
+      );
 
-      // Build entries for all members, even those with 0 check-ins
+      // Build entries for all members, even those with 0 XP this week.
       final entries = members
           .map((m) => LeaderboardEntryModel(
                 uid: m.uid,
                 displayName: m.displayName,
                 photoURL: m.photoURL,
-                checkInCount: counts[m.uid] ?? 0,
+                xp: xpByUid[m.uid] ?? 0,
                 rank: 0,
               ))
           .toList();
 
-      // Sort descending by count
-      entries.sort((a, b) => b.checkInCount.compareTo(a.checkInCount));
+      // Sort descending by XP
+      entries.sort((a, b) => b.xp.compareTo(a.xp));
 
       // Assign ranks — ties share the same rank
       final ranked = <LeaderboardEntryModel>[];
       for (int i = 0; i < entries.length; i++) {
-        final rank =
-            (i > 0 && entries[i].checkInCount == entries[i - 1].checkInCount)
-                ? ranked[i - 1].rank
-                : i + 1;
+        final rank = (i > 0 && entries[i].xp == entries[i - 1].xp)
+            ? ranked[i - 1].rank
+            : i + 1;
         ranked.add(entries[i].copyWith(rank: rank));
       }
 
@@ -96,10 +91,28 @@ class GymLeaderboardService {
     });
   }
 
-  /// Returns the Monday of the current week at 00:00:00 local time.
-  DateTime _currentWeekStart() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day - (now.weekday - 1));
+  /// Chunked (`whereIn` caps at 30 — mirrors the same 30-value limit this
+  /// codebase's `LeaderboardService.getFriendsLeaderboard`/the "friend at
+  /// gym" notification fan-out already rely on) lookup of this week's XP
+  /// for a bounded set of member uids. One-shot `.get()` per chunk, not a
+  /// live listener — see this method's caller doc comment for why.
+  Future<Map<String, int>> _fetchWeeklyXp(
+      List<String> uids, String weekKey) async {
+    if (uids.isEmpty) return {};
+    final result = <String, int>{};
+    final col = _db
+        .collection('community_weekly_xp')
+        .doc(weekKey)
+        .collection('members');
+    for (var i = 0; i < uids.length; i += 30) {
+      final end = (i + 30 > uids.length) ? uids.length : i + 30;
+      final chunk = uids.sublist(i, end);
+      final snap = await col.where(FieldPath.documentId, whereIn: chunk).get();
+      for (final doc in snap.docs) {
+        result[doc.id] = (doc.data()['xp'] as num?)?.toInt() ?? 0;
+      }
+    }
+    return result;
   }
 
   // ── Gym Wars ─────────────────────────────────────────────────────────────────

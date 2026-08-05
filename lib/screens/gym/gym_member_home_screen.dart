@@ -1,17 +1,73 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/gym_model.dart';
+import '../../core/services/gym_presence_service.dart';
 import '../../core/widgets/ds/ds.dart';
 import 'gym_checkin_screen.dart';
 import 'gym_community_screen.dart';
 import 'gym_leaderboard_screen.dart';
 
-class GymMemberHomeScreen extends StatelessWidget {
+class GymMemberHomeScreen extends StatefulWidget {
   final GymModel gym;
   const GymMemberHomeScreen({super.key, required this.gym});
+
+  @override
+  State<GymMemberHomeScreen> createState() => _GymMemberHomeScreenState();
+}
+
+class _GymMemberHomeScreenState extends State<GymMemberHomeScreen> {
+  GymModel get gym => widget.gym;
+
+  bool _trackingEnabled = false;
+  bool _trackingBusy = false;
+  bool _showHealthCheck = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (gym.geofenceEnabled && gym.hasLocation) {
+      _loadTrackingState();
+      // Faz 1 §1.2 tier 2: opportunistic fallback in case "Always" location
+      // has been silently downgraded since tracking was turned on. Cheap
+      // no-op in the common case (permission still Always) — see the doc
+      // comment on GymPresenceService.checkForegroundFallback.
+      unawaited(GymPresenceService().checkForegroundFallback(context, gym));
+    }
+  }
+
+  Future<void> _loadTrackingState() async {
+    final enabled = await GymPresenceService().isTrackingEnabled(gym.id);
+    final needsHealthCheck = enabled
+        ? await GymPresenceService().needsHealthCheckCard(gym.id)
+        : false;
+    if (!mounted) return;
+    setState(() {
+      _trackingEnabled = enabled;
+      _showHealthCheck = needsHealthCheck;
+    });
+  }
+
+  Future<void> _toggleTracking(bool next) async {
+    if (_trackingBusy) return;
+    setState(() => _trackingBusy = true);
+    try {
+      if (next) {
+        final ok =
+            await GymPresenceService().enableTrackingForGym(context, gym);
+        if (mounted) setState(() => _trackingEnabled = ok);
+      } else {
+        await GymPresenceService().disableTrackingForGym(gym.id);
+        if (mounted) setState(() => _trackingEnabled = false);
+      }
+    } finally {
+      if (mounted) setState(() => _trackingBusy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +141,19 @@ class GymMemberHomeScreen extends StatelessWidget {
               if (gym.latitude != null && gym.longitude != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 _LocationCard(gym: gym, primary: primary),
+              ],
+              if (gym.geofenceEnabled && gym.hasLocation) ...[
+                const SizedBox(height: AppSpacing.md),
+                _AutoCheckinCard(
+                  primary: primary,
+                  enabled: _trackingEnabled,
+                  busy: _trackingBusy,
+                  onChanged: _toggleTracking,
+                ),
+                if (_showHealthCheck) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  _HealthCheckNote(),
+                ],
               ],
               const SizedBox(height: AppSpacing.md),
               _ActionCard(
@@ -375,6 +444,100 @@ class _ActionCard extends StatelessWidget {
             Icons.chevron_right_rounded,
             color: palette.textTertiary,
             size: 22,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Auto check-in toggle (Faz 1 §1.2) ─────────────────────────────────────────
+
+class _AutoCheckinCard extends StatelessWidget {
+  final Color primary;
+  final bool enabled;
+  final bool busy;
+  final ValueChanged<bool> onChanged;
+
+  const _AutoCheckinCard({
+    required this.primary,
+    required this.enabled,
+    required this.busy,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final text = AppText.of(context);
+
+    return AppCard(
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(Icons.sensors_rounded, color: primary, size: 24),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.translate('gym.auto_checkin_title'),
+                  style: text.titleM.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  t.translate('gym.auto_checkin_subtitle'),
+                  style: text.bodyM.copyWith(color: palette.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          busy
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : AppToggle(value: enabled, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+}
+
+class _HealthCheckNote extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
+    final text = AppText.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: palette.warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, size: 16, color: palette.warning),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Text(
+              t.translate('gym.auto_checkin_health_check'),
+              style: text.labelS.copyWith(color: palette.warning, height: 1.4),
+            ),
           ),
         ],
       ),

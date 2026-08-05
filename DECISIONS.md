@@ -434,6 +434,317 @@ status inside feature docs; that is the specific drift that made the previous do
 
 ---
 
+## ADR-018 — Group-chat fan-out reads live membership, never denormalizes it onto the chat doc
+
+**Date:** 2026-08-05 · **Status:** Accepted
+
+**Context.** Faz 2 §2.3 paired every `community_groups/{id}` with a `chats/{id}` doc so a group's
+messages could reuse `ChatService` unchanged. That chat doc's `participants` array is set once at
+creation (`CommunityGroupService.createGroup`: `[owner.uid]`) and never touched again —
+`joinGroup`/`approveJoinRequest`/`redeemGroupInvite`/`kickMember`/`banMember` all write
+`community_groups/{id}/members`, not this array. `onChatMessageCreated` (push + `unreadCounts`
+fan-out) read `participants` directly, so every group member besides the owner silently never got a
+notification or an unread count (Faz 2 §2.4 found and closed this).
+
+**Decision.** The fix reads `community_groups/{groupId}/members` (excluding `banned`) at fan-out
+time via the Admin SDK, instead of keeping `participants` in sync. Any future server-side code that
+needs "who can see this group chat" should do the same: read the `members` subcollection live, never
+denormalize group membership into the chat doc's `participants` array.
+
+**Reason.** `participants` is deliberately client-immutable (`canUpdateChatMeta()`, Faz 2 §2.1 —
+closing a chat-hijack hole where any participant could add/remove others). Keeping it "correct" for
+groups would mean either reopening that rule or funnelling every join/leave/kick/ban/invite-redeem
+through a new dedicated server path just to maintain a second copy of membership that already lives
+in `members`. Reading `members` directly costs one extra Admin-SDK query (uncapped on purpose — a
+notification fan-out that silently drops a real member on a `.limit()` is the same class of bug this
+ADR exists to prevent) and needs no rules change, since Admin SDK bypasses rules and `members` is
+already the single source of truth `canAccessGroupChat()` itself reads.
+
+**Alternatives.** Denormalize: write `participants` (or a separate `recipient_uids` array) on every
+membership-changing call site — rejected for the reasons above, plus every miss is a silent,
+unrecoverable notification/unread-count gap for exactly the member it affects, discovered only by a
+user complaint, not a test. Cap the `members` read with `.limit()` — rejected: correctness for a
+"notify everyone" feature requires everyone, not a page of them.
+
+**Consequences.** ✅ One source of truth for group membership; access control and notification
+fan-out can never drift apart. ✅ No rules change, no new index. ⚠️ Cost is O(group size) per
+message, same order as the per-recipient FCM/token lookups already done — acceptable today, but a
+very large or very chatty group would be the first place to look if Cloud Function cost or latency
+for this trigger ever becomes a concern. ⚠️ `unreadCounts` on the chat doc still accumulates a stale
+key for a member who is later kicked/banned (harmless — they lose `canAccessGroupChat()` regardless
+— but not cleaned up); left as a known, minor hygiene gap, not fixed here.
+
+---
+
+## ADR-019 — Abuse-rate limiting for reports/moderation/appeals: reactive trigger + rules lock, not a write-gating callable
+
+**Date:** 2026-08-05 · **Status:** Accepted
+
+**Context.** Faz 2 §2.6 needed a server-side rate limit on report filing, group moderation actions
+(`kickMember`/`banMember`/`muteMember`/`unmuteMember`/`unbanMember`), and moderation appeals, to
+blunt mass-reporting brigades and a compromised group-owner/admin account mass-banning. All three
+are, today, direct client writes gated by `firestore.rules` (the Faz 2 §2.3 design for group
+moderation; the pre-existing design for reports, matching `privacy_requests`). A real sliding-window
+limiter needs a counter that goes up on every attempt regardless of client cooperation — rules alone
+can't guarantee that (a client could simply never write the counter-bumping doc), so *some* Cloud
+Function involvement is unavoidable. The open question was how much: rewrite the write path itself
+(a `applyGroupModerationAction`-style callable, mirroring how `BLK-03`/`SEC-06` moved follow/friend-
+request writes server-side), or add a lighter enforcement layer on top of the existing writes.
+
+**Decision.** Keep `reports`/`community_groups/{id}/moderation`/`moderation_appeals` as direct
+client writes (`CommunityGroupService`'s five methods are unchanged — Faz 2 §2.6 wires UI onto them,
+per the plan's own framing of "already-built service methods"). Add three Firestore `onCreate`
+triggers (`functions/moderation.js`: `onReportCreated`, `onGroupModerationActionCreated`,
+`onModerationAppealCreated`) that bump a per-uid sliding-window counter
+(`functions/rate_limit.js: checkAndBumpSlidingWindow` — same window-start-Timestamp-plus-count shape
+as `index.js: enforceRateLimitAndQuota`, generalized) and, once a uid crosses the threshold, stamp a
+`{kind}_locked_until` timestamp on `rate_limits/{uid}` (fully server-only collection). `firestore.
+rules`' `isReportRateLimited()`/`isModerationRateLimited()`/`isAppealRateLimited()` check that field
+before allowing the NEXT write of that kind — `isAdmin()` stays exempt, matching every other
+protected-field check in this file (`touchesProtectedGroupFields()` etc.).
+
+**Reason.** A full callable migration for kick/ban/mute is the textbook-correct long-term answer
+(ADR-008 already lists "ban state" and "moderation" as things that must be server-only, and the
+current client-direct design is, strictly, a gap against that rule) — but it means rewriting five
+call sites, denying every existing client-direct rule path, and re-verifying every existing
+kick/ban/mute rules test against a new contract, for a task explicitly scoped as "wire the
+already-built service methods into a UI" plus "add a rate limit." The reactive-trigger design is
+strictly weaker (see Consequences) but is additive: it changes no existing write-success path when
+unlocked (confirmed — every pre-existing kick/ban/mute rules test still passes unmodified), needs no
+callable, and reuses the exact sliding-window shape already proven in `aiProxy`.
+
+**Alternatives.** Full write-gating callable (`applyGroupModerationAction`, `fileReport`) — rejected
+for this pass as materially larger in scope and risk than "add a rate limit" asked for; noted here as
+the correct next step if group moderation ever needs to be fully closed against a compromised
+owner/admin account, not just rate-limited. Pure `firestore.rules`-only counter (client increments
+its own `rate_limits/{uid}` doc in the same batch) — rejected: nothing stops a client from omitting
+that write, since rules can only read the CURRENT state of another doc via `get()`, never assert that
+the same transaction also updated it — a self-reported counter is not a real rate limit.
+
+**Consequences.** ✅ Zero changes to any existing client-direct write's success path; all pre-existing
+`community_groups`/`reports` rules tests pass unmodified. ✅ Reuses one proven pattern (`rate_limit.js`
+shared by all three triggers) instead of three bespoke mechanisms. ✅ New surfaces (moderation
+appeals) ship with the same protection from day one. ⚠️ **Honest limitation, not to be overclaimed**:
+enforcement is reactive — a burst can land up to (the window's max + however many arrive before the
+trigger fires, typically on the order of a second or two) writes before the lock actually engages.
+This bounds and blunts abuse (turns "unlimited" into "a few dozen actions, then hard-stopped, all of
+it sitting in the immutable moderation/reports log for cleanup and audit") — it does not guarantee
+zero-over-limit the way a pre-write-gating callable would. ⚠️ Three new Cloud Functions (`onCreate`
+triggers) exist only as syntax-checked (`node -c`) code, per this repo's standing limitation (no
+functional Cloud Functions test harness, `CLAUDE.md` §8) — they have never fired against live data
+here.
+
+---
+
+## ADR-020 — XP backbone: one entry gate extended in place, a ledger for idempotent caps, reputation migrated onto level bands
+
+**Date:** 2026-08-05 · **Status:** Accepted
+
+**Context.** Faz 5 §5.1 needed a server-authoritative XP/level system: points per action, a daily cap
+per action that a client retry storm can't bypass, an increasing-interval level curve with a
+celebration on level-up, and — since the plan explicitly forbids "two parallel score systems" —
+a real migration of the existing `ReputationTier` (previously `streak×2 + postCount×5`, computed in
+`functions/progress.js`'s `syncProgress`, itself Faz 0 §0.4's server-authority fix) onto the new XP
+economy, not a second economy running alongside it.
+
+**Decision.** Three linked choices, one system:
+1. **Single entry gate, extended, not duplicated.** `syncProgress` (already the sole write path for
+   achievements/reputation) gained a new `xpEvents[]` request field and an internal `awardXp`
+   primitive, rather than a new `awardProgress`-named callable. (The ORIGINAL plan text called this
+   function `awardProgress`; the code that actually shipped in Faz 0 named it `syncProgress` — code
+   is truth, so the existing name stays, extended in place.) Server-verified events that never need a
+   client report at all (`check_in`, `template_accepted`) call the same internal `awardXp` in-process
+   from `presence.js`/`gym.js`/`templates.js` — still ONE code path that decides points/caps/ledger
+   writes, just multiple legitimate callers.
+2. **The ledger IS the cap enforcement, via a deterministic id.** `users/{uid}/xp_events/{eventId}`,
+   `eventId = ${kind}_${refId}`. This single string does two jobs at once: it makes a retried award
+   for the exact same instance idempotent (the doc already exists → replay the stored outcome), and it
+   makes a kind's daily cap unbeatable by a retry storm of brand-new instances (count today's
+   already-awarded docs of that `kind`, refuse the next one once at the cap — a capped attempt is
+   deliberately never written at all, so cost stays proportional to real awards).
+3. **Reputation migrates onto XP LEVEL bands, not a second formula.** `tierFromLevel` (level 1-4
+   newcomer, 5-9 active, 10-19 contributor, 20-34 expert, 35+ legend) replaces `tierFromScore`'s old
+   score-cutoff table entirely — the old formula is deleted, not kept running alongside XP.
+   `reputation_score` keeps being written, but now as a plain mirror of `xp` (never an independently
+   computed number again), so any consumer still reading that exact field name doesn't break. A user
+   who predates this system gets `xp` seeded from their old `reputation_score` the first time
+   `awardXp` ever touches their doc — read-time migration, no backfill script.
+
+**Reason.** (1) avoids the exact failure mode the task was warned against — "a second, parallel entry
+point" — and keeps every existing trust-boundary comment in `progress.js` valid instead of forking it.
+(2) a single Firestore doc id is cheaper and more auditable than a separate counters-with-transactions
+scheme, and reuses this repo's own established idiom (`presence_notify_log`'s per-day dedup key,
+`plan_offers`' `.create()`-fails-if-exists semantics) rather than inventing a new one. (3) tying tier to
+LEVEL (not raw XP) means retuning the level curve later never requires re-deriving tier thresholds —
+they're already expressed in the same unit the curve produces.
+
+**Alternatives.** A dedicated `awardXp` HTTPS callable, separate from `syncProgress` — rejected: the
+task explicitly asked for one entry gate, and a second callable would mean either duplicating the
+achievement/reputation read-write batch or racing two separate writes to the same user doc. Storing a
+running per-kind-per-day counter directly on the user doc (e.g. `xp_daily.<kind>.count`) instead of a
+ledger — rejected: no natural idempotency key for retries (a counter increment isn't self-describing
+the way a doc id is), and no audit trail of individual awards. Reusing the OLD score's numeric
+thresholds (50/150/350/700) as level-band cutoffs directly — rejected: XP accumulates far faster than
+the old formula ever did (a single day's meal logs + streak already approaches the old "active"
+cutoff), so the old absolute numbers would compress every tier into the first couple of weeks; bands
+expressed in LEVEL instead of raw XP stay meaningful regardless of how the point table gets tuned later.
+
+**Consequences.** ✅ Zero new client-facing entry points — one callable, one trust model, one place to
+audit. ✅ `profile_screen.dart`'s existing tier chip needed ZERO code changes to reflect the new
+formula — `ReputationData`'s shape didn't change, only what feeds it. ✅ 151/151 rules suite (149
+baseline + 2 new: client cannot self-write `xp`/`level`/`level_updated_at`, `xp_events` is
+owner-read/nobody-write). ⚠️ **Honest limitation**: a capped (rejected) attempt is never ledgered, so a
+retry of that SAME specific instance after a day boundary rolls over would award on the retry —
+low-stakes (XP has no monetary equivalent by design) and rare (every call site reports immediately
+after the local action), but not theoretically airtight. ⚠️ Cannot independently re-derive which
+flavor of a `food_logs` doc is a "recipe cook" vs. a plain log (no queryable field for that yet) — the
+exact same pre-existing, already-accepted gap the `justCookedAndLogged` achievement flag already
+carried; XP inherits it rather than worsening it. ⚠️ Like every other Cloud Function change across
+Faz 0-4, this has been syntax-checked (`node -c`) and had its module graph `require()`'d, never fired
+against live production data — no functional execution harness exists for Cloud Functions in this repo
+(`CLAUDE.md` §8).
+
+---
+
+## ADR-021 — Gym invite-code generation stays client-direct; redemption stays server-only
+
+**Date:** 2026-08-05 · **Status:** Accepted
+
+**Context.** Faz 6 §6.1 extends `referrals/{code}` with a `type: 'gym'` variant for poster/QR user
+acquisition — the same collection `applyReferral` already redeems server-side (ADR-008: value-bearing
+writes are server-only). The open question was whether MINTING a gym code needed a new callable too,
+mirroring `applyReferral`'s shape, or could stay a plain client write like every other owner-scoped
+gym doc (gym profile, gym posts, QR check-in token).
+
+**Decision.** Creating a gym invite code stays a plain client-side Firestore write, gated entirely by
+`firestore.rules`: `type=='gym'` requires `gym_id` and a server-evaluated `get()` cross-check that
+`request.auth.uid` really is `gyms/{gym_id}.owner_uid` — the exact pattern every sibling owner-scoped
+gym rule already uses (`members`, `posts`, `checkins`, `private/qr_token`). No new callable was added.
+`applyReferral` (redemption, `functions/economy.js`) is untouched and remains the only path that ever
+grants a reward or writes a commission.
+
+**Reason.** A code's own fields (`campaign`, `location_note`, `max_uses`, `printed_at`) carry no value
+by themselves — nothing is granted, spent, or unlocked by a code doc merely existing. The rules' `get()`
+cross-check already fully closes the one real risk (stamping someone else's `gym_id` on your own code,
+proven by a dedicated negative test); a callable would re-implement that exact same ownership check
+server-side for no additional security. Value only enters the picture at REDEMPTION time, which is
+exactly where server authority already lives and stays.
+
+**Alternatives.** A `createGymInviteCode` callable mirroring `applyReferral`'s transaction shape
+(rejected: doubles the code path for a write `firestore.rules` can already fully gate on its own;
+ADR-008's server-only bar is for value-bearing fields, and a code's metadata isn't one) · extending
+`applyReferral` now to special-case `type=='gym'` (rejected: redemption isn't reachable yet — no deep
+link/onboarding step exists until Faz 6 §6.3/§6.4 — so there is nothing real to special-case yet; the
+attribution record and gym commission split, §6.5/§6.6, are follow-on work with their own design
+questions, not a detail to guess at speculatively here).
+
+**Consequences.** ✅ Zero new Cloud Function surface for a purely descriptive write; the entire security
+argument is a one-line rules `get()`, auditable in the same file as every sibling gym rule, proven by
+7 new rules-suite tests (176/176 total, 169 baseline + 7). ⚠️ Whoever builds Faz 6 §6.5/§6.6 MUST add
+a `type=='gym'` branch to `applyReferral` before real redemption goes live — today it grants the
+generic 7-day-both-sides premium reward + a flat ₺5 commission to `owner_uid` for ANY type (it never
+reads `type` at all), which is almost certainly not the final desired gym behavior once a dedicated
+attribution doc and `gymPremiumShare` commission type exist; shipping redemption without that branch
+first would hand every redeeming gym owner an accidental personal premium trial + commission as a
+side effect of unmodified generic code. ⚠️ `used_by_uids` stays a plain array on the code's own doc
+(pre-existing shape, unchanged) — a gym poster's `max_uses: 5000` default is comfortably inside
+Firestore's 1 MiB document limit today, but a genuinely viral code would eventually need this
+reworked before §6.5/§6.6 turn gym-code redemption into real traffic.
+
+---
+
+## ADR-022 — Commission reversal: a one-way correlation hash, and paid entries are annotated + offset, never rewritten
+
+**Date:** 2026-08-05 · **Status:** Accepted
+
+**Context.** `functions/purchases.js` revokes premium on refund/chargeback/expiry via three paths
+(`validatePurchase`'s own `revoked` branch, `appStoreNotifications`, `playRtdn`), but none of them
+reversed the corresponding `users/{ownerUid}/commissions/{id}` ledger entry — a known, previously
+flagged gap (`maybeAwardGymCommission`'s own header comment; `docs/SERVICES.md`) left open because
+closing it touches shared revocation infrastructure across every commission type. It's also a live
+promise in `assets/legal/marketplace_terms_{en,tr}.md` §6/§10 ("commissions on refunded or
+charged-back transactions are reversed"), so the gap was a real code/contract mismatch, not
+cosmetic. Two design questions forced a choice: (1) how does a commission entry get traced back to
+the specific purchase that granted it, given the entry lives in the OWNER's subcollection while
+revocation only ever knows the PURCHASER's platform+token; (2) what happens when the matched entry
+has already been marked `paid` — real money has, in principle, already moved.
+
+**Decision.** (1) Every purchase-linked commission entry (today, only `gymPremiumShare` —
+`referral` is granted at code-redemption time with no store transaction behind it at all, and stays
+structurally exempt) carries `purchase_key`: `sha256(platform + ':' + token)`
+(`entitlements.js`'s `purchaseCorrelationKey`), NOT the reversible base64url id
+`claimPurchaseToken` already uses for `processed_purchases/{id}`. Revocation recomputes the same
+hash from whatever platform+token that event carries and runs one
+`collectionGroup('commissions').where('purchase_key', '==', key)` query
+(`reverseCommissionsForPurchase`) — no dependency on first resolving which uid was affected. (2) A
+matched `pending`/`approved` entry is flipped to the existing `rejected` status (`CommissionStatus`,
+`commission_service.dart` already excludes it from earnings totals) plus `reversed_at`/
+`reversed_reason`. A matched `paid` entry is left completely unmodified except for those same two
+annotation fields — never rewritten, never deleted — and a NEW sibling entry is appended instead:
+negative `amount`, `status:'pending'`, `adjustment_of`/`adjustment_reason` pointing back at the
+original, so it nets against that owner's NEXT manual payout via the same
+`pendingAmount`/`totalEarned` arithmetic that already exists. (3) The reversal call is gated to a
+genuine refund/revoke signal only — Apple `REFUND`/`REVOKE` (equivalently, `revocationDate` set) and
+Google's `voidedPurchaseNotification`/subscription notificationType `12` — and deliberately EXCLUDES
+Apple `EXPIRED`/Google notificationType `13`, even though the entitlement-revocation call sitting
+right next to each reversal call correctly treats expiry identically to a refund for ACCESS purposes.
+
+**Reason.** `commissions` is owner-readable (`firestore.rules`: `allow read: if request.auth.uid ==
+uid`), unlike the fully server-only `processed_purchases` — reusing the same reversible encoding
+there would hand the commission owner a decodable copy of the PURCHASER's actual Apple/Google
+transaction id, for a field that only ever needs an equality match. A one-way hash gets the same
+correlation power with none of that leak. For the paid case: payouts in this codebase are manual
+(`CommissionService.requestPayout` is a documented placeholder; `marketplace_terms_{en,tr}.md` §4/§10
+say the same) — there is no payment rail for a Cloud Function to even issue a reversal on, so
+clawing back cash already sent isn't something a webhook should attempt unilaterally. Rewriting the
+paid entry's own amount/status would also falsify a factual record (it WAS earned, it WAS paid, on
+that date). An offsetting entry keeps the ledger append-only (matching every other economy ledger in
+this codebase — `xp_events`, `engagement_credit_events`, `gym_attributions`) while still making the
+owner's NET position correct going forward, and mirrors §10's own "amounts Cookrange owes you may be
+offset against amounts you owe Cookrange" language. For (3): an EXPIRED/notificationType-13
+subscription simply reached the end of a period it was legitimately paid for and not renewed —
+nothing about the ALREADY-COMPLETED purchase that earned the commission becomes invalid just because
+a LATER renewal didn't happen. `marketplace_terms_{en,tr}.md` §6/§10 promise reversal specifically
+for "refunded or charged-back" transactions, not for ordinary non-renewal — mirroring
+entitlement revocation's own EXPIRED handling onto commission reversal would silently claw back a
+gym's commission on every single non-renewing member, which is a materially different (and far more
+damaging) behavior than what was asked for or promised.
+
+**Alternatives.** Storing the plain `platform_token`-style id (same scheme as `processed_purchases`)
+directly on the commission doc (rejected: reversible, and this doc is owner-readable — needless leak
+for zero functional gain, since reversal only ever needs equality). Deleting a `pending` entry
+outright instead of flipping it to `rejected` (rejected: every other ledger here is append-only, and
+`commissions` already denies client delete for the same audit-trail reason — no cause to make the
+one server-side write path do what client writes are deliberately forbidden from doing). For the
+paid case: silently rewriting the paid entry's `amount`/`status` in place (rejected: falsifies a
+factual record); doing nothing at all (rejected: leaves the ledger permanently overstated after a
+real refund, directly contradicting the §6/§10 promise this change exists to keep). Mirroring
+entitlement revocation's three-way `REFUND`/`REVOKE`/`EXPIRED` trigger set onto commission reversal
+verbatim (rejected — and initially the first draft of this change did exactly this before review
+caught it: expiry is the single most COMMON of the three events by far, since it fires on every
+plain non-renewal, so getting this wrong would have clawed back the majority of gym commissions ever
+paid for no legitimate reason).
+
+**Consequences.** ✅ Closes a real legal/contractual gap for the one commission type it currently
+applies to, with zero Dart-side model changes required for the pending/approved/rejected path
+(`getEarningsSummary` already treats `rejected` correctly) and only a 1-line sign-formatting fix for
+the paid/offsetting path (`gym_earnings_screen.dart`/`affiliate_earnings_screen.dart` hardcoded a `+`
+prefix that a negative amount would otherwise render as "+₺-15.00"). Any FUTURE purchase-linked
+commission type gets reversal for free by writing the same `purchase_key` at grant time — the query
+is type-agnostic. ⚠️ Depends on the platform+token available at each of the three revocation call
+sites matching, byte-for-byte, whatever platform+token was used at ORIGINAL grant time — this holds
+today (the revoked-branch reuses the same request's own token; `appStoreNotifications` uses Apple's
+`originalTransactionId`, `playRtdn` the same Google `purchaseToken` `claimPurchaseToken` already
+keys on) but does NOT account for Apple's transaction-id hierarchy diverging across subscription
+renewals (a renewal's own `transactionId` differs from `originalTransactionId`) — a pre-existing
+ambiguity in how `entitlements.latest_transaction_id` itself is matched, not introduced by this
+change, and still unresolved. ⚠️ An owner's `pendingAmount` can go net-negative after a clawback
+exceeds their other pending commissions — arithmetically correct, and the existing `>0`-gated
+payout-request button already hides correctly in that state, but it's a real UI state nobody had
+designed for before now.
+
+---
+
 ## Recording a new decision
 
 Append at the end. Use the next ID. Keep it to the seven headings:

@@ -13,6 +13,8 @@ import '../../../core/services/sharing_service.dart';
 import '../../../core/widgets/ds/ds.dart';
 import '../post_detail_screen.dart';
 import '../widgets/glass_post_card.dart';
+import 'group_leaderboard_screen.dart';
+import 'group_members_screen.dart';
 
 class GroupDetailScreen extends StatefulWidget {
   final String groupId;
@@ -36,23 +38,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     super.dispose();
   }
 
-  Future<void> _toggleMembership(bool isMember, String groupName) async {
-    final l10n = AppLocalizations.of(context);
+  // Joining is join_policy-aware (open/request/invite) and lives in
+  // _HeaderState now, mirroring active_groups_section.dart's _handleJoin —
+  // leaving has no policy branch, so it stays here.
+  Future<void> _leaveGroup() async {
     try {
-      if (isMember) {
-        await _groupService.leaveGroup(widget.groupId);
-      } else {
-        await _groupService.joinGroup(widget.groupId);
-        if (mounted) {
-          unawaited(HapticFeedback.mediumImpact());
-          AppSnackBar.success(
-            context,
-            l10n
-                .translate('community.groups.join_success')
-                .replaceAll('{group}', groupName),
-          );
-        }
-      }
+      await _groupService.leaveGroup(widget.groupId);
     } catch (e) {
       if (mounted) AppSnackBar.error(context, e.toString());
     }
@@ -119,14 +110,43 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 ),
                 title: Text(group.name,
                     style: t.titleM.copyWith(fontWeight: FontWeight.w800)),
+                // Faz 2 §2.6 — member list + moderation entry point. Purely
+                // additive (a new app-bar action); the join/leave button
+                // below is join_policy-aware (_HeaderState).
+                actions: [
+                  // Faz 5 §5.3 — group contribution leaderboard entry
+                  // point, same additive pattern as the member-list action
+                  // beside it.
+                  IconButton(
+                    icon: Icon(Icons.emoji_events_outlined,
+                        color: palette.textPrimary, size: 22),
+                    tooltip: l10n
+                        .translate('community.groups.leaderboard_nav_tooltip'),
+                    onPressed: () => Navigator.push(
+                      context,
+                      AppTransitions.slideRight(GroupLeaderboardScreen(
+                        groupId: widget.groupId,
+                        groupName: group.name,
+                      )),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.people_alt_outlined,
+                        color: palette.textPrimary, size: 22),
+                    onPressed: () => Navigator.push(
+                      context,
+                      AppTransitions.slideRight(
+                          GroupMembersScreen(groupId: widget.groupId)),
+                    ),
+                  ),
+                ],
               ),
               SliverToBoxAdapter(
                 child: _Header(
                   group: group,
                   uid: _uid,
                   service: _groupService,
-                  onToggle: (isMember) =>
-                      _toggleMembership(isMember, group.name),
+                  onLeave: _leaveGroup,
                 ),
               ),
               // Composer (members only)
@@ -190,18 +210,108 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends StatefulWidget {
   final CommunityGroupModel group;
   final String uid;
   final CommunityGroupService service;
-  final ValueChanged<bool> onToggle;
+  final VoidCallback onLeave;
 
   const _Header({
     required this.group,
     required this.uid,
     required this.service,
-    required this.onToggle,
+    required this.onLeave,
   });
+
+  @override
+  State<_Header> createState() => _HeaderState();
+}
+
+class _HeaderState extends State<_Header> {
+  bool _busy = false;
+
+  CommunityGroupModel get group => widget.group;
+
+  /// join_policy-aware (Faz 2 §2.3) — mirrors
+  /// active_groups_section.dart's _ActiveGroupCardState._handleJoin exactly,
+  /// since that's this app's one other join-button caller: 'open' joins
+  /// immediately; 'request' opens the same request-sheet →
+  /// CommunityGroupService.requestToJoin flow; 'invite' has no direct-join
+  /// path at all (a code is required, functions/groups.js:redeemGroupInvite)
+  /// — the button in that case shows an informational state instead of
+  /// attempting (and failing) a join.
+  Future<void> _handleJoin() async {
+    final l10n = AppLocalizations.of(context);
+
+    if (group.joinPolicy == GroupJoinPolicy.request) {
+      final message = await _showRequestSheet(context, l10n);
+      if (message == null) return; // cancelled
+      setState(() => _busy = true);
+      try {
+        await widget.service.requestToJoin(
+          group.id,
+          message: message.isEmpty ? null : message,
+        );
+        if (mounted) {
+          unawaited(HapticFeedback.mediumImpact());
+          AppSnackBar.success(
+              context, l10n.translate('community.groups.request_sent'));
+        }
+      } catch (e) {
+        if (mounted) AppSnackBar.error(context, e.toString());
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
+      return;
+    }
+
+    setState(() => _busy = true);
+    try {
+      await widget.service.joinGroup(group.id);
+      if (mounted) {
+        unawaited(HapticFeedback.mediumImpact());
+        AppSnackBar.success(
+          context,
+          l10n
+              .translate('community.groups.join_success')
+              .replaceAll('{group}', group.name),
+        );
+      }
+    } catch (e) {
+      if (mounted) AppSnackBar.error(context, e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<String?> _showRequestSheet(
+      BuildContext context, AppLocalizations l10n) {
+    final ctrl = TextEditingController();
+    return AppSheet.show<String>(
+      context: context,
+      title: l10n.translate('community.groups.request_dialog_title'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppTextField(
+              controller: ctrl,
+              hintText: l10n.translate('community.groups.request_dialog_hint'),
+              maxLines: 3,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            AppButton(
+              label: l10n.translate('community.groups.request_dialog_send'),
+              onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -260,20 +370,36 @@ class _Header extends StatelessWidget {
             ],
           ),
           SizedBox(height: 12.h),
-          // Join / leave
+          // Join / leave — join_policy-aware, see _handleJoin's doc comment.
           StreamBuilder<bool>(
-            stream: service.isMemberStream(group.id, uid),
+            stream: widget.service.isMemberStream(group.id, widget.uid),
             builder: (context, snap) {
               final isMember = snap.data ?? false;
+              if (isMember) {
+                return AppButton(
+                  label: l10n.translate('community.groups.leave'),
+                  icon: Icons.check_rounded,
+                  variant: AppButtonVariant.secondary,
+                  loading: _busy,
+                  onPressed: _busy ? null : widget.onLeave,
+                );
+              }
+              if (group.joinPolicy == GroupJoinPolicy.invite) {
+                return AppButton(
+                  label: l10n.translate('community.groups.invite_only'),
+                  icon: Icons.lock_outline_rounded,
+                  variant: AppButtonVariant.secondary,
+                  onPressed: null,
+                );
+              }
               return AppButton(
-                label: l10n.translate(isMember
-                    ? 'community.groups.leave'
-                    : 'community.groups.join'),
-                icon: isMember ? Icons.check_rounded : Icons.group_add_rounded,
-                variant: isMember
-                    ? AppButtonVariant.secondary
-                    : AppButtonVariant.primary,
-                onPressed: () => onToggle(isMember),
+                label: l10n.translate(
+                    group.joinPolicy == GroupJoinPolicy.request
+                        ? 'community.groups.request_join'
+                        : 'community.groups.join'),
+                icon: Icons.group_add_rounded,
+                loading: _busy,
+                onPressed: _busy ? null : _handleJoin,
               );
             },
           ),

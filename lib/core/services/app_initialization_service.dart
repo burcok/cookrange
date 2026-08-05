@@ -27,6 +27,7 @@ import 'test_mode_service.dart';
 import 'remote_config_service.dart';
 import 'performance_service.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'gym_presence_service.dart';
 
 /// Comprehensive app initialization service that handles all startup tasks
 /// with proper error handling, fallbacks, and user feedback.
@@ -316,6 +317,7 @@ class AppInitializationService {
         _initPushNotifications(),
         _initRemoteConfig(),
         _initPerformance(),
+        _initGymPresence(),
       ]).timeout(
         const Duration(seconds: 8),
         onTimeout: () {
@@ -396,6 +398,20 @@ class AppInitializationService {
     } catch (e) {
       _initializationResults['remote_config'] = false;
       _log.warning('Remote Config initialization failed',
+          service: _serviceName, error: e);
+    }
+  }
+
+  /// Faz 1 §1.2: re-registers background geofences for every gym the user
+  /// already has auto-check-in on — see the doc comment on
+  /// [GymPresenceService.reconcileTrackedGyms] for why this can't be skipped.
+  Future<void> _initGymPresence() async {
+    try {
+      await GymPresenceService().reconcileTrackedGyms();
+      _initializationResults['gym_presence'] = true;
+    } catch (e) {
+      _initializationResults['gym_presence'] = false;
+      _log.warning('Gym presence reconciliation failed',
           service: _serviceName, error: e);
     }
   }

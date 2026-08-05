@@ -65,6 +65,16 @@ class DataExportService {
       _posts(uid), // 21
       _authoredComments(uid), // 22
       _storageManifest(uid), // 23
+      // Faz 3 §3.2 — appended rather than inserted in position so none of
+      // the indices above have to be renumbered.
+      _collection('users/$uid/plan_offers'), // 24
+      _authoredTemplates(uid), // 25
+      // Faz 5 §5.1 — same append-only discipline.
+      _collection('users/$uid/xp_events'), // 26
+      // Faz 6 §6.5 — a top-level doc (like `users/$uid` itself), not a
+      // subcollection: uses _doc, not _collection. Null (not an empty list)
+      // when the user was never attributed to a gym — the common case.
+      _doc('gym_attributions/$uid'), // 27
     ]);
 
     return {
@@ -95,6 +105,10 @@ class DataExportService {
       'community_posts': results[21],
       'comments': results[22],
       'uploaded_files': results[23],
+      'plan_offers': results[24],
+      'authored_meal_plan_templates': results[25],
+      'xp_events': results[26],
+      'gym_attribution': results[27],
     };
   }
 
@@ -164,6 +178,23 @@ class DataExportService {
     } catch (e) {
       unawaited(CrashlyticsService()
           .recordError(e, null, reason: 'data_export: _posts'));
+      return [];
+    }
+  }
+
+  /// Faz 3 §3.2: meal_plan_templates authored by this uid (top-level
+  /// collection, not a `users/{uid}` subcollection — same reasoning as
+  /// [_posts]).
+  Future<List<Map<String, dynamic>>> _authoredTemplates(String uid) async {
+    try {
+      final snap = await _db
+          .collection('meal_plan_templates')
+          .where('author_uid', isEqualTo: uid)
+          .get();
+      return snap.docs.map((d) => {'id': d.id, ...d.data()}).toList();
+    } catch (e) {
+      unawaited(CrashlyticsService()
+          .recordError(e, null, reason: 'data_export: _authoredTemplates'));
       return [];
     }
   }

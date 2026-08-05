@@ -61,14 +61,25 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
     // 1. The entire owner subtree (profile + every subcollection: private
     //    nutrition PII, food_logs, food_analyses, meal_plans, achievements,
     //    consents, ai_*, favorites, recent_foods, recipe_notes, commissions,
-    //    payout_requests, following/followers, program_enrollments, …).
+    //    payout_requests, following/followers, program_enrollments,
+    //    plan_offers (Faz 3 §3.2), …).
     await db.recursiveDelete(db.collection('users').doc(uid));
 
     // 2. Server-only docs keyed by uid.
+    //    Faz 6 §6.5: gym_attributions/{uid} is a NEW top-level, uid-keyed doc
+    //    (like entitlements/ai_credits above) that predates account deletion
+    //    coverage without this line — added here, not left as a fresh gap.
+    //    Safe even for a never-attributed user: delete() on a missing doc is
+    //    a no-op, not an error. This does NOT touch the gym owner's own
+    //    already-recorded `commissions` ledger entry (a separate doc under
+    //    THEIR subtree, referencing this uid only by value) — the gym's
+    //    accounting record survives exactly as it should; only the
+    //    attribution FACT tied to the now-deleted account is erased.
     await Promise.all([
       db.collection('entitlements').doc(uid).delete(),
       db.collection('ai_credits').doc(uid).delete(),
       db.collection('logs').doc(uid).delete(),
+      db.collection('gym_attributions').doc(uid).delete(),
       db.recursiveDelete(db.collection('notifications').doc(uid)),
     ]);
 
@@ -77,6 +88,11 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
     await deleteByQuery(db, db.collection('signals').where('userId', '==', uid));
     await deleteByQuery(db, db.collection('coach_profiles').where(admin.firestore.FieldPath.documentId(), '==', uid));
     await deleteByQuery(db, db.collection('referrals').where('owner_uid', '==', uid));
+    // Faz 3 §3.2: meal_plan_templates authored by this uid. Safe to delete
+    // outright — any plan_offers already sent from them hold an immutable
+    // template_snapshot copy (§3.2), not a live reference, so this can never
+    // leave a dangling pointer in someone else's offer inbox.
+    await deleteByQuery(db, db.collection('meal_plan_templates').where('author_uid', '==', uid));
 
     // 4. Storage objects.
     await deleteStoragePrefixes(uid);

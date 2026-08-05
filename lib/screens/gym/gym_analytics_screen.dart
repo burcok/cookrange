@@ -10,9 +10,11 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/models/gym_analytics_model.dart';
 import '../../core/models/gym_member_model.dart';
 import '../../core/models/gym_model.dart';
+import '../../core/models/progress_sharing_model.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/gym_analytics_service.dart';
 import '../../core/services/gym_service.dart';
+import '../../core/services/progress_sharing_service.dart';
 import '../../core/utils/profile_navigation.dart';
 import '../../core/widgets/ds/ds.dart';
 
@@ -123,14 +125,37 @@ class _GymAnalyticsScreenState extends State<GymAnalyticsScreen>
     }
   }
 
+  /// §4.3: date range + tier filter are chosen explicitly on a config sheet
+  /// (never an unbounded, unfiltered export the exporter didn't confirm),
+  /// and the exact field list is shown on that same sheet before anything
+  /// is generated.
   Future<void> _export() async {
     if (_exporting) return;
-    setState(() => _exporting = true);
+    final palette = AppPalette.of(context);
     final l10n = AppLocalizations.of(context);
+    final config = await AppSheet.show<_ExportConfig>(
+      context: context,
+      title: l10n.translate('gym.analytics_export_csv'),
+      child: _ExportConfigSheet(l10n: l10n, palette: palette),
+    );
+    if (config == null || !mounted) return;
+
+    setState(() => _exporting = true);
     try {
       unawaited(HapticFeedback.mediumImpact());
-      final csv =
-          await GymAnalyticsService().exportCsv(_resolvedGymId, _allMembers);
+      var members = _allMembers;
+      if (config.onlyConsenting) {
+        final consentingUids = await ProgressSharingService()
+            .getConsentingMemberUids(ProgressSharingScope.gym(_resolvedGymId));
+        members =
+            _allMembers.where((m) => consentingUids.contains(m.uid)).toList();
+      }
+      final csv = await GymAnalyticsService().exportCsv(
+        _resolvedGymId,
+        members,
+        since: config.since,
+        until: config.until,
+      );
       if (!mounted) return;
       await Share.share(
         csv,
@@ -259,14 +284,27 @@ class _GymAnalyticsScreenState extends State<GymAnalyticsScreen>
                 l10n: l10n),
             const SizedBox(height: 16),
 
-            // 4. At-risk members
+            // 4. At-risk members (§4.3 — scoped to tier>=1 consenters; an
+            // empty list now means one of two very different things, so
+            // they get two different empty states rather than one silence).
             if (analytics.atRiskMembers.isNotEmpty) ...[
               _AtRiskSection(
                   analytics: analytics, palette: palette, l10n: l10n),
               const SizedBox(height: 16),
+            ] else if (analytics.sharingIncludedCount == 0) ...[
+              _NoSharingYetNotice(palette: palette, l10n: l10n),
+              const SizedBox(height: 16),
             ],
 
-            // 5. Top performers
+            // 5. Progress-sharing aggregate (§4.3 — k-anonymity gated ≥5)
+            _SharingAggregateCard(
+                analytics: analytics,
+                palette: palette,
+                primary: primary,
+                l10n: l10n),
+            const SizedBox(height: 16),
+
+            // 6. Top performers
             if (analytics.topMembers.isNotEmpty) ...[
               _TopPerformersSection(
                   analytics: analytics,
@@ -960,6 +998,354 @@ class _TopMemberTile extends StatelessWidget {
             ),
             Icon(Icons.chevron_right_rounded,
                 color: palette.textTertiary, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── No one sharing yet (§4.3 empty state) ─────────────────────────────────────
+
+/// Distinguishes "nobody has granted tier>=1 yet" from "everybody's fine" —
+/// an empty at-risk list means something very different in each case, and
+/// silently showing nothing for both would hide that this whole feature is
+/// waiting on member opt-in, not reporting a clean bill of health.
+class _NoSharingYetNotice extends StatelessWidget {
+  final AppPalette palette;
+  final AppLocalizations l10n;
+
+  const _NoSharingYetNotice({required this.palette, required this.l10n});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded,
+              size: 18, color: palette.textTertiary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              l10n.translate('gym.analytics_no_sharing_yet'),
+              style: AppText.of(context)
+                  .bodyM
+                  .copyWith(color: palette.textSecondary, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Progress-sharing aggregate (§4.3, k-anonymity ≥5) ──────────────────────────
+
+class _SharingAggregateCard extends StatelessWidget {
+  final GymAnalyticsModel analytics;
+  final AppPalette palette;
+  final Color primary;
+  final AppLocalizations l10n;
+
+  const _SharingAggregateCard({
+    required this.analytics,
+    required this.palette,
+    required this.primary,
+    required this.l10n,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.groups_rounded, color: primary, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.translate('gym.analytics_sharing_aggregate_title'),
+                  style: AppText.of(context).titleM.copyWith(
+                        color: palette.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (analytics.sharingAggregateGated)
+            Text(
+              l10n.translate('gym.analytics_sharing_aggregate_gated',
+                  variables: {
+                    'threshold': '${GymAnalyticsModel.kAnonymityThreshold}',
+                    'count': '${analytics.sharingIncludedCount}',
+                  }),
+              style: AppText.of(context)
+                  .bodyM
+                  .copyWith(color: palette.textSecondary, height: 1.4),
+            )
+          else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _MiniStat(
+                    label:
+                        l10n.translate('gym.analytics_sharing_avg_frequency'),
+                    value: analytics.sharingAvgCheckInFrequencyPerWeek
+                        .toStringAsFixed(1),
+                    palette: palette,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _MiniStat(
+                    label: l10n.translate('gym.analytics_sharing_avg_streak'),
+                    value: analytics.sharingAvgStreakWeeks.toStringAsFixed(1),
+                    palette: palette,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              l10n.translate('gym.analytics_sharing_included_count',
+                  variables: {'count': '${analytics.sharingIncludedCount}'}),
+              style: AppText.of(context)
+                  .labelS
+                  .copyWith(color: palette.textTertiary),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final AppPalette palette;
+
+  const _MiniStat(
+      {required this.label, required this.value, required this.palette});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: palette.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: AppText.of(context).titleM.copyWith(
+                  color: palette.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          Text(
+            label,
+            style: AppText.of(context)
+                .labelS
+                .copyWith(color: palette.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── CSV export config sheet (§4.3) ─────────────────────────────────────────────
+
+/// What the exporter chose on [_ExportConfigSheet]. A mandatory date range
+/// (both ends always set — never "unbounded") and an explicit tier-filter
+/// decision, never silently defaulted.
+typedef _ExportConfig = ({DateTime since, DateTime until, bool onlyConsenting});
+
+class _ExportConfigSheet extends StatefulWidget {
+  final AppLocalizations l10n;
+  final AppPalette palette;
+
+  const _ExportConfigSheet({required this.l10n, required this.palette});
+
+  @override
+  State<_ExportConfigSheet> createState() => _ExportConfigSheetState();
+}
+
+class _ExportConfigSheetState extends State<_ExportConfigSheet> {
+  late DateTime _since;
+  late DateTime _until;
+  bool _onlyConsenting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _until = DateTime.now();
+    // 90 days — same "generous recent-activity window" default the service
+    // itself used to fall back to; now it's just the sheet's starting
+    // point, not a value a caller could silently ship without ever seeing.
+    _since = _until.subtract(const Duration(days: 90));
+  }
+
+  Future<void> _pickSince() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _since,
+      // A caller can always re-open and pick further back, but the sheet
+      // doesn't default to "all time" — matching §4.3's "no unbounded
+      // exports" for the common case of just tapping through.
+      firstDate: DateTime.now().subtract(const Duration(days: 730)),
+      lastDate: _until,
+    );
+    if (picked != null) setState(() => _since = picked);
+  }
+
+  Future<void> _pickUntil() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _until,
+      firstDate: _since,
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      // Include the whole selected day, not just its midnight instant.
+      setState(() =>
+          _until = DateTime(picked.year, picked.month, picked.day, 23, 59, 59));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = widget.l10n;
+    final palette = widget.palette;
+    final t = AppText.of(context);
+    final dateFmt =
+        DateFormat.yMMMd(Localizations.localeOf(context).languageCode);
+
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.translate('gym.analytics_export_date_range'),
+              style: t.labelM.copyWith(
+                  color: palette.textPrimary, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _DateBox(
+                    label: dateFmt.format(_since),
+                    onTap: _pickSince,
+                    palette: palette),
+              ),
+              const SizedBox(width: 10),
+              Icon(Icons.arrow_forward_rounded,
+                  size: 16, color: palette.textTertiary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _DateBox(
+                    label: dateFmt.format(_until),
+                    onTap: _pickUntil,
+                    palette: palette),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.translate('gym.analytics_export_tier_filter'),
+                  style: t.bodyM.copyWith(color: palette.textPrimary),
+                ),
+              ),
+              const SizedBox(width: 8),
+              AppToggle(
+                value: _onlyConsenting,
+                onChanged: (v) => setState(() => _onlyConsenting = v),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: palette.surfaceVariant,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.translate('gym.analytics_export_fields_preview'),
+                  style: t.labelS.copyWith(
+                      color: palette.textPrimary, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  GymAnalyticsService.csvColumns.join(', '),
+                  style: t.labelS.copyWith(color: palette.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          AppButton(
+            label: l10n.translate('gym.analytics_export_csv'),
+            onPressed: () => Navigator.of(context).pop((
+              since: _since,
+              until: _until,
+              onlyConsenting: _onlyConsenting,
+            )),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DateBox extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final AppPalette palette;
+
+  const _DateBox(
+      {required this.label, required this.onTap, required this.palette});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          border: Border.all(color: palette.border),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.calendar_today_rounded,
+                size: 14, color: palette.textSecondary),
+            const SizedBox(width: 8),
+            Text(label,
+                style: AppText.of(context)
+                    .bodyM
+                    .copyWith(color: palette.textPrimary)),
           ],
         ),
       ),

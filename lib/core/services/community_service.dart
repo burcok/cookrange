@@ -65,8 +65,22 @@ class CommunityService {
         _cachedBlockedKeywords =
             List<String>.from(doc.data()?['blocked_keywords'] as List? ?? []);
         _keywordsCacheTime = now;
-      } catch (_) {
-        _cachedBlockedKeywords = [];
+      } catch (e) {
+        // Faz 2 §2.6: this used to catch-and-clear to an empty list, which
+        // made every post/comment pass UNCHECKED on any transient read
+        // error (network blip, rules hiccup, malformed doc) — fail-OPEN.
+        // Fail-CLOSED instead: log it (this was also a silent `catch {}`,
+        // R4) and refuse to publish when we have no basis at all to judge
+        // the content (never successfully loaded a keyword list this
+        // session). If a PRIOR fetch already succeeded, keep serving that
+        // last-known-good list rather than wiping it to empty — a stale-but
+        // real list is normal cache behavior, not a security regression;
+        // only "we have zero data and can't tell" fails closed.
+        _logger.error('_checkContent: blocked-keyword refresh failed',
+            error: e);
+        if (_keywordsCacheTime == null) {
+          throw Exception('content_check_unavailable');
+        }
       }
     }
     if (_cachedBlockedKeywords.isEmpty) return;
@@ -271,6 +285,8 @@ class CommunityService {
       unawaited(AchievementService().checkAndGrant(
         currentUser.uid,
         justPosted: true,
+        // Faz 5 §5.1
+        xpEvents: [XpEvent.postCreated(newPostId)],
       ));
     }
 
@@ -602,6 +618,15 @@ class CommunityService {
       'content_len': content.length,
     });
 
+    // Faz 5 §5.1: this path had no pre-existing AchievementService call at
+    // all — added only for the new XP event (comment_created).
+    unawaited(AchievementService().checkAndGrant(
+      user.id,
+      xpEvents: [
+        XpEvent.commentCreated(postId: postId, commentId: commentRef.id),
+      ],
+    ));
+
     // Notify post author (fire-and-forget)
     unawaited(_sendCommentNotification(postId, user));
 
@@ -882,6 +907,20 @@ class CommunityService {
       'emoji': emoji,
     });
 
+    if (reactionAdded) {
+      // Faz 5 §5.1: this path had no pre-existing AchievementService call
+      // at all — added only for the new XP event, and only on ADD (not
+      // removal). Idempotent server-side per (postId, commentId, emoji) —
+      // toggling the same reaction off and back on never re-awards.
+      unawaited(AchievementService().checkAndGrant(
+        userId,
+        xpEvents: [
+          XpEvent.reactionGiven(
+              postId: postId, commentId: commentId, emoji: emoji),
+        ],
+      ));
+    }
+
     // Notification fan-out (skip self-reaction)
     final aid = authorId;
     if (aid != null && aid != userId) {
@@ -911,10 +950,6 @@ class CommunityService {
       }
     }
   }
-
-  /// Legacy stub retired — real groups now live in [CommunityGroupService]
-  /// and are reached via the community "Groups" carousel → GroupsDiscoveryScreen.
-  List<CommunityGroup> getGroups() => const [];
 
   // --- Reporting & Moderation ---
 

@@ -1,6 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// All achievable badge keys. Stored as the enum `.name` in Firestore.
+///
+/// Faz 5 §5.3 adds four XP/group/presence-themed badges to the original 11
+/// (`level50`, `groupTop3`, `groupStreak4`, `gymRegular`) — same catalog,
+/// same server writer (`functions/progress.js`'s `runSync`/
+/// `grantAchievementIfNew`), never a second catalog.
 enum AchievementKey {
   firstMealLogged,
   firstPhotoLog,
@@ -13,6 +18,10 @@ enum AchievementKey {
   tierContributor,
   tierExpert,
   tierLegend,
+  level50,
+  groupTop3,
+  groupStreak4,
+  gymRegular,
 }
 
 /// Static definition for a badge (never stored — catalog lives in code).
@@ -110,6 +119,35 @@ const Map<AchievementKey, AchievementDef> kAchievementCatalog = {
     titleKey: 'achievements.tier_legend.title',
     descKey: 'achievements.tier_legend.desc',
     points: 250,
+  ),
+  // ─── Faz 5 §5.3 — new badges ─────────────────────────────────────────────
+  AchievementKey.level50: AchievementDef(
+    key: AchievementKey.level50,
+    emoji: '💎',
+    titleKey: 'achievements.level_50.title',
+    descKey: 'achievements.level_50.desc',
+    points: 300,
+  ),
+  AchievementKey.groupTop3: AchievementDef(
+    key: AchievementKey.groupTop3,
+    emoji: '🚀',
+    titleKey: 'achievements.group_top3.title',
+    descKey: 'achievements.group_top3.desc',
+    points: 40,
+  ),
+  AchievementKey.groupStreak4: AchievementDef(
+    key: AchievementKey.groupStreak4,
+    emoji: '🔄',
+    titleKey: 'achievements.group_streak4.title',
+    descKey: 'achievements.group_streak4.desc',
+    points: 120,
+  ),
+  AchievementKey.gymRegular: AchievementDef(
+    key: AchievementKey.gymRegular,
+    emoji: '🏋️',
+    titleKey: 'achievements.gym_regular.title',
+    descKey: 'achievements.gym_regular.desc',
+    points: 60,
   ),
 };
 

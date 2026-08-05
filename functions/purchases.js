@@ -30,7 +30,9 @@ const {
   revokePremium,
   grantBonusCredits,
   claimPurchaseToken,
+  reverseCommissionsForPurchase,
 } = require('./entitlements');
+const { maybeAwardGymCommission } = require('./economy');
 
 const PURCHASE_SECRETS = [
   'APPLE_ISSUER_ID',
@@ -202,6 +204,14 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
 
     if (revoked) {
       await revokePremium(uid, 'apple_revoked');
+      // Best-effort, same posture as maybeAwardGymCommission's own .catch()
+      // below — a bookkeeping failure here must not turn an already-correct
+      // revocation into a 500 for the client.
+      await reverseCommissionsForPurchase(platform, token, 'apple_revoked').catch((e) => {
+        functions.logger.error('validatePurchase: reverseCommissionsForPurchase failed', {
+          uid, error: e.message,
+        });
+      });
       throw new functions.https.HttpsError('failed-precondition', 'purchase_revoked');
     }
 
@@ -218,6 +228,19 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
     }
     const exp = expiresAt || new Date(Date.now() + product.days * 86400000);
     await grantPremium(uid, { productId, expiresAt: exp, source: platform, txId: String(token) });
+
+    // Faz 6 §6.6 — gym revenue share. Strictly AFTER the premium grant above
+    // has already committed; entirely server-side, never client-triggered.
+    // Best-effort: a bookkeeping failure here must not turn an already-valid,
+    // already-granted purchase into an error response for the paying user.
+    // platform/token passed through so the commission entry (if any) can
+    // carry a purchase_key for later reversal — see economy.js.
+    await maybeAwardGymCommission(uid, productId, platform, token).catch((e) => {
+      functions.logger.error('validatePurchase: maybeAwardGymCommission failed', {
+        uid, productId, error: e.message,
+      });
+    });
+
     return { ok: true, granted: 'premium', expiresAt: exp.toISOString() };
   });
 
@@ -243,6 +266,28 @@ exports.appStoreNotifications = functions.https.onRequest(async (req, res) => {
         const snap = await admin.firestore().collection('entitlements')
           .where('latest_transaction_id', '==', String(txId)).limit(1).get();
         if (!snap.empty) await revokePremium(snap.docs[0].id, `apple_${type}`);
+        // Commission reversal is keyed off platform+txId directly (see
+        // purchaseCorrelationKey), not off the uid resolved above — so this
+        // runs regardless of whether the entitlements lookup found a match.
+        //
+        // Deliberately only REFUND/REVOKE, NOT EXPIRED — EXPIRED means the
+        // subscription's paid period simply ended without renewing, which
+        // does not retroactively invalidate the purchase(s) that already
+        // happened and were already correctly commissioned. Reversing on
+        // EXPIRED would silently claw back a gym's commission the instant
+        // every non-renewing member's subscription lapses, which is not
+        // what marketplace_terms_{en,tr}.md §6/§10 promise ("refunded or
+        // charged-back transactions") — unlike entitlement revocation just
+        // above, which correctly treats EXPIRED the same as REFUND/REVOKE
+        // (losing premium ACCESS is correct either way; losing an ALREADY
+        // -EARNED commission for a non-refunded purchase is not).
+        if (['REFUND', 'REVOKE'].includes(type)) {
+          await reverseCommissionsForPurchase('ios', txId, `apple_${type}`).catch((e) => {
+            functions.logger.error('appStoreNotifications: reverseCommissionsForPurchase failed', {
+              txId, type, error: e.message,
+            });
+          });
+        }
       }
       res.status(200).send('ok');
     } catch (e) {
@@ -259,11 +304,35 @@ exports.playRtdn = functions.pubsub
       const sub = data.subscriptionNotification;
       const voided = data.voidedPurchaseNotification;
       // notificationType 13 = EXPIRED, 12 = REVOKED for subscriptions.
-      const token = sub && sub.purchaseToken;
+      // `voidedPurchaseNotification` (one-time purchases) carries its OWN
+      // `purchaseToken` under a completely different object than
+      // `subscriptionNotification` — reading only `sub.purchaseToken` (as
+      // this used to) left `token` permanently undefined for every voided
+      // one-time purchase, so neither the `processed_purchases` lookup below
+      // nor commission reversal ever matched a real doc for that entire
+      // notification type. Fixed: read whichever of the two objects is
+      // actually present.
+      const token = (sub && sub.purchaseToken) || (voided && voided.purchaseToken);
       if (voided || (sub && [12, 13].includes(sub.notificationType))) {
         const id = `android_${Buffer.from(String(token || '')).toString('base64url').slice(0, 256)}`;
         const proc = await admin.firestore().collection('processed_purchases').doc(id).get();
         if (proc.exists) await revokePremium(proc.data().uid, 'google_revoked_or_expired');
+        //
+        // Commission reversal only for a genuine refund/void-style event —
+        // `voided` (Google's voidedPurchaseNotification) and
+        // notificationType 12 (REVOKED) both represent money actually being
+        // given back. notificationType 13 (EXPIRED) deliberately does NOT
+        // reverse a commission, same reasoning as appStoreNotifications
+        // above: a lapsed, non-renewed subscription doesn't retroactively
+        // invalidate a past, non-refunded, already-commissioned purchase —
+        // only entitlement access (revoked unconditionally above) should
+        // react to a plain expiry.
+        if (token && (voided || (sub && sub.notificationType === 12))) {
+          const reason = voided ? 'google_voided' : 'google_revoked';
+          await reverseCommissionsForPurchase('android', token, reason).catch((e) => {
+            functions.logger.error('playRtdn: reverseCommissionsForPurchase failed', { error: e.message });
+          });
+        }
       }
     } catch (e) {
       functions.logger.error('playRtdn error', { error: e.message });

@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 29 June 2026
+Last updated: 5 August 2026
 
 This Privacy Policy explains how **Cookrange** ("Cookrange", "we", "us", or "our") collects, uses,
 shares, and protects your personal data when you use the Cookrange mobile application and related
@@ -29,6 +29,17 @@ We collect only what we need to provide the App. Categories:
 - **Location data (sensitive):** approximate device location, only when you actively use features such
   as "gyms near me" or GPS gym check-in. Location used for "gyms near me" is processed on your device
   to sort gyms by distance and is **not transmitted to or stored on our servers**.
+- **Gym presence data (sensitive, separate consent):** only when you additionally turn this feature on
+  from its own screen, the moment you enter or exit the boundary of a gym you're a member of. Your
+  latitude/longitude is **never transmitted to or stored on our servers** — only the gym's name and
+  your entry/exit time are stored. This consent is off by default, can be turned on for at most 3 gyms
+  at once, and turning it off in the Consent Center immediately stops the server from creating any new
+  record. See the **KVKK Clarification Text** for the full explanation.
+- **Tiered progress-sharing data (sensitive, separate consent, per gym/coach):** only if you explicitly
+  grant it for a specific gym/coach relationship, the check-in/attendance data, logging regularity, and
+  (at the top tier) your weight trend DIRECTION at the tier you granted — never your raw weight
+  history. Every relationship defaults to off; your gym/coach sees nothing until you grant it. See the
+  **KVKK Clarification Text** for the full explanation.
 - **Social & content data:** posts, comments, reactions, chat messages, friends/followers, and
   community activity you choose to create.
 - **Device & usage data:** device model, operating system, app version, language, and analytics events
@@ -48,6 +59,8 @@ wherever possible.
 | Create and operate your account; deliver core App features | Performance of a contract |
 | Generate personalised meal plans, recipes, analytics, and AI insights | Your explicit consent (health data) |
 | Show nearby gyms / GPS check-in | Your explicit consent (location) |
+| Automatic check-in via background gym presence detection | Your separate, explicit consent (gym presence) |
+| Sharing a tiered progress summary with your gym/coach | Your separate, explicit consent per relationship (sharing tier) |
 | Send push notifications you opted into | Your consent |
 | Keep the App secure; prevent fraud and abuse; diagnose crashes | Our legitimate interests |
 | Process subscriptions and keep financial records | Contract / legal obligation |
@@ -62,9 +75,13 @@ out before withdrawal.
 - **Sensitive health data** is kept in an owner-only area of your account that only you can access.
 - We apply least-privilege access rules, app attestation (App Check), and we never embed third-party
   API secrets in the App.
-- We retain your data for as long as your account is active. When you delete your account, your
-  personal data is permanently removed from our systems within **30 days** (financial records may be
-  retained longer where law requires).
+- We retain your data for as long as your account is active. **Using Settings → Delete Account erases
+  your personal data — including your Firebase authentication record — from our systems in that same
+  operation, with no additional waiting period.** A few limited exceptions may still be retained:
+  financial records for as long as applicable law requires, a gym's own check-in/membership records as
+  part of that gym's own operational record, and coach/gym progress summaries for at most 7 days (or
+  until you change/revoke the sharing tier, whichever comes first). The full breakdown of these
+  exceptions is in the **KVKK Clarification Text**'s "How Long We Keep Your Data" section.
 
 ## 5. AI and Automated Processing
 
@@ -98,7 +115,9 @@ needed to run the App:
 - **Payment provider** (future) — coach/affiliate payouts and identity verification.
 
 Community content you post is visible to other authenticated users by design. Your private nutrition
-data is never shown to other users.
+data is never shown to other users — the one exception is the tiered progress sharing described above:
+only if you explicitly grant it, the limited data at the tier you chose is shared with that specific
+gym/coach, and nothing is visible until you grant it.
 
 ## 8. International Data Transfers
 

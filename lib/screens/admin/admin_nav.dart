@@ -9,6 +9,7 @@ import 'admin_cost_analytics_screen.dart';
 import 'admin_dishes_screen.dart';
 import 'admin_reports_screen.dart';
 import 'admin_privacy_requests_screen.dart';
+import 'admin_moderation_appeals_screen.dart';
 import 'admin_user_management_screen.dart';
 
 /// Central router for the admin surface. Maps an [AdminSection] to its screen
@@ -30,6 +31,8 @@ class AdminNav {
           return const AdminReportsScreen();
         case AdminSection.privacy:
           return const AdminPrivacyRequestsScreen();
+        case AdminSection.moderationAppeals:
+          return const AdminModerationAppealsScreen();
         case AdminSection.users:
           return const AdminUserManagementScreen();
         default:

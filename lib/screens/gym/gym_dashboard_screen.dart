@@ -9,11 +9,16 @@ import '../../core/models/gym_model.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/gym_application_service.dart';
 import '../../core/services/gym_service.dart';
+import '../../core/utils/feature_flags.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../../core/widgets/gym_share_card.dart';
+import '../meal_plan_templates/template_library_screen.dart';
+import '../plan_offers/recipient_picker_screen.dart';
 import 'gym_application_pending_screen.dart';
 import 'gym_community_screen.dart';
 import 'gym_discovery_screen.dart';
+import 'gym_earnings_screen.dart';
+import 'gym_invite_codes_screen.dart';
 import 'gym_members_screen.dart';
 import 'gym_qr_screen.dart';
 import 'gym_leaderboard_screen.dart';
@@ -285,6 +290,14 @@ class _GymDashboardScreenState extends State<GymDashboardScreen>
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
       child: Column(
         children: [
+          // Live occupancy (Faz 1 §1.4-1.6) — only shown once the owner has
+          // actually turned geofence tracking on; otherwise this would just
+          // be a permanently-empty stat with nothing behind it.
+          if (gym.geofenceEnabled) ...[
+            _OccupancyCard(
+                gym: gym, palette: palette, isDark: isDark, l10n: l10n),
+            const SizedBox(height: 16),
+          ],
           // Stats row
           Row(
             children: [
@@ -437,6 +450,92 @@ class _GymDashboardScreenState extends State<GymDashboardScreen>
               ),
             ],
           ),
+          // Faz 3 §3.3 — meal-plan template library entry point. Dedicated
+          // kill-switch (`FeatureFlags.mealPlanTemplates`) independent of
+          // `FeatureFlags.gym` itself, which only gates reaching this
+          // dashboard at all (see `role_quick_card.dart`).
+          if (FeatureFlags.isEnabled(FeatureFlags.mealPlanTemplates)) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _QuickAction(
+                    icon: Icons.menu_book_rounded,
+                    color: const Color(0xFF10B981),
+                    label: l10n.translate('gym.action_meal_plan_templates'),
+                    palette: palette,
+                    isDark: isDark,
+                    onTap: () => Navigator.of(context).push(
+                      AppTransitions.slideUp(MealPlanTemplateLibraryScreen(
+                        authorType: 'gym',
+                        gymId: gym.id,
+                      )),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Faz 3 §3.5 — "üye seç → şablon seç → mesaj yaz → gönder".
+                // Same kill-switch as the library entry point right next to
+                // it: sending a plan presupposes having one.
+                Expanded(
+                  child: _QuickAction(
+                    icon: Icons.send_rounded,
+                    color: const Color(0xFF6366F1),
+                    label: l10n.translate('gym.action_send_plan'),
+                    palette: palette,
+                    isDark: isDark,
+                    onTap: () => Navigator.of(context).push(
+                      AppTransitions.slideUp(PlanOfferRecipientPickerScreen(
+                        authorType: 'gym',
+                        gymId: gym.id,
+                      )),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          // Faz 6 §6.1 — gym invite-code generation/QR/poster export. Own
+          // kill-switch for the same reason as meal-plan templates above: a
+          // problem specific to poster export shouldn't take down the whole
+          // gym dashboard.
+          if (FeatureFlags.isEnabled(FeatureFlags.gymInviteCodes)) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: _QuickAction(
+                icon: Icons.qr_code_2_rounded,
+                color: const Color(0xFFF97300),
+                label: l10n.translate('gym.action_invite_codes'),
+                palette: palette,
+                isDark: isDark,
+                onTap: () => Navigator.of(context).push(
+                  AppTransitions.slideUp(GymInviteCodesScreen(gym: gym)),
+                ),
+              ),
+            ),
+          ],
+          // Faz 6 §6.6 — gym revenue-share earnings. Own kill-switch, same
+          // reasoning as `gymInviteCodes` right above: code generation is
+          // already-shipped, independently-verified surface; the newer,
+          // more complex commission/attribution mechanism shouldn't need to
+          // take that down with it if something here needs to be killed.
+          if (FeatureFlags.isEnabled(FeatureFlags.gymAttribution)) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: _QuickAction(
+                icon: Icons.account_balance_wallet_rounded,
+                color: const Color(0xFF10B981),
+                label: l10n.translate('gym.action_earnings'),
+                palette: palette,
+                isDark: isDark,
+                onTap: () => Navigator.of(context).push(
+                  AppTransitions.slideUp(GymEarningsScreen(gym: gym)),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           // Weekly attendance chart
           _AttendanceChartSection(
@@ -674,6 +773,106 @@ class _SetupCard extends StatelessWidget {
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
+
+// ── Live occupancy (Faz 1 §1.6) ───────────────────────────────────────────────
+// Reads gym.liveOccupancy/capacity straight off the same real-time
+// GymModel stream the rest of this screen already uses — recordPresenceEvent
+// (functions/presence.js) is the only writer, so this refreshes live as
+// members' geofence sessions open/close. Stays at 0 until the Faz 1 §1.2
+// client trigger ships; that is a true, not a broken, zero.
+class _OccupancyCard extends StatelessWidget {
+  final GymModel gym;
+  final AppPalette palette;
+  final bool isDark;
+  final AppLocalizations l10n;
+
+  const _OccupancyCard({
+    required this.gym,
+    required this.palette,
+    required this.isDark,
+    required this.l10n,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppText.of(context);
+    final percent = gym.occupancyPercent;
+    final color = palette.success;
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: isDark ? 0.15 : 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.groups_rounded, color: color, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      '${gym.liveOccupancy}',
+                      style: t.headlineS.copyWith(
+                        color: palette.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (gym.capacity != null) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        '/ ${gym.capacity}',
+                        style: t.bodyM.copyWith(color: palette.textSecondary),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l10n.translate('gym.occupancy_title'),
+                  style: t.labelS.copyWith(color: palette.textSecondary),
+                ),
+                if (percent != null) ...[
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: (percent / 100).clamp(0.0, 1.0),
+                      minHeight: 6,
+                      backgroundColor:
+                          color.withValues(alpha: isDark ? 0.15 : 0.1),
+                      valueColor: AlwaysStoppedAnimation(color),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (percent != null) ...[
+            const SizedBox(width: 10),
+            Text(
+              '$percent%',
+              style: t.titleM.copyWith(
+                color: palette.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
 
 class _StatCard extends StatelessWidget {
   final IconData icon;

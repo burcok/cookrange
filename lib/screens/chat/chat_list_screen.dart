@@ -6,9 +6,14 @@ import 'package:cookrange/core/localization/app_localizations.dart';
 import 'package:cookrange/core/services/chat_service.dart';
 import 'package:cookrange/screens/common/generic_error_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import '../../core/models/chat_model.dart';
+import '../../core/models/chat_prefs_model.dart';
+import '../../core/models/message_model.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/services/feature_gate_service.dart';
+import '../../core/utils/chat_list_filter.dart';
 import 'widgets/signal_dialog.dart';
 import 'widgets/select_friend_sheet.dart';
 import 'widgets/create_group_chat_sheet.dart';
@@ -29,7 +34,12 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen>
     with SingleTickerProviderStateMixin {
-  int _selectedFilterIndex = 0;
+  // Faz 2 §2.4 — segmented filter (Tümü/Gruplar/Salon/DM) + independent
+  // unread toggle. Replaces the old single-select bottom-sheet filter
+  // (`_showFilterSheet`, removed) with an always-visible `AppFilterBar` —
+  // more discoverable for a 4-way content filter than a hidden sheet (R7).
+  ChatListSegment _segment = ChatListSegment.all;
+  bool _unreadOnly = false;
 
   // Power FAB Animation
   late AnimationController _fabController;
@@ -51,6 +61,7 @@ class _ChatListScreenState extends State<ChatListScreen>
 
   // Stream state
   late Stream<List<ChatModel>> _chatStream;
+  late Stream<ChatPrefsModel> _chatPrefsStream;
 
   @override
   void initState() {
@@ -59,8 +70,10 @@ class _ChatListScreenState extends State<ChatListScreen>
     final currentUser = context.read<UserProvider>().user;
     if (currentUser != null) {
       _chatStream = ChatService().getUserChatsWithStatus(currentUser.uid);
+      _chatPrefsStream = ChatService().getChatPrefsStream(currentUser.uid);
     } else {
       _chatStream = const Stream.empty();
+      _chatPrefsStream = const Stream.empty();
     }
 
     _fabController = AnimationController(
@@ -110,13 +123,6 @@ class _ChatListScreenState extends State<ChatListScreen>
     final palette = AppPalette.of(context);
     final currentUser = context.watch<UserProvider>().user;
 
-    final List<String> filters = [
-      t('chat.filters.all'),
-      t('chat.filters.gym'),
-      t('chat.filters.nutrition'),
-      t('chat.filters.private')
-    ];
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       body: Stack(
@@ -125,103 +131,123 @@ class _ChatListScreenState extends State<ChatListScreen>
 
           Column(
             children: [
-              _buildHeader(context, palette, filters),
+              _buildHeader(context, palette),
               const SizedBox(height: 12),
+              _buildFilterBar(context, t),
+              const SizedBox(height: 10),
               Expanded(
                 child: GlassRefresher(
                   onRefresh: _refreshChats,
                   topPadding: 10,
                   child: currentUser == null
                       ? const Center(child: CircularProgressIndicator())
-                      : StreamBuilder<List<ChatModel>>(
-                          stream: _chatStream,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-
-                            if (snapshot.hasError) {
-                              return GenericErrorScreen(
-                                onRetry: _refreshChats,
-                                errorCode:
-                                    'CGUC: ${snapshot.error.toString().length > 20 ? snapshot.error.toString().substring(0, 20) : snapshot.error.toString()}',
-                              );
-                            }
-
-                            final allChats = snapshot.data ?? [];
-                            final filteredChats = allChats.where((chat) {
-                              if (_searchQuery.isNotEmpty) {
-                                final name = chat.name?.toLowerCase() ?? "";
-                                if (!name
-                                    .contains(_searchQuery.toLowerCase())) {
-                                  return false;
-                                }
-                              }
-
-                              if (_selectedFilterIndex == 0) return true;
-                              if (_selectedFilterIndex == 1) {
-                                return chat.type == ChatType.gym;
-                              }
-                              if (_selectedFilterIndex == 2) {
-                                return chat.type == ChatType.group &&
-                                    chat.metadata?['subtype'] == 'nutrition';
-                              }
-                              if (_selectedFilterIndex == 3) {
-                                return chat.type == ChatType.private;
-                              }
-                              return true;
-                            }).toList();
-
-                            if (filteredChats.isEmpty) {
-                              return ListView(
-                                physics: const BouncingScrollPhysics(
-                                    parent: AlwaysScrollableScrollPhysics()),
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                                children: [
-                                  const SizedBox(height: 32),
-                                  _buildEmptyStateWithGlow(context, palette, t),
-                                ],
-                              );
-                            }
-
-                            return ListView.builder(
-                              physics: const BouncingScrollPhysics(
-                                  parent: AlwaysScrollableScrollPhysics()),
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                              itemCount: filteredChats.length + 1,
-                              itemBuilder: (context, index) {
-                                if (index == 0) {
-                                  if (_searchQuery.isNotEmpty) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  return _buildAIBanner(context, palette);
+                      // Faz 2 §2.4 — two independent streams (chat list +
+                      // per-user chat_prefs), nested rather than hand-merged:
+                      // `chat_prefs` is a single document, not a per-item
+                      // collection like the online-status merge
+                      // `getUserChatsWithStatus` already needs internally.
+                      : StreamBuilder<ChatPrefsModel>(
+                          stream: _chatPrefsStream,
+                          builder: (context, prefsSnapshot) {
+                            final prefs =
+                                prefsSnapshot.data ?? ChatPrefsModel.empty;
+                            return StreamBuilder<List<ChatModel>>(
+                              stream: _chatStream,
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center(
+                                      child: CircularProgressIndicator());
                                 }
 
-                                final chat = filteredChats[index - 1];
-                                return RepaintBoundary(
-                                  child: Column(
+                                if (snapshot.hasError) {
+                                  return GenericErrorScreen(
+                                    onRetry: _refreshChats,
+                                    errorCode:
+                                        'CGUC: ${snapshot.error.toString().length > 20 ? snapshot.error.toString().substring(0, 20) : snapshot.error.toString()}',
+                                  );
+                                }
+
+                                final allChats = snapshot.data ?? [];
+                                final archivedCount = ChatListFilter.apply(
+                                  chats: allChats,
+                                  prefs: prefs,
+                                  currentUserId: currentUser.uid,
+                                  archivedOnly: true,
+                                ).length;
+                                final filteredChats = ChatListFilter.apply(
+                                  chats: allChats,
+                                  prefs: prefs,
+                                  currentUserId: currentUser.uid,
+                                  segment: _segment,
+                                  unreadOnly: _unreadOnly,
+                                  searchQuery: _searchQuery,
+                                );
+
+                                // Optional leading rows (AI banner, then the
+                                // "Archived (N)" entry point) — both skipped
+                                // while searching, mirroring the AI banner's
+                                // pre-existing search behavior.
+                                final leadingItems = <Widget>[
+                                  if (_searchQuery.isEmpty)
+                                    _buildAIBanner(context, palette),
+                                  if (_searchQuery.isEmpty && archivedCount > 0)
+                                    _buildArchivedRow(
+                                      context,
+                                      palette,
+                                      archivedCount,
+                                      allChats,
+                                      prefs,
+                                      currentUser.uid,
+                                    ),
+                                ];
+
+                                if (filteredChats.isEmpty) {
+                                  return ListView(
+                                    physics: const BouncingScrollPhysics(
+                                        parent:
+                                            AlwaysScrollableScrollPhysics()),
+                                    padding: const EdgeInsets.fromLTRB(
+                                        16, 0, 16, 100),
                                     children: [
-                                      GestureDetector(
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => ChatDetailScreen(
-                                                chat: chat,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        child: _buildChatCard(context, chat,
-                                            palette, currentUser.uid),
-                                      ),
-                                      const SizedBox(height: 16),
+                                      const SizedBox(height: 32),
+                                      ...leadingItems,
+                                      _buildEmptyStateWithGlow(
+                                          context, palette, t,
+                                          unreadOnly: _unreadOnly),
                                     ],
-                                  ),
+                                  );
+                                }
+
+                                return ListView.builder(
+                                  physics: const BouncingScrollPhysics(
+                                      parent: AlwaysScrollableScrollPhysics()),
+                                  padding:
+                                      const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                                  itemCount: filteredChats.length +
+                                      leadingItems.length,
+                                  itemBuilder: (context, index) {
+                                    if (index < leadingItems.length) {
+                                      return leadingItems[index];
+                                    }
+
+                                    final chat = filteredChats[
+                                        index - leadingItems.length];
+                                    return RepaintBoundary(
+                                      child: Column(
+                                        children: [
+                                          _buildSwipeableChatCard(
+                                            context,
+                                            chat,
+                                            palette,
+                                            currentUser.uid,
+                                            prefs,
+                                          ),
+                                          const SizedBox(height: 16),
+                                        ],
+                                      ),
+                                    );
+                                  },
                                 );
                               },
                             );
@@ -243,31 +269,52 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  void _showFilterSheet(BuildContext context, List<String> filters) {
-    showUnifiedActionSheet(
-      context: context,
-      title: AppLocalizations.of(context).translate('chat.filter_title'),
-      actions: List.generate(filters.length, (index) {
-        return ActionSheetItem(
-          label: filters[index],
-          icon: index == 0
-              ? Icons.all_inclusive
-              : (index == 1
-                  ? Icons.fitness_center
-                  : (index == 2 ? Icons.restaurant : Icons.lock)),
-          isSelected: _selectedFilterIndex == index,
-          onTap: () {
-            setState(() {
-              _selectedFilterIndex = index;
-            });
-          },
-        );
-      }),
+  /// Faz 2 §2.4 — segmented content filter (Tümü/Gruplar/Salon/DM) + an
+  /// independent "Unread" toggle, in the app's canonical horizontal
+  /// filter-bar component (`AppFilterBar`/`AppFilterPill` — already the
+  /// established pattern for gym/coach discovery, program marketplace,
+  /// community feed, and group discovery; see that widget's doc comment).
+  /// Replaces the old hidden bottom-sheet single-select (`_showFilterSheet`,
+  /// removed) — a top-level content filter this central to the screen reads
+  /// better always-visible than behind an extra tap (R7).
+  Widget _buildFilterBar(BuildContext context, String Function(String) t) {
+    return AppFilterBar(
+      children: [
+        AppFilterPill(
+          label: t('chat.filters.all'),
+          active: _segment == ChatListSegment.all,
+          onTap: () => setState(() => _segment = ChatListSegment.all),
+        ),
+        AppFilterPill(
+          label: t('chat.filters.groups'),
+          icon: Icons.groups_rounded,
+          active: _segment == ChatListSegment.groups,
+          onTap: () => setState(() => _segment = ChatListSegment.groups),
+        ),
+        AppFilterPill(
+          label: t('chat.filters.gym'),
+          icon: Icons.fitness_center_rounded,
+          active: _segment == ChatListSegment.gym,
+          onTap: () => setState(() => _segment = ChatListSegment.gym),
+        ),
+        AppFilterPill(
+          label: t('chat.filters.private'),
+          icon: Icons.person_rounded,
+          active: _segment == ChatListSegment.dm,
+          onTap: () => setState(() => _segment = ChatListSegment.dm),
+        ),
+        const AppFilterDivider(),
+        AppFilterPill(
+          label: t('chat.unread_filter'),
+          icon: Icons.mark_chat_unread_rounded,
+          active: _unreadOnly,
+          onTap: () => setState(() => _unreadOnly = !_unreadOnly),
+        ),
+      ],
     );
   }
 
-  Widget _buildHeader(
-      BuildContext context, AppPalette palette, List<String> filters) {
+  Widget _buildHeader(BuildContext context, AppPalette palette) {
     final primary = context.watch<ThemeProvider>().primaryColor;
     return ClipRRect(
       child: BackdropFilter(
@@ -335,15 +382,6 @@ class _ChatListScreenState extends State<ChatListScreen>
                         });
                       },
                     ),
-                    // Filter toggle
-                    IconButton(
-                      icon: Icon(Icons.tune,
-                          size: 24,
-                          color: _selectedFilterIndex != 0
-                              ? primary
-                              : palette.textPrimary),
-                      onPressed: () => _showFilterSheet(context, filters),
-                    ),
                   ],
                 ),
               ),
@@ -370,71 +408,420 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildNutritionChatCard(BuildContext context, ChatModel chat,
-      AppPalette palette, String currentUserId) {
-    final unread = chat.unreadCounts[currentUserId] ?? 0;
-    return AppGlassCard(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: palette.success.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-              border: Border.all(
-                  color: palette.success.withValues(alpha: 0.2), width: 2),
-            ),
-            child: Icon(Icons.restaurant_menu, color: palette.success),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      chat.name ??
-                          AppLocalizations.of(context)
-                              .translate('chat.filters.nutrition'),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: palette.textPrimary,
-                      ),
-                    ),
-                    if (chat.lastMessage != null)
-                      Text(
-                        _formatTime(context, chat.lastMessage!.timestamp),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: palette.textTertiary,
-                        ),
-                      ),
-                  ],
+  /// Faz 2 §2.4 — "Archived (N)" entry point, shown above the list (below the
+  /// AI banner) only while there's at least one archived chat and the user
+  /// isn't searching. Opens a snapshot sheet of the archived set; unlike the
+  /// main list this is a one-shot filter over the already-loaded [allChats]
+  /// (not independently re-subscribed), matching the scope of a folder you
+  /// dip into rather than a primary live surface.
+  Widget _buildArchivedRow(
+    BuildContext context,
+    AppPalette palette,
+    int count,
+    List<ChatModel> allChats,
+    ChatPrefsModel prefs,
+    String currentUserId,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: GestureDetector(
+        onTap: () =>
+            _showArchivedChatsSheet(context, allChats, prefs, currentUserId),
+        child: AppGlassCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(Icons.archive_rounded,
+                  color: palette.textSecondary, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  AppLocalizations.of(context).translate(
+                      'chat.archived_row.title',
+                      variables: {'count': '$count'}),
+                  style: TextStyle(
+                    color: palette.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  chat.lastMessage?.text ?? '',
-                  style: TextStyle(color: palette.textSecondary, fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+              ),
+              Icon(Icons.chevron_right_rounded,
+                  color: palette.textTertiary, size: 20),
+            ],
           ),
-          if (unread > 0) ...[
-            const SizedBox(width: 8),
-            _buildUnreadBadge(unread),
-          ],
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildGenericGroupChatCard(BuildContext context, ChatModel chat,
-      AppPalette palette, String currentUserId) {
+  void _showArchivedChatsSheet(
+    BuildContext context,
+    List<ChatModel> allChats,
+    ChatPrefsModel prefs,
+    String currentUserId,
+  ) {
+    final archived = ChatListFilter.apply(
+      chats: allChats,
+      prefs: prefs,
+      currentUserId: currentUserId,
+      archivedOnly: true,
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final palette = AppPalette.of(sheetContext);
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(sheetContext).size.height * 0.75,
+              ),
+              decoration:
+                  BoxDecoration(color: palette.surface.withValues(alpha: 0.96)),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: palette.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text(
+                        AppLocalizations.of(sheetContext)
+                            .translate('chat.archived_sheet.title'),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: palette.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Flexible(
+                      child: archived.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.only(bottom: 32),
+                              child: Text(
+                                AppLocalizations.of(sheetContext)
+                                    .translate('chat.archived_sheet.empty'),
+                                style: TextStyle(color: palette.textSecondary),
+                              ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: archived.length,
+                              itemBuilder: (itemContext, index) {
+                                final chat = archived[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            Navigator.pop(sheetContext);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    ChatDetailScreen(
+                                                        chat: chat),
+                                              ),
+                                            );
+                                          },
+                                          child: _buildChatCard(
+                                            itemContext,
+                                            chat,
+                                            palette,
+                                            currentUserId,
+                                            isPinned: prefs.isPinned(chat.id),
+                                            isMuted: prefs.isMuted(chat.id),
+                                          ),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.unarchive_rounded,
+                                            color: palette.info),
+                                        onPressed: () => _toggleArchive(context,
+                                            chat.id, currentUserId, true),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Long-press context menu — full pin/archive/mute/delete coverage,
+  /// mirroring the message bubble's `AppMessageContextMenu` long-press
+  /// pattern (Faz 2 §2.2) and reusing this app's generic
+  /// `showUnifiedActionSheet`/`ActionSheetItem` (the same component this
+  /// screen already used for its old filter sheet).
+  void _showChatActionsSheet(BuildContext context, ChatModel chat,
+      ChatPrefsModel prefs, String currentUserId) {
+    final l10n = AppLocalizations.of(context);
+    final isPinned = prefs.isPinned(chat.id);
+    final isArchived = prefs.isArchived(chat.id);
+    final isMuted = prefs.isMuted(chat.id);
+
+    showUnifiedActionSheet(
+      context: context,
+      title: chat.name,
+      cancelLabel: l10n.translate('common.cancel'),
+      actions: [
+        ActionSheetItem(
+          label: l10n.translate(
+              isPinned ? 'chat.list_actions.unpin' : 'chat.list_actions.pin'),
+          icon: isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+          isSelected: isPinned,
+          onTap: () => _togglePin(context, chat.id, currentUserId, isPinned),
+        ),
+        ActionSheetItem(
+          label: l10n.translate(isArchived
+              ? 'chat.list_actions.unarchive'
+              : 'chat.list_actions.archive'),
+          icon: isArchived ? Icons.unarchive_rounded : Icons.archive_outlined,
+          onTap: () =>
+              _toggleArchive(context, chat.id, currentUserId, isArchived),
+        ),
+        ActionSheetItem(
+          label: l10n.translate(
+              isMuted ? 'chat.list_actions.unmute' : 'chat.list_actions.mute'),
+          icon: isMuted
+              ? Icons.notifications_active_outlined
+              : Icons.notifications_off_outlined,
+          isSelected: isMuted,
+          onTap: () => _toggleMute(context, chat.id, currentUserId, isMuted),
+        ),
+        ActionSheetItem(
+          label: l10n.translate('chat.list_actions.delete'),
+          icon: Icons.delete_outline_rounded,
+          isDestructive: true,
+          onTap: () => _confirmDeleteChat(context, chat, currentUserId),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmDeleteChat(
+      BuildContext context, ChatModel chat, String currentUserId) async {
+    final palette = AppPalette.of(context);
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: palette.surface,
+        title: Text(l10n.translate('chat.delete_chat_confirm.title'),
+            style: AppText.of(context)
+                .titleM
+                .copyWith(color: palette.textPrimary)),
+        content: Text(
+          l10n.translate('chat.delete_chat_confirm.message'),
+          style:
+              AppText.of(context).bodyM.copyWith(color: palette.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.translate('common.cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.translate('common.delete'),
+                style: TextStyle(color: palette.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+    unawaited(HapticFeedback.mediumImpact());
+    try {
+      await ChatService().deleteChatForMe(currentUserId, chat.id);
+      if (!context.mounted) return;
+      AppSnackBar.success(context, l10n.translate('chat.toast.deleted'));
+    } catch (e) {
+      if (!context.mounted) return;
+      AppSnackBar.error(context, l10n.translate('common.something_wrong'));
+    }
+  }
+
+  Future<void> _togglePin(BuildContext context, String chatId,
+      String currentUserId, bool currentlyPinned) async {
+    unawaited(HapticFeedback.selectionClick());
+    try {
+      if (currentlyPinned) {
+        await ChatService().unpinChat(currentUserId, chatId);
+      } else {
+        await ChatService().pinChat(currentUserId, chatId);
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      AppSnackBar.error(context,
+          AppLocalizations.of(context).translate('common.something_wrong'));
+    }
+  }
+
+  Future<void> _toggleMute(BuildContext context, String chatId,
+      String currentUserId, bool currentlyMuted) async {
+    unawaited(HapticFeedback.selectionClick());
+    try {
+      if (currentlyMuted) {
+        await ChatService().unmuteChat(currentUserId, chatId);
+      } else {
+        await ChatService().muteChat(currentUserId, chatId);
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      AppSnackBar.error(context,
+          AppLocalizations.of(context).translate('common.something_wrong'));
+    }
+  }
+
+  /// Also the swipe-to-archive handler (`_buildSwipeableChatCard`'s
+  /// `confirmDismiss`), so this stays snackbar-only feedback (no haptic) —
+  /// the swipe gesture itself already provides tactile confirmation via
+  /// `Dismissible`'s own drag/settle motion.
+  Future<void> _toggleArchive(BuildContext context, String chatId,
+      String currentUserId, bool currentlyArchived) async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      if (currentlyArchived) {
+        await ChatService().unarchiveChat(currentUserId, chatId);
+        if (!context.mounted) return;
+        AppSnackBar.info(context, l10n.translate('chat.toast.unarchived'));
+      } else {
+        await ChatService().archiveChat(currentUserId, chatId);
+        if (!context.mounted) return;
+        AppSnackBar.success(context, l10n.translate('chat.toast.archived'));
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      AppSnackBar.error(context, l10n.translate('common.something_wrong'));
+    }
+  }
+
+  /// Faz 2 §2.4 swipe action. `DismissDirection.endToStart` matches this
+  /// app's own established direction (`notification_screen.dart`,
+  /// `shopping_list_screen.dart`, `gym_members_screen.dart` all swipe
+  /// right-to-left). Archive (not delete) is the swipe action — reversible
+  /// and low-regret, so `confirmDismiss` does the toggle and returns `false`
+  /// to snap back rather than remove the tile, exactly the pattern
+  /// `gym_members_screen.dart`'s `_MemberTile` already uses for its own
+  /// non-destructive swipe. Pin/Mute/Delete live one long-press away
+  /// (`_showChatActionsSheet`) — Dismissible only has two directions, and the
+  /// one truly destructive action (delete) deliberately requires the extra
+  /// deliberate step of opening that menu, not a stray swipe.
+  Widget _buildSwipeableChatCard(
+    BuildContext context,
+    ChatModel chat,
+    AppPalette palette,
+    String currentUserId,
+    ChatPrefsModel prefs,
+  ) {
+    final isArchived = prefs.isArchived(chat.id);
+    final isPinned = prefs.isPinned(chat.id);
+    final isMuted = prefs.isMuted(chat.id);
+
+    return Dismissible(
+      key: ValueKey('chat_list_${chat.id}'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) async {
+        await _toggleArchive(context, chat.id, currentUserId, isArchived);
+        return false;
+      },
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        decoration: BoxDecoration(
+          color: (isArchived ? palette.info : palette.warning)
+              .withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Icon(
+          isArchived ? Icons.unarchive_rounded : Icons.archive_rounded,
+          color: isArchived ? palette.info : palette.warning,
+          size: 22,
+        ),
+      ),
+      child: GestureDetector(
+        onTap: () async {
+          // Faz 5 §5.4 — Entitlements.groupChat, corrected to `true` (see
+          // that getter's doc comment in subscription_model.dart): group
+          // chat has been a free, core feature since Faz 2 (K5/K8), so
+          // this never blocks anyone — it's the single, real entry point
+          // for the group-chat-specific piece of that getter, distinct
+          // from a plain DM (`chat.groupId == null` skips it entirely).
+          if (chat.groupId != null &&
+              !await FeatureGateService().check(context, (e) => e.groupChat)) {
+            return;
+          }
+          if (!context.mounted) return;
+          unawaited(Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ChatDetailScreen(chat: chat)),
+          ));
+        },
+        onLongPress: () {
+          unawaited(HapticFeedback.selectionClick());
+          _showChatActionsSheet(context, chat, prefs, currentUserId);
+        },
+        child: _buildChatCard(
+          context,
+          chat,
+          palette,
+          currentUserId,
+          isPinned: isPinned,
+          isMuted: isMuted,
+        ),
+      ),
+    );
+  }
+
+  /// Faz 2 §2.1: `lastMessage.body` is empty for image messages (media now
+  /// lives in attachments[], never stuffed into body — unlike the old
+  /// model) — show a friendly label instead of a blank preview.
+  String _lastMessagePreview(BuildContext context, MessageModel? lastMessage) {
+    if (lastMessage == null) return '';
+    if (lastMessage.type == MessageType.image && lastMessage.body.isEmpty) {
+      return AppLocalizations.of(context).translate('chat.preview.photo');
+    }
+    return lastMessage.body;
+  }
+
+  Widget _buildGenericGroupChatCard(
+    BuildContext context,
+    ChatModel chat,
+    AppPalette palette,
+    String currentUserId, {
+    required bool isPinned,
+    required bool isMuted,
+  }) {
     final unread = chat.unreadCounts[currentUserId] ?? 0;
     return AppGlassCard(
       padding: const EdgeInsets.all(12),
@@ -463,28 +850,46 @@ class _ChatListScreenState extends State<ChatListScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      chat.name ??
-                          AppLocalizations.of(context)
-                              .translate('chat.filters.gym'),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: palette.textPrimary,
+                    Expanded(
+                      child: Text(
+                        chat.name ??
+                            AppLocalizations.of(context)
+                                .translate('chat.filters.gym'),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: palette.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (chat.lastMessage != null)
-                      Text(
-                        _formatTime(context, chat.lastMessage!.timestamp),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: palette.textTertiary,
-                        ),
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isMuted) ...[
+                          Icon(Icons.notifications_off_rounded,
+                              size: 12, color: palette.textTertiary),
+                          const SizedBox(width: 4),
+                        ],
+                        if (isPinned) ...[
+                          Icon(Icons.push_pin_rounded,
+                              size: 12, color: palette.textTertiary),
+                          const SizedBox(width: 4),
+                        ],
+                        if (chat.lastMessage != null)
+                          Text(
+                            _formatTime(context, chat.lastMessage!.timestamp),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: palette.textTertiary,
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  chat.lastMessage?.text ?? '',
+                  _lastMessagePreview(context, chat.lastMessage),
                   style: TextStyle(color: palette.textSecondary, fontSize: 12),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -496,22 +901,6 @@ class _ChatListScreenState extends State<ChatListScreen>
             _buildUnreadBadge(unread),
           ],
         ],
-      ),
-    );
-  }
-
-  Widget _buildSystemChatCard(
-      BuildContext context, ChatModel chat, AppPalette palette) {
-    return AppGlassCard(
-      padding: const EdgeInsets.all(12),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Text(
-          chat.lastMessage?.text ??
-              AppLocalizations.of(context)
-                  .translate('chat.system_message_fallback'),
-          style: TextStyle(color: palette.textPrimary),
-        ),
       ),
     );
   }
@@ -858,8 +1247,14 @@ class _ChatListScreenState extends State<ChatListScreen>
   // commit and was never wired up or cleaned up). _buildEmptyStateWithGlow
   // right below it is the real, honest empty state and now stands alone.
 
-  Widget _buildGymChatCard(BuildContext context, ChatModel chat,
-      AppPalette palette, String currentUserId) {
+  Widget _buildGymChatCard(
+    BuildContext context,
+    ChatModel chat,
+    AppPalette palette,
+    String currentUserId, {
+    required bool isPinned,
+    required bool isMuted,
+  }) {
     final unread = chat.unreadCounts[currentUserId] ?? 0;
     return AppGlassCard(
       padding: const EdgeInsets.all(16),
@@ -910,15 +1305,30 @@ class _ChatListScreenState extends State<ChatListScreen>
                         ),
                       ),
                     ),
-                    if (chat.lastMessage != null)
-                      Text(
-                        _formatTime(context, chat.lastMessage!.timestamp),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: palette.textTertiary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isMuted) ...[
+                          Icon(Icons.notifications_off_rounded,
+                              size: 13, color: palette.textTertiary),
+                          const SizedBox(width: 4),
+                        ],
+                        if (isPinned) ...[
+                          Icon(Icons.push_pin_rounded,
+                              size: 13, color: palette.textTertiary),
+                          const SizedBox(width: 4),
+                        ],
+                        if (chat.lastMessage != null)
+                          Text(
+                            _formatTime(context, chat.lastMessage!.timestamp),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: palette.textTertiary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
                 // Faz 0 §0.7: status_text/event_text are never written by
@@ -971,9 +1381,21 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildPrivateChatCard(BuildContext context, ChatModel chat,
-      AppPalette palette, String currentUserId) {
+  Widget _buildPrivateChatCard(
+    BuildContext context,
+    ChatModel chat,
+    AppPalette palette,
+    String currentUserId, {
+    required bool isPinned,
+    required bool isMuted,
+  }) {
     final unread = chat.unreadCounts[currentUserId] ?? 0;
+    // Faz 2 §2.1: read state is per-uid now (message_model.dart's
+    // isReadBy) — for this 1:1 card that's "has the other participant read
+    // my last message", i.e. the same thing the old single isRead bool
+    // approximated for a private chat.
+    final otherUserId = chat.participants
+        .firstWhere((p) => p != currentUserId, orElse: () => '');
     return AppGlassCard(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -1033,24 +1455,43 @@ class _ChatListScreenState extends State<ChatListScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      chat.name ??
-                          AppLocalizations.of(context)
-                              .translate('chat.unnamed_user'),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: palette.textPrimary,
+                    Expanded(
+                      child: Text(
+                        chat.name ??
+                            AppLocalizations.of(context)
+                                .translate('chat.unnamed_user'),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: palette.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Text(
-                      chat.lastMessage != null
-                          ? _formatTime(context, chat.lastMessage!.timestamp)
-                          : '',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: palette.textTertiary,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isMuted) ...[
+                          Icon(Icons.notifications_off_rounded,
+                              size: 13, color: palette.textTertiary),
+                          const SizedBox(width: 4),
+                        ],
+                        if (isPinned) ...[
+                          Icon(Icons.push_pin_rounded,
+                              size: 13, color: palette.textTertiary),
+                          const SizedBox(width: 4),
+                        ],
+                        Text(
+                          chat.lastMessage != null
+                              ? _formatTime(
+                                  context, chat.lastMessage!.timestamp)
+                              : '',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: palette.textTertiary,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1059,7 +1500,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                   children: [
                     Expanded(
                       child: Text(
-                        chat.lastMessage?.text ?? '',
+                        _lastMessagePreview(context, chat.lastMessage),
                         style: TextStyle(
                           color: palette.textSecondary,
                           fontSize: 13,
@@ -1071,11 +1512,11 @@ class _ChatListScreenState extends State<ChatListScreen>
                     if (chat.lastMessage?.senderId == currentUserId) ...[
                       const SizedBox(width: 4),
                       Icon(
-                        chat.lastMessage?.isRead == true
+                        chat.lastMessage?.isReadBy(otherUserId) == true
                             ? Icons.done_all
                             : Icons.done,
                         size: 16,
-                        color: chat.lastMessage?.isRead == true
+                        color: chat.lastMessage?.isReadBy(otherUserId) == true
                             ? palette.info
                             : palette.textTertiary,
                       ),
@@ -1094,144 +1535,41 @@ class _ChatListScreenState extends State<ChatListScreen>
     );
   }
 
-  Widget _buildRecipeChatCard(BuildContext context, ChatModel chat,
-      AppPalette palette, String currentUserId) {
-    final unread = chat.unreadCounts[currentUserId] ?? 0;
-    return AppGlassCard(
-      padding: const EdgeInsets.all(16),
-      radius: 24,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: palette.success.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(Icons.ramen_dining, color: palette.success, size: 28),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        chat.name ??
-                            AppLocalizations.of(context)
-                                .translate('chat.unnamed_user'),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: palette.textPrimary,
-                        ),
-                      ),
-                    ),
-                    if (chat.lastMessage != null)
-                      Text(
-                        _formatTime(context, chat.lastMessage!.timestamp),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: palette.textTertiary,
-                        ),
-                      ),
-                  ],
-                ),
-                // Faz 0 §0.7: new_recipes_count is never written by any
-                // code path today, so this literally rendered "null Yeni
-                // Tarif" on every recipe chat — now shown only for a real
-                // positive count. The unconditional "~ Popüler" tag next to
-                // it had no backing popularity signal at all and is
-                // removed rather than translated/kept.
-                if ((chat.metadata?['new_recipes_count'] as num?) != null &&
-                    (chat.metadata!['new_recipes_count'] as num) > 0) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: palette.warning.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: palette.warning.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Text("🥕", style: TextStyle(fontSize: 10)),
-                            const SizedBox(width: 4),
-                            Text(
-                              AppLocalizations.of(context).translate(
-                                'chat.recipe_group.new_recipes',
-                                variables: {
-                                  'count':
-                                      '${chat.metadata!['new_recipes_count']}',
-                                },
-                              ),
-                              style: TextStyle(
-                                  color: palette.warning,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Text(
-                  chat.lastMessage?.text ?? '',
-                  style: TextStyle(
-                    color: palette.textSecondary,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          if (unread > 0) ...[
-            const SizedBox(width: 8),
-            _buildUnreadBadge(unread),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChatCard(BuildContext context, ChatModel chat,
-      AppPalette palette, String currentUserId) {
-    if (chat.metadata?['subtype'] == 'recipe') {
-      return _buildRecipeChatCard(context, chat, palette, currentUserId);
-    }
+  // Faz 2 §2.3 audit: the 'recipe'/'nutrition' `metadata['subtype']`
+  // branches and the ChatType.system case below were removed here — grepping
+  // every writer in lib/ and functions/ confirmed zero code ever produces
+  // either subtype value or that enum value, so these branches never fired
+  // (dead since whenever they were written). ChatType.gym stays and is now
+  // real — see CommunityGroupService.createGroup / AdminService.
+  // approveGymApplication.
+  Widget _buildChatCard(
+    BuildContext context,
+    ChatModel chat,
+    AppPalette palette,
+    String currentUserId, {
+    required bool isPinned,
+    required bool isMuted,
+  }) {
     switch (chat.type) {
       case ChatType.gym:
-        return _buildGymChatCard(context, chat, palette, currentUserId);
+        return _buildGymChatCard(context, chat, palette, currentUserId,
+            isPinned: isPinned, isMuted: isMuted);
       case ChatType.private:
-        return _buildPrivateChatCard(context, chat, palette, currentUserId);
+        return _buildPrivateChatCard(context, chat, palette, currentUserId,
+            isPinned: isPinned, isMuted: isMuted);
       case ChatType.group:
-        if (chat.metadata?['subtype'] == 'nutrition') {
-          return _buildNutritionChatCard(context, chat, palette, currentUserId);
-        }
-        return _buildGenericGroupChatCard(
-            context, chat, palette, currentUserId);
-      case ChatType.system:
-        return _buildSystemChatCard(context, chat, palette);
+        return _buildGenericGroupChatCard(context, chat, palette, currentUserId,
+            isPinned: isPinned, isMuted: isMuted);
     }
   }
 
-  /// Empty state with a brand-glow halo behind the icon.
+  /// Empty state with a brand-glow halo behind the icon. Faz 2 §2.4:
+  /// [unreadOnly] swaps in an honest "no unread chats" message with no
+  /// "Find Friends" CTA — that action fixes an empty CONTACT list, not an
+  /// active unread filter with nothing to show.
   Widget _buildEmptyStateWithGlow(
-      BuildContext context, AppPalette palette, String Function(String) t) {
+      BuildContext context, AppPalette palette, String Function(String) t,
+      {bool unreadOnly = false}) {
     final primary = context.read<ThemeProvider>().primaryColor;
     return Stack(
       alignment: Alignment.center,
@@ -1255,14 +1593,16 @@ class _ChatListScreenState extends State<ChatListScreen>
         ),
         AppEmptyState(
           icon: Icons.chat_bubble_outline_rounded,
-          title: t('chat.no_chats_found'),
+          title: t(unreadOnly ? 'chat.no_unread_chats' : 'chat.no_chats_found'),
           message: '',
-          actionLabel: t('chat.find_friends_cta'),
-          onAction: () => Navigator.of(context).push(
-            AppTransitions.slideRight(
-              const UserSearchScreen(),
-            ),
-          ),
+          actionLabel: unreadOnly ? null : t('chat.find_friends_cta'),
+          onAction: unreadOnly
+              ? null
+              : () => Navigator.of(context).push(
+                    AppTransitions.slideRight(
+                      const UserSearchScreen(),
+                    ),
+                  ),
         ),
       ],
     );

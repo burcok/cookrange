@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
+import '../utils/local_week.dart';
 import 'friend_service.dart';
 
 class LeaderboardEntry {
@@ -29,6 +30,29 @@ class LeaderboardEntry {
   }
 }
 
+/// A ranked row in the WEEKLY, XP-based community leaderboard (Faz 5 §5.3)
+/// — a distinct metric/window from [LeaderboardEntry] above (all-time
+/// streak, never resets). Deliberately a separate small class rather than
+/// adding an `xp` field to [LeaderboardEntry]: that class is keyed to
+/// `UserModel.fromUser`/`onboarding_data.streak` specifically, and this
+/// entry is parsed straight off the denormalized `community_weekly_xp`
+/// rollup doc instead (no `UserModel` round-trip needed).
+class XpLeaderboardEntry {
+  final String uid;
+  final String? displayName;
+  final String? photoURL;
+  final int xp;
+  final int rank;
+
+  const XpLeaderboardEntry({
+    required this.uid,
+    this.displayName,
+    this.photoURL,
+    required this.xp,
+    required this.rank,
+  });
+}
+
 class LeaderboardService {
   static final LeaderboardService _instance = LeaderboardService._internal();
   factory LeaderboardService() => _instance;
@@ -51,6 +75,41 @@ class LeaderboardService {
         } catch (e) {
           debugPrint('LeaderboardService: skip doc ${snap.docs[i].id}: $e');
         }
+      }
+      return entries;
+    });
+  }
+
+  /// Faz 5 §5.3 — weekly, XP-based community ranking (resets Monday 00:00
+  /// local — see [LocalWeek]). Distinct from [getGlobalLeaderboardStream]
+  /// above (all-time streak, a different metric with no reset); reads the
+  /// denormalized `community_weekly_xp/{weekKey}/members` collection
+  /// (bumped transactionally by `awardXp`, `functions/progress.js`) rather
+  /// than any client-side aggregation over `users` — XP itself is already a
+  /// PUBLIC field on `users/{uid}` (Faz 0 §0.2's field-allowlist), so this
+  /// weekly rollup carries no additional sensitivity and needs no narrower
+  /// read rule than a flat authenticated read.
+  Stream<List<XpLeaderboardEntry>> getWeeklyXpLeaderboardStream(
+      {int limit = 50}) {
+    final weekKey = LocalWeek.key(DateTime.now());
+    return _db
+        .collection('community_weekly_xp')
+        .doc(weekKey)
+        .collection('members')
+        .orderBy('xp', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) {
+      final entries = <XpLeaderboardEntry>[];
+      for (var i = 0; i < snap.docs.length; i++) {
+        final d = snap.docs[i].data();
+        entries.add(XpLeaderboardEntry(
+          uid: snap.docs[i].id,
+          displayName: d['display_name'] as String?,
+          photoURL: d['photo_url'] as String?,
+          xp: (d['xp'] as num?)?.toInt() ?? 0,
+          rank: i + 1,
+        ));
       }
       return entries;
     });

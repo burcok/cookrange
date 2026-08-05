@@ -18,8 +18,11 @@ class DishModel {
   final double fiber; // grams
 
   // Categorization
+  // Faz 3 §3.6: reconciled against the real seed data (`dish_data.dart`) —
+  // this used to claim red_meat/vegan/diet, none of which are ever actually
+  // written; `diet`-labelled recipes use whatever real category fits them.
   final String
-      category; // chicken, red_meat, fish, breakfast, vegetarian, vegan, diet, sport, turkish_classic
+      category; // breakfast, chicken, fish, meat, sport, turkish_classic, vegetarian, veggie
   final List<String> tags; // high_protein, low_carb, quick, etc.
   final String mealType; // breakfast, lunch, dinner, snack
 

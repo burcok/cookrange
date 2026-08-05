@@ -17,6 +17,8 @@ class AdminHubScreen extends StatelessWidget {
     switch (s.meta.badge) {
       case AdminBadge.openReports:
         return svc.openReportCountStream();
+      case AdminBadge.pendingModerationAppeals:
+        return svc.pendingModerationAppealCountStream();
       case AdminBadge.users:
         return svc.userCountStream();
       case AdminBadge.pendingApplications:

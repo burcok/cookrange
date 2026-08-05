@@ -472,7 +472,7 @@ class _PodiumColumn extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '${entry.checkInCount}',
+              '${entry.xp}',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
@@ -596,7 +596,7 @@ class _LeaderboardTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                '${entry.checkInCount} ${l10n.translate('gym.leaderboard_checkins_label')}',
+                '${entry.xp} ${l10n.translate('gym.leaderboard_xp_label')}',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,

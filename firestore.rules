@@ -85,6 +85,50 @@ service cloud.firestore {
             || request.resource.data.member_count == resource.data.member_count - 1);
     }
 
+    // Faz 1 §1.4/1.5: live_occupancy is a server-maintained counter, written
+    // only by the recordPresenceEvent Cloud Function's transaction (Admin
+    // SDK, bypasses rules entirely). Without this, the gym owner's blanket
+    // update rule below would let them set their own occupancy to anything —
+    // exactly the kind of client-forgeable counter this session's audit
+    // fixes (reputation_score, achievements) have been closing.
+    // Faz 6 §6.5/§6.6: attributed_member_count (bumped by applyReferral's
+    // gym-attribution branch) and attributed_premium_count (bumped by
+    // maybeAwardGymCommission on a first premium conversion) are the exact
+    // same shape of server-maintained counter — a client-writable version of
+    // either would let a gym owner forge their own funnel numbers.
+    function touchesProtectedGymFields() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['live_occupancy', 'attributed_member_count', 'attributed_premium_count']);
+    }
+
+    // Faz 2 §2.5: activity_score/activity_updated_at are computed only by
+    // the computeGroupActivityScores scheduled function (functions/groups.js,
+    // Admin SDK — bypasses rules entirely, so this never blocks the writer
+    // that actually needs to write these fields). Mirrors
+    // touchesProtectedGymFields()/touchesProtectedUserFields() exactly: a
+    // client-writable activity score would be forgeable (a group owner
+    // could just set it to a huge number to win the discovery carousel), so
+    // it's excluded from the owner's otherwise-blanket update rule below —
+    // same asymmetry as live_occupancy (isAdmin() is still exempt,
+    // consistent with every other protected-field check in this file; site
+    // admin already has unrestricted delete/update on this exact doc a few
+    // lines down, so this isn't a new trust boundary).
+    function touchesProtectedGroupFields() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['activity_score', 'activity_updated_at']);
+    }
+
+    // Faz 3 §3.2: usage_count ("N üyeye gönderildi") is bumped only by the
+    // sendPlanOffer callable (functions/templates.js, Admin SDK — bypasses
+    // rules entirely), never by the template's own author directly. Same
+    // reasoning as touchesProtectedGymFields/touchesProtectedGroupFields: a
+    // client-writable "times sent" counter would be forgeable social proof
+    // in the template library UI (§3.3).
+    function touchesProtectedTemplateFields() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['usage_count']);
+    }
+
     // Same idea for community_groups — narrower than the pre-existing
     // hasOnly(...) check, which let a member set member_count to anything.
     function canUpdateGroupCounters() {
@@ -96,13 +140,184 @@ service cloud.firestore {
             || request.resource.data.member_count == resource.data.member_count - 1);
     }
 
+    // Faz 2 §2.3 — unified groups. Guarded with exists() first (mirrors this
+    // file's isAdmin() convention) so a missing membership doc is a clean
+    // "not a member" rather than a get()-on-missing-doc rule error.
+    function isGroupMember(groupId) {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/community_groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    // Gym-scoped twin of isGroupMember() above — same existential-check
+    // shape, deliberately NOT resource.data-dependent (it only reads the
+    // CALLER's own membership doc, keyed off the fixed {gymId} path
+    // segment), so it works for LIST queries too, not just single-doc
+    // get()s. Faz 5 §5.3: added to fix a pre-existing gap the original
+    // audit already named ("Liderlik tablosu (üye tarafı)... Sahip dışında
+    // kimse göremiyor") but Faz 0 §0.1 never actually closed — `gyms/{id}/
+    // members` read was owner-or-self only, so GymLeaderboardService's own
+    // `.collection('members').limit(200).get()` (an unfiltered list query)
+    // has been silently rejected for every non-owner member all along. This
+    // is a genuine prerequisite for §5.3's in-gym XP leaderboard to work for
+    // anyone but the gym owner, so it's fixed here rather than deferred.
+    function isGymMember(gymId) {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/gyms/$(gymId)/members/$(request.auth.uid));
+    }
+
+    // The caller's OWN role on [groupId], or 'none' if they have no
+    // membership doc at all. Never used to authorize the TARGET of a write
+    // (that's memberId/resource.data directly) — only the requester's own
+    // standing.
+    function groupMemberRole(groupId) {
+      return isGroupMember(groupId)
+        ? get(/databases/$(database)/documents/community_groups/$(groupId)/members/$(request.auth.uid)).data.get('role', 'member')
+        : 'none';
+    }
+
+    // Banned members keep their doc (so they can never self-recreate it via
+    // the open-join create path below) but lose all access — read, post,
+    // react.
+    function isActiveGroupMember(groupId) {
+      return isGroupMember(groupId)
+        && get(/databases/$(database)/documents/community_groups/$(groupId)/members/$(request.auth.uid)).data.get('banned', false) != true;
+    }
+
+    function isGroupOwner(groupId) {
+      return get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid;
+    }
+
+    // Group-level 'admin' — day-to-day moderation (join requests, mute/
+    // kick/ban, posting in announcement-only mode). Deliberately distinct
+    // from isGroupOwner(): role CHANGES (who becomes admin/moderator) stay
+    // owner/site-admin-only — see CommunityGroupService.setMemberRole's doc
+    // comment for why promotion itself doesn't devolve to other admins.
+    function isGroupAdminRole(groupId) {
+      return groupMemberRole(groupId) == 'admin';
+    }
+
+    // request.time < request.time (the default when muted_until is absent)
+    // is always false — "not muted" — without a separate null check.
+    function isGroupMuted(groupId) {
+      return isGroupMember(groupId)
+        && request.time < get(/databases/$(database)/documents/community_groups/$(groupId)/members/$(request.auth.uid)).data.get('muted_until', request.time);
+    }
+
+    // Announcement-only gate for the group's message stream: any active,
+    // unmuted member may post UNLESS announcement_only is on, in which case
+    // only owner/admin may. Reading and reacting are NOT gated by this —
+    // see the `messages/{messageId}` rule under community_groups below,
+    // which only applies this to `create`.
+    function canPostInGroup(groupId) {
+      return isActiveGroupMember(groupId)
+        && !isGroupMuted(groupId)
+        && (get(/databases/$(database)/documents/community_groups/$(groupId)).data.get('announcement_only', false) != true
+            || isGroupOwner(groupId)
+            || isGroupAdminRole(groupId));
+    }
+
     // A chat participant may update anything EXCEPT participants/type/
-    // createdBy — no adding/removing members, changing a chat's kind, or
-    // forging who created it. (Full message-level immutability is a
-    // separate, larger rewrite tracked for the chat-model overhaul.)
+    // createdBy/unreadCounts — no adding/removing members, changing a
+    // chat's kind, forging who created it, or free-writing unread counts
+    // (Faz 2 §2.1 — see canMarkOwnUnreadZero() just below for the one
+    // narrow carve-out). Message-level immutability is handled separately,
+    // in the messages/{messageId} match block (Faz 2 §2.1).
     function canUpdateChatMeta() {
       let diff = request.resource.data.diff(resource.data).affectedKeys();
-      return !diff.hasAny(['participants', 'type', 'createdBy']);
+      return !diff.hasAny(['participants', 'type', 'createdBy', 'unreadCounts']);
+    }
+
+    // Faz 2 §2.1: unreadCounts INCREMENTS are exclusively server-side now
+    // (onChatMessageCreated, functions/index.js, fans out to every
+    // participant except the sender on each new message — see
+    // markChatAsRead's old unbounded per-message batch, removed the same
+    // pass). A participant may still self-declare "I've read everything up
+    // to now" by zeroing ONLY their own key — never anyone else's key,
+    // never a non-zero value, and never bundled with any other field in the
+    // same write.
+    function canMarkOwnUnreadZero() {
+      let diff = request.resource.data.diff(resource.data).affectedKeys();
+      return diff.hasOnly(['unreadCounts'])
+        && request.resource.data.unreadCounts[request.auth.uid] == 0
+        && request.resource.data.unreadCounts.diff(resource.data.unreadCounts)
+             .affectedKeys().hasOnly([request.auth.uid]);
+    }
+
+    // Faz 2 §2.1 — message v2 schema. Mirrors the checkins `timestamp ==
+    // request.time` idiom (below, gyms/{id}/checkins): requires the client
+    // send a serverTimestamp() sentinel, not a spoofable client clock value.
+    // `timestamp` is a deliberate, temporary compatibility mirror of the
+    // same instant (DATABASE.md §10 "adding a field") so the existing
+    // orderBy('timestamp') message stream keeps surfacing new docs
+    // alongside pre-migration ones without a backfill — see
+    // ChatService.sendMessage. The field list is intentionally exhaustive
+    // (hasNoExtraFields): a brand-new message can't arrive pre-populated
+    // with reactions/read receipts/edits it hasn't earned yet.
+    function isValidNewMessage() {
+      let d = request.resource.data;
+      return d.senderId == request.auth.uid
+        && d.server_timestamp == request.time
+        && d.timestamp == request.time
+        && d.type in ['text', 'image', 'system', 'plan_offer', 'announcement']
+        && d.get('body', '').size() <= 5000
+        && d.get('attachments', []).size() <= 10
+        && d.get('mentions', []).size() <= 50
+        && d.get('read_by', []).size() == 0
+        && d.get('delivered_to', []).size() == 0
+        && d.get('reactions', {}).size() == 0
+        && hasNoExtraFields(['id', 'senderId', 'type', 'body', 'attachments',
+             'reply_to', 'forwarded_from', 'reactions', 'delivered_to',
+             'read_by', 'mentions', 'server_timestamp', 'client_id',
+             'timestamp']);
+    }
+
+    // Sender-only content edit, 15-minute window from server_timestamp. The
+    // plan groups body/edited_at/is_deleted/deleted_for's 'everyone' form
+    // under this ONE window — "delete for everyone" is not a separate,
+    // longer grace period. A pre-migration message has no server_timestamp
+    // at all and is therefore never editable through this path — it
+    // predates the window concept entirely; deny rather than guess an
+    // origin time.
+    function canEditOwnMessage() {
+      let existing = resource.data;
+      let hasServerTs = existing.get('server_timestamp', null) != null;
+      let diff = request.resource.data.diff(existing).affectedKeys();
+      return existing.senderId == request.auth.uid
+        && hasServerTs
+        && request.time < existing.server_timestamp + duration.value(15, 'm')
+        && diff.hasOnly(['body', 'edited_at', 'is_deleted', 'deleted_for']);
+    }
+
+    // Any participant may append a read/delivery receipt, toggle a
+    // reaction, or add themselves to a "delete for me" list — never touch
+    // content, sender, or (via the `is list` guard) the sender-only
+    // 'everyone' deletion string reserved for canEditOwnMessage(). Element-
+    // level "only your own uid was added" scoping isn't cheaply expressible
+    // in rules — same bar canUpdatePostEngagement/signals.ignoredBy already
+    // accept elsewhere in this file for the identical class of denormalized
+    // uid-list field.
+    function canUpdateMessageEngagement() {
+      let diff = request.resource.data.diff(resource.data).affectedKeys();
+      return diff.hasOnly(['read_by', 'delivered_to', 'reactions', 'deleted_for'])
+        && (!diff.hasAny(['deleted_for']) || request.resource.data.deleted_for is list);
+    }
+
+    // Faz 2 §2.6 — a group owner/admin (or site admin) may take down ANOTHER
+    // member's message. Deliberately narrower than canEditOwnMessage(): only
+    // is_deleted/deleted_for may move, never body/edited_at — a moderator
+    // removes visibility, they don't get to rewrite or impersonate what the
+    // sender said. No 15-minute window either: unlike the sender's own edit
+    // grace period, moderation can act on an old message same as a new one.
+    // isGroupOwner/isGroupAdminRole/isAdmin are this file's existing
+    // membership checks (used identically for mute/kick/ban below) — this
+    // just extends the same authority to one more surface, the message
+    // itself, rather than only the member doc.
+    function canModeratorDeleteMessage(groupId) {
+      let diff = request.resource.data.diff(resource.data).affectedKeys();
+      return diff.hasOnly(['is_deleted', 'deleted_for'])
+        && request.resource.data.is_deleted == true
+        && request.resource.data.deleted_for == 'everyone'
+        && (isGroupOwner(groupId) || isGroupAdminRole(groupId) || isAdmin());
     }
 
     function isAdmin() {
@@ -114,6 +329,35 @@ service cloud.firestore {
       return isAuthenticated()
         && exists(/databases/$(database)/documents/admin_roles/$(request.auth.uid))
         && get(/databases/$(database)/documents/admin_roles/$(request.auth.uid)).data.is_admin == true;
+    }
+
+    // Faz 2 §2.6 — reactive abuse-rate throttle for reports, group
+    // moderation actions (mute/kick/ban/unmute/unban), and moderation
+    // appeals. `rate_limits/{uid}` is a fully server-only ledger (no client
+    // read/write rule at all, see that collection's block below) —
+    // `functions/rate_limit.js` bumps a sliding-window counter on every
+    // create of the corresponding collection (mirrors index.js's
+    // `enforceRateLimitAndQuota` RATE_WINDOW_MS/RATE_MAX_IN_WINDOW shape,
+    // generalized) and, once a uid crosses the threshold, stamps a
+    // `*_locked_until` timestamp here that these three checks enforce on
+    // every SUBSEQUENT write. A client can never clear its own lock. The
+    // `.get(..., request.time)` default mirrors isGroupMuted()'s idiom just
+    // above: "request.time < request.time" is always false when the field
+    // (or the whole doc) is absent, i.e. "not limited" by default.
+    function isReportRateLimited() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/rate_limits/$(request.auth.uid))
+        && request.time < get(/databases/$(database)/documents/rate_limits/$(request.auth.uid)).data.get('report_locked_until', request.time);
+    }
+    function isModerationRateLimited() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/rate_limits/$(request.auth.uid))
+        && request.time < get(/databases/$(database)/documents/rate_limits/$(request.auth.uid)).data.get('moderation_locked_until', request.time);
+    }
+    function isAppealRateLimited() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/rate_limits/$(request.auth.uid))
+        && request.time < get(/databases/$(database)/documents/rate_limits/$(request.auth.uid)).data.get('appeal_locked_until', request.time);
     }
 
     // Validate that only allowed fields are being written
@@ -146,7 +390,19 @@ service cloud.firestore {
         // syncProgress Cloud Function (functions/progress.js) — previously
         // client-writable, so any user could set their own reputation_score
         // directly (ReputationService._cacheScore, before this fix).
-        'reputation_score', 'reputation_updated_at'
+        'reputation_score', 'reputation_updated_at',
+        // Faz 5 §5.1: XP/level are server-write-only from the very first
+        // write (never client-writable at all, unlike reputation_score
+        // which had to be closed retroactively) — `awardXp`
+        // (functions/progress.js) is the only writer, gated by the
+        // xp_events ledger below. A client self-writing these directly
+        // would bypass every per-action point value and daily cap.
+        'xp', 'level', 'level_updated_at',
+        // Faz 5 §5.3: consecutive-week group-contribution streak counter —
+        // gates the `groupStreak4` badge exactly like every other reward-
+        // gating counter in this list. Written only by
+        // `bumpGroupTop3Streak` (functions/engagement_credit.js).
+        'group_top3_streak', 'group_top3_streak_week_key'
       ]);
     }
 
@@ -198,6 +454,40 @@ service cloud.firestore {
       // Archived weekly meal plans (history): strictly owner-only
       match /meal_plan_history/{historyId} {
         allow read, write: if isOwner(uid);
+      }
+
+      // Faz 3 §3.2: a meal_plan_templates/{id} sent to this user by a
+      // gym/coach/admin. create is SERVER-ONLY (sendPlanOffer callable,
+      // functions/templates.js) — it validates the sender's authority over
+      // the template and the recipient's real standing (gym membership /
+      // active coaching relationship) before writing, and takes the
+      // immutable template_snapshot copy, so from_uid/from_type/the
+      // snapshot itself can never be forged and an offer can't be planted
+      // on someone who was never actually offered anything (not even by
+      // themselves). The recipient may only move status/responded_at —
+      // accept or decline, exactly once, never re-open a resolved offer,
+      // never rewrite who it's from or what it references. No delete: like
+      // `checkins`/`food_logs`, a resolved offer is a durable record, not
+      // an inbox item to be tidied away.
+      //
+      // Faz 3 §3.5: `decline_reason` (optional free text, ≤300 chars) may
+      // ALSO change, but only alongside a decline — "gerekçe opsiyonel"
+      // (the plan's own wording): a client can never attach a reason to an
+      // accept, and can never write a reason with no status change.
+      // `functions/templates.js`'s `onPlanOfferResponded` trigger reads it
+      // to forward the reason into the sender's quiet notification.
+      match /plan_offers/{offerId} {
+        allow read: if isOwner(uid);
+        allow create: if false;
+        allow update: if isOwner(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'responded_at', 'decline_reason'])
+          && resource.data.status == 'pending'
+          && request.resource.data.status in ['accepted', 'declined']
+          && request.resource.data.responded_at == request.time
+          && request.resource.data.get('decline_reason', '') is string
+          && request.resource.data.get('decline_reason', '').size() <= 300
+          && (request.resource.data.get('decline_reason', '') == '' || request.resource.data.status == 'declined');
+        allow delete: if false;
       }
 
       // Food logs: create + read only. Same immutability pattern as
@@ -337,6 +627,16 @@ service cloud.firestore {
           allow read: if isAuthenticated();
           allow write: if isOwner(userId);
         }
+
+        // Faz 5 §5.2 — fully server-only bookkeeping: the cached content-
+        // quality/duplicate-content verdict for THIS comment plus the
+        // running weighted progress toward the comment-likes credit
+        // threshold. Nobody (not even the comment's own author) reads or
+        // writes this directly — `engagement_credit_events` is the
+        // user-facing audit trail, this is internal working state.
+        match /credit_progress/{docId} {
+          allow read, write: if false;
+        }
       }
 
       // Post likes
@@ -350,27 +650,81 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         allow write: if isOwner(userId);
       }
+
+      // Faz 5 §5.2 — post-level equivalent of the comment credit_progress
+      // doc above (post-reactions credit source AND the weekly-group-
+      // contribution triggers share this same cache for a group-scoped
+      // post's content-eligibility verdict).
+      match /credit_progress/{docId} {
+        allow read, write: if false;
+      }
     }
 
     // ─── Chats ────────────────────────────────────────────────────────────────
+    // Faz 2 §2.3: a group-backed chat (`groupId` set — created alongside a
+    // community_groups doc, `chat_id` there points back here) is accessible
+    // to the whole group's membership, NOT just whoever is in `participants`
+    // (which only ever holds the group's owner — see
+    // CommunityGroupService.createGroup's doc comment on why maintaining a
+    // full member-list array here doesn't scale). `isGroupBackedChat()`
+    // reads `false` (via the `!= null` default) for every pre-Faz-2.3 chat,
+    // so this is additive — no existing DM/ad-hoc-group chat's behavior
+    // changes.
+    function isGroupBackedChat(chatData) {
+      return chatData.get('groupId', null) != null;
+    }
+    function canAccessGroupChat(chatData) {
+      return isGroupBackedChat(chatData) && isActiveGroupMember(chatData.groupId);
+    }
+
     match /chats/{chatId} {
-      allow read: if isAuthenticated() && isParticipant(resource.data);
+      allow read: if isAuthenticated()
+        && (isParticipant(resource.data) || canAccessGroupChat(resource.data));
+      // isAdmin() lets AdminService.approveGymApplication batch-create the
+      // GYM OWNER's paired chat (participants: [gym owner uid], but the
+      // batch runs under the APPROVING ADMIN's auth context) — same
+      // reasoning as the community_groups create rule's admin branch just
+      // above.
       allow create: if isAuthenticated()
-        && request.auth.uid in request.resource.data.participants;
+        && (request.auth.uid in request.resource.data.participants || isAdmin());
       allow update: if isAuthenticated()
-        && isParticipant(resource.data)
-        && canUpdateChatMeta();
+        && (isParticipant(resource.data) || canAccessGroupChat(resource.data))
+        && (canUpdateChatMeta() || canMarkOwnUnreadZero());
       allow delete: if false; // Chats are never deleted client-side
 
+      // Faz 2 §2.1 — message v2. Create requires the full shape
+      // (isValidNewMessage); update is split between the sender's own
+      // 15-minute content-edit window (canEditOwnMessage) and any
+      // participant's engagement touches — reactions/read receipts/
+      // delivery receipts/"delete for me" (canUpdateMessageEngagement).
+      // Before this, ANY participant could rewrite ANY field of ANYONE
+      // else's message — this closes that (Faz 0 audit gap, see
+      // canUpdateChatMeta's old comment).
+      //
+      // Faz 2 §2.3: a group-backed chat's create additionally honors
+      // announcement_only (canPostInGroup) — everyone else may still read
+      // and react (canUpdateMessageEngagement is unaffected by
+      // announcement_only, matching "diğerleri okur + tepki verir").
       match /messages/{messageId} {
         allow read: if isAuthenticated()
-          && isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data);
+          && (isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data)
+              || canAccessGroupChat(get(/databases/$(database)/documents/chats/$(chatId)).data));
         allow create: if isAuthenticated()
-          && isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data)
-          && request.resource.data.senderId == request.auth.uid
-          && request.resource.data.get('text', '').size() <= 5000;
+          && isValidNewMessage()
+          && (isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data)
+              || (isGroupBackedChat(get(/databases/$(database)/documents/chats/$(chatId)).data)
+                  && canPostInGroup(get(/databases/$(database)/documents/chats/$(chatId)).data.groupId)));
+        // Faz 2 §2.6: a group-backed chat's update additionally accepts a
+        // moderator takedown of someone ELSE's message
+        // (canModeratorDeleteMessage) — the only one of the three update
+        // paths that doesn't require the caller to be the sender.
         allow update: if isAuthenticated()
-          && isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data);
+          && (isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data)
+              || canAccessGroupChat(get(/databases/$(database)/documents/chats/$(chatId)).data))
+          && (canEditOwnMessage()
+              || canUpdateMessageEngagement()
+              || (isGroupBackedChat(get(/databases/$(database)/documents/chats/$(chatId)).data)
+                  && canModeratorDeleteMessage(get(/databases/$(database)/documents/chats/$(chatId)).data.groupId)));
         allow delete: if false;
       }
     }
@@ -390,8 +744,12 @@ service cloud.firestore {
 
     // ─── Reports (write-only for authenticated users; read restricted to admin) ─
     match /reports/{reportId} {
+      // Faz 2 §2.6: !isReportRateLimited() blunts mass-reporting brigades —
+      // see that function's doc comment for the reactive-trigger design and
+      // its honest bounded-lag limitation.
       allow create: if isAuthenticated()
-        && request.resource.data.reporterId == request.auth.uid;
+        && request.resource.data.reporterId == request.auth.uid
+        && !isReportRateLimited();
       // Admins read the moderation queue + action reports (dismiss/remove).
       allow read: if isAdmin();
       allow update: if isAdmin();
@@ -409,8 +767,62 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ─── Moderation appeals (Faz 2 §2.6) ──────────────────────────────────────
+    // Mirrors privacy_requests' shape exactly (client creates its own record,
+    // admin reviews/resolves later — no callable, same as DSAR). Doc id ==
+    // the SOURCE community_groups/{group_id}/moderation/{autoId} entry's own
+    // id — guarantees at most one appeal per action (a second attempt by the
+    // same uid is a Firestore `update`, not `create`, and update is
+    // admin-only below) and lets the create rule cross-check, via get(),
+    // that appealId really does name a real moderation action whose
+    // target_uid is the caller — a client can't fabricate an appeal against
+    // an action that isn't theirs or doesn't exist.
+    // Faz 5 §5.2 addition: a SECOND appeal kind, `action == 'credit_restriction'`
+    // — reuses this exact collection/lifecycle/rate-limiter rather than a
+    // second appeals system, per that task's explicit instruction. Doc id
+    // still IS the source log entry's own id, but the source now lives at
+    // `users/{callerUid}/credit_moderation/{appealId}` instead of a group's
+    // moderation log — since that path is already scoped to the CALLER's own
+    // uid (unlike a group id, which is caller-supplied and arbitrary), no
+    // separate `target_uid` cross-check field is needed: if the get()
+    // resolves at all, it's necessarily an entry about the caller's own
+    // account, and `action == 'restrict'` confirms it's the appealable kind
+    // (a `lift` entry — restriction already lifted — has nothing to appeal).
+    match /moderation_appeals/{appealId} {
+      allow read: if isAuthenticated()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.get('message', '').size() <= 2000
+        && !isAppealRateLimited()
+        && ((request.resource.data.action in ['mute', 'kick', 'ban']
+              && get(/databases/$(database)/documents/community_groups/$(request.resource.data.group_id)/moderation/$(appealId)).data.target_uid == request.auth.uid)
+            || (request.resource.data.action == 'credit_restriction'
+              && get(/databases/$(database)/documents/users/$(request.auth.uid)/credit_moderation/$(appealId)).data.action == 'restrict'));
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ─── Rate-limit ledger (Faz 2 §2.6) ───────────────────────────────────────
+    // Fully server-only — functions/rate_limit.js (Admin SDK, bypasses this
+    // entirely) is the only writer; isReportRateLimited()/
+    // isModerationRateLimited()/isAppealRateLimited() above are the only
+    // readers, both via get(), never a direct client read. Mirrors
+    // presence_notify_log/processed_purchases: internal bookkeeping nobody
+    // reads back through the client SDK.
+    match /rate_limits/{uid} {
+      allow read, write: if false;
+    }
+
     // ─── Block list (per-user, full CRUD by owner only) ──────────────────────
     match /users/{uid}/block_list/{blockedId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ─── Starred messages (Faz 2 §2.2 — per-user chat bookmark) ──────────────
+    // Doc id = messageId (idempotent star/unstar). Mirrors block_list exactly:
+    // a personal list nobody else needs to read or write.
+    match /users/{uid}/starred_messages/{messageId} {
       allow read, write: if isOwner(uid);
     }
 
@@ -428,35 +840,112 @@ service cloud.firestore {
     }
 
     // ─── Referral codes ───────────────────────────────────────────────────────
+    // Faz 6 §6.1: `type` gained a third value, 'gym' — a code a gym owner
+    // generates for a printed poster/social share (user ACQUISITION). Distinct
+    // from `gyms/{gymId}/private/qr_token` (a rotating check-in secret for
+    // people who already have the app). A 'gym' code must carry `gym_id`,
+    // and the creator must be THAT gym's real owner — just matching
+    // owner_uid to yourself (the pre-existing check, still here) would let
+    // anyone stamp any gym_id on their own code. `campaign`/`location_note`
+    // are free text, capped like every other user-authored note in this
+    // file. `gym_id`/`type`/`owner_uid` are pinned immutable on update — a
+    // code can't be relabeled into a different owner's gym after creation.
+    // `printed_at`, when touched, must be the server timestamp (mirrors
+    // gyms/{gymId}/members' `last_check_in` — not a client-supplied backdate).
     match /referrals/{code} {
       // Any authenticated user may read a referral doc (to validate a code).
       allow read: if isAuthenticated();
       // Only the owner may create their own referral doc.
       allow create: if isAuthenticated()
-        && request.resource.data.owner_uid == request.auth.uid;
+        && request.resource.data.owner_uid == request.auth.uid
+        && request.resource.data.get('type', 'user') in ['user', 'coach_vanity', 'gym']
+        && (request.resource.data.get('type', 'user') != 'gym'
+            || (request.resource.data.gym_id is string
+                && get(/databases/$(database)/documents/gyms/$(request.resource.data.gym_id)).data.owner_uid == request.auth.uid))
+        && request.resource.data.get('campaign', '').size() <= 80
+        && request.resource.data.get('location_note', '').size() <= 200;
       // The applying user is added to used_by_uids ONLY by the applyReferral
       // Cloud Function (Admin SDK, bypasses rules), and rewards are server-
       // granted. A client may update a code doc only if it OWNS the code (coach
-      // vanity / settings) or is admin, and may never change owner_uid — so a
-      // non-owner can no longer rewrite usage or self-grant (audit C8).
+      // vanity / settings / gym panel) or is admin, and may never change
+      // owner_uid, type, or gym_id — so a non-owner can no longer rewrite usage
+      // or self-grant (audit C8), and an owner can't repoint their own code at
+      // a gym they don't own after the fact.
       allow update: if isAuthenticated()
         && (resource.data.owner_uid == request.auth.uid || isAdmin())
-        && request.resource.data.owner_uid == resource.data.owner_uid;
+        && request.resource.data.owner_uid == resource.data.owner_uid
+        && request.resource.data.get('type', 'user') == resource.data.get('type', 'user')
+        && request.resource.data.get('gym_id', null) == resource.data.get('gym_id', null)
+        && request.resource.data.get('campaign', '').size() <= 80
+        && request.resource.data.get('location_note', '').size() <= 200
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['printed_at'])
+            || request.resource.data.printed_at == request.time);
       allow delete: if false;
+    }
+
+    // ─── Gym attribution (Faz 6 §6.5) ──────────────────────────────────────
+    // Server-written, immutable — created only by applyReferral's `type ==
+    // 'gym'` branch (Admin SDK, bypasses this rule entirely) the moment a
+    // gym-issued invite code is redeemed, and later touched only by
+    // maybeAwardGymCommission (functions/economy.js, also Admin SDK) to stamp
+    // first_premium_at and accrue lifetime_commission_try. No client create/
+    // update/delete path exists, for either the attributed user or the gym.
+    //
+    // Read is owner-only (the attributed user themselves) — deliberately NOT
+    // additionally readable by the gym's owner, unlike e.g. gyms/{id}/presence
+    // or member_summaries above (which DO allow the gym owner to read a
+    // member's doc directly). §6.5's own requirement is that individual user
+    // identity never reaches the gym; the gym-facing funnel report instead
+    // reads the AGGREGATE attributed_member_count/attributed_premium_count
+    // counters on its own gyms/{gymId} doc (protected by
+    // touchesProtectedGymFields() above), never this collection. The
+    // attributed user's own "disconnect" (hide the "you signed up via
+    // {gym}" banner on their profile) is a DISPLAY-only preference stored
+    // separately at users/{uid}/private/attribution_prefs (already covered
+    // by the existing wildcard `match /private/{docId}` owner-only rule
+    // above) — this doc itself stays immutable either way, since the gym's
+    // already-earned/earning commission must not be erasable by the user
+    // who generated it.
+    match /gym_attributions/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update, delete: if false;
     }
 
     // ─── Community Groups ─────────────────────────────────────────────────────
     match /community_groups/{groupId} {
-      // Any authenticated user can read groups (discovery).
+      // Any authenticated user can read groups (discovery). NOTE: this does
+      // NOT filter by is_public/kind=='private' — a private group's
+      // metadata is readable if you know/guess its id. Pre-existing gap
+      // (docs/roadmap/COMMUNITY_GROUPS.md §7 already flags discovery
+      // privacy as a client query-side convention, not a rules guarantee),
+      // unchanged by Faz 2 §2.3. What IS newly guarded is the invite
+      // code — see `secrets/invite` below and the top-level
+      // `group_invites/{code}` block — neither is reachable via this rule.
       allow read: if isAuthenticated();
-      // Creator must own the group.
+      // Creator must own the group — OR an admin creating it on someone
+      // else's behalf (Faz 2 §2.3: AdminService.approveGymApplication
+      // batch-creates a kind:'gym' group owned by the GYM OWNER, not the
+      // approving admin — an owner_uid-only check would reject that batch
+      // outright, since the batch is written under the ADMIN's auth
+      // context). kind/join_policy are validated against the schema's enum
+      // values when present; absent defaults to 'public'/'open' so every
+      // pre-Faz-2.3 create call site (which never sends these fields) keeps
+      // working unchanged.
       allow create: if isAuthenticated()
-        && request.resource.data.owner_uid == request.auth.uid;
+        && (request.resource.data.owner_uid == request.auth.uid || isAdmin())
+        && request.resource.data.get('kind', 'public') in ['public', 'private', 'gym']
+        && request.resource.data.get('join_policy', 'open') in ['open', 'request', 'invite'];
       // Owner/admin can edit freely; any member may bump only the counter
       // fields (member_count / last_activity_at) on join/leave/post, and
-      // member_count only by ±1 per write (canUpdateGroupCounters).
+      // member_count only by ±1 per write (canUpdateGroupCounters). A
+      // group-level 'admin' role does NOT get this — announcement_only/
+      // rules_text/pinned_message_id edits stay owner/site-admin-only (see
+      // CommunityGroupService.updateGroupSettings's doc comment). Faz 2
+      // §2.5: the owner branch additionally excludes activity_score/
+      // activity_updated_at (touchesProtectedGroupFields) — server-only,
+      // see that function's comment above.
       allow update: if isAuthenticated()
-        && (resource.data.owner_uid == request.auth.uid
+        && ((resource.data.owner_uid == request.auth.uid && !touchesProtectedGroupFields())
             || isAdmin()
             || canUpdateGroupCounters());
       allow delete: if isAuthenticated()
@@ -468,32 +957,210 @@ service cloud.firestore {
       // awaited, THEN the owner's own 'owner' membership doc in a second
       // write — deliberately not one batch, so this get() always reads an
       // already-committed parent rather than depending on same-batch write
-      // visibility.) 'moderator' can only be granted by the owner/admin
-      // branch below, never by self-write (closes a privilege-escalation
-      // hole: previously any authenticated user could self-write
-      // role: 'owner' on their own membership doc in ANY group).
+      // visibility.) 'moderator'/'admin' can only be granted by the
+      // owner/admin branch below, never by self-write (closes a
+      // privilege-escalation hole: previously any authenticated user could
+      // self-write role: 'owner' on their own membership doc in ANY group).
+      //
+      // Faz 2 §2.3: self-join as 'member' additionally requires
+      // join_policy == 'open' — 'request'/'invite' groups route through
+      // join_requests/{uid} (owner/admin approval writes this doc) or a
+      // redeemed invite code (functions/groups.js, Admin SDK) instead, never
+      // a direct self-write. A group owner/group-admin adding someone ELSE
+      // may not hand them role 'owner' here — that would create a second
+      // "owner" member disconnected from the group's actual owner_uid;
+      // ownership transfer isn't a feature this rule supports. Site
+      // isAdmin() is exempt from that restriction: AdminService.
+      // approveGymApplication batch-creates the GYM OWNER's (not the
+      // approving admin's own) 'owner' membership doc on their brand-new
+      // gym group — a legitimate same-batch bootstrap, not a rogue
+      // ownership grant.
       match /members/{memberId} {
         allow read: if isAuthenticated();
 
         allow create: if isAuthenticated()
+          && request.resource.data.role in ['owner', 'admin', 'moderator', 'member']
           && ((request.auth.uid == memberId
-                && (request.resource.data.role == 'member'
+                && ((request.resource.data.role == 'member'
+                      && get(/databases/$(database)/documents/community_groups/$(groupId)).data.get('join_policy', 'open') == 'open')
                     || (request.resource.data.role == 'owner'
                         && get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid)))
-              || get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
-              || isAdmin());
+              || isAdmin()
+              || (request.resource.data.role != 'owner'
+                  && (get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
+                      || isGroupAdminRole(groupId))));
 
-        // No self-update flow exists today (join = create, leave = delete);
-        // role changes (e.g. promoting a moderator) are owner/admin-only.
+        // Role changes (structural — who is owner/admin/moderator) stay
+        // owner/site-admin-only. A group-level 'admin' may ONLY touch
+        // muted_until/banned (mute/ban moderation actions) — day-to-day
+        // moderation shouldn't need the owner personally, but
+        // promoting/demoting itself does.
+        //
+        // Faz 2 §2.6: a mute/ban write (touching muted_until/banned) is
+        // additionally denied while the ACTING owner/admin is
+        // isModerationRateLimited() — isAdmin() (site admin) stays exempt,
+        // same asymmetry as touchesProtectedGroupFields()/
+        // touchesProtectedGymFields() elsewhere in this file. Role changes
+        // and any other owner-only field edit are UNAFFECTED by the lock —
+        // it only ever gates the two moderation-consequence fields.
         allow update: if isAuthenticated()
-          && (get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
-              || isAdmin());
+          && (isAdmin()
+              || (get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
+                  && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['muted_until', 'banned'])
+                      || !isModerationRateLimited()))
+              || (isGroupAdminRole(groupId)
+                  && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['muted_until', 'banned'])
+                  && !isModerationRateLimited()));
 
+        // Faz 2 §2.6: self-leave (memberId == caller) and isAdmin() are
+        // exempt from the lock below — only an owner/group-admin KICKING
+        // SOMEONE ELSE is gated by isModerationRateLimited().
         allow delete: if isAuthenticated()
           && (request.auth.uid == memberId
+              || isAdmin()
+              || ((get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
+                    || isGroupAdminRole(groupId))
+                  && !isModerationRateLimited()));
+      }
+
+      // Join requests (join_policy == 'request'). Doc id == requester's uid
+      // (idempotent re-request). Approving/declining never itself grants
+      // membership — CommunityGroupService.approveJoinRequest does that as
+      // a SEPARATE members/{uid} create in the same client batch.
+      match /join_requests/{uid} {
+        allow read: if isAuthenticated()
+          && (request.auth.uid == uid
               || get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
+              || isGroupAdminRole(groupId)
+              || isAdmin());
+        allow create: if isAuthenticated()
+          && request.auth.uid == uid
+          && request.resource.data.uid == uid
+          && get(/databases/$(database)/documents/community_groups/$(groupId)).data.get('join_policy', 'open') == 'request';
+        // Only status/responded_at/responded_by may change in practice, and
+        // only owner/admin may change them — a requester can't self-approve
+        // (uid is pinned so the request can't be reassigned to someone else
+        // either).
+        allow update: if isAuthenticated()
+          && (get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
+              || isGroupAdminRole(groupId)
+              || isAdmin())
+          && request.resource.data.uid == resource.data.uid;
+        allow delete: if isAuthenticated()
+          && (request.auth.uid == uid
+              || get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
+              || isGroupAdminRole(groupId)
               || isAdmin());
       }
+
+      // Moderation log — mute/kick/ban/unmute/unban + reason + duration.
+      // Immutable once written (mirrors admin_audit's shape). The target
+      // uid may read entries about themselves (transparency: why was I
+      // muted); nobody but owner/admin reads the full log.
+      match /moderation/{autoId} {
+        allow read: if isAuthenticated()
+          && (resource.data.target_uid == request.auth.uid
+              || get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
+              || isGroupAdminRole(groupId)
+              || isAdmin());
+        // Faz 2 §2.6: gated by !isModerationRateLimited() for the owner/
+        // group-admin branch — isAdmin() stays exempt. This is the ONE
+        // create rule every mute/kick/ban/unmute/unban action's batch
+        // write must pass (CommunityGroupService's methods always pair the
+        // members/{uid} mutation with a moderation/{autoId} log entry in
+        // the same batch), so gating it here alone would already be
+        // sufficient — the members/{memberId} update/delete rules above are
+        // gated too as well, defense-in-depth, matching this file's existing
+        // belt-and-suspenders style (e.g. canUpdateGroupCounters +
+        // touchesProtectedGroupFields both guarding community_groups).
+        allow create: if isAuthenticated()
+          && request.resource.data.issued_by == request.auth.uid
+          && request.resource.data.action in ['mute', 'kick', 'ban', 'unmute', 'unban']
+          && (isAdmin()
+              || ((get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
+                    || isGroupAdminRole(groupId))
+                  && !isModerationRateLimited()));
+        allow update, delete: if false;
+      }
+
+      // The group's own message stream ("akış + sohbet", Faz 2 §2.3) lives
+      // at `chats/{chat_id}/messages` — see this doc's `chat_id` field and
+      // the `chats/{chatId}` rules block's `isGroupBackedChat`/
+      // `canAccessGroupChat` for the actual read/write rules. Deliberately
+      // NOT a subcollection here: `lastMessage`/`updatedAt`/`unreadCounts`
+      // chat-list rendering (chat_list_screen.dart's `_buildGymChatCard`,
+      // already shipped and dormant) and the entire message send/paginate/
+      // react/edit pipeline (ChatService, Faz 2 §2.1/§2.2) already exist for
+      // `chats/{chatId}` — duplicating that under community_groups would be
+      // exactly the "reinvent instead of reuse" this task was told to avoid.
+
+      // Invite-code secret (Faz 2 §2.3). Deliberately NOT a field on the
+      // parent doc above (readable by any authenticated user) — the same
+      // class of bug as the gym QR token / user PII fixes elsewhere in this
+      // file: a rule can't hide one field of an otherwise-readable doc, so
+      // a redeemable secret can't live there. `invite_enabled` (a non-secret
+      // boolean — "is joining by code currently possible") stays on the
+      // parent doc; the actual code string lives only here. Owner/admin
+      // only, both read (to display/copy/print) and write (regenerate).
+      match /secrets/{docId} {
+        allow read, write: if isAuthenticated()
+          && (get(/databases/$(database)/documents/community_groups/$(groupId)).data.owner_uid == request.auth.uid
+              || isGroupAdminRole(groupId)
+              || isAdmin());
+      }
+
+      // Faz 5 §5.2 — per-member weekly contribution score (messages/posts/
+      // comments within this group, weighted the same as
+      // `computeGroupActivityScores`'s message/post/comment weights but as a
+      // flat weekly sum, not a decaying "hot right now" score). Fully
+      // server-only — bumped by `engagement_credit.js`'s onCreate triggers,
+      // read by that file's `awardWeeklyGroupTop3` scheduled sweep. No
+      // client (not even the group owner) reads this raw counter directly;
+      // a future leaderboard UI (§5.3) would read a denormalized public
+      // summary, never this.
+      match /weekly_contributions/{weekKey}/members/{uid} {
+        allow read, write: if false;
+      }
+
+      // Faz 5 §5.3 — the denormalized public summary promised by the
+      // comment directly above: top-10 entries for the CURRENT week
+      // (`{uid, display_name, photo_url, score, rank}`), recomputed every
+      // 15 min by `computeGroupContributionLeaderboards`
+      // (functions/engagement_credit.js). Read-only, and scoped to this
+      // group's OWN members — not any authenticated user like
+      // `community_groups/{groupId}` discovery reads above — because unlike
+      // XP (already a public field on `users/{uid}`, see
+      // `community_weekly_xp` below), a group's internal contribution
+      // activity is not otherwise public information. Still fully
+      // server-only to write, even for the group's own owner.
+      match /weekly_leaderboard/{weekKey} {
+        allow read: if isGroupMember(groupId);
+        allow write: if false;
+      }
+    }
+
+    // ─── Group invite codes (reverse lookup: code → group_id) ────────────────
+    // Faz 2 §2.3. Doc id IS the code (mirrors referrals/{code} — O(1)
+    // doc-id lookup, no query, no index). Fully closed to reads: redemption
+    // is a callable (functions/groups.js: redeemGroupInvite, Admin SDK,
+    // bypasses this entirely) that validates is_active + invite_enabled +
+    // existing membership/ban state server-side and returns a preview in
+    // its RESPONSE — unlike referrals/{code} (which IS previewed via a
+    // direct client read before applying), a client never inspects this doc
+    // directly, so there's no legitimate read path. Owner/admin of the
+    // group NAMED IN THE DOC may create/deactivate their own group's code
+    // from the client — generation is low-risk; redemption (which actually
+    // grants membership) is what must be server-validated.
+    match /group_invites/{code} {
+      allow read: if false;
+      allow create: if isAuthenticated()
+        && (get(/databases/$(database)/documents/community_groups/$(request.resource.data.group_id)).data.owner_uid == request.auth.uid
+            || isGroupAdminRole(request.resource.data.group_id));
+      allow update: if isAuthenticated()
+        && request.resource.data.group_id == resource.data.group_id
+        && (get(/databases/$(database)/documents/community_groups/$(resource.data.group_id)).data.owner_uid == request.auth.uid
+            || isGroupAdminRole(resource.data.group_id));
+      allow delete: if false;
     }
 
     match /gyms/{gymId} {
@@ -504,8 +1171,10 @@ service cloud.firestore {
         && request.resource.data.owner_uid == request.auth.uid;
       // Owner updates gym; admin may set is_verified badge; any authenticated
       // user may bump member_count by ±1 (join/leave — canUpdateGymMemberCount).
+      // Owner is denied touching live_occupancy directly (touchesProtectedGymFields) —
+      // that counter is server-maintained only (Faz 1.5).
       allow update: if isAuthenticated()
-        && (resource.data.owner_uid == request.auth.uid
+        && ((resource.data.owner_uid == request.auth.uid && !touchesProtectedGymFields())
             || isAdmin()
             || canUpdateGymMemberCount());
       allow delete: if isAuthenticated()
@@ -521,9 +1190,14 @@ service cloud.firestore {
       // check-in). Owner/admin retain full control (tier changes, forced
       // removal, admin backfill).
       match /members/{memberId} {
+        // Faz 5 §5.3: `|| isGymMember(gymId)` is the fix — see that
+        // function's doc comment above for why this was a real, pre-
+        // existing gap (the in-gym leaderboard's own member-list query was
+        // silently denied for every non-owner member until now).
         allow read: if isAuthenticated()
           && (get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
-              || request.auth.uid == memberId);
+              || request.auth.uid == memberId
+              || isGymMember(gymId));
 
         allow create: if isAuthenticated()
           && ((request.auth.uid == memberId && request.resource.data.tier == 'standard')
@@ -608,6 +1282,71 @@ service cloud.firestore {
           && request.resource.data.method in ['qr', 'gps', 'manual'];
         allow update, delete: if false;
       }
+
+      // Faz 1 §1.4: live gym-presence doc, doc id == the member's own uid.
+      // Only exists while the member is inside (recordPresenceEvent creates
+      // it on enter, deletes it on exit/timeout — Faz 1.5). No raw lat/lng
+      // ever — entered_at/source/last_seen_at/expires_at/denormalized
+      // display_name+photo_url only. Client never writes this directly:
+      // the whole point of Faz 1.5 is server-side geofence/membership/
+      // consent/rate-limit validation before a presence doc can exist.
+      match /presence/{uid} {
+        allow read: if isAuthenticated()
+          && (get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
+              || request.auth.uid == uid);
+        allow write: if false;
+      }
+
+      // Closed, immutable presence session (Faz 1.4) — written once by
+      // recordPresenceEvent on exit/timeout, never touched again. Same
+      // read audience as the live doc above; doc id is an autoId (not the
+      // uid), so the self-read check is against resource.data.uid instead.
+      match /presence_sessions/{autoId} {
+        allow read: if isAuthenticated()
+          && (get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
+              || request.auth.uid == resource.data.uid);
+        allow create, update, delete: if false;
+      }
+
+      // Faz 1 §1.7: dedup log for the "friend at gym" notification fan-out
+      // (onGymPresenceCreated) — purely internal bookkeeping, nobody (not
+      // even the gym owner) has a legitimate reason to read or write it
+      // from a client. Same fully-server-only shape as processed_purchases.
+      match /presence_notify_log/{logId} {
+        allow read, write: if false;
+      }
+
+      // Faz 4 §4.2 — server-generated, tier-gated progress summary cache.
+      // Client NEVER writes this (only generateMemberProgressSummary, Admin
+      // SDK) — the callable is the only place progress_sharing's tier is
+      // ever consulted, so a client can't forge a summary or bypass tier 0.
+      // Read audience mirrors presence/checkins above: the gym owner sees
+      // any of their members' summaries; the member sees their own (same
+      // transparency stance as access_log below). expires_at (7-day TTL) is
+      // swept by expireMemberProgressSummaries (functions/summaries.js); a
+      // tier change or revoke deletes it immediately via
+      // onProgressSharingWrite instead of waiting for that sweep.
+      match /member_summaries/{uid} {
+        allow read: if isAuthenticated()
+          && (get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
+              || request.auth.uid == uid);
+        allow write: if false;
+      }
+
+      // Faz 4 §4.3 — dedup receipt for the tier-0 "send a progress-sharing
+      // invite" button (sendProgressShareInvite, functions/summaries.js).
+      // The doc EXISTING is the "already invited, ever" state — the
+      // callable creates it with .create() (fails if present), so this can
+      // only ever fire once per (gym, member) pair. Read-only for the gym
+      // owner (so the UI can render "already invited" without a second
+      // callable round-trip); nobody — not even the owner — writes it
+      // directly, only the callable does after re-deriving the same
+      // gym-ownership authority generateMemberProgressSummary requires.
+      match /progress_share_invites/{memberUid} {
+        allow read: if isAuthenticated()
+          && get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid;
+        allow write: if false;
+      }
     }
 
     // ─── Gym Wars ─────────────────────────────────────────────────────────────
@@ -641,6 +1380,22 @@ service cloud.firestore {
           && (request.auth.uid == coachUid || request.auth.uid == clientUid);
         allow delete: if false;
       }
+
+      // Faz 4 §4.2 — coach-scope equivalent of gyms/{gymId}/member_summaries
+      // above; same server-only write, same "owner or the member
+      // themselves" read audience.
+      match /member_summaries/{uid} {
+        allow read: if isAuthenticated()
+          && (request.auth.uid == coachUid || request.auth.uid == uid);
+        allow write: if false;
+      }
+
+      // Faz 4 §4.3 — coach-scope equivalent of gyms/{gymId}/progress_share_invites
+      // above; same one-time-ever dedup receipt, same server-only write.
+      match /progress_share_invites/{memberUid} {
+        allow read: if isAuthenticated() && request.auth.uid == coachUid;
+        allow write: if false;
+      }
     }
 
     // ─── Programs (marketplace) ───────────────────────────────────────────────
@@ -666,6 +1421,54 @@ service cloud.firestore {
           && (get(/databases/$(database)/documents/programs/$(programId)).data.coach_uid == request.auth.uid
               || get(/databases/$(database)/documents/programs/$(programId)).data.coach_uid == 'demo');
       }
+    }
+
+    // ─── Meal plan templates (Faz 3 §3.2) ──────────────────────────────────────
+    // Reusable weekly plans authored by a gym/coach/admin, independent of any
+    // one member's meal_plans/current. Sent to a member as an immutable copy
+    // via users/{uid}/plan_offers/{id} below — editing/deleting a template
+    // never touches an already-sent offer.
+    //
+    // Read visibility is share_scope-gated (author/admin always; is_public
+    // to everyone; 'gym' to that gym's own members via the same
+    // exists()-on-the-members-subcollection check gyms/{id}/members already
+    // uses elsewhere in this file). 'link'/'marketplace' are accepted as
+    // valid share_scope values but have no distinct read mechanism of their
+    // own yet — that likely needs a secret-token pattern (mirroring
+    // community_groups/secrets/invite), a decision left to whoever builds
+    // §3.3/§3.5's sharing UI, not made here. Write always stays author-only
+    // (mirrors community_groups' owner-write pattern) — isAdmin() is an
+    // additional override, consistent with every other collection in this
+    // file, not a loosening the plan asked for: no OTHER gym/coach can ever
+    // write a template they don't own.
+    match /meal_plan_templates/{templateId} {
+      allow read: if isAuthenticated()
+        && (resource.data.author_uid == request.auth.uid
+            || isAdmin()
+            || resource.data.get('is_public', false) == true
+            || (resource.data.get('share_scope', 'private') == 'gym'
+                && resource.data.gym_id != null
+                && exists(/databases/$(database)/documents/gyms/$(resource.data.gym_id)/members/$(request.auth.uid))));
+
+      allow create: if isAuthenticated()
+        && request.resource.data.author_uid == request.auth.uid
+        && request.resource.data.author_type in ['gym', 'coach', 'admin']
+        && request.resource.data.get('share_scope', 'private') in ['private', 'gym', 'link', 'marketplace']
+        // A brand-new template has never been sent — usage_count starts at
+        // 0 (or absent); only sendPlanOffer ever increments it afterward.
+        && request.resource.data.get('usage_count', 0) == 0
+        && request.resource.data.get('name', '').size() <= 200
+        && request.resource.data.get('description', '').size() <= 2000;
+
+      allow update: if isAuthenticated()
+        && ((resource.data.author_uid == request.auth.uid
+              && !touchesProtectedTemplateFields()
+              && request.resource.data.get('name', '').size() <= 200
+              && request.resource.data.get('description', '').size() <= 2000)
+            || isAdmin());
+
+      allow delete: if isAuthenticated()
+        && (resource.data.author_uid == request.auth.uid || isAdmin());
     }
 
     // ─── Seeds (idempotent seeder gates) ──────────────────────────────────────
@@ -725,9 +1528,147 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ─── XP ledger (Faz 5 §5.1) ────────────────────────────────────────────
+    // Immutable, server-only — `awardXp` (functions/progress.js) is the only
+    // writer, and `eventId` (its own doc id, `${kind}_${refId}`) is what
+    // makes every award idempotent AND is how a daily cap gets enforced
+    // (count today's docs of a `kind`, reject once at the cap) — a client
+    // write here, in either direction, would defeat both. Owner-only read,
+    // same privacy level as `achievements/*` above (a fine-grained activity
+    // timeline is more sensitive than the aggregate `xp`/`level` numbers on
+    // the root profile doc, which stay visible to any authenticated user
+    // exactly like `reputation_score` already was).
+    match /users/{uid}/xp_events/{eventId} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // ─── Weekly community XP rollup (Faz 5 §5.3) ───────────────────────────
+    // Denormalized per-(week, uid) XP-earned-THIS-WEEK counter, bumped
+    // transactionally by `awardXp` (functions/progress.js) inside the SAME
+    // transaction that awards XP for ANY kind — free (no extra read), since
+    // that transaction already has the user's displayName/photoURL in hand
+    // from its own userSnap read. Backs the weekly community leaderboard AND
+    // (via a chunked whereIn lookup, never a rule change) the in-gym
+    // leaderboard. Flat `allow read: if isAuthenticated()` — deliberately
+    // NOT narrower — because `xp` itself is already a PUBLIC field on the
+    // `users/{uid}` root doc (Faz 0 §0.2's field-allowlist), so a weekly
+    // rollup of the same already-public number carries no additional
+    // sensitivity. Contrast with `community_groups/{id}/weekly_leaderboard`
+    // above, which IS member-scoped, because a group's contribution
+    // activity is not otherwise public.
+    match /community_weekly_xp/{weekKey}/members/{uid} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ─── Received-engagement credit ledger (Faz 5 §5.2) ────────────────────
+    // Immutable, server-only — `awardEngagementCredit` (functions/
+    // engagement_credit.js) is the only writer. Mirrors `xp_events` exactly:
+    // `eventId = ${source}_${refId}` is both the idempotency key and, via a
+    // `source + created_at` composite index, how the daily/weekly cap is
+    // enforced (count already-awarded events of this source since the
+    // window start, reject the next one once at the cap). A real award ALSO
+    // credits `ai_credits/{uid}.bonus` (`entitlements.js`'s existing
+    // `grantBonusCredits`) — this ledger is the audit trail, not a second
+    // spendable currency.
+    match /users/{uid}/engagement_credit_events/{eventId} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // ─── Shadow-restriction state (Faz 5 §5.2) ──────────────────────────────
+    // Mirrors `ai_credits`/`entitlements` exactly: owner-read (the affected
+    // user needs to SEE they're restricted in order to appeal — this is not
+    // meant to be secret from them, only from other users, who never read
+    // this path at all), server/admin-write only. `is_shadow_restricted`
+    // gates credit accumulation ONLY — it has no bearing on content
+    // visibility (`posts`/`comments`/etc. rules are completely untouched by
+    // this collection). `flag_count` is a rolling suspicion counter bumped
+    // by `bumpSuspicionFlag`; crossing a threshold sets
+    // `is_shadow_restricted` and `latest_entry_id` (the matching
+    // `credit_moderation` log entry the appeal below references).
+    match /credit_restrictions/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isAdmin();
+    }
+
+    // ─── Shadow-restriction moderation log (Faz 5 §5.2) ─────────────────────
+    // Immutable restrict/lift history at ACCOUNT scope — the same shape as
+    // `community_groups/{groupId}/moderation/{autoId}` above, just without a
+    // group (this is never group-specific). Written by
+    // `engagement_credit.js`'s `bumpSuspicionFlag` (Admin SDK, bypasses this
+    // rule entirely) or, in the future, by an admin action — never by the
+    // affected user themselves.
+    match /users/{uid}/credit_moderation/{autoId} {
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
+      allow create: if isAuthenticated() && isAdmin();
+      allow update, delete: if false;
+    }
+
+    // ─── Reciprocity-ring + engagement-diversity signals (Faz 5 §5.2) ──────
+    // Fully server-only bookkeeping — no client read or write path exists,
+    // or should: these exist purely to inform `engagement_credit.js`'s
+    // anti-abuse weighting (see that file + `engagement_credit_logic.js`).
+    // Same "internal, nobody reads this back through the client SDK" shape
+    // as `rate_limits`/`processed_purchases`/`presence_notify_log`
+    // elsewhere in this file.
+    match /reciprocity_pairs/{pairKey} {
+      allow read, write: if false;
+    }
+    match /engagement_diversity/{uid} {
+      allow read, write: if false;
+    }
+
     // ─── Consent records (KVKK/GDPR — demonstrable, versioned, owner-only) ─────
     match /users/{uid}/consents/{purpose} {
       allow read, write: if isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // ─── Progress-sharing consent (Faz 4 §4.1 — tiered, per-scope) ─────────────
+    // Deliberately a DIFFERENT shape from consents/{purpose} above: not one
+    // global purpose but one doc PER SCOPE (scopeId = 'gym_{gymId}' |
+    // 'coach_{uid}') carrying a 0-3 TIER rather than a bool. Level 0
+    // (default) shares nothing; the member grants/raises/revokes each scope
+    // independently. Same audit philosophy as consents/{purpose} (server-
+    // authoritative timestamp, policy_version stamped) but write stays
+    // owner-direct (mirrors ConsentService.setConsent) since granting/
+    // revoking IS the user's own action — generateMemberProgressSummary
+    // (functions/summaries.js) re-derives real gym/coach authority itself
+    // and never trusts this doc's mere existence as proof of a real
+    // relationship. onProgressSharingWrite (same file) reacts to every
+    // write here by deleting any cached gyms/{id}/member_summaries or
+    // coach_profiles/{id}/member_summaries doc for this (uid, scopeId) pair
+    // — a tier change invalidates a cached summary IMMEDIATELY rather than
+    // waiting out its 7-day TTL, per docs/COMPLIANCE.md's "withdrawable as
+    // easily as it was given" bar.
+    match /users/{uid}/progress_sharing/{scopeId} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && request.resource.data.level is int
+        && request.resource.data.level in [0, 1, 2, 3]
+        && request.resource.data.policy_version is string
+        && request.resource.data.policy_version.size() > 0
+        && (request.resource.data.level == 0
+              ? request.resource.data.revoked_at == request.time
+              : (request.resource.data.granted_at == request.time
+                  && request.resource.data.revoked_at == null));
+      // No delete — revoking sets level:0 (keeps granted_at/revoked_at as a
+      // history of the last grant/revoke instead of erasing it). Still
+      // covered by deleteUserAccount's recursive erasure as an owner
+      // subcollection.
+      allow delete: if false;
+    }
+
+    // ─── Progress-summary access log (Faz 4 §4.2 — transparency) ──────────────
+    // "Who generated a summary about me, and when" — written ONLY by
+    // generateMemberProgressSummary (Admin SDK), never by a client.
+    // Deliberately survives a later consent revocation — it's a record of
+    // PAST access, not a live permission — onProgressSharingWrite never
+    // touches this collection.
+    match /users/{uid}/access_log/{entryId} {
+      allow read: if isOwner(uid);
+      allow write: if false;
     }
 
     // ─── Coach applications ────────────────────────────────────────────────────

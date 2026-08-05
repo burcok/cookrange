@@ -3,6 +3,9 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../localization/app_localizations.dart';
+import '../models/dish_model.dart';
+import '../models/meal_plan_template_model.dart';
+import '../utils/plan_nutrition_calculator.dart';
 
 /// Handles native social sharing for recipes, progress, and community content.
 ///
@@ -157,4 +160,63 @@ class SharingService {
   }
 
   static const _rewardDaysLabel = '7 days';
+
+  /// Faz 3 §3.3 — the template library's "export" action: a formatted
+  /// plain-text weekly summary via the OS share sheet, mirroring
+  /// [shareShoppingList]'s plain-text-list approach rather than a new file
+  /// format/pipeline. [dishCatalog] resolves each `MealEntry.dishId` to a
+  /// display name; an entry with no resolvable dish (custom food, or a dish
+  /// deleted since the template was built) falls back to
+  /// `MealEntry.customFood` or a localized placeholder instead of silently
+  /// dropping the line. Nutrition totals are computed fresh via
+  /// [PlanNutritionCalculator] — never read from any stale stored total.
+  Future<void> shareMealPlanTemplate(
+    BuildContext context,
+    MealPlanTemplate template, {
+    required Map<String, DishModel> dishCatalog,
+    Rect? sharePositionOrigin,
+  }) async {
+    final l10n = AppLocalizations.of(context);
+    final week = PlanNutritionCalculator.calculateWeek(
+      template.days.map((d) => d.meals).toList(),
+      dishCatalog,
+    );
+
+    final buffer = StringBuffer()
+      ..writeln(template.name)
+      ..writeln(l10n.translate('template_builder.export.calorie_line',
+          variables: {'calories': week.average.calories.toStringAsFixed(0)}));
+    if (template.description.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln(template.description);
+    }
+
+    final sortedDays = [...template.days]
+      ..sort((a, b) => a.dayIndex.compareTo(b.dayIndex));
+    for (final day in sortedDays) {
+      buffer
+        ..writeln()
+        ..writeln(l10n.translate('template_builder.export.day_header',
+            variables: {'n': '${day.dayIndex + 1}'}));
+      for (final meal in day.meals) {
+        final dishName =
+            meal.dishId != null ? dishCatalog[meal.dishId]?.name : null;
+        final label = dishName ??
+            meal.customFood ??
+            l10n.translate('template_builder.export.unnamed_item');
+        buffer.writeln(
+            '• ${l10n.translate('food_scan.meal.${meal.mealType}')}: $label');
+      }
+    }
+    buffer
+      ..writeln()
+      ..write(_appTag);
+
+    final subject = l10n.translate('template_builder.export.subject',
+        variables: {'name': template.name});
+
+    await Share.share(buffer.toString(),
+        subject: subject, sharePositionOrigin: sharePositionOrigin);
+  }
 }

@@ -26,7 +26,13 @@ extension AdminCategoryX on AdminCategory {
 }
 
 /// How a section badge is counted (live). `none` = no badge.
-enum AdminBadge { none, pendingApplications, openReports, users }
+enum AdminBadge {
+  none,
+  pendingApplications,
+  openReports,
+  users,
+  pendingModerationAppeals,
+}
 
 /// A section rendered either as its own standalone screen (`standalone: true`)
 /// or as a single-section view inside the (refactored) admin panel.
@@ -37,6 +43,7 @@ enum AdminSection {
   programs,
   reports,
   privacy,
+  moderationAppeals,
   // People
   users,
   abuse,
@@ -115,6 +122,15 @@ extension AdminSectionX on AdminSection {
           subtitleKey: 'admin.section_privacy_sub',
           icon: Icons.privacy_tip_rounded,
           category: AdminCategory.moderation,
+          standalone: true,
+        );
+      case AdminSection.moderationAppeals:
+        return const AdminSectionMeta(
+          titleKey: 'admin.moderation_appeals',
+          subtitleKey: 'admin.section_moderation_appeals_sub',
+          icon: Icons.gavel_rounded,
+          category: AdminCategory.moderation,
+          badge: AdminBadge.pendingModerationAppeals,
           standalone: true,
         );
       case AdminSection.users:

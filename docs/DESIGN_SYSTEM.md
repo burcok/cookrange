@@ -79,6 +79,25 @@ blobs (Stack behind content for depth).
 | **AppInitialsAvatar** | `app_avatar.dart` | Avatar w/ photo or deterministic initials + hue from name; cached, fade-in. |
 | **PermissionPrimer** | `permission_primer.dart` | Pre-OS-dialog rationale sheet (`PermissionPrimer.show` → bool). Precede every cold permission. |
 
+**Faz 2 §2.2 — Chat (`lib/core/widgets/ds/chat/`)**, built for `chat_detail_screen.dart`'s rebuild:
+
+| Component | File | Use it for |
+|---|---|---|
+| **AppMessageBubble** | `chat/app_message_bubble.dart` | The one chat bubble: text/image (single or multi-attachment mini-grid)/system-pill/deleted-placeholder states, reply-quote, forwarded tag, edited tag, @mention highlighting (`MessageMention` offset/len → tinted `TextSpan`), delivery ticks (caller supplies `isDelivered`/`isRead` — stays agnostic of private-vs-group), long-press (haptic + press-scale) and swipe-right-to-reply (rubber-band drag, haptic at trigger threshold) built in. |
+| **AppMessageComposer** | `chat/app_message_composer.dart` | Attachment button, reply/edit preview slot (reuses `AppReplyPreview`), @mention autocomplete popup (`AppMentionCandidate` list in, `onSelectMention` out — text-splicing stays in the screen), upload spinner, send button. |
+| **AppReplyPreview** | `chat/app_reply_preview.dart` | Quoted-message preview, two contexts in one widget: compact/tinted inside a bubble (`onTap` → scroll to original) or full-width above the composer (`onClose` → cancel). |
+| **AppReactionBar / AppReactionPicker** | `chat/app_reaction_bar.dart` | Bar: per-message emoji+count pills attached to a bubble, tap toggles the caller's own reaction. Picker: fixed 6-emoji quick-react row + "more" (system emoji keyboard via a plain text field — no emoji-picker package in this app). |
+| **AppDateSeparator** | `chat/app_date_separator.dart` | Per-day divider in the message list (Today/Yesterday/`DD/MM/YYYY`, `profile.chat.*` keys). |
+| **AppUnreadDivider** | `chat/app_unread_divider.dart` | WhatsApp-style "N unread messages" line — inserted once per screen visit (frozen at open, doesn't reactively vanish as `markChatAsRead` stamps receipts). |
+| **AppTypingIndicator** | `chat/app_typing_indicator.dart` | Animated 3-dot bubble, generalized from private-only to N names (1/2/"several" phrasing); static dots under reduce-motion. |
+| **AppMediaGrid** | `chat/app_media_grid.dart` | Flattened attachment grid (`AppMediaGridItem` — one per attachment, not per message) for the media-gallery screen; hosting screen owns loading/empty/error. |
+| **AppPinnedBanner** | `chat/app_pinned_banner.dart` | Sticky pinned-message banner under the app bar; unpin is always offered (any participant may unpin). |
+| **AppMessageContextMenu** | `chat/app_message_context_menu.dart` | Long-press action sheet — built on `AppSheet` (reuse, not a repositioned-bubble clone): message preview + `AppReactionPicker` + a caller-supplied, permission-filtered `AppMessageContextMenuAction` list (reply/forward/copy/pin/star/edit/delete/report). |
+
+All ten follow the same tokens/motion/haptics/reduce-motion conventions as the rest of this file —
+`AccessibilityUtils.reduceMotion(context)` (not raw `MediaQuery.disableAnimations`, the doc-recommended
+call), raw `HapticFeedback.*` (matches `AppButton`/`AppCard`, no wrapper service exists).
+
 ---
 
 ## 3. Motion Rules

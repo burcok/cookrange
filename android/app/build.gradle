@@ -76,7 +76,10 @@ android {
 
     defaultConfig {
         applicationId "com.cookrange_android.app"
-        minSdkVersion flutter.minSdkVersion
+        // Faz 1 §1.2: native_geofence requires API 23+; pinned to 26 to
+        // match the already-decided Faz 8.6 target (S16) in one move instead
+        // of two, since both land on this exact line.
+        minSdkVersion 26
         targetSdk 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

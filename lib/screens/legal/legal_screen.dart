@@ -10,7 +10,13 @@ enum LegalDocumentType {
   privacyPolicy,
   termsOfUse,
   kvkkClarification,
-  explicitConsent
+  explicitConsent,
+  // Faz 6 §6.6 (closing audit finding C16a): drafted since before this
+  // session but never wired into any UI — assets/legal/marketplace_terms_
+  // {en,tr}.md existed as an unreferenced file. Now shown from
+  // GymEarningsScreen (lib/screens/gym/), which also owns the gym's own
+  // commission-rate section within it (§11 of that document).
+  marketplaceTerms,
 }
 
 extension LegalDocumentTypeX on LegalDocumentType {
@@ -19,6 +25,7 @@ extension LegalDocumentTypeX on LegalDocumentType {
         LegalDocumentType.termsOfUse => 'terms_of_use',
         LegalDocumentType.kvkkClarification => 'kvkk_aydinlatma',
         LegalDocumentType.explicitConsent => 'explicit_consent',
+        LegalDocumentType.marketplaceTerms => 'marketplace_terms',
       };
 
   String titleKey() => switch (this) {
@@ -26,6 +33,7 @@ extension LegalDocumentTypeX on LegalDocumentType {
         LegalDocumentType.termsOfUse => 'legal.terms_title',
         LegalDocumentType.kvkkClarification => 'legal.kvkk_title',
         LegalDocumentType.explicitConsent => 'legal.consent_title',
+        LegalDocumentType.marketplaceTerms => 'legal.marketplace_terms_title',
       };
 }
 

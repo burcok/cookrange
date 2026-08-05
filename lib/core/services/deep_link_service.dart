@@ -2,9 +2,16 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../screens/gym/gym_join_prompt_sheet.dart';
+import '../../screens/onboarding/v2/onboarding_flow_screen.dart';
+import '../localization/app_localizations.dart';
+import '../providers/onboarding_provider.dart';
+import '../utils/app_routes.dart';
+import '../widgets/ds/ds.dart';
 import 'crashlytics_service.dart';
 import 'gym_service.dart';
+import 'referral_service.dart';
 
 /// Handles App Links (Android) and Universal Links (iOS) as well as the
 /// custom `cookrange://` scheme.
@@ -89,9 +96,50 @@ class DeepLinkService {
       case 'user':
         nav.pushNamed('/profile', arguments: {'uid': id});
       case 'invite':
-        nav.pushNamed('/settings', arguments: {'referral_code': id});
+        _handleInvite(id, nav);
       default:
         debugPrint('DeepLink: unrecognised path segment "$type"');
+    }
+  }
+
+  /// Routes an `/invite/{code}` link (Faz 6 §6.3), per this state table:
+  ///  - Signed-in session already exists → the code is NOT applied (invite
+  ///    codes are new-signup only). Gently explained, discarded, written
+  ///    nowhere.
+  ///  - No session → the code is staged (in-memory into [OnboardingProvider]
+  ///    + on-device via [ReferralService.savePendingCode], 7-day TTL so a
+  ///    stale scan can't misattribute a signup weeks later) and the user is
+  ///    routed into onboarding, where the referral step picks it up prefilled.
+  ///    If onboarding is already the active screen, skip the navigation —
+  ///    pushing a second [OnboardingFlowScreen] on top would look like the
+  ///    user's in-progress answers were lost. The code alone is enough either
+  ///    way; [OnboardingProvider] just picks it up reactively.
+  /// Malformed/empty codes are silently ignored. Whether the staged code
+  /// turns out invalid/expired/inactive is decided later — by
+  /// [ReferralService.previewCode] at the referral step and, for real, by
+  /// `applyReferral` at signup — never disrupting this routing step.
+  void _handleInvite(String rawCode, NavigatorState nav) {
+    final code = rawCode.trim().toUpperCase();
+    if (code.isEmpty) return;
+    final ctx = nav.context;
+    if (!ctx.mounted) return;
+
+    if (FirebaseAuth.instance.currentUser != null) {
+      debugPrint('DeepLink: invite code ignored — signed-in session exists');
+      AppSnackBar.info(
+        ctx,
+        AppLocalizations.of(ctx)
+            .translate('settings.referral.signed_in_notice'),
+      );
+      return;
+    }
+
+    unawaited(ReferralService().savePendingCode(code));
+    ctx.read<OnboardingProvider>().setReferralCode(code);
+    debugPrint('DeepLink: invite code $code staged for onboarding');
+
+    if (!OnboardingFlowScreen.isActive) {
+      nav.pushNamed(AppRoutes.onboardingV2);
     }
   }
 

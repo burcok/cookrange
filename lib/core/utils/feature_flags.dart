@@ -32,4 +32,26 @@ class FeatureFlags {
   static const coach = 'coach';
   static const programs = 'programs';
   static const squad = 'squad';
+
+  /// Faz 3 §3.3 — the meal-plan template builder/library. A dedicated
+  /// kill-switch independent of `gym`/`coach` themselves: those gate
+  /// reaching the dashboards at all, this lets a rollout problem specific
+  /// to template generation (e.g. the AI-draft path) be killed without
+  /// taking down the whole coach/gym dashboard.
+  static const mealPlanTemplates = 'meal_plan_templates';
+
+  /// Faz 6 §6.1 — gym invite-code generation/QR/poster export. Same reason
+  /// as `mealPlanTemplates`: a problem specific to this surface (e.g. the
+  /// poster image-capture path) shouldn't require killing the whole gym
+  /// dashboard to shut off.
+  static const gymInviteCodes = 'gym_invite_codes';
+
+  /// Faz 6 §6.5/§6.6 — the attribution funnel stats on
+  /// `GymInviteCodesScreen` and the new `GymEarningsScreen`. A dedicated
+  /// kill-switch, not folded into `gymInviteCodes`: code generation/QR/
+  /// poster export already shipped and is independently verified — a
+  /// problem in the newer, more complex attribution/commission surface
+  /// shouldn't require killing the already-working invite-code feature to
+  /// shut off.
+  static const gymAttribution = 'gym_attribution';
 }

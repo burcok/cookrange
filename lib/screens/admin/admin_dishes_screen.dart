@@ -19,14 +19,16 @@ class _AdminDishesScreenState extends State<AdminDishesScreen> {
   String _query = '';
   String? _categoryFilter;
 
+  // Faz 3 §3.6: reconciled with real DishModel.category values — red_meat/
+  // vegan/diet never existed in the seed data (always 0 matches); meat/
+  // veggie do and had no chip. See dish_model.dart's category doc comment.
   static const _categories = [
     'chicken',
-    'red_meat',
+    'meat',
     'fish',
     'breakfast',
     'vegetarian',
-    'vegan',
-    'diet',
+    'veggie',
     'sport',
     'turkish_classic',
   ];
@@ -421,14 +423,17 @@ class _DishEditSheetState extends State<_DishEditSheet> {
     final t = widget.t;
     final l10n = widget.l10n;
 
+    // Faz 3 §3.6: must cover every real category value a dish can carry —
+    // DropdownButton throws if `_category` (the dish's actual value) isn't
+    // in this list, and meat/veggie dishes (23 of the catalog) used to hit
+    // exactly that with the old red_meat/vegan/diet list.
     const cats = [
       'chicken',
-      'red_meat',
+      'meat',
       'fish',
       'breakfast',
       'vegetarian',
-      'vegan',
-      'diet',
+      'veggie',
       'sport',
       'turkish_classic',
     ];

@@ -21,6 +21,7 @@ import '../core/localization/app_localizations.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/att_consent_service.dart';
+import '../core/services/consent_service.dart';
 import '../core/services/firestore_service.dart';
 import '../core/services/deep_link_service.dart';
 import '../core/services/push_notification_service.dart';
@@ -435,8 +436,13 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (!mounted) return;
 
-    // Request ATT before any navigation.
+    // Request ATT before any navigation, then re-apply analytics/crashlytics
+    // collection consent now that the ATT answer is actually known (audit
+    // C13 — see ConsentService.applyCollectionConsent's doc comment: the
+    // earliest boot-time call runs before this resolves, so it can only see
+    // ATTConsentService's default-off state on iOS).
     await ATTConsentService().requestIfNeeded();
+    unawaited(ConsentService().applyCollectionConsent());
     if (!mounted) return;
 
     final destination = OnboardingFlowResolver.resolve(mergedModel);

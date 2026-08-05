@@ -111,16 +111,18 @@ class _BrowseFoodsTabState extends State<_BrowseFoodsTab>
   String _query = '';
   String _category = 'all';
 
-  // (category key, localization key) — keys match DishModel.category values.
+  // (category key, localization key) — Faz 3 §3.6: keys now actually match
+  // DishModel.category values (`dish_data.dart`) — red_meat/vegan/diet were
+  // never real category values, so those filter pills always returned zero
+  // dishes; meat/veggie exist in the data but had no pill at all.
   static const _categories = <(String, String)>[
     ('all', 'nutrition_hub.cat_all'),
     ('chicken', 'nutrition_hub.cat_chicken'),
-    ('red_meat', 'nutrition_hub.cat_red_meat'),
+    ('meat', 'nutrition_hub.cat_meat'),
     ('fish', 'nutrition_hub.cat_fish'),
     ('breakfast', 'nutrition_hub.cat_breakfast'),
     ('vegetarian', 'nutrition_hub.cat_vegetarian'),
-    ('vegan', 'nutrition_hub.cat_vegan'),
-    ('diet', 'nutrition_hub.cat_diet'),
+    ('veggie', 'nutrition_hub.cat_veggie'),
     ('sport', 'nutrition_hub.cat_sport'),
     ('turkish_classic', 'nutrition_hub.cat_turkish_classic'),
   ];
@@ -146,7 +148,7 @@ class _BrowseFoodsTabState extends State<_BrowseFoodsTab>
     switch (cat) {
       case 'chicken':
         return Icons.egg_alt_rounded;
-      case 'red_meat':
+      case 'meat':
         return Icons.kebab_dining_rounded;
       case 'fish':
         return Icons.set_meal_rounded;
@@ -154,10 +156,8 @@ class _BrowseFoodsTabState extends State<_BrowseFoodsTab>
         return Icons.bakery_dining_rounded;
       case 'vegetarian':
         return Icons.eco_rounded;
-      case 'vegan':
+      case 'veggie':
         return Icons.spa_rounded;
-      case 'diet':
-        return Icons.monitor_weight_rounded;
       case 'sport':
         return Icons.fitness_center_rounded;
       case 'turkish_classic':

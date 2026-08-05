@@ -74,6 +74,13 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
     'coach',
     'programs',
     'squad',
+    // Faz 3 §3.3 — meal-plan template builder/library entry points on the
+    // coach + gym dashboards.
+    'meal_plan_templates',
+    // Faz 6 §6.1 — gym invite-code generation/QR/poster export.
+    'gym_invite_codes',
+    // Faz 6 §6.5/§6.6 — attribution funnel stats + gym earnings screen.
+    'gym_attribution',
   ];
   final Map<String, bool> _features = {};
 

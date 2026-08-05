@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:cookrange/core/widgets/app_image.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/services/community_service.dart';
 import '../../core/services/follow_service.dart';
@@ -9,7 +8,7 @@ import '../../core/services/friend_service.dart';
 
 import '../../core/models/community_post.dart';
 import 'community_topics.dart';
-import 'groups/groups_discovery_screen.dart';
+import 'widgets/active_groups_section.dart';
 import 'widgets/glass_post_card.dart';
 import 'widgets/create_post_card.dart';
 import 'widgets/glass_refresher.dart';
@@ -37,8 +36,10 @@ class _CommunityScreenState extends State<CommunityScreen>
   final FriendService _friendService = FriendService();
   final ScrollController _scrollController = ScrollController();
 
-  List<CommunityGroup> _groups = [];
-  bool _isLoadingGroups = true;
+  // Bumped on pull-to-refresh to force ActiveGroupsSection to remount (and
+  // thus re-run its one-shot Future loads — it has no live stream to
+  // refresh itself, unlike WeeklyHighlightsCard/ActiveSignalsBanner below).
+  int _groupsRefreshTick = 0;
 
   final List<String> _filters = [
     "Latest Updates",
@@ -68,7 +69,6 @@ class _CommunityScreenState extends State<CommunityScreen>
   @override
   void initState() {
     super.initState();
-    _loadGroups();
     _postsStream = _service.getPostsStream();
     _scrollController.addListener(_onScroll);
   }
@@ -112,19 +112,9 @@ class _CommunityScreenState extends State<CommunityScreen>
     }
   }
 
-  Future<void> _loadGroups() async {
-    final groups = _service.getGroups();
-    if (mounted) {
-      setState(() {
-        _groups = groups;
-        _isLoadingGroups = false;
-      });
-    }
-  }
-
   Future<void> _refreshData() async {
-    unawaited(_loadGroups());
     setState(() {
+      _groupsRefreshTick++;
       _postsStream = _service.getPostsStream();
       _additionalPosts = [];
       _lastDoc = null;
@@ -282,31 +272,12 @@ class _CommunityScreenState extends State<CommunityScreen>
 
               const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
 
-              // Horizontal Groups List
+              // "Günün en aktif grupları" (Faz 2 §2.5) — directly below the
+              // header/title, replacing the old dead carousel that was
+              // backed by CommunityService.getGroups() (a permanently-empty
+              // stub, now removed).
               SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 100,
-                  child: _isLoadingGroups
-                      ? Center(
-                          child: CircularProgressIndicator(
-                              color:
-                                  context.watch<ThemeProvider>().primaryColor))
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.xl),
-                          scrollDirection: Axis.horizontal,
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: _groups.length + 1, // +1 for "New Group"
-                          itemBuilder: (context, index) {
-                            if (index == 0) {
-                              return _buildNewGroupItem(appLoc);
-                            }
-                            final group = _groups[index - 1];
-                            return RepaintBoundary(
-                                child: _buildGroupItem(group));
-                          },
-                        ),
-                ),
+                child: ActiveGroupsSection(key: ValueKey(_groupsRefreshTick)),
               ),
 
               // Active Signals — ambient "someone needs something" strip.
@@ -584,101 +555,6 @@ class _CommunityScreenState extends State<CommunityScreen>
     }
 
     return const SizedBox(height: AppSpacing.md);
-  }
-
-  Widget _buildNewGroupItem(AppLocalizations appLoc) {
-    final primaryColor = context.watch<ThemeProvider>().primaryColor;
-    final textStyles = AppText.of(context);
-    return Container(
-      width: 70,
-      margin: const EdgeInsets.only(right: AppSpacing.md),
-      child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          AppTransitions.slideRight(const GroupsDiscoveryScreen()),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: AppSize.avatarLg,
-              height: AppSize.avatarLg,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: primaryColor, width: 2),
-                color: Colors.transparent,
-              ),
-              child: Icon(Icons.add, color: primaryColor),
-            ),
-            const SizedBox(height: AppSpacing.xxs),
-            Text(
-              appLoc.translate('community.groups.new'),
-              style: textStyles.labelS,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGroupItem(CommunityGroup group) {
-    final palette = AppPalette.of(context);
-    final primaryColor = context.watch<ThemeProvider>().primaryColor;
-    final textStyles = AppText.of(context);
-    return Container(
-      width: 70,
-      margin: const EdgeInsets.only(right: AppSpacing.md),
-      child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          AppTransitions.slideRight(const GroupsDiscoveryScreen()),
-        ),
-        child: Column(
-          children: [
-            Stack(
-              children: [
-                Container(
-                  width: AppSize.avatarLg,
-                  height: AppSize.avatarLg,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: palette.surfaceVariant,
-                  ),
-                  child: ClipOval(
-                    child: group.imageUrl.isNotEmpty
-                        ? (group.imageUrl.startsWith('http')
-                            ? AppImage(
-                                imageUrl: group.imageUrl,
-                                width: AppSize.avatarLg,
-                                height: AppSize.avatarLg,
-                              )
-                            : Image.asset(group.imageUrl, fit: BoxFit.cover))
-                        : const Icon(Icons.group),
-                  ),
-                ),
-                if (group.hasUpdate)
-                  Positioned(
-                      top: 0,
-                      right: 0,
-                      child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                              color: primaryColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: palette.surface, width: 2)))),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xxs),
-            Text(
-              group.name,
-              style: textStyles.labelS,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 

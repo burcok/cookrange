@@ -61,7 +61,29 @@ payouts remain payable subject to verification.
 To the maximum extent permitted by law, Cookrange is not liable for disputes between Providers and
 clients, lost earnings, or indirect damages. Nothing limits liability that cannot be limited by law.
 
-## 10. Changes & Contact
+## 10. Gym Attribution Commission (QR Invite Program)
+
+This section governs commissions earned through the gym invite-code/QR program (the in-app "Invite
+Codes" and "My Earnings" screens), read together with the general pricing, payout, tax, and refund
+terms in §3–§6.
+
+- **Mechanism:** A user who signs up through your gym's invite code/QR is **attributed** to you. When
+  that user completes a real Premium purchase, a commission accrues to your account — the code
+  redemption (sign-up) alone does not generate a commission on its own.
+- **Rate & currency:** The commission is a flat amount in **Turkish Lira (₺)**, accruing per the rate
+  shown in your gym panel's Earnings screen at the time of each qualifying event (the same "accrue per
+  the rates shown in the app" principle as §3) — this document does not fix the current figure; the
+  app does.
+- **Taxes:** §5 applies unchanged — you alone are responsible for taxes arising from your earnings.
+- **Refunds/chargebacks:** §6 applies unchanged — if the attributed user's purchase is refunded or
+  charged back, the corresponding commission may be reversed.
+- **Payouts:** §4 applies unchanged — **payouts for this program are also processed manually**; no
+  automated payout rail exists in this version. Amounts Cookrange owes you may be offset against
+  amounts you owe Cookrange (if any, e.g. platform fees).
+- **Transparency:** The attributed user's identity is never shown to you — only aggregate counts
+  (sign-ups, premium conversions) and your own commission ledger.
+
+## 11. Changes & Contact
 
 We may update these terms; material changes are notified in-app. Questions: **legal@cookrangeapp.com**.
 

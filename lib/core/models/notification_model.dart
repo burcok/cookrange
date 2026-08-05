@@ -38,6 +38,46 @@ enum NotificationType {
   // end_date. endExpiredGymWars (functions/index.js) now closes it and
   // notifies both gym owners of the result.
   gymWarEnded,
+  // Faz 1 §1.7: a mutual friend's geofence-confirmed gym arrival
+  // (functions/presence.js's onGymPresenceCreated trigger). metadata carries
+  // `gymName`; actorUid/actorName/actorPhotoUrl are the arriving friend.
+  friendAtGym,
+  // Faz 3 §3.5: a gym/coach/admin sent this user a meal-plan template
+  // (`sendPlanOffer` callable, functions/templates.js). actorUid/actorName
+  // are the sender; relatedId is the plan_offers/{id} doc; metadata carries
+  // `templateName`.
+  planOfferReceived,
+  // Faz 3 §3.5: the member declined a plan offer — sent to the ORIGINAL
+  // SENDER (functions/templates.js's onPlanOfferResponded trigger), quiet by
+  // design ("üye baskı altında kalmaz" — no accusatory framing). actorUid/
+  // actorName are the declining member; relatedId is the plan_offers/{id}
+  // doc; metadata carries an optional `reason`.
+  planOfferDeclined,
+  // Faz 4 §4.3: a gym owner/coach invited this (tier-0) member to turn on
+  // progress sharing (`sendProgressShareInvite`, functions/summaries.js) —
+  // fires at most ONCE ever per (scope, member) pair, never repeated
+  // automatically. actorUid/actorName are the sender; relatedId is the
+  // scopeId (`gym_{gymId}` | `coach_{uid}`); metadata carries `scopeType`
+  // and, for a gym scope, `gymName` (the business name, not the owner's
+  // personal displayName).
+  progressShareInviteRequested,
+  // Faz 5 §5.1: a level-up threshold was just crossed (`awardXp`,
+  // functions/progress.js) — the celebration hook the plan asks for, reusing
+  // this same notification pipeline rather than a new mechanism (no
+  // confetti/animation library exists in this codebase). No actor (a
+  // self-reported milestone, like `streakMilestone`); metadata carries
+  // `level` and `xp` (the new totals, both already server-written to
+  // `users/{uid}` by the time this notification lands).
+  levelUp,
+  // Faz 6 §6.5: a gym-issued invite code (`referrals/{code}`, `type: 'gym'`)
+  // was just redeemed (`applyReferral`'s gym branch, functions/economy.js) —
+  // sent to the GYM OWNER, not the redeemer. Deliberately no actor identity
+  // is ever rendered for this type (see NotificationPresenter): "bireysel
+  // kullanıcı kimliği salona gitmez" (individual identity never reaches the
+  // gym) applies here exactly as it does to the funnel report itself.
+  // actorUid is present on the doc for admin/audit lookups only; metadata is
+  // unused today.
+  gymAttribution,
 }
 
 extension NotificationTypeX on NotificationType {

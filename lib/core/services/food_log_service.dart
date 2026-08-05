@@ -37,7 +37,7 @@ class FoodLogService {
     final p = dish.protein.toDouble();
     final c = dish.carbs.toDouble();
     final f = dish.fat.toDouble();
-    await _logsRef(userId).add({
+    final logRef = await _logsRef(userId).add({
       'userId': userId,
       'mealType': mealType,
       'dishId': dish.id,
@@ -57,6 +57,14 @@ class FoodLogService {
       carbs: c,
       fat: f,
     ));
+    // Faz 5 §5.1: this is the only food-logging path with no pre-existing
+    // AchievementService call at all (the other four already report
+    // justLoggedMeal/justLoggedPhoto/justCookedAndLogged) — added here ONLY
+    // for the new XP event, not touching achievement-earning behavior.
+    unawaited(AchievementService().checkAndGrant(
+      userId,
+      xpEvents: [XpEvent.mealLogged(logRef.id)],
+    ));
   }
 
   /// Log a cooked recipe as a meal entry.
@@ -70,7 +78,7 @@ class FoodLogService {
     final p = (recipe.macros['protein'] ?? 0).toDouble();
     final c = (recipe.macros['carbs'] ?? 0).toDouble();
     final f = (recipe.macros['fat'] ?? 0).toDouble();
-    await _logsRef(userId).add({
+    final logRef = await _logsRef(userId).add({
       'userId': userId,
       'mealType': mealType,
       'dishId': recipe.id,
@@ -94,6 +102,13 @@ class FoodLogService {
       userId,
       justLoggedMeal: true,
       justCookedAndLogged: true,
+      // Faz 5 §5.1: a recipe cook is BOTH a meal log (5 XP) AND a recipe
+      // cook (25 XP) — same doc, two XP kinds, mirroring the two
+      // achievement flags already set above for the exact same reason.
+      xpEvents: [
+        XpEvent.mealLogged(logRef.id),
+        XpEvent.recipeCooked(logRef.id),
+      ],
     ));
   }
 
@@ -104,7 +119,7 @@ class FoodLogService {
     required NutritionEstimate estimate,
   }) async {
     final now = DateTime.now();
-    await _logsRef(userId).add({
+    final logRef = await _logsRef(userId).add({
       'userId': userId,
       'mealType': mealType,
       'dishId': 'scanned_${now.millisecondsSinceEpoch}',
@@ -120,6 +135,7 @@ class FoodLogService {
       userId,
       justLoggedMeal: true,
       justLoggedPhoto: estimate.fromPhoto,
+      xpEvents: [XpEvent.mealLogged(logRef.id)],
     ));
   }
 
@@ -135,7 +151,7 @@ class FoodLogService {
     required double fat,
   }) async {
     final now = DateTime.now();
-    await _logsRef(userId).add({
+    final logRef = await _logsRef(userId).add({
       'userId': userId,
       'mealType': mealType,
       'dishId': dishId,
@@ -155,6 +171,12 @@ class FoodLogService {
       carbs: carbs,
       fat: fat,
     ));
+    // Faz 5 §5.1: like logMeal, this path had no pre-existing
+    // AchievementService call — added only for the new XP event.
+    unawaited(AchievementService().checkAndGrant(
+      userId,
+      xpEvents: [XpEvent.mealLogged(logRef.id)],
+    ));
   }
 
   /// Log a barcode-scanned packaged food product.
@@ -172,7 +194,7 @@ class FoodLogService {
     final c = product.carbs * ratio;
     final f = product.fat * ratio;
 
-    await _logsRef(userId).add({
+    final logRef = await _logsRef(userId).add({
       'userId': userId,
       'mealType': mealType,
       'dishId': 'barcode_${product.barcode}',
@@ -191,6 +213,12 @@ class FoodLogService {
       protein: p,
       carbs: c,
       fat: f,
+    ));
+    // Faz 5 §5.1: like logMeal, this path had no pre-existing
+    // AchievementService call — added only for the new XP event.
+    unawaited(AchievementService().checkAndGrant(
+      userId,
+      xpEvents: [XpEvent.mealLogged(logRef.id)],
     ));
   }
 

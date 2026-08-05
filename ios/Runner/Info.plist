@@ -65,13 +65,19 @@
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Used to select photos for your profile picture, food logging, community posts, gym logos, and coach applications.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>Your location is used to verify you are at the gym for GPS check-in.</string>
+		<string>Your location is used to find gyms near you and to verify you are at the gym for GPS check-in.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>With your permission, Cookrange can detect when you enter or leave a gym you're a member of to automatically record your check-in — even when the app isn't open. Your exact coordinates are never sent to or stored on our servers, only the gym's name and your entry/exit time. You can turn this off anytime in Consent Center.</string>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Mikrofonu sesli asistan için kullanıyoruz.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 		<string>Sesinizi metne dönüştürmek için izin istiyoruz.</string>
 	<key>NSUserTrackingUsageDescription</key>
 		<string>We use analytics to improve your nutrition and fitness experience. No data is shared with advertisers.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
     <key>LSApplicationQueriesSchemes</key>
     <array>
       <string>mailto</string>

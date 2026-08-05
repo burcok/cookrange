@@ -630,7 +630,7 @@ class TestDataLibrary {
           uid: 'coach_07',
           displayName: 'Kerem Doğan',
           bio:
-              'Bisiklet ve koşu antrenörü. Triatlon bitirme garantisi programı. Online ve yüz yüze coaching.',
+              'Bisiklet ve koşu antrenörü. Triatlon hazırlık programları. Online ve yüz yüze coaching.',
           specializations: ['cycling', 'running', 'triathlon', 'endurance'],
           certifications: ['USA-T', 'USAC-L2'],
           isAcceptingClients: true,
@@ -670,65 +670,67 @@ class TestDataLibrary {
   }
 
   /// 10-entry leaderboard for a test gym — stress-tests the leaderboard display.
+  /// Faz 5 §5.3: `xp` (weekly XP), not `checkInCount` — see
+  /// `LeaderboardEntryModel`'s doc comment.
   static List<LeaderboardEntryModel> gymLeaderboard() => const [
         LeaderboardEntryModel(
             uid: 'member_01',
             displayName: 'Elif Kaya',
-            checkInCount: 28,
+            xp: 28,
             streak: 14,
             rank: 1),
         LeaderboardEntryModel(
             uid: 'member_02',
             displayName: 'Ahmet Çelik',
-            checkInCount: 24,
+            xp: 24,
             streak: 12,
             rank: 2),
         LeaderboardEntryModel(
             uid: 'member_03',
             displayName: 'Zeynep Demir',
-            checkInCount: 21,
+            xp: 21,
             streak: 10,
             rank: 3),
         LeaderboardEntryModel(
             uid: 'member_04',
             displayName: 'Mert Yıldız',
-            checkInCount: 19,
+            xp: 19,
             streak: 8,
             rank: 4),
         LeaderboardEntryModel(
             uid: 'member_05',
             displayName: 'Selin Arslan',
-            checkInCount: 17,
+            xp: 17,
             streak: 7,
             rank: 5),
         LeaderboardEntryModel(
             uid: 'member_06',
             displayName: 'Burak Öztürk',
-            checkInCount: 15,
+            xp: 15,
             streak: 5,
             rank: 6),
         LeaderboardEntryModel(
             uid: 'member_07',
             displayName: 'Ayşe Güneş',
-            checkInCount: 13,
+            xp: 13,
             streak: 4,
             rank: 7),
         LeaderboardEntryModel(
             uid: 'member_08',
             displayName: 'Kerem Yılmaz',
-            checkInCount: 11,
+            xp: 11,
             streak: 3,
             rank: 8),
         LeaderboardEntryModel(
             uid: 'member_09',
             displayName: 'Fatma Şahin',
-            checkInCount: 9,
+            xp: 9,
             streak: 2,
             rank: 9),
         LeaderboardEntryModel(
             uid: 'member_10',
             displayName: 'Ali Koç',
-            checkInCount: 7,
+            xp: 7,
             streak: 1,
             rank: 10),
       ];

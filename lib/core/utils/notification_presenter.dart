@@ -87,6 +87,32 @@ class NotificationPresenter {
         return l10n.translate(won
             ? 'notifications.feed.gym_war_ended_won_title'
             : 'notifications.feed.gym_war_ended_lost_title');
+      case NotificationType.friendAtGym:
+        final gym = n.metadata?['gymName']?.toString() ?? '';
+        return l10n.translate('notifications.feed.friend_at_gym_title',
+            variables: {'actor': actor, 'gym': gym});
+      case NotificationType.planOfferReceived:
+        return l10n.translate('notifications.feed.plan_offer_received_title',
+            variables: {'actor': actor});
+      case NotificationType.planOfferDeclined:
+        return l10n.translate('notifications.feed.plan_offer_declined_title',
+            variables: {'actor': actor});
+      case NotificationType.progressShareInviteRequested:
+        // metadata.gymName (business name) beats actorName (the owner's
+        // personal displayName) for a gym scope — mirrors friendAtGym's
+        // same gymName-over-actor preference above.
+        final who = n.metadata?['gymName']?.toString() ?? actor;
+        return l10n.translate('notifications.feed.progress_share_invite_title',
+            variables: {'actor': who});
+      case NotificationType.levelUp:
+        final level = n.metadata?['level']?.toString() ?? '';
+        return l10n.translate('notifications.feed.level_up_title',
+            variables: {'level': level});
+      case NotificationType.gymAttribution:
+        // Deliberately actor-free — Faz 6 §6.5's identity-never-reaches-
+        // the-gym rule applies to this notification too, not just the
+        // funnel report. Never interpolate `actor` here.
+        return l10n.translate('notifications.feed.gym_attribution_title');
     }
   }
 
@@ -129,6 +155,26 @@ class NotificationPresenter {
         final otherScore = n.metadata?['otherScore']?.toString() ?? '0';
         return l10n.translate('notifications.feed.gym_war_ended_body',
             variables: {'myScore': myScore, 'otherScore': otherScore});
+      case NotificationType.planOfferReceived:
+        final name = n.metadata?['templateName']?.toString() ?? '';
+        return name.isEmpty
+            ? null
+            : l10n.translate('notifications.feed.plan_offer_received_body',
+                variables: {'name': name});
+      case NotificationType.planOfferDeclined:
+        final reason = n.metadata?['reason']?.toString() ?? '';
+        return reason.isEmpty
+            ? null
+            : l10n.translate('notifications.feed.plan_offer_declined_body',
+                variables: {'reason': reason});
+      case NotificationType.progressShareInviteRequested:
+        return l10n.translate('notifications.feed.progress_share_invite_body');
+      case NotificationType.levelUp:
+        final xp = n.metadata?['xp']?.toString() ?? '';
+        return l10n.translate('notifications.feed.level_up_body',
+            variables: {'xp': xp});
+      case NotificationType.gymAttribution:
+        return l10n.translate('notifications.feed.gym_attribution_body');
       default:
         return null;
     }
@@ -170,6 +216,17 @@ class NotificationPresenter {
       case NotificationType.weeklyPlanReady:
         return l10n.translate('notifications.feed.cat_reminders');
       case NotificationType.gymWarEnded:
+        return l10n.translate('notifications.feed.cat_reward');
+      case NotificationType.friendAtGym:
+        return l10n.translate('notifications.feed.cat_friends');
+      case NotificationType.planOfferReceived:
+      case NotificationType.planOfferDeclined:
+        return l10n.translate('notifications.feed.cat_meal');
+      case NotificationType.progressShareInviteRequested:
+        return l10n.translate('notifications.feed.cat_system');
+      case NotificationType.levelUp:
+        return l10n.translate('notifications.feed.cat_reward');
+      case NotificationType.gymAttribution:
         return l10n.translate('notifications.feed.cat_reward');
     }
   }
@@ -215,6 +272,18 @@ class NotificationPresenter {
         return Icons.calendar_today_rounded;
       case NotificationType.gymWarEnded:
         return Icons.emoji_events_rounded;
+      case NotificationType.friendAtGym:
+        return Icons.fitness_center_rounded;
+      case NotificationType.planOfferReceived:
+        return Icons.restaurant_menu_rounded;
+      case NotificationType.planOfferDeclined:
+        return Icons.info_outline_rounded;
+      case NotificationType.progressShareInviteRequested:
+        return Icons.insights_rounded;
+      case NotificationType.levelUp:
+        return Icons.military_tech_rounded;
+      case NotificationType.gymAttribution:
+        return Icons.qr_code_2_rounded;
     }
   }
 
@@ -260,6 +329,25 @@ class NotificationPresenter {
         return primary;
       case NotificationType.gymWarEnded:
         return palette.warning;
+      case NotificationType.friendAtGym:
+        return palette.success;
+      case NotificationType.planOfferReceived:
+        return palette.success;
+      case NotificationType.planOfferDeclined:
+        // Deliberately neutral, not `palette.error` — a decline is not a
+        // failure state for the SENDER to be alarmed by, matching the
+        // plan's own "üye baskı altında kalmaz" (member isn't pressured)
+        // framing extended to how the sender is told about it too.
+        return palette.info;
+      case NotificationType.progressShareInviteRequested:
+        return primary;
+      case NotificationType.levelUp:
+        // Deliberately `primary` (the brand color), not `palette.calories`
+        // (already achievementEarned's color) — a level-up is the app's own
+        // flagship milestone, distinct from an individual badge unlock.
+        return primary;
+      case NotificationType.gymAttribution:
+        return palette.success;
     }
   }
 }

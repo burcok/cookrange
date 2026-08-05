@@ -63,7 +63,29 @@ Yasanın izin verdiği azami ölçüde Cookrange; Sağlayıcılar ile danışanl
 kazanç kayıplarından veya dolaylı zararlardan sorumlu değildir. Yasa gereği sınırlandırılamayan
 sorumluluk saklıdır.
 
-## 10. Değişiklikler ve İletişim
+## 10. Salon Atfetme Komisyonu (QR Davet Programı)
+
+Bu bölüm, salon davet kodu/QR programı (uygulama içi "Davet Kodları" ve "Kazançlarım" ekranları)
+üzerinden kazanılan komisyonları düzenler; §3–§6'daki genel fiyatlandırma, ödeme, vergi ve iade
+hükümleriyle birlikte okunur.
+
+- **Mekanizma:** Salonunuzun ürettiği bir davet kodu/QR ile kaydolan bir kullanıcı size **atfedilir**.
+  Bu kullanıcı gerçek bir Premium satın alma işlemi tamamladığında hesabınıza bir komisyon tahakkuk
+  eder — yalnızca kod kaydı (kaydolma) tek başına komisyon doğurmaz.
+- **Oran ve para birimi:** Komisyon **Türk Lirası (₺)** cinsinden sabit bir tutardır ve salon
+  panelindeki Kazançlarım ekranında her hak doğuran olay anında gösterilen orana göre tahakkuk eder
+  (§3'teki "uygulamada gösterilen oranlara göre tahakkuk eder" ilkesinin aynısı) — bu belge güncel
+  rakamı sabitlemez, uygulama sabitler.
+- **Vergi:** §5 aynen uygulanır — kazancınızdan doğan vergilerden yalnızca siz sorumlusunuz.
+- **İade/ters ibraz:** §6 aynen uygulanır — atfedilen kullanıcının satın alması iade edilir veya ters
+  ibraz edilirse, ilgili komisyon geri alınabilir.
+- **Ödeme:** §4 aynen uygulanır — bu program için de **ödemeler elle işlenir**; otomatik bir ödeme
+  hattı bu sürümde yoktur. Cookrange'in size borçlu olduğu tutarlar, sizin Cookrange'e borçlu
+  olduğunuz tutarlarla (varsa, örn. platform ücretleri) mahsuplaşabilir.
+- **Şeffaflık:** Atfedilen kullanıcının kimliği size hiçbir zaman gösterilmez — yalnızca toplu sayılar
+  (kayıt sayısı, premium dönüşüm sayısı) ve kendi komisyon defteriniz.
+
+## 11. Değişiklikler ve İletişim
 
 Bu koşulları güncelleyebiliriz; önemli değişiklikler uygulama içinde bildirilir. Sorular:
 **legal@cookrangeapp.com**.

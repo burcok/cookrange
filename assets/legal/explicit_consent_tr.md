@@ -16,6 +16,11 @@ işlevlerden yararlanmaya devam edebilirsiniz. Verdiğiniz rızayı **dilediğin
   içgörüleri sunmak amacıyla işlenmesine,
 - **Konum verisi:** "yakınımdaki salonlar" ve GPS check-in özelliklerinde, salonları sıralamak ve
   konumunuzu doğrulamak amacıyla konum verinizin işlenmesine (bu konum sunucularımızda saklanmaz),
+- **Salon varlık tespiti (ayrı rıza):** yukarıdakilerden farklı olarak bu işleme için rızanız,
+  özelliği kullanmaya başlamanızla değil, yalnızca kendi ekranındaki "İzin Ver" düğmesine
+  dokunmanızla verilmiş sayılır — üyesi olduğunuz bir salonun sınırına arka planda otomatik giriş/çıkış
+  tespiti için konumunuzun işlenmesine (enlem/boylam hiçbir zaman sunucularımıza gönderilmez ya da
+  saklanmaz; yalnızca salon adı ve giriş/çıkış saati saklanır),
 - **Yapay zekâ işleme:** istemlerinizin ve ilgili profil bağlamının, sonuç üretmek üzere yapay zekâ
   sağlayıcımıza (OpenRouter) iletilmesine,
 - **Yurt dışına aktarım:** verilerinizin, hizmeti sunmak için Google ve OpenRouter gibi sağlayıcıların

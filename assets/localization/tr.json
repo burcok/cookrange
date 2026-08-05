@@ -501,6 +501,16 @@
         "cta": "Premium'a Geç",
         "free": "Ücretsiz sürümle devam et"
       },
+      "referral": {
+        "title": "Referans kodun var mı?",
+        "subtitle": "Bir salon ya da arkadaşın seninle bir kod paylaştıysa buraya ekleyebilirsin — tamamen isteğe bağlı.",
+        "hint": "Kodu gir",
+        "verified_gym": "Bu kod {gym} tarafından paylaşıldı.",
+        "verified_generic": "Kod uygulandı.",
+        "invalid_note": "Bu kodu doğrulayamadık — daha sonra Ayarlar'dan tekrar deneyebilirsin.",
+        "paste_button": "Panodan yapıştır",
+        "paste_empty": "Yapıştıracak bir şey yok — panon boş."
+      },
       "report": {
         "title": "İşte planın, {name}",
         "subtitle": "Bize söylediğin her şeyden yola çıkarak hazırlandı.",
@@ -757,7 +767,9 @@
     "equipment_empty": "Ekipman listelenmemiş",
     "disliked_foods_title": "Sevilmeyen Yiyecekler",
     "friend_request_sent": "{name} kişisine istek gönderildi",
-    "share_profile": "Profili Paylaş"
+    "share_profile": "Profili Paylaş",
+    "level_badge": "Seviye {level} · {into}/{forNext} XP",
+    "pro_verified_badge": "Pro"
   },
   "offline": {
     "title": "Çevrimdışı Mod",
@@ -900,7 +912,9 @@
       "enter_code_title": "Referans Kodu Gir",
       "enter_code_label": "Referans Kodu",
       "apply": "Kodu Uygula",
-      "applied_success": "🎉 Kod uygulandı! İkiniz de 7 gün Premium kazandınız."
+      "applied_success": "🎉 Kod uygulandı! İkiniz de 7 gün Premium kazandınız.",
+      "signed_in_notice": "Davet kodları yalnızca yeni kayıtlar için geçerlidir.",
+      "applied_gym_success": "🎉 Kod uygulandı! Artık {gym} ile bağlantılısın."
     },
     "business": {
       "title": "Pro'ya Geç",
@@ -962,7 +976,16 @@
       "lunch": "Öğle",
       "dinner": "Akşam"
     },
-    "test_mode": "Test Modu"
+    "test_mode": "Test Modu",
+    "attribution": {
+      "title": "{gym} üzerinden kaydoldun",
+      "subtitle": "Bu salon yalnızca toplu kayıt istatistiklerini görebilir, kişisel kimliğini asla göremez.",
+      "a_gym": "bir salon",
+      "disconnect": "Bağlantıyı kes",
+      "disconnect_title": "Bu salonla bağlantın kesilsin mi?",
+      "disconnect_body": "Bu, profilindeki bandı gizler. Salon için hiçbir şey değişmez — kaydolma kaydın olduğu gibi kalır.",
+      "disconnect_confirm": "Bağlantıyı kes"
+    }
   },
   "sharing": {
     "recipe_title": "🍽️ {name}\n🔥 {calories} kcal\nProtein: {protein}g · Karb: {carbs}g · Yağ: {fat}g\n\nYapay zeka destekli Cookrange ile öğünlerini planla! {appTag}{link}",
@@ -1048,7 +1071,18 @@
       "cat_reminders": "Hatırlatıcılar",
       "gym_war_ended_won_title": "🏆 Salon savaşını kazandın!",
       "gym_war_ended_lost_title": "Salon savaşı bitti",
-      "gym_war_ended_body": "{myScore} - {otherScore} check-in ile bitti."
+      "gym_war_ended_body": "{myScore} - {otherScore} check-in ile bitti.",
+      "friend_at_gym_title": "{actor} şu an {gym} salonunda",
+      "plan_offer_received_title": "{actor} sana bir beslenme planı gönderdi",
+      "plan_offer_received_body": "\"{name}\" şablonuna göz at",
+      "plan_offer_declined_title": "{actor} şu an bu planı kullanmıyor",
+      "plan_offer_declined_body": "{reason}",
+      "progress_share_invite_title": "{actor} ilerlemeni paylaşmanı istiyor",
+      "progress_share_invite_body": "İlerleme paylaşımını Rıza Merkezi'nden açabilirsin.",
+      "level_up_title": "Seviye {level}'e ulaştın! 🎖️",
+      "level_up_body": "Toplam {xp} XP topladın.",
+      "gym_attribution_title": "Yeni bir kayıt! 🎉",
+      "gym_attribution_body": "Davet kodunla biri Cookrange'e katıldı."
     }
   },
   "common": {
@@ -1087,7 +1121,10 @@
     "something_wrong": "Bir şeyler ters gitti",
     "error_with_details": "Hata: {details}",
     "unit_kcal": "kcal",
-    "unit_kg": "kg"
+    "unit_kg": "kg",
+    "you": "Sen",
+    "not_signed_in": "Oturum açılmadı",
+    "sign_in_to_continue": "Devam etmek için giriş yap"
   },
   "errors": {
     "general": "Bir şeyler yanlış gitti",
@@ -1252,6 +1289,10 @@
     "error": {
       "log_meal_failed": "Öğün kaydedilemedi: {details}",
       "swap_meal_failed": "Öğün değiştirilemedi: {details}"
+    },
+    "plan_offer_banner": {
+      "title": "Plan Teklifleri",
+      "body": "{n} yeni beslenme planı seni bekliyor"
     }
   },
   "ai_chat": {
@@ -1289,7 +1330,12 @@
     "score_good": "İyi",
     "score_needs_work": "Geliştirilebilir",
     "kcal": "kkal",
-    "g": "g"
+    "g": "g",
+    "trend_30day_title": "30 Günlük Trend",
+    "trend_30day_subtitle": "Son 30 gündeki beslenme trendini gör — Premium",
+    "trend_paywall_title": "Beslenme Trend Geçmişi",
+    "trend_paywall_desc": "Bu haftanın görünümünün ötesinde, 30 günlük beslenme trendinin kilidini aç.",
+    "trend_days_logged_label": "Kayıt Yapılan Gün"
   },
   "assistant": {
     "how_can_i_help": "Size nasıl yardımcı olabilirim?",
@@ -1443,7 +1489,67 @@
       "created_success": "Grup oluşturuldu!",
       "join_success": "{group} grubuna katıldın",
       "not_found": "Grup bulunamadı",
-      "new": "Yeni"
+      "new": "Yeni",
+      "active_today_title": "Bugünün en aktif grupları",
+      "new_in_city_title": "{city} içinde yeni",
+      "live_now": "Canlı",
+      "request_join": "İstek Gönder",
+      "view_group": "Görüntüle",
+      "request_sent": "İsteğin gönderildi",
+      "request_dialog_title": "Katılma isteği gönder",
+      "request_dialog_hint": "Kısa bir not ekle (opsiyonel)",
+      "request_dialog_send": "İsteği gönder",
+      "empty_active_title": "Henüz aktif grup yok",
+      "empty_city_title": "{city}'de henüz bir şey yok",
+      "moderation": {
+        "mute": "Sessize Al",
+        "kick": "Gruptan Çıkar",
+        "ban": "Yasakla",
+        "unban": "Yasağı Kaldır",
+        "unmute": "Sesini Aç",
+        "action_success": "İşlem tamamlandı.",
+        "action_error": "Bir şeyler ters gitti. Lütfen tekrar dene.",
+        "reason_label": "Gerekçe",
+        "reason_hint": "Nedenini açıkla (isteğe bağlı, itiraz edilirse yardımcı olur)",
+        "duration_label": "Sessize alma süresi",
+        "duration_1h": "1 saat",
+        "duration_1d": "1 gün",
+        "duration_7d": "7 gün",
+        "duration_30d": "30 gün",
+        "duration_minutes": "{n} dk",
+        "member_fallback": "Üye",
+        "you": "sen",
+        "banned_badge": "Yasaklı",
+        "muted_badge": "Sessize Alındı",
+        "role_owner": "Sahip",
+        "role_admin": "Yönetici",
+        "role_moderator": "Moderatör",
+        "history_title": "Moderasyon geçmişi",
+        "history_empty": "Henüz moderasyon işlemi yok",
+        "action_mute": "Sessize alındı",
+        "action_kick": "Gruptan çıkarıldı",
+        "action_ban": "Yasaklandı",
+        "action_unmute": "Sesi açıldı",
+        "action_unban": "Yasağı kaldırıldı",
+        "approve": "Onayla",
+        "decline": "Reddet",
+        "pending_requests_title": "Bekleyen istekler",
+        "pending_requests_empty": "Bekleyen istek yok",
+        "pending_requests_empty_desc": "Yeni katılma istekleri burada görünecek."
+      },
+      "leaderboard_title": "Grup Sıralaması",
+      "leaderboard_subtitle": "Bu haftanın en çok katkı sağlayanları",
+      "leaderboard_empty_title": "Henüz aktivite yok",
+      "leaderboard_empty_sub": "Sıralamada görünmek için grupta paylaşım yap, yorum yaz ya da sohbet et.",
+      "leaderboard_score_label": "puan",
+      "leaderboard_you": "Sen",
+      "leaderboard_nav_tooltip": "Sıralama",
+      "export_csv": "CSV Dışa Aktar",
+      "export_paywall_title": "Üye Listesini Dışa Aktar",
+      "export_paywall_desc": "Premium grup yöneticileri üye listesini CSV olarak dışa aktarabilir.",
+      "export_success": "Üye listesi dışa aktarıldı.",
+      "export_error": "Üye listesi dışa aktarılamadı. Tekrar dene.",
+      "invite_only": "Yalnızca davetle"
     },
     "no_posts": "Gönderi bulunamadı. İlk paylaşan sen ol!",
     "all_posts_loaded": "Tüm gönderileri gördünüz",
@@ -1476,6 +1582,7 @@
     "meal_plan_override_title": "Yemek Planı",
     "goal_override_title": "Hedef",
     "content_blocked": "Mesajınız izin verilmeyen içerik barındırmaktadır. Lütfen kontrol edip tekrar deneyin.",
+    "content_check_unavailable": "Gönderini şu anda kontrol edemedik. Lütfen birazdan tekrar dene.",
     "post_saved": "Gönderi kaydedildi",
     "post_unsaved": "Gönderi kaydedilenlerden kaldırıldı",
     "post_type": {
@@ -1633,14 +1740,17 @@
       "new_chat": "Yeni Sohbet",
       "share_meal": "Öğün Paylaş",
       "send_signal": "Sinyal Gönder",
-      "placeholder_message_input": "Mesaj yazın..."
+      "placeholder_message_input": "Mesaj yazın...",
+      "attach": "Medya ekle",
+      "send": "Mesaj gönder",
+      "camera": "Kamera",
+      "gallery": "Galeri"
     },
-    "filter_title": "Sohbet Filtreleri",
     "filters": {
       "all": "Hepsi",
       "gym": "Salonum",
-      "nutrition": "Beslenme",
-      "private": "Özel"
+      "private": "DM",
+      "groups": "Gruplar"
     },
     "find_friends_cta": "Arkadaş Bul",
     "group": {
@@ -1664,6 +1774,9 @@
     "no_results": "Sonuç bulunamadı.",
     "offline": "Çevrimdışı",
     "online": "Çevrimiçi",
+    "preview": {
+      "photo": "Fotoğraf"
+    },
     "recipe_group": {
       "new_recipes": "{count} Yeni Tarif"
     },
@@ -1679,7 +1792,105 @@
     },
     "typing": "Yazıyor...",
     "unnamed_user": "İsimsiz Kullanıcı",
-    "view_profile": "Profili Görüntüle"
+    "view_profile": "Profili Görüntüle",
+    "attach_sheet_title": "Medya Ekle",
+    "back_to_latest": "En Yeniye Dön",
+    "jump_to_date": "Tarihe Git",
+    "copied_to_clipboard": "Panoya kopyalandı",
+    "forwarded_to": "{name} kişisine iletildi",
+    "member_count_label": "{count} üye",
+    "unread_messages_divider": "{count} okunmamış mesaj",
+    "message_pinned": "Mesaj sabitlendi",
+    "message_unpinned": "Sabitleme kaldırıldı",
+    "message_starred": "Yıldızlı mesajlara eklendi",
+    "message_unstarred": "Yıldızlı mesajlardan kaldırıldı",
+    "context_menu": {
+      "reply": "Yanıtla",
+      "forward": "İlet",
+      "copy": "Kopyala",
+      "pin": "Mesajı Sabitle",
+      "unpin": "Sabitlemeyi Kaldır",
+      "star": "Yıldızla",
+      "unstar": "Yıldızı Kaldır",
+      "edit": "Düzenle",
+      "delete_for_me": "Benden Sil",
+      "delete_for_everyone": "Herkesten Sil",
+      "delete_as_moderator": "Mesajı Kaldır",
+      "report": "Mesajı Bildir"
+    },
+    "delete_confirm": {
+      "title": "Mesaj silinsin mi?",
+      "for_everyone_message": "Bu mesaj bu sohbetteki herkes için silinecek. Bu işlem geri alınamaz.",
+      "moderator_message": "Bu mesaj grup için herkesten kaldırılacak. Bu işlem geri alınamaz.",
+      "for_me_message": "Bu mesaj yalnızca senin için silinecek."
+    },
+    "edit_message": {
+      "editing_label": "Mesaj düzenleniyor"
+    },
+    "forward_sheet": {
+      "title": "Şuna ilet...",
+      "no_chats": "Henüz başka bir sohbetin yok."
+    },
+    "message": {
+      "edited_tag": "düzenlendi",
+      "forwarded_tag": "İletildi",
+      "deleted_placeholder": "Bu mesaj silindi"
+    },
+    "media_gallery": {
+      "title": "Paylaşılan Medya",
+      "empty": "Henüz paylaşılan fotoğraf yok"
+    },
+    "more_reactions": {
+      "title": "Tepki ekle",
+      "hint": "Bir emoji yaz veya yapıştır"
+    },
+    "pinned": {
+      "label": "Sabitlenmiş Mesaj",
+      "unpin": "Sabitlemeyi Kaldır"
+    },
+    "search": {
+      "placeholder": "Bu sohbette ara",
+      "no_results": "Mesaj bulunamadı",
+      "result_count": "{count} sonuç",
+      "scope_note": "En son mesajlarda arama yapar"
+    },
+    "typing_indicator": {
+      "one": "{name} yazıyor",
+      "two": "{name1} ve {name2} yazıyor",
+      "many": "Birkaç kişi yazıyor"
+    },
+    "unread_filter": "Okunmamış",
+    "no_unread_chats": "Okunmamış sohbet yok",
+    "archived_row": {
+      "title": "Arşivlenmiş ({count})"
+    },
+    "archived_sheet": {
+      "title": "Arşivlenmiş Sohbetler",
+      "empty": "Arşivlenmiş sohbet yok"
+    },
+    "list_actions": {
+      "pin": "Sohbeti Sabitle",
+      "unpin": "Sabitlemeyi Kaldır",
+      "archive": "Sohbeti Arşivle",
+      "unarchive": "Arşivden Çıkar",
+      "mute": "Sohbeti Sessize Al",
+      "unmute": "Sesi Aç",
+      "delete": "Sohbeti Sil"
+    },
+    "delete_chat_confirm": {
+      "title": "Bu sohbet silinsin mi?",
+      "message": "Bu sohbet listenizden kaldırılacak. Yeni mesaj gelirse tekrar görünür."
+    },
+    "toast": {
+      "archived": "Sohbet arşivlendi",
+      "unarchived": "Sohbet arşivden çıkarıldı",
+      "deleted": "Sohbet listenizden kaldırıldı"
+    },
+    "plan_offer": {
+      "label": "Beslenme Planı",
+      "view_cta": "Teklifi Gör",
+      "not_found": "Bu teklif artık mevcut değil."
+    }
   },
   "signal": {
     "title": "Sinyal Gönder",
@@ -1751,7 +1962,10 @@
     "tab_friends": "Arkadaşlar",
     "empty": "Henüz veri yok.",
     "empty_friends": "Sıralamayı görmek için arkadaş ekle.",
-    "error": "Sıralama yüklenemedi."
+    "error": "Sıralama yüklenemedi.",
+    "tab_weekly_xp": "Bu Hafta",
+    "empty_weekly_xp": "Bu hafta henüz XP kazanılmadı.",
+    "xp_suffix": "XP"
   },
   "premium": {
     "badge": "Premium'a Geç",
@@ -1865,7 +2079,7 @@
     "search_hint": "ör. Somonlu kuşkonmaz...",
     "generate_error": "Tarif oluşturulamadı. Lütfen tekrar deneyin.",
     "ai_unavailable": "Yapay zeka şu anda kullanılamıyor. Lütfen bir süre sonra tekrar deneyin.",
-    "try_searching": "Şunları aramayı deneyin:",
+    "try_searching": "Oluşturmayı dene:",
     "suggestion.pasta": "Hızlı Makarna",
     "suggestion.chicken": "Düşük Karbonhidratlı Tavuk",
     "suggestion.vegan": "Vegan Burger",
@@ -1935,7 +2149,8 @@
     "challenges": "Meydan Okumalar",
     "referral": "Referans Ödülleri",
     "saved": "Tercihler kaydedildi",
-    "reminders": "Hatırlatıcılar ve yeniden etkileşim"
+    "reminders": "Hatırlatıcılar ve yeniden etkileşim",
+    "presence": "Salonda arkadaş"
   },
   "dietary_prefs": {
     "title": "Beslenme Tercihleri",
@@ -2012,6 +2227,21 @@
     "field_public": "Herkese Açık Salon",
     "field_public_sub": "Herkes salonunuzu keşfedip katılabilir",
     "field_tags": "Fitness Kategorileri",
+    "field_capacity": "Kapasite",
+    "field_capacity_hint": "Maks. eşzamanlı üye sayısı (opsiyonel)",
+    "field_opening_hours": "Çalışma Saatleri",
+    "opening_hours_closed": "Kapalı",
+    "opening_hours_open_label": "Açılış",
+    "opening_hours_close_label": "Kapanış",
+    "day_mon": "Pazartesi",
+    "day_tue": "Salı",
+    "day_wed": "Çarşamba",
+    "day_thu": "Perşembe",
+    "day_fri": "Cuma",
+    "day_sat": "Cumartesi",
+    "day_sun": "Pazar",
+    "field_geofence": "Otomatik Check-in (Konum Tabanlı)",
+    "field_geofence_caption": "Bu özellik yayına alındığında üyeleriniz salonunuza yaklaştığında otomatik check-in alabilir. Bu sadece tercihinizi kaydeder, özellik henüz aktif değildir.",
     "setup_name_required": "Lütfen bir salon adı girin",
     "setup_next": "Devam Et",
     "setup_save": "Değişiklikleri Kaydet",
@@ -2040,6 +2270,7 @@
     "joined_today": "Bugün katıldı",
     "stat_location": "Konum",
     "stat_visibility": "Görünürlük",
+    "occupancy_title": "Şu an içeride",
     "visibility_public": "Herkese Açık",
     "visibility_private": "Özel",
     "action_members": "Üyeleri Yönet",
@@ -2181,9 +2412,14 @@
     "docs_count": "{n}/2 belge yüklendi",
     "location_city_label": "Şehir",
     "location_city_hint": "Şehrinizi seçin",
+    "location_district_label": "İlçe",
+    "location_district_hint": "İlçenizi seçin",
     "location_map_hint": "Salonunuzun konumunu belirtmek için haritaya dokunun",
     "location_coords_info": "Koordinatlarınız; salonunuzu haritada göstermek, QR check-in mesafesini doğrulamak ve yakın çevredeki kullanıcılara salon bilgilerini sunmak için kullanılır.",
     "location_address_auto": "Tespit edilen adres",
+    "checkin_radius_label": "Check-in Mesafesi",
+    "checkin_radius_caption": "Üyeler, salonunuzun işaretlenen konumuna bu mesafedeyken check-in yapabilir.",
+    "checkin_radius_unit_m": "m",
     "location_city_required": "Lütfen şehir seçin.",
     "location_pin_required": "Lütfen harita üzerinde konum işaretleyin.",
     "setup_submit_application": "Başvuru Gönder",
@@ -2195,6 +2431,13 @@
     "map_view_gym": "Spor Salonu",
     "nearby_consent_title": "Yakınındaki Salonları Bul",
     "nearby_consent_rationale": "Cookrange, konumunu yalnızca salonları mesafeye göre sıralamak için kullanır. Konum bilgin bu ekran için cihazında işlenir; sunucularımıza gönderilmez ve saklanmaz (KVKK / GDPR). Reddedip şehre göre aramaya devam edebilirsin.",
+    "auto_checkin_title": "Otomatik Giriş",
+    "auto_checkin_subtitle": "Ziyaretlerin hiçbir şey okutmadan otomatik algılansın",
+    "auto_checkin_limit_reached": "Aynı anda en fazla 3 salon için otomatik girişi açabilirsin. Önce birini kapat.",
+    "auto_checkin_health_check": "Bu salon için otomatik giriş çalışmıyor gibi görünüyor. Ayarlar'dan arka plan konumuna hâlâ izin verildiğini kontrol et.",
+    "are_you_here_title": "Salonda mısın?",
+    "are_you_here_body": "{gym} yakınında gibisin. Check-in kaydedelim mi?",
+    "are_you_here_yes": "Evet, kaydet",
     "details_btn": "Detaylar",
     "join_qr_btn": "QR ile Katıl",
     "join_qr_title": "Davet QR'ı Tara",
@@ -2227,7 +2470,53 @@
     "stats_members": "Üyeler",
     "stats_tier": "Seviye",
     "stats_access": "Erişim",
-    "analytics_export_csv": "CSV Dışa Aktar"
+    "analytics_export_csv": "CSV Dışa Aktar",
+    "action_meal_plan_templates": "Yemek Planı Şablonları",
+    "action_send_plan": "Plan Gönder",
+    "analytics_export_date_range": "Tarih aralığı",
+    "analytics_export_fields_preview": "Bu dışa aktarım şunları içerecek",
+    "analytics_export_tier_filter": "Yalnızca ilerlemesini paylaşan üyeler",
+    "analytics_no_sharing_yet": "Henüz hiçbir üye ilerleme paylaşımını açmadı.",
+    "analytics_sharing_aggregate_gated": "Ortalama gösterebilmek için en az {threshold} üyenin paylaşım açması gerekir (şu an {count}).",
+    "analytics_sharing_aggregate_title": "İlerleme paylaşımı özeti",
+    "analytics_sharing_avg_frequency": "Ort. haftalık check-in",
+    "analytics_sharing_avg_streak": "Ort. seri (hafta)",
+    "analytics_sharing_included_count": "İlerlemesini paylaşan {count} üyeye göre",
+    "leaderboard_xp_label": "XP",
+    "action_invite_codes": "Davet Kodları",
+    "invite": {
+      "title": "Davet Kodları",
+      "create_btn": "Yeni Kod",
+      "empty_title": "Henüz davet kodu yok",
+      "empty_message": "Ön masa, bir koçun sayfası ya da bir kampanya için kod oluştur — QR'ı paylaş ya da poster olarak yazdır.",
+      "usage_count": "{count} kayıt",
+      "create_sheet_title": "Yeni Davet Kodu",
+      "field_campaign": "Kampanya",
+      "field_campaign_hint": "örn. Ön masa, Koç Ahmet'in Instagram'ı",
+      "field_location_note": "Konum notu",
+      "field_location_note_hint": "örn. Kadıköy şube, kardiyo katı",
+      "create_submit": "Kod Oluştur",
+      "create_error": "Kod oluşturulamadı. Lütfen tekrar dene.",
+      "detail_title": "Davet Kodu",
+      "link_copied": "Bağlantı kopyalandı",
+      "poster_export_btn": "Posteri Dışa Aktar",
+      "poster_headline": "Cookrange'de bize katılmak için tara",
+      "step1": "Uygulamayı indir",
+      "step2": "Bu kodu okut",
+      "step3": "Kaydolmaya devam et",
+      "funnel_signups": "Kayıt",
+      "funnel_premium": "Premium'a Geçen"
+    },
+    "action_earnings": "Kazançlarım",
+    "earnings": {
+      "title": "Salon Kazançları",
+      "manual_payout_title": "Ödemeler elle işlenir",
+      "manual_payout_body": "Henüz otomatik bir ödeme hattı yok. Bakiyen uygun hale geldiğinde Cookrange seninle doğrudan iletişime geçip ödemeyi ayarlayacak.",
+      "no_earnings": "Henüz Kazanç Yok",
+      "no_earnings_msg": "Davet kodlarını paylaş — kodlarından biriyle katılan biri Premium'a geçtiğinde komisyon kazanırsın.",
+      "row_title": "Davet kodu üzerinden Premium ataması",
+      "view_contract": "Salon iş ortaklığı sözleşmesini görüntüle"
+    }
   },
   "coach": {
     "setup_title": "Antrenör Profili Kurulumu",
@@ -2389,19 +2678,32 @@
     "coaching": {
       "error": {
         "end_failed": "Koçluk sonlandırılamadı. Tekrar deneyin."
-      },
-      "warning": {
-        "ai_not_configured": "AI raporları için AI yapılandırması gerekir."
       }
     },
     "client_detail": {
-      "section_ai_report": "AI Raporu",
-      "section_focus_areas": "Odak Alanları",
-      "section_next_steps": "Sonraki Adımlar"
+      "checking_summary": "Kayıtlı özet kontrol ediliyor…",
+      "field_last_logged_at": "Son kayıt {date}",
+      "field_logging_regularity": "Son 30 günün %{pct}'inde kayıt tutuldu",
+      "field_never_logged": "Hiç öğün kaydetmedi",
+      "field_plan_adherence": "Plana uyum: %{pct}",
+      "field_streak_days": "{days} günlük kayıt serisi",
+      "field_weight_trend": "Kilo eğilimi: {trend}",
+      "generated_at": "{date} tarihinde oluşturuldu",
+      "insufficient_data": "Henüz yeterli veri yok",
+      "invite_button": "Paylaşım daveti gönder",
+      "invite_error": "Davet gönderilemedi. Lütfen tekrar deneyin.",
+      "invite_sent": "Davet gönderildi",
+      "not_authorized": "Bu koçluk ilişkisi artık doğrulanamadı.",
+      "rate_limited": "Bu üye için bugün zaten bir rapor oluşturuldu. Yarın tekrar kontrol edin.",
+      "tier0_empty_title": "Bu üye ilerleme paylaşımını açmamış",
+      "tier_badge": "Kademe {tier}",
+      "tier_now_shared": "Bu üye paylaşımı az önce açtı — şimdi rapor oluşturabilirsin."
     },
     "dashboard": {
       "see_all": "Tümünü gör ({count})",
-      "action_edit_profile": "Profili Düzenle"
+      "action_edit_profile": "Profili Düzenle",
+      "action_meal_plan_templates": "Yemek Planı Şablonları",
+      "action_send_plan": "Plan Gönder"
     },
     "stats_clients": "Danışanlar",
     "stats_reviews": "Değerlendirmeler",
@@ -2497,19 +2799,31 @@
     "weekly_recap_share": "Özeti Paylaş",
     "weekly_recap_low_data": "Tam AI analizi için daha fazla gün kayıt et",
     "weekly_recap_no_recap": "Bu hafta için özet yok",
-    "weekly_recap_no_recap_sub": "Haftalık AI koç özetini oluştur: başarılar, gelişim alanları ve odak noktası.",
+    "weekly_recap_no_recap_sub": "Haftalık koç özetini oluştur: başarılar, gelişim alanları ve odak noktası.",
     "weekly_recap_week_of": "{date} haftası",
     "weekly_recap_error": "Özet oluşturulamadı. Lütfen tekrar dene.",
     "weekly_recap_card_title": "Haftalık Özet",
     "weekly_recap_card_cta": "Oluştur",
-    "weekly_recap_card_view": "Özeti gör"
+    "weekly_recap_card_view": "Özeti gör",
+    "paywall_feature4": "30 günlük beslenme trend geçmişi",
+    "credits_multiplier_title": "2x Kredi Çarpanı Aktif",
+    "credits_multiplier_desc": "Premium üye olarak topluluk etkileşiminden 2 kat AI kredisi kazanıyorsun (tavanların da 2 katına çıktı).",
+    "twin_detailed_title": "Detaylı Döküm",
+    "twin_detailed_subtitle": "Projeksiyonunun arkasındaki kesin rakamları gör — Premium",
+    "twin_detailed_paywall_title": "Detaylı Yapay Zekâ Analizi",
+    "twin_detailed_paywall_desc": "Projeksiyonunun arkasındaki kesin BMH, TDEE ve kaydedilen kalori rakamlarının kilidini aç.",
+    "twin_detailed_regenerate_hint": "Bu dökümü görmek için projeksiyonunu yeniden oluştur.",
+    "twin_detailed_bmr": "BMH",
+    "twin_detailed_tdee": "TDEE",
+    "twin_detailed_avg_logged": "Ort. Kayıtlı",
+    "twin_detailed_days_logged": "Kayıt Yapılan Gün"
   },
   "ai_credits": {
     "unlimited": "Sınırsız",
     "remaining": "{n} YZ kullanımı kaldı",
     "warning": "{n} kullanım kaldı",
     "exhausted": "Limit doldu",
-    "upgrade_prompt": "Sınırsız YZ erişimi için Premium'a geçin.",
+    "upgrade_prompt": "Günde 20 YZ kredisi için Premium'a geçin.",
     "reset_info": "Her ay sıfırlanır",
     "monthly_limit": "Ayda 20 ücretsiz YZ kullanımı"
   },
@@ -2587,6 +2901,10 @@
       "title": "Konum Erişimi",
       "rationale": "Cookrange, GPS check-in sırasında spor salonunda olduğunuzu doğrulamak ve yakındaki salon ve koçları mesafeye göre sıralamak için konumunuza ihtiyaç duyar. Konumun yalnızca bunlar için, cihazınız üzerinde hesaplanarak kullanılır ve sunucularımızda saklanmaz.",
       "rationale_stored_note": "Konumun yalnızca check-in doğrulaması için kullanılır ve sonrasında sunucularımızda saklanmaz."
+    },
+    "location_always": {
+      "title": "Otomatik Salon Girişi",
+      "rationale": "Uygulama kapalıyken bile salona girip çıktığını otomatik algılayabilmemiz için telefonunun Cookrange'e konumu yalnızca uygulama açıkken değil \"Her Zaman\" kullanma izni vermesi gerekir. Enlem/boylam koordinatın hiçbir zaman sunucularımıza gönderilmez ya da kaydedilmez — yalnızca salonun adı ve giriş/çıkış saatin saklanır. Bunu istediğin zaman kapatabilirsin."
     },
     "notifications": {
       "title": "Motivasyonu Koru",
@@ -2792,6 +3110,8 @@
     "dish_macros": "Makrolar (porsiyon başına)",
     "dish_cat_chicken": "Tavuk",
     "dish_cat_red_meat": "Kırmızı Et",
+    "dish_cat_meat": "Et",
+    "dish_cat_veggie": "Sebze",
     "dish_cat_fish": "Balık",
     "dish_cat_breakfast": "Kahvaltı",
     "dish_cat_vegetarian": "Vejetaryen",
@@ -2962,11 +3282,21 @@
     "section_programs_sub": "Program onayları",
     "section_reports_sub": "Moderasyon kuyruğu",
     "section_privacy_sub": "KVKK/GDPR veri talepleri",
+    "moderation_appeals": "Moderasyon İtirazları",
+    "section_moderation_appeals_sub": "Grup moderasyon işlemlerine yapılan itirazları incele",
+    "moderation_appeal_note": "Not",
+    "moderation_appeal_note_hint": "Kayıtların için bir not ekle (isteğe bağlı)",
+    "moderation_appeal_notify_upheld_title": "İtirazın kabul edildi",
+    "moderation_appeal_notify_upheld_body": "{group} ile ilgili itirazın incelendi ve kabul edildi. İlgili kısıtlama kaldırıldı.",
+    "moderation_appeal_notify_denied_title": "İtirazın incelendi",
+    "moderation_appeal_notify_denied_body": "{group} ile ilgili itirazın incelendi. Orijinal moderasyon kararı geçerliliğini koruyor.",
+    "moderation_appeals_empty": "İncelenecek itiraz yok",
+    "moderation_appeals_empty_desc": "Biri bir moderasyon işlemine itiraz ettiğinde burada görünecek.",
     "section_users_sub": "Arama, rol, ban",
     "section_abuse_sub": "Banlar & AI suistimali",
     "section_broadcasts_sub": "Push bildirimleri",
     "section_credits_sub": "AI kredi & referans kodu",
-    "section_dishes_sub": "Tarif veritabanı",
+    "section_dishes_sub": "Yemek havuzu",
     "section_analytics_sub": "KPI & büyüme",
     "section_cost_sub": "Maliyet, gelir & kâr",
     "section_appconfig_sub": "Model, sürüm, bayraklar",
@@ -2976,7 +3306,9 @@
     "hub_jump": "Bölüme git",
     "cost_revenue_section": "Gelir & Aboneler",
     "cost_subscribers": "Premium aboneler",
-    "cost_mrr": "Tahmini MRR"
+    "cost_mrr": "Tahmini MRR",
+    "credit_restriction_appeal_notify_upheld_body": "İtirazın incelendi ve kabul edildi. Topluluk kredi kısıtlaman kaldırıldı.",
+    "credit_restriction_appeal_notify_denied_body": "İtirazın incelendi. Topluluk kredin üzerindeki kısıtlama geçerliliğini koruyor."
   },
   "intro": {
     "skip": "Atla",
@@ -3101,7 +3433,8 @@
     "gym_share_text": "{name} spor salonunu Cookrange'de incele — yapay zeka destekli fitness topluluğu! 🏋️ #Cookrange",
     "gym_share_subject": "Cookrange'de {name}'e Katıl",
     "share_profile": "Profili paylaş",
-    "share_gym": "Spor salonunu paylaş"
+    "share_gym": "Spor salonunu paylaş",
+    "gym_invite_poster_text": "{name} Cookrange'de — başlamak için kodu tara! 🍊 #Cookrange"
   },
   "report": {
     "title": "Bildir",
@@ -3119,7 +3452,8 @@
     "terms_title": "Kullanım Koşulları",
     "kvkk_title": "KVKK Aydınlatma Metni",
     "consent_title": "Açık Rıza Beyanı",
-    "load_error": "Bu belge yüklenemedi. Lütfen tekrar deneyin."
+    "load_error": "Bu belge yüklenemedi. Lütfen tekrar deneyin.",
+    "marketplace_terms_title": "Salon İş Ortaklığı Sözleşmesi"
   },
   "consent": {
     "title": "Gizlilik ve İzinler",
@@ -3133,6 +3467,7 @@
     "needs_review_note": "Gizlilik koşullarımız güncellendi. Lütfen bu izni gözden geçirip onaylayın.",
     "required_note": "Bunu kapatmak ilgili özelliği kısıtlar.",
     "optional_note": "İsteğe bağlı.",
+    "gym_presence_notify_friends": "Arkadaşlarım salonda olduğumu görsün",
     "view_documents": "Gizlilik belgelerini görüntüle",
     "withdraw_title": "İzni geri çek?",
     "withdraw_body": "Verilerinizi bu amaçla kullanmayı bırakacağız. İstediğiniz zaman yeniden açabilirsiniz. Bazı özellikler çalışmayabilir.",
@@ -3153,12 +3488,16 @@
       "notifications_title": "Bildirimler",
       "notifications_desc": "Onayladığınız etkinlik, hatırlatma ve güncellemeler için anlık bildirim gönderme.",
       "marketing_title": "Pazarlama iletişimi",
-      "marketing_desc": "Ara sıra ürün haberleri ve teklifler alın. İstediğiniz zaman çıkabilirsiniz."
+      "marketing_desc": "Ara sıra ürün haberleri ve teklifler alın. İstediğiniz zaman çıkabilirsiniz.",
+      "gym_presence_title": "Salon Varlığı",
+      "gym_presence_desc": "Salonunun sınırına girdiğinde otomatik giriş kaydı oluşturmak için arka planda konum kullanma. Enlem/boylam hiçbir zaman sunucuya gönderilmez."
     },
     "prompt_title": "Gizliliğiniz, sizin tercihiniz",
     "prompt_body": "Cookrange bazı verileri (sağlık bilgisi ve konum gibi) yalnızca izninizle kullanır. Gizlilik tercihlerinizi gözden geçirip belirlemek için biraz zaman ayırın. İstediğiniz zaman Ayarlar’dan değiştirebilirsiniz.",
     "prompt_manage": "Gizlilik tercihlerini gözden geçir",
-    "prompt_later": "Daha sonra"
+    "prompt_later": "Daha sonra",
+    "progress_sharing_entry_title": "İlerleme Paylaşımı",
+    "progress_sharing_entry_subtitle": "Hangi salon veya koçun neyi gördüğünü yönet"
   },
   "privacy_request": {
     "title": "Gizlilik Talepleri",
@@ -3191,6 +3530,27 @@
       "rejected": "Reddedildi"
     }
   },
+  "moderation_appeal": {
+    "title": "Moderasyon İtirazları",
+    "intro": "Bir grup moderasyon işleminin (sessize alma, çıkarma ya da yasaklama) hatalı olduğunu düşünüyorsan burada itiraz edebilirsin. Bir yönetici itirazını inceleyecek ve sonucu sana bildireceğiz.",
+    "none": "Moderasyon geçmişi yok",
+    "none_desc": "Herhangi bir gruptan sessize alınmadın, çıkarılmadın ya da yasaklanmadın.",
+    "reason_from_moderator": "Moderatörün gerekçesi",
+    "no_reason_given": "Herhangi bir gerekçe belirtilmedi.",
+    "message_label": "Bunun neden hatalı olduğunu düşünüyorsun?",
+    "message_hint": "Kendi tarafını anlat — bu, itirazını inceleyecek yöneticiye iletilecek.",
+    "submit": "İtirazı Gönder",
+    "submitted": "İtirazın gönderildi. Sonucu sana bildireceğiz.",
+    "submit_error": "İtirazın gönderilemedi. Lütfen tekrar dene.",
+    "appeal_cta": "İtiraz Et",
+    "admin_note_label": "Yönetici notu",
+    "status": {
+      "pending": "İnceleniyor",
+      "upheld": "Kabul Edildi",
+      "denied": "Reddedildi"
+    },
+    "action_credit_restriction": "Kredi Kısıtlaması"
+  },
   "water_reminder": {
     "notif_title": "Su içme zamanı 💧",
     "notif_body": "Bir bardak su, {liters} L hedefine giden yolda seni diri tutar.",
@@ -3213,6 +3573,8 @@
     "cat_all": "Tümü",
     "cat_chicken": "Tavuk",
     "cat_red_meat": "Kırmızı Et",
+    "cat_meat": "Et",
+    "cat_veggie": "Sebze",
     "cat_fish": "Balık",
     "cat_breakfast": "Kahvaltı",
     "cat_vegetarian": "Vejetaryen",
@@ -3269,6 +3631,22 @@
     "tier_legend": {
       "title": "Efsane",
       "desc": "Efsane itibar seviyesine ulaştın"
+    },
+    "level_50": {
+      "title": "Büyük Usta",
+      "desc": "Seviye 50'ye ulaştın"
+    },
+    "group_top3": {
+      "title": "Katkı Yıldızı",
+      "desc": "Bu hafta grubunda ilk 3'e girdin"
+    },
+    "group_streak4": {
+      "title": "Seriyi Yakaladın",
+      "desc": "Üst üste 4 hafta grubunda ilk 3'e girdin"
+    },
+    "gym_regular": {
+      "title": "Müdavim",
+      "desc": "Salonda 15 kez giriş yaptın"
     }
   },
   "app": {
@@ -3302,5 +3680,248 @@
     "title": "Bakımdayız",
     "default_message": "Kısa süre içinde döneceğiz. Sabrınız için teşekkürler.",
     "retry": "Tekrar dene"
+  },
+  "gym_presence_consent": {
+    "title": "Otomatik Salon Girişi",
+    "intro": "Bunu açarsan, salonunun sınırına girdiğinde uygulamanın arka planda otomatik bir giriş kaydı oluşturmasına izin vermiş olursun. Aşağıda tam olarak ne olduğunu okuyabilirsin.",
+    "what_title": "Ne yapıyor",
+    "what_body": "Salonunun sınırına girdiğinde otomatik bir giriş kaydı oluşur — QR okutmana ya da bir şey yapmana gerek kalmaz.",
+    "stored_title": "Ne saklanır",
+    "stored_body": "Salonun adı, giriş ve çıkış saatin. Enlem ve boylamın hiçbir zaman sunucularımıza gönderilmez ya da kaydedilmez.",
+    "not_stored_title": "Ne saklanmaz",
+    "not_stored_body": "Salonun dışındaki hiçbir konumun, hareket geçmişin ya da rotan hiçbir zaman kaydedilmez.",
+    "who_title": "Kim görür",
+    "who_body": "Salonun kendisi, yalnızca üye listesi düzeyinde (\"içeride\" durumu). Karşılıklı arkadaşların, sen izin verirsen — bunu da ayrıca kapatabilirsin.",
+    "legal_title": "Hukuki not",
+    "legal_body": "KVKK madde 6 uyarınca açık rızana dayanır. Arka planda konum kullanımı pilini etkileyebilir. Reddetme yolu, kabul etme yoluyla aynı derecede açık ve kolaydır.",
+    "revoke_title": "Nasıl kapatılır",
+    "revoke_body": "Rıza Merkezi'nden tek dokunuşla. Kapattığın an izleme durur ve cihazındaki kayıtlı salon sınırları silinir.",
+    "read_kvkk": "KVKK aydınlatma metnini oku",
+    "allow": "İzin Ver",
+    "decline": "Şimdi Değil"
+  },
+  "template_builder": {
+    "title_new": "Yeni Şablon",
+    "path_picker": {
+      "heading": "Yemek planı şablonu oluştur",
+      "subheading": "Bir kez oluştur, istediğin üyeyle paylaş.",
+      "ai_title": "Yapay zekâ ile üret",
+      "ai_description": "Hedefi ve kalori hedefini yaz — yapay zekâ senin düzenleyebileceğin bir haftalık taslak hazırlasın.",
+      "scratch_title": "Sıfırdan oluştur",
+      "scratch_description": "Her öğünü gün gün kendin seç.",
+      "fork_title": "Var olan bir şablondan türet",
+      "fork_description": "Kendi şablonlarından ya da paylaşılan birinden başla."
+    },
+    "ai_form": {
+      "heading": "Ne üretelim?",
+      "goal_label": "Hedef",
+      "calorie_label": "Günlük kalori hedefi",
+      "calorie_required": "Önce bir kalori hedefi gir.",
+      "allergy_label": "Kaçınılacak alerjenler",
+      "allergy_hint": "Bunlar üretimden önce zorunlu olarak uygulanır — yapay zekâya da sana da hiç gösterilmez.",
+      "restriction_label": "Diyet kısıtlamaları",
+      "generate": "Şablon üret",
+      "error": "Şablon üretilemedi. Lütfen tekrar dene."
+    },
+    "goal": {
+      "lose_weight": "Kilo ver",
+      "gain_weight": "Kilo al",
+      "maintain_weight": "Kiloyu koru",
+      "build_muscle": "Kas kütlesi kazan"
+    },
+    "allergy_option": {
+      "gluten": "Gluten",
+      "dairy": "Süt ürünleri",
+      "nuts": "Kuruyemiş",
+      "egg": "Yumurta",
+      "shellfish": "Kabuklu deniz ürünleri",
+      "fish": "Balık",
+      "soy": "Soya",
+      "sesame": "Susam"
+    },
+    "restriction_option": {
+      "vegetarian": "Vejetaryen",
+      "vegan": "Vegan",
+      "low_carb": "Düşük karbonhidrat",
+      "high_protein": "Yüksek protein",
+      "keto": "Keto",
+      "paleo": "Paleo"
+    },
+    "editor": {
+      "name_label": "Şablon adı",
+      "description_label": "Açıklama",
+      "goal_label": "Hedef",
+      "calorie_label": "Günlük kalori hedefi",
+      "tags_label": "Etiketler",
+      "tag_hint": "Etiket ekle",
+      "share_scope_label": "Kimler görebilir",
+      "is_public_label": "Herkese açık pazaryerinde listele",
+      "is_public_description": "Bu şablonu herkes keşfedip türetebilir.",
+      "days_heading": "Günler",
+      "day_label": "{n}. Gün",
+      "copy_day": "Bu günü kopyala",
+      "paste_day": "Bu güne yapıştır",
+      "paste_all_days": "Tüm haftaya uygula",
+      "day_copied": "Gün kopyalandı",
+      "name_required": "Kaydetmeden önce şablona bir ad ver.",
+      "saved": "Şablon kaydedildi",
+      "save_error": "Şablon kaydedilemedi. Lütfen tekrar dene."
+    },
+    "nutrition": {
+      "title": "Besin değeri",
+      "view_day": "Gün",
+      "view_week": "Hafta",
+      "of_target": "/ {target} kcal",
+      "fiber_line": "{g}g lif",
+      "deviation_under": "Hedefin altında",
+      "deviation_over": "Hedefin üzerinde",
+      "deviation_on_target": "Hedefte"
+    },
+    "allergen": {
+      "title": "Alerjen kontrolü",
+      "no_conflicts": "Alerjen çakışması bulunamadı.",
+      "conflicts_found": "{n} alerjen çakışması bulundu",
+      "conflict_line": "{day}. gün · {meal}: {dish}",
+      "checking_own": "Kontrol: {name}"
+    },
+    "day": {
+      "add_item": "Öğe ekle",
+      "empty_slot": "Henüz bir şey eklenmedi",
+      "empty_item": "Adsız öğe"
+    },
+    "dish_picker": {
+      "title": "Yemek ekle",
+      "search_hint": "Yemek ara",
+      "custom_hint": "Ya da serbest bir yemek yaz",
+      "add_custom": "Ekle",
+      "empty_title": "Aramanla eşleşen yemek yok"
+    },
+    "source_picker": {
+      "title": "Türetilecek şablonu seç",
+      "tab_mine": "Benim",
+      "tab_gym": "Salonum",
+      "tab_public": "Herkese açık",
+      "empty_mine": "Henüz kaydedilmiş şablonun yok.",
+      "empty_gym": "Salonunun henüz paylaşılan şablonu yok.",
+      "empty_public": "Henüz herkese açık şablon yok."
+    },
+    "share_scope": {
+      "private": "Yalnızca ben",
+      "gym": "Salonum"
+    },
+    "library": {
+      "title": "Yemek Planı Şablonları",
+      "search_hint": "Şablon ara",
+      "new_tooltip": "Yeni şablon",
+      "empty_title": "Henüz şablon yok",
+      "empty_message": "İstediğin üyeye gönderebileceğin, tekrar kullanılabilir bir haftalık plan oluştur.",
+      "empty_cta": "İlk şablonunu oluştur",
+      "no_results": "Aramanla eşleşen şablon yok",
+      "untitled": "Adsız şablon",
+      "version_badge": "s{n}",
+      "day_count": "{n} günlük plan",
+      "sent_count": "{n} üyeye gönderildi",
+      "not_sent": "Henüz gönderilmedi",
+      "updated_at": "Güncellendi: {date}",
+      "duplicate": "Çoğalt",
+      "duplicated": "Şablon çoğaltıldı",
+      "export": "Dışa aktar",
+      "delete_title": "Şablon silinsin mi?",
+      "delete_confirm": "Bu işlem geri alınamaz.",
+      "action_error": "Bir şeyler ters gitti. Lütfen tekrar dene.",
+      "copy_suffix": "(kopya)",
+      "picker_title": "Şablon Seç"
+    },
+    "export": {
+      "calorie_line": "Ortalama ~{calories} kcal/gün",
+      "day_header": "{n}. Gün",
+      "unnamed_item": "Serbest öğe",
+      "subject": "{name} — Yemek Planı Şablonu"
+    }
+  },
+  "plan_offer": {
+    "picker": {
+      "title": "Alıcı Seç",
+      "search_hint": "İsme göre ara",
+      "next_disabled": "En az bir alıcı seç",
+      "next": "İleri ({n})",
+      "empty_title": "Henüz gönderilecek kimse yok",
+      "empty_message": "Üyeler katıldıkça burada görünecek."
+    },
+    "compose": {
+      "title": "Plan Gönder",
+      "recipients_label": "{n} alıcıya gönderiliyor",
+      "message_label": "Mesaj (opsiyonel)",
+      "message_hint": "Alıcı için bir not ekle...",
+      "send_btn": "Planı Gönder",
+      "send_success": "Plan {n} üyeye gönderildi",
+      "send_error": "Plan gönderilemedi. Lütfen tekrar dene.",
+      "error_recipient_ineligible": "Seçilen alıcılardan biri artık uygun değil."
+    },
+    "inbox": {
+      "title": "Plan Teklifleri",
+      "pending_section": "Bekleyen",
+      "history_section": "Geçmiş Teklifler",
+      "empty_title": "Henüz plan teklifin yok",
+      "empty_message": "Bir koç veya salon sana beslenme planı gönderdiğinde burada görünecek.",
+      "from_line": "{name} tarafından",
+      "status_accepted": "Kabul edildi",
+      "status_declined": "Reddedildi",
+      "status_expired": "Süresi doldu",
+      "status_pending": "Bekliyor"
+    },
+    "preview": {
+      "title": "Plan Önizleme",
+      "from_line": "{name} tarafından gönderildi",
+      "meal_count": "{days} gün · {meals} öğün",
+      "accept_btn": "Kabul Et",
+      "decline_btn": "Reddet",
+      "accept_success": "Plan eklendi — beslenme planını kontrol et",
+      "accept_error": "Bu plan kabul edilemedi. Lütfen tekrar dene.",
+      "decline_success": "Teklif reddedildi",
+      "decline_error": "Bu teklif reddedilemedi. Lütfen tekrar dene.",
+      "decline_dialog_title": "Bu planı reddet?",
+      "decline_dialog_body": "Bir gerekçe belirtmene gerek yok — bu tamamen opsiyonel.",
+      "decline_reason_hint": "Nedenini belirt (opsiyonel)",
+      "status_accepted": "{date} tarihinde kabul edildi",
+      "status_declined": "{date} tarihinde reddedildi",
+      "status_expired": "Bu teklifin süresi {date} tarihinde doldu"
+    }
+  },
+  "progress_sharing": {
+    "title": "İlerleme Paylaşımı",
+    "header_title": "İlerlemeni kimler görebilir",
+    "header_body": "Aşağıdaki her salon veya koça verdiğin bir paylaşım kademesi var. İstediğin zaman geri çekebilirsin — anında etkili olur.",
+    "empty_title": "Henüz bir paylaşım yok",
+    "empty_body": "Bir salona katıldığında veya bir koçla çalışmaya başladığında, ilerleme paylaşım tercihini buradan yönetebilirsin.",
+    "scope_gym": "Salon",
+    "scope_coach": "Koç",
+    "tier_label": "Kademe {tier}",
+    "tier0_label": "Kapalı",
+    "revoke_button": "Geri Çek",
+    "share_again_button": "Yeniden paylaş",
+    "last_viewed": "Son görüntülenme {date}",
+    "change_tier_title": "Bir paylaşım kademesi seç",
+    "tier0_title": "Kapalı",
+    "tier0_desc": "Hakkında hiçbir şey paylaşılmaz.",
+    "tier1_title": "Devam",
+    "tier1_desc": "Check-in sıklığı, seri ve son geliş.",
+    "tier2_title": "Devam + Uyum",
+    "tier2_desc": "Ayrıca: plana ne kadar düzenli kayıt tutulduğu.",
+    "tier3_title": "Devam + Uyum + Kilo Trendi",
+    "tier3_desc": "Ayrıca: kilo değişiminin YÖNÜ — ham sayılar asla paylaşılmaz.",
+    "saved": "Kaydedildi",
+    "save_error": "Kaydedilemedi. Lütfen tekrar deneyin.",
+    "revoked": "Paylaşım kapatıldı",
+    "revoke_error": "Paylaşım kapatılamadı. Lütfen tekrar deneyin."
+  },
+  "credit_restriction": {
+    "title": "Topluluk Kredisi Durumu",
+    "appeal_title": "Bu Kısıtlamaya İtiraz Et",
+    "appeal_intro": "Bu kısıtlamanın hatalı olduğunu düşünüyorsan burada itiraz edebilirsin. Bir yönetici itirazını inceleyecek ve sonucu sana bildireceğiz.",
+    "good_standing_title": "Durumun iyi",
+    "good_standing_desc": "Şu anda topluluk kredini kısıtlayan hiçbir şey yok.",
+    "restricted_title": "Topluluk kredin kısıtlandı",
+    "restricted_desc": "Gönderilerin ve yorumların herkese tamamen görünür olmaya devam ediyor — bu yalnızca tepkilerden, beğenilerden, şablon kullanımından ya da grup katkısından kazanabileceğin bonus yapay zekâ kredisini etkiliyor. Bunun hatalı olduğunu düşünüyorsan aşağıdan itiraz edebilirsin."
   }
 }

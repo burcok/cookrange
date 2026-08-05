@@ -228,6 +228,19 @@ ${PromptService().localeInstruction(locale)}''';
       final result = await AIService().generateJson(
           prompt: prompt, jsonStructure: jsonStructure, type: 'insight');
 
+      // Faz 5 §5.4 — Entitlements.advancedAIAnalysis: these are the
+      // already-computed inputs the prompt above fed the AI (no new AI
+      // call, no new cost) — captured here so the premium-exclusive
+      // "detailed breakdown" section in AiFitnessTwinScreen can show the
+      // real numbers behind the narrative instead of re-deriving them.
+      // Free users' existing view is unaffected — these keys are additive.
+      result['detailedInputs'] = {
+        'bmr': bmr,
+        'tdee': tdee,
+        'avgLoggedCalories': avgCalories,
+        'daysWithLogs': daysWithLogs,
+      };
+
       unawaited(AnalyticsService().logEvent(
         name: 'ai_generated',
         parameters: {'type': 'fitness_twin'},

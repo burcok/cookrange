@@ -10,6 +10,7 @@ import '../../../core/providers/onboarding_provider.dart';
 import '../../../core/providers/user_provider.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/push_notification_service.dart';
+import '../../../core/services/referral_service.dart';
 import '../../../core/utils/app_routes.dart';
 
 /// Shared tail of the V2 onboarding flow, used by BOTH entry points:
@@ -18,8 +19,10 @@ import '../../../core/utils/app_routes.dart';
 ///    (`onboarding_flow_screen`, logged-in mode).
 ///
 /// Persists the in-memory [OnboardingProvider] profile against [user]'s
-/// account, schedules the water reminder, repopulates [UserProvider] with the
-/// completed model, clears the draft, and routes to AI meal-plan generation.
+/// account, applies any pending referral code (Faz 6 §6.3/§6.4 — the first
+/// point a real, authenticated uid exists), schedules the water reminder,
+/// repopulates [UserProvider] with the completed model, clears the draft,
+/// and routes to AI meal-plan generation.
 class OnboardingCompletion {
   OnboardingCompletion._();
 
@@ -51,11 +54,32 @@ class OnboardingCompletion {
       //    + private nutrition + onboarding_completed) against the account.
       await ob.persistV2Profile(user);
 
-      // 2. Carry the premium intent forward for the post-onboarding purchase prompt.
+      // 2. Apply any pending referral code (Faz 6 §6.3/§6.4) — the FIRST point
+      //    a real, authenticated uid exists, since applyReferral requires
+      //    context.auth.uid and onboarding itself never has a session. An
+      //    invalid/expired/already-used code must NOT fail account creation —
+      //    persistV2Profile above already succeeded, so the account is real
+      //    either way; a rejected code just means no reward this time. The
+      //    user can always retry from Settings' existing "I have a code" entry
+      //    (ReferralService.applyCode), so no extra UI is built for this here.
+      final code = ob.referralCode;
+      if (code != null && code.isNotEmpty) {
+        // Uses applyCode's default 'in_app' source: OnboardingProvider
+        // doesn't currently distinguish a code that arrived via deep link
+        // from one typed by hand during this same onboarding step — see
+        // ReferralService.applyCode's doc comment.
+        final result = await ReferralService().applyCode(code);
+        if (!result.isSuccess) {
+          debugPrint(
+              'OnboardingCompletion: referral code "$code" not applied — ${result.error} (continuing anyway)');
+        }
+      }
+
+      // 3. Carry the premium intent forward for the post-onboarding purchase prompt.
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('pending_premium_intent', ob.wantsPremiumIntent);
 
-      // 3. Schedule the daily water reminder if the user opted in.
+      // 4. Schedule the daily water reminder if the user opted in.
       if (ob.waterReminderEnabled && ob.waterDailyTargetMl != null) {
         final liters = (ob.waterDailyTargetMl! / 1000).toStringAsFixed(1);
         unawaited(PushNotificationService().scheduleDailyWaterReminder(
@@ -67,7 +91,7 @@ class OnboardingCompletion {
         ));
       }
 
-      // 4. Repopulate UserProvider with the completed model. We derive it from
+      // 5. Repopulate UserProvider with the completed model. We derive it from
       //    the in-hand state via copyWith (forcing the just-written fields)
       //    rather than re-fetching: persistV2Profile writes through
       //    FirestoreService directly and does NOT invalidate AuthService's
@@ -89,8 +113,11 @@ class OnboardingCompletion {
         ));
       }
 
-      // 5. Clear the in-memory draft.
+      // 6. Clear the in-memory draft + the on-device pending-code cache
+      //    (Faz 6 §6.3 — cleared once signup completes, whether the code was
+      //    actually applied or discarded above).
       ob.reset();
+      unawaited(ReferralService().clearPendingCode());
     } catch (e, s) {
       debugPrint('V2 onboarding finalize error (continuing anyway): $e\n$s');
     }

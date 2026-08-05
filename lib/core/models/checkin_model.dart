@@ -1,6 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum CheckInMethod { qr, gps, manual }
+// `geofence` (Faz 1 §1.5) is deliberately absent from firestore.rules'
+// checkins/create allowlist — like `qr`, it is written only by a Cloud
+// Function (recordPresenceEvent, Admin SDK bypasses rules), never accepted
+// as a direct client write. Only `gps`/`manual` remain client-writable.
+enum CheckInMethod { qr, gps, manual, geofence }
 
 extension CheckInMethodX on CheckInMethod {
   String get firestoreValue => name;
@@ -8,6 +12,7 @@ extension CheckInMethodX on CheckInMethod {
   static CheckInMethod fromString(String? v) => switch (v) {
         'qr' => CheckInMethod.qr,
         'gps' => CheckInMethod.gps,
+        'geofence' => CheckInMethod.geofence,
         _ => CheckInMethod.manual,
       };
 
@@ -15,6 +20,7 @@ extension CheckInMethodX on CheckInMethod {
         CheckInMethod.qr => 'QR',
         CheckInMethod.gps => 'GPS',
         CheckInMethod.manual => 'Manual',
+        CheckInMethod.geofence => 'Auto',
       };
 }
 

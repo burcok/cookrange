@@ -42,6 +42,11 @@ class NotificationPreferencesService {
       NotificationType.streakAtRisk,
       NotificationType.weeklyPlanReady,
     ],
+    // Faz 1 §1.7, toggle (b) of its three-toggle spec: "never receive these
+    // at all." Toggle (a) — never broadcast MY presence — and toggle (c) —
+    // mute this one friend — aren't type-level mutes and live on
+    // GymPresencePrefsModel instead (users/{uid}/private/presence_prefs).
+    'presence': [NotificationType.friendAtGym],
   };
 
   Future<Map<String, bool>> getPreferences() async {

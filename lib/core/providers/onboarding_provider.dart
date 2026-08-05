@@ -48,6 +48,16 @@ class OnboardingProvider with ChangeNotifier {
   /// never written into `onboarding_data`.
   bool _wantsPremiumIntent = false;
 
+  /// Referral code (page 14, Faz 6 §6.3/§6.4). Transient, exactly like
+  /// [_wantsPremiumIntent]: collected before an account exists (pre-filled by
+  /// [DeepLinkService] on an `/invite/{code}` deep link, or typed/pasted on
+  /// the referral page), never written into `onboarding_data`, and applied
+  /// server-side via `applyReferral` at `OnboardingCompletion.finalizeAndRoute`
+  /// — the first point a real, authenticated uid exists. Normalized to
+  /// uppercase/trimmed (matches `ReferralService.applyCode`'s own
+  /// normalization) so equality checks against a just-verified code are exact.
+  String? _referralCode;
+
   // To track changes
   Map<String, dynamic>? _initialData;
 
@@ -153,6 +163,7 @@ class OnboardingProvider with ChangeNotifier {
   String get waterSleepTime => _waterSleepTime;
   bool get cooksForOthers => _cooksForOthers;
   bool get wantsPremiumIntent => _wantsPremiumIntent;
+  String? get referralCode => _referralCode;
 
   /// Whole-year age derived from [birthDate], or null if unset.
   int? get ageYears =>
@@ -449,6 +460,7 @@ class OnboardingProvider with ChangeNotifier {
     _waterSleepTime = '23:00';
     _cooksForOthers = false;
     _wantsPremiumIntent = false;
+    _referralCode = null;
     _initialData = null;
     notifyListeners();
   }
@@ -513,6 +525,18 @@ class OnboardingProvider with ChangeNotifier {
   void setWantsPremiumIntent(bool value) {
     if (_wantsPremiumIntent != value) {
       _wantsPremiumIntent = value;
+      notifyListeners();
+    }
+  }
+
+  /// Sets/clears the pending referral code. Normalizes to trimmed-uppercase
+  /// (an empty result is stored as null, so `referralCode == null` is the
+  /// single reliable "nothing pending" check everywhere else in the flow).
+  void setReferralCode(String? code) {
+    final trimmed = code?.trim().toUpperCase();
+    final normalized = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+    if (_referralCode != normalized) {
+      _referralCode = normalized;
       notifyListeners();
     }
   }

@@ -8,7 +8,10 @@ import '../../core/models/coach_profile_model.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/coach_application_service.dart';
 import '../../core/services/coach_service.dart';
+import '../../core/utils/feature_flags.dart';
 import '../../core/widgets/ds/ds.dart';
+import '../meal_plan_templates/template_library_screen.dart';
+import '../plan_offers/recipient_picker_screen.dart';
 import 'coach_application_pending_screen.dart';
 import 'coach_application_screen.dart';
 import 'coach_client_detail_screen.dart';
@@ -447,6 +450,35 @@ class _CoachDashboardScreenState extends State<CoachDashboardScreen>
             ),
           ],
         ),
+        // Faz 3 §3.3 — meal-plan template library entry point. Dedicated
+        // kill-switch (`FeatureFlags.mealPlanTemplates`) independent of
+        // `FeatureFlags.coach` itself, which only gates reaching this
+        // dashboard at all (see `role_quick_card.dart`).
+        if (FeatureFlags.isEnabled(FeatureFlags.mealPlanTemplates)) ...[
+          const SizedBox(height: 10),
+          AppButton(
+            label: l10n.translate('coach.dashboard.action_meal_plan_templates'),
+            variant: AppButtonVariant.tonal,
+            icon: Icons.menu_book_rounded,
+            onPressed: () => Navigator.push(
+              context,
+              AppTransitions.slideRight(
+                  const MealPlanTemplateLibraryScreen(authorType: 'coach')),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Faz 3 §3.5 — "üye seç → şablon seç → mesaj yaz → gönder".
+          AppButton(
+            label: l10n.translate('coach.dashboard.action_send_plan'),
+            variant: AppButtonVariant.tonal,
+            icon: Icons.send_rounded,
+            onPressed: () => Navigator.push(
+              context,
+              AppTransitions.slideRight(
+                  const PlanOfferRecipientPickerScreen(authorType: 'coach')),
+            ),
+          ),
+        ],
       ],
     );
   }

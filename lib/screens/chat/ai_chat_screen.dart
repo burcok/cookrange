@@ -13,6 +13,7 @@ import '../../core/services/ai/ai_chat_history_service.dart';
 import '../../core/services/ai/ai_chat_service.dart';
 import '../../core/services/ai/ai_service.dart';
 import '../../core/services/ai_credit_service.dart';
+import '../../core/services/feature_gate_service.dart';
 import '../../core/widgets/ds/ds.dart';
 import '../ai/widgets/ai_credit_badge.dart';
 import '../ai/widgets/ai_credits_sheet.dart';
@@ -77,6 +78,23 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
     final uid = user.uid;
     final isPremium = user.subscriptionTier.isPremiumOrAbove;
+
+    // Faz 5 §5.4 — Entitlements.dailyAIChatMessages tier-existence check.
+    // The REAL, dynamic per-day throttle for every AI-generation surface
+    // (chat included) is the unified `ai_credits` ledger just below
+    // (2 free / 20 premium, server-authoritative — see docs/PREMIUM.md §3);
+    // dailyAIChatMessages (10 free / 50 premium) is a separate, never-wired
+    // allowance that predates that unified system and is NOT a second quota
+    // to enforce here (that would silently conflict with the real one). This
+    // call is the single, honest entry point for "is this tier even allowed
+    // to use AI chat at all" — a no-op today (every tier's allowance is >0)
+    // but the correct place for that business rule to live if it ever
+    // changes, per FeatureGateService's "single entry point" contract.
+    if (!await FeatureGateService()
+        .check(context, (e) => e.dailyAIChatMessages > 0)) {
+      return;
+    }
+    if (!mounted) return;
 
     final canUse = await AiCreditService().checkAndConsume(uid, isPremium);
     if (!canUse) {

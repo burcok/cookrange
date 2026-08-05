@@ -1,8 +1,15 @@
 # Phase 15 — Daily Engagement Loop & Gamification — Product Roadmap
 
-> Status: **📋 Planned (not started).** Owner: product + engineering. Created: 2026-06-30.
+> Status: **Shipped, unevenly — verified 2026-08-05.** All six sub-phases have real, wired code;
+> none of this doc is "not started" anymore. §15.1/15.3/15.4/15.6 are functionally complete with
+> narrow, named gaps. §15.2 shipped a different card than this doc specifies (a 7-day sparkline, not
+> the yesterday+trend+takeaway+CTA card the PM section describes). §15.5's achievement half is
+> essentially complete against this doc's own proposed badge list; its streak-freeze "earn rules"
+> were never built, and its two new notification types are dead code. See each §15.N's own
+> **Verified** line for the specifics and file citations — do not assume 1:1 delivery from "shipped."
+> Owner: product + engineering. Created: 2026-06-30.
 > Governing rules: `CLAUDE.md` R0–R9 + Definition of Done. This doc is the single source of
-> truth for Phase 15 scope; `TODO.md` carries the checklist mirror.
+> truth for Phase 15's original scope; `TODO.md` carries the checklist mirror.
 
 ---
 
@@ -86,6 +93,23 @@ These are not per-feature footnotes; they are the Definition of Done for each su
 
 ## 15.1 — Smart Re-engagement Notifications · High impact · Medium effort
 
+**Verified 2026-08-05 — shipped, two mechanisms swapped, two gaps.** All three types exist end to
+end: enum (`notification_model.dart:33-35`), the `reminders` mute group
+(`notification_preferences_service.dart:40-44`, mirrored in `functions/index.js:489-491`), full
+presenter cases, local meal-reminder scheduling + a settings sheet
+(`push_notification_service.dart:222-273`, `settings_screen.dart:338-424`, id block `8001-8008` as
+specified). Streak-at-risk and weekly-plan-ready shipped as two dedicated `pubsub.schedule` Cloud
+Functions (`functions/index.js:1094` `streakAtRiskNotifier`, `:1159` `weeklyPlanReadyNotifier`)
+instead of this doc's proposed `broadcasts`-row design — same server-side suppression outcome
+(checks `food_logs` for today before sending), different mechanism. Two real gaps: there is no
+`onboarding_data.streak_reminder` settings entry — streak-at-risk has no user-configurable time, just
+the shared `reminders` mute toggle, and fires at a fixed `17:00 UTC` for every user rather than a
+per-user local evening time; the "cancel today's already-logged meal reminders on resume" client
+guard this doc's Dev section asks for was never built. **Flagged, not fixed:**
+`weeklyPlanReadyNotifier` queries `onboarding_completed == true` (`functions/index.js:1166-1167`),
+not `meal_plan_generated == true` as this doc specifies — it pushes "your weekly meal plan is ready"
+to every onboarded user, including ones who never generated a plan.
+
 ### PM
 **Problem:** users forget to log and silently churn. **Solution:** three gentle, mutable nudges that
 respect the user's day. **User stories:**
@@ -143,6 +167,20 @@ timezone changes; notification permission denied (no schedule, surface a soft pr
 
 ## 15.2 — Daily "Bugün" Recap Card · High impact · Low–Medium effort · 0 AI credits
 
+**Verified 2026-08-05 — shipped, but a different card than this section specifies.**
+`home/widgets/bugun_recap_card.dart` (`BugunRecapCard`) is wired into `home.dart:877`, sitting
+between `AiInsightCard` and `TodaySummaryCard` exactly as planned; it computes from one
+`FoodLogService.getLogsForDateRange` call (`bugun_recap_card.dart:87-88`), caches via a SharedPrefs
+SWR snapshot (`_kCachePrefix = 'bugun_recap_'`), and defines skeleton/empty/success states — the
+Architect spec is met almost exactly (this resolves `TODO.md`'s own `HOME-05`, which flagged this
+card as "status disputed" pending exactly this check). What actually renders is a 7-day kcal
+sparkline + avg/target stat row — not the yesterday-specific reflection card with trend arrows
+(up/down/flat), a plain-language takeaway, or the "Plan today's meals" CTA the PM section below
+describes, and there is no tap-through. None of `home.recap.yesterday`/`trend_up`/`trend_down`/
+`trend_flat`/`cta_plan`/`takeaway_over`/`takeaway_under`/`takeaway_on_target` exist in `en.json`/
+`tr.json` — the real keys are `home.recap.title/avg/target/days_logged/today_short/empty_title/
+empty_subtitle`.
+
 ### PM
 **Problem:** opening the app gives no "here's where you stand" moment. **Solution:** a glanceable card
 that summarizes *yesterday* and the *7-day trend*, with one plain-language takeaway and a forward CTA
@@ -176,6 +214,19 @@ sad zero); no logs yesterday (gentle "let's start today"); first day after insta
 ---
 
 ## 15.3 — One-Tap Photo Food Logging · High impact · Low–Medium effort
+
+**Verified 2026-08-05 — shipped as specified.** `MealTimeUtil.mealTypeForHour`
+(`lib/core/utils/meal_time_util.dart`) is the shared util this doc asked for.
+`FoodScanScreen(expressPhoto: true)` (`food_scan_screen.dart:34-95`) auto-opens the camera on mount,
+auto-detects meal type from the hour, defaults portion ×1, and reuses the identical credit-gated
+analysis/logging path (`_analyzePhoto`, same `checkAndConsume`/`rollbackCredit` dance as the text
+path). Home's "Snap & Log" button (`home.dart:1083-1103`, `food_scan.express_snap_btn`) is gated on
+`FoodAnalysisService().isPhotoAvailable` exactly as specified. Two minor nuances, not functional
+breaks: home's own `_nextMealName` (`home.dart:191-198`) was never switched over to `MealTimeUtil` —
+it still duplicates the hour-bucket logic independently (the two happen to agree on every real hour,
+so not a live bug, just not the single source of truth this doc's Architect section asked for); there
+is no distinct "low confidence" hint copy, only the pre-existing generic confidence-percentage
+display reused as-is.
 
 ### PM
 **Problem:** the photo→log path exists but takes too many taps (open scan → switch to photo tab → pick →
@@ -214,6 +265,18 @@ nudge); permission denied (existing `PermissionService` primer).
 ---
 
 ## 15.4 — Weekly AI Coach Recap · High impact · Medium effort · premium lever
+
+**Verified 2026-08-05 — shipped as specified; already reflected in `docs/FEATURES.md`'s "Weekly AI
+recap" row.** `AiInsightService.generateWeeklyRecap` (`ai_insight_service.dart:391-521`) follows the
+fitness-twin pattern exactly: Firestore-cached idempotent per week+locale, `<3` logged days or
+`!isConfigured` → a free fallback recap, persisted to `users/{uid}/ai_weekly_recaps` (rule at
+`firestore.rules:1517-1519`, mirrors `ai_twin_projections` verbatim as specified). Credit-gated with
+rollback on failure/quota exceptions (`weekly_recap_screen.dart:60-109`), share via `share_plus`
+(`:571`), and a home teaser card (`weekly_recap_card.dart`). One gap: the "Monday notification
+deep-link" entry point this doc's Dev section asks for does not exist — there is no dedicated "your
+recap is ready" push notification anywhere in `functions/`; the only Monday-morning push is §15.1's
+unrelated `weeklyPlanReadyNotifier` (about meal plans, not the AI recap). The home card is the only
+entry point that actually exists.
 
 ### PM
 **Problem:** the AI investment isn't visible enough; users don't get a "coach who noticed my week."
@@ -260,6 +323,33 @@ rules), `docs/FRONTEND.md` (new screen + route), `docs/FEATURES.md`, `docs/LOCAL
 ---
 
 ## 15.5 — Streak Freeze UI + Achievements / Badges · Medium–High impact · Medium effort
+
+**Verified 2026-08-05 — achievements half essentially complete, streak-freeze "earn rules" never
+built, two notification types confirmed dead.** The catalog (`achievement_model.dart:9-152`,
+`kAchievementCatalog`) has 15 keys. All 6 badges this doc proposes exist under matching or
+near-matching names: `firstMealLogged`→`first_meal`, `firstPhotoLog`→`first_photo`,
+`firstPost`→`first_post`, `firstCook`→`first_cook`, `streak7/30/100`→`streak_7/30/100`; "reputation
+tier-ups" shipped as 4 distinct badges (`tierActive/Contributor/Expert/Legend`) rather than this
+doc's single generic `tier_up` key — finer-grained than proposed, not a gap. The other 4 keys
+(`level50`, `groupTop3`, `groupStreak4`, `gymRegular`) are unrelated later work (Faz 5 §5.3) layered
+onto the same catalog — not part of this doc's scope; see `docs/DATABASE.md`'s `achievements` row for
+that half. `AchievementsGrid` (`screens/profile/widgets/achievements_grid.dart`) is wired into
+`profile_screen.dart:573`: earned/locked tiles, a reduced-motion-aware unlock animation
+(`MediaQuery.disableAnimations`), a detail sheet — matches the Dev spec closely. The freeze count IS
+shown via a snowflake glyph on the home streak chip (`StreakChip`, `streak_calendar_sheet.dart:
+112-135`, rendered at `home.dart:955`) exactly as asked. **Not built:** the "ways to earn freezes
+(milestones, premium grant)" the PM section asks for — `TODO.md`'s own `GAM-06` independently found
+the same thing ("the UI shipped, the earn rules did not"); `grantStreakFreeze` is still only ever
+called for the one-time welcome gift. **Confirmed broken, flagged not fixed:**
+`NotificationType.achievementEarned` and `.streakFreezeUsed` have full enum/presenter/push-text
+support (`notification_model.dart:31-32`, 5 presenter switch statements, `functions/index.js:
+576-580`) but are never actually triggered — every `writeNotification(db, {...})` call site across
+all of `functions/*.js` (15 checked) was read; none passes either type. `grantAchievementIfNew`
+(`functions/progress.js:384-395`) awards XP on a new badge but never notifies. Separately,
+`streak_freeze_count` is absent from `touchesProtectedUserFields()`'s denylist
+(`firestore.rules:384-406`) — unlike the structurally identical `group_top3_streak` counter one entry
+below it — so it is currently client-writable: any authenticated user can set their own streak-freeze
+count to any value today.
 
 ### PM
 **Problem:** streaks reset harshly (churn trigger) and there's no collectible sense of progress.
@@ -315,6 +405,23 @@ NotificationType), `docs/FRONTEND.md` (achievements grid + profile), `docs/FEATU
 
 ## 15.6 — "Pişirdim / I Cooked This" Community Share · Medium impact · Low effort
 
+**Verified 2026-08-05 — shipped; the R4/R7 error-path polish this doc asks for is missing.** The
+finish sheet's "Share to Community" toggle + optional caption (`cooking_mode_screen.dart:298-419`)
+calls `CommunityService().createPost(..., postType: PostType.meal, metadata: {has_cooked_badge:
+true, ...})` on the Log & Finish tap (`:505-538`); `glass_post_card.dart:329-330,1004-1039` renders
+the 🍳 pill via `community.cooked_it_badge`. The `first_cook` achievement hook is wired, but
+indirectly — not from this screen, but because `FoodLogService.logRecipe`
+(`food_log_service.dart:101-111`, called by the same tap) already reports `justCookedAndLogged: true`
+for its own reasons (Faz 5 XP). Two confirmed gaps: the share `createPost` call is `unawaited` inside
+a bare `try {} catch (_) {}` that only resets the button's loading flag on failure — no
+`debugPrint`/Crashlytics, no error snackbar, no retry (`:505-550`, an R4 silent-catch); there is no
+success snackbar or haptic on a successful share either, despite `cooking.share_success`/
+`cooking.share_error` keys existing in both `en.json` and `tr.json` with zero references anywhere in
+`lib/` — evidence a snackbar was drafted and never wired up, not that it was never planned. The
+metadata written is also narrower than this doc's proposed shape: no `cooked_at`, `meal_type`,
+`calories`, `protein`, `carbs`, or `fat`, only `has_cooked_badge`/`recipe_title`/`recipe_id`/
+`image_url`.
+
 ### PM
 **Problem:** cooking mode and the social feed are disconnected; finishing a recipe is a perfect
 "brag moment" that currently goes nowhere. **Solution:** a third action in the cooking finish sheet —
@@ -353,12 +460,12 @@ image); offline (queue/snackbar). Earns the `first_cook` achievement (ties to 15
 
 | Path | Purpose | Rules | Index |
 |---|---|---|---|
-| `users/{uid}/ai_weekly_recaps/{weekKey}` | Weekly AI recap payloads (owner-only) | owner R/W (mirror `ai_twin_projections`) | none |
-| `users/{uid}/achievements/{key}` | Earned badges (owner-only) | owner read; owner write (v1) | none |
-| `users/{uid}.onboarding_data.meal_reminder` | `{enabled, times[]}` | existing user-doc rule | — |
-| `users/{uid}.onboarding_data.streak_reminder` | `{enabled, time}` | existing user-doc rule | — |
-| `broadcasts/{id}` (reuse) | Server-scheduled weekly-plan / streak-at-risk fan-out | existing | existing |
-| `NotificationType` additions | `mealReminder, streakAtRisk, weeklyPlanReady, streakFreezeUsed` (+ optional) | — | — |
+| `users/{uid}/ai_weekly_recaps/{weekKey}` | Weekly AI recap payloads (owner-only) | owner R/W (mirror `ai_twin_projections`) — **built as specified**, `firestore.rules:1517-1519` | none |
+| `users/{uid}/achievements/{key}` | Earned badges (owner-only) | **built tighter than v1 called for**: owner read, but `allow write: if false` (`firestore.rules:1526-1529`) — server/Admin-SDK only from day one (`syncProgress`/`backfillProgress`), not the client-owner-write this row proposed | none |
+| `users/{uid}.onboarding_data.meal_reminder` | `{enabled, times[]}` | existing user-doc rule — **built as specified** | — |
+| `users/{uid}.onboarding_data.streak_reminder` | `{enabled, time}` | **not built** — streak-at-risk shipped as a server cron with no per-user time, so this field never got written; see §15.1 | — |
+| `broadcasts/{id}` (reuse) | Server-scheduled weekly-plan / streak-at-risk fan-out | **not the mechanism used** — both shipped as dedicated `pubsub.schedule` functions instead; see §15.1 | existing |
+| `NotificationType` additions | `mealReminder, streakAtRisk, weeklyPlanReady, streakFreezeUsed` (+ optional) | all 4 exist (`notification_model.dart:31-35`), plus `achievementEarned` (not listed here); `streakFreezeUsed`/`achievementEarned` are wired but never actually sent — see §15.5 | — |
 
 **R9 reminder:** `firestore.rules`, `firestore.indexes.json`, `en.json`, `tr.json` are
 **single-owner-per-turn** shared files. When implementing in parallel, serialize all writes to these.

@@ -118,10 +118,30 @@ class _PremiumUpgradeSheetState extends State<PremiumUpgradeSheet> {
     // "Detailed nutrition analytics" — available free too) were the exact
     // false promises the audit flagged on this payment-taking screen. Only
     // list what's actually true and enforced today: the daily AI quota.
+    //
+    // Faz 5 §5.4 revisit: of the 2 promises §0.6 removed, only ONE has a
+    // genuine, non-regressive premium-exclusive mechanism behind it now —
+    // added back as feature4, honestly re-scoped to what was actually
+    // built this pass (a 30-day nutrition trend view, NutritionAnalyticsScreen
+    // §_buildTrendSection, gated on Entitlements.advancedTrends), not the
+    // Faz 4 coach/gym progress-summary mechanism this task was originally
+    // framed around — that mechanism serves the GYM/COACH viewing a
+    // consenting member's data, never the paying individual their OWN
+    // "detailed analytics" back. "Advanced meal customization" (the OTHER
+    // removed promise) is deliberately NOT re-added: Faz 3's template
+    // builder is, by design, fully free for every tier (no cap exists to
+    // remove — see MealPlanTemplateService/firestore.rules; also
+    // docs/PREMIUM.md §1 lists templates under the free "Meal plans..."
+    // row) — AND template authorship itself is restricted to
+    // author_type in ['gym','coach','admin'] regardless of subscription
+    // tier, so it was never a meaningful individual-premium differentiator
+    // to begin with. Re-adding it here would repeat the exact kind of
+    // unenforced claim this screen exists to avoid.
     final features = [
       'ai.paywall_feature1',
       'ai.paywall_feature2',
       'ai.paywall_feature3',
+      'ai.paywall_feature4',
     ];
 
     return SingleChildScrollView(

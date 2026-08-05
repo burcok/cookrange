@@ -27,6 +27,7 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const { assertCallable } = require('./notifications');
+const { awardXp, XP_TABLE } = require('./progress');
 
 exports.validateGymCheckin = functions.https.onCall(async (data, context) => {
   const uid = assertCallable(context);
@@ -74,10 +75,20 @@ exports.validateGymCheckin = functions.https.onCall(async (data, context) => {
   if (userData.displayName) checkinData.display_name = userData.displayName;
   if (userData.photoURL) checkinData.photo_url = userData.photoURL;
 
+  const checkinRef = gymRef.collection('checkins').doc();
   const batch = db.batch();
-  batch.set(gymRef.collection('checkins').doc(), checkinData);
+  batch.set(checkinRef, checkinData);
   batch.update(memberRef, { last_check_in: now });
   await batch.commit();
+
+  // Faz 5 §5.1: check_in XP — NEVER client-reported (see progress.js's
+  // header comment). The scanned-token validation above IS the server-side
+  // proof; a courtesy call, failure never unwinds the already-committed
+  // check-in.
+  const t = XP_TABLE.check_in;
+  await awardXp(db, uid, 'check_in', checkinRef.id, t.points, t.dailyCap).catch((e) => {
+    functions.logger.error('validateGymCheckin: awardXp(check_in) failed', { uid, gymId, error: e.message });
+  });
 
   functions.logger.info('validateGymCheckin: ok', { uid, gymId });
   return { ok: true };

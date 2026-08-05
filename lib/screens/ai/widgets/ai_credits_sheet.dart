@@ -291,6 +291,50 @@ class _SheetContentState extends State<_SheetContent> {
 
           SizedBox(height: 24.h),
 
+          if (credits.isPremium) ...[
+            // Faz 5 §5.4 — makes the ALREADY-REAL server-side 2x engagement-
+            // credit multiplier (functions/engagement_credit_logic.js:
+            // `creditAndCapForPremium`) visible. This is a display-only
+            // addition — no new mechanism, no gate to check (there's
+            // nothing to paywall: it only ever renders for a user who is
+            // already premium, i.e. `credits.isPremium` is itself the
+            // server-verified fact being surfaced).
+            Container(
+              padding: EdgeInsets.all(14.r),
+              decoration: BoxDecoration(
+                color: palette.success.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppRadius.card.r),
+                border:
+                    Border.all(color: palette.success.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.bolt_rounded, color: palette.success, size: 18.r),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.translate('ai.credits_multiplier_title'),
+                          style: textTheme.labelM.copyWith(
+                              color: palette.textPrimary,
+                              fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          l10n.translate('ai.credits_multiplier_desc'),
+                          style: textTheme.labelS
+                              .copyWith(color: palette.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12.h),
+          ],
+
           if (!credits.isPremium) ...[
             // ── Premium upsell ─────────────────────────────────────────────────
             Container(

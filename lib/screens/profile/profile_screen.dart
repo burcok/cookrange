@@ -24,6 +24,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/friend_service.dart';
 import '../../core/services/chat_service.dart';
 import '../../core/services/reputation_service.dart';
+import '../../core/utils/xp_level_curve.dart';
 import '../../core/models/chat_model.dart';
 import '../../screens/community/widgets/glass_refresher.dart';
 import '../../core/widgets/unified_action_sheet.dart';
@@ -564,8 +565,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ],
                         _buildStreakTierBadge(isDark),
-                        if (_reputationData != null)
+                        if (_reputationData != null) ...[
                           _buildReputationBadge(isDark),
+                          _buildLevelBadge(isDark),
+                        ],
                         const SizedBox(height: 8),
                         AchievementsGrid(uid: user.uid),
                         const SizedBox(height: 16),
@@ -907,7 +910,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       alignment: WrapAlignment.center,
       spacing: 6,
       runSpacing: 6,
-      children: roles.map((role) => _RoleChip(role: role)).toList(),
+      children: [
+        ...roles.map((role) => _RoleChip(role: role)),
+        // Faz 5 §5.4 — Entitlements.verifiedBadge (tier.isPro). A real,
+        // wired call site: it renders nothing today because no `pro`
+        // product exists yet (docs/PREMIUM.md §1: "pro is modelled but
+        // unused") — the moment an account's subscription_tier is ever
+        // 'pro', this is what makes that visible, on the user's own
+        // profile, without any other code changing.
+        if (user.entitlements.verifiedBadge) const _ProBadgeChip(),
+      ],
     );
   }
 
@@ -1274,6 +1286,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Faz 5 §5.1 — "+ profil çipi" on every level-up. Deliberately a
+  /// SEPARATE chip from [_buildReputationBadge] above rather than folding
+  /// the level into that chip's text: the tier chip's formula/wording
+  /// predates this feature and is left untouched (still correctly reflects
+  /// the migrated XP-based tier with zero code changes — see
+  /// `ReputationService`'s migration doc comment), while this one is 100%
+  /// new, fully localized from day one. Same glass-pill visual language as
+  /// the chip above (R7 — reuse, don't reinvent).
+  Widget _buildLevelBadge(bool isDark) {
+    final rep = _reputationData;
+    if (rep == null) return const SizedBox.shrink();
+
+    final palette = AppPalette.of(context);
+    final primaryColor = Theme.of(context).primaryColor;
+    final into = XpLevelCurve.xpIntoCurrentLevel(rep.score);
+    final forNext = XpLevelCurve.xpForNextLevel(rep.score);
+    final l10n = AppLocalizations.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: primaryColor.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.military_tech_rounded,
+                      size: 16, color: primaryColor),
+                  const SizedBox(width: 6),
+                  Text(
+                    l10n.translate('profile.level_badge', variables: {
+                      'level': '${rep.level}',
+                      'into': '$into',
+                      'forNext': '$forNext',
+                    }),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? palette.textPrimary : primaryColor,
                     ),
                   ),
                 ],
@@ -2068,6 +2139,51 @@ class _RoleChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "Pro" verified badge — Faz 5 §5.4, `Entitlements.verifiedBadge`. Same
+/// pill styling as [_RoleChip] but driven by subscription tier, not role,
+/// so it isn't shoehorned into that enum's switch. Fixed gold accent
+/// (matches the paywall's own gold, `premium_upgrade_sheet.dart`'s `_gold`)
+/// rather than a palette color, since "premium/pro gold" is a brand
+/// constant, not a themeable surface tone.
+class _ProBadgeChip extends StatelessWidget {
+  const _ProBadgeChip();
+
+  static const _color = Color(0xFFE8A317);
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final label = l10n.translate('profile.pro_verified_badge');
+
+    return Semantics(
+      label: label,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: _color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.verified_rounded, size: 13, color: _color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: _color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

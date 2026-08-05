@@ -163,7 +163,7 @@ final List<Map<String, dynamic>> meatBatch1 = [
     ]
   },
   {
-    'id': 'etli_nohut',
+    'id': 'etli_nohut_geleneksel',
     'name': 'Geleneksel Etli Nohut Yemeği',
     'name_en': 'Beef and Chickpea Stew',
     'description':
@@ -208,7 +208,7 @@ final List<Map<String, dynamic>> meatBatch1 = [
     ]
   },
   {
-    'id': 'etli_kuru_fasulye',
+    'id': 'etli_kuru_fasulye_kemikli',
     'name': 'Kemikli Et Suyuyla Kuru Fasulye',
     'name_en': 'Beef Haricot Bean Stew',
     'description':
@@ -2352,7 +2352,7 @@ final List<Map<String, dynamic>> turkishClassicsBatch = [
     ]
   },
   {
-    'id': 'nohut_yemegi',
+    'id': 'nohut_yemegi_anne_usulu',
     'name': 'Etli Anne Usulü Nohut Yemeği',
     'name_en': 'Traditional Chickpea Stew with Lamb',
     'description':
@@ -2531,7 +2531,7 @@ final List<Map<String, dynamic>> turkishClassicsBatch = [
     ]
   },
   {
-    'id': 'etli_kuru_fasulye',
+    'id': 'etli_kuru_fasulye_klasik',
     'name': 'Etli Kuru Fasulye',
     'name_en': 'White Bean Stew with Meat',
     'description': 'Dana etiyle ağır ateşte pişmiş, geleneksel Türk lezzeti.',
@@ -2568,7 +2568,7 @@ final List<Map<String, dynamic>> turkishClassicsBatch = [
     ]
   },
   {
-    'id': 'etsiz_kuru_fasulye',
+    'id': 'etsiz_kuru_fasulye_klasik',
     'name': 'Etsiz Kuru Fasulye',
     'name_en': 'Plain White Bean Stew',
     'description':
@@ -2604,7 +2604,7 @@ final List<Map<String, dynamic>> turkishClassicsBatch = [
     ]
   },
   {
-    'id': 'nohut_yemegi',
+    'id': 'nohut_yemegi_etsiz',
     'name': 'Etsiz Nohut Yemeği',
     'name_en': 'Plain Chickpea Stew',
     'description': 'Bol salçalı ve tam kıvamında pişen nohut tencere yemeği.',
@@ -2732,7 +2732,7 @@ final List<Map<String, dynamic>> turkishClassicsBatch = [
     ]
   },
   {
-    'id': 'taze_fasulye_zeytinyagli',
+    'id': 'taze_fasulye_zeytinyagli_hafif',
     'name': 'Zeytinyağlı Taze Fasulye',
     'name_en': 'Fresh Green Beans in Olive Oil',
     'description':
@@ -3035,6 +3035,859 @@ final List<Map<String, dynamic>> turkishClassicsBatch = [
   },
 ];
 
+// Faz 3 §3.6 — snack/ara öğün pool expansion (3 → 28). The template builder
+// (§3.3) draws 7 snack slots/week from this pool; 3 was a hard ceiling that
+// forced the same snacks on repeat. Real Turkish snack foods, same shape and
+// unit conventions as the batches above (ingredient calories sum to the
+// dish's declared `calories`; macros ≈ 4/4/9 kcal formula within ~10%).
+final List<Map<String, dynamic>> snackBatch1 = [
+  {
+    'id': 'ayran_kavrulmus_nohut',
+    'name': 'Ayran & Kavrulmuş Nohut',
+    'name_en': 'Ayran with Roasted Chickpeas',
+    'description':
+        'Ayranın ferahlığı ile kavrulmuş nohudun çıtırlığını birleştiren pratik bir ara öğün.',
+    'description_en':
+        'A practical snack pairing refreshing ayran with crunchy roasted chickpeas.',
+    'category': 'veggie',
+    'tags': ['high_protein', 'fiber', 'quick'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 3,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 180,
+    'protein': 9,
+    'carbs': 22,
+    'fat': 6,
+    'fiber': 5,
+    'ingredients': [
+      {'name': 'Ayran', 'amount': 300, 'unit': 'ml', 'calories': 110},
+      {'name': 'Kavrulmuş Nohut', 'amount': 30, 'unit': 'g', 'calories': 70},
+    ],
+    'instructions': [
+      '1. Hazırlık: Ayranı buzdolabında iyice soğutun.',
+      '2. Servis: Soğuk ayranı bir bardağa doldurun.',
+      '3. Eşlik: Kavrulmuş nohutları yanında küçük bir kasede sunun.',
+      '4. Tüketim: İkisini birlikte, öğün arası atıştırmalık olarak tüketin.'
+    ]
+  },
+  {
+    'id': 'elma_findik_ezmesi',
+    'name': 'Elma Dilimleri & Fındık Ezmesi',
+    'name_en': 'Apple Slices with Hazelnut Butter',
+    'description':
+        'Çıtır elma dilimleri ve kremamsı fındık ezmesinin tatlı-ekşi uyumu.',
+    'description_en':
+        'Crisp apple slices paired with creamy hazelnut butter for a sweet-tart balance.',
+    'category': 'veggie',
+    'tags': ['fiber', 'quick', 'fresh'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 210,
+    'protein': 4,
+    'carbs': 26,
+    'fat': 11,
+    'fiber': 5,
+    'ingredients': [
+      {
+        'name': 'Elma (Dilimlenmiş)',
+        'amount': 150,
+        'unit': 'g',
+        'calories': 85
+      },
+      {'name': 'Fındık Ezmesi', 'amount': 20, 'unit': 'g', 'calories': 125},
+    ],
+    'instructions': [
+      '1. Hazırlık: Elmayı iyice yıkayıp ince dilimler halinde kesin.',
+      '2. Servis: Fındık ezmesini küçük bir kaseye alın.',
+      '3. Daldırma: Elma dilimlerini fındık ezmesine batırarak afiyetle tüketin.',
+      '4. İpucu: Elmanın kararmaması için birkaç damla limon suyu gezdirebilirsiniz.'
+    ]
+  },
+  {
+    'id': 'cacik_klasik',
+    'name': 'Geleneksel Cacık',
+    'name_en': 'Classic Cacık (Yogurt-Cucumber Dip)',
+    'description':
+        'Yoğurt, salatalık ve taze naneyle hazırlanan ferahlatıcı geleneksel atıştırmalık.',
+    'description_en':
+        'Refreshing traditional dip made with yogurt, cucumber, and fresh mint.',
+    'category': 'veggie',
+    'tags': ['vegetarian', 'low_calorie', 'fresh'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 8,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 110,
+    'protein': 6,
+    'carbs': 8,
+    'fat': 6,
+    'fiber': 2,
+    'ingredients': [
+      {'name': 'Yoğurt', 'amount': 150, 'unit': 'g', 'calories': 95},
+      {
+        'name': 'Salatalık (Rendelenmiş)',
+        'amount': 80,
+        'unit': 'g',
+        'calories': 12
+      },
+      {'name': 'Sarımsak & Taze Nane', 'amount': 5, 'unit': 'g', 'calories': 3},
+    ],
+    'instructions': [
+      '1. Hazırlık: Salatalığı rendeleyip suyunu hafifçe süzün.',
+      '2. Karıştırma: Yoğurdu, salatalığı, ezilmiş sarımsağı ve doğranmış naneyi bir kasede karıştırın.',
+      '3. Dinlendirme: Buzdolabında 10 dakika dinlendirin.',
+      '4. Servis: Üzerine bir tutam kuru nane serperek soğuk servis yapın.'
+    ]
+  },
+  {
+    'id': 'kavrulmus_nohut_baharatli',
+    'name': 'Baharatlı Kavrulmuş Nohut',
+    'name_en': 'Spiced Roasted Chickpeas',
+    'description':
+        'Kimyon ve pul biberle fırında kavrulmuş, çıtır ve lifli nohut atıştırmalığı.',
+    'description_en':
+        'Oven-roasted chickpeas with cumin and chili flakes for a crunchy, fiber-rich snack.',
+    'category': 'veggie',
+    'tags': ['fiber', 'high_protein', 'quick'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 20,
+    'difficulty': 'easy',
+    'calories': 160,
+    'protein': 7,
+    'carbs': 22,
+    'fat': 5,
+    'fiber': 6,
+    'ingredients': [
+      {'name': 'Haşlanmış Nohut', 'amount': 100, 'unit': 'g', 'calories': 140},
+      {'name': 'Zeytinyağı', 'amount': 5, 'unit': 'ml', 'calories': 20},
+      {
+        'name': 'Kimyon, Pul Biber & Tuz',
+        'amount': 3,
+        'unit': 'g',
+        'calories': 0
+      },
+    ],
+    'instructions': [
+      '1. Hazırlık: Haşlanmış nohutları kağıt havluyla iyice kurulayın.',
+      '2. Baharatlama: Zeytinyağı, kimyon ve pul biberle harmanlayın.',
+      '3. Fırınlama: 200 derece fırında 18-20 dakika, ara ara çevirerek çıtırlaşana kadar kavurun.',
+      '4. Servis: Ilıklaşınca kaseye alıp servis edin.'
+    ]
+  },
+  {
+    'id': 'humus_sebze_cubuklari',
+    'name': 'Nohut Ezmesi (Humus) & Sebze Çubukları',
+    'name_en': 'Hummus with Veggie Sticks',
+    'description':
+        'Tahinli nohut ezmesi ve taze sebze çubuklarıyla lifli, doyurucu bir ara öğün.',
+    'description_en':
+        'Creamy tahini-chickpea hummus served with fresh vegetable sticks for a filling, fiber-rich snack.',
+    'category': 'vegetarian',
+    'tags': ['vegetarian', 'fiber', 'fresh'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 10,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 190,
+    'protein': 7,
+    'carbs': 17,
+    'fat': 11,
+    'fiber': 5,
+    'ingredients': [
+      {'name': 'Humus', 'amount': 80, 'unit': 'g', 'calories': 150},
+      {
+        'name': 'Havuç & Salatalık Çubukları',
+        'amount': 100,
+        'unit': 'g',
+        'calories': 40
+      },
+    ],
+    'instructions': [
+      '1. Hazırlık: Havuç ve salatalığı ince uzun çubuklar halinde doğrayın.',
+      '2. Servis: Humusu bir kaseye alın.',
+      '3. Düzenleme: Sebze çubuklarını humusun etrafına dizin.',
+      '4. Tüketim: Sebzeleri humusa batırarak afiyetle tüketin.'
+    ]
+  },
+  {
+    'id': 'meyveli_suzme_yogurt',
+    'name': 'Meyveli Süzme Yoğurt Kase',
+    'name_en': 'Strained Yogurt with Fresh Fruit',
+    'description':
+        'Süzme yoğurdun kremamsı dokusu ve mevsim meyvelerinin doğal tatlılığı bir arada.',
+    'description_en':
+        'Creamy strained yogurt combined with the natural sweetness of seasonal fruit.',
+    'category': 'veggie',
+    'tags': ['vegetarian', 'high_protein', 'fresh'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 170,
+    'protein': 12,
+    'carbs': 20,
+    'fat': 4,
+    'fiber': 3,
+    'ingredients': [
+      {'name': 'Süzme Yoğurt', 'amount': 150, 'unit': 'g', 'calories': 135},
+      {
+        'name': 'Mevsim Meyvesi (Çilek/Muz)',
+        'amount': 80,
+        'unit': 'g',
+        'calories': 35
+      },
+    ],
+    'instructions': [
+      '1. Hazırlık: Süzme yoğurdu bir kaseye alın.',
+      '2. Meyve: Meyveleri küçük parçalar halinde doğrayın.',
+      '3. Birleştirme: Meyveleri yoğurdun üzerine serpiştirin.',
+      '4. Servis: Dilerseniz üzerine tarçın ekleyerek hemen tüketin.'
+    ]
+  },
+  {
+    'id': 'tahinli_muz',
+    'name': 'Tahinli Muz Dilimleri',
+    'name_en': 'Banana Slices with Tahini',
+    'description':
+        'Muzun doğal tatlılığı ve susam tahininin yoğun aromasıyla enerji veren atıştırmalık.',
+    'description_en':
+        'An energizing snack pairing naturally sweet banana with rich sesame tahini.',
+    'category': 'veggie',
+    'tags': ['fiber', 'quick', 'energy'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 3,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 220,
+    'protein': 5,
+    'carbs': 28,
+    'fat': 10,
+    'fiber': 4,
+    'ingredients': [
+      {'name': 'Muz', 'amount': 1, 'unit': 'adet', 'calories': 105},
+      {'name': 'Tahin', 'amount': 15, 'unit': 'g', 'calories': 90},
+      {'name': 'Susam (Serpme)', 'amount': 5, 'unit': 'g', 'calories': 25},
+    ],
+    'instructions': [
+      '1. Hazırlık: Muzu soyup yuvarlak dilimler halinde kesin.',
+      '2. Soslama: Dilimlerin üzerine tahini gezdirin.',
+      '3. Topping: Üzerine bir tutam susam serpin.',
+      '4. Servis: Hemen, taze haliyle tüketin.'
+    ]
+  },
+  {
+    'id': 'kefir_meyve_smoothie',
+    'name': 'Meyveli Kefir Smoothie',
+    'name_en': 'Fruit Kefir Smoothie',
+    'description':
+        'Probiyotik kefir ve mevsim meyveleriyle hazırlanan, sindirim dostu enerjik içecek.',
+    'description_en':
+        'A gut-friendly, energizing drink made with probiotic kefir and seasonal fruit.',
+    'category': 'sport',
+    'tags': ['probiotic', 'shake', 'post_workout'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 200,
+    'protein': 9,
+    'carbs': 30,
+    'fat': 5,
+    'fiber': 3,
+    'ingredients': [
+      {'name': 'Kefir', 'amount': 250, 'unit': 'ml', 'calories': 130},
+      {
+        'name': 'Karışık Kırmızı Meyve (Dondurulmuş)',
+        'amount': 100,
+        'unit': 'g',
+        'calories': 60
+      },
+      {'name': 'Bal (Az)', 'amount': 5, 'unit': 'g', 'calories': 10},
+    ],
+    'instructions': [
+      '1. Hazırlık: Tüm malzemeleri blender haznesine alın.',
+      '2. Blend: Pürüzsüz kıvam alana kadar 30-40 saniye karıştırın.',
+      '3. Kontrol: Kıvamı çok koyuysa biraz su ekleyin.',
+      '4. Servis: Bardağa alıp hemen için.'
+    ]
+  },
+  {
+    'id': 'yesil_detoks_smoothie',
+    'name': 'Ispanaklı Yeşil Detoks Smoothie',
+    'name_en': 'Spinach Green Detox Smoothie',
+    'description':
+        'Taze ıspanak, elma ve zencefille hazırlanan, hafif ve canlandırıcı yeşil içecek.',
+    'description_en':
+        'A light, refreshing green drink made with fresh spinach, apple, and ginger.',
+    'category': 'veggie',
+    'tags': ['vegan', 'detox', 'low_calorie'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 140,
+    'protein': 4,
+    'carbs': 24,
+    'fat': 4,
+    'fiber': 5,
+    'ingredients': [
+      {'name': 'Taze Ispanak', 'amount': 60, 'unit': 'g', 'calories': 15},
+      {'name': 'Elma', 'amount': 100, 'unit': 'g', 'calories': 55},
+      {'name': 'Zencefil & Limon', 'amount': 10, 'unit': 'g', 'calories': 5},
+      {'name': 'Su / Badem Sütü', 'amount': 200, 'unit': 'ml', 'calories': 65},
+    ],
+    'instructions': [
+      '1. Hazırlık: Ispanağı iyice yıkayın, elmayı kabuğuyla doğrayın.',
+      '2. Blend: Tüm malzemeleri blender haznesine alıp pürüzsüz olana kadar karıştırın.',
+      '3. Süzme: Dilerseniz posayı süzgeçten geçirin.',
+      '4. Servis: Buzla birlikte soğuk servis edin.'
+    ]
+  },
+  {
+    'id': 'haslanmis_yumurta_kraker',
+    'name': 'Haşlanmış Yumurta & Tam Tahıllı Kraker',
+    'name_en': 'Boiled Egg with Whole-Grain Crackers',
+    'description':
+        'Yüksek proteinli haşlanmış yumurta ve tam tahıllı krakerlerle pratik toparlanma öğünü.',
+    'description_en':
+        'A practical, high-protein recovery snack of boiled egg and whole-grain crackers.',
+    'category': 'sport',
+    'tags': ['high_protein', 'quick', 'post_workout'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 2,
+    'cook_time_minutes': 8,
+    'difficulty': 'easy',
+    'calories': 230,
+    'protein': 14,
+    'carbs': 18,
+    'fat': 11,
+    'fiber': 3,
+    'ingredients': [
+      {
+        'name': 'Yumurta (Haşlanmış)',
+        'amount': 2,
+        'unit': 'adet',
+        'calories': 140
+      },
+      {'name': 'Tam Tahıllı Kraker', 'amount': 25, 'unit': 'g', 'calories': 90},
+    ],
+    'instructions': [
+      '1. Haşlama: Yumurtaları kaynayan suda 8 dakika haşlayın.',
+      '2. Soğutma: Soğuk suya alıp kabuklarını soyun.',
+      '3. Servis: Krakerlerle yan yana tabağa dizin.',
+      '4. Tüketim: Üzerine tuz ve karabiber ekleyerek tüketin.'
+    ]
+  },
+  {
+    'id': 'ev_yapimi_protein_bar',
+    'name': 'Ev Yapımı Yulaf & Protein Bar',
+    'name_en': 'Homemade Oat Protein Bar',
+    'description':
+        'Yulaf, protein tozu ve kuru meyvelerle şekillendirilen, fırınsız pratik enerji barı.',
+    'description_en':
+        'A no-bake energy bar shaped from oats, protein powder, and dried fruit.',
+    'category': 'sport',
+    'tags': ['high_protein', 'muscle_gain', 'meal_prep'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 15,
+    'cook_time_minutes': 0,
+    'difficulty': 'medium',
+    'calories': 260,
+    'protein': 16,
+    'carbs': 28,
+    'fat': 9,
+    'fiber': 4,
+    'ingredients': [
+      {'name': 'Yulaf Ezmesi', 'amount': 40, 'unit': 'g', 'calories': 150},
+      {'name': 'Protein Tozu', 'amount': 20, 'unit': 'g', 'calories': 75},
+      {
+        'name': 'Kuru Kayısı & Hurma',
+        'amount': 20,
+        'unit': 'g',
+        'calories': 35
+      },
+    ],
+    'instructions': [
+      '1. Karıştırma: Yulaf, protein tozu ve ince doğranmış kuru meyveleri bir kasede karıştırın.',
+      '2. Bağlama: Üzerine 1-2 yemek kaşığı su veya süt ekleyip yapışkan bir hamur elde edin.',
+      '3. Şekillendirme: Karışımı bir tepsiye yayıp dikdörtgen barlar halinde kesin.',
+      '4. Dinlendirme: Buzdolabında 1 saat bekletip sertleşince tüketin.'
+    ]
+  },
+  {
+    'id': 'kinoa_enerji_toplari',
+    'name': 'Kinoa & Hurma Enerji Topları',
+    'name_en': 'Quinoa & Date Energy Balls',
+    'description':
+        'Pişmiş kinoa, hurma ve tarçınla yoğrulan, doğal şekerli enerji topları.',
+    'description_en':
+        'Naturally sweetened energy balls made with cooked quinoa, dates, and cinnamon.',
+    'category': 'sport',
+    'tags': ['fiber', 'energy', 'meal_prep'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 15,
+    'cook_time_minutes': 0,
+    'difficulty': 'medium',
+    'calories': 230,
+    'protein': 6,
+    'carbs': 34,
+    'fat': 8,
+    'fiber': 4,
+    'ingredients': [
+      {'name': 'Pişmiş Kinoa', 'amount': 60, 'unit': 'g', 'calories': 70},
+      {'name': 'Hurma', 'amount': 40, 'unit': 'g', 'calories': 110},
+      {
+        'name': 'Hindistan Cevizi Rendesi',
+        'amount': 15,
+        'unit': 'g',
+        'calories': 50
+      },
+    ],
+    'instructions': [
+      '1. Hazırlık: Hurmaları çekirdeklerinden ayırıp küçük parçalara bölün.',
+      '2. Karıştırma: Kinoa, hurma ve hindistan cevizini bir kapta iyice yoğurun.',
+      '3. Şekillendirme: Karışımdan ceviz büyüklüğünde toplar yuvarlayın.',
+      '4. Servis: Buzdolabında 30 dakika soğutup öyle tüketin.'
+    ]
+  },
+  {
+    'id': 'findik_kuruyemis_karisimi',
+    'name': 'Fındık & Kuruyemiş Karışımı',
+    'name_en': 'Hazelnut & Mixed Nut Trail Mix',
+    'description':
+        'Fındık, badem ve kuru üzümle hazırlanan, taşınabilir ve enerji yoğun karışım.',
+    'description_en':
+        'A portable, energy-dense mix of hazelnuts, almonds, and raisins.',
+    'category': 'sport',
+    'tags': ['energy', 'quick', 'on_the_go'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 2,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 250,
+    'protein': 7,
+    'carbs': 14,
+    'fat': 19,
+    'fiber': 4,
+    'ingredients': [
+      {'name': 'Fındık & Badem', 'amount': 25, 'unit': 'g', 'calories': 155},
+      {'name': 'Kuru Üzüm', 'amount': 15, 'unit': 'g', 'calories': 45},
+      {'name': 'Kuru Kayısı', 'amount': 15, 'unit': 'g', 'calories': 50},
+    ],
+    'instructions': [
+      '1. Hazırlık: Fındık, badem ve kurutulmuş meyveleri bir kaseye alın.',
+      '2. Karıştırma: Hepsini iyice karıştırın.',
+      '3. Paketleme: İstediğiniz miktarı küçük bir kutuya doldurun.',
+      '4. Tüketim: Çantanızda taşıyıp gün içinde atıştırın.'
+    ]
+  },
+  {
+    'id': 'muzlu_yulaf_enerji_toplari',
+    'name': 'Muzlu Yulaf Enerji Topları',
+    'name_en': 'Banana Oat Energy Balls',
+    'description':
+        'Ezilmiş muz ve yulafla yoğrulan, şeker ilavesiz doğal enerji topları.',
+    'description_en':
+        'No-added-sugar energy balls made with mashed banana and oats.',
+    'category': 'sport',
+    'tags': ['fiber', 'energy', 'meal_prep'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 10,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 200,
+    'protein': 5,
+    'carbs': 32,
+    'fat': 6,
+    'fiber': 4,
+    'ingredients': [
+      {'name': 'Muz (Ezilmiş)', 'amount': 100, 'unit': 'g', 'calories': 90},
+      {'name': 'Yulaf Ezmesi', 'amount': 30, 'unit': 'g', 'calories': 110},
+      {'name': 'Tarçın', 'amount': 2, 'unit': 'g', 'calories': 0},
+    ],
+    'instructions': [
+      '1. Ezme: Olgun muzu bir çatalla püre haline getirin.',
+      '2. Karıştırma: Yulaf ezmesi ve tarçınla yoğurun.',
+      '3. Şekillendirme: Küçük toplar halinde yuvarlayın.',
+      '4. Servis: Buzdolabında 20 dakika sertleştirip tüketin.'
+    ]
+  },
+  {
+    'id': 'simit_yarim',
+    'name': 'Simit & Beyaz Peynir Dilimi',
+    'name_en': 'Simit with a Slice of White Cheese',
+    'description':
+        'Susamlı geleneksel simit ve az yağlı beyaz peynirle klasik bir Türk ara öğünü.',
+    'description_en':
+        'A classic Turkish snack pairing sesame-crusted simit with light white cheese.',
+    'category': 'turkish_classic',
+    'tags': ['traditional', 'high_protein', 'filling'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 2,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 280,
+    'protein': 12,
+    'carbs': 38,
+    'fat': 9,
+    'fiber': 3,
+    'ingredients': [
+      {'name': 'Simit (Yarım)', 'amount': 50, 'unit': 'g', 'calories': 180},
+      {
+        'name': 'Beyaz Peynir (Az Yağlı)',
+        'amount': 40,
+        'unit': 'g',
+        'calories': 100
+      },
+    ],
+    'instructions': [
+      '1. Hazırlık: Simidi yarıya bölün.',
+      '2. Servis: Beyaz peyniri ince dilimler halinde kesin.',
+      '3. Birleştirme: Peyniri simidin üzerine yerleştirin.',
+      '4. Tüketim: Bir bardak çay veya ayranla birlikte tüketin.'
+    ]
+  },
+  {
+    'id': 'zeytinli_domatesli_kraker',
+    'name': 'Zeytinli & Domatesli Tam Buğday Kraker',
+    'name_en': 'Whole Wheat Crackers with Olives and Tomato',
+    'description':
+        'Tam buğday krakerleri, zeytin ve domatesle hazırlanan Akdeniz esintili hafif atıştırmalık.',
+    'description_en':
+        'A light Mediterranean-inspired snack of whole wheat crackers, olives, and tomato.',
+    'category': 'turkish_classic',
+    'tags': ['vegetarian', 'fiber', 'fresh'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 190,
+    'protein': 5,
+    'carbs': 24,
+    'fat': 8,
+    'fiber': 4,
+    'ingredients': [
+      {'name': 'Tam Buğday Kraker', 'amount': 30, 'unit': 'g', 'calories': 120},
+      {'name': 'Siyah Zeytin', 'amount': 20, 'unit': 'g', 'calories': 45},
+      {'name': 'Domates (Dilim)', 'amount': 40, 'unit': 'g', 'calories': 8},
+      {'name': 'Zeytinyağı', 'amount': 2, 'unit': 'ml', 'calories': 17},
+    ],
+    'instructions': [
+      '1. Hazırlık: Zeytinleri çekirdeklerinden ayırıp ince doğrayın.',
+      '2. Dizme: Krakerlerin üzerine domates dilimlerini yerleştirin.',
+      '3. Topping: Üzerine doğranmış zeytin ve birkaç damla zeytinyağı gezdirin.',
+      '4. Servis: Hemen, taze haliyle tüketin.'
+    ]
+  },
+  {
+    'id': 'peynirli_mini_tost',
+    'name': 'Mini Peynirli Tost',
+    'name_en': 'Mini Cheese Toast',
+    'description':
+        'Tam buğday ekmeği ve eriyen kaşar peyniriyle hazırlanan sıcak, pratik ara öğün.',
+    'description_en':
+        'A warm, practical snack made with whole wheat bread and melted kashar cheese.',
+    'category': 'turkish_classic',
+    'tags': ['high_protein', 'quick', 'comfort_food'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 3,
+    'cook_time_minutes': 5,
+    'difficulty': 'easy',
+    'calories': 240,
+    'protein': 11,
+    'carbs': 24,
+    'fat': 11,
+    'fiber': 2,
+    'ingredients': [
+      {
+        'name': 'Tam Buğday Ekmeği (2 Dilim)',
+        'amount': 60,
+        'unit': 'g',
+        'calories': 140
+      },
+      {'name': 'Kaşar Peyniri', 'amount': 30, 'unit': 'g', 'calories': 100},
+    ],
+    'instructions': [
+      '1. Hazırlık: Ekmek dilimlerinin arasına kaşar peynirini yerleştirin.',
+      '2. Kızartma: Tost makinesinde veya tavada peynir eriyene kadar her iki tarafını kızartın.',
+      '3. Dinlendirme: Sıcakken 1 dakika dinlendirin (peynir yanmasın).',
+      '4. Servis: Üçgen dilimler halinde kesip sıcak servis edin.'
+    ]
+  },
+  {
+    'id': 'gozleme_lokmasi_ispanakli',
+    'name': 'Ispanaklı Mini Gözleme Lokmaları',
+    'name_en': 'Mini Spinach Gözleme Bites',
+    'description':
+        'İnce yufka ve ıspanaklı iç harcıyla hazırlanan, küçük boy geleneksel gözleme lokmaları.',
+    'description_en':
+        'Small traditional gözleme bites made with thin yufka dough and a spinach filling.',
+    'category': 'turkish_classic',
+    'tags': ['vegetarian', 'traditional', 'fiber'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 15,
+    'cook_time_minutes': 10,
+    'difficulty': 'medium',
+    'calories': 230,
+    'protein': 8,
+    'carbs': 26,
+    'fat': 10,
+    'fiber': 3,
+    'ingredients': [
+      {'name': 'Yufka', 'amount': 40, 'unit': 'g', 'calories': 110},
+      {'name': 'Taze Ispanak', 'amount': 60, 'unit': 'g', 'calories': 18},
+      {'name': 'Beyaz Peynir', 'amount': 30, 'unit': 'g', 'calories': 75},
+      {'name': 'Zeytinyağı', 'amount': 3, 'unit': 'ml', 'calories': 27},
+    ],
+    'instructions': [
+      '1. İç Harcı: Ispanağı ince kıyıp peynirle karıştırın.',
+      '2. Hazırlık: Yufkayı küçük üçgenler halinde kesip iç harcını yerleştirin.',
+      '3. Katlama: Üçgen şeklinde katlayıp kenarlarını kapatın.',
+      '4. Pişirme: Az yağlı tavada her iki tarafı altın rengi olana kadar pişirin.'
+    ]
+  },
+  {
+    'id': 'yogurtlu_granola_kase',
+    'name': 'Yoğurtlu Granola & Bal Kase',
+    'name_en': 'Yogurt Granola Bowl with Honey',
+    'description':
+        'Yoğurt, çıtır granola ve balın bir araya geldiği doyurucu ve tatlandırıcı ara öğün.',
+    'description_en':
+        'A filling, naturally sweetened snack combining yogurt, crunchy granola, and honey.',
+    'category': 'breakfast',
+    'tags': ['vegetarian', 'fiber', 'quick'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 3,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 250,
+    'protein': 13,
+    'carbs': 32,
+    'fat': 8,
+    'fiber': 3,
+    'ingredients': [
+      {'name': 'Yoğurt', 'amount': 150, 'unit': 'g', 'calories': 110},
+      {'name': 'Granola', 'amount': 30, 'unit': 'g', 'calories': 120},
+      {'name': 'Bal', 'amount': 8, 'unit': 'g', 'calories': 20},
+    ],
+    'instructions': [
+      '1. Hazırlık: Yoğurdu bir kaseye alın.',
+      '2. Topping: Üzerine granolayı serpiştirin.',
+      '3. Tatlandırma: Bir tel bal gezdirin.',
+      '4. Servis: Hemen, çıtırlığını kaybetmeden tüketin.'
+    ]
+  },
+  {
+    'id': 'chia_puding_meyveli',
+    'name': 'Meyveli Chia Tohumu Pudingi',
+    'name_en': 'Fruity Chia Seed Pudding',
+    'description':
+        'Gece boyu bekletilen chia tohumu ve badem sütüyle hazırlanan lifli, hafif puding.',
+    'description_en':
+        'A fiber-rich, light pudding made by soaking chia seeds overnight in almond milk.',
+    'category': 'breakfast',
+    'tags': ['vegan', 'fiber', 'overnight'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 180,
+    'protein': 7,
+    'carbs': 20,
+    'fat': 8,
+    'fiber': 8,
+    'ingredients': [
+      {'name': 'Chia Tohumu', 'amount': 25, 'unit': 'g', 'calories': 120},
+      {'name': 'Badem Sütü', 'amount': 150, 'unit': 'ml', 'calories': 40},
+      {'name': 'Kırmızı Meyveler', 'amount': 40, 'unit': 'g', 'calories': 20},
+    ],
+    'instructions': [
+      '1. Karıştırma: Chia tohumlarını badem sütüyle bir kavanozda karıştırın.',
+      '2. Bekletme: Buzdolabında en az 4 saat (tercihen gece boyu) bekletin.',
+      '3. Kontrol: Puding kıvamı alınca üzerini karıştırın.',
+      '4. Servis: Üzerine kırmızı meyveleri ekleyip soğuk servis edin.'
+    ]
+  },
+  {
+    'id': 'ton_balikli_kraker_lokmasi',
+    'name': 'Ton Balıklı Kraker Lokmaları',
+    'name_en': 'Tuna Cracker Bites',
+    'description':
+        'Süzülmüş ton balığı ve az yağlı yoğurtla hazırlanan, yüksek proteinli kraker lokmaları.',
+    'description_en':
+        'High-protein cracker bites topped with drained tuna and light yogurt.',
+    'category': 'fish',
+    'tags': ['high_protein', 'quick', 'post_workout'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 200,
+    'protein': 16,
+    'carbs': 14,
+    'fat': 9,
+    'fiber': 2,
+    'ingredients': [
+      {
+        'name': 'Ton Balığı (Suda, Süzülmüş)',
+        'amount': 60,
+        'unit': 'g',
+        'calories': 70
+      },
+      {'name': 'Tam Tahıllı Kraker', 'amount': 20, 'unit': 'g', 'calories': 80},
+      {'name': 'Yoğurt & Limon', 'amount': 30, 'unit': 'g', 'calories': 28},
+      {'name': 'Zeytinyağı', 'amount': 2, 'unit': 'ml', 'calories': 22},
+    ],
+    'instructions': [
+      '1. Karıştırma: Süzülmüş ton balığını yoğurt, limon suyu ve karabiberle karıştırın.',
+      '2. Dizme: Krakerlerin üzerine eşit şekilde harcı yerleştirin.',
+      '3. Topping: Üzerine birkaç damla zeytinyağı gezdirin.',
+      '4. Servis: Hazırlar hazırlanmaz taze olarak tüketin.'
+    ]
+  },
+  {
+    'id': 'pastirmali_kraker',
+    'name': 'Pastırmalı & Kaşarlı Kraker',
+    'name_en': 'Pastırma and Kashar Cracker Bites',
+    'description':
+        'İnce dilim pastırma ve eritilmiş kaşar peyniriyle hazırlanan yoğun aromalı kraker lokmaları.',
+    'description_en':
+        'Intensely flavored cracker bites with thin pastırma slices and melted kashar cheese.',
+    'category': 'meat',
+    'tags': ['high_protein', 'traditional', 'quick'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 5,
+    'cook_time_minutes': 3,
+    'difficulty': 'easy',
+    'calories': 210,
+    'protein': 13,
+    'carbs': 14,
+    'fat': 12,
+    'fiber': 1,
+    'ingredients': [
+      {'name': 'Tam Tahıllı Kraker', 'amount': 20, 'unit': 'g', 'calories': 80},
+      {
+        'name': 'Pastırma (İnce Dilim)',
+        'amount': 25,
+        'unit': 'g',
+        'calories': 60
+      },
+      {'name': 'Kaşar Peyniri', 'amount': 20, 'unit': 'g', 'calories': 70},
+    ],
+    'instructions': [
+      '1. Dizme: Krakerlerin üzerine ince dilim pastırma ve kaşar peynirini yerleştirin.',
+      '2. Isıtma: Fırında veya tost makinesinde peynir eriyene kadar 2-3 dakika ısıtın.',
+      '3. Dinlendirme: Çok sıcak servis etmeden önce 1 dakika bekletin.',
+      '4. Servis: Sıcak olarak tüketin.'
+    ]
+  },
+  {
+    'id': 'tavuklu_mini_sandvic',
+    'name': 'Tavuklu Mini Sandviç Lokmaları',
+    'name_en': 'Mini Chicken Sandwich Bites',
+    'description':
+        'Izgara tavuk göğsü ve tam buğday ekmeğiyle hazırlanan yüksek proteinli mini sandviçler.',
+    'description_en':
+        'High-protein mini sandwiches made with grilled chicken breast and whole wheat bread.',
+    'category': 'chicken',
+    'tags': ['high_protein', 'post_workout', 'quick'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 8,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 220,
+    'protein': 18,
+    'carbs': 20,
+    'fat': 7,
+    'fiber': 2,
+    'ingredients': [
+      {
+        'name': 'Izgara Tavuk Göğsü (Parça)',
+        'amount': 70,
+        'unit': 'g',
+        'calories': 110
+      },
+      {'name': 'Tam Buğday Ekmeği', 'amount': 40, 'unit': 'g', 'calories': 95},
+      {'name': 'Marul & Domates', 'amount': 20, 'unit': 'g', 'calories': 15},
+    ],
+    'instructions': [
+      '1. Hazırlık: Izgara tavuk göğsünü ince dilimler halinde kesin.',
+      '2. Dizme: Ekmek dilimlerinin arasına marul, domates ve tavuğu yerleştirin.',
+      '3. Kesme: Küçük kare veya üçgen lokmalar halinde kesin.',
+      '4. Servis: Oda sıcaklığında veya soğuk olarak tüketin.'
+    ]
+  },
+  {
+    'id': 'portakal_dilim_badem',
+    'name': 'Portakal Dilimleri & Çiğ Badem',
+    'name_en': 'Orange Slices with Raw Almonds',
+    'description':
+        'C vitamini deposu portakal ve çiğ bademle hazırlanan taze, canlandırıcı atıştırmalık.',
+    'description_en':
+        'A fresh, energizing snack of vitamin-C-rich orange slices and raw almonds.',
+    'category': 'veggie',
+    'tags': ['fiber', 'fresh', 'quick'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 3,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 170,
+    'protein': 5,
+    'carbs': 20,
+    'fat': 9,
+    'fiber': 4,
+    'ingredients': [
+      {'name': 'Portakal', 'amount': 1, 'unit': 'adet', 'calories': 85},
+      {'name': 'Çiğ Badem', 'amount': 15, 'unit': 'g', 'calories': 85},
+    ],
+    'instructions': [
+      '1. Hazırlık: Portakalı soyup dilimler halinde ayırın.',
+      '2. Servis: Bademlerle birlikte bir tabağa dizin.',
+      '3. Tüketim: Taze haliyle afiyetle için.',
+      '4. İpucu: Antrenman öncesi hızlı enerji için idealdir.'
+    ]
+  },
+  {
+    'id': 'karpuz_beyaz_peynir',
+    'name': 'Karpuz & Beyaz Peynir',
+    'name_en': 'Watermelon with White Cheese',
+    'description':
+        'Yaz aylarının klasik ikilisi; serinletici karpuz ve tuzlu beyaz peynirin tatlı-tuzlu uyumu.',
+    'description_en':
+        'A classic summer pairing — the sweet-and-salty harmony of cooling watermelon and salty white cheese.',
+    'category': 'veggie',
+    'tags': ['low_calorie', 'fresh', 'vegetarian'],
+    'meal_type': 'snack',
+    'prep_time_minutes': 3,
+    'cook_time_minutes': 0,
+    'difficulty': 'easy',
+    'calories': 150,
+    'protein': 7,
+    'carbs': 18,
+    'fat': 6,
+    'fiber': 2,
+    'ingredients': [
+      {'name': 'Karpuz (Dilim)', 'amount': 250, 'unit': 'g', 'calories': 80},
+      {
+        'name': 'Beyaz Peynir (Az Yağlı)',
+        'amount': 30,
+        'unit': 'g',
+        'calories': 70
+      },
+    ],
+    'instructions': [
+      '1. Hazırlık: Karpuzu kalın dilimler halinde kesin.',
+      '2. Servis: Beyaz peyniri küçük küpler halinde doğrayın.',
+      '3. Düzenleme: Karpuz dilimlerinin yanına peynir küplerini yerleştirin.',
+      '4. Tüketim: Soğuk olarak, sıcak yaz günlerinde tüketin.'
+    ]
+  },
+];
+
 final List<Map<String, dynamic>> allDishes = [
   ...meatBatch1,
   ...fishBatch1,
@@ -3043,4 +3896,5 @@ final List<Map<String, dynamic>> allDishes = [
   ...dietBatch1,
   ...sportBatch1,
   ...turkishClassicsBatch,
+  ...snackBatch1,
 ];

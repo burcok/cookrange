@@ -501,6 +501,16 @@
         "cta": "Get Premium",
         "free": "Continue with the free version"
       },
+      "referral": {
+        "title": "Got a referral code?",
+        "subtitle": "If a gym or a friend shared one with you, add it here — totally optional.",
+        "hint": "Enter code",
+        "verified_gym": "This code was shared by {gym}.",
+        "verified_generic": "Code applied.",
+        "invalid_note": "We couldn't verify this code — you can try again later from Settings.",
+        "paste_button": "Paste from clipboard",
+        "paste_empty": "Nothing to paste — your clipboard is empty."
+      },
       "report": {
         "title": "Here's your plan, {name}",
         "subtitle": "Built from everything you told us.",
@@ -757,7 +767,9 @@
     "equipment_empty": "No equipment listed",
     "disliked_foods_title": "Disliked Foods",
     "friend_request_sent": "Request sent to {name}",
-    "share_profile": "Share Profile"
+    "share_profile": "Share Profile",
+    "level_badge": "Lvl {level} · {into}/{forNext} XP",
+    "pro_verified_badge": "Pro"
   },
   "offline": {
     "title": "Offline Mode",
@@ -900,14 +912,16 @@
       "enter_code_title": "Enter Referral Code",
       "enter_code_label": "Referral Code",
       "apply": "Apply Code",
-      "applied_success": "🎉 Code applied! You both get 7 days of Premium."
+      "applied_success": "🎉 Code applied! You both get 7 days of Premium.",
+      "signed_in_notice": "Invite codes only work for new signups.",
+      "applied_gym_success": "🎉 Code applied! You're now connected to {gym}."
     },
     "business": {
       "title": "Go Pro",
       "register_gym": "Register Your Gym",
       "register_gym_sub": "Manage members, check-ins & analytics",
       "become_coach": "Become a Coach",
-      "become_coach_sub": "Coach clients and build your roster",
+      "become_coach_sub": "Coach clients and manage your client list",
       "my_gym": "My Gym",
       "my_gym_sub": "Manage your gym profile and members",
       "my_coaching": "My Coaching",
@@ -962,7 +976,16 @@
       "lunch": "Lunch",
       "dinner": "Dinner"
     },
-    "test_mode": "Test Mode"
+    "test_mode": "Test Mode",
+    "attribution": {
+      "title": "You signed up via {gym}",
+      "subtitle": "This gym may see aggregate sign-up stats, never your personal identity.",
+      "a_gym": "a gym",
+      "disconnect": "Disconnect",
+      "disconnect_title": "Disconnect from this gym?",
+      "disconnect_body": "This hides the banner on your profile. It doesn't change anything for the gym — their records of your sign-up stay as they are.",
+      "disconnect_confirm": "Disconnect"
+    }
   },
   "sharing": {
     "recipe_title": "🍽️ {name}\n🔥 {calories} kcal\nProtein: {protein}g · Carbs: {carbs}g · Fat: {fat}g\n\nDiscover AI-powered meal plans on Cookrange! {appTag}{link}",
@@ -1048,7 +1071,18 @@
       "cat_reminders": "Reminders",
       "gym_war_ended_won_title": "🏆 You won the gym war!",
       "gym_war_ended_lost_title": "Gym war ended",
-      "gym_war_ended_body": "Ended {myScore}-{otherScore} in check-ins."
+      "gym_war_ended_body": "Ended {myScore}-{otherScore} in check-ins.",
+      "friend_at_gym_title": "{actor} is at {gym} right now",
+      "plan_offer_received_title": "{actor} sent you a meal plan",
+      "plan_offer_received_body": "Take a look at \"{name}\"",
+      "plan_offer_declined_title": "{actor} isn't taking this plan right now",
+      "plan_offer_declined_body": "{reason}",
+      "progress_share_invite_title": "{actor} would like you to share your progress",
+      "progress_share_invite_body": "You can turn on progress sharing from the Consent Center.",
+      "level_up_title": "You reached Level {level}! 🎖️",
+      "level_up_body": "You've earned {xp} XP in total.",
+      "gym_attribution_title": "New sign-up! 🎉",
+      "gym_attribution_body": "Someone joined Cookrange using your invite code."
     }
   },
   "common": {
@@ -1087,7 +1121,10 @@
     "something_wrong": "Something went wrong",
     "error_with_details": "Error: {details}",
     "unit_kcal": "kcal",
-    "unit_kg": "kg"
+    "unit_kg": "kg",
+    "you": "You",
+    "not_signed_in": "Not signed in",
+    "sign_in_to_continue": "Sign in to continue"
   },
   "errors": {
     "general": "Something went wrong",
@@ -1252,6 +1289,10 @@
     "error": {
       "log_meal_failed": "Could not log meal: {details}",
       "swap_meal_failed": "Could not swap meal: {details}"
+    },
+    "plan_offer_banner": {
+      "title": "Plan Offers",
+      "body": "{n} new meal plan(s) waiting for you"
     }
   },
   "ai_chat": {
@@ -1289,7 +1330,12 @@
     "score_good": "Good",
     "score_needs_work": "Needs Work",
     "kcal": "kcal",
-    "g": "g"
+    "g": "g",
+    "trend_30day_title": "30-Day Trend",
+    "trend_30day_subtitle": "See your nutrition trend over the last 30 days — Premium",
+    "trend_paywall_title": "Nutrition Trend History",
+    "trend_paywall_desc": "Unlock your 30-day nutrition trend, beyond this week's view.",
+    "trend_days_logged_label": "Days Logged"
   },
   "assistant": {
     "how_can_i_help": "How can I help you?",
@@ -1443,7 +1489,67 @@
       "created_success": "Group created!",
       "join_success": "You joined {group}",
       "not_found": "Group not found",
-      "new": "New"
+      "new": "New",
+      "active_today_title": "Most active groups today",
+      "new_in_city_title": "New in {city}",
+      "live_now": "Live",
+      "request_join": "Request",
+      "view_group": "View",
+      "request_sent": "Your request was sent",
+      "request_dialog_title": "Send a join request",
+      "request_dialog_hint": "Add a short note (optional)",
+      "request_dialog_send": "Send request",
+      "empty_active_title": "No active groups yet",
+      "empty_city_title": "Nothing here yet in {city}",
+      "moderation": {
+        "mute": "Mute",
+        "kick": "Kick",
+        "ban": "Ban",
+        "unban": "Unban",
+        "unmute": "Unmute",
+        "action_success": "Action completed.",
+        "action_error": "Something went wrong. Please try again.",
+        "reason_label": "Reason",
+        "reason_hint": "Explain why (optional, but helps if this is appealed)",
+        "duration_label": "Mute duration",
+        "duration_1h": "1 hour",
+        "duration_1d": "1 day",
+        "duration_7d": "7 days",
+        "duration_30d": "30 days",
+        "duration_minutes": "{n} min",
+        "member_fallback": "Member",
+        "you": "you",
+        "banned_badge": "Banned",
+        "muted_badge": "Muted",
+        "role_owner": "Owner",
+        "role_admin": "Admin",
+        "role_moderator": "Moderator",
+        "history_title": "Moderation history",
+        "history_empty": "No moderation actions yet",
+        "action_mute": "Muted",
+        "action_kick": "Kicked",
+        "action_ban": "Banned",
+        "action_unmute": "Unmuted",
+        "action_unban": "Unbanned",
+        "approve": "Approve",
+        "decline": "Decline",
+        "pending_requests_title": "Pending requests",
+        "pending_requests_empty": "No pending requests",
+        "pending_requests_empty_desc": "New join requests will appear here."
+      },
+      "leaderboard_title": "Group Leaderboard",
+      "leaderboard_subtitle": "This week's top contributors",
+      "leaderboard_empty_title": "No activity yet",
+      "leaderboard_empty_sub": "Post, comment, or chat in the group to appear here.",
+      "leaderboard_score_label": "pts",
+      "leaderboard_you": "You",
+      "leaderboard_nav_tooltip": "Leaderboard",
+      "export_csv": "Export CSV",
+      "export_paywall_title": "Export Member List",
+      "export_paywall_desc": "Premium group admins can export the member list as CSV.",
+      "export_success": "Member list exported.",
+      "export_error": "Couldn't export the member list. Try again.",
+      "invite_only": "Invite only"
     },
     "no_posts": "No posts found. Be the first to share!",
     "all_posts_loaded": "You've seen all posts",
@@ -1476,6 +1582,7 @@
     "meal_plan_override_title": "Meal Plan",
     "goal_override_title": "Goal",
     "content_blocked": "Your message contains content that is not allowed. Please review and try again.",
+    "content_check_unavailable": "We couldn't check your post right now. Please try again in a moment.",
     "post_saved": "Post saved",
     "post_unsaved": "Post removed from saved",
     "post_type": {
@@ -1633,14 +1740,17 @@
       "new_chat": "New Chat",
       "share_meal": "Share Meal",
       "send_signal": "Send Signal",
-      "placeholder_message_input": "Type a message..."
+      "placeholder_message_input": "Type a message...",
+      "attach": "Attach media",
+      "send": "Send message",
+      "camera": "Camera",
+      "gallery": "Gallery"
     },
-    "filter_title": "Chat Filters",
     "filters": {
       "all": "All",
       "gym": "My Gym",
-      "nutrition": "Nutrition",
-      "private": "Private"
+      "private": "DM",
+      "groups": "Groups"
     },
     "find_friends_cta": "Find Friends",
     "group": {
@@ -1664,6 +1774,9 @@
     "no_results": "No results found.",
     "offline": "Offline",
     "online": "Online",
+    "preview": {
+      "photo": "Photo"
+    },
     "recipe_group": {
       "new_recipes": "{count} New Recipes"
     },
@@ -1679,7 +1792,105 @@
     },
     "typing": "Typing...",
     "unnamed_user": "Unnamed User",
-    "view_profile": "View Profile"
+    "view_profile": "View Profile",
+    "attach_sheet_title": "Add Media",
+    "back_to_latest": "Back to Latest",
+    "jump_to_date": "Jump to Date",
+    "copied_to_clipboard": "Copied to clipboard",
+    "forwarded_to": "Forwarded to {name}",
+    "member_count_label": "{count} members",
+    "unread_messages_divider": "{count} unread messages",
+    "message_pinned": "Message pinned",
+    "message_unpinned": "Message unpinned",
+    "message_starred": "Added to starred messages",
+    "message_unstarred": "Removed from starred messages",
+    "context_menu": {
+      "reply": "Reply",
+      "forward": "Forward",
+      "copy": "Copy",
+      "pin": "Pin Message",
+      "unpin": "Unpin Message",
+      "star": "Star",
+      "unstar": "Unstar",
+      "edit": "Edit",
+      "delete_for_me": "Delete for Me",
+      "delete_for_everyone": "Delete for Everyone",
+      "delete_as_moderator": "Remove Message",
+      "report": "Report Message"
+    },
+    "delete_confirm": {
+      "title": "Delete message?",
+      "for_everyone_message": "This message will be deleted for everyone in this chat. This can't be undone.",
+      "moderator_message": "This message will be removed from the group for everyone. This can't be undone.",
+      "for_me_message": "This message will be deleted for you only."
+    },
+    "edit_message": {
+      "editing_label": "Editing message"
+    },
+    "forward_sheet": {
+      "title": "Forward to...",
+      "no_chats": "No other chats yet."
+    },
+    "message": {
+      "edited_tag": "edited",
+      "forwarded_tag": "Forwarded",
+      "deleted_placeholder": "This message was deleted"
+    },
+    "media_gallery": {
+      "title": "Shared Media",
+      "empty": "No photos shared yet"
+    },
+    "more_reactions": {
+      "title": "Add reaction",
+      "hint": "Type or paste an emoji"
+    },
+    "pinned": {
+      "label": "Pinned Message",
+      "unpin": "Unpin"
+    },
+    "search": {
+      "placeholder": "Search in this conversation",
+      "no_results": "No messages found",
+      "result_count": "{count} results",
+      "scope_note": "Searches the most recent messages"
+    },
+    "typing_indicator": {
+      "one": "{name} is typing",
+      "two": "{name1} and {name2} are typing",
+      "many": "Several people are typing"
+    },
+    "unread_filter": "Unread",
+    "no_unread_chats": "No unread chats",
+    "archived_row": {
+      "title": "Archived ({count})"
+    },
+    "archived_sheet": {
+      "title": "Archived Chats",
+      "empty": "No archived chats"
+    },
+    "list_actions": {
+      "pin": "Pin Chat",
+      "unpin": "Unpin Chat",
+      "archive": "Archive Chat",
+      "unarchive": "Unarchive Chat",
+      "mute": "Mute Chat",
+      "unmute": "Unmute Chat",
+      "delete": "Delete Chat"
+    },
+    "delete_chat_confirm": {
+      "title": "Delete this chat?",
+      "message": "This conversation will be removed from your list. It will reappear if new messages arrive."
+    },
+    "toast": {
+      "archived": "Chat archived",
+      "unarchived": "Chat unarchived",
+      "deleted": "Chat removed from your list"
+    },
+    "plan_offer": {
+      "label": "Meal Plan",
+      "view_cta": "View Offer",
+      "not_found": "This offer is no longer available."
+    }
   },
   "signal": {
     "title": "Send Signal",
@@ -1751,7 +1962,10 @@
     "tab_friends": "Friends",
     "empty": "No data yet.",
     "empty_friends": "Add friends to see their rankings.",
-    "error": "Failed to load leaderboard."
+    "error": "Failed to load leaderboard.",
+    "tab_weekly_xp": "This Week",
+    "empty_weekly_xp": "No XP earned yet this week.",
+    "xp_suffix": "XP"
   },
   "premium": {
     "badge": "Get Premium",
@@ -1865,7 +2079,7 @@
     "search_hint": "e.g. Salmon with asparagus...",
     "generate_error": "Could not generate recipe. Please try again.",
     "ai_unavailable": "AI is unavailable right now. Please try again in a moment.",
-    "try_searching": "Try searching for:",
+    "try_searching": "Try generating:",
     "suggestion.pasta": "Quick Pasta",
     "suggestion.chicken": "Low Carb Chicken",
     "suggestion.vegan": "Vegan Burger",
@@ -1935,7 +2149,8 @@
     "challenges": "Challenges",
     "referral": "Referral Rewards",
     "saved": "Preferences saved",
-    "reminders": "Reminders & re-engagement"
+    "reminders": "Reminders & re-engagement",
+    "presence": "Friend at gym"
   },
   "dietary_prefs": {
     "title": "Dietary Preferences",
@@ -2012,6 +2227,21 @@
     "field_public": "Public Gym",
     "field_public_sub": "Anyone can discover and join your gym",
     "field_tags": "Fitness Categories",
+    "field_capacity": "Capacity",
+    "field_capacity_hint": "Max. concurrent members (optional)",
+    "field_opening_hours": "Opening Hours",
+    "opening_hours_closed": "Closed",
+    "opening_hours_open_label": "Open",
+    "opening_hours_close_label": "Close",
+    "day_mon": "Monday",
+    "day_tue": "Tuesday",
+    "day_wed": "Wednesday",
+    "day_thu": "Thursday",
+    "day_fri": "Friday",
+    "day_sat": "Saturday",
+    "day_sun": "Sunday",
+    "field_geofence": "Automatic Check-in (Geofencing)",
+    "field_geofence_caption": "Lets members get automatic background check-in near your gym once this feature launches. This only saves your preference — it isn't active yet.",
     "setup_name_required": "Please enter a gym name",
     "setup_next": "Continue",
     "setup_save": "Save Changes",
@@ -2040,6 +2270,7 @@
     "joined_today": "Joined today",
     "stat_location": "Location",
     "stat_visibility": "Visibility",
+    "occupancy_title": "Currently inside",
     "visibility_public": "Public",
     "visibility_private": "Private",
     "action_members": "Manage Members",
@@ -2181,9 +2412,14 @@
     "docs_count": "{n}/2 documents uploaded",
     "location_city_label": "City",
     "location_city_hint": "Select your city",
+    "location_district_label": "District",
+    "location_district_hint": "Select your district",
     "location_map_hint": "Tap the map to place your gym's location",
     "location_coords_info": "Your coordinates are used to show your gym on the map, verify QR check-in distances, and display your gym to nearby users.",
     "location_address_auto": "Detected address",
+    "checkin_radius_label": "Check-in Radius",
+    "checkin_radius_caption": "Members within this distance of your gym's pinned location can check in.",
+    "checkin_radius_unit_m": "m",
     "location_city_required": "Please select a city.",
     "location_pin_required": "Please place a pin on the map.",
     "setup_submit_application": "Submit Application",
@@ -2195,6 +2431,13 @@
     "map_view_gym": "View Gym",
     "nearby_consent_title": "Find Gyms Near You",
     "nearby_consent_rationale": "Cookrange will use your device location only to sort gyms by distance. Your location is processed on your device for this screen and is NOT sent to or stored on our servers (KVKK / GDPR). You can decline and keep browsing by city instead.",
+    "auto_checkin_title": "Automatic Check-in",
+    "auto_checkin_subtitle": "Detect your visits automatically, without scanning or tapping anything",
+    "auto_checkin_limit_reached": "You can turn on automatic check-in for up to 3 gyms at a time. Turn one off first.",
+    "auto_checkin_health_check": "Automatic check-in doesn't seem to be working for this gym. Check that background location is still allowed in Settings.",
+    "are_you_here_title": "Are you at the gym?",
+    "are_you_here_body": "It looks like you're near {gym}. Want us to record a check-in?",
+    "are_you_here_yes": "Yes, record it",
     "details_btn": "Details",
     "join_qr_btn": "Scan QR to Join",
     "join_qr_title": "Scan Invite QR",
@@ -2227,7 +2470,53 @@
     "stats_members": "Members",
     "stats_tier": "Tier",
     "stats_access": "Access",
-    "analytics_export_csv": "Export CSV"
+    "analytics_export_csv": "Export CSV",
+    "action_meal_plan_templates": "Meal Plan Templates",
+    "action_send_plan": "Send Plan",
+    "analytics_export_date_range": "Date range",
+    "analytics_export_fields_preview": "This export will include",
+    "analytics_export_tier_filter": "Only members who share progress",
+    "analytics_no_sharing_yet": "No members have turned on progress sharing yet.",
+    "analytics_sharing_aggregate_gated": "Needs at least {threshold} members sharing progress to show an average (currently {count}).",
+    "analytics_sharing_aggregate_title": "Progress-sharing overview",
+    "analytics_sharing_avg_frequency": "Avg. check-ins / week",
+    "analytics_sharing_avg_streak": "Avg. streak (weeks)",
+    "analytics_sharing_included_count": "Based on {count} members who share progress",
+    "leaderboard_xp_label": "XP",
+    "action_invite_codes": "Invite Codes",
+    "invite": {
+      "title": "Invite Codes",
+      "create_btn": "New Code",
+      "empty_title": "No invite codes yet",
+      "empty_message": "Create a code for your front desk, a coach's page, or a campaign — share the QR or print it as a poster.",
+      "usage_count": "{count} sign-ups",
+      "create_sheet_title": "New Invite Code",
+      "field_campaign": "Campaign",
+      "field_campaign_hint": "e.g. Front desk, Coach Ahmet's Instagram",
+      "field_location_note": "Location note",
+      "field_location_note_hint": "e.g. Kadıköy branch, cardio floor",
+      "create_submit": "Create Code",
+      "create_error": "Couldn't create the code. Please try again.",
+      "detail_title": "Invite Code",
+      "link_copied": "Link copied",
+      "poster_export_btn": "Export Poster",
+      "poster_headline": "Scan to join us on Cookrange",
+      "step1": "Download the app",
+      "step2": "Scan this code",
+      "step3": "Continue signing up",
+      "funnel_signups": "Sign-ups",
+      "funnel_premium": "Went Premium"
+    },
+    "action_earnings": "My Earnings",
+    "earnings": {
+      "title": "Gym Earnings",
+      "manual_payout_title": "Payouts are processed manually",
+      "manual_payout_body": "There is no automated payout rail yet. When your balance is eligible, Cookrange will contact you directly to arrange payment.",
+      "no_earnings": "No Earnings Yet",
+      "no_earnings_msg": "Share your invite codes — you'll earn a commission when someone who joins through one of them upgrades to Premium.",
+      "row_title": "Premium referral via invite code",
+      "view_contract": "View gym partner agreement"
+    }
   },
   "coach": {
     "setup_title": "Coach Profile Setup",
@@ -2389,19 +2678,32 @@
     "coaching": {
       "error": {
         "end_failed": "Could not end coaching. Try again."
-      },
-      "warning": {
-        "ai_not_configured": "AI reports require AI configuration."
       }
     },
     "client_detail": {
-      "section_ai_report": "AI Report",
-      "section_focus_areas": "Focus Areas",
-      "section_next_steps": "Next Steps"
+      "checking_summary": "Checking for a saved summary…",
+      "field_last_logged_at": "Last logged {date}",
+      "field_logging_regularity": "Logged {pct}% of the last 30 days",
+      "field_never_logged": "Never logged a meal",
+      "field_plan_adherence": "Plan adherence: {pct}%",
+      "field_streak_days": "{days}-day logging streak",
+      "field_weight_trend": "Weight trend: {trend}",
+      "generated_at": "Generated on {date}",
+      "insufficient_data": "Not enough data yet",
+      "invite_button": "Send sharing invite",
+      "invite_error": "Couldn't send the invite. Please try again.",
+      "invite_sent": "Invite sent",
+      "not_authorized": "This coaching relationship could no longer be verified.",
+      "rate_limited": "A report was already generated for this member today. Check back tomorrow.",
+      "tier0_empty_title": "This member hasn't turned on progress sharing",
+      "tier_badge": "Tier {tier}",
+      "tier_now_shared": "This member just turned sharing on — you can generate a report now."
     },
     "dashboard": {
       "see_all": "See all ({count})",
-      "action_edit_profile": "Edit Profile"
+      "action_edit_profile": "Edit Profile",
+      "action_meal_plan_templates": "Meal Plan Templates",
+      "action_send_plan": "Send Plan"
     },
     "stats_clients": "Clients",
     "stats_reviews": "Reviews",
@@ -2497,19 +2799,31 @@
     "weekly_recap_share": "Share Recap",
     "weekly_recap_low_data": "Log more days for a full AI analysis",
     "weekly_recap_no_recap": "No recap yet this week",
-    "weekly_recap_no_recap_sub": "Generate your weekly AI coach recap to see wins, challenges and your focus area.",
+    "weekly_recap_no_recap_sub": "Generate your weekly coach recap to see wins, challenges and your focus area.",
     "weekly_recap_week_of": "Week of {date}",
     "weekly_recap_error": "Could not generate recap. Please try again.",
     "weekly_recap_card_title": "Weekly Recap",
     "weekly_recap_card_cta": "Generate",
-    "weekly_recap_card_view": "View recap"
+    "weekly_recap_card_view": "View recap",
+    "paywall_feature4": "30-day nutrition trend history",
+    "credits_multiplier_title": "2x Credit Multiplier Active",
+    "credits_multiplier_desc": "As a Premium member, you earn double AI credits (and have double caps) from community engagement.",
+    "twin_detailed_title": "Detailed Breakdown",
+    "twin_detailed_subtitle": "See the exact numbers behind your projection — Premium",
+    "twin_detailed_paywall_title": "Detailed AI Analysis",
+    "twin_detailed_paywall_desc": "Unlock the exact BMR, TDEE, and logged-calorie numbers behind your projection.",
+    "twin_detailed_regenerate_hint": "Regenerate your projection to see this breakdown.",
+    "twin_detailed_bmr": "BMR",
+    "twin_detailed_tdee": "TDEE",
+    "twin_detailed_avg_logged": "Avg. Logged",
+    "twin_detailed_days_logged": "Days Logged"
   },
   "ai_credits": {
     "unlimited": "Unlimited",
     "remaining": "{n} AI calls left",
     "warning": "{n} calls left",
     "exhausted": "Limit reached",
-    "upgrade_prompt": "Upgrade to Premium for unlimited AI access.",
+    "upgrade_prompt": "Upgrade to Premium for 20 daily AI credits.",
     "reset_info": "Resets monthly",
     "monthly_limit": "20 free AI calls per month"
   },
@@ -2587,6 +2901,10 @@
       "title": "Location Access",
       "rationale": "Cookrange uses your location to verify you're at the gym for GPS check-in, and to sort nearby gyms and coaches by distance. Your location is used only for these, computed on your device, and is not stored on our servers.",
       "rationale_stored_note": "Your location is used only to verify check-in and is not stored on our servers afterwards."
+    },
+    "location_always": {
+      "title": "Automatic Gym Check-in",
+      "rationale": "To detect when you enter or leave the gym automatically — even when the app is closed — your phone needs to allow Cookrange to use location \"Always\", not just while the app is open. Your exact coordinates are never sent to or stored on our servers, only the gym's name and your entry/exit time. You can turn this off anytime."
     },
     "notifications": {
       "title": "Stay on Track",
@@ -2792,6 +3110,8 @@
     "dish_macros": "Macros (per serving)",
     "dish_cat_chicken": "Chicken",
     "dish_cat_red_meat": "Red Meat",
+    "dish_cat_meat": "Meat",
+    "dish_cat_veggie": "Vegetable",
     "dish_cat_fish": "Fish",
     "dish_cat_breakfast": "Breakfast",
     "dish_cat_vegetarian": "Vegetarian",
@@ -2962,11 +3282,21 @@
     "section_programs_sub": "Program marketplace approvals",
     "section_reports_sub": "Moderation queue",
     "section_privacy_sub": "KVKK/GDPR data requests",
+    "moderation_appeals": "Moderation Appeals",
+    "section_moderation_appeals_sub": "Review appeals against group moderation actions",
+    "moderation_appeal_note": "Note",
+    "moderation_appeal_note_hint": "Add a note for your records (optional)",
+    "moderation_appeal_notify_upheld_title": "Your appeal was upheld",
+    "moderation_appeal_notify_upheld_body": "Your appeal regarding {group} was reviewed and upheld. Any related restriction has been lifted.",
+    "moderation_appeal_notify_denied_title": "Your appeal was reviewed",
+    "moderation_appeal_notify_denied_body": "Your appeal regarding {group} was reviewed. The original moderation decision stands.",
+    "moderation_appeals_empty": "No appeals to review",
+    "moderation_appeals_empty_desc": "When someone appeals a moderation action, it will appear here.",
     "section_users_sub": "Search, roles, bans",
     "section_abuse_sub": "Bans & AI usage outliers",
     "section_broadcasts_sub": "Push notifications",
     "section_credits_sub": "AI credits & referral codes",
-    "section_dishes_sub": "Recipe database",
+    "section_dishes_sub": "Dish pool",
     "section_analytics_sub": "KPIs & growth",
     "section_cost_sub": "Cost, revenue & profit",
     "section_appconfig_sub": "Model, version, flags",
@@ -2976,7 +3306,9 @@
     "hub_jump": "Jump to section",
     "cost_revenue_section": "Revenue & Subscribers",
     "cost_subscribers": "Premium subscribers",
-    "cost_mrr": "Estimated MRR"
+    "cost_mrr": "Estimated MRR",
+    "credit_restriction_appeal_notify_upheld_body": "Your appeal was reviewed and upheld. Your community credit restriction has been lifted.",
+    "credit_restriction_appeal_notify_denied_body": "Your appeal was reviewed. The restriction on your community credit stands."
   },
   "intro": {
     "skip": "Skip",
@@ -3101,7 +3433,8 @@
     "gym_share_text": "Check out {name} on Cookrange — the AI-powered fitness community! 🏋️ #Cookrange",
     "gym_share_subject": "Join {name} on Cookrange",
     "share_profile": "Share profile",
-    "share_gym": "Share gym"
+    "share_gym": "Share gym",
+    "gym_invite_poster_text": "Join {name} on Cookrange — scan the code to get started! 🍊 #Cookrange"
   },
   "report": {
     "title": "Report",
@@ -3119,7 +3452,8 @@
     "terms_title": "Terms of Use",
     "kvkk_title": "KVKK Clarification Text",
     "consent_title": "Explicit Consent",
-    "load_error": "Couldn't load this document. Please try again."
+    "load_error": "Couldn't load this document. Please try again.",
+    "marketplace_terms_title": "Gym Partner Agreement"
   },
   "consent": {
     "title": "Privacy & Consents",
@@ -3133,6 +3467,7 @@
     "needs_review_note": "Our privacy terms were updated. Please review and confirm this consent.",
     "required_note": "Turning this off limits the related feature.",
     "optional_note": "Optional.",
+    "gym_presence_notify_friends": "Let friends see when I'm at the gym",
     "view_documents": "View privacy documents",
     "withdraw_title": "Withdraw consent?",
     "withdraw_body": "We will stop using your data for this purpose. You can re-enable it anytime. Some features may stop working.",
@@ -3153,12 +3488,16 @@
       "notifications_title": "Notifications",
       "notifications_desc": "Send push notifications for activity, reminders and updates you opted into.",
       "marketing_title": "Marketing communications",
-      "marketing_desc": "Receive occasional product news and offers. You can opt out anytime."
+      "marketing_desc": "Receive occasional product news and offers. You can opt out anytime.",
+      "gym_presence_title": "Gym Presence",
+      "gym_presence_desc": "Using background location to create an automatic check-in when you enter your gym's boundary. Your latitude/longitude is never sent to our servers."
     },
     "prompt_title": "Your privacy, your choice",
     "prompt_body": "Cookrange uses some data (like health info and location) only with your permission. Take a moment to review and set your privacy choices. You can change them anytime in Settings.",
     "prompt_manage": "Review privacy choices",
-    "prompt_later": "Maybe later"
+    "prompt_later": "Maybe later",
+    "progress_sharing_entry_title": "Progress Sharing",
+    "progress_sharing_entry_subtitle": "See and manage what every gym or coach can see"
   },
   "privacy_request": {
     "title": "Privacy Requests",
@@ -3191,6 +3530,27 @@
       "rejected": "Rejected"
     }
   },
+  "moderation_appeal": {
+    "title": "Moderation Appeals",
+    "intro": "If you think a group moderation action (mute, removal, or ban) was a mistake, you can appeal it here. An admin will review it and you'll be notified of the outcome.",
+    "none": "No moderation history",
+    "none_desc": "You haven't been muted, removed, or banned from any group.",
+    "reason_from_moderator": "Moderator's reason",
+    "no_reason_given": "No reason was given.",
+    "message_label": "Why do you think this was a mistake?",
+    "message_hint": "Explain your side — this goes to the admin reviewing your appeal.",
+    "submit": "Submit Appeal",
+    "submitted": "Your appeal was submitted. We'll notify you of the outcome.",
+    "submit_error": "Couldn't submit your appeal. Please try again.",
+    "appeal_cta": "Appeal",
+    "admin_note_label": "Admin note",
+    "status": {
+      "pending": "Pending review",
+      "upheld": "Upheld",
+      "denied": "Denied"
+    },
+    "action_credit_restriction": "Credit Restriction"
+  },
   "water_reminder": {
     "notif_title": "Time to hydrate 💧",
     "notif_body": "A glass of water keeps you on track for your {liters} L goal.",
@@ -3213,6 +3573,8 @@
     "cat_all": "All",
     "cat_chicken": "Chicken",
     "cat_red_meat": "Red Meat",
+    "cat_meat": "Meat",
+    "cat_veggie": "Vegetable",
     "cat_fish": "Fish",
     "cat_breakfast": "Breakfast",
     "cat_vegetarian": "Vegetarian",
@@ -3269,6 +3631,22 @@
     "tier_legend": {
       "title": "Legend",
       "desc": "Reached the Legend reputation tier"
+    },
+    "level_50": {
+      "title": "Grandmaster",
+      "desc": "Reached level 50"
+    },
+    "group_top3": {
+      "title": "Top Contributor",
+      "desc": "Finished in your group's top 3 this week"
+    },
+    "group_streak4": {
+      "title": "On a Roll",
+      "desc": "Top 3 in your group 4 weeks in a row"
+    },
+    "gym_regular": {
+      "title": "Regular",
+      "desc": "Checked in at the gym 15 times"
     }
   },
   "app": {
@@ -3302,5 +3680,248 @@
     "title": "Under maintenance",
     "default_message": "We'll be back shortly. Thanks for your patience.",
     "retry": "Try again"
+  },
+  "gym_presence_consent": {
+    "title": "Automatic Gym Check-In",
+    "intro": "Turning this on lets the app create an automatic check-in in the background when you enter your gym's boundary. Here's exactly what that means.",
+    "what_title": "What it does",
+    "what_body": "An automatic check-in is created when you enter your gym's boundary — no need to scan a QR code or do anything.",
+    "stored_title": "What gets stored",
+    "stored_body": "Your gym's name, and your entry and exit time. Your latitude and longitude are never sent to or stored on our servers.",
+    "not_stored_title": "What doesn't get stored",
+    "not_stored_body": "Any location outside your gym, your movement history, or your route are never recorded.",
+    "who_title": "Who sees it",
+    "who_body": "The gym itself, only at member-list level (whether you're \"inside\"). Mutual friends, if you allow it — you can turn that off separately too.",
+    "legal_title": "Legal note",
+    "legal_body": "This relies on your explicit consent under KVKK article 6. Background location use can affect your battery. Declining is exactly as visible and easy as accepting.",
+    "revoke_title": "How to turn it off",
+    "revoke_body": "One tap from the Consent Center. The moment you turn it off, tracking stops and the gym boundaries stored on your device are deleted.",
+    "read_kvkk": "Read the KVKK disclosure notice",
+    "allow": "Allow",
+    "decline": "Not Now"
+  },
+  "template_builder": {
+    "title_new": "New Template",
+    "path_picker": {
+      "heading": "Create a meal plan template",
+      "subheading": "Build once, share with any member.",
+      "ai_title": "Generate with AI",
+      "ai_description": "Describe the goal and calorie target — AI drafts a full week for you to refine.",
+      "scratch_title": "Build from scratch",
+      "scratch_description": "Pick every meal yourself, day by day.",
+      "fork_title": "Fork an existing template",
+      "fork_description": "Start from one of your own templates or a shared one."
+    },
+    "ai_form": {
+      "heading": "Tell us what to generate",
+      "goal_label": "Goal",
+      "calorie_label": "Daily calorie target",
+      "calorie_required": "Enter a calorie target first.",
+      "allergy_label": "Allergens to avoid",
+      "allergy_hint": "These are enforced before generation — never shown to the AI or you.",
+      "restriction_label": "Dietary restrictions",
+      "generate": "Generate template",
+      "error": "Couldn't generate a template. Please try again."
+    },
+    "goal": {
+      "lose_weight": "Lose weight",
+      "gain_weight": "Gain weight",
+      "maintain_weight": "Maintain weight",
+      "build_muscle": "Build muscle"
+    },
+    "allergy_option": {
+      "gluten": "Gluten",
+      "dairy": "Dairy",
+      "nuts": "Nuts",
+      "egg": "Egg",
+      "shellfish": "Shellfish",
+      "fish": "Fish",
+      "soy": "Soy",
+      "sesame": "Sesame"
+    },
+    "restriction_option": {
+      "vegetarian": "Vegetarian",
+      "vegan": "Vegan",
+      "low_carb": "Low carb",
+      "high_protein": "High protein",
+      "keto": "Keto",
+      "paleo": "Paleo"
+    },
+    "editor": {
+      "name_label": "Template name",
+      "description_label": "Description",
+      "goal_label": "Goal",
+      "calorie_label": "Daily calorie target",
+      "tags_label": "Tags",
+      "tag_hint": "Add a tag",
+      "share_scope_label": "Who can see this",
+      "is_public_label": "List in public marketplace",
+      "is_public_description": "Anyone can discover and fork this template.",
+      "days_heading": "Days",
+      "day_label": "Day {n}",
+      "copy_day": "Copy this day",
+      "paste_day": "Paste into this day",
+      "paste_all_days": "Apply to entire week",
+      "day_copied": "Day copied",
+      "name_required": "Give the template a name before saving.",
+      "saved": "Template saved",
+      "save_error": "Couldn't save the template. Please try again."
+    },
+    "nutrition": {
+      "title": "Nutrition",
+      "view_day": "Day",
+      "view_week": "Week",
+      "of_target": "of {target} kcal",
+      "fiber_line": "{g}g fiber",
+      "deviation_under": "Under target",
+      "deviation_over": "Over target",
+      "deviation_on_target": "On target"
+    },
+    "allergen": {
+      "title": "Allergen check",
+      "no_conflicts": "No allergen conflicts found.",
+      "conflicts_found": "{n} allergen conflict(s) found",
+      "conflict_line": "Day {day} · {meal}: {dish}",
+      "checking_own": "Checking: {name}"
+    },
+    "day": {
+      "add_item": "Add item",
+      "empty_slot": "Nothing added yet",
+      "empty_item": "Untitled item"
+    },
+    "dish_picker": {
+      "title": "Add a dish",
+      "search_hint": "Search dishes",
+      "custom_hint": "Or type a custom food",
+      "add_custom": "Add",
+      "empty_title": "No dishes match your search"
+    },
+    "source_picker": {
+      "title": "Choose a template to fork",
+      "tab_mine": "Mine",
+      "tab_gym": "My gym",
+      "tab_public": "Public",
+      "empty_mine": "You haven't saved any templates yet.",
+      "empty_gym": "Your gym has no shared templates yet.",
+      "empty_public": "No public templates yet."
+    },
+    "share_scope": {
+      "private": "Only me",
+      "gym": "My gym"
+    },
+    "library": {
+      "title": "Meal Plan Templates",
+      "search_hint": "Search templates",
+      "new_tooltip": "New template",
+      "empty_title": "No templates yet",
+      "empty_message": "Build a reusable weekly plan you can send to any member.",
+      "empty_cta": "Create your first template",
+      "no_results": "No templates match your search",
+      "untitled": "Untitled template",
+      "version_badge": "v{n}",
+      "day_count": "{n}-day plan",
+      "sent_count": "Sent to {n} members",
+      "not_sent": "Not sent yet",
+      "updated_at": "Updated {date}",
+      "duplicate": "Duplicate",
+      "duplicated": "Template duplicated",
+      "export": "Export",
+      "delete_title": "Delete template?",
+      "delete_confirm": "This can't be undone.",
+      "action_error": "Something went wrong. Please try again.",
+      "copy_suffix": "(copy)",
+      "picker_title": "Select a Template"
+    },
+    "export": {
+      "calorie_line": "~{calories} kcal/day average",
+      "day_header": "Day {n}",
+      "unnamed_item": "Custom item",
+      "subject": "{name} — Meal Plan Template"
+    }
+  },
+  "plan_offer": {
+    "picker": {
+      "title": "Select Recipients",
+      "search_hint": "Search by name",
+      "next_disabled": "Select at least one recipient",
+      "next": "Next ({n})",
+      "empty_title": "No one to send to yet",
+      "empty_message": "Members will appear here once they join."
+    },
+    "compose": {
+      "title": "Send Plan",
+      "recipients_label": "Sending to {n} recipient(s)",
+      "message_label": "Message (optional)",
+      "message_hint": "Add a note for the recipient...",
+      "send_btn": "Send Plan",
+      "send_success": "Plan sent to {n} member(s)",
+      "send_error": "Couldn't send the plan. Please try again.",
+      "error_recipient_ineligible": "One of the selected recipients is no longer eligible."
+    },
+    "inbox": {
+      "title": "Plan Offers",
+      "pending_section": "Pending",
+      "history_section": "Past Offers",
+      "empty_title": "No plan offers yet",
+      "empty_message": "When a coach or gym sends you a meal plan, it will appear here.",
+      "from_line": "From {name}",
+      "status_accepted": "Accepted",
+      "status_declined": "Declined",
+      "status_expired": "Expired",
+      "status_pending": "Pending"
+    },
+    "preview": {
+      "title": "Plan Preview",
+      "from_line": "Sent by {name}",
+      "meal_count": "{days} days · {meals} meals",
+      "accept_btn": "Accept",
+      "decline_btn": "Decline",
+      "accept_success": "Plan added — check your meal plan",
+      "accept_error": "Couldn't accept this plan. Please try again.",
+      "decline_success": "Offer declined",
+      "decline_error": "Couldn't decline this offer. Please try again.",
+      "decline_dialog_title": "Decline this plan?",
+      "decline_dialog_body": "You don't need a reason — this is completely optional.",
+      "decline_reason_hint": "Let them know why (optional)",
+      "status_accepted": "Accepted on {date}",
+      "status_declined": "Declined on {date}",
+      "status_expired": "This offer expired on {date}"
+    }
+  },
+  "progress_sharing": {
+    "title": "Progress Sharing",
+    "header_title": "Who can see your progress",
+    "header_body": "Each gym or coach below has a sharing level you granted. Revoke any of them at any time — it takes effect immediately.",
+    "empty_title": "Nothing shared yet",
+    "empty_body": "Once you join a gym or start with a coach, you can manage your progress-sharing preference here.",
+    "scope_gym": "Gym",
+    "scope_coach": "Coach",
+    "tier_label": "Tier {tier}",
+    "tier0_label": "Off",
+    "revoke_button": "Revoke",
+    "share_again_button": "Share again",
+    "last_viewed": "Last viewed {date}",
+    "change_tier_title": "Choose a sharing level",
+    "tier0_title": "Off",
+    "tier0_desc": "Nothing about you is shared.",
+    "tier1_title": "Attendance",
+    "tier1_desc": "Check-in frequency, streak, and last visit.",
+    "tier2_title": "Attendance + adherence",
+    "tier2_desc": "Also: how consistently a plan is being logged.",
+    "tier3_title": "Attendance + adherence + weight trend",
+    "tier3_desc": "Also: the DIRECTION of any weight change — never the raw numbers.",
+    "saved": "Saved",
+    "save_error": "Couldn't save. Please try again.",
+    "revoked": "Sharing turned off",
+    "revoke_error": "Couldn't turn off sharing. Please try again."
+  },
+  "credit_restriction": {
+    "title": "Community Credit Standing",
+    "appeal_title": "Appeal This Restriction",
+    "appeal_intro": "If you think this restriction was a mistake, you can appeal it here. An admin will review it and you'll be notified of the outcome.",
+    "good_standing_title": "You're in good standing",
+    "good_standing_desc": "Nothing is restricting your community credit right now.",
+    "restricted_title": "Your community credit is restricted",
+    "restricted_desc": "Your posts and comments are still fully visible to everyone — this only affects the bonus AI credit you can earn from reactions, likes, template use, or group contributions. If you think this is a mistake, you can appeal below."
   }
 }

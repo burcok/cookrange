@@ -97,8 +97,14 @@ Every call carries a `type` that flows to the proxy for per-request cost attribu
 
 **Rules for changing a prompt**
 - Estimate the token cost before and after — prompts run on every user, every week
-- Respect the **180-dish prompt ceiling**: the candidate pool cannot grow indefinitely, which is a
-  hard scalability limit on the meal planner (`TODO.md` §1.1)
+- Respect the **180-dish prompt ceiling**: the proxy's `MAX_TOTAL_CHARS = 24000` (`functions/
+  index.js:45`) turns into a hard ~180-dish limit at `generateWeeklyMealPlanPrompt`'s ~120
+  chars/dish — past it, every meal-plan request returns HTTP 413 (`TODO.md` `BLK-11`/`AI-03`).
+  **Enforced since Faz 3 §3.6** in `PromptService.maxDishesPerPrompt` — `generateWeeklyMealPlanPrompt`
+  caps the pool there (round-robin by `meal_type`, not a positional truncation, so a large catalog
+  can't silently zero out one meal type). This is a stopgap; `AI-03`'s relevance-based candidate
+  selector (40–60 dishes, filtered by restrictions/calorie band/category) is the real fix and is
+  still not built — required before the catalog grows toward `BLK-11`'s ≥300-dish target
 - Any new free-text insertion point needs fencing (§7)
 - Changing the output schema means changing the parser in the same task
 

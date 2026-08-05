@@ -27,7 +27,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    // Faz 5 §5.3 adds a 3rd tab (weekly XP) alongside the existing 2
+    // (all-time streak: global/friends) — length bumped 2 -> 3.
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_onTabChanged);
   }
 
@@ -86,6 +88,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           tabs: [
             Tab(text: l10n.translate('leaderboard.tab_global')),
             Tab(text: l10n.translate('leaderboard.tab_friends')),
+            Tab(text: l10n.translate('leaderboard.tab_weekly_xp')),
           ],
         ),
       ),
@@ -114,6 +117,20 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                       child: Text(l10n.translate('leaderboard.tab_friends')))
                   : _buildList(_friendsEntries!, palette, primary, l10n,
                       emptyKey: 'leaderboard.empty_friends')),
+
+          // Weekly XP tab — stream (Faz 5 §5.3)
+          StreamBuilder<List<XpLeaderboardEntry>>(
+            stream: _service.getWeeklyXpLeaderboardStream(),
+            builder: (context, snap) {
+              if (snap.hasError) {
+                return Center(child: Text(l10n.translate('leaderboard.error')));
+              }
+              if (!snap.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return _buildXpList(snap.data!, palette, primary, l10n);
+            },
+          ),
         ],
       ),
     );
@@ -153,6 +170,53 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         final entry = entries[i];
         final isMe = entry.uid == _uid;
         return _LeaderboardRow(
+          entry: entry,
+          isMe: isMe,
+          primary: primary,
+          palette: palette,
+        );
+      },
+    );
+  }
+
+  // Faz 5 §5.3 — same shape as [_buildList] above, for [XpLeaderboardEntry]
+  // instead of the streak-based [LeaderboardEntry]. Kept as a parallel
+  // method (not a generalized/shared one) rather than refactoring
+  // [_buildList] to accept either type — that would touch the working
+  // streak tabs for no benefit to this task.
+  Widget _buildXpList(
+    List<XpLeaderboardEntry> entries,
+    AppPalette palette,
+    Color primary,
+    AppLocalizations l10n,
+  ) {
+    if (entries.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.bolt_rounded, size: 64, color: palette.border),
+              const SizedBox(height: 16),
+              Text(
+                l10n.translate('leaderboard.empty_weekly_xp'),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: palette.textSecondary, fontSize: 15),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      itemCount: entries.length,
+      itemBuilder: (ctx, i) {
+        final entry = entries[i];
+        final isMe = entry.uid == _uid;
+        return _XpLeaderboardRow(
           entry: entry,
           isMe: isMe,
           primary: primary,
@@ -279,6 +343,147 @@ class _LeaderboardRow extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   '${entry.streak}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: isMe ? primary : palette.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Faz 5 §5.3 — weekly XP tab row. Mirrors [_LeaderboardRow]'s exact visual
+// shape (rank emoji/number, avatar, name, metric chip) with a lightning-bolt
+// XP chip instead of a streak-fire one; kept as its own small class rather
+// than generalizing [_LeaderboardRow] to accept either metric, matching
+// this task's "don't refactor working code beyond scope" constraint.
+
+class _XpLeaderboardRow extends StatelessWidget {
+  final XpLeaderboardEntry entry;
+  final bool isMe;
+  final Color primary;
+  final AppPalette palette;
+
+  const _XpLeaderboardRow({
+    required this.entry,
+    required this.isMe,
+    required this.primary,
+    required this.palette,
+  });
+
+  String get _rankEmoji {
+    switch (entry.rank) {
+      case 1:
+        return '🥇';
+      case 2:
+        return '🥈';
+      case 3:
+        return '🥉';
+      default:
+        return '#${entry.rank}';
+    }
+  }
+
+  Color _rankColor() {
+    switch (entry.rank) {
+      case 1:
+        return palette.calories; // gold
+      case 2:
+        return palette.textSecondary; // silver
+      case 3:
+        return palette.warning; // bronze
+      default:
+        return palette.textTertiary;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => openUserProfile(context, userId: entry.uid),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isMe ? primary.withValues(alpha: 0.1) : palette.surface,
+          borderRadius: BorderRadius.circular(14),
+          border:
+              isMe ? Border.all(color: primary.withValues(alpha: 0.35)) : null,
+          boxShadow: [
+            BoxShadow(
+              color: palette.shadow.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Rank
+            SizedBox(
+              width: 40,
+              child: Text(
+                _rankEmoji,
+                style: TextStyle(
+                  fontSize: entry.rank <= 3 ? 22 : 14,
+                  fontWeight: FontWeight.bold,
+                  color: entry.rank <= 3 ? _rankColor() : palette.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Avatar
+            CircleAvatar(
+              radius: 20,
+              backgroundImage: entry.photoURL != null
+                  ? CachedNetworkImageProvider(entry.photoURL!)
+                  : null,
+              backgroundColor: palette.surfaceVariant,
+              child: entry.photoURL == null
+                  ? Text(
+                      (entry.displayName?.isNotEmpty == true
+                              ? entry.displayName![0]
+                              : '?')
+                          .toUpperCase(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 12),
+
+            // Name — mirrors _LeaderboardRow above: bolded/colored when
+            // isMe, never substituted with a translated "You" (that's the
+            // GYM leaderboard screen's own, separate convention).
+            Expanded(
+              child: Text(
+                entry.displayName ?? '?',
+                style: TextStyle(
+                  fontWeight: isMe ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 14,
+                  color: isMe ? primary : palette.textPrimary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+
+            // XP
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('⚡', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 4),
+                Text(
+                  '${entry.xp}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,

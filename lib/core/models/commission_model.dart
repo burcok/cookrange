@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum CommissionType { referral, coachSession, programSale }
+enum CommissionType { referral, coachSession, programSale, gymPremiumShare }
 
 enum CommissionStatus { pending, approved, paid, rejected }
 
@@ -11,11 +11,15 @@ extension CommissionTypeX on CommissionType {
         CommissionType.referral => 'Referral',
         CommissionType.coachSession => 'Coaching Session',
         CommissionType.programSale => 'Program Sale',
+        // Faz 6 §6.6 — a gym's revenue share of an attributed member's
+        // premium purchase, distinct from the flat personal `referral` reward.
+        CommissionType.gymPremiumShare => 'Gym Premium Referral',
       };
 
   static CommissionType fromString(String? v) => switch (v) {
         'coachSession' => CommissionType.coachSession,
         'programSale' => CommissionType.programSale,
+        'gymPremiumShare' => CommissionType.gymPremiumShare,
         _ => CommissionType.referral,
       };
 }
@@ -79,16 +83,4 @@ class CommissionModel {
           : null,
     );
   }
-
-  Map<String, dynamic> toFirestore() => {
-        'owner_uid': ownerUid,
-        if (refereeUid != null) 'referee_uid': refereeUid,
-        if (refereeName != null) 'referee_name': refereeName,
-        'type': type.firestoreValue,
-        'status': status.firestoreValue,
-        'amount': amount,
-        if (description != null) 'description': description,
-        'created_at': Timestamp.fromDate(createdAt),
-        if (paidAt != null) 'paid_at': Timestamp.fromDate(paidAt!),
-      };
 }

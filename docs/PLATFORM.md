@@ -40,6 +40,7 @@ When you build or change anything, ask: **"Does this behave correctly on iOS *an
 | Min OS | iOS deployment target (Podfile/Xcode) | `minSdkVersion` (build.gradle) |
 | Build artifact | `.ipa` (App Store / TestFlight) | `.aab` (Play) / `.apk` (debug/CI) |
 | Keep-screen-on | `wakelock_plus` (cooking mode) | same |
+| Background geofence (Faz 1 §1.2, `native_geofence`) | No native dwell — `{enter, exit}` only; `geofence_service.dart` treats a real `enter` as an immediate dwell, since an in-memory Dart `Timer` can't reliably survive iOS's few-seconds background wake window | Native `GEOFENCE_TRANSITION_DWELL` + `loiteringDelay` (5 min) via a real foreground service (`NativeGeofenceForegroundService`) — `{enter, exit, dwell}` all registered |
 
 ## 4. Native Config Locations
 - **Android:** `android/app/build.gradle` (applicationId, signing, minSdk, desugaring, Firebase BoM),

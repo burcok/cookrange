@@ -15,6 +15,14 @@ enum ConsentPurpose {
   analytics,
   notifications,
   marketing,
+
+  /// Faz 1 §1.3: background geofence-based gym check-in detection. Distinct
+  /// from [location] (that purpose covers existing one-time/foreground uses
+  /// like GPS check-in and nearby-gym sorting) — this one gates continuous
+  /// background location monitoring, a materially different processing
+  /// activity that gets its own explicit, non-skippable opt-in screen
+  /// (see GymPresenceConsentScreen) rather than a bare Consent Center toggle.
+  gymPresence,
 }
 
 extension ConsentPurposeX on ConsentPurpose {
@@ -27,6 +35,7 @@ extension ConsentPurposeX on ConsentPurpose {
         ConsentPurpose.analytics => 'analytics',
         ConsentPurpose.notifications => 'notifications',
         ConsentPurpose.marketing => 'marketing',
+        ConsentPurpose.gymPresence => 'gym_presence',
       };
 
   static ConsentPurpose? fromDocId(String id) {
@@ -44,7 +53,8 @@ extension ConsentPurposeX on ConsentPurpose {
         ConsentPurpose.healthData ||
         ConsentPurpose.location ||
         ConsentPurpose.aiProcessing ||
-        ConsentPurpose.crossBorderTransfer =>
+        ConsentPurpose.crossBorderTransfer ||
+        ConsentPurpose.gymPresence =>
           true,
         _ => false,
       };

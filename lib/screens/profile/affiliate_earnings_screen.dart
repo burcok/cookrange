@@ -361,6 +361,10 @@ class _CommissionRow extends StatelessWidget {
         CommissionType.referral => Icons.person_add_rounded,
         CommissionType.coachSession => Icons.fitness_center_rounded,
         CommissionType.programSale => Icons.store_rounded,
+        // Faz 6 §6.6 — shown here only if a gym owner also has personal
+        // referral/coaching commissions in the same wallet; the gym-scoped
+        // view lives in GymEarningsScreen (lib/screens/gym/).
+        CommissionType.gymPremiumShare => Icons.qr_code_2_rounded,
       };
 
   Color _statusColor(AppPalette p) => switch (commission.status) {
@@ -421,7 +425,12 @@ class _CommissionRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '+₺${commission.amount.toStringAsFixed(2)}',
+                  // Faz 6 §6.6 follow-up: a reversed PAID commission gets a
+                  // negative-amount offsetting entry (see
+                  // entitlements.js's reverseCommissionsForPurchase) — a
+                  // hardcoded '+' would render that as the nonsensical
+                  // "+₺-15.00"; sign the string from the actual amount instead.
+                  '${commission.amount < 0 ? '-' : '+'}₺${commission.amount.abs().toStringAsFixed(2)}',
                   style: t.bodyM.copyWith(
                     color: palette.success,
                     fontWeight: FontWeight.w700,

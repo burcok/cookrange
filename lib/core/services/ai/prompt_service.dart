@@ -3,6 +3,19 @@ class PromptService {
   factory PromptService() => _instance;
   PromptService._internal();
 
+  /// Faz 3 §3.6 — the "180-dish prompt ceiling" `docs/AI_SYSTEM.md`'s
+  /// Prompt Strategy section has documented since Faz 3 planning, but which
+  /// nothing in code actually enforced (the catalog was 75 dishes then, so
+  /// it never mattered). Hard scalability limit on the meal planner/template
+  /// builder's candidate pool: the catalog grows toward this plan's 300-dish
+  /// target, and every candidate dish costs prompt tokens on every AI call,
+  /// so the pool sent to the model must stay bounded regardless of catalog
+  /// size. Both `WeeklyMealPlanService` and `MealPlanTemplateService.
+  /// generateDraftFromAI` funnel through [generateWeeklyMealPlanPrompt], so
+  /// enforcing it here — the one place the candidate list is actually
+  /// serialized into the prompt — protects every caller, present and future.
+  static const int maxDishesPerPrompt = 180;
+
   // ─── Prompt-injection guard ─────────────────────────────────────────────────
 
   /// Security preamble prepended to prompts that embed free-text the user (or
@@ -101,13 +114,46 @@ Return fully structured JSON matching this schema:
 ${localeInstruction(locale)}''';
   }
 
+  /// Enforces [maxDishesPerPrompt]. Below the ceiling, returns [dishes]
+  /// unchanged. Above it, round-robins across `meal_type` buckets rather
+  /// than a blind `.take(n)` — a positional truncation risks silently
+  /// zeroing out whichever meal type happens to sort last (`DishService.
+  /// getAllDishes` has no `orderBy`), which would quietly starve the AI's
+  /// snack slots exactly the way the too-small snack pool this same task
+  /// fixed did. Accepts `Map`s or dish-like objects (mirrors
+  /// [generateWeeklyMealPlanPrompt]'s own dual-shape handling below).
+  static List<dynamic> _capDishPool(List<dynamic> dishes) {
+    if (dishes.length <= maxDishesPerPrompt) return dishes;
+
+    String mealTypeOf(dynamic d) =>
+        (d is Map ? d['meal_type'] : d.mealType)?.toString() ?? 'main';
+
+    final byMealType = <String, List<dynamic>>{};
+    for (final d in dishes) {
+      byMealType.putIfAbsent(mealTypeOf(d), () => []).add(d);
+    }
+
+    final capped = <dynamic>[];
+    var addedAny = true;
+    while (capped.length < maxDishesPerPrompt && addedAny) {
+      addedAny = false;
+      for (final bucket in byMealType.values) {
+        if (bucket.isEmpty) continue;
+        capped.add(bucket.removeAt(0));
+        addedAny = true;
+        if (capped.length >= maxDishesPerPrompt) break;
+      }
+    }
+    return capped;
+  }
+
   String generateWeeklyMealPlanPrompt({
     required Map<String, dynamic> userProfile,
     required List<dynamic> availableDishes,
     required double dailyCalorieTarget,
     String locale = 'en',
   }) {
-    final dishesContext = availableDishes.map((d) {
+    final dishesContext = _capDishPool(availableDishes).map((d) {
       if (d is Map) {
         return "- [${d['id']}] ${d['name']} (${d['category']}): ${d['calories']}kcal (P:${d['protein']} C:${d['carbs']} F:${d['fat']})";
       }

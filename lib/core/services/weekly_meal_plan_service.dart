@@ -8,6 +8,10 @@ import '../models/user_model.dart';
 import '../models/user_nutrition_profile.dart';
 import '../utils/calorie_calculator.dart';
 import '../utils/allergen_safety.dart';
+import '../utils/plan_nutrition_calculator.dart';
+import '../utils/template_plan_adapter.dart';
+import '../models/meal_entry_model.dart';
+import '../models/meal_plan_template_model.dart';
 import 'crashlytics_service.dart';
 import 'dish_service.dart';
 import 'ai/ai_service.dart';
@@ -190,24 +194,12 @@ class WeeklyMealPlanService {
           .doc('current')
           .set(plan.toJson());
 
-      // 6. Archive to history (keyed by week start date for dedup)
-      final historyKey =
-          '${weekStart.year}-${weekStart.month.toString().padLeft(2, '0')}-${weekStart.day.toString().padLeft(2, '0')}';
-      unawaited(_firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('meal_plan_history')
-          .doc(historyKey)
-          .set({
-        ...plan.toJson(),
-        'id': historyKey,
-        'archivedAt': FieldValue.serverTimestamp()
-      }).catchError((e, stack) {
-        debugPrint('History archive error: $e');
-        unawaited(CrashlyticsService().recordError(e, stack,
-            reason:
-                'WeeklyMealPlanService._generateAndSaveMealPlan history archive uid=${user.uid}'));
-      }));
+      // 6. Archive to history (keyed by week start date for dedup) — see
+      // archiveToHistory's own doc comment for why this snapshots THIS
+      // (the just-written) plan rather than reading back the one it
+      // replaced; Faz 3 §3.5's adoptTemplate is this method's second
+      // caller (extracted rather than duplicated, so both stay in sync).
+      unawaited(archiveToHistory(user.uid, plan));
 
       return plan;
     } on AIFatalException {
@@ -218,15 +210,162 @@ class WeeklyMealPlanService {
     }
   }
 
+  /// Snapshots [plan] into `meal_plan_history/{weekStartKey}` (dedup key =
+  /// `plan.weekStartDate`, `YYYY-MM-DD`). Factored out of
+  /// `_generateAndSaveMealPlan`'s old inline step 6 — Faz 3 §3.5's
+  /// [adoptTemplate] is the second caller, and both now share this instead
+  /// of each hand-rolling the same key derivation + write (which is
+  /// precisely the class of duplication that caused S7).
+  ///
+  /// Note this snapshots whichever [plan] the caller passes — typically the
+  /// plan THEY just wrote as current, not necessarily "the previous one" —
+  /// see [adoptTemplate]'s doc comment for why that distinction matters and
+  /// how it stays faithful to "archive the old plan" despite that.
+  Future<void> archiveToHistory(String userId, WeeklyMealPlanModel plan) async {
+    final weekStart = plan.weekStartDate;
+    final historyKey = '${weekStart.year}-'
+        '${weekStart.month.toString().padLeft(2, '0')}-'
+        '${weekStart.day.toString().padLeft(2, '0')}';
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('meal_plan_history')
+          .doc(historyKey)
+          .set({
+        ...plan.toJson(),
+        'id': historyKey,
+        'archivedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e, stack) {
+      debugPrint('WeeklyMealPlanService.archiveToHistory error: $e');
+      unawaited(CrashlyticsService().recordError(e, stack,
+          reason: 'WeeklyMealPlanService.archiveToHistory userId=$userId'));
+    }
+  }
+
+  /// Public wrapper around [_generateProfileHash] — Faz 3 §3.5's
+  /// [adoptTemplate] needs to stamp the member's CURRENT profile hash onto
+  /// an accepted template's plan doc, so `getWeeklyMealPlan`'s cache check
+  /// reads it as already up to date. Without this, the very next call to
+  /// `getWeeklyMealPlan` would see a `generationPromptHash` that doesn't
+  /// match `_generateProfileHash(user)` (an accepted template was never
+  /// hashed against anything) and silently regenerate an unrelated AI plan
+  /// in its place, discarding what the member just accepted.
+  String computeCurrentProfileHash(UserModel user) =>
+      _generateProfileHash(user);
+
+  /// Faz 3 §3.5 accept flow: converts an offer's (or any template's)
+  /// [templateDays] into a live `meal_plans/current` doc for [user].
+  ///
+  /// Archives whatever was previously current into `meal_plan_history`
+  /// FIRST via [archiveToHistory] — "eski plan meal_plan_history'ye
+  /// arşivlenir" — before overwriting it, so a member who accepts an offer
+  /// never silently loses whatever plan they had (AI-generated or a prior
+  /// accepted template alike). Nothing is written to history for the
+  /// NEWLY-adopted plan itself here (unlike `_generateAndSaveMealPlan`,
+  /// which does snapshot its own output) — deliberately, to avoid a
+  /// same-day `historyKey` collision overwriting the just-archived outgoing
+  /// plan when both happen to share today's date; the newly-adopted plan
+  /// gets its own history snapshot naturally, the next time IT is replaced.
+  ///
+  /// Nutrition totals are computed from the full-fidelity `List<MealEntry>`
+  /// via [PlanNutritionCalculator] — the single authority (§3.4) — BEFORE
+  /// [TemplatePlanAdapter] collapses each day down to the legacy
+  /// `Map<String,String>` shape `DayMealPlan.meals` still uses; see that
+  /// adapter's doc comment for exactly what that collapse loses (custom-food
+  /// entries, same-day duplicate snack slots) and why it never affects the
+  /// persisted numbers.
+  ///
+  /// Days lay out as 7 consecutive dates starting TODAY (matching
+  /// `_generateAndSaveMealPlan`'s own "weekStart = day of generation, not a
+  /// calendar Monday" convention) — a template's `dayIndex` is ordinal
+  /// (0..6), not tied to a specific calendar weekday, so "start today" is
+  /// the only convention already established anywhere else in this file to
+  /// reuse rather than invent a new one.
+  Future<WeeklyMealPlanModel> adoptTemplate({
+    required UserModel user,
+    required List<TemplateDay> templateDays,
+  }) async {
+    final userId = user.uid;
+    final dishes = await _dishService.getAllDishes();
+    final dishCatalog = {for (final d in dishes) d.id: d};
+
+    final existing = await _fetchUserMealPlan(userId);
+    if (existing != null) {
+      await archiveToHistory(userId, existing);
+    }
+
+    final now = DateTime.now();
+    final weekStart = DateTime(now.year, now.month, now.day);
+    final sortedDays = [...templateDays]
+      ..sort((a, b) => a.dayIndex.compareTo(b.dayIndex));
+
+    final dayTotals = <PlanNutritionTotals>[];
+    final days = <DayMealPlan>[];
+    for (var i = 0; i < sortedDays.length; i++) {
+      final templateDay = sortedDays[i];
+      final totals = PlanNutritionCalculator.calculateEntries(
+          templateDay.meals, dishCatalog);
+      dayTotals.add(totals);
+      days.add(DayMealPlan(
+        date: weekStart.add(Duration(days: i)),
+        dayName: TemplatePlanAdapter.weekdayName(templateDay.dayIndex),
+        meals: TemplatePlanAdapter.collapseMealsToLegacyMap(templateDay.meals),
+        totalCalories: totals.calories,
+        macros: totals.macros,
+        fiber: totals.fiber,
+      ));
+    }
+
+    final week = PlanNutritionCalculator.combineDays(dayTotals);
+    final plan = WeeklyMealPlanModel(
+      id: 'current',
+      userId: userId,
+      weekStartDate: weekStart,
+      days: days,
+      totalCalories: week.total.calories,
+      avgDailyCalories: week.average.calories,
+      avgMacros: week.average.macros,
+      totalFiber: week.total.fiber,
+      avgDailyFiber: week.average.fiber,
+      createdAt: now,
+      expiresAt: now.add(const Duration(days: 7)),
+      generationPromptHash: computeCurrentProfileHash(user),
+      isAiGenerated: false,
+    );
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('meal_plans')
+          .doc('current')
+          .set(plan.toJson());
+      debugPrint('WeeklyMealPlanService.adoptTemplate: wrote current plan '
+          'for uid=$userId (${days.length} days)');
+      return plan;
+    } catch (e, stack) {
+      debugPrint('WeeklyMealPlanService.adoptTemplate error: $e');
+      unawaited(CrashlyticsService().recordError(e, stack,
+          reason: 'WeeklyMealPlanService.adoptTemplate userId=$userId'));
+      rethrow;
+    }
+  }
+
   /// Replaces a single meal in the stored plan without regenerating the whole week.
   ///
   /// Faz 0 §0.7 (S7) fix: this used to copy the OLD day's total_calories/
   /// macros verbatim onto the new meal set — swapping a 300kcal breakfast
   /// for an 800kcal one left every displayed total wrong, at both the day
-  /// and plan level. Both are now recomputed from the dish catalog after
-  /// the swap (a scoped fix here; Faz 3's `PlanNutritionCalculator` will
-  /// become the single shared place this logic lives, alongside the plan
-  /// builder and the template offer preview).
+  /// and plan level. A same-session fix recomputed both inline here; Faz 3
+  /// §3.4 replaces that hand-rolled recompute with `PlanNutritionCalculator`
+  /// — the same shared, unit-tested authority the template builder, plan
+  /// view, and offer preview will also use, instead of each reinventing this
+  /// math (which is how S7 happened in the first place). This also fixes an
+  /// N+1 read: the old loop awaited `getDishById` once per meal slot (up to
+  /// 7 days × ~4 meals); the calculator takes a resolved `{id: DishModel}`
+  /// map, so the dish catalog is now fetched once, up front.
   Future<WeeklyMealPlanModel?> swapMeal({
     required String userId,
     required DateTime dayDate,
@@ -243,70 +382,68 @@ class WeeklyMealPlanService {
       if (!doc.exists) return null;
 
       final plan = WeeklyMealPlanModel.fromFirestore(doc);
+      final dishes = await _dishService.getAllDishes();
+      final dishCatalog = {for (final dish in dishes) dish.id: dish};
+
       final updatedDays = <DayMealPlan>[];
+      final dayTotals = <PlanNutritionTotals>[];
       for (final d in plan.days) {
         final sameDay = d.date.year == dayDate.year &&
             d.date.month == dayDate.month &&
             d.date.day == dayDate.day;
         if (!sameDay) {
           updatedDays.add(d);
+          dayTotals.add(PlanNutritionTotals(
+            calories: d.totalCalories,
+            protein: d.macros['protein'] ?? 0,
+            carbs: d.macros['carbs'] ?? 0,
+            fat: d.macros['fat'] ?? 0,
+            fiber: d.fiber,
+          ));
           continue;
         }
 
         final newMeals = Map<String, String>.from(d.meals);
         newMeals[mealType] = newDishId;
 
-        double dayCalories = 0;
-        final dayMacros = <String, double>{'protein': 0, 'carbs': 0, 'fat': 0};
-        for (final dishId in newMeals.values) {
-          final dish = await _dishService.getDishById(dishId);
-          if (dish == null) continue;
-          dayCalories += dish.calories;
-          dayMacros['protein'] = (dayMacros['protein'] ?? 0) + dish.protein;
-          dayMacros['carbs'] = (dayMacros['carbs'] ?? 0) + dish.carbs;
-          dayMacros['fat'] = (dayMacros['fat'] ?? 0) + dish.fat;
-        }
+        // The legacy Map<String,String> shape has no portion field, so every
+        // slot is treated as exactly one serving (portion: 1.0, MealEntry's
+        // own default) — identical to what this loop always assumed;
+        // nothing about the persisted calorie/macro numbers changes here,
+        // only where the summation logic lives. `fiber` is new: never
+        // tracked by this path before.
+        final entries = newMeals.entries
+            .map((e) => MealEntry(dishId: e.value, mealType: e.key))
+            .toList();
+        final totals =
+            PlanNutritionCalculator.calculateEntries(entries, dishCatalog);
+        dayTotals.add(totals);
 
         updatedDays.add(DayMealPlan(
           date: d.date,
           dayName: d.dayName,
           meals: newMeals,
-          totalCalories: dayCalories,
-          macros: dayMacros,
+          totalCalories: totals.calories,
+          macros: totals.macros,
+          fiber: totals.fiber,
         ));
       }
 
       // Plan-level totals: sum/average across all days, mirroring the shape
-      // the AI produces at generation time.
-      final planTotalCalories =
-          updatedDays.fold<double>(0, (sum, d) => sum + d.totalCalories);
-      final planAvgDailyCalories =
-          updatedDays.isEmpty ? 0.0 : planTotalCalories / updatedDays.length;
-      final planAvgMacros = <String, double>{
-        'protein': 0,
-        'carbs': 0,
-        'fat': 0
-      };
-      for (final d in updatedDays) {
-        planAvgMacros['protein'] =
-            (planAvgMacros['protein'] ?? 0) + (d.macros['protein'] ?? 0);
-        planAvgMacros['carbs'] =
-            (planAvgMacros['carbs'] ?? 0) + (d.macros['carbs'] ?? 0);
-        planAvgMacros['fat'] =
-            (planAvgMacros['fat'] ?? 0) + (d.macros['fat'] ?? 0);
-      }
-      if (updatedDays.isNotEmpty) {
-        planAvgMacros.updateAll((_, v) => v / updatedDays.length);
-      }
+      // the AI produces at generation time — folded from the per-day totals
+      // already computed above rather than re-walked from scratch.
+      final week = PlanNutritionCalculator.combineDays(dayTotals);
 
       final updatedPlan = WeeklyMealPlanModel(
         id: plan.id,
         userId: plan.userId,
         weekStartDate: plan.weekStartDate,
         days: updatedDays,
-        totalCalories: planTotalCalories,
-        avgDailyCalories: planAvgDailyCalories,
-        avgMacros: planAvgMacros,
+        totalCalories: week.total.calories,
+        avgDailyCalories: week.average.calories,
+        avgMacros: week.average.macros,
+        totalFiber: week.total.fiber,
+        avgDailyFiber: week.average.fiber,
         createdAt: plan.createdAt,
         expiresAt: plan.expiresAt,
         generationPromptHash: plan.generationPromptHash,
@@ -320,11 +457,14 @@ class WeeklyMealPlanService {
                   'meals': d.meals,
                   'total_calories': d.totalCalories,
                   'macros': d.macros,
+                  'fiber': d.fiber,
                 })
             .toList(),
-        'total_calories': planTotalCalories,
-        'avg_daily_calories': planAvgDailyCalories,
-        'avg_macros': planAvgMacros,
+        'total_calories': week.total.calories,
+        'avg_daily_calories': week.average.calories,
+        'avg_macros': week.average.macros,
+        'total_fiber': week.total.fiber,
+        'avg_daily_fiber': week.average.fiber,
       });
 
       return updatedPlan;

@@ -1,15 +1,53 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/models/coach_client_model.dart';
 import '../../core/models/coach_review_model.dart';
-import '../../core/services/ai/ai_service.dart';
+import '../../core/models/progress_sharing_model.dart';
 import '../../core/services/coach_review_service.dart';
 import '../../core/services/coach_service.dart';
+import '../../core/services/progress_sharing_service.dart';
 import '../../core/widgets/ds/ds.dart';
+
+/// State machine for the coach-facing progress-summary section (§4.3/§4.4).
+/// Replaces the old, unguarded `_generateAiReport()` (deleted — it called
+/// `AIService().generateJson()` directly, client-side, with zero consent
+/// check and zero relationship re-verification, confirmed still-live audit
+/// finding C2). Every branch here is a real, distinct outcome
+/// `ProgressSharingService.getCachedSummary`/`generateSummary` can produce.
+enum _ProgressReportState {
+  /// Checking for an already-cached summary (free, no callable call).
+  loadingCache,
+
+  /// Nothing cached yet — show the "generate" button (does NOT mean tier 0;
+  /// that's only known after actually trying, see `_generateReport`).
+  notGenerated,
+
+  /// `generateSummary` call in flight.
+  generating,
+
+  /// Have a [MemberProgressSummaryResult] to render (either method).
+  ready,
+
+  /// `permission-denied` / `not_shared` — the member hasn't granted any
+  /// tier for this scope. Shows the tier-0 empty state + invite button.
+  tier0,
+
+  /// `permission-denied` / `not_authorized_for_scope` — the coaching
+  /// relationship this screen assumed no longer holds server-side.
+  notAuthorized,
+
+  /// `resource-exhausted` — already generated for this member within the
+  /// rolling 24h window.
+  rateLimited,
+
+  /// Anything else (network, `ai_not_configured`, upstream failure, ...).
+  error,
+}
 
 class CoachClientDetailScreen extends StatefulWidget {
   final CoachClientModel client;
@@ -25,11 +63,19 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
-  bool _isGeneratingReport = false;
-  Map<String, dynamic>? _aiReport;
-
   // Nullable bool: null = loading, true = can review, false = already reviewed
   bool? _canReview;
+
+  _ProgressReportState _reportState = _ProgressReportState.loadingCache;
+  MemberProgressSummaryResult? _summaryResult;
+
+  // Tier-0 empty state's invite button. null = not checked yet (button
+  // hidden until we know), true = already invited (ever), false = can invite.
+  bool? _hasInvited;
+  bool _isSendingInvite = false;
+
+  ProgressSharingScope get _scope =>
+      ProgressSharingScope.coach(widget.client.coachUid);
 
   String get _currentUid => FirebaseAuth.instance.currentUser?.uid ?? '';
 
@@ -45,7 +91,13 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
     _fadeController.forward();
 
     if (_isViewingOwnRecord) {
+      // generateMemberProgressSummary rejects memberUid==callerUid outright
+      // (a member can't be summarized for themselves) — this section is
+      // coach-only; a member viewing their own coaching record never sees
+      // it at all (see build()), so there is nothing to load here.
       _checkCanReview();
+    } else {
+      unawaited(_loadCachedSummary());
     }
   }
 
@@ -99,54 +151,103 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
     }
   }
 
-  Future<void> _generateAiReport() async {
-    if (!AIService().isConfigured) {
-      AppSnackBar.warning(
-          context,
-          AppLocalizations.of(context)
-              .translate('coach.coaching.warning.ai_not_configured'));
-      return;
-    }
+  /// Reads a cached summary if one exists — a plain Firestore get, no
+  /// callable call, so simply re-opening this screen never spends the
+  /// once-per-24h generation allowance (see `_generateReport`).
+  Future<void> _loadCachedSummary() async {
+    setState(() => _reportState = _ProgressReportState.loadingCache);
+    final cached = await ProgressSharingService()
+        .getCachedSummary(memberUid: widget.client.clientUid, scope: _scope);
+    if (!mounted) return;
+    setState(() {
+      if (cached != null) {
+        _summaryResult = cached;
+        _reportState = _ProgressReportState.ready;
+      } else {
+        _reportState = _ProgressReportState.notGenerated;
+      }
+    });
+  }
 
-    setState(() => _isGeneratingReport = true);
+  /// The "generate" button's action — the ONLY place this screen ever calls
+  /// `generateSummary`. Every rejection the callable can throw
+  /// (`functions/summaries.js`) maps to a distinct, human-readable state;
+  /// none of them is swallowed into a generic error (R4).
+  Future<void> _generateReport() async {
+    setState(() => _reportState = _ProgressReportState.generating);
+    final locale = Localizations.localeOf(context).languageCode;
+
+    try {
+      final result = await ProgressSharingService().generateSummary(
+        memberUid: widget.client.clientUid,
+        scope: _scope,
+        locale: locale,
+      );
+      if (!mounted) return;
+      setState(() {
+        _summaryResult = result;
+        _reportState = _ProgressReportState.ready;
+      });
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint(
+          'CoachClientDetailScreen._generateReport rejected: ${e.code} ${e.message}');
+      if (!mounted) return;
+      if (e.code == 'permission-denied' && e.message == 'not_shared') {
+        setState(() => _reportState = _ProgressReportState.tier0);
+        unawaited(_checkInviteStatus());
+      } else if (e.code == 'permission-denied') {
+        setState(() => _reportState = _ProgressReportState.notAuthorized);
+      } else if (e.code == 'resource-exhausted') {
+        setState(() => _reportState = _ProgressReportState.rateLimited);
+      } else {
+        setState(() => _reportState = _ProgressReportState.error);
+      }
+    } catch (e) {
+      debugPrint('CoachClientDetailScreen._generateReport error: $e');
+      if (!mounted) return;
+      setState(() => _reportState = _ProgressReportState.error);
+    }
+  }
+
+  Future<void> _checkInviteStatus() async {
+    final invited = await ProgressSharingService()
+        .hasInvited(scope: _scope, memberUid: widget.client.clientUid);
+    if (!mounted) return;
+    setState(() => _hasInvited = invited);
+  }
+
+  /// Tier-0 empty state's "send an invite" button — fires at most once ever
+  /// per member (server-enforced, see `sendProgressShareInvite`); this
+  /// handler just reflects whatever the server decided, it never assumes.
+  Future<void> _sendInvite() async {
+    if (_isSendingInvite || _hasInvited != false) return;
+    setState(() => _isSendingInvite = true);
     final l10n = AppLocalizations.of(context);
 
     try {
-      final clientName = widget.client.clientDisplayName ?? 'the client';
-      final streak = widget.client.clientStreak ?? 0;
-      final daysSince = widget.client.daysSinceLastLog;
-      final linkedDays =
-          DateTime.now().difference(widget.client.linkedAt).inDays;
-
-      final prompt =
-          'You are a fitness coach assistant. Generate a brief progress report for '
-          'my client $clientName based on: streak=$streak days, '
-          'last logged ${daysSince == 999 ? "never" : "$daysSince days ago"}, '
-          'coaching started $linkedDays days ago. '
-          'Include motivation level, recommended focus areas, and next steps.';
-
-      const structure = '''
-{
-  "summary": "string",
-  "motivationLevel": "low|medium|high",
-  "focusAreas": ["string"],
-  "nextSteps": ["string"]
-}''';
-
-      final result = await AIService().generateJson(
-        prompt: prompt,
-        jsonStructure: structure,
-      );
-
+      final result = await ProgressSharingService()
+          .sendInvite(scope: _scope, memberUid: widget.client.clientUid);
       if (!mounted) return;
-      setState(() => _aiReport = result);
+      if (result.outcome == ProgressShareInviteOutcome.alreadyShared) {
+        // The member granted a tier between page load and tap — there is
+        // no invite to send anymore. Re-check for a real report instead.
+        AppSnackBar.success(
+            context, l10n.translate('coach.client_detail.tier_now_shared'));
+        unawaited(_loadCachedSummary());
+        return;
+      }
+      setState(() => _hasInvited = true);
+      if (result.outcome == ProgressShareInviteOutcome.sent) {
+        AppSnackBar.success(
+            context, l10n.translate('coach.client_detail.invite_sent'));
+      }
     } catch (e) {
-      debugPrint('CoachClientDetailScreen._generateAiReport error: $e');
+      debugPrint('CoachClientDetailScreen._sendInvite error: $e');
       if (!mounted) return;
       AppSnackBar.error(
-          context, l10n.translate('coach.client_ai_report_error'));
+          context, l10n.translate('coach.client_detail.invite_error'));
     } finally {
-      if (mounted) setState(() => _isGeneratingReport = false);
+      if (mounted) setState(() => _isSendingInvite = false);
     }
   }
 
@@ -218,47 +319,22 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
               _buildStatsSection(context, client, palette),
               const SizedBox(height: 24),
 
-              // AI Report
-              Text(
-                l10n.translate('coach.client_ai_report'),
-                style: AppText.of(context).titleM.copyWith(
-                    color: palette.textPrimary, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              if (_aiReport != null)
-                _AiReportCard(report: _aiReport!, palette: palette)
-              else if (_isGeneratingReport)
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: palette.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: palette.border),
-                  ),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: primary)),
-                      const SizedBox(width: 12),
-                      Text(
-                        l10n.translate('coach.client_ai_report_generating'),
-                        style: AppText.of(context)
-                            .bodyM
-                            .copyWith(color: palette.textSecondary),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                AppButton(
-                  label: l10n.translate('coach.client_ai_report'),
-                  onPressed: _generateAiReport,
+              // Progress summary (§4.2/§4.3/§4.4) — coach-only.
+              // generateMemberProgressSummary rejects memberUid==callerUid
+              // outright, so a member viewing their own coaching record has
+              // nothing to request here; this section simply doesn't exist
+              // for them (closes the OTHER half of C2 — the member side of
+              // the old screen could trigger the same unguarded call).
+              if (!_isViewingOwnRecord) ...[
+                Text(
+                  l10n.translate('coach.client_ai_report'),
+                  style: AppText.of(context).titleM.copyWith(
+                      color: palette.textPrimary, fontWeight: FontWeight.bold),
                 ),
-
-              const SizedBox(height: 24),
+                const SizedBox(height: 12),
+                _buildProgressSection(context, palette, l10n, primary),
+                const SizedBox(height: 24),
+              ],
 
               // Rate This Coach — only shown to the client themselves
               if (_isViewingOwnRecord) ...[
@@ -407,6 +483,88 @@ class _CoachClientDetailScreenState extends State<CoachClientDetailScreen>
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
   }
+
+  Widget _buildProgressSection(BuildContext context, AppPalette palette,
+      AppLocalizations l10n, Color primary) {
+    switch (_reportState) {
+      case _ProgressReportState.loadingCache:
+        return _loadingRow(context, palette, primary,
+            l10n.translate('coach.client_detail.checking_summary'));
+      case _ProgressReportState.notGenerated:
+        return AppButton(
+          label: l10n.translate('coach.client_ai_report'),
+          onPressed: _generateReport,
+        );
+      case _ProgressReportState.generating:
+        return _loadingRow(context, palette, primary,
+            l10n.translate('coach.client_ai_report_generating'));
+      case _ProgressReportState.ready:
+        return _ProgressSummaryCard(
+          result: _summaryResult!,
+          palette: palette,
+          primary: primary,
+          l10n: l10n,
+        );
+      case _ProgressReportState.tier0:
+        return _Tier0EmptyState(
+          palette: palette,
+          l10n: l10n,
+          hasInvited: _hasInvited,
+          isSending: _isSendingInvite,
+          onInvite: _sendInvite,
+        );
+      case _ProgressReportState.notAuthorized:
+        return _InlineNotice(
+          icon: Icons.link_off_rounded,
+          color: palette.warning,
+          palette: palette,
+          text: l10n.translate('coach.client_detail.not_authorized'),
+        );
+      case _ProgressReportState.rateLimited:
+        return _InlineNotice(
+          icon: Icons.hourglass_bottom_rounded,
+          color: palette.info,
+          palette: palette,
+          text: l10n.translate('coach.client_detail.rate_limited'),
+        );
+      case _ProgressReportState.error:
+        return _InlineNotice(
+          icon: Icons.error_outline_rounded,
+          color: palette.error,
+          palette: palette,
+          text: l10n.translate('coach.client_ai_report_error'),
+        );
+    }
+  }
+
+  Widget _loadingRow(
+      BuildContext context, AppPalette palette, Color primary, String label) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: palette.border),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2, color: primary)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: AppText.of(context)
+                  .bodyM
+                  .copyWith(color: palette.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _StatCard extends StatelessWidget {
@@ -450,26 +608,209 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _AiReportCard extends StatelessWidget {
-  final Map<String, dynamic> report;
+/// Small icon+text banner for the non-happy-path report states
+/// (not-authorized / rate-limited / generic error) — R7: no bare default
+/// grey error text, every state gets a real design.
+class _InlineNotice extends StatelessWidget {
+  final IconData icon;
+  final Color color;
   final AppPalette palette;
-  const _AiReportCard({required this.report, required this.palette});
+  final String text;
 
-  Color _motivationColor() {
-    final level = report['motivationLevel'] as String? ?? 'medium';
-    return switch (level) {
-      'high' => palette.success,
-      'low' => palette.error,
-      _ => palette.warning,
-    };
+  const _InlineNotice({
+    required this.icon,
+    required this.color,
+    required this.palette,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text,
+                style: AppText.of(context)
+                    .bodyM
+                    .copyWith(color: palette.textPrimary, height: 1.4)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Small "K1"/"K2"/"K3"-style pill (localized — never hardcoded, R6)
+/// showing which progress_sharing tier unlocked a given line, per the
+/// plan's own requirement ("her satırın altında hangi kademeden geldiği
+/// yazılı").
+class _TierChip extends StatelessWidget {
+  final int tier;
+  final AppPalette palette;
+  final AppLocalizations l10n;
+  final bool small;
+
+  const _TierChip({
+    required this.tier,
+    required this.palette,
+    required this.l10n,
+    this.small = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: small ? 6 : 8, vertical: small ? 2 : 3),
+      decoration: BoxDecoration(
+        color: palette.textTertiary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        l10n.translate('coach.client_detail.tier_badge',
+            variables: {'tier': '$tier'}),
+        style: TextStyle(
+          fontSize: small ? 9 : 10,
+          fontWeight: FontWeight.w700,
+          color: palette.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+/// One entry in the fixed field-display order below — [tier] is the
+/// consent level that unlocks this field (mirrors
+/// `aggregateCoachFields`/`aggregateGymFields` in functions/summaries.js
+/// exactly: tier 1 = attendance, tier 2 = +adherence, tier 3 = +weight
+/// trend).
+class _FieldSpec {
+  final String key;
+  final int tier;
+  const _FieldSpec(this.key, this.tier);
+}
+
+const _kCoachFieldSpecs = [
+  _FieldSpec('streak_days', 1),
+  _FieldSpec('last_logged_at', 1),
+  _FieldSpec('logging_regularity_pct', 2),
+  _FieldSpec('plan_adherence_pct', 2),
+  _FieldSpec('weight_trend', 3),
+];
+
+String _formatDateShort(DateTime date) =>
+    '${date.day}/${date.month}/${date.year}';
+
+/// One tier-attributed field line. Explicitly renders the
+/// `'insufficient_data'` sentinel (functions/summaries.js's honest-gap
+/// fields: `plan_adherence_pct`/`weight_trend` — no adherence calculator or
+/// weight-history datasource exists anywhere in this codebase yet) as its
+/// own clearly-labeled state — never hidden, never a fabricated number.
+class _FieldRow extends StatelessWidget {
+  final _FieldSpec spec;
+  final dynamic value;
+  final AppPalette palette;
+  final AppLocalizations l10n;
+
+  const _FieldRow({
+    required this.spec,
+    required this.value,
+    required this.palette,
+    required this.l10n,
+  });
+
+  bool get _isInsufficient => value is String && value == 'insufficient_data';
+
+  String _label() {
+    if (_isInsufficient) {
+      return l10n.translate('coach.client_detail.insufficient_data');
+    }
+    switch (spec.key) {
+      case 'streak_days':
+        return l10n.translate('coach.client_detail.field_streak_days',
+            variables: {'days': '$value'});
+      case 'last_logged_at':
+        return value is DateTime
+            ? l10n.translate('coach.client_detail.field_last_logged_at',
+                variables: {'date': _formatDateShort(value)})
+            : l10n.translate('coach.client_detail.field_never_logged');
+      case 'logging_regularity_pct':
+        return l10n.translate('coach.client_detail.field_logging_regularity',
+            variables: {'pct': '$value'});
+      case 'plan_adherence_pct':
+        return l10n.translate('coach.client_detail.field_plan_adherence',
+            variables: {'pct': '$value'});
+      case 'weight_trend':
+        return l10n.translate('coach.client_detail.field_weight_trend',
+            variables: {'trend': '$value'});
+      default:
+        return '$value';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).primaryColor;
-    final motColor = _motivationColor();
-    final focusAreas = List<String>.from(report['focusAreas'] as List? ?? []);
-    final nextSteps = List<String>.from(report['nextSteps'] as List? ?? []);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.circle, size: 6, color: palette.textTertiary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _label(),
+              style: AppText.of(context).bodyM.copyWith(
+                    color: _isInsufficient
+                        ? palette.textTertiary
+                        : palette.textSecondary,
+                    fontStyle:
+                        _isInsufficient ? FontStyle.italic : FontStyle.normal,
+                  ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          _TierChip(tier: spec.tier, palette: palette, l10n: l10n, small: true),
+        ],
+      ),
+    );
+  }
+}
+
+/// Renders a ready [MemberProgressSummaryResult] — either method. The
+/// narrative is shown as a headline (clearly labeled AI vs. template, per
+/// §4.3/§4.4: a template-only fallback must never look like a silently
+/// missing AI report); every structured field below it carries its own
+/// tier attribution, independent of which method produced the narrative.
+class _ProgressSummaryCard extends StatelessWidget {
+  final MemberProgressSummaryResult result;
+  final AppPalette palette;
+  final Color primary;
+  final AppLocalizations l10n;
+
+  const _ProgressSummaryCard({
+    required this.result,
+    required this.palette,
+    required this.primary,
+    required this.l10n,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isAi = result.method == 'ai';
+    final present = _kCoachFieldSpecs
+        .where((s) => result.fields.containsKey(s.key))
+        .toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -483,87 +824,135 @@ class _AiReportCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.auto_awesome_rounded, size: 16, color: primary),
+              Icon(
+                  isAi
+                      ? Icons.auto_awesome_rounded
+                      : Icons.description_outlined,
+                  size: 16,
+                  color: primary),
               const SizedBox(width: 6),
-              Text(
-                  AppLocalizations.of(context)
-                      .translate('coach.client_detail.section_ai_report'),
+              Expanded(
+                child: Text(
+                  l10n.translate(isAi
+                      ? 'coach.client_detail.method_ai'
+                      : 'coach.client_detail.method_template'),
                   style: AppText.of(context)
                       .labelS
-                      .copyWith(color: primary, fontWeight: FontWeight.w700)),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: motColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
+                      .copyWith(color: primary, fontWeight: FontWeight.w700),
                 ),
+              ),
+              _TierChip(tier: result.tier.level, palette: palette, l10n: l10n),
+            ],
+          ),
+          if (result.narrative.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(result.narrative,
+                style: AppText.of(context)
+                    .bodyM
+                    .copyWith(color: palette.textSecondary, height: 1.45)),
+          ],
+          if (present.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Divider(height: 1, color: palette.divider),
+            const SizedBox(height: 12),
+            ...present.map((s) => _FieldRow(
+                  spec: s,
+                  value: result.fields[s.key],
+                  palette: palette,
+                  l10n: l10n,
+                )),
+          ],
+          if (result.generatedAt != null)
+            Text(
+              l10n.translate('coach.client_detail.generated_at', variables: {
+                'date': _formatDateShort(result.generatedAt!),
+              }),
+              style: AppText.of(context)
+                  .labelS
+                  .copyWith(color: palette.textTertiary),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tier-0 empty state (§4.3): "this member hasn't opted in" + the one-time
+/// invite button. [hasInvited] is null while that status is still being
+/// checked, true once an invite has EVER been sent (button becomes a
+/// permanent "sent" label, never re-enabled), false when it's safe to send.
+class _Tier0EmptyState extends StatelessWidget {
+  final AppPalette palette;
+  final AppLocalizations l10n;
+  final bool? hasInvited;
+  final bool isSending;
+  final VoidCallback onInvite;
+
+  const _Tier0EmptyState({
+    required this.palette,
+    required this.l10n,
+    required this.hasInvited,
+    required this.isSending,
+    required this.onInvite,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: palette.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.visibility_off_rounded,
+                  size: 18, color: palette.textTertiary),
+              const SizedBox(width: 10),
+              Expanded(
                 child: Text(
-                  'Motivation: ${(report['motivationLevel'] as String? ?? 'medium').toUpperCase()}',
+                  l10n.translate('coach.client_detail.tier0_empty_title'),
                   style: AppText.of(context)
-                      .overline
-                      .copyWith(color: motColor, fontWeight: FontWeight.w700),
+                      .bodyM
+                      .copyWith(color: palette.textSecondary, height: 1.4),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          if (report['summary'] != null) ...[
-            Text(report['summary'] as String,
-                style: AppText.of(context)
-                    .bodyM
-                    .copyWith(color: palette.textSecondary)),
-            const SizedBox(height: 12),
-          ],
-          if (focusAreas.isNotEmpty) ...[
-            Text(
-                AppLocalizations.of(context)
-                    .translate('coach.client_detail.section_focus_areas'),
-                style: AppText.of(context).labelS.copyWith(
-                    color: palette.textPrimary, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            ...focusAreas.map((f) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.circle, size: 6, color: palette.textTertiary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                          child: Text(f,
-                              style: AppText.of(context)
-                                  .bodyM
-                                  .copyWith(color: palette.textSecondary))),
-                    ],
-                  ),
-                )),
-            const SizedBox(height: 12),
-          ],
-          if (nextSteps.isNotEmpty) ...[
-            Text(
-                AppLocalizations.of(context)
-                    .translate('coach.client_detail.section_next_steps'),
-                style: AppText.of(context).labelS.copyWith(
-                    color: palette.textPrimary, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            ...nextSteps.asMap().entries.map((e) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${e.key + 1}.',
-                          style: AppText.of(context).labelS.copyWith(
-                              color: primary, fontWeight: FontWeight.w700)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                          child: Text(e.value,
-                              style: AppText.of(context)
-                                  .bodyM
-                                  .copyWith(color: palette.textSecondary))),
-                    ],
-                  ),
-                )),
-          ],
+          const SizedBox(height: 14),
+          if (hasInvited == null)
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: palette.textTertiary),
+            )
+          else if (hasInvited == true)
+            Row(
+              children: [
+                Icon(Icons.check_circle_rounded,
+                    size: 16, color: palette.success),
+                const SizedBox(width: 6),
+                Text(
+                  l10n.translate('coach.client_detail.invite_sent'),
+                  style: AppText.of(context).labelM.copyWith(
+                      color: palette.success, fontWeight: FontWeight.w600),
+                ),
+              ],
+            )
+          else
+            AppButton(
+              label: l10n.translate('coach.client_detail.invite_button'),
+              variant: AppButtonVariant.tonal,
+              icon: Icons.notifications_outlined,
+              loading: isSending,
+              onPressed: isSending ? null : onInvite,
+            ),
         ],
       ),
     );

@@ -40,6 +40,65 @@ class GymModel {
   final String? brandColor;
   final bool isVerified;
 
+  /// Per-weekday opening hours. Keys are lowercase 3-letter English weekday
+  /// abbreviations (`mon`, `tue`, `wed`, `thu`, `fri`, `sat`, `sun`). Each
+  /// value is either `null` (closed that day) or a map
+  /// `{"open": "HH:mm", "close": "HH:mm"}` (24h, local time, zero-padded).
+  ///
+  /// Example:
+  /// ```json
+  /// {
+  ///   "mon": {"open": "07:00", "close": "23:00"},
+  ///   "tue": {"open": "07:00", "close": "23:00"},
+  ///   "sun": null
+  /// }
+  /// ```
+  /// A day that is missing from the map is treated the same as `null`
+  /// (closed / not configured). Produced by the opening-hours step in
+  /// gym_setup_screen.dart.
+  final Map<String, dynamic>? openingHours;
+
+  /// Max concurrent members the owner considers "full" — used to compute an
+  /// occupancy percentage. Optional; the owner may not set one.
+  final int? capacity;
+
+  /// How many members are inside RIGHT NOW (Faz 1 §1.4/1.5/1.6). Server-only
+  /// — written exclusively by `recordPresenceEvent`'s transaction
+  /// (`functions/presence.js`); `firestore.rules`' `touchesProtectedGymFields()`
+  /// denies the owner's otherwise-blanket update rule from touching it
+  /// directly, same as `reputation_score`/`achievements` elsewhere. Stays at
+  /// 0 until the Faz 1 §1.2 client geofence trigger is actually shipped.
+  final int liveOccupancy;
+
+  /// Gym owner's own opt-in for whether automatic background check-in
+  /// detection (geofencing) is offered to their members at all. Defaults to
+  /// `false` — existing gyms created before this field existed must not
+  /// suddenly have it enabled.
+  final bool geofenceEnabled;
+
+  /// Gym's public contact phone number, carried over from the approved
+  /// [GymApplicationModel.contactPhone] (see AdminService.approveGymApplication).
+  final String? contactPhone;
+
+  /// How many signups this gym's own invite codes (`referrals/{code}` with
+  /// `type: 'gym'`) have ever attributed (Faz 6 §6.5) — bumped exclusively by
+  /// `applyReferral`'s gym-attribution transaction (`functions/economy.js`).
+  /// Deliberately a SEPARATE counter from [memberCount]: redeeming an invite
+  /// code attributes a signup to this gym's marketing, it does not make that
+  /// person a gym MEMBER (a distinct, explicit `joinGym` action). Server-only
+  /// — `touchesProtectedGymFields()` (firestore.rules) denies the owner's
+  /// otherwise-blanket update rule from touching it directly, same as
+  /// [liveOccupancy].
+  final int attributedMemberCount;
+
+  /// How many DISTINCT attributed users have ever converted to a real,
+  /// validated premium purchase at least once (Faz 6 §6.6) — bumped
+  /// exclusively by `maybeAwardGymCommission` on a user's FIRST premium
+  /// purchase after attribution (never again on renewal; contrast with
+  /// `gym_attributions/{uid}.lifetime_commission_try`, which accrues every
+  /// purchase). Server-only, same protection as [attributedMemberCount].
+  final int attributedPremiumCount;
+
   const GymModel({
     required this.id,
     required this.ownerUid,
@@ -61,6 +120,13 @@ class GymModel {
     this.checkInRadius = 100,
     this.brandColor,
     this.isVerified = false,
+    this.openingHours,
+    this.capacity,
+    this.liveOccupancy = 0,
+    this.geofenceEnabled = false,
+    this.contactPhone,
+    this.attributedMemberCount = 0,
+    this.attributedPremiumCount = 0,
   });
 
   factory GymModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -92,6 +158,16 @@ class GymModel {
       // GymQrToken / GymService.getQrTokenStream. No longer parsed here.
       brandColor: d['brand_color'] as String?,
       isVerified: d['is_verified'] as bool? ?? false,
+      openingHours: d['opening_hours'] as Map<String, dynamic>?,
+      capacity: d['capacity'] as int?,
+      liveOccupancy: d['live_occupancy'] as int? ?? 0,
+      // Faz 1.1: must default false on absence — existing gyms created
+      // before this field existed must not suddenly opt in to background
+      // geofence check-in detection just because the field is missing.
+      geofenceEnabled: d['geofence_enabled'] as bool? ?? false,
+      contactPhone: d['contact_phone'] as String?,
+      attributedMemberCount: d['attributed_member_count'] as int? ?? 0,
+      attributedPremiumCount: d['attributed_premium_count'] as int? ?? 0,
     );
   }
 
@@ -114,6 +190,13 @@ class GymModel {
         if (longitude != null) 'longitude': longitude,
         'check_in_radius': checkInRadius,
         if (brandColor != null) 'brand_color': brandColor,
+        if (openingHours != null) 'opening_hours': openingHours,
+        if (capacity != null) 'capacity': capacity,
+        'live_occupancy': liveOccupancy,
+        'geofence_enabled': geofenceEnabled,
+        if (contactPhone != null) 'contact_phone': contactPhone,
+        'attributed_member_count': attributedMemberCount,
+        'attributed_premium_count': attributedPremiumCount,
       };
 
   GymModel copyWith({
@@ -133,6 +216,13 @@ class GymModel {
     double? longitude,
     int? checkInRadius,
     String? brandColor,
+    Map<String, dynamic>? openingHours,
+    int? capacity,
+    int? liveOccupancy,
+    bool? geofenceEnabled,
+    String? contactPhone,
+    int? attributedMemberCount,
+    int? attributedPremiumCount,
   }) =>
       GymModel(
         id: id,
@@ -154,6 +244,16 @@ class GymModel {
         longitude: longitude ?? this.longitude,
         checkInRadius: checkInRadius ?? this.checkInRadius,
         brandColor: brandColor ?? this.brandColor,
+        isVerified: isVerified,
+        openingHours: openingHours ?? this.openingHours,
+        capacity: capacity ?? this.capacity,
+        liveOccupancy: liveOccupancy ?? this.liveOccupancy,
+        geofenceEnabled: geofenceEnabled ?? this.geofenceEnabled,
+        contactPhone: contactPhone ?? this.contactPhone,
+        attributedMemberCount:
+            attributedMemberCount ?? this.attributedMemberCount,
+        attributedPremiumCount:
+            attributedPremiumCount ?? this.attributedPremiumCount,
       );
 
   String get locationDisplay {
@@ -162,6 +262,14 @@ class GymModel {
   }
 
   bool get hasLocation => latitude != null && longitude != null;
+
+  /// Occupancy as a 0-100+ percentage of [capacity]. Null if no capacity was
+  /// set (nothing to divide by) — callers should show the raw count instead.
+  int? get occupancyPercent {
+    final cap = capacity;
+    if (cap == null || cap <= 0) return null;
+    return ((liveOccupancy / cap) * 100).round();
+  }
 }
 
 extension GymModelBrandingX on GymModel {

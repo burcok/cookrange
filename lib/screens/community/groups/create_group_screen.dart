@@ -9,7 +9,14 @@ import '../../../core/services/community_group_service.dart';
 import '../../../core/widgets/ds/ds.dart';
 
 class CreateGroupScreen extends StatefulWidget {
-  const CreateGroupScreen({super.key});
+  /// Pre-fills the city field — used by the "{city}'de ilk grubu sen kur"
+  /// cold-start CTA (Faz 2 §2.5, `ActiveGroupsSection`) so a user who tapped
+  /// that empty-state button doesn't have to re-pick the city they already
+  /// expressed interest in. Still just a starting value, not a lock — the
+  /// city picker below works exactly as it does when this is null.
+  final String? initialCity;
+
+  const CreateGroupScreen({super.key, this.initialCity});
 
   @override
   State<CreateGroupScreen> createState() => _CreateGroupScreenState();
@@ -23,6 +30,12 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   String? _district;
   bool _isPublic = true;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _city = widget.initialCity;
+  }
 
   @override
   void dispose() {

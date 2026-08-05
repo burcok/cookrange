@@ -38,6 +38,7 @@
 | AI food analysis — describe **or** photo (vision) | 🚧 | v0.9 | `FoodAnalysisService`, vision model | Verify vision path end to end |
 | Barcode scanning — with manual-entry fallback | 🚧 | v0.8 | `mobile_scanner`, Open Food Facts | — |
 | Nutrition analytics — 7-day bars, macros, adherence | 🚧 | v0.7 | `CalorieCalculator` | — |
+| Nutrition analytics — 30-day trend (premium) | 🚧 | v0.9.6 | `Entitlements.advancedTrends` | Not device-verified |
 | Shopping list — auto-generate, source-meal attribution, sync, `.ics` | ✅ | v0.7 | `ShoppingListSyncService` | — |
 | Meal plan history + restore | ⛔ `BLK-06` | v0.8 | index exists, **rule missing** | Add the rule — it's permanently empty without it |
 | Hydration, weight, exercise logging | ✅ | v0.6 | `ExerciseLogService` (MET table) | — |
@@ -48,6 +49,7 @@
 |---|---|---|---|---|
 | AI chat coach — profile-aware, voice-bridged | 🚧 | v0.7 | `AiChatService` | Streaming responses |
 | AI Fitness Twin — 30/60/90-day projection | ✅ | v0.8 | `AiInsightService` | — |
+| AI Fitness Twin — detailed BMR/TDEE breakdown (premium) | 🚧 | v0.9.6 | `Entitlements.advancedAIAnalysis` | Not device-verified |
 | Daily accountability insight — cached per day+locale | ✅ | v0.8 | `AiInsightService` | — |
 | Weekly AI recap — score, wins, challenges, trend | ✅ | v0.9 | idempotent per week+locale | — |
 | Risk detection — client-side, no AI call | ✅ | v0.8 | — | — |
@@ -71,10 +73,11 @@ Detail: [`AI_SYSTEM.md`](AI_SYSTEM.md).
 | In-app notifications — structured, locale-rendered | ✅ | v0.6 | `NotificationPresenter` | — |
 | **Push notifications** | 🚧 `BLK-03` | v0.6 | Cloud Functions | Every notification type now has a deployed, server-authored writer (`notifications.js`/`social.js`); physical-device verification still pending — no hardware in this environment, and the iOS Simulator cannot receive real APNs |
 | Community groups — location-based | 🚧 | v0.9 | `CommunityGroupService` | — |
+| Group member CSV export (premium admin tool) | 🚧 | v0.9.6 | `Entitlements.exportData` | Not device-verified |
 | Streak squads | 🚧 | v0.7 | `StreakSquadService` | — |
 | Signals — ephemeral, TTL | 🚧 | v0.6 | needs a Firestore TTL policy | — |
 | Streaks + milestones | ✅ | v0.4 | unit-tested | Server-side (`SEC-14`) |
-| Achievements — 11 badges, idempotent | ✅ | v0.9.5 | `AchievementService` | — |
+| Achievements — 15 badges, idempotent | ✅ | v0.9.5 | `AchievementService` | Grant + display verified; `achievementEarned`/`streakFreezeUsed` notification types are wired end to end in the presenter but never actually written — no call site anywhere in `functions/` (`docs/roadmap/PHASE_15_ENGAGEMENT.md` §15.5) |
 | Reputation score | 🚧 | v0.7 | — | Client-computed, forgeable |
 | Leaderboards — global + friends | 🚧 | v0.7 | — | — |
 | Moderation — keyword screen, reports, image scan | ⛔ `BLK-05` | v0.8 | admin queue unreachable | No UGC rate limiter |
@@ -91,6 +94,7 @@ Detail: [`COMMUNITY.md`](COMMUNITY.md).
 | Gym community feed, leaderboard, analytics | 🔒 | v0.8 | — |
 | Gym discovery — city/district, 4 sorts, map | 🔒 | v0.9 | "Near Me" is the KVKK reference implementation |
 | Gym Wars | ❌ | — | Model + service only; no real UI |
+| Invite codes, attribution & revenue share (Faz 6 §6.1/§6.5/§6.6) | 🔒 | v0.9.6 | QR/poster codes → signup attribution → manually-paid commission on a real Premium purchase; no individual identity ever reaches the gym, only aggregate counts |
 
 Detail: [`GYM_ECOSYSTEM.md`](GYM_ECOSYSTEM.md).
 
@@ -129,7 +133,7 @@ Detail: [`PREMIUM.md`](PREMIUM.md).
 | Social sharing + shareable fitness card (PNG) | ✅ | v0.8 |
 | "What's New" once-per-version sheet | ✅ | v0.9 |
 | Coachmark tips, profile completeness card | ✅ | v0.9 |
-| Meal reminders, streak-at-risk, weekly-plan-ready nudges | ⛔ `BLK-03` | v0.9.5 |
+| Meal reminders, streak-at-risk, weekly-plan-ready nudges | 🚧 | v0.9.5 |
 
 ## Admin & ops
 

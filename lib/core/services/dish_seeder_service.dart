@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/dish_model.dart';
 import '../models/ingredient_model.dart';
 import '../data/dish_data.dart';
+import 'crashlytics_service.dart';
 import 'dish_image_service.dart';
 
 class DishSeederService {
@@ -168,19 +171,44 @@ class DishSeederService {
     debugPrint('Seeding complete. Success: $successCount, Failed: $failCount');
   }
 
-  /// Seeds all dishes from local data if the Firestore dishes collection is empty.
-  /// Uses batch writes for efficiency. Does NOT fetch images — uses image_url
-  /// already present in the data or leaves imageUrl null.
+  /// Seeds any dishes from local data that are missing from Firestore.
+  /// Cheap in the common case: a single `count()` aggregation (~1 read
+  /// regardless of collection size, never a full document read — matches
+  /// this codebase's "count() over size" convention) compares the live
+  /// count against `allDishes.length`; only on a mismatch does it fetch the
+  /// live id set and upsert whatever's missing, via batch writes. Does NOT
+  /// fetch images — uses image_url already present in the data or leaves
+  /// imageUrl null.
+  ///
+  /// **Faz 3 §3.6 repair.** This used to just check "is the collection
+  /// non-empty" and no-op otherwise, so it could bootstrap a brand-new
+  /// project once but could never pick up dishes added to `dish_data.dart`
+  /// afterward (e.g. this task's snack-pool expansion, 75 → 100) on any
+  /// environment that had already seeded an earlier catalog — new dishes
+  /// only ever reached Firestore via an admin's manual "reseed" tap
+  /// (`DishService.seedDatabase` → `seedAllDishes`, an unconditional
+  /// overwrite-all). Additive-only — never touches a doc that already
+  /// exists — so it stays safe to call unconditionally on every app start.
   Future<void> seedIfEmpty() async {
     try {
-      final existing = await _firestore
-          .collection('dishes')
-          .limit(1)
-          .get(const GetOptions(source: Source.server));
-      if (existing.docs.isNotEmpty) return;
+      final col = _firestore.collection('dishes');
+      final countSnap = await col.count().get();
+      final liveCount = countSnap.count ?? 0;
+      if (liveCount >= allDishes.length) return; // already caught up
+
+      final existingIds = liveCount == 0
+          ? const <String>{}
+          : (await col.get(const GetOptions(source: Source.server)))
+              .docs
+              .map((d) => d.id)
+              .toSet();
+
+      final items = allDishes
+          .where((d) => !existingIds.contains(d['id'] as String))
+          .toList();
+      if (items.isEmpty) return;
 
       const batchSize = 450; // Stay well under the 500-op Firestore batch limit
-      final items = allDishes;
       int batchStart = 0;
 
       while (batchStart < items.length) {
@@ -231,16 +259,24 @@ class DishSeederService {
               _firestore.collection('dishes').doc(dish.id),
               dish.toJson(),
             );
-          } catch (_) {
-            // Skip individual bad entries; don't abort the whole batch
+          } catch (e) {
+            // Skip individual bad entries; don't abort the whole batch.
+            debugPrint('DishSeederService.seedIfEmpty: skipping bad entry '
+                '${dishData['id']}: $e');
           }
         }
 
         await batch.commit();
         batchStart = end;
       }
-    } catch (_) {
-      // Seeding failure is non-fatal; app works without pre-seeded dishes
+      debugPrint('DishSeederService.seedIfEmpty: added ${items.length} '
+          'missing dish(es)');
+    } catch (e, stack) {
+      // Seeding failure is non-fatal; app works without pre-seeded dishes —
+      // but still reported, unlike before (R4: no silent catch).
+      debugPrint('DishSeederService.seedIfEmpty error: $e');
+      unawaited(CrashlyticsService()
+          .recordError(e, stack, reason: 'DishSeederService.seedIfEmpty'));
     }
   }
 

@@ -29,12 +29,16 @@ import '../admin/admin_panel_screen.dart';
 import '../onboarding/v2/intro_screen.dart';
 import '../ai/widgets/ai_credits_sheet.dart';
 import '../coach/coach_dashboard_screen.dart';
+import '../../core/models/gym_attribution_model.dart';
+import '../../core/services/gym_service.dart';
 import '../gym/gym_dashboard_screen.dart';
 import '../legal/legal_screen.dart';
 import 'affiliate_earnings_screen.dart';
 import 'consent_center_screen.dart';
 import 'dietary_preferences_screen.dart';
 import 'privacy_request_screen.dart';
+import '../community/groups/moderation_appeal_screen.dart';
+import 'credit_restriction_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -1109,6 +1113,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         _buildSettingsRow(
                           context,
+                          icon: Icons.gavel_outlined,
+                          iconColor: palette.warning,
+                          iconBgColor: palette.isDark
+                              ? palette.warning.withValues(alpha: 0.2)
+                              : palette.warning.withValues(alpha: 0.15),
+                          title: appLoc.translate('moderation_appeal.title'),
+                          palette: palette,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ModerationAppealScreen(),
+                            ),
+                          ),
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.shield_outlined,
+                          iconColor: palette.warning,
+                          iconBgColor: palette.isDark
+                              ? palette.warning.withValues(alpha: 0.2)
+                              : palette.warning.withValues(alpha: 0.15),
+                          title: appLoc.translate('credit_restriction.title'),
+                          palette: palette,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CreditRestrictionScreen(),
+                            ),
+                          ),
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
                           icon: Icons.privacy_tip_outlined,
                           iconColor: palette.energy,
                           iconBgColor: palette.isDark
@@ -1230,6 +1270,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     // Refer a Friend
                     _ReferralCard(palette: palette, appLoc: appLoc),
+
+                    // Faz 6 §6.5 — user-facing gym-attribution transparency.
+                    // Renders nothing (not even an empty state) for the vast
+                    // majority of users who never redeemed a gym code.
+                    _GymAttributionCard(palette: palette, appLoc: appLoc),
 
                     const SizedBox(height: 16),
 
@@ -2197,14 +2242,26 @@ class _ReferralCardState extends State<_ReferralCard> {
         palette: widget.palette,
         onApply: (code) async {
           if (mounted) setState(() => _applying = true);
-          final error = await ReferralService().applyCode(code);
+          // Always a manual, already-signed-in entry — unambiguous, unlike
+          // the onboarding call site (Faz 6 §6.5's `source` classification).
+          final result =
+              await ReferralService().applyCode(code, source: 'manual_entry');
           if (!mounted) return;
           setState(() => _applying = false);
           // ignore: use_build_context_synchronously
           Navigator.pop(context);
-          if (error != null) {
+          if (!result.isSuccess) {
             // ignore: use_build_context_synchronously
-            AppSnackBar.error(context, error);
+            AppSnackBar.error(context, result.error!);
+          } else if (result.isGymCode) {
+            // Faz 6 §6.5: a gym code does NOT grant a premium trial — the
+            // generic "you both got 7 days of Premium" copy would be false.
+            // ignore: use_build_context_synchronously
+            AppSnackBar.success(
+              context,
+              widget.appLoc.translate('settings.referral.applied_gym_success',
+                  variables: {'gym': result.gymName ?? ''}),
+            );
           } else {
             // ignore: use_build_context_synchronously
             AppSnackBar.success(
@@ -2313,6 +2370,161 @@ class _ReferralCardState extends State<_ReferralCard> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Faz 6 §6.5 — "you signed up via {gym}" transparency + one-tap disconnect.
+///
+/// Renders nothing at all (not an empty state — literally absent) unless
+/// the signed-in user actually has a `gym_attributions/{uid}` doc AND hasn't
+/// already hidden it. "Disconnect" is DISPLAY-only: it never touches the
+/// underlying `gym_attributions/{uid}` record (immutable by design — see
+/// firestore.rules' comment on that collection), it only sets a private
+/// `hidden` preference the user can revisit via [ReferralService]. The gym's
+/// already-earned/earning commission is completely unaffected either way.
+class _GymAttributionCard extends StatefulWidget {
+  final AppPalette palette;
+  final AppLocalizations appLoc;
+
+  const _GymAttributionCard({required this.palette, required this.appLoc});
+
+  @override
+  State<_GymAttributionCard> createState() => _GymAttributionCardState();
+}
+
+class _GymAttributionCardState extends State<_GymAttributionCard> {
+  bool _loading = true;
+  GymAttributionModel? _attribution;
+  String? _gymName;
+  bool _disconnecting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final attribution = await ReferralService().getMyAttribution();
+    if (attribution == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    final hidden = await ReferralService().isAttributionHidden();
+    if (hidden) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    final gym = await GymService().getGym(attribution.gymId);
+    if (!mounted) return;
+    setState(() {
+      _attribution = attribution;
+      _gymName = gym?.name;
+      _loading = false;
+    });
+  }
+
+  Future<void> _confirmDisconnect() async {
+    final confirmed = await AppSheet.show<bool>(
+      context: context,
+      title: widget.appLoc.translate('settings.attribution.disconnect_title'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.appLoc.translate('settings.attribution.disconnect_body'),
+              style: AppText.of(context)
+                  .bodyM
+                  .copyWith(color: widget.palette.textSecondary),
+            ),
+            const SizedBox(height: 20),
+            AppButton(
+              label: widget.appLoc
+                  .translate('settings.attribution.disconnect_confirm'),
+              variant: AppButtonVariant.destructive,
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+            const SizedBox(height: 8),
+            AppButton(
+              label: widget.appLoc.translate('common.cancel'),
+              variant: AppButtonVariant.ghost,
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || _disconnecting) return;
+
+    setState(() => _disconnecting = true);
+    await ReferralService().setAttributionHidden(true);
+    if (!mounted) return;
+    setState(() {
+      _attribution = null;
+      _disconnecting = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading || _attribution == null) return const SizedBox.shrink();
+
+    final palette = widget.palette;
+    final l10n = widget.appLoc;
+    final t = AppText.of(context);
+    final gymLabel = _gymName ?? l10n.translate('settings.attribution.a_gym');
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: AppCard(
+        padding: EdgeInsets.all(AppSpacing.lg.r),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36.r,
+              height: 36.r,
+              decoration: BoxDecoration(
+                color: palette.success.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.storefront_rounded,
+                  color: palette.success, size: 20.r),
+            ),
+            SizedBox(width: AppSpacing.sm.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.translate('settings.attribution.title',
+                        variables: {'gym': gymLabel}),
+                    style: t.bodyM.copyWith(
+                        color: palette.textPrimary,
+                        fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.translate('settings.attribution.subtitle'),
+                    style: t.labelS.copyWith(color: palette.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: _disconnecting ? null : _confirmDisconnect,
+              child: Text(
+                l10n.translate('settings.attribution.disconnect'),
+                style: t.labelS.copyWith(color: palette.error),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

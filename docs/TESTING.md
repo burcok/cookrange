@@ -3,12 +3,12 @@
 > How correctness is proven — and, right now, mostly isn't.
 > CI mechanics live in [`DEVOPS.md`](DEVOPS.md).
 >
-> ⚠️ **Coverage is still ~1 % of ~115k LOC** — line coverage hasn't moved. What changed (`BLK-13`):
+> ⚠️ **Coverage is still ~1.6 % of ~115k LOC** — line coverage has barely moved. What changed (`BLK-13`):
 > `test/` is tracked in git, all 3 previously-failing tests now pass, and the Firestore rules suite
 > runs green **in a real CI run**, not just locally
 > ([run #40](https://github.com/burcok/cookrange/actions/runs/30667024406)). Testing was the
 > lowest-scoring dimension at 2.0 / 10; it is still the highest-leverage thing anyone can improve —
-> 1 % coverage means almost everything is still unproven.
+> ~1.6 % coverage means almost everything is still unproven.
 
 ---
 
@@ -16,12 +16,12 @@
 
 | | |
 |---|---|
-| Test files | **13** (12 Dart unit/widget + 1 Firestore rules) |
-| Coverage | **~1 %** of ~115k LOC |
+| Test files | **24** (23 Dart unit/widget + 1 Firestore rules) |
+| Coverage | **~1.6 %** of ~115k LOC |
 | Failing | **0** |
-| Widget tests | 2 (`widget_test.dart`'s scaffold default; `meal_plan_ai_unavailable_test.dart`'s `AppErrorState` check, `BLK-01`) |
+| Widget tests | 2 (`widget_test.dart`'s `ErrorFallbackWidget`/`UnknownRouteScreen` coverage; `meal_plan_ai_unavailable_test.dart`'s `AppErrorState` check, `BLK-01`) |
 | Integration tests | **0** |
-| Firestore rules tests | **16**, in version control (`test/firestore_rules/rules.test.mjs`) |
+| Firestore rules tests | **186** (`test/firestore_rules/rules.test.mjs`) |
 | **`test/` tracked in git?** | **Yes** |
 
 **Un-ignoring `test/` was the root-cause fix.** Tests written locally were never reaching the
@@ -55,9 +55,20 @@ cover, and they're good.
 | `cost_analytics_test.dart` | Cost/revenue projection maths |
 | `app_lifecycle_service_test.dart` | Lifecycle transitions |
 | `i18n_parity_test.dart` | **EN/TR key parity — the one real CI gate** |
-| `widget_test.dart` | Default scaffold smoke test |
+| `widget_test.dart` | `ErrorFallbackWidget` (default/custom icon, custom title/message, retry button shown/hidden/tappable) and `UnknownRouteScreen` render without crashing |
 | `meal_plan_ai_unavailable_test.dart` | `AppErrorState` renders the exact copy `home.dart` falls back to when AI is unconfigured (`BLK-01`); `onRetry` omitted — see the file's own comment for why a full `HomeScreen` mount isn't feasible (ADR-004) |
-| `firestore_rules/rules.test.mjs` | 16 test cases: economy lock, server-only ledgers, PII isolation, content caps, admin self-grant denial, owner-only `meal_plan_history` (`BLK-06`) — runs against the emulator, not `flutter test` |
+| `message_model_test.dart` | Message model v2 round-trip + legacy 6-field read adapter (Faz 2 §2.1) — added this session, missing from this table until Faz 2 §2.4 noticed |
+| `mention_spans_test.dart` | `buildMentionSpans` — @mention highlight splitting: none/one/multiple mentions, stale/out-of-range offset, negative/zero-length, overlapping spans skipped, pure and Firebase-free (Faz 2 §2.2) — 6 cases |
+| `chat_prefs_model_test.dart` | `ChatPrefsModel.fromFirestore` parsing + `isDeleted`'s reappear-on-new-activity semantics (Faz 2 §2.4) |
+| `chat_list_filter_test.dart` | `ChatListFilter.apply` — segment/unread/search/archive filtering and pinned-first sort, pure and Firebase-free (Faz 2 §2.4) |
+| `plan_nutrition_calculator_test.dart` | `PlanNutritionCalculator` — portion scaling, swap recompute (S7 regression guard), custom/free-text food entries, empty plan, allergen-adjacent (unresolvable dish id) edge cases, week sum/average — 18 cases, pure and Firebase-free (Faz 3 §3.4) |
+| `template_plan_adapter_test.dart` | `TemplatePlanAdapter` — `collapseMealsToLegacyMap`'s two documented lossy cases (custom-food entries dropped, same-day duplicate meal-type slots last-wins) + clean single-entry mapping + empty list; `weekdayName`'s 0..6 mapping + out-of-range clamp — 7 cases, pure and Firebase-free (Faz 3 §3.5, backs `WeeklyMealPlanService.adoptTemplate`'s template→legacy-plan-shape conversion) |
+| `dish_data_test.dart` | Dish seed catalog data integrity — unique ids, snack-pool floor (≥25), valid `category` values, catalog-size floor (≥75), snack ingredient-calorie sums; regression-guards 3 concrete data defects fixed directly in the source data (Faz 3 §3.6) — 5 cases |
+| `prompt_service_test.dart` | `PromptService.generateWeeklyMealPlanPrompt`'s 180-dish AI-prompt ceiling — under/at/over the cap, minority-meal-type starvation guard, Map-shaped dish input (Faz 3 §3.6) — 5 cases |
+| `progress_sharing_model_test.dart` | `ProgressSharingScope` gym_/coach_ parsing, `ProgressSharingTier` fail-closed level mapping, `ProgressSharingModel.fromFirestore` grant/revoke parsing, `MemberProgressSummaryResult`/`ProgressShareInviteResult` callable-response parsing incl. Timestamp wire-shape normalization (Faz 4 §4.1–§4.3) — 27 cases |
+| `xp_level_curve_test.dart` | `XpLevelCurve` triangular-number level thresholds, level-for-xp boundaries, progress-bar remainder/width helpers (Faz 5 §5.1) — 10 cases |
+| `gym_invite_code_model_test.dart` | `GymInviteCodeModel.displayLabel` fallback chain (campaign+location/either/neither/blank-as-absent/trim) and `inviteUrl`/`isPrinted` getters (Faz 6 §6.1) — 8 cases |
+| `firestore_rules/rules.test.mjs` | 186 test cases: economy lock, server-only ledgers, PII isolation, content caps, admin self-grant denial, owner-only `meal_plan_history` (`BLK-06`), unified-groups access model, `private/chat_prefs`, template share_scope visibility, server-only offer creation, exactly-once accept/decline, optional decline reason (capped, decline-only), tiered `progress_sharing` consent + gym/coach `member_summaries`/`progress_share_invites` isolation, engagement-credit economy (`engagement_credit_events`, `credit_restrictions`, `reciprocity_pairs`, `engagement_diversity`, `credit_moderation`) + its `moderation_appeals` path, group `weekly_contributions`/`weekly_leaderboard` server-only writes, commission-reversal forgery denial (Faz 6 §6.6 follow-up — status flip, resurrect-from-rejected, fake adjustment entries) — runs against the emulator, not `flutter test` |
 
 These share a shape worth copying: **pure Dart, no Firebase, deterministic, real edge cases** (the one
 exception, `meal_plan_ai_unavailable_test.dart`, is a widget test — it needs no Firebase either, since
@@ -90,9 +101,10 @@ added after, with `BLK-01`.
    `CI-11` and `build-android`'s `CI-12` were found and fixed after this card closed; see
    `PROJECT_STATE.md` for the live count.
 2. ~~**`TEST-01` — Firestore rules tests in version control.**~~ Landed as part of `BLK-13`, since
-   grown to 16 test cases in `test/firestore_rules/rules.test.mjs` (`BLK-06` added the
-   `meal_plan_history` owner-only case), covering the security model directly. Still needed: extend
-   it toward all 71 rule match blocks, not just the 16 covered today.
+   grown to 186 test cases in `test/firestore_rules/rules.test.mjs`, covering the security model
+   directly across most collections. Still needed: `firestore.rules` has grown to 103 distinct rule
+   match blocks; cases concentrate on the highest-risk collections rather than one-per-block, so
+   full block-by-block coverage is still unverified.
 3. **`TEST-02` — widget tests** for the states that break silently: loading, empty, error, and both
    themes.
 4. **`TEST-03` — integration tests** against the emulator for the consumer path: signup → onboarding

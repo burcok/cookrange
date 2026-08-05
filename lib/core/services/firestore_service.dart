@@ -9,6 +9,7 @@ import '../models/notification_model.dart';
 import '../models/user_profile_model.dart';
 import '../models/user_model.dart';
 import '../models/user_logs_model.dart';
+import '../models/gym_presence_prefs_model.dart';
 
 /// A service dedicated to all Firestore interactions related to user data.
 /// This centralization allows for easier management, logging, and implementation
@@ -620,6 +621,80 @@ class FirestoreService {
   Stream<DocumentSnapshot<Map<String, dynamic>>> getPrivateAccountStream(
       String uid) {
     return _privateAccountRef(uid).snapshots();
+  }
+
+  DocumentReference<Map<String, dynamic>> _presencePrefsRef(String uid) =>
+      _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('private')
+          .doc('presence_prefs');
+
+  /// Reads `users/{uid}/private/presence_prefs` (Faz 1 §1.4). Never throws —
+  /// a missing doc (never opted into gym presence at all) is just [empty].
+  Future<GymPresencePrefsModel> getGymPresencePrefs(String uid) async {
+    _log.info('getGymPresencePrefs: $uid', service: _serviceName);
+    try {
+      final snap = await _presencePrefsRef(uid).get();
+      return GymPresencePrefsModel.fromFirestore(snap.data());
+    } catch (e, s) {
+      _log.error('getGymPresencePrefs error for $uid',
+          service: _serviceName, error: e, stackTrace: s);
+      return GymPresencePrefsModel.empty;
+    }
+  }
+
+  /// Turns background auto check-in on/off for one specific gym membership.
+  /// Per-gym on purpose (§1.4 doc comment) — granting the broader
+  /// `gymPresence` consent does not itself enable tracking anywhere.
+  Future<void> setGymTrackingEnabled(
+      String uid, String gymId, bool enabled) async {
+    _log.info('setGymTrackingEnabled: $uid/$gymId=$enabled',
+        service: _serviceName);
+    try {
+      await _presencePrefsRef(uid).set({
+        'gym_tracking_enabled': {gymId: enabled},
+      }, SetOptions(merge: true));
+    } catch (e, s) {
+      _log.error('setGymTrackingEnabled error for $uid',
+          service: _serviceName, error: e, stackTrace: s);
+      rethrow;
+    }
+  }
+
+  /// Turns off (or back on) broadcasting my presence for my friends'
+  /// "friend at gym" notifications (Faz 1.7, toggle (a)).
+  Future<void> setNotifyFriendsEnabled(String uid, bool enabled) async {
+    _log.info('setNotifyFriendsEnabled: $uid=$enabled', service: _serviceName);
+    try {
+      await _presencePrefsRef(uid).set({
+        'notify_friends_enabled': enabled,
+      }, SetOptions(merge: true));
+    } catch (e, s) {
+      _log.error('setNotifyFriendsEnabled error for $uid',
+          service: _serviceName, error: e, stackTrace: s);
+      rethrow;
+    }
+  }
+
+  /// Stops (or resumes) "friend at gym" notifications about one specific
+  /// friend, without muting the notification type entirely (Faz 1.7,
+  /// toggle (c)).
+  Future<void> setFriendAtGymMuted(
+      String uid, String friendUid, bool muted) async {
+    _log.info('setFriendAtGymMuted: $uid/$friendUid=$muted',
+        service: _serviceName);
+    try {
+      await _presencePrefsRef(uid).set({
+        'muted_friend_uids': muted
+            ? FieldValue.arrayUnion([friendUid])
+            : FieldValue.arrayRemove([friendUid]),
+      }, SetOptions(merge: true));
+    } catch (e, s) {
+      _log.error('setFriendAtGymMuted error for $uid',
+          service: _serviceName, error: e, stackTrace: s);
+      rethrow;
+    }
   }
 
   /// Overwrites the user's free-form avoid-ingredients list.

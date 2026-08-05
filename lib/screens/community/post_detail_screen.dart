@@ -1230,7 +1230,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         final l10n = AppLocalizations.of(context);
         final msg = e.toString().contains('content_blocked')
             ? l10n.translate('community.content_blocked')
-            : e.toString();
+            : e.toString().contains('content_check_unavailable')
+                ? l10n.translate('community.content_check_unavailable')
+                : e.toString();
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(msg)));
       }

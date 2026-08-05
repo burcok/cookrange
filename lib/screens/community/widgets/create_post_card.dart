@@ -339,7 +339,9 @@ class _CreatePostCardState extends State<CreatePostCard> {
         final l10n = AppLocalizations.of(context);
         final msg = e.toString().contains('content_blocked')
             ? l10n.translate('community.content_blocked')
-            : "${l10n.translate('community.create_post.error')}: $e";
+            : e.toString().contains('content_check_unavailable')
+                ? l10n.translate('community.content_check_unavailable')
+                : "${l10n.translate('community.create_post.error')}: $e";
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(msg)));
       }

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/consent_model.dart';
 import 'analytics_service.dart';
+import 'att_consent_service.dart';
 import 'auth_service.dart';
 import 'crashlytics_service.dart';
 
@@ -88,8 +89,20 @@ class ConsentService {
   /// collection flags (privacy-by-default: collection is OFF until granted).
   /// Safe to call at startup and after every consent change. With no signed-in
   /// user, [hasConsent] returns false, so collection stays off.
+  ///
+  /// On iOS, ALSO requires [ATTConsentService.analyticsEnabled] (audit C13):
+  /// before this fix, the ATT system dialog was shown but its answer was
+  /// never consulted anywhere — collection was gated ONLY by the in-app
+  /// consent toggle, so a user who declined the OS tracking prompt was
+  /// tracked anyway as long as they'd said yes in-app. Prompting for a
+  /// permission and then ignoring the answer is a worse posture than not
+  /// prompting at all. `analyticsEnabled` is already `true` on Android/debug,
+  /// so this is a no-op there; call this again after
+  /// `ATTConsentService().requestIfNeeded()` resolves (see splash_screen.dart)
+  /// since the ATT answer isn't known yet the first time this runs at boot.
   Future<void> applyCollectionConsent() async {
-    final granted = await hasConsent(ConsentPurpose.analytics);
+    final granted = await hasConsent(ConsentPurpose.analytics) &&
+        ATTConsentService().analyticsEnabled;
     await AnalyticsService().setConsentEnabled(granted);
     await CrashlyticsService().setConsentEnabled(granted);
   }

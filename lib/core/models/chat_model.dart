@@ -1,7 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'message_model.dart';
 
-enum ChatType { private, group, system, gym }
+// Faz 2 §2.3 audit: 'system' was rendered (chat_list_screen.dart's old
+// `_buildSystemChatCard`) but never produced by any writer — removed.
+// 'gym' was in the same state (rendered, never produced) but is now real:
+// CommunityGroupService.createGroup / AdminService.approveGymApplication
+// create a paired chat of this type for kind:'gym' groups.
+enum ChatType { private, group, gym }
 
 class ChatModel {
   final String id;
@@ -12,9 +17,30 @@ class ChatModel {
   final DateTime updatedAt;
   final String? name; // For group chats
   final String? image; // For group chats
-  final bool isPublic; // For public checks
   final Map<String, dynamic>? metadata; // Flex field for specific card data
   final Map<String, bool>? typingUsers;
+
+  // Faz 2 §2.2 — single pinned message per chat. Deliberately camelCase to
+  // match every sibling field on THIS doc (participants/unreadCounts/
+  // updatedAt/createdBy/typingUsers are all camelCase) — the snake_case
+  // convention elsewhere in the schema applies to the MESSAGE subdocument
+  // shape (Faz 2 §2.1), not this doc. No firestore.rules change was needed:
+  // canUpdateChatMeta() is a blocklist (only participants/type/createdBy/
+  // unreadCounts are protected), so any participant could already write
+  // these three fields before this model even declared them.
+  final String? pinnedMessageId;
+  final String? pinnedBy;
+  final DateTime? pinnedAt;
+
+  // Faz 2 §2.3 — back-reference to the owning `community_groups/{groupId}`
+  // doc (whose `chat_id` field points back here). Null for a DM or the
+  // pre-existing ad-hoc `createGroupChat` flow — both remain ungoverned,
+  // plain participant-array chats. When set, firestore.rules'
+  // `canAccessGroupChat()` grants the WHOLE group's membership read/react
+  // access (and post access, subject to `announcement_only`) regardless of
+  // whether they appear in `participants` — see that function's doc comment
+  // for why `participants` alone doesn't scale to a group's membership.
+  final String? groupId;
 
   ChatModel({
     required this.id,
@@ -25,9 +51,12 @@ class ChatModel {
     required this.updatedAt,
     this.name,
     this.image,
-    this.isPublic = false,
     this.metadata,
     this.typingUsers,
+    this.pinnedMessageId,
+    this.pinnedBy,
+    this.pinnedAt,
+    this.groupId,
   });
 
   factory ChatModel.fromJson(Map<String, dynamic> json, String id) {
@@ -47,11 +76,16 @@ class ChatModel {
           : DateTime.now(),
       name: json['name'],
       image: json['image'],
-      isPublic: json['isPublic'] ?? false,
       metadata: json['metadata'],
       typingUsers: (json['typingUsers'] as Map<String, dynamic>?)?.map(
         (key, value) => MapEntry(key, value as bool),
       ),
+      pinnedMessageId: json['pinnedMessageId'] as String?,
+      pinnedBy: json['pinnedBy'] as String?,
+      pinnedAt: json['pinnedAt'] is Timestamp
+          ? (json['pinnedAt'] as Timestamp).toDate()
+          : null,
+      groupId: json['groupId'] as String?,
     );
   }
 
@@ -64,9 +98,12 @@ class ChatModel {
       'updatedAt': Timestamp.fromDate(updatedAt),
       'name': name,
       'image': image,
-      'isPublic': isPublic,
       'metadata': metadata,
       'typingUsers': typingUsers,
+      if (pinnedMessageId != null) 'pinnedMessageId': pinnedMessageId,
+      if (pinnedBy != null) 'pinnedBy': pinnedBy,
+      if (pinnedAt != null) 'pinnedAt': Timestamp.fromDate(pinnedAt!),
+      if (groupId != null) 'groupId': groupId,
     };
   }
 
@@ -79,9 +116,12 @@ class ChatModel {
     DateTime? updatedAt,
     String? name,
     String? image,
-    bool? isPublic,
     Map<String, dynamic>? metadata,
     Map<String, bool>? typingUsers,
+    String? pinnedMessageId,
+    String? pinnedBy,
+    DateTime? pinnedAt,
+    String? groupId,
   }) {
     return ChatModel(
       id: id ?? this.id,
@@ -92,9 +132,12 @@ class ChatModel {
       updatedAt: updatedAt ?? this.updatedAt,
       name: name ?? this.name,
       image: image ?? this.image,
-      isPublic: isPublic ?? this.isPublic,
       metadata: metadata ?? this.metadata,
       typingUsers: typingUsers ?? this.typingUsers,
+      pinnedMessageId: pinnedMessageId ?? this.pinnedMessageId,
+      pinnedBy: pinnedBy ?? this.pinnedBy,
+      pinnedAt: pinnedAt ?? this.pinnedAt,
+      groupId: groupId ?? this.groupId,
     );
   }
 }

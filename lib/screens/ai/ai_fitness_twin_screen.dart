@@ -14,6 +14,7 @@ import '../../core/providers/user_provider.dart';
 import '../../core/services/ai/ai_service.dart';
 import '../../core/services/ai_credit_service.dart';
 import '../../core/services/ai_insight_service.dart';
+import '../../core/services/feature_gate_service.dart';
 import '../../core/widgets/ds/ds.dart';
 import 'widgets/ai_credit_badge.dart';
 import 'widgets/ai_credits_sheet.dart';
@@ -31,6 +32,11 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
   bool _isGenerating = false;
   String? _generateError;
   bool _limitReached = false;
+
+  // Faz 5 §5.4 — Entitlements.advancedAIAnalysis: gates the "detailed
+  // breakdown" section only ([_buildDetailedBreakdown]); the free projection
+  // above is completely unchanged.
+  bool _detailedExpanded = false;
 
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnim;
@@ -107,6 +113,29 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
         _generateError = e.toString();
       });
     }
+  }
+
+  /// Faz 5 §5.4 — reveals [_buildDetailedBreakdown]'s numbers, gated on
+  /// Entitlements.advancedAIAnalysis. No new AI call: `detailedInputs` is
+  /// already sitting in the same projection doc this screen is streaming
+  /// (`AiInsightService.generateFitnessTwin` — bmr/tdee/avgLoggedCalories/
+  /// daysWithLogs, all computed before the prompt was even built).
+  Future<void> _toggleDetailed() async {
+    if (_detailedExpanded) {
+      setState(() => _detailedExpanded = false);
+      return;
+    }
+    final l10n = AppLocalizations.of(context);
+    if (!await FeatureGateService().check(
+      context,
+      (e) => e.advancedAIAnalysis,
+      featureName: l10n.translate('ai.twin_detailed_paywall_title'),
+      featureDescription: l10n.translate('ai.twin_detailed_paywall_desc'),
+    )) {
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _detailedExpanded = true);
   }
 
   @override
@@ -452,6 +481,8 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
           _buildRecommendations(context, l10n, palette, textTheme, data),
           SizedBox(height: 16.h),
           _buildHistorySection(context, l10n, palette, textTheme),
+          SizedBox(height: 16.h),
+          _buildDetailedBreakdown(context, l10n, palette, textTheme, data),
           SizedBox(height: 20.h),
           // Regenerate button at the bottom
           _GradientButton(
@@ -469,6 +500,103 @@ class _AiFitnessTwinScreenState extends State<AiFitnessTwinScreen>
   }
 
   // ─── Section Builders ─────────────────────────────────────────────────────
+
+  /// Faz 5 §5.4 — premium-exclusive breakdown of the numbers behind the
+  /// (free, unchanged) narrative above: BMR, TDEE, actual logged average,
+  /// and how many of the last 30 days had a log. See [_toggleDetailed].
+  Widget _buildDetailedBreakdown(
+    BuildContext context,
+    AppLocalizations l10n,
+    AppPalette palette,
+    AppText textTheme,
+    Map<String, dynamic> data,
+  ) {
+    final primaryColor = context.watch<ThemeProvider>().primaryColor;
+    final inputs = data['detailedInputs'] as Map<String, dynamic>?;
+
+    return AppGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: _toggleDetailed,
+            borderRadius: BorderRadius.circular(AppRadius.card.r),
+            child: Row(
+              children: [
+                Icon(Icons.workspace_premium_rounded,
+                    size: 18.r, color: primaryColor),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    l10n.translate('ai.twin_detailed_title'),
+                    style:
+                        textTheme.titleM.copyWith(color: palette.textPrimary),
+                  ),
+                ),
+                Icon(
+                  _detailedExpanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  color: palette.textTertiary,
+                ),
+              ],
+            ),
+          ),
+          if (!_detailedExpanded)
+            Padding(
+              padding: EdgeInsets.only(top: 4.h),
+              child: Text(
+                l10n.translate('ai.twin_detailed_subtitle'),
+                style: textTheme.labelS.copyWith(color: palette.textSecondary),
+              ),
+            ),
+          if (_detailedExpanded) ...[
+            SizedBox(height: 12.h),
+            if (inputs == null)
+              Text(
+                l10n.translate('ai.twin_detailed_regenerate_hint'),
+                style: textTheme.labelM.copyWith(color: palette.textSecondary),
+              )
+            else
+              Wrap(
+                spacing: 16.w,
+                runSpacing: 10.h,
+                children: [
+                  _DetailStat(
+                    label: l10n.translate('ai.twin_detailed_bmr'),
+                    value:
+                        '${(inputs['bmr'] as num?)?.round() ?? 0} ${l10n.translate('analytics.kcal')}',
+                    textTheme: textTheme,
+                    palette: palette,
+                  ),
+                  _DetailStat(
+                    label: l10n.translate('ai.twin_detailed_tdee'),
+                    value:
+                        '${(inputs['tdee'] as num?)?.round() ?? 0} ${l10n.translate('analytics.kcal')}',
+                    textTheme: textTheme,
+                    palette: palette,
+                  ),
+                  _DetailStat(
+                    label: l10n.translate('ai.twin_detailed_avg_logged'),
+                    value:
+                        '${(inputs['avgLoggedCalories'] as num?)?.round() ?? 0} ${l10n.translate('analytics.kcal')}',
+                    textTheme: textTheme,
+                    palette: palette,
+                  ),
+                  _DetailStat(
+                    label: l10n.translate('ai.twin_detailed_days_logged'),
+                    value:
+                        '${(inputs['daysWithLogs'] as num?)?.round() ?? 0}/30',
+                    textTheme: textTheme,
+                    palette: palette,
+                  ),
+                ],
+              ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Widget _buildHeaderCard(
     BuildContext context,
@@ -1005,6 +1133,38 @@ class _StatCell extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One label/value pair inside [_AiFitnessTwinScreenState._buildDetailedBreakdown]
+/// (Faz 5 §5.4, Entitlements.advancedAIAnalysis).
+class _DetailStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final AppText textTheme;
+  final AppPalette palette;
+
+  const _DetailStat({
+    required this.label,
+    required this.value,
+    required this.textTheme,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(value,
+            style: textTheme.titleM.copyWith(
+                color: palette.textPrimary, fontWeight: FontWeight.bold)),
+        SizedBox(height: 2.h),
+        Text(label,
+            style: textTheme.labelS.copyWith(color: palette.textTertiary)),
+      ],
     );
   }
 }
