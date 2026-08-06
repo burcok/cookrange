@@ -2086,5 +2086,208 @@
         }
       }
     }
+  },
+  "broadcast.max_recipients": {
+    "type": "int",
+    "default": 500,
+    "min": 1,
+    "max": 5000,
+    "doc": "server",
+    "group": "ops_caps",
+    "label": "Yayın (broadcast) maksimum alıcı sayısı",
+    "description": "Bir yayının (broadcast) tek seferde en fazla kaç kullanıcıya gönderilebileceğini belirler. \"Tüm kullanıcılar\", \"koçlar\" veya \"salon sahipleri\" gibi geniş bir kitleye gönderilen bir yayın, eşleşen kullanıcı sayısı bu sınırı aşarsa, sınırın dışında kalan kullanıcılara HİÇBİR bildirim gitmez ve bu durum bugün panelde herhangi bir uyarıyla belirtilmez — sessizce kırpılır. Bire bir (belirli bir kullanıcıya) gönderilen yayınları etkilemez.",
+    "impact": "Yükseltmek gerçekte kaç kullanıcıya ulaşılabileceğini artırır ama tek seferde gönderilen push bildirimi sayısını da artırır; bu sınırı aşan bir kitleye yayın yapmak, sınırın üzerindeki kullanıcıların yayını hiç görmemesine yol açar.",
+    "sensitive": true,
+    "note": "MAX, functions/index.js resolveBroadcastAudience() -- previously hardcoded at 500 with a one-line code comment (\"Capped at 500 recipients for MVP to stay within FCM batch limits\") and no admin-facing signal at all when a broadcast silently reached fewer people than its audience selector implied. M3.7 makes the cap itself admin-editable; the plan's M4.4 is what still needs to add real recipient-count visibility in the broadcast UI and, longer-term, a Cloud Tasks fan-out that removes the need for a hard cap altogether."
+  },
+  "theme.primary_color_hex": {
+    "type": "string",
+    "default": "#F97300",
+    "doc": "client",
+    "group": "theme",
+    "label": "Birincil renk (hex)",
+    "description": "Uygulamanın birincil (brand) rengi için sunucu tarafından sağlanan varsayılan değerdir. Bugün bu değeri gerçekte kullanan bir okuma yolu yoktur — birincil renk hâlâ uygulama kodunda sabit (constants.dart) ve her kullanıcı kendi tercihini ayrıca (4 hazır renkten birini seçerek) belirleyebiliyor. Bu alan, M7 kapsamında sunucudan marka rengi değiştirme özelliği kurulduğunda kullanılacak zemin olarak eklenmiştir.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok; ileride canlı hale getirildiğinde, henüz kendi rengini seçmemiş kullanıcıların gördüğü varsayılan rengi değiştirecektir.",
+    "sensitive": false,
+    "note": "M3.7 — M7.1 (uzaktan tema) için zemin. Varsayılan #F97300, constants.dart:6 (primaryColor) ve AppPalette.brand ile birebir aynı — bugünkü gerçek varsayılanı yansıtır, icat edilmiş bir değer değildir. AppPalette kendisi (25+ semantik renk) derleme-zamanı sabit kalır; bu alan yalnızca ThemeProvider.primaryColor'ın kullanıcı tercihi yokken döndüğü tek rengi hedefler."
+  },
+  "theme.accent_color_hex": {
+    "type": "string",
+    "default": "#0FB9A6",
+    "doc": "client",
+    "group": "theme",
+    "label": "Aksan rengi (hex)",
+    "description": "Uygulamanın ikincil/aksan rengi için sunucu tarafından sağlanan varsayılan değerdir. Bugün bu değeri okuyan bir kod yolu yoktur; aksan rengi hâlâ uygulama kodunda sabittir. Bu alan M7 kapsamında kurulacak uzaktan tema özelliği için zemin olarak eklenmiştir.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok; ileride canlı hale getirildiğinde uygulamanın aksan/ikincil rengini değiştirecektir.",
+    "sensitive": false,
+    "note": "M3.7 — M7.1 için zemin. Varsayılan #0FB9A6, AppPalette.energyLight (\"electric energy accent\") ile aynı — bu uygulamada bugün en yakın karşılığı olan gerçek renk."
+  },
+  "theme.logo_url": {
+    "type": "string",
+    "default": "",
+    "doc": "client",
+    "group": "theme",
+    "label": "Uzaktan logo URL'i",
+    "description": "Boş olmadığında, uygulama içinde paket içi (bundled) logo yerine bu adresten yüklenecek bir logo göstermek için kullanılması planlanan bir alandır. Bugün bu URL'i okuyan bir ekran yoktur; uygulamanın logosu hâlâ paket içindeki sabit görsel dosyasıdır. Boş bırakıldığında (bugünkü hal) hiçbir davranış değişmez.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok; ileride canlı hale getirildiğinde, erişilemeyen veya hatalı bir adres girmek logonun hiç yüklenememesine yol açabilir.",
+    "sensitive": false,
+    "note": "M3.7 — M7.1 için zemin. Bugün paket-içi logo dışında bir mekanizma yok; bu alanın karşılığı olan bir okuma yolu henüz kurulmadı."
+  },
+  "theme.dark_mode_default": {
+    "type": "enum",
+    "enum": [
+      "light",
+      "dark",
+      "system"
+    ],
+    "default": "light",
+    "doc": "client",
+    "group": "theme",
+    "label": "Varsayılan karanlık mod tercihi",
+    "description": "Henüz kendi tema tercihini seçmemiş bir kullanıcı için uygulamanın açık/koyu/sistem temalarından hangisiyle başlayacağını belirlemesi planlanan bir alandır. Bugün bu değeri okuyan bir kod yolu yoktur — ThemeProvider her zaman 'light' (açık tema) ile başlar; kullanıcı kendi tercihini değiştirdiğinde bu tercih cihazında ve hesabında saklanır.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok; ileride canlı hale getirildiğinde yalnızca HENÜZ tercih belirlememiş kullanıcıları etkileyecektir, zaten bir tema seçmiş kullanıcıları değiştirmeyecektir.",
+    "sensitive": false,
+    "note": "M3.7 — M7.1 için zemin. Varsayılan 'light', theme_provider.dart:9 (ThemeMode _themeMode = ThemeMode.light) ile aynı — bugünkü gerçek varsayılanı yansıtır."
+  },
+  "theme.banner_style": {
+    "type": "enum",
+    "enum": [
+      "bold",
+      "minimal"
+    ],
+    "default": "bold",
+    "doc": "client",
+    "group": "theme",
+    "label": "Duyuru şeridi görsel stili",
+    "description": "Duyuru şeridinin (announcement.enabled açıkken gösterilen şerit) genel görsel stilini kaba/belirgin ('bold') ile sade/minimal ('minimal') arasında değiştirmesi planlanan bir alandır — hangi renk/ikon gösterileceğini belirleyen announcement.type'tan farklıdır, bu alan şeridin kendi görsel diline (kalınlık, gölge, köşe yuvarlaklığı gibi) ilişkindir. Bugün bu değeri okuyan bir kod yolu yoktur; şerit her zaman uygulamanın kendi sabit tasarımıyla gösterilir.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok; değiştirmek güvenlidir ama duyuru şeridinin görünümünü değiştirmez.",
+    "sensitive": false,
+    "note": "M3.7 — M7.1 için zemin. Bugün karşılığı olan bir okuma yolu yok; 'bold' varsayılanı, AppPalette'in kendi 'Sunset Energy' bold gradient yorumuyla tutarlı bir seçimdir, ölçülmüş bir gerçek değer değildir."
+  },
+  "ops_cron.group_activity_score_period_min": {
+    "type": "int",
+    "default": 15,
+    "min": 1,
+    "max": 1440,
+    "doc": "server",
+    "group": "ops_cron",
+    "label": "Grup aktivite skoru -- çalıştırma sıklığı (dk)",
+    "description": "Keşfet ekranındaki 'en aktif gruplar' skorunu yeniden hesaplayan görevin ne sıklıkla (dakika) çalıştığını temsil eder. Bu alan bugün hiçbir zamanlanmış görev tarafından okunmuyor -- Google Cloud Scheduler zamanlamaları fonksiyon dağıtımı (deploy) sırasında sabitlenir ve çalışan bir fonksiyonun kendi tetiklenme sıklığını Firestore'dan okuyup değiştirmesi mümkün değildir. Bu alan, ileride ilgili göreve kendi içinde bir 'yeterince zaman geçti mi' kontrolü eklenip zamanlamanın fiilen buradan okunması durumunda kullanılacak zemin olarak eklenmiştir; bugün değiştirmenin gözlemlenebilir hiçbir etkisi yoktur.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok.",
+    "sensitive": false,
+    "note": "M3.7 (ops_cron.*) -- gerçek zamanlama groups.js:146 computeGroupActivityScores, .schedule('every 15 minutes'), sabit kod. Bu alan henüz okunmuyor."
+  },
+  "ops_cron.weekly_group_reward_period_hours": {
+    "type": "int",
+    "default": 24,
+    "min": 1,
+    "max": 168,
+    "doc": "server",
+    "group": "ops_cron",
+    "label": "Haftalık grup ödülü -- çalıştırma sıklığı (saat)",
+    "description": "Haftalık grup katkı ödülünü (AI kredisi dağıtımı) hesaplayan görevin ne sıklıkla (saat) çalıştığını temsil eder; görevin kendisi yalnızca hafta gerçekten kapandığında gerçek bir ödül dağıtır, bu değer sadece kontrol sıklığıdır. Bu alan bugün hiçbir zamanlanmış görev tarafından okunmuyor -- Google Cloud Scheduler zamanlamaları fonksiyon dağıtımı (deploy) sırasında sabitlenir ve çalışan bir fonksiyonun kendi tetiklenme sıklığını Firestore'dan okuyup değiştirmesi mümkün değildir. Bu alan, ileride ilgili göreve kendi içinde bir 'yeterince zaman geçti mi' kontrolü eklenip zamanlamanın fiilen buradan okunması durumunda kullanılacak zemin olarak eklenmiştir; bugün değiştirmenin gözlemlenebilir hiçbir etkisi yoktur.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok.",
+    "sensitive": false,
+    "note": "M3.7 (ops_cron.*) -- gerçek zamanlama engagement_credit.js:842 awardWeeklyGroupTop3, .schedule('every 24 hours'), sabit kod. Bu alan henüz okunmuyor."
+  },
+  "ops_cron.live_contribution_leaderboard_period_min": {
+    "type": "int",
+    "default": 15,
+    "min": 1,
+    "max": 1440,
+    "doc": "server",
+    "group": "ops_cron",
+    "label": "Canlı katkı panosu -- çalıştırma sıklığı (dk)",
+    "description": "Grup içindeki 'şu an kim önde' canlı katkı panosunu yeniden hesaplayan görevin ne sıklıkla (dakika) çalıştığını temsil eder. Bu alan bugün hiçbir zamanlanmış görev tarafından okunmuyor -- Google Cloud Scheduler zamanlamaları fonksiyon dağıtımı (deploy) sırasında sabitlenir ve çalışan bir fonksiyonun kendi tetiklenme sıklığını Firestore'dan okuyup değiştirmesi mümkün değildir. Bu alan, ileride ilgili göreve kendi içinde bir 'yeterince zaman geçti mi' kontrolü eklenip zamanlamanın fiilen buradan okunması durumunda kullanılacak zemin olarak eklenmiştir; bugün değiştirmenin gözlemlenebilir hiçbir etkisi yoktur.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok.",
+    "sensitive": false,
+    "note": "M3.7 (ops_cron.*) -- gerçek zamanlama engagement_credit.js:938 computeGroupContributionLeaderboards, .schedule('every 15 minutes'), sabit kod. Bu alan henüz okunmuyor."
+  },
+  "ops_cron.broadcast_drain_period_min": {
+    "type": "int",
+    "default": 5,
+    "min": 1,
+    "max": 60,
+    "doc": "server",
+    "group": "ops_cron",
+    "label": "Zamanlanmış yayın gönderimi -- çalıştırma sıklığı (dk)",
+    "description": "Zamanı gelmiş (status: scheduled) yayınları (broadcast) tarayıp gönderen görevin ne sıklıkla (dakika) çalıştığını temsil eder -- bu değer, zamanlanmış bir yayının gerçek gönderim anıyla planlanan saati arasındaki en kötü durum gecikmesini belirler. Bu alan bugün hiçbir zamanlanmış görev tarafından okunmuyor -- Google Cloud Scheduler zamanlamaları fonksiyon dağıtımı (deploy) sırasında sabitlenir ve çalışan bir fonksiyonun kendi tetiklenme sıklığını Firestore'dan okuyup değiştirmesi mümkün değildir. Bu alan, ileride ilgili göreve kendi içinde bir 'yeterince zaman geçti mi' kontrolü eklenip zamanlamanın fiilen buradan okunması durumunda kullanılacak zemin olarak eklenmiştir; bugün değiştirmenin gözlemlenebilir hiçbir etkisi yoktur.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok.",
+    "sensitive": false,
+    "note": "M3.7 (ops_cron.*) -- gerçek zamanlama functions/index.js drainScheduledBroadcasts, .schedule('every 5 minutes'), sabit kod. Bu alan henüz okunmuyor."
+  },
+  "ops_cron.streak_at_risk_notifier_schedule": {
+    "type": "string",
+    "default": "0 17 * * *",
+    "doc": "server",
+    "group": "ops_cron",
+    "label": "'Serin tehlikede' bildirimi -- zamanlama (cron)",
+    "description": "Bugün henüz yemek kaydı yapmamış kullanıcılara 'serini kaybetme' hatırlatma bildirimi gönderen görevin ne zaman çalıştığını temsil eder (cron sözdizimi: dakika saat gün ay haftanın-günü -- varsayılan '0 17 * * *' her gün saat 17:00 anlamına gelir). Bu alan bugün hiçbir zamanlanmış görev tarafından okunmuyor -- Google Cloud Scheduler zamanlamaları fonksiyon dağıtımı (deploy) sırasında sabitlenir ve çalışan bir fonksiyonun kendi tetiklenme sıklığını Firestore'dan okuyup değiştirmesi mümkün değildir. Bu alan, ileride ilgili göreve kendi içinde bir 'yeterince zaman geçti mi' kontrolü eklenip zamanlamanın fiilen buradan okunması durumunda kullanılacak zemin olarak eklenmiştir; bugün değiştirmenin gözlemlenebilir hiçbir etkisi yoktur.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok.",
+    "sensitive": false,
+    "note": "M3.7 (ops_cron.*) -- gerçek zamanlama functions/index.js streakAtRiskNotifier, .schedule('0 17 * * *'), sabit kod. Bu alan henüz okunmuyor."
+  },
+  "ops_cron.weekly_plan_ready_notifier_schedule": {
+    "type": "string",
+    "default": "0 7 * * 1",
+    "doc": "server",
+    "group": "ops_cron",
+    "label": "Haftalık plan hazır bildirimi -- zamanlama (cron)",
+    "description": "Yeni haftalık yemek planı hazır olan kullanıcılara bildirim gönderen görevin ne zaman çalıştığını temsil eder (cron sözdizimi -- varsayılan '0 7 * * 1' her Pazartesi saat 07:00 anlamına gelir). Bu alan bugün hiçbir zamanlanmış görev tarafından okunmuyor -- Google Cloud Scheduler zamanlamaları fonksiyon dağıtımı (deploy) sırasında sabitlenir ve çalışan bir fonksiyonun kendi tetiklenme sıklığını Firestore'dan okuyup değiştirmesi mümkün değildir. Bu alan, ileride ilgili göreve kendi içinde bir 'yeterince zaman geçti mi' kontrolü eklenip zamanlamanın fiilen buradan okunması durumunda kullanılacak zemin olarak eklenmiştir; bugün değiştirmenin gözlemlenebilir hiçbir etkisi yoktur.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok.",
+    "sensitive": false,
+    "note": "M3.7 (ops_cron.*) -- gerçek zamanlama functions/index.js weeklyPlanReadyNotifier, .schedule('0 7 * * 1'), sabit kod. Bu alan henüz okunmuyor."
+  },
+  "ops_cron.gym_wars_end_check_period_min": {
+    "type": "int",
+    "default": 60,
+    "min": 1,
+    "max": 1440,
+    "doc": "server",
+    "group": "ops_cron",
+    "label": "Salon savaşı bitiş kontrolü -- çalıştırma sıklığı (dk)",
+    "description": "Süresi dolmuş salon savaşlarını (gym wars) kapatıp kazananı belirleyen görevin ne sıklıkla (dakika) çalıştığını temsil eder -- bu değer, bir savaşın bitiş anıyla sonucun fiilen işlenmesi arasındaki en kötü durum gecikmesini belirler. Bu alan bugün hiçbir zamanlanmış görev tarafından okunmuyor -- Google Cloud Scheduler zamanlamaları fonksiyon dağıtımı (deploy) sırasında sabitlenir ve çalışan bir fonksiyonun kendi tetiklenme sıklığını Firestore'dan okuyup değiştirmesi mümkün değildir. Bu alan, ileride ilgili göreve kendi içinde bir 'yeterince zaman geçti mi' kontrolü eklenip zamanlamanın fiilen buradan okunması durumunda kullanılacak zemin olarak eklenmiştir; bugün değiştirmenin gözlemlenebilir hiçbir etkisi yoktur.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok.",
+    "sensitive": false,
+    "note": "M3.7 (ops_cron.*) -- gerçek zamanlama functions/index.js endExpiredGymWars, .schedule('every 60 minutes'), sabit kod. Bu alan henüz okunmuyor."
+  },
+  "ops_cron.presence_stale_sweep_period_min": {
+    "type": "int",
+    "default": 15,
+    "min": 1,
+    "max": 1440,
+    "doc": "server",
+    "group": "ops_cron",
+    "label": "Eski oturum temizliği (presence) -- çalıştırma sıklığı (dk)",
+    "description": "Süresi dolmuş 'salonda görünen' oturumları kapatan temizlik görevinin ne sıklıkla (dakika) çalıştığını temsil eder. Bu alan bugün hiçbir zamanlanmış görev tarafından okunmuyor -- Google Cloud Scheduler zamanlamaları fonksiyon dağıtımı (deploy) sırasında sabitlenir ve çalışan bir fonksiyonun kendi tetiklenme sıklığını Firestore'dan okuyup değiştirmesi mümkün değildir. Bu alan, ileride ilgili göreve kendi içinde bir 'yeterince zaman geçti mi' kontrolü eklenip zamanlamanın fiilen buradan okunması durumunda kullanılacak zemin olarak eklenmiştir; bugün değiştirmenin gözlemlenebilir hiçbir etkisi yoktur.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok.",
+    "sensitive": false,
+    "note": "M3.7 (ops_cron.*) -- gerçek zamanlama presence.js:258 closeStalePresenceSessions, .schedule('every 15 minutes'), sabit kod. Bu alan henüz okunmuyor."
+  },
+  "ops_cron.plan_offer_expiry_sweep_period_min": {
+    "type": "int",
+    "default": 60,
+    "min": 1,
+    "max": 1440,
+    "doc": "server",
+    "group": "ops_cron",
+    "label": "Plan teklifi süre dolumu -- çalıştırma sıklığı (dk)",
+    "description": "Süresi dolmuş plan tekliflerini (paylaşılan beslenme planı şablonları) 'süresi doldu' olarak işaretleyen temizlik görevinin ne sıklıkla (dakika) çalıştığını temsil eder. Bu alan bugün hiçbir zamanlanmış görev tarafından okunmuyor -- Google Cloud Scheduler zamanlamaları fonksiyon dağıtımı (deploy) sırasında sabitlenir ve çalışan bir fonksiyonun kendi tetiklenme sıklığını Firestore'dan okuyup değiştirmesi mümkün değildir. Bu alan, ileride ilgili göreve kendi içinde bir 'yeterince zaman geçti mi' kontrolü eklenip zamanlamanın fiilen buradan okunması durumunda kullanılacak zemin olarak eklenmiştir; bugün değiştirmenin gözlemlenebilir hiçbir etkisi yoktur.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok.",
+    "sensitive": false,
+    "note": "M3.7 (ops_cron.*) -- gerçek zamanlama templates.js:360 expirePlanOffers, .schedule('every 60 minutes'), sabit kod. Bu alan henüz okunmuyor."
+  },
+  "ops_cron.summary_stale_sweep_period_min": {
+    "type": "int",
+    "default": 60,
+    "min": 1,
+    "max": 1440,
+    "doc": "server",
+    "group": "ops_cron",
+    "label": "Eski özet temizliği -- çalıştırma sıklığı (dk)",
+    "description": "Süresi dolmuş AI ilerleme özetlerini silen temizlik görevinin ne sıklıkla (dakika) çalıştığını temsil eder. Bu alan bugün hiçbir zamanlanmış görev tarafından okunmuyor -- Google Cloud Scheduler zamanlamaları fonksiyon dağıtımı (deploy) sırasında sabitlenir ve çalışan bir fonksiyonun kendi tetiklenme sıklığını Firestore'dan okuyup değiştirmesi mümkün değildir. Bu alan, ileride ilgili göreve kendi içinde bir 'yeterince zaman geçti mi' kontrolü eklenip zamanlamanın fiilen buradan okunması durumunda kullanılacak zemin olarak eklenmiştir; bugün değiştirmenin gözlemlenebilir hiçbir etkisi yoktur.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok.",
+    "sensitive": false,
+    "note": "M3.7 (ops_cron.*) -- gerçek zamanlama summaries.js:855 expireMemberProgressSummaries, .schedule('every 60 minutes'), sabit kod. Bu alan henüz okunmuyor."
   }
 }

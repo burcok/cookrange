@@ -32,6 +32,17 @@ const DEFAULT_MODEL = process.env.OPENROUTER_MODEL || 'openrouter/free';
 const FREE_DAILY_LIMIT = 2;
 const PREMIUM_DAILY_LIMIT = 20;
 
+// SEC-10 — independent of config_schema.json's own min/max (which only
+// gates updateAppConfig's WRITE path): these bound what this function
+// actually CONSUMES, regardless of what app_config holds. config_schema.
+// json is hand-edited by a developer, not written through the panel's own
+// validation — if a future schema edit ever raised free_daily_limit's
+// declared max, this is what stops that alone from raising real spend.
+// max_tokens already had the equivalent protection (Math.min(...,32000)
+// below); these two never did.
+const HARD_CEILING_FREE_DAILY_LIMIT = 100;
+const HARD_CEILING_PREMIUM_DAILY_LIMIT = 500;
+
 // Allowlisted models. Anything else the client sends is coerced to DEFAULT_MODEL.
 const ALLOWED_MODELS = new Set(
   [
@@ -54,6 +65,11 @@ const MAX_MESSAGES_DEFAULT = 30;
 const MAX_TOTAL_CHARS_DEFAULT = 24000; // serialized messages payload
 // Weekly meal-plan / recipe JSON needs real headroom; 1024 truncated them.
 const MAX_OUTPUT_TOKENS = 8192;
+// SEC-10 — see HARD_CEILING_FREE_DAILY_LIMIT's comment above; this one
+// already existed (the Math.min(...,32000) below), named here to group all
+// three server ceilings together and stop 32000 from being just a floating
+// magic number at its one call site.
+const HARD_CEILING_MAX_TOKENS = 32000;
 
 // Per-uid sliding-window rate limit (independent of the daily quota).
 const RATE_WINDOW_MS_DEFAULT = 60 * 1000;
@@ -196,8 +212,8 @@ async function isPremium(uid) {
 async function enforceRateLimitAndQuota(uid, premium, limits) {
   const db = admin.firestore();
   const ref = db.collection('ai_credits').doc(uid);
-  const freeLimit = (limits && limits.free) || FREE_DAILY_LIMIT;
-  const premiumLimit = (limits && limits.premium) || PREMIUM_DAILY_LIMIT;
+  const freeLimit = Math.min((limits && limits.free) || FREE_DAILY_LIMIT, HARD_CEILING_FREE_DAILY_LIMIT);
+  const premiumLimit = Math.min((limits && limits.premium) || PREMIUM_DAILY_LIMIT, HARD_CEILING_PREMIUM_DAILY_LIMIT);
   const dailyLimit = premium ? premiumLimit : freeLimit;
   const rateWindowMs = (limits && limits.windowMs) || RATE_WINDOW_MS_DEFAULT;
   const rateMaxInWindow = (limits && limits.maxInWindow) || RATE_MAX_IN_WINDOW_DEFAULT;
@@ -381,7 +397,7 @@ exports.aiProxy = functions
     const maxOut = Math.min(
       Number(maxTokensByType[type] || aiCfg.max_tokens || MAX_OUTPUT_TOKENS) ||
       MAX_OUTPUT_TOKENS,
-      32000,
+      HARD_CEILING_MAX_TOKENS,
     );
     const temperature = Math.min(
       Math.max(Number(body.temperature) || Number(aiCfg.temperature) || 0.7, 0),
@@ -897,15 +913,29 @@ exports.onChatMessageCreated = functions
 // Admin Broadcasts
 // ─────────────────────────────────────────────────────────────────────────────
 
+// M3.7 — fallback only for when app_config/server has no broadcast.max_recipients
+// value yet (e.g. a fresh emulator with no seed). Matches the schema's own
+// default, kept as a literal here rather than imported so this file never
+// needs to require config_schema.json just for one number.
+const DEFAULT_BROADCAST_MAX_RECIPIENTS = 500;
+
 /**
  * Resolves the list of user UIDs that match a broadcast audience selector.
  * audience: 'all' | 'coaches' | 'gymOwners' | 'user:{uid}'
  *
- * Capped at 500 recipients for MVP to stay within FCM batch limits.
+ * Capped at broadcast.max_recipients (admin-editable, M3.7 — was a bare
+ * hardcoded 500 with no way to raise it short of a redeploy). Still a hard
+ * cap, not a real fix: a broadcast whose audience exceeds this limit still
+ * silently reaches only the first `limit()` matches with no signal to the
+ * admin of how many were actually dropped — see the plan's own M4.4 for
+ * the two real follow-ups this doesn't attempt (surfacing the true
+ * recipient count in the panel, and a Cloud Tasks fan-out that removes the
+ * need for a cap at all).
  */
 async function resolveBroadcastAudience(audience) {
   const db = admin.firestore();
-  const MAX = 500;
+  const cfg = await getConfig();
+  const MAX = Number(cfg.broadcast && cfg.broadcast.max_recipients) || DEFAULT_BROADCAST_MAX_RECIPIENTS;
 
   if (audience.startsWith('user:')) {
     const uid = audience.slice(5);
@@ -1459,4 +1489,12 @@ Object.assign(module.exports, {
   RATE_MAX_IN_WINDOW: RATE_MAX_IN_WINDOW_DEFAULT,
   MODEL_PRICING: MODEL_PRICING_DEFAULT,
   ALLOWED_MODELS,
+  // SEC-10 (M3.7) — exported so a test can assert these stay >= whatever
+  // config_schema.json currently declares as its own max for the same
+  // three fields, without needing a Firestore transaction to exercise
+  // enforceRateLimitAndQuota's real code path.
+  HARD_CEILING_FREE_DAILY_LIMIT,
+  HARD_CEILING_PREMIUM_DAILY_LIMIT,
+  HARD_CEILING_MAX_TOKENS,
+  DEFAULT_BROADCAST_MAX_RECIPIENTS,
 });

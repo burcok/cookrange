@@ -338,3 +338,30 @@ describe('summaries.js — the k-anonymity threshold this session\'s fix introdu
     );
   });
 });
+
+// SEC-10 (M3.7) — index.js's HARD_CEILING_* constants bound what
+// enforceRateLimitAndQuota/aiProxy actually CONSUME, independent of
+// config_schema.json's own min/max (which only gates updateAppConfig's
+// WRITE path — see app_config_admin.js's validateType). This can't call
+// enforceRateLimitAndQuota directly (it opens a Firestore transaction, no
+// emulator here), so it asserts the weaker but still real invariant: the
+// ceiling must never sit BELOW the schema's own currently-declared max, or
+// a legitimately-configured max value would be silently clamped down below
+// what the schema claims is allowed.
+describe('index.js — SEC-10 hard ceilings stay >= the schema\'s own declared max', () => {
+  test('ai.max_tokens', () => {
+    assert.ok(index.HARD_CEILING_MAX_TOKENS >= schema['ai.max_tokens'].max);
+  });
+  test('ai.free_daily_limit', () => {
+    assert.ok(index.HARD_CEILING_FREE_DAILY_LIMIT >= schema['ai.free_daily_limit'].max);
+  });
+  test('ai.premium_daily_limit', () => {
+    assert.ok(index.HARD_CEILING_PREMIUM_DAILY_LIMIT >= schema['ai.premium_daily_limit'].max);
+  });
+});
+
+describe('index.js — broadcast.max_recipients (M3.7)', () => {
+  test('schema default matches the fallback resolveBroadcastAudience uses when config is unset', () => {
+    assert.equal(defaultOf('broadcast.max_recipients'), index.DEFAULT_BROADCAST_MAX_RECIPIENTS);
+  });
+});
