@@ -924,13 +924,17 @@ const DEFAULT_BROADCAST_MAX_RECIPIENTS = 500;
  * audience: 'all' | 'coaches' | 'gymOwners' | 'user:{uid}'
  *
  * Capped at broadcast.max_recipients (admin-editable, M3.7 — was a bare
- * hardcoded 500 with no way to raise it short of a redeploy). Still a hard
- * cap, not a real fix: a broadcast whose audience exceeds this limit still
- * silently reaches only the first `limit()` matches with no signal to the
- * admin of how many were actually dropped — see the plan's own M4.4 for
- * the two real follow-ups this doesn't attempt (surfacing the true
- * recipient count in the panel, and a Cloud Tasks fan-out that removes the
- * need for a cap at all).
+ * hardcoded 500 with no way to raise it short of a redeploy) — `uids` is
+ * still at most MAX entries, so the fan-out cost stays bounded without a
+ * Cloud Tasks rewrite (M4.4's own plan text names that as the real fix for
+ * removing the cap entirely; out of scope here, it needs a Cloud Tasks
+ * queue provisioned outside this codebase). What M4.4 DOES close: the true
+ * audience size no longer disappears when it exceeds MAX. `matchedCount`
+ * is a `.count()` aggregation against the SAME filtered query with no
+ * `limit()` — one document read regardless of collection size (same
+ * pattern as endExpiredGymWars' score tally above) — so the admin panel
+ * can show "X eşleşti, yalnızca Y'ye ulaşıldı" instead of only ever
+ * learning the post-cap number.
  */
 async function resolveBroadcastAudience(audience) {
   const db = admin.firestore();
@@ -939,35 +943,44 @@ async function resolveBroadcastAudience(audience) {
 
   if (audience.startsWith('user:')) {
     const uid = audience.slice(5);
-    return uid ? [uid] : [];
+    const uids = uid ? [uid] : [];
+    return { uids, matchedCount: uids.length };
   }
 
   // Faz 0 §0.5 fix: the user doc has no top-level `role` field — roles live
   // in the `user_roles` array (values 'coach'/'gym_owner', snake_case; see
   // UserRoleX.firestoreValue). This previously matched zero documents, so
   // every 'coaches'/'gymOwners' broadcast silently reached nobody.
-  let query = db.collection('users').limit(MAX);
+  let baseQuery = db.collection('users');
   if (audience === 'coaches') {
-    query = query.where('user_roles', 'array-contains', 'coach');
+    baseQuery = baseQuery.where('user_roles', 'array-contains', 'coach');
   } else if (audience === 'gymOwners') {
-    query = query.where('user_roles', 'array-contains', 'gym_owner');
+    baseQuery = baseQuery.where('user_roles', 'array-contains', 'gym_owner');
   }
-  // 'all' — no filter, just limit
+  // 'all' — no filter
 
-  const snap = await query.get();
-  return snap.docs.map((d) => d.id);
+  const [countSnap, snap] = await Promise.all([
+    baseQuery.count().get(),
+    baseQuery.limit(MAX).get(),
+  ]);
+
+  return { uids: snap.docs.map((d) => d.id), matchedCount: countSnap.data().count || 0 };
 }
 
 /**
  * Fans out a broadcast doc to all matching users — FCM push + in-app notification.
- * Returns the number of recipients reached.
+ * Returns { sentCount, recipientCount, matchedCount }: recipientCount is how
+ * many uids were actually processed (post-MAX-cap); matchedCount is the true
+ * pre-cap audience size (see resolveBroadcastAudience); sentCount is how many
+ * of those actually received a push (a user with no FCM token, or one whose
+ * doc vanished mid-send, is still counted in recipientCount but not sentCount).
  */
 async function executeBroadcast(broadcastId, broadcastData) {
   const db = admin.firestore();
-  const uids = await resolveBroadcastAudience(broadcastData.audience || 'all');
-  functions.logger.info('executeBroadcast', { broadcastId, recipients: uids.length });
+  const { uids, matchedCount } = await resolveBroadcastAudience(broadcastData.audience || 'all');
+  functions.logger.info('executeBroadcast', { broadcastId, recipients: uids.length, matchedCount });
 
-  if (!uids.length) return 0;
+  if (!uids.length) return { sentCount: 0, recipientCount: 0, matchedCount };
 
   // Build per-locale push text
   const titleEn = broadcastData.title_en || 'Cookrange';
@@ -983,7 +996,12 @@ async function executeBroadcast(broadcastId, broadcastData) {
     const chunk = uids.slice(i, i + CHUNK);
     const batch = db.batch();
 
-    await Promise.all(chunk.map(async (uid) => {
+    // Awaited (was fire-and-forget: `.then((ok) => { if (ok) sentCount++ })`
+    // with no await, so batch.commit() below ran before any push actually
+    // resolved and sentCount was never read by anything -- meaning the
+    // "recipient count" this function returned was always just the
+    // pre-send audience size, never how many pushes actually succeeded).
+    const results = await Promise.all(chunk.map(async (uid) => {
       // Fetch user for locale; FCM token lives separately on private/account
       // (audit N1) — read in parallel, not sequentially, to avoid doubling
       // this fan-out's latency per recipient.
@@ -991,7 +1009,7 @@ async function executeBroadcast(broadcastId, broadcastData) {
         db.collection('users').doc(uid).get(),
         getFcmToken(db, uid),
       ]);
-      if (!userSnap.exists) return;
+      if (!userSnap.exists) return false;
       const userData = userSnap.data();
 
       const locale = userData.locale || 'en';
@@ -1011,19 +1029,18 @@ async function executeBroadcast(broadcastId, broadcastData) {
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // FCM push (best-effort; don't block batch on this)
-      if (token) {
-        sendFcm(uid, token, title, body, {
-          type: 'broadcast',
-          relatedId: broadcastId,
-        }).then((ok) => { if (ok) sentCount++; });
-      }
+      if (!token) return false;
+      return sendFcm(uid, token, title, body, {
+        type: 'broadcast',
+        relatedId: broadcastId,
+      });
     }));
 
     await batch.commit();
+    sentCount += results.filter(Boolean).length;
   }
 
-  return uids.length;
+  return { sentCount, recipientCount: uids.length, matchedCount };
 }
 
 /**
@@ -1044,13 +1061,15 @@ exports.onBroadcastCreated = functions
     }
 
     try {
-      const count = await executeBroadcast(broadcastId, data);
+      const { sentCount, recipientCount, matchedCount } = await executeBroadcast(broadcastId, data);
       await snap.ref.update({
         status: 'sent',
         sent_at: admin.firestore.FieldValue.serverTimestamp(),
-        recipient_count: count,
+        recipient_count: recipientCount,
+        sent_count: sentCount,
+        matched_count: matchedCount,
       });
-      functions.logger.info('onBroadcastCreated: sent', { broadcastId, count });
+      functions.logger.info('onBroadcastCreated: sent', { broadcastId, sentCount, recipientCount, matchedCount });
     } catch (e) {
       functions.logger.error('onBroadcastCreated: error', { broadcastId, error: e.message });
       await snap.ref.update({ status: 'failed' });
@@ -1090,13 +1109,15 @@ exports.drainScheduledBroadcasts = functions
 
     await Promise.all(due.docs.map(async (doc) => {
       try {
-        const count = await executeBroadcast(doc.id, doc.data());
+        const { sentCount, recipientCount, matchedCount } = await executeBroadcast(doc.id, doc.data());
         await doc.ref.update({
           status: 'sent',
           sent_at: admin.firestore.FieldValue.serverTimestamp(),
-          recipient_count: count,
+          recipient_count: recipientCount,
+          sent_count: sentCount,
+          matched_count: matchedCount,
         });
-        functions.logger.info('drainScheduledBroadcasts: sent', { broadcastId: doc.id, count });
+        functions.logger.info('drainScheduledBroadcasts: sent', { broadcastId: doc.id, sentCount, recipientCount, matchedCount });
       } catch (e) {
         functions.logger.error('drainScheduledBroadcasts: error', { broadcastId: doc.id, error: e.message });
         await doc.ref.update({ status: 'failed' });
