@@ -1,7 +1,7 @@
 'use strict';
 
 // Faz A §A8 Faz 0 — the single most valuable test in the config migration
-// (see PLAN.md): asserts every default in the canonical
+// (see DECISIONS.md ADR-023): asserts every default in the canonical
 // functions/config_schema.json equals whatever real, currently-live
 // hardcoded constant it is meant to replace — by `require()`ing the real
 // modules, not by re-reading config_schema.json's own numbers back at
@@ -17,7 +17,7 @@
 // "Faz A (config migration)" comment. No behavior changed; only visibility.
 //
 // TWO KNOWN, INTENTIONAL non-matches, asserted explicitly rather than
-// silently skipped — see PLAN.md's Faz 0 section for the full reasoning:
+// silently skipped — see DECISIONS.md ADR-023 for the full reasoning:
 //   - ai.free_daily_limit / ai.premium_daily_limit: the schema's resolved
 //     default (2/20) is asserted to EQUAL the server's real enforced value
 //     (functions/index.js) and to DIFFER from AiConfig's still-stale Dart

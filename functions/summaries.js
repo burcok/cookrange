@@ -413,7 +413,7 @@ function createSummariesModule(aiHelpers) {
   async function callAiForNarrative({ tier, scopeType, fields, memberName, locale, callerUid }) {
     const premium = await isPremium(callerUid);
     // { fast: true } — a money-touching AI path, same reasoning as
-    // index.js's aiProxy (PLAN.md Faz A §A7).
+    // index.js's aiProxy (DECISIONS.md ADR-023).
     const cfg = await getConfig({ fast: true });
     const aiCfg = (cfg && cfg.ai) || {};
     const model = (aiCfg.model_by_type && aiCfg.model_by_type.coach_report)

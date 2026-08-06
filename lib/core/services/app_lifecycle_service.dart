@@ -105,8 +105,8 @@ class AppLifecycleService with WidgetsBindingObserver {
     // Faz A Faz 1 — makes AppConfigService.refreshIfStale() (previously
     // dead code, zero callers) actually run on resume. Deliberately BEFORE
     // the user==null check below: maintenance mode / kill-switches matter
-    // even logged out, and this is the connection point PLAN.md §A3
-    // describes ("mevcut AppLifecycleService'e bağlanır").
+    // even logged out, and this is the connection point DECISIONS.md
+    // ADR-023 describes ("mevcut AppLifecycleService'e bağlanır").
     unawaited(AppConfigService().refreshIfStale());
 
     final user = _authService.currentUser;

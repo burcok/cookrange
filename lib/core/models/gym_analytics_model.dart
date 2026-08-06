@@ -54,8 +54,8 @@ class GymAnalyticsModel {
   // constant does NOT change the server's behavior — the two must be
   // updated together (a TODO in that server-side constant's own comment
   // notes migrating both to `functions/config_schema.json`'s
-  // `privacy.k_anonymity_threshold` once PLAN.md Faz A's config read path
-  // exists, which will end this hand-sync obligation).
+  // `privacy.k_anonymity_threshold` once DECISIONS.md ADR-023's config read
+  // path exists, which will end this hand-sync obligation).
   static const int kAnonymityThreshold = 5;
 
   const GymAnalyticsModel({

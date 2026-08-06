@@ -43,7 +43,7 @@ const { getConfig } = require('./app_config');
 // Faz A Faz 4 — FALLBACK defaults; app_config/server's `moderation.*_rate_limit`
 // objects are the live source once seeded (see moderationConfig() below).
 // These are anti-abuse thresholds — deliberately server-only in the config
-// split (PLAN.md Faz A §A2): publishing them to any authenticated reader
+// split (DECISIONS.md ADR-023): publishing them to any authenticated reader
 // would be a printed manual for staying just under every rate limit in the
 // product.
 //

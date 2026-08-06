@@ -1,5 +1,5 @@
 // Faz A §A8 Faz 0 — the single most valuable test in the config migration
-// (see PLAN.md): asserts every generated schema default
+// (see DECISIONS.md ADR-023): asserts every generated schema default
 // (lib/core/config/app_config_defaults.g.dart, derived from the canonical
 // functions/config_schema.json) equals whatever real, currently-live Dart
 // constant it is meant to replace — by importing the REAL classes, not by
@@ -14,7 +14,7 @@
 // or genuinely dual-sourced.
 //
 // TWO KNOWN, INTENTIONAL exclusions from the generic equality checks below
-// — NOT oversights, see PLAN.md's Faz 0 section for the full reasoning:
+// — NOT oversights, see DECISIONS.md ADR-023 for the full reasoning:
 //   - ai.free_daily_limit / ai.premium_daily_limit: the schema default (2/20)
 //     is the RESOLVED value (the server already enforces 2/20 — verified on
 //     the JS side against functions/index.js). AiConfig's OWN current

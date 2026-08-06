@@ -244,8 +244,8 @@ class AppConfigService {
     _set(c);
   }
 
-  /// Persists the "maintenance was seen ON" sticky flag (PLAN.md §A4:
-  /// maintenance fails open, but STICKY closed once observed — otherwise
+  /// Persists the "maintenance was seen ON" sticky flag (DECISIONS.md
+  /// ADR-023: maintenance fails open, but STICKY closed once observed — otherwise
   /// killing network/app access is a bypass for maintenance mode). Only
   /// called with data that just arrived from a REAL Firestore read (the
   /// `critical` listener), never from cache or defaults, so a device that
@@ -267,8 +267,8 @@ class AppConfigService {
     notifier.value = c;
     // Push AI-relevant values into AIService so admin changes take effect live.
     // Proxy URL only applied when non-empty (keeps Remote Config fallback —
-    // see PLAN.md §A9 for why removing Remote Config before this field is
-    // populated in production would be dangerous).
+    // see DECISIONS.md ADR-023 for why removing Remote Config before this
+    // field is populated in production would be dangerous).
     AIService().applyRemoteConfig(
       textModel: c.ai.textModel,
       visionModel: c.ai.visionModel,
@@ -282,7 +282,8 @@ class AppConfigService {
   /// Deterministic 0..99 bucket for gradual rollout — stable per uid+feature
   /// AND reproducible server-side (`functions/stable_hash.js`'s identical
   /// FNV-1a implementation), unlike the previous `String.hashCode`-based
-  /// version, which a Cloud Function could never reproduce. See PLAN.md §A3.
+  /// version, which a Cloud Function could never reproduce. See DECISIONS.md
+  /// ADR-023.
   bool isInRollout(String feature, String uid) {
     final pct = _current.rollout[feature];
     if (pct == null || pct >= 100) return true;

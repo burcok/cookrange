@@ -251,7 +251,7 @@ class AppConfig {
   /// (`functions/config_schema.json`'s `features.*` entries, generated into
   /// [kConfigDefaults]) — NOT a blanket literal. A key that isn't even in
   /// the schema (a typo, a future/removed flag) defaults to **disabled**,
-  /// per PLAN.md §A4's "bilinmeyen anahtar kapalı."
+  /// per DECISIONS.md ADR-023's "bilinmeyen anahtar kapalı."
   ///
   /// K5: every currently-shipped feature key's schema default is `true` —
   /// so today's user-visible behavior is UNCHANGED (gym/coach/programs/etc.

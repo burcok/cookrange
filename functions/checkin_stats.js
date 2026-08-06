@@ -11,7 +11,8 @@
 // Shared by two call sites that must never independently re-derive this
 // math (a THIRD hand-copy, after summaries.js's Node version and
 // gym_analytics_service.dart's now-removed Dart version, would recreate the
-// exact hand-sync problem PLAN.md's config-migration work exists to end):
+// exact hand-sync problem DECISIONS.md ADR-023's config-migration work
+// exists to end):
 //   - summaries.js's aggregateGymFields — a per-member, tier-gated progress
 //     summary for the requesting gym owner/coach (generateMemberProgressSummary)
 //   - summaries.js's getGymSharingAggregate — a cross-member, k-anonymity-

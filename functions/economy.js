@@ -31,8 +31,8 @@ const { getConfig } = require('./app_config');
 // Faz A Faz 4 — these are now FALLBACK defaults, not the primary source.
 // Each is read live from app_config/server's `economy.*` fields (see
 // economyConfig() below) once that doc has been seeded and observed live
-// in production (PLAN.md Faz A's governing rule: a hardcoded default is
-// never DELETED until the config path has been live and observed — so
+// in production (DECISIONS.md ADR-023's governing rule: a hardcoded default
+// is never DELETED until the config path has been live and observed — so
 // these stay, as the value every consumer falls back to if the config
 // field is absent, which is true unconditionally until Faz 3's seeding
 // actually runs against production).

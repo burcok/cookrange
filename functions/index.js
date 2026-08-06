@@ -341,8 +341,8 @@ exports.aiProxy = functions
     // decides model / tokens / quota / payload caps SERVER-SIDE — the
     // client's requested model is ignored for cost safety, and admins can
     // retune all of this live without redeploying. { fast: true } — a
-    // money-touching path, 5s TTL rather than the general 60s (PLAN.md
-    // Faz A §A7). Fetched before payload validation below (Faz A Faz 4)
+    // money-touching path, 5s TTL rather than the general 60s (DECISIONS.md
+    // ADR-023). Fetched before payload validation below (Faz A Faz 4)
     // so the payload-size caps can be live-config-aware too — getConfig has
     // no dependency on the request body, so this reordering changes nothing
     // about correctness.
@@ -1418,7 +1418,7 @@ exports.getConsentingMemberUids = summaries.getConsentingMemberUids;
 // comment in functions/summaries.js for the full story.
 exports.getGymSharingAggregate = summaries.getGymSharingAggregate;
 
-// Faz A Faz 2 — the safe app_config write path (PLAN.md §A5). Once this
+// Faz A Faz 2 — the safe app_config write path (DECISIONS.md ADR-023). Once this
 // ships, firestore.rules sets every app_config/{critical,client,server}
 // doc to write:false — this callable becomes the only path in, admin
 // included. See functions/app_config_admin.js's own header comment.

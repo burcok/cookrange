@@ -7,7 +7,7 @@
  * construction (setNestedValue) and cross-field validation
  * (crossFieldInvariantErrors) app_config_admin.js's updateAppConfig
  * callable uses — so the seed is validated and versioned from birth
- * (PLAN.md Faz A §A8 Faz 3), not a second, hand-written write path.
+ * (DECISIONS.md ADR-023), not a second, hand-written write path.
  *
  * NOT a deployed Cloud Function — not required by index.js, so Firebase's
  * deploy tooling never sees it. A one-time manual ops script, run directly

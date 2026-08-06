@@ -5,7 +5,7 @@ import 'dart:convert';
 /// NOT guarantee stable across runtimes/restarts).
 ///
 /// Replaces `'$feature:$uid'.hashCode` in `AppConfigService.isInRollout`
-/// (see PLAN.md Faz A §A3). The real defect that motivated this wasn't
+/// (see DECISIONS.md ADR-023). The real defect that motivated this wasn't
 /// instability across app restarts — it was that a Cloud Function could
 /// never reproduce the same rollout bucket a client computed, so a user
 /// could end up inside a gradual rollout on the client and outside it on
