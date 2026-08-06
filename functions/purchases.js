@@ -32,7 +32,7 @@ const {
   claimPurchaseToken,
   reverseCommissionsForPurchase,
 } = require('./entitlements');
-const { maybeAwardGymCommission } = require('./economy');
+const { maybeAwardGymCommission, economyConfig } = require('./economy');
 
 const PURCHASE_SECRETS = [
   'APPLE_ISSUER_ID',
@@ -43,8 +43,15 @@ const PURCHASE_SECRETS = [
   'GOOGLE_PLAY_SA_JSON',
 ];
 
-// Product catalog → entitlement effect. Mirrors BillingProducts on the client.
-const PRODUCTS = {
+// Faz A Faz 4 — FALLBACK catalog; app_config/server's `economy.products` is
+// the live source once seeded (reuses economy.js's own economyConfig() —
+// same doc, same reader, no second config module needed here). Product
+// catalog → entitlement effect. Mirrors BillingProducts on the client (a
+// separate, hand-kept-in-sync catalog — `app_config/server` is admin-only
+// read, structurally unreachable from the client, so that mirror can never
+// itself become config-driven; see config_schema.json's `purchases.products`
+// note).
+const PRODUCTS_DEFAULT = {
   'com.cookrange.premium.monthly': { kind: 'subscription', tier: 'premium', days: 31 },
   'com.cookrange.premium.yearly': { kind: 'subscription', tier: 'premium', days: 365 },
   'cookrange_ai_credits_10': { kind: 'consumable', bonusCredits: 10 },
@@ -160,7 +167,9 @@ exports.validatePurchase = functions.https.onCall(async (data, context) => {
     const platform = data && data.platform; // 'ios' | 'android'
     const productId = data && data.productId;
     const token = data && (data.purchaseToken || data.transactionId); // android token | apple txId
-    const product = PRODUCTS[productId];
+    const econ = await economyConfig();
+    const products = (econ.products && typeof econ.products === 'object') ? econ.products : PRODUCTS_DEFAULT;
+    const product = products[productId];
     if (!product || !platform || !token) {
       throw new functions.https.HttpsError('invalid-argument', 'platform, productId, token required');
     }
@@ -340,3 +349,7 @@ exports.playRtdn = functions.pubsub
   });
 
 module.exports.PURCHASE_SECRETS = PURCHASE_SECRETS;
+
+// Faz A (config migration) — export name kept stable, see presence.js's
+// identical comment.
+module.exports.PRODUCTS = PRODUCTS_DEFAULT;

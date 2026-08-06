@@ -5,6 +5,7 @@ const functions = require('firebase-functions');
 const fetch = require('node-fetch');
 const { APP_CHECK_ENFORCE } = require('./config');
 const { getFcmToken, writeNotification } = require('./notifications');
+const { getConfig } = require('./app_config');
 
 admin.initializeApp();
 
@@ -41,15 +42,22 @@ const ALLOWED_MODELS = new Set(
   ].filter(Boolean)
 );
 
+// Faz A Faz 4 — FALLBACK defaults for the four below; app_config's `ai.*`
+// fields are the live source once seeded — read via the SAME `aiCfg`
+// ({fast:true}) fetch aiProxy already uses for model/temperature, extended
+// to cover these too. Renamed *_DEFAULT to mark them as fallbacks; export
+// names below (Object.assign block) kept stable for
+// functions/test/config_schema_defaults.test.js.
+//
 // Hard caps bounding per-request cost and resource use.
-const MAX_MESSAGES = 30;
-const MAX_TOTAL_CHARS = 24000; // serialized messages payload
+const MAX_MESSAGES_DEFAULT = 30;
+const MAX_TOTAL_CHARS_DEFAULT = 24000; // serialized messages payload
 // Weekly meal-plan / recipe JSON needs real headroom; 1024 truncated them.
 const MAX_OUTPUT_TOKENS = 8192;
 
 // Per-uid sliding-window rate limit (independent of the daily quota).
-const RATE_WINDOW_MS = 60 * 1000;
-const RATE_MAX_IN_WINDOW = 12;
+const RATE_WINDOW_MS_DEFAULT = 60 * 1000;
+const RATE_MAX_IN_WINDOW_DEFAULT = 12;
 
 // Query-type allowlist for usage logging (client-supplied `type`, defaulted).
 // 'coach_report' — Faz 4 §4.2: generateMemberProgressSummary (functions/
@@ -63,17 +71,20 @@ const ALLOWED_TYPES = new Set([
 // Per-model price in USD per 1,000,000 tokens (input / output). Approximate
 // published OpenRouter rates — verify against openrouter.ai/models. Any model
 // ending in ':free' is $0. Unknown paid models record tokens with unpriced=true
-// (cost 0) so the admin dashboard can flag "add pricing".
-const MODEL_PRICING = {
+// (cost 0) so the admin dashboard can flag "add pricing". FALLBACK table —
+// app_config's `ai.model_pricing` is the live source once seeded (an admin
+// correcting a rate, or adding a newly-allowed paid model, becomes a config
+// edit instead of a redeploy).
+const MODEL_PRICING_DEFAULT = {
   'google/gemini-2.0-flash-001': { in: 0.10, out: 0.40 },
   'openai/gpt-4o-mini': { in: 0.15, out: 0.60 },
   'openai/gpt-4o': { in: 2.50, out: 10.0 },
 };
 
-function pricingFor(model) {
+function pricingFor(model, pricingTable = MODEL_PRICING_DEFAULT) {
   if (!model) return { in: 0, out: 0, known: false };
   if (model.endsWith(':free')) return { in: 0, out: 0, known: true };
-  const p = MODEL_PRICING[model];
+  const p = pricingTable[model];
   return p ? { in: p.in, out: p.out, known: true } : { in: 0, out: 0, known: false };
 }
 
@@ -87,13 +98,13 @@ function fieldSafe(s) {
  * per-request log, bumps the global aggregate, and the per-user lifetime totals
  * on the server-only ledger. Best-effort: never throws into the request path.
  */
-async function recordUsage(uid, { type, model, usage, premium, consumed }) {
+async function recordUsage(uid, { type, model, usage, premium, consumed, pricingTable }) {
   try {
     const db = admin.firestore();
     const pt = Number(usage && usage.prompt_tokens) || 0;
     const ct = Number(usage && usage.completion_tokens) || 0;
     const tt = Number(usage && usage.total_tokens) || pt + ct;
-    const pr = pricingFor(model);
+    const pr = pricingFor(model, pricingTable);
     const cost = (pt / 1e6) * pr.in + (ct / 1e6) * pr.out;
     const now = admin.firestore.FieldValue.serverTimestamp();
     const inc = admin.firestore.FieldValue.increment;
@@ -144,28 +155,11 @@ async function recordUsage(uid, { type, model, usage, premium, consumed }) {
 // App Check enforcement is decided by ./config (enforced in production, relaxed
 // in development) — see APP_CHECK_ENFORCE import above.
 
-// In-memory cache of the admin-editable app config (app_config/global). Lets
-// admins retune model / max_tokens / quotas WITHOUT redeploying the function.
-// Refetched at most every APP_CONFIG_TTL_MS; fails safe to {} (env defaults).
-let _appConfigCache = null;
-let _appConfigAt = 0;
-const APP_CONFIG_TTL_MS = 5 * 60 * 1000;
-
-async function getAppConfig() {
-  const now = Date.now();
-  if (_appConfigCache && now - _appConfigAt < APP_CONFIG_TTL_MS) {
-    return _appConfigCache;
-  }
-  try {
-    const snap = await admin.firestore().collection('app_config').doc('global').get();
-    _appConfigCache = snap.exists ? (snap.data() || {}) : {};
-  } catch (e) {
-    functions.logger.warn('getAppConfig failed — using env defaults', { error: e.message });
-    _appConfigCache = _appConfigCache || {};
-  }
-  _appConfigAt = now;
-  return _appConfigCache;
-}
+// Faz A Faz 1 — the admin-editable app config reader moved to its own
+// module, app_config.js's getConfig() (imported above). It now reads
+// app_config/global (legacy) + client + server, deep-merged, instead of
+// just `global` — see that module's header comment. aiProxy is a
+// money-touching path, so it requests the fast (5s) TTL tier.
 
 function nextMidnightUtc(now) {
   const d = new Date(now);
@@ -205,6 +199,8 @@ async function enforceRateLimitAndQuota(uid, premium, limits) {
   const freeLimit = (limits && limits.free) || FREE_DAILY_LIMIT;
   const premiumLimit = (limits && limits.premium) || PREMIUM_DAILY_LIMIT;
   const dailyLimit = premium ? premiumLimit : freeLimit;
+  const rateWindowMs = (limits && limits.windowMs) || RATE_WINDOW_MS_DEFAULT;
+  const rateMaxInWindow = (limits && limits.maxInWindow) || RATE_MAX_IN_WINDOW_DEFAULT;
   const now = new Date();
 
   return db.runTransaction(async (tx) => {
@@ -214,9 +210,9 @@ async function enforceRateLimitAndQuota(uid, premium, limits) {
     // ── Sliding-window rate limit ──
     const winStart = data.rate_window_start && data.rate_window_start.toDate
       ? data.rate_window_start.toDate() : null;
-    const windowExpired = !winStart || (now - winStart) > RATE_WINDOW_MS;
+    const windowExpired = !winStart || (now - winStart) > rateWindowMs;
     const reqCount = windowExpired ? 0 : (data.rate_count || 0);
-    if (reqCount >= RATE_MAX_IN_WINDOW) {
+    if (reqCount >= rateMaxInWindow) {
       return { ok: false, reason: 'rate_limited' };
     }
 
@@ -341,6 +337,20 @@ exports.aiProxy = functions
       return;
     }
 
+    // Admin-editable config (app_config/global + client + server, merged)
+    // decides model / tokens / quota / payload caps SERVER-SIDE — the
+    // client's requested model is ignored for cost safety, and admins can
+    // retune all of this live without redeploying. { fast: true } — a
+    // money-touching path, 5s TTL rather than the general 60s (PLAN.md
+    // Faz A §A7). Fetched before payload validation below (Faz A Faz 4)
+    // so the payload-size caps can be live-config-aware too — getConfig has
+    // no dependency on the request body, so this reordering changes nothing
+    // about correctness.
+    const cfg = await getConfig({ fast: true });
+    const aiCfg = (cfg && cfg.ai) || {};
+    const maxMessages = Number(aiCfg.max_messages) || MAX_MESSAGES_DEFAULT;
+    const maxTotalChars = Number(aiCfg.max_total_chars) || MAX_TOTAL_CHARS_DEFAULT;
+
     // ── Input validation & caps ───────────────────────────────────────────────
     const body = req.body || {};
     const messages = body.messages;
@@ -348,21 +358,16 @@ exports.aiProxy = functions
       res.status(400).json({ error: 'messages array is required' });
       return;
     }
-    if (messages.length > MAX_MESSAGES) {
+    if (messages.length > maxMessages) {
       res.status(413).json({ error: 'too_many_messages' });
       return;
     }
-    if (JSON.stringify(messages).length > MAX_TOTAL_CHARS) {
+    if (JSON.stringify(messages).length > maxTotalChars) {
       res.status(413).json({ error: 'payload_too_large' });
       return;
     }
     const type = ALLOWED_TYPES.has(body.type) ? body.type : 'other';
 
-    // Admin-editable config (app_config/global) decides model / tokens / quota
-    // SERVER-SIDE — the client's requested model is ignored for cost safety, and
-    // admins can retune all of this live without redeploying.
-    const cfg = await getAppConfig();
-    const aiCfg = (cfg && cfg.ai) || {};
     const modelByType = aiCfg.model_by_type || {};
     let model;
     if (type === 'food_photo') {
@@ -385,6 +390,8 @@ exports.aiProxy = functions
     const quotaLimits = {
       free: Number(aiCfg.free_daily_limit) || undefined,
       premium: Number(aiCfg.premium_daily_limit) || undefined,
+      windowMs: Number(aiCfg.rate_window_ms) || undefined,
+      maxInWindow: Number(aiCfg.rate_max_in_window) || undefined,
     };
 
     // ── Premium (server-authoritative) + rate limit + quota ──────────────────
@@ -455,6 +462,7 @@ exports.aiProxy = functions
       // Record real token usage + cost (best-effort, off the response path).
       recordUsage(uid, {
         type, model, usage: data && data.usage, premium, consumed: gate.consumed,
+        pricingTable: (aiCfg.model_pricing && typeof aiCfg.model_pricing === 'object') ? aiCfg.model_pricing : undefined,
       }).catch(() => { });
       res.status(200).json(data);
     } catch (e) {
@@ -1332,6 +1340,7 @@ exports.searchUsersByEmail = social.searchUsersByEmail;
 
 const gym = require('./gym');
 exports.validateGymCheckin = gym.validateGymCheckin;
+exports.validateGymGpsCheckin = gym.validateGymGpsCheckin;
 
 const presence = require('./presence');
 exports.recordPresenceEvent = presence.recordPresenceEvent;
@@ -1342,6 +1351,26 @@ const groups = require('./groups');
 exports.redeemGroupInvite = groups.redeemGroupInvite;
 exports.computeGroupActivityScores = groups.computeGroupActivityScores;
 exports.seedOfficialGroups = groups.seedOfficialGroups;
+
+// BLK-09 fix — server-side demo marketplace content seeding, replacing the
+// client-direct write firestore.rules' `programs`/`weeks` `'demo'` bypass
+// used to allow (removed alongside this — see firestore.rules' own comment
+// at the Programs section).
+const demoContent = require('./demo_content');
+exports.seedDemoContent = demoContent.seedDemoContent;
+
+// SEC-12 — UGC rate limits across previously-unprotected creation paths.
+const ugcRateLimit = require('./ugc_rate_limit');
+exports.onPostCreatedForRateLimit = ugcRateLimit.onPostCreatedForRateLimit;
+exports.onGymPostCreatedForRateLimit = ugcRateLimit.onGymPostCreatedForRateLimit;
+exports.onCommentCreatedForRateLimit = ugcRateLimit.onCommentCreatedForRateLimit;
+exports.onGymCommentCreatedForRateLimit = ugcRateLimit.onGymCommentCreatedForRateLimit;
+exports.onChatMessageCreatedForRateLimit = ugcRateLimit.onChatMessageCreatedForRateLimit;
+exports.onGroupCreatedForRateLimit = ugcRateLimit.onGroupCreatedForRateLimit;
+exports.onFollowCreatedForRateLimit = ugcRateLimit.onFollowCreatedForRateLimit;
+exports.onPostReactionCreatedForRateLimit = ugcRateLimit.onPostReactionCreatedForRateLimit;
+exports.onPostLikeCreatedForRateLimit = ugcRateLimit.onPostLikeCreatedForRateLimit;
+exports.onCommentLikeCreatedForRateLimit = ugcRateLimit.onCommentLikeCreatedForRateLimit;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Meal plan templates (Faz 3 §3.2)
@@ -1365,14 +1394,17 @@ exports.onModerationAppealCreated = moderation.onModerationAppealCreated;
 // Progress-sharing summaries (Faz 4 §4.1/§4.2)
 // ─────────────────────────────────────────────────────────────────────────────
 // summaries.js is a FACTORY (not a plain trigger object) so it can reuse the
-// aiProxy quota/cost helpers already defined above (getAppConfig, isPremium,
-// enforceRateLimitAndQuota, rollbackConsume, recordUsage) by direct
-// reference — no duplication of that "SECURITY MODEL (do not regress)"
-// block, no circular require. See functions/summaries.js's header comment.
+// aiProxy quota/cost helpers already defined/imported above (getConfig,
+// isPremium, enforceRateLimitAndQuota, rollbackConsume, recordUsage) by
+// direct reference — no duplication of that "SECURITY MODEL (do not
+// regress)" block, no circular require. See functions/summaries.js's
+// header comment. getConfig itself takes { fast: true } — summaries.js
+// passes that at its own call site (a money-touching AI path), same as
+// aiProxy does above.
 
 const createSummariesModule = require('./summaries');
 const summaries = createSummariesModule({
-  getAppConfig, isPremium, enforceRateLimitAndQuota, rollbackConsume, recordUsage,
+  getConfig, isPremium, enforceRateLimitAndQuota, rollbackConsume, recordUsage,
   DEFAULT_MODEL, OPENROUTER_URL,
 });
 exports.generateMemberProgressSummary = summaries.generateMemberProgressSummary;
@@ -1381,6 +1413,18 @@ exports.expireMemberProgressSummaries = summaries.expireMemberProgressSummaries;
 // Faz 4 §4.3
 exports.sendProgressShareInvite = summaries.sendProgressShareInvite;
 exports.getConsentingMemberUids = summaries.getConsentingMemberUids;
+// Fixes a client-side-only k-anonymity gate — see this callable's own doc
+// comment in functions/summaries.js for the full story.
+exports.getGymSharingAggregate = summaries.getGymSharingAggregate;
+
+// Faz A Faz 2 — the safe app_config write path (PLAN.md §A5). Once this
+// ships, firestore.rules sets every app_config/{critical,client,server}
+// doc to write:false — this callable becomes the only path in, admin
+// included. See functions/app_config_admin.js's own header comment.
+const appConfigAdmin = require('./app_config_admin');
+exports.updateAppConfig = appConfigAdmin.updateAppConfig;
+exports.rollbackAppConfig = appConfigAdmin.rollbackAppConfig;
+exports.updateContentFilter = appConfigAdmin.updateContentFilter;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Received-engagement AI credit (Faz 5 §5.2) — distinct-account reaction/
@@ -1399,3 +1443,19 @@ exports.awardWeeklyGroupTop3 = engagementCredit.awardWeeklyGroupTop3;
 // Faz 5 §5.3 — denormalized group-contribution leaderboard (see
 // engagement_credit.js's header comment for the data model).
 exports.computeGroupContributionLeaderboards = engagementCredit.computeGroupContributionLeaderboards;
+
+// Faz A (config migration) — exported so functions/test/
+// config_schema_defaults.test.js can assert config_schema.json's defaults
+// equal these live values without a second, hand-copied source of truth
+// for what "current" means. A plain exported value (not a function/trigger
+// shape) is inert to Cloud Functions' own deploy-time discovery.
+Object.assign(module.exports, {
+  FREE_DAILY_LIMIT, PREMIUM_DAILY_LIMIT,
+  MAX_MESSAGES: MAX_MESSAGES_DEFAULT,
+  MAX_TOTAL_CHARS: MAX_TOTAL_CHARS_DEFAULT,
+  MAX_OUTPUT_TOKENS,
+  RATE_WINDOW_MS: RATE_WINDOW_MS_DEFAULT,
+  RATE_MAX_IN_WINDOW: RATE_MAX_IN_WINDOW_DEFAULT,
+  MODEL_PRICING: MODEL_PRICING_DEFAULT,
+  ALLOWED_MODELS,
+});

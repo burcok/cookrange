@@ -75,13 +75,23 @@ const POST_MIN_TEXT_LENGTH = 20;
 const COMMENT_MIN_TEXT_LENGTH = 10;
 const MESSAGE_MIN_TEXT_LENGTH = 10;
 
-function isPostEligibleContent({ content, imageCount = 0 }) {
+// Every threshold below takes an OPTIONAL trailing override, defaulting to
+// this file's own constant — this file stays Firebase-free (see header
+// comment) and can never call getConfig() itself, so the orchestration
+// layer (engagement_credit.js, which already reads app_config/server's
+// `moderation.*` fields for the report/action/appeal rate limits) resolves
+// the live value once and passes it in, exactly like awardXp (progress.js)
+// already takes `points`/`dailyCap` as plain parameters rather than looking
+// them up internally. Every existing call site (including all pre-existing
+// unit tests) omits the override and gets today's exact behavior.
+
+function isPostEligibleContent({ content, imageCount = 0 }, minTextLength = POST_MIN_TEXT_LENGTH) {
   if (Number(imageCount) > 0) return true;
-  return String(content || '').trim().length >= POST_MIN_TEXT_LENGTH;
+  return String(content || '').trim().length >= minTextLength;
 }
 
-function isCommentEligibleContent({ content }) {
-  return String(content || '').trim().length >= COMMENT_MIN_TEXT_LENGTH;
+function isCommentEligibleContent({ content }, minTextLength = COMMENT_MIN_TEXT_LENGTH) {
+  return String(content || '').trim().length >= minTextLength;
 }
 
 // Used only for the weekly-group-contribution source's message gate (§5.2's
@@ -89,9 +99,9 @@ function isCommentEligibleContent({ content }) {
 // message with an attachment (photo/voice-note-equivalent today: image)
 // counts even with little/no body text, mirroring isPostEligibleContent's
 // same image-carries-its-own-value stance.
-function isMessageEligibleContent({ body, attachmentCount = 0 }) {
+function isMessageEligibleContent({ body, attachmentCount = 0 }, minTextLength = MESSAGE_MIN_TEXT_LENGTH) {
   if (Number(attachmentCount) > 0) return true;
-  return String(body || '').trim().length >= MESSAGE_MIN_TEXT_LENGTH;
+  return String(body || '').trim().length >= minTextLength;
 }
 
 // ─── Duplicate/copied-content detection ────────────────────────────────────
@@ -156,15 +166,20 @@ const RECIPROCITY_MIN_PAIR_SAMPLE = 4;
 const RECIPROCITY_RATIO_THRESHOLD = 0.5;
 const RECIPROCITY_DOWNWEIGHT = 0.2;
 
-function reciprocityWeight(priorGivenGiverToReceiver, priorGivenReceiverToGiver) {
+function reciprocityWeight(priorGivenGiverToReceiver, priorGivenReceiverToGiver, opts = {}) {
+  const {
+    minPairSample = RECIPROCITY_MIN_PAIR_SAMPLE,
+    ratioThreshold = RECIPROCITY_RATIO_THRESHOLD,
+    downweight = RECIPROCITY_DOWNWEIGHT,
+  } = opts;
   const a = Math.max(0, Number(priorGivenGiverToReceiver) || 0);
   const b = Math.max(0, Number(priorGivenReceiverToGiver) || 0);
   const total = a + b;
-  if (total < RECIPROCITY_MIN_PAIR_SAMPLE) return 1;
+  if (total < minPairSample) return 1;
   const bigger = Math.max(a, b);
   const smaller = Math.min(a, b);
   const ratio = bigger === 0 ? 0 : smaller / bigger;
-  return ratio >= RECIPROCITY_RATIO_THRESHOLD ? RECIPROCITY_DOWNWEIGHT : 1;
+  return ratio >= ratioThreshold ? downweight : 1;
 }
 
 // ─── Closed-cluster (engagement concentration) weighting ──────────────────
@@ -178,12 +193,17 @@ const CONCENTRATION_WINDOW = 20;
 const CONCENTRATION_DISTINCT_MAX = 3;
 const CONCENTRATION_DOWNWEIGHT = 0.2;
 
-function concentrationWeight(recentGivers, candidateUid) {
+function concentrationWeight(recentGivers, candidateUid, opts = {}) {
+  const {
+    windowSize = CONCENTRATION_WINDOW,
+    distinctMax = CONCENTRATION_DISTINCT_MAX,
+    downweight = CONCENTRATION_DOWNWEIGHT,
+  } = opts;
   const window = Array.isArray(recentGivers) ? recentGivers : [];
-  if (window.length < CONCENTRATION_WINDOW) return 1;
+  if (window.length < windowSize) return 1;
   const distinct = new Set(window);
-  if (distinct.size > CONCENTRATION_DISTINCT_MAX) return 1;
-  return distinct.has(candidateUid) ? CONCENTRATION_DOWNWEIGHT : 1;
+  if (distinct.size > distinctMax) return 1;
+  return distinct.has(candidateUid) ? downweight : 1;
 }
 
 // Appends `value` to `window`, evicting from the front once over `maxLen` —
@@ -203,18 +223,20 @@ function combinedEngagementWeight({
   priorGivenReceiverToGiver,
   receiverRecentGivers,
   giverUid,
+  reciprocityOpts,
+  concentrationOpts,
 }) {
-  const rw = reciprocityWeight(priorGivenGiverToReceiver, priorGivenReceiverToGiver);
-  const cw = concentrationWeight(receiverRecentGivers, giverUid);
+  const rw = reciprocityWeight(priorGivenGiverToReceiver, priorGivenReceiverToGiver, reciprocityOpts);
+  const cw = concentrationWeight(receiverRecentGivers, giverUid, concentrationOpts);
   return Math.min(rw, cw);
 }
 
 // ─── Account eligibility gate ("hesap yaşı >= 3 gün ve >= 1 doğrulanmış e-posta") ─
 const MIN_ACCOUNT_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 
-function isAccountOldEnough(createdAtMs, nowMs) {
+function isAccountOldEnough(createdAtMs, nowMs, minAccountAgeMs = MIN_ACCOUNT_AGE_MS) {
   if (!createdAtMs) return false;
-  return (nowMs - createdAtMs) >= MIN_ACCOUNT_AGE_MS;
+  return (nowMs - createdAtMs) >= minAccountAgeMs;
 }
 
 // ─── Shadow-restriction auto-trigger ────────────────────────────────────────
@@ -229,8 +251,8 @@ function isAccountOldEnough(createdAtMs, nowMs) {
 // client input.
 const AUTO_RESTRICT_FLAG_THRESHOLD = 5;
 
-function shouldAutoRestrict(flagCount) {
-  return (Number(flagCount) || 0) >= AUTO_RESTRICT_FLAG_THRESHOLD;
+function shouldAutoRestrict(flagCount, threshold = AUTO_RESTRICT_FLAG_THRESHOLD) {
+  return (Number(flagCount) || 0) >= threshold;
 }
 
 // ─── Credit table + premium 2x multiplier ──────────────────────────────────
@@ -247,8 +269,8 @@ const CREDIT_TABLE = {
   weekly_group_top3: { credit: 5, weeklyCap: 1 },
 };
 
-function creditAndCapForPremium(sourceKey, isPremiumUser) {
-  const entry = CREDIT_TABLE[sourceKey];
+function creditAndCapForPremium(sourceKey, isPremiumUser, table = CREDIT_TABLE) {
+  const entry = table[sourceKey];
   if (!entry) return null;
   const multiplier = isPremiumUser ? 2 : 1;
   return {
@@ -346,6 +368,9 @@ module.exports = {
   isPostEligibleContent,
   isCommentEligibleContent,
   isMessageEligibleContent,
+  POST_MIN_TEXT_LENGTH,
+  COMMENT_MIN_TEXT_LENGTH,
+  MESSAGE_MIN_TEXT_LENGTH,
   // duplicate content
   normalizeText,
   textWordSet,

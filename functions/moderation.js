@@ -38,27 +38,50 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const { checkAndBumpSlidingWindow, lockUntil } = require('./rate_limit');
+const { getConfig } = require('./app_config');
 
+// Faz A Faz 4 — FALLBACK defaults; app_config/server's `moderation.*_rate_limit`
+// objects are the live source once seeded (see moderationConfig() below).
+// These are anti-abuse thresholds — deliberately server-only in the config
+// split (PLAN.md Faz A §A2): publishing them to any authenticated reader
+// would be a printed manual for staying just under every rate limit in the
+// product.
+//
 // Reports: generous enough for a legitimate user flagging several bad posts
 // in a row, tight enough to blunt a mass-report brigade trying to silence
 // someone via volume.
-const REPORT_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-const REPORT_RATE_MAX_IN_WINDOW = 8;
-const REPORT_LOCK_MS = 15 * 60 * 1000;
+const REPORT_RATE_WINDOW_MS_DEFAULT = 10 * 60 * 1000; // 10 minutes
+const REPORT_RATE_MAX_IN_WINDOW_DEFAULT = 8;
+const REPORT_LOCK_MS_DEFAULT = 15 * 60 * 1000;
 
 // Group moderation actions: generous enough for a real moderator clearing
 // out a raid in one sitting, tight enough to cap a compromised owner/admin
 // account's blast radius.
-const MOD_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-const MOD_RATE_MAX_IN_WINDOW = 15;
-const MOD_LOCK_MS = 15 * 60 * 1000;
+const MOD_RATE_WINDOW_MS_DEFAULT = 10 * 60 * 1000; // 10 minutes
+const MOD_RATE_MAX_IN_WINDOW_DEFAULT = 15;
+const MOD_LOCK_MS_DEFAULT = 15 * 60 * 1000;
 
 // Appeals: one per moderation action already (doc id == the action's own
 // id, firestore.rules), so this only guards against filing many appeals
 // across many actions in a short burst.
-const APPEAL_RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const APPEAL_RATE_MAX_IN_WINDOW = 5;
-const APPEAL_LOCK_MS = 60 * 60 * 1000;
+const APPEAL_RATE_WINDOW_MS_DEFAULT = 60 * 60 * 1000; // 1 hour
+const APPEAL_RATE_MAX_IN_WINDOW_DEFAULT = 5;
+const APPEAL_LOCK_MS_DEFAULT = 60 * 60 * 1000;
+
+/** Live app_config/server `moderation.*` fields, or {} if unset/unreachable. */
+async function moderationConfig() {
+  const cfg = await getConfig();
+  return (cfg && cfg.moderation) || {};
+}
+
+function tripleOrDefault(live, windowDefault, maxDefault, lockDefault) {
+  const isObj = live && typeof live === 'object';
+  return {
+    windowMs: isObj && typeof live.windowMs === 'number' ? live.windowMs : windowDefault,
+    max: isObj && typeof live.max === 'number' ? live.max : maxDefault,
+    lockMs: isObj && typeof live.lockMs === 'number' ? live.lockMs : lockDefault,
+  };
+}
 
 exports.onReportCreated = functions.firestore
   .document('reports/{reportId}')
@@ -67,10 +90,13 @@ exports.onReportCreated = functions.firestore
     if (!reporterId) return;
     const db = admin.firestore();
     try {
-      const { limited, count } = await checkAndBumpSlidingWindow(
-        db, reporterId, 'report', REPORT_RATE_WINDOW_MS, REPORT_RATE_MAX_IN_WINDOW);
+      const { windowMs, max, lockMs } = tripleOrDefault(
+        (await moderationConfig()).report_rate_limit,
+        REPORT_RATE_WINDOW_MS_DEFAULT, REPORT_RATE_MAX_IN_WINDOW_DEFAULT, REPORT_LOCK_MS_DEFAULT,
+      );
+      const { limited, count } = await checkAndBumpSlidingWindow(db, reporterId, 'report', windowMs, max);
       if (limited) {
-        await lockUntil(db, reporterId, 'report', REPORT_LOCK_MS);
+        await lockUntil(db, reporterId, 'report', lockMs);
         functions.logger.warn('onReportCreated: reporter rate-limited', { reporterId, count });
       }
     } catch (e) {
@@ -87,10 +113,13 @@ exports.onGroupModerationActionCreated = functions.firestore
     if (!issuedBy) return;
     const db = admin.firestore();
     try {
-      const { limited, count } = await checkAndBumpSlidingWindow(
-        db, issuedBy, 'moderation', MOD_RATE_WINDOW_MS, MOD_RATE_MAX_IN_WINDOW);
+      const { windowMs, max, lockMs } = tripleOrDefault(
+        (await moderationConfig()).action_rate_limit,
+        MOD_RATE_WINDOW_MS_DEFAULT, MOD_RATE_MAX_IN_WINDOW_DEFAULT, MOD_LOCK_MS_DEFAULT,
+      );
+      const { limited, count } = await checkAndBumpSlidingWindow(db, issuedBy, 'moderation', windowMs, max);
       if (limited) {
-        await lockUntil(db, issuedBy, 'moderation', MOD_LOCK_MS);
+        await lockUntil(db, issuedBy, 'moderation', lockMs);
         functions.logger.warn('onGroupModerationActionCreated: moderator rate-limited', {
           issuedBy, groupId: context.params.groupId, count,
         });
@@ -109,10 +138,13 @@ exports.onModerationAppealCreated = functions.firestore
     if (!uid) return;
     const db = admin.firestore();
     try {
-      const { limited, count } = await checkAndBumpSlidingWindow(
-        db, uid, 'appeal', APPEAL_RATE_WINDOW_MS, APPEAL_RATE_MAX_IN_WINDOW);
+      const { windowMs, max, lockMs } = tripleOrDefault(
+        (await moderationConfig()).appeal_rate_limit,
+        APPEAL_RATE_WINDOW_MS_DEFAULT, APPEAL_RATE_MAX_IN_WINDOW_DEFAULT, APPEAL_LOCK_MS_DEFAULT,
+      );
+      const { limited, count } = await checkAndBumpSlidingWindow(db, uid, 'appeal', windowMs, max);
       if (limited) {
-        await lockUntil(db, uid, 'appeal', APPEAL_LOCK_MS);
+        await lockUntil(db, uid, 'appeal', lockMs);
         functions.logger.warn('onModerationAppealCreated: appellant rate-limited', { uid, count });
       }
     } catch (e) {
@@ -121,3 +153,20 @@ exports.onModerationAppealCreated = functions.firestore
       });
     }
   });
+
+// Faz A (config migration) — export names kept stable for
+// functions/test/config_schema_defaults.test.js (Faz 4 renamed the
+// INTERNAL constants *_DEFAULT once the live-config read path above was
+// wired in; the equality this test proves hasn't changed).
+Object.assign(module.exports, {
+  REPORT_RATE_WINDOW_MS: REPORT_RATE_WINDOW_MS_DEFAULT,
+  REPORT_RATE_MAX_IN_WINDOW: REPORT_RATE_MAX_IN_WINDOW_DEFAULT,
+  REPORT_LOCK_MS: REPORT_LOCK_MS_DEFAULT,
+  MOD_RATE_WINDOW_MS: MOD_RATE_WINDOW_MS_DEFAULT,
+  MOD_RATE_MAX_IN_WINDOW: MOD_RATE_MAX_IN_WINDOW_DEFAULT,
+  MOD_LOCK_MS: MOD_LOCK_MS_DEFAULT,
+  APPEAL_RATE_WINDOW_MS: APPEAL_RATE_WINDOW_MS_DEFAULT,
+  APPEAL_RATE_MAX_IN_WINDOW: APPEAL_RATE_MAX_IN_WINDOW_DEFAULT,
+  APPEAL_LOCK_MS: APPEAL_LOCK_MS_DEFAULT,
+  moderationConfig,
+});

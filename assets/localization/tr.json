@@ -2311,6 +2311,7 @@
     "checkin_invalid_qr": "Geçersiz veya süresi dolmuş QR kodu",
     "checkin_gps_error": "Konumunuz doğrulanamadı",
     "checkin_gps_too_far": "Spor salonundan çok uzaktasınız",
+    "checkin_rate_limited": "Çok fazla check-in denemesi yaptınız, lütfen biraz sonra tekrar deneyin",
     "checkin_generate_qr": "QR Kodu Oluştur",
     "checkin_regenerate_qr": "QR'ı Yenile",
     "checkin_qr_expires": "Süre dolumu",

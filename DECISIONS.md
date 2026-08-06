@@ -310,6 +310,8 @@ delete the code (rejected: destroys the M6 asset).
 carries security rules, and still rots — budget maintenance for it. ⚠️ Docs must keep describing it
 (`GYM_ECOSYSTEM.md`, `COACH_ECOSYSTEM.md`) while `PROJECT_STATE.md` marks it deferred.
 
+**Update (2026-08-06).** The kill-switch this ADR relies on was fail-open the entire time: **`AppConfigService.isFeatureEnabled`** read `features[key] ?? true`, so a missing flag, a missing doc, a cold-start frame, or a network error left every feature **on**. This ADR's deferral was therefore never actually enforced — two independent audits this session confirmed gym and coach were live and reachable in the shipped app. ADR-023 fixes the mechanism (schema-driven default, unknown key closed). That fix delivers the kill-switch this ADR always assumed existed — it does not, by itself, decide whether to now use it to turn anything off. That's a separate, product-level call, and it went the other way: per K5 (this session), gym/coach/programs/marketplace **stay visible** going forward — their `app_config/critical` schema defaults are `true`, matching today's actual (if accidental) behavior. A future reader should not treat this ADR's original "deferred to M6" framing as a live instruction to flip the switch off; the live decision is "stay on," now through a mechanism that actually works and can be flipped in one audited write if that changes.
+
 ---
 
 ## ADR-013 — Onboarding runs before registration
@@ -742,6 +744,182 @@ change, and still unresolved. ⚠️ An owner's `pendingAmount` can go net-negat
 exceeds their other pending commissions — arithmetically correct, and the existing `>0`-gated
 payout-request button already hides correctly in that state, but it's a real UI state nobody had
 designed for before now.
+
+---
+
+## ADR-023 — Config system split by read audience, fail-open replaced with schema-driven defaults, and all writes moved behind a validated callable — supersedes ADR-011
+
+**Date:** 2026-08-06 · **Status:** Accepted (supersedes ADR-011)
+
+**Context.** ADR-011 established `app_config/global` as one public-read/admin-write Firestore doc
+holding `ai`/`version`/`maintenance`/`announcement`/`features`/`rollout`/`limits`/`endpoints`, and
+recorded two consequences as intentional: "public-read, so **nothing secret may ever go in it**"
+and "kill-switches default **on**" (a deliberate fail-safe judgment at the time). Two things then
+changed the calculus. First, a request to make roughly 80 more hardcoded constants — commission
+rates, AI quotas, XP tables, and several genuine anti-abuse thresholds
+(`DUPLICATE_SIMILARITY_THRESHOLD`, `RECIPROCITY_*`, `MIN_ACCOUNT_AGE_MS`,
+`AUTO_RESTRICT_FLAG_THRESHOLD`) — admin-editable meant putting them somewhere; a single
+public-read document was not an option for that set without directly violating ADR-011's own first
+consequence. Second, tracing `AppConfig.isFeatureEnabled` (`features[key] ?? true`) to its actual
+runtime behavior showed the "kill-switches default on" line was not a considered trade-off holding
+up in practice — it meant every flag, known or unknown, present or absent, read `true` until a
+network fetch landed, including during the first frames of every cold start. Two independent audits
+this session confirmed `gym`/`coach` — flags ADR-012 documents as deferred behind a switch — were
+live in production for exactly this reason. The switch ADR-012 relies on had never actually worked.
+
+**Decision.** Three Firestore documents replace the one, split by READ AUDIENCE, not by feature
+domain: `app_config/critical` (kill-switches, maintenance, version, announcement, rollout —
+public-read, read via a realtime listener since a maintenance-mode flip is a documented incident
+lever and a lever whose latency is "next cold start" is not one), `app_config/client`
+(authenticated-read; AI quotas/models/timeouts, endpoints, and other settings both runtimes read),
+`app_config/server` (admin-read only; commission rates, XP/credit tables, model pricing, and every
+anti-abuse threshold named above — the set ADR-011's "nothing secret" line would otherwise have
+been broken by). Placement rule: a setting lives in the most restrictive doc that still contains
+every one of its readers. `functions/config_schema.json` is the single hand-edited source of truth
+for every setting's type/bounds/default/target-doc, generating Dart's typed defaults
+(`app_config_defaults.g.dart`) and driving both runtimes' validation — ending the three-way
+hand-sync failures already observed in this codebase (AI daily limits 5/50 vs. the server's real
+2/20; k-anonymity 3 vs. 5; the level-curve coefficient's own "keep these in sync by hand" comment).
+`AppConfig.isFeatureEnabled` no longer defaults to `true`: an explicit admin override wins, absent
+that the SCHEMA's own per-key declared default applies, and a key absent from the schema entirely
+resolves to `false` — fail-CLOSED for the unknown case, reversing ADR-011's stated direction. All
+writes to any `app_config/*` document (or `app_config_versions`, the new immutable change-history
+collection) are now `allow write: if false` in `firestore.rules`, no exceptions, admin included —
+`functions/app_config_admin.js`'s `updateAppConfig`/`rollbackAppConfig` callables (Admin SDK,
+per-key schema validation, cross-field invariants, a ±50% large-change guard, and confirm+reason
+requirements on every `sensitive`-flagged field) are the only path in. Three documents merged
+recursively (`deep_merge.js`/`deep_merge.dart`), not with a shallow `{...a, ...b}` spread — `ai`,
+`gamification`, and `client` are each genuinely split across more than one document, and a shallow
+merge would silently discard half of a split group's fields the moment two documents both define
+it.
+
+**Reason.** The audience split is the only way to keep "everything admin-editable" from directly
+contradicting "nothing secret is public" — publishing `RECIPROCITY_RATIO_THRESHOLD` or
+`GYM_COMMISSION_TRY` to an unauthenticated reader would be handing out a written manual for evading
+every anti-abuse defense in the product, and the commission rate itself is under active legal
+negotiation. The realtime listener on `critical` specifically (not the other two) is priced, not
+assumed: at 100k DAU it's roughly $5/month, and this codebase already carries 106 other
+`snapshots()` listeners — the fail-open bug's discovery is what made "an incident lever that takes
+hours to reach an active user" an unacceptable status quo rather than a theoretical one. The
+callable-only write path exists because a blanket `allow write: if isAdmin()` accepted any shape
+from any admin, and with commission rates and anti-abuse thresholds now living in the same system,
+an admin UI typo or a compromised admin session had a materially larger blast radius than it did
+under ADR-011's original, narrower scope.
+
+**Alternatives.** Keeping one document and accepting the public-read constraint on the newly added
+settings (rejected outright — the anti-abuse thresholds specifically cannot be public under any
+framing). Splitting by feature domain (`app_config/economy`, `app_config/ai`, ...) instead of by
+audience (rejected: `ai.free_daily_limit` is simultaneously a client-display value and a
+server-enforced value, so "which domain" has no single answer while "which audience" does; domain
+grouping is a presentation concern and belongs in the admin UI's section headers, which the schema
+already drives via its `group` field). Keeping the blanket admin-write rule and relying on the new
+callable only being used "by convention" (rejected: convention is exactly what the fail-open bug
+already disproved as a safeguard — the enforcement has to be at the rule, not the UI). A shallow
+merge with feature-domain documents chosen specifically to avoid any cross-document field splits
+(rejected: this only works if every future setting's readership never spans two audiences, which
+is already false today for `ai.*`/`gamification.*`, so the deep merge is required regardless of
+document layout).
+
+**Consequences.** ✅ ADR-012's kill-switch mechanism, once seeded and deployed, will actually work
+for the first time — this ADR is what delivers the switch ADR-012 assumed already existed. ✅ Ends
+three confirmed hand-sync drifts and the class of bug they represent, verifiable by a CI-enforced
+default-equality test suite (`functions/test/config_schema_defaults.test.js`,
+`test/config_schema_defaults_test.dart`) that imports the real constants rather than re-reading the
+schema's own numbers back at itself. ✅ One-click rollback and a full change-history audit trail,
+neither of which existed before (`config_version` was parsed and never incremented). ⚠️ Making
+`gamification.level_curve_coefficient` and similar algorithmic-tuning values admin-editable means a
+single bad write can retroactively re-level every user in the product; schema bounds, the ±50%
+force guard, and rollback reduce this risk without eliminating it — it is arguably the one value
+that should have stayed in code, and K3 (all ~80 constants configurable, no exceptions) was a
+deliberate product decision made with this risk stated plainly. ⚠️ Environment separation (a
+staging Firebase project) remains explicitly deferred to M4 — until then, the callable's validation
+layer is what stands in for a staging gate on every config write, a real gap consciously accepted
+with a named trigger for when it stops being acceptable. ⚠️ `app_config/global`, the legacy
+document, is deliberately NOT deleted by this ADR — it remains the actually-populated document in
+production until a separate, explicit seed-and-cutover action runs against the live project, which
+this session did not perform. Any admin UI that still writes there directly (`AdminAppConfigScreen`
+via the old `AdminService.updateAppConfig`) will stop working the moment these rules deploy, before
+its replacement (the web admin panel, itself blocked on `S0`'s key rotation) exists — a real
+operational gap this ADR's implementation flagged but did not resolve, and deployment must not
+proceed without a plan for it.
+
+**Update (2026-08-06).** The gap flagged directly above is closed, not just noted: `AdminService.updateAppConfig`
+now splits its caller's flat patch into per-doc dotted-key patches (via the generated
+`app_config_schema.g.dart`'s `doc` field per key) and calls the `updateAppConfig` callable per doc —
+`AdminAppConfigScreen` no longer writes `app_config/global` at all. Two of its dead toggles
+(`ai.photo_analysis_enabled`/`weekly_recap_enabled`, confirmed zero real readers) were also repointed
+to the actual `features.photo_analysis`/`weekly_recap` kill-switches they were meant to control. See
+ADR-024 for what this session did after this ADR landed, including the security findings (`BLK-09`,
+`SEC-07`, `SEC-08`, `SEC-12`) that surfaced while re-verifying this ADR's own "deployment must not
+proceed without a plan" warning.
+
+## ADR-024 — Faz A rollout completed; four real security gaps found and closed while re-verifying it; Faz B (web admin panel) started
+
+**Date:** 2026-08-06 · **Status:** Accepted
+
+**Context.** ADR-023 landed the config system's architecture but left two things open: the mechanical
+Faz 4 rewiring of the remaining hardcoded constants (explicitly deferred, not forgotten), and its own
+flagged "deployment must not proceed without a plan" gap on `AdminAppConfigScreen`. Separately, this
+session's plan for Faz B (the actual web admin panel) named several downstream security items —
+`BLK-09`, `SEC-07`, `SEC-08`, `SEC-12` — as still open. Re-verifying each of these against current code
+(not against what an earlier audit or code comment *claimed*) turned up two cases where the claim was
+simply wrong: `SEC-09`'s review-linkage check didn't exist in the rule despite a comment saying it did,
+and `SEC-07`'s "membership enforced app-side" was never true. Both are the same failure mode ADR-023's
+own fail-open fix addressed for feature flags — a control that looks closed in a comment but was never
+wired — recurring in a different subsystem.
+
+**Decision.**
+1. Finished Faz A's Faz 4: every remaining hardcoded constant this session could find (presence.js,
+   groups.js, summaries.js, templates.js, media.js, purchases.js, engagement_credit.js/logic.js,
+   index.js, plus the Dart `AIService` retry config) now reads live `app_config` with the same
+   `*_DEFAULT`-fallback pattern ADR-023 established. Found and fixed a genuine schema placement bug
+   along the way: `ai.max_retries`/`ai.retry_delay_s` were declared `doc:server`, but their only
+   reader is the Dart client — moved to `doc:client`.
+2. Closed four real, live security gaps, each verified against actual code first:
+   - **`BLK-09`** — the `coach_uid=='demo'` marketplace-seeding bypass in `firestore.rules` could never
+     distinguish the real seeder from an attacker copying the same write. Moved seeding server-side
+     (`functions/demo_content.js`, fixed content, Admin SDK); removed the bypass entirely.
+   - **`SEC-07`** — `gyms/{gymId}/posts`/`comments` create had no membership check despite the comment
+     claiming one, and no length cap. Fixed, and the same audit found a second, larger instance of the
+     identical bug on the top-level `posts/{postId}.groupId` path (any group, not just gyms) — fixed
+     too, mirroring the existing `canPostInGroup()` used by group chat.
+   - **`SEC-08`** — GPS check-ins were validated by a client-side Haversine computation with **no
+     server-side membership or distance check at all** (worse than the existing TODO entry described).
+     New `validateGymGpsCheckin` callable (mirrors the already-server-validated QR path); `checkins`
+     collection is now fully server-only.
+   - **`SEC-12`** — 11 of the app's UGC creation paths (posts, comments, messages, group creation,
+     follows, reactions/likes) had zero rate limiting; `engagement_credit.js`'s anti-abuse machinery
+     governs AI-credit *earning*, never content *creation*, so it closed none of this. Extended
+     `moderation.js`'s existing reactive sliding-window pattern (`functions/ugc_rate_limit.js`) to all
+     six kinds, each a new admin-editable `moderation.*_rate_limit` config field rather than a fresh
+     hardcoded constant — deliberately not repeating the mistake this whole Faz just finished fixing.
+   - Left open, explicitly: duplicate-content detection at creation time and a new-account trust ramp
+     (both `SEC-12`) need a client-write-to-callable conversion, a bigger call than a rate-limit pass;
+     `SEC-07`/`SEC-08`/`SEC-12`'s siblings `SEC-09` (closed, linkage check only — aggregate-skew and
+     reporting still open) and `SEC-11`/`SEC-10` (untouched) remain tracked in `TODO.md`.
+3. Started Faz B (`cookrange-admin`, a separate Next.js repo) — repo scaffold, Google Workspace SSO,
+   an `admin_users/{uid}` fine-grained-permission layer on top of the existing `admin_roles` gate, and
+   a full config editor against the now-129-field schema. `S0` (the committed Admin SA key), a
+   `cookrange-staging` Firebase project, and the Vercel/DNS setup for `admin.cookrangeapp.com` all
+   block eventual production go-live but not local development — tracked as external, not deferred.
+
+**Reason.** A security review is only as good as what it verifies against real code; three of the four
+gaps above were sitting in front of an existing TODO.md entry or code comment that *described the fix
+as already done or unnecessary*, and would have stayed invisible to a review that trusted those
+descriptions. Fixing them now, before Faz B's admin panel goes anywhere near production, is cheaper
+than fixing them after a wider audience is relying on the surfaces they touch (marketplace, gym posts,
+check-ins, community content).
+
+**Alternatives.** Ship Faz B first, security fixes later (rejected — the panel makes several of these
+surfaces, especially the config editor's `moderation.*_rate_limit` fields, *more* consequential to get
+right, not less) · treat `TODO.md`'s existing status markers as ground truth and skip re-verification
+(rejected — this is exactly the assumption that let `SEC-07`/`SEC-09` go unnoticed).
+
+**Consequences.** ✅ Faz A is now fully rolled out, not just architected. ✅ Four real, previously-live
+gaps closed with rules/unit tests, not just documented. ⚠️ `SEC-12`'s duplicate-detection and
+trust-ramp items are real, named, and still open — tracked, not silently dropped. ⚠️ Faz B's local
+development can proceed without `S0`, but nothing about this ADR shortens the path to actually
+resolving `S0` — it is still the hard blocker on this panel (or anything else) touching production.
 
 ---
 

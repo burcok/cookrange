@@ -26,12 +26,21 @@ const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const { APP_CHECK_ENFORCE } = require('./config');
 const { writeNotification, fetchActor } = require('./notifications');
-const { awardXp, XP_TABLE } = require('./progress');
+const { awardXp, xpEntry } = require('./progress');
 const { awardTemplateUsedCredit } = require('./engagement_credit');
+const { getConfig } = require('./app_config');
 
-const MAX_RECIPIENTS_PER_CALL = 100;
-const MAX_MESSAGE_LENGTH = 500;
-const OFFER_TTL_DAYS = 14; // §3.5: "14 günde otomatik expired"
+// Faz A Faz 4 — FALLBACK defaults; app_config/server's `templates.*` fields
+// are the live source once seeded (see templatesConfig() below).
+const MAX_RECIPIENTS_PER_CALL_DEFAULT = 100;
+const MAX_MESSAGE_LENGTH_DEFAULT = 500;
+const OFFER_TTL_DAYS_DEFAULT = 14; // §3.5: "14 günde otomatik expired"
+
+/** Live app_config/server `templates.*` fields, or {} if unset/unreachable. */
+async function templatesConfig() {
+  const cfg = await getConfig();
+  return (cfg && cfg.templates) || {};
+}
 
 async function isAdminUid(db, uid) {
   const snap = await db.collection('admin_roles').doc(uid).get();
@@ -70,6 +79,14 @@ exports.sendPlanOffer = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('failed-precondition', 'App Check required');
   }
 
+  const tCfg = await templatesConfig();
+  const maxMessageLength = typeof tCfg.max_message_length === 'number'
+    ? tCfg.max_message_length : MAX_MESSAGE_LENGTH_DEFAULT;
+  const maxRecipientsPerCall = typeof tCfg.max_recipients_per_call === 'number'
+    ? tCfg.max_recipients_per_call : MAX_RECIPIENTS_PER_CALL_DEFAULT;
+  const offerTtlDays = typeof tCfg.offer_ttl_days === 'number'
+    ? tCfg.offer_ttl_days : OFFER_TTL_DAYS_DEFAULT;
+
   const templateId = data && typeof data.templateId === 'string' ? data.templateId : '';
   const rawToUids = data && Array.isArray(data.toUids)
     ? data.toUids
@@ -79,13 +96,13 @@ exports.sendPlanOffer = functions.https.onCall(async (data, context) => {
   const toUids = [...new Set(rawToUids.filter((u) => typeof u === 'string' && u.length > 0))]
     .filter((u) => u !== uid);
   const message = data && typeof data.message === 'string'
-    ? data.message.slice(0, MAX_MESSAGE_LENGTH)
+    ? data.message.slice(0, maxMessageLength)
     : '';
 
   if (!templateId || toUids.length === 0) {
     throw new functions.https.HttpsError('invalid-argument', 'templateId and at least one recipient are required');
   }
-  if (toUids.length > MAX_RECIPIENTS_PER_CALL) {
+  if (toUids.length > maxRecipientsPerCall) {
     throw new functions.https.HttpsError('invalid-argument', 'too_many_recipients');
   }
 
@@ -124,7 +141,7 @@ exports.sendPlanOffer = functions.https.onCall(async (data, context) => {
   }
 
   const now = admin.firestore.FieldValue.serverTimestamp();
-  const expiresAt = new Date(Date.now() + OFFER_TTL_DAYS * 86400000);
+  const expiresAt = new Date(Date.now() + offerTtlDays * 86400000);
   const fromName = (callerSnap.exists && callerSnap.data().displayName) || template.name || 'Cookrange';
 
   // Faz 3 §3.5: resolve (or create) each recipient's private 1:1 chat with
@@ -288,7 +305,7 @@ exports.onPlanOfferResponded = functions.firestore
     const memberUid = context.params.uid;
 
     if (after.status === 'accepted') {
-      const t = XP_TABLE.template_accepted;
+      const t = await xpEntry('template_accepted');
       await awardXp(db, memberUid, 'template_accepted', context.params.offerId, t.points, t.dailyCap)
         .catch((e) => functions.logger.error('onPlanOfferResponded: awardXp(template_accepted) failed', {
           offerId: context.params.offerId, memberUid, error: e.message,
@@ -362,3 +379,12 @@ exports.expirePlanOffers = functions
 
     functions.logger.info('expirePlanOffers: done', { expired: snap.size });
   });
+
+// Faz A (config migration) — export names kept stable, see presence.js's
+// identical comment.
+Object.assign(module.exports, {
+  OFFER_TTL_DAYS: OFFER_TTL_DAYS_DEFAULT,
+  MAX_RECIPIENTS_PER_CALL: MAX_RECIPIENTS_PER_CALL_DEFAULT,
+  MAX_MESSAGE_LENGTH: MAX_MESSAGE_LENGTH_DEFAULT,
+  templatesConfig,
+});

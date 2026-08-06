@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'app_config_service.dart';
 import 'auth_service.dart';
 import 'firestore_service.dart';
 import 'log_service.dart';
@@ -101,6 +102,13 @@ class AppLifecycleService with WidgetsBindingObserver {
   }
 
   Future<void> _handleAppResumed() async {
+    // Faz A Faz 1 — makes AppConfigService.refreshIfStale() (previously
+    // dead code, zero callers) actually run on resume. Deliberately BEFORE
+    // the user==null check below: maintenance mode / kill-switches matter
+    // even logged out, and this is the connection point PLAN.md §A3
+    // describes ("mevcut AppLifecycleService'e bağlanır").
+    unawaited(AppConfigService().refreshIfStale());
+
     final user = _authService.currentUser;
     if (user == null) return;
 
@@ -134,6 +142,10 @@ class AppLifecycleService with WidgetsBindingObserver {
   }
 
   void _handleAppPaused({bool immediate = false}) {
+    // Records the pause moment regardless of auth state — see the
+    // matching comment in _handleAppResumed above.
+    AppConfigService().notePaused();
+
     final user = _authService.currentUser;
     if (user == null) return;
 

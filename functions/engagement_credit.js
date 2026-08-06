@@ -65,6 +65,19 @@ const { grantBonusCredits, isPremium } = require('./entitlements');
 // require: `progress.js` never requires this file back (see that file's own
 // header comment — its only import is `./notifications`).
 const progress = require('./progress');
+const { getConfig } = require('./app_config');
+// Faz A Faz 4 — engagement_credit_logic.js's anti-abuse THRESHOLDS
+// (content-quality, duplicate-content, reciprocity, concentration, account
+// age, auto-restrict) live in app_config/server's `moderation.*` fields
+// (config_schema.json groups them there, alongside the report/action/appeal
+// rate limits moderation.js already reads live) — not a second namespace.
+// That file is deliberately Firebase-free and can never call getConfig()
+// itself (see its own header comment), so THIS orchestration layer resolves
+// the live values and passes them into logic.js's pure functions as
+// optional parameters, exactly like awardXp already does for points/caps.
+// Reusing moderation.js's own exported helper rather than a second
+// `(cfg.moderation || {})` accessor.
+const { moderationConfig } = require('./moderation');
 
 // ─── Account eligibility gate ("hesap yaşı >= 3 gün, doğrulanmış e-posta,
 // gölge kısıtlama yok") — checked before ANY credit is ever awarded, for
@@ -75,16 +88,19 @@ const progress = require('./progress');
 // than reading only Firestore.
 async function isAccountEligibleForCredit(db, uid) {
   try {
-    const [userSnap, restrictionSnap, authUser] = await Promise.all([
+    const [userSnap, restrictionSnap, authUser, modCfg] = await Promise.all([
       db.collection('users').doc(uid).get(),
       db.collection('credit_restrictions').doc(uid).get(),
       admin.auth().getUser(uid).catch(() => null),
+      moderationConfig(),
     ]);
     if (!authUser || authUser.emailVerified !== true) return false;
     if (restrictionSnap.exists && restrictionSnap.data().is_shadow_restricted === true) return false;
     const createdAt = userSnap.exists ? userSnap.data().created_at : null;
     const createdMs = createdAt && createdAt.toDate ? createdAt.toDate().getTime() : null;
-    return logic.isAccountOldEnough(createdMs, Date.now());
+    const minAccountAgeMs = typeof modCfg.min_account_age_ms === 'number'
+      ? modCfg.min_account_age_ms : logic.MIN_ACCOUNT_AGE_MS;
+    return logic.isAccountOldEnough(createdMs, Date.now(), minAccountAgeMs);
   } catch (e) {
     // Fails CLOSED — same posture as index.js's isPremium: an infra error
     // means "we can't prove this account is eligible", not "assume yes".
@@ -106,12 +122,15 @@ async function bumpSuspicionFlag(db, uid, reason) {
   const ref = db.collection('credit_restrictions').doc(uid);
   let willRestrict = false;
   try {
+    const modCfg = await moderationConfig();
+    const autoRestrictThreshold = typeof modCfg.auto_restrict_flag_threshold === 'number'
+      ? modCfg.auto_restrict_flag_threshold : logic.AUTO_RESTRICT_FLAG_THRESHOLD;
     const result = await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       const data = snap.exists ? snap.data() : {};
       if (data.is_shadow_restricted === true) return { alreadyRestricted: true };
       const nextFlagCount = (Number(data.flag_count) || 0) + 1;
-      const restrictNow = logic.shouldAutoRestrict(nextFlagCount);
+      const restrictNow = logic.shouldAutoRestrict(nextFlagCount, autoRestrictThreshold);
       const update = {
         flag_count: nextFlagCount,
         updated_at: admin.firestore.FieldValue.serverTimestamp(),
@@ -155,6 +174,34 @@ function pairKeyFor(uidA, uidB) {
 }
 
 /**
+ * Resolves live app_config/server `moderation.*` reciprocity/concentration
+ * fields (or their logic.js-exported defaults) into the opts shape
+ * `reciprocityWeight`/`concentrationWeight` accept. Called ONCE per
+ * caller-level operation (never inside a transaction retry loop) and
+ * threaded down through `prepareWeightUpdate`.
+ */
+function moderationWeightOpts(modCfg) {
+  return {
+    reciprocityOpts: {
+      minPairSample: typeof modCfg.reciprocity_min_pair_sample === 'number'
+        ? modCfg.reciprocity_min_pair_sample : logic.RECIPROCITY_MIN_PAIR_SAMPLE,
+      ratioThreshold: typeof modCfg.reciprocity_ratio_threshold === 'number'
+        ? modCfg.reciprocity_ratio_threshold : logic.RECIPROCITY_RATIO_THRESHOLD,
+      downweight: typeof modCfg.reciprocity_downweight === 'number'
+        ? modCfg.reciprocity_downweight : logic.RECIPROCITY_DOWNWEIGHT,
+    },
+    concentrationOpts: {
+      windowSize: typeof modCfg.concentration_window === 'number'
+        ? modCfg.concentration_window : logic.CONCENTRATION_WINDOW,
+      distinctMax: typeof modCfg.concentration_distinct_max === 'number'
+        ? modCfg.concentration_distinct_max : logic.CONCENTRATION_DISTINCT_MAX,
+      downweight: typeof modCfg.concentration_downweight === 'number'
+        ? modCfg.concentration_downweight : logic.CONCENTRATION_DOWNWEIGHT,
+    },
+  };
+}
+
+/**
  * Reads (via already-open transaction gets) the pairwise + diversity state
  * for one (giver -> receiver) engagement event, computes this event's
  * weight, and returns the FieldValue-bearing updates for both docs — the
@@ -163,7 +210,7 @@ function pairKeyFor(uidA, uidB) {
  * source-specific doc (e.g. the per-content progress doc) can be updated
  * atomically alongside these two shared trackers.
  */
-function prepareWeightUpdate({ pairSnap, diversitySnap, giverUid, receiverUid }) {
+function prepareWeightUpdate({ pairSnap, diversitySnap, giverUid, receiverUid, weightOpts }) {
   const pair = pairSnap.exists ? pairSnap.data() : {};
   const isLow = giverUid < receiverUid;
   const priorGiverToReceiver = isLow ? (pair.low_to_high || 0) : (pair.high_to_low || 0);
@@ -177,6 +224,8 @@ function prepareWeightUpdate({ pairSnap, diversitySnap, giverUid, receiverUid })
     priorGivenReceiverToGiver: priorReceiverToGiver,
     receiverRecentGivers: recentGivers,
     giverUid,
+    reciprocityOpts: weightOpts.reciprocityOpts,
+    concentrationOpts: weightOpts.concentrationOpts,
   });
 
   const pairUpdate = {
@@ -186,7 +235,7 @@ function prepareWeightUpdate({ pairSnap, diversitySnap, giverUid, receiverUid })
     updated_at: admin.firestore.FieldValue.serverTimestamp(),
   };
   const diversityUpdate = {
-    recent_givers: logic.pushCappedWindow(recentGivers, giverUid, logic.CONCENTRATION_WINDOW),
+    recent_givers: logic.pushCappedWindow(recentGivers, giverUid, weightOpts.concentrationOpts.windowSize),
     updated_at: admin.firestore.FieldValue.serverTimestamp(),
   };
 
@@ -194,19 +243,22 @@ function prepareWeightUpdate({ pairSnap, diversitySnap, giverUid, receiverUid })
 }
 
 // ─── Content-quality + duplicate-content gate (cached once per content item) ─
-const MAX_RECENT_TEXT_QUERY = logic.DUPLICATE_RECENT_WINDOW + 1;
+// Faz A Faz 4 — app_config/server's `moderation.duplicate_recent_window` is
+// the live source; evaluateContentEligibilityOnce/
+// fetchRecentGroupMessageTexts's call sites resolve it and compute their
+// own query limit (`+1`, to allow filtering out the item's own doc) from it.
 
-async function fetchRecentAuthorTexts(db, authorUid, contentType, excludeRefId) {
+async function fetchRecentAuthorTexts(db, authorUid, contentType, excludeRefId, queryLimit) {
   const snap = contentType === 'post'
     ? await db.collection('posts')
         .where('authorId', '==', authorUid)
         .orderBy('timestamp', 'desc')
-        .limit(MAX_RECENT_TEXT_QUERY)
+        .limit(queryLimit)
         .get()
     : await db.collectionGroup('comments')
         .where('authorId', '==', authorUid)
         .orderBy('timestamp', 'desc')
-        .limit(MAX_RECENT_TEXT_QUERY)
+        .limit(queryLimit)
         .get();
   return snap.docs
     .filter((d) => d.id !== excludeRefId)
@@ -228,14 +280,24 @@ async function evaluateContentEligibilityOnce(db, {
   const data = snap.exists ? snap.data() : {};
   if (data.content_checked === true) return data.content_eligible === true;
 
+  const modCfg = await moderationConfig();
+  const minLength = contentType === 'post'
+    ? (typeof modCfg.post_min_text_length === 'number' ? modCfg.post_min_text_length : logic.POST_MIN_TEXT_LENGTH)
+    : (typeof modCfg.comment_min_text_length === 'number'
+        ? modCfg.comment_min_text_length : logic.COMMENT_MIN_TEXT_LENGTH);
+  const duplicateWindow = typeof modCfg.duplicate_recent_window === 'number'
+    ? modCfg.duplicate_recent_window : logic.DUPLICATE_RECENT_WINDOW;
+  const duplicateThreshold = typeof modCfg.duplicate_similarity_threshold === 'number'
+    ? modCfg.duplicate_similarity_threshold : logic.DUPLICATE_SIMILARITY_THRESHOLD;
+
   const qualityOk = contentType === 'post'
-    ? logic.isPostEligibleContent({ content, imageCount })
-    : logic.isCommentEligibleContent({ content });
+    ? logic.isPostEligibleContent({ content, imageCount }, minLength)
+    : logic.isCommentEligibleContent({ content }, minLength);
 
   let eligible = qualityOk;
   if (eligible) {
-    const recentTexts = await fetchRecentAuthorTexts(db, authorUid, contentType, excludeRefId);
-    if (logic.isNearDuplicateText(content, recentTexts)) {
+    const recentTexts = await fetchRecentAuthorTexts(db, authorUid, contentType, excludeRefId, duplicateWindow + 1);
+    if (logic.isNearDuplicateText(content, recentTexts, duplicateThreshold)) {
       eligible = false;
       await bumpSuspicionFlag(db, authorUid, 'duplicate_content');
     }
@@ -243,6 +305,24 @@ async function evaluateContentEligibilityOnce(db, {
 
   await progressRef.set({ content_checked: true, content_eligible: eligible }, { merge: true });
   return eligible;
+}
+
+/** Live app_config/server `engagement.*` fields, or {} if unset/unreachable. */
+async function engagementConfig() {
+  const cfg = await getConfig();
+  return (cfg && cfg.engagement) || {};
+}
+
+// Shared (not imported — see engagement_credit_logic.js's own comment on why
+// it duplicates this rather than requiring progress.js/presence.js) with
+// those two files' identical constant; config_schema.json's `gamification.
+// local_utc_offset_hours` note requires all three consolidate onto this ONE
+// live value.
+/** Live app_config/server `gamification.local_utc_offset_hours`, or the logic.js fallback. */
+async function liveLocalUtcOffsetHours() {
+  const cfg = await getConfig();
+  const v = cfg && cfg.gamification && cfg.gamification.local_utc_offset_hours;
+  return typeof v === 'number' ? v : logic.LOCAL_UTC_OFFSET_HOURS;
 }
 
 // ─── Core award primitive — mirrors progress.js's awardXp shape/spirit ─────
@@ -279,7 +359,10 @@ async function awardEngagementCredit(db, { uid, source, refId, windowStartMs, we
   }
 
   const premiumUser = await isPremium(uid).catch(() => false);
-  const cfg = logic.creditAndCapForPremium(source, premiumUser);
+  const eCfg = await engagementConfig();
+  const creditTable = (eCfg.credit_table && typeof eCfg.credit_table === 'object')
+    ? eCfg.credit_table : logic.CREDIT_TABLE;
+  const cfg = logic.creditAndCapForPremium(source, premiumUser, creditTable);
   if (!cfg) throw new Error(`awardEngagementCredit: unknown source "${source}"`);
   const isWeekly = source === 'weekly_group_top3';
   const cap = isWeekly ? cfg.weeklyCap : cfg.dailyCap;
@@ -351,7 +434,14 @@ async function awardEngagementCredit(db, { uid, source, refId, windowStartMs, we
 async function accumulateWeightedEngagement(db, { progressRef, giverUid, receiverUid, source }) {
   const pairRef = db.collection('reciprocity_pairs').doc(pairKeyFor(giverUid, receiverUid));
   const diversityRef = db.collection('engagement_diversity').doc(receiverUid);
-  const threshold = logic.CREDIT_TABLE[source].threshold;
+  // Read once, outside the transaction — neither is part of this
+  // transaction's retry state.
+  const [eCfg, modCfg] = await Promise.all([engagementConfig(), moderationConfig()]);
+  const creditTable = (eCfg.credit_table && typeof eCfg.credit_table === 'object')
+    ? eCfg.credit_table : logic.CREDIT_TABLE;
+  const threshold = (creditTable[source] && creditTable[source].threshold)
+    || logic.CREDIT_TABLE[source].threshold;
+  const weightOpts = moderationWeightOpts(modCfg);
 
   return db.runTransaction(async (tx) => {
     const [progressSnap, pairSnap, diversitySnap] = await Promise.all([
@@ -364,7 +454,7 @@ async function accumulateWeightedEngagement(db, { progressRef, giverUid, receive
     }
 
     const { weight, pairUpdate, diversityUpdate } = prepareWeightUpdate({
-      pairSnap, diversitySnap, giverUid, receiverUid,
+      pairSnap, diversitySnap, giverUid, receiverUid, weightOpts,
     });
 
     const previousScore = Number(progress.weighted_score) || 0;
@@ -408,8 +498,9 @@ async function handleDistinctAccountEngagement(db, {
   }
 
   if (crossed) {
+    const offsetHours = await liveLocalUtcOffsetHours();
     await awardEngagementCredit(db, {
-      uid: receiverUid, source, refId, windowStartMs: logic.startOfLocalDayMs(Date.now()),
+      uid: receiverUid, source, refId, windowStartMs: logic.startOfLocalDayMs(Date.now(), offsetHours),
     });
   }
 }
@@ -489,13 +580,14 @@ async function awardTemplateUsedCredit(db, { authorUid, acceptingUid, refId }) {
 
   const pairRef = db.collection('reciprocity_pairs').doc(pairKeyFor(acceptingUid, authorUid));
   const diversityRef = db.collection('engagement_diversity').doc(authorUid);
+  const weightOpts = moderationWeightOpts(await moderationConfig());
 
   let weight = 1;
   try {
     weight = await db.runTransaction(async (tx) => {
       const [pairSnap, diversitySnap] = await Promise.all([tx.get(pairRef), tx.get(diversityRef)]);
       const { weight: w, pairUpdate, diversityUpdate } = prepareWeightUpdate({
-        pairSnap, diversitySnap, giverUid: acceptingUid, receiverUid: authorUid,
+        pairSnap, diversitySnap, giverUid: acceptingUid, receiverUid: authorUid, weightOpts,
       });
       tx.set(pairRef, pairUpdate, { merge: true });
       tx.set(diversityRef, diversityUpdate, { merge: true });
@@ -516,8 +608,9 @@ async function awardTemplateUsedCredit(db, { authorUid, acceptingUid, refId }) {
     return;
   }
 
+  const offsetHours = await liveLocalUtcOffsetHours();
   await awardEngagementCredit(db, {
-    uid: authorUid, source: 'template_used', refId, windowStartMs: logic.startOfLocalDayMs(Date.now()),
+    uid: authorUid, source: 'template_used', refId, windowStartMs: logic.startOfLocalDayMs(Date.now(), offsetHours),
   });
 }
 
@@ -527,12 +620,14 @@ async function awardTemplateUsedCredit(db, { authorUid, acceptingUid, refId }) {
 // consistency rather than inventing a second formula — but as a flat WEEKLY
 // sum (no time-decay: a clean calendar-week bucket that resets on its own,
 // unlike that function's "hot right now" rolling 24h score).
-const WEEKLY_MIN_ACTIVE_MEMBERS = 3;
-const WEEKLY_CONTRIB_GROUPS_PER_RUN = 300;
-const WEEKLY_TOP_N = 3;
+// Faz A Faz 4 — FALLBACK defaults; app_config/server's `engagement.*`
+// fields (see engagementConfig() above) are the live source once seeded.
+const WEEKLY_MIN_ACTIVE_MEMBERS_DEFAULT = 3;
+const WEEKLY_CONTRIB_GROUPS_PER_RUN_DEFAULT = 300;
+const WEEKLY_TOP_N_DEFAULT = 3;
 // Pulled as a ranked buffer so ineligible top-scorers can be skipped in
 // favor of the next-ranked eligible member without a second query.
-const WEEKLY_CANDIDATE_BUFFER = 10;
+const WEEKLY_CANDIDATE_BUFFER_DEFAULT = 10;
 
 function weeklyContributionRef(db, groupId, weekKey, uid) {
   return db.collection('community_groups').doc(groupId)
@@ -542,7 +637,8 @@ function weeklyContributionRef(db, groupId, weekKey, uid) {
 
 async function bumpWeeklyContribution(db, groupId, uid, points) {
   try {
-    const weekKey = logic.localWeekKey(Date.now());
+    const offsetHours = await liveLocalUtcOffsetHours();
+    const weekKey = logic.localWeekKey(Date.now(), offsetHours);
     await weeklyContributionRef(db, groupId, weekKey, uid).set({
       score: admin.firestore.FieldValue.increment(points),
       updated_at: admin.firestore.FieldValue.serverTimestamp(),
@@ -552,11 +648,11 @@ async function bumpWeeklyContribution(db, groupId, uid, points) {
   }
 }
 
-async function fetchRecentGroupMessageTexts(db, chatId, senderId, excludeMessageId) {
+async function fetchRecentGroupMessageTexts(db, chatId, senderId, excludeMessageId, queryLimit) {
   const snap = await db.collection('chats').doc(chatId).collection('messages')
     .where('senderId', '==', senderId)
     .orderBy('server_timestamp', 'desc')
-    .limit(MAX_RECENT_TEXT_QUERY)
+    .limit(queryLimit)
     .get();
   return snap.docs
     .filter((d) => d.id !== excludeMessageId)
@@ -585,13 +681,21 @@ exports.onGroupChatMessageCreatedForContribution = functions.firestore
       const groupId = chatSnap.data().groupId;
       if (!groupId) return; // DM or non-group chat — out of scope for this source
 
+      const modCfg = await moderationConfig();
+      const messageMinLength = typeof modCfg.message_min_text_length === 'number'
+        ? modCfg.message_min_text_length : logic.MESSAGE_MIN_TEXT_LENGTH;
+      const duplicateWindow = typeof modCfg.duplicate_recent_window === 'number'
+        ? modCfg.duplicate_recent_window : logic.DUPLICATE_RECENT_WINDOW;
+      const duplicateThreshold = typeof modCfg.duplicate_similarity_threshold === 'number'
+        ? modCfg.duplicate_similarity_threshold : logic.DUPLICATE_SIMILARITY_THRESHOLD;
+
       const eligible = logic.isMessageEligibleContent({
         body: msg.body, attachmentCount: Array.isArray(msg.attachments) ? msg.attachments.length : 0,
-      });
+      }, messageMinLength);
       if (!eligible) return;
 
-      const recentTexts = await fetchRecentGroupMessageTexts(db, chatId, senderId, messageId);
-      if (logic.isNearDuplicateText(msg.body, recentTexts)) {
+      const recentTexts = await fetchRecentGroupMessageTexts(db, chatId, senderId, messageId, duplicateWindow + 1);
+      if (logic.isNearDuplicateText(msg.body, recentTexts, duplicateThreshold)) {
         await bumpSuspicionFlag(db, senderId, 'duplicate_content');
         return;
       }
@@ -739,11 +843,19 @@ exports.awardWeeklyGroupTop3 = functions.pubsub
   .onRun(async () => {
     const db = admin.firestore();
     const nowMs = Date.now();
-    const lastCompletedWeekAnchorMs = logic.startOfLocalWeekMs(nowMs) - (7 * 86400000) + 1000;
-    const weekKey = logic.localWeekKey(lastCompletedWeekAnchorMs);
+    const [eCfg, offsetHours] = await Promise.all([engagementConfig(), liveLocalUtcOffsetHours()]);
+    const groupsPerRun = typeof eCfg.weekly_contrib_groups_per_run === 'number'
+      ? eCfg.weekly_contrib_groups_per_run : WEEKLY_CONTRIB_GROUPS_PER_RUN_DEFAULT;
+    const candidateBuffer = typeof eCfg.weekly_candidate_buffer === 'number'
+      ? eCfg.weekly_candidate_buffer : WEEKLY_CANDIDATE_BUFFER_DEFAULT;
+    const minActiveMembers = typeof eCfg.weekly_min_active_members === 'number'
+      ? eCfg.weekly_min_active_members : WEEKLY_MIN_ACTIVE_MEMBERS_DEFAULT;
+    const topN = typeof eCfg.weekly_top_n === 'number' ? eCfg.weekly_top_n : WEEKLY_TOP_N_DEFAULT;
+    const lastCompletedWeekAnchorMs = logic.startOfLocalWeekMs(nowMs, offsetHours) - (7 * 86400000) + 1000;
+    const weekKey = logic.localWeekKey(lastCompletedWeekAnchorMs, offsetHours);
 
     const groupsSnap = await db.collection('community_groups')
-      .limit(WEEKLY_CONTRIB_GROUPS_PER_RUN)
+      .limit(groupsPerRun)
       .get();
 
     let groupsAwarded = 0;
@@ -753,9 +865,9 @@ exports.awardWeeklyGroupTop3 = functions.pubsub
           .collection('weekly_contributions').doc(weekKey)
           .collection('members')
           .orderBy('score', 'desc')
-          .limit(WEEKLY_CANDIDATE_BUFFER)
+          .limit(candidateBuffer)
           .get();
-        if (membersSnap.size < WEEKLY_MIN_ACTIVE_MEMBERS) continue;
+        if (membersSnap.size < minActiveMembers) continue;
 
         const candidates = [];
         for (const m of membersSnap.docs) {
@@ -765,7 +877,7 @@ exports.awardWeeklyGroupTop3 = functions.pubsub
           candidates.push({ uid, score: Number(m.data().score) || 0, eligible });
         }
 
-        const winners = logic.pickTopNEligible(candidates, WEEKLY_TOP_N);
+        const winners = logic.pickTopNEligible(candidates, topN);
         for (const w of winners) {
           // eslint-disable-next-line no-await-in-loop
           await awardEngagementCredit(db, {
@@ -817,17 +929,24 @@ exports.awardWeeklyGroupTop3 = functions.pubsub
 // own reasoning, is that members can watch their rank move DURING the week
 // ("grup kullanımı artar" — group usage increases because people can see
 // and chase this ranking).
-const CONTRIB_LEADERBOARD_GROUPS_PER_RUN = 300; // mirrors WEEKLY_CONTRIB_GROUPS_PER_RUN
-const CONTRIB_LEADERBOARD_TOP_N = 10; // mirrors WEEKLY_CANDIDATE_BUFFER
+// Faz A Faz 4 — FALLBACK defaults; app_config/server's `engagement.*`
+// fields are the live source once seeded.
+const CONTRIB_LEADERBOARD_GROUPS_PER_RUN_DEFAULT = 300; // mirrors WEEKLY_CONTRIB_GROUPS_PER_RUN_DEFAULT
+const CONTRIB_LEADERBOARD_TOP_N_DEFAULT = 10; // mirrors WEEKLY_CANDIDATE_BUFFER_DEFAULT
 
 exports.computeGroupContributionLeaderboards = functions.pubsub
   .schedule('every 15 minutes')
   .onRun(async () => {
     const db = admin.firestore();
-    const weekKey = logic.localWeekKey(Date.now());
+    const [eCfg, offsetHours] = await Promise.all([engagementConfig(), liveLocalUtcOffsetHours()]);
+    const groupsPerRun = typeof eCfg.contrib_leaderboard_groups_per_run === 'number'
+      ? eCfg.contrib_leaderboard_groups_per_run : CONTRIB_LEADERBOARD_GROUPS_PER_RUN_DEFAULT;
+    const topN = typeof eCfg.contrib_leaderboard_top_n === 'number'
+      ? eCfg.contrib_leaderboard_top_n : CONTRIB_LEADERBOARD_TOP_N_DEFAULT;
+    const weekKey = logic.localWeekKey(Date.now(), offsetHours);
 
     const groupsSnap = await db.collection('community_groups')
-      .limit(CONTRIB_LEADERBOARD_GROUPS_PER_RUN)
+      .limit(groupsPerRun)
       .get();
 
     let written = 0;
@@ -838,7 +957,7 @@ exports.computeGroupContributionLeaderboards = functions.pubsub
           .collection('weekly_contributions').doc(weekKey)
           .collection('members')
           .orderBy('score', 'desc')
-          .limit(CONTRIB_LEADERBOARD_TOP_N)
+          .limit(topN)
           .get();
         // No contributions yet this week for this group — skip the write
         // entirely (weekly_contributions only ever grows within a week, so
@@ -894,3 +1013,15 @@ exports.computeGroupContributionLeaderboards = functions.pubsub
 exports.awardTemplateUsedCredit = awardTemplateUsedCredit;
 exports.isAccountEligibleForCredit = isAccountEligibleForCredit;
 exports.bumpSuspicionFlag = bumpSuspicionFlag;
+
+// Faz A (config migration) — export names kept stable, see presence.js's
+// identical comment.
+Object.assign(module.exports, {
+  WEEKLY_MIN_ACTIVE_MEMBERS: WEEKLY_MIN_ACTIVE_MEMBERS_DEFAULT,
+  WEEKLY_CONTRIB_GROUPS_PER_RUN: WEEKLY_CONTRIB_GROUPS_PER_RUN_DEFAULT,
+  WEEKLY_TOP_N: WEEKLY_TOP_N_DEFAULT,
+  WEEKLY_CANDIDATE_BUFFER: WEEKLY_CANDIDATE_BUFFER_DEFAULT,
+  CONTRIB_LEADERBOARD_GROUPS_PER_RUN: CONTRIB_LEADERBOARD_GROUPS_PER_RUN_DEFAULT,
+  CONTRIB_LEADERBOARD_TOP_N: CONTRIB_LEADERBOARD_TOP_N_DEFAULT,
+  engagementConfig,
+});

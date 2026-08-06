@@ -90,11 +90,23 @@ const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const { assertCallable, writeNotification } = require('./notifications');
 const { localWeekKey } = require('./engagement_credit_logic');
+const { getConfig } = require('./app_config');
 
 // ─── XP table (Faz 5 §5.1) ──────────────────────────────────────────────────
 // Fixed, server-owned points + daily caps. A client can name a KIND; it can
 // never name a point value or a cap.
-const XP_TABLE = {
+//
+// Faz A Faz 4 — MIGRATION HAZARD, resolved: this table is imported at
+// MODULE SCOPE by presence.js and templates.js (`const { XP_TABLE } =
+// require('./progress')`), which config reads (necessarily async) cannot
+// feed directly. The fix is NOT to make this constant itself async — it
+// stays as the synchronous FALLBACK default — but every consumer, this
+// file included, now resolves the table via getXpTable()/xpEntry() below,
+// at the point of use, in an already-async context. awardXp() itself never
+// changes: it already took points/dailyCap as plain parameters, not a
+// lookup it performed internally, so nothing about ITS signature or
+// callers-of-awardXp needed to change — only where the lookup happens.
+const XP_TABLE_DEFAULT = {
   meal_logged: { points: 5, dailyCap: 4 },
   streak_day: { points: 10, dailyCap: 1 },
   check_in: { points: 15, dailyCap: 1 },
@@ -104,6 +116,24 @@ const XP_TABLE = {
   recipe_cooked: { points: 25, dailyCap: 2 },
   template_accepted: { points: 30, dailyCap: null },
 };
+
+/** Live app_config/server `gamification.xp_table`, or the fallback if unset/malformed. */
+async function getXpTable() {
+  const cfg = await getConfig();
+  const table = cfg && cfg.gamification && cfg.gamification.xp_table;
+  return (table && typeof table === 'object') ? table : XP_TABLE_DEFAULT;
+}
+
+/**
+ * One kind's {points, dailyCap} — falls back to XP_TABLE_DEFAULT's own
+ * entry if the live table is missing this specific kind (e.g. a config
+ * write that only updated some kinds), not just if the whole table is
+ * absent.
+ */
+async function xpEntry(kind) {
+  const table = await getXpTable();
+  return table[kind] || XP_TABLE_DEFAULT[kind];
+}
 
 // Kinds a CLIENT payload may ever name via syncProgress's `xpEvents` array.
 // streak_day/check_in/template_accepted/achievement_earned are granted
@@ -545,6 +575,12 @@ async function runSync(targetUid, isSelf, eventFlags) {
     }
   }
 
+  // Resolved ONCE for this sync call, not per event — the live table
+  // (app_config/server's gamification.xp_table, or XP_TABLE_DEFAULT) is
+  // not part of any per-event transactional state, so there's no reason
+  // to re-fetch it in the loop below.
+  const xpTable = await getXpTable();
+
   // Client-reported instantaneous actions — isSelf-gated exactly like the
   // four achievement event flags above (a client can only ever report an
   // event for ITSELF, never on behalf of a profile it merely views).
@@ -559,7 +595,7 @@ async function runSync(targetUid, isSelf, eventFlags) {
         });
         continue;
       }
-      const table = XP_TABLE[event.kind];
+      const table = xpTable[event.kind] || XP_TABLE_DEFAULT[event.kind];
       await applyAward(event.kind, event.refId, table.points, table.dailyCap);
     }
   }
@@ -569,7 +605,7 @@ async function runSync(targetUid, isSelf, eventFlags) {
   // already trust, regardless of who triggered this sync; the eventId
   // (`streak_day_<local date>`) alone enforces the 1/day cap.
   if (streak > 0) {
-    const t = XP_TABLE.streak_day;
+    const t = xpTable.streak_day || XP_TABLE_DEFAULT.streak_day;
     await applyAward('streak_day', localDateKey(), t.points, t.dailyCap);
   }
 
@@ -772,10 +808,23 @@ exports.processStreakLogin = functions.https.onCall(async (data, context) => {
 // callable of its own — `syncProgress` stays the single client-facing entry
 // gate (see this file's top comment).
 exports.awardXp = awardXp;
-exports.XP_TABLE = XP_TABLE;
+// XP_TABLE: kept as the export NAME for backward compat (presence.js/
+// templates.js/the Faz 0 default-equality test all destructure this key),
+// but the VALUE is now the fallback default — see xpEntry()/getXpTable()
+// just below, which those two call sites now use for the LIVE lookup
+// instead of reading this export directly.
+exports.XP_TABLE = XP_TABLE_DEFAULT;
+exports.getXpTable = getXpTable;
+exports.xpEntry = xpEntry;
 // Faz 5 §5.3 — exported for in-process use by `engagement_credit.js`'s
 // `awardWeeklyGroupTop3` (grants `groupTop3`/`groupStreak4` the instant a
 // real weekly-contribution win is determined). Never re-exported as an
 // HTTPS callable of its own — mirrors `awardXp`'s own export comment.
 exports.grantAchievementIfNew = grantAchievementIfNew;
 exports.GROUP_STREAK_ACHIEVEMENT_THRESHOLD = GROUP_STREAK_ACHIEVEMENT_THRESHOLD;
+
+// Faz A (config migration) — see economy.js's identical comment.
+Object.assign(module.exports, {
+  MAX_XP_EVENTS_PER_CALL, ACHIEVEMENT_POINTS, GYM_REGULAR_CHECKIN_THRESHOLD,
+  TIER_LEVEL_FLOOR, LOCAL_UTC_OFFSET_HOURS, LEVEL_CURVE_COEFFICIENT, MAX_LEVEL,
+});

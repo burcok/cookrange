@@ -17,6 +17,7 @@ const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const { APP_CHECK_ENFORCE } = require('./config');
 const { assertCallable } = require('./notifications');
+const { getConfig } = require('./app_config');
 
 exports.redeemGroupInvite = functions.https.onCall(async (data, context) => {
   const uid = context.auth && context.auth.uid;
@@ -108,28 +109,36 @@ exports.redeemGroupInvite = functions.https.onCall(async (data, context) => {
 // event's own existing timestamp at read time.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ACTIVITY_WINDOW_HOURS = 24;
-const ACTIVITY_HALF_LIFE_HOURS = 6;
+// Faz A Faz 4 — FALLBACK defaults; app_config/server's `groups.*` fields
+// are the live source once seeded (see groupsConfig() below).
+const ACTIVITY_WINDOW_HOURS_DEFAULT = 24;
+const ACTIVITY_HALF_LIFE_HOURS_DEFAULT = 6;
 // MVP cap on groups scored per run — mirrors closeStalePresenceSessions'
 // STALE_SWEEP_LIMIT / streakAtRiskNotifier's 500-user cap. Only `is_public`
 // groups are scored at all (gym/private groups default is_public: false —
 // CommunityGroupService.createGroup — and are reached from their own
 // screen, never this discovery carousel), so this is a cap on PUBLIC groups
 // specifically, not every group in the app.
-const ACTIVITY_GROUPS_PER_RUN = 200;
+const ACTIVITY_GROUPS_PER_RUN_DEFAULT = 200;
 // Per-group, per-signal scan cap (messages/posts/new-members each) — a
 // single group having more than this many of one signal in 24h is not a
 // realistic case to optimize for at this stage.
-const ACTIVITY_SIGNAL_LIMIT = 300;
+const ACTIVITY_SIGNAL_LIMIT_DEFAULT = 300;
 // One global query, shared across every group scored this run (see the
 // comments-resolution comment below for why comments can't be queried
 // per-group the same cheap way messages/posts/members are).
-const ACTIVITY_COMMENTS_SCAN_LIMIT = 500;
+const ACTIVITY_COMMENTS_SCAN_LIMIT_DEFAULT = 500;
 
-function activityDecayWeight(eventDate, nowMs) {
+/** Live app_config/server `groups.*` fields, or {} if unset/unreachable. */
+async function groupsConfig() {
+  const cfg = await getConfig();
+  return (cfg && cfg.groups) || {};
+}
+
+function activityDecayWeight(eventDate, nowMs, halfLifeHours) {
   const ageHours = (nowMs - eventDate.getTime()) / (1000 * 60 * 60);
   if (ageHours <= 0) return 1; // clock skew guard — never weight > 1
-  return Math.pow(0.5, ageHours / ACTIVITY_HALF_LIFE_HOURS);
+  return Math.pow(0.5, ageHours / halfLifeHours);
 }
 
 exports.computeGroupActivityScores = functions
@@ -139,13 +148,24 @@ exports.computeGroupActivityScores = functions
     const db = admin.firestore();
     const now = admin.firestore.Timestamp.now();
     const nowMs = now.toMillis();
+    const gCfg = await groupsConfig();
+    const windowHours = typeof gCfg.activity_window_hours === 'number'
+      ? gCfg.activity_window_hours : ACTIVITY_WINDOW_HOURS_DEFAULT;
+    const halfLifeHours = typeof gCfg.activity_half_life_hours === 'number'
+      ? gCfg.activity_half_life_hours : ACTIVITY_HALF_LIFE_HOURS_DEFAULT;
+    const groupsPerRun = typeof gCfg.activity_groups_per_run === 'number'
+      ? gCfg.activity_groups_per_run : ACTIVITY_GROUPS_PER_RUN_DEFAULT;
+    const signalLimit = typeof gCfg.activity_signal_limit === 'number'
+      ? gCfg.activity_signal_limit : ACTIVITY_SIGNAL_LIMIT_DEFAULT;
+    const commentsScanLimit = typeof gCfg.activity_comments_scan_limit === 'number'
+      ? gCfg.activity_comments_scan_limit : ACTIVITY_COMMENTS_SCAN_LIMIT_DEFAULT;
     const cutoff = admin.firestore.Timestamp.fromMillis(
-      nowMs - ACTIVITY_WINDOW_HOURS * 60 * 60 * 1000
+      nowMs - windowHours * 60 * 60 * 1000
     );
 
     const groupsSnap = await db.collection('community_groups')
       .where('is_public', '==', true)
-      .limit(ACTIVITY_GROUPS_PER_RUN)
+      .limit(groupsPerRun)
       .get();
 
     if (groupsSnap.empty) {
@@ -169,7 +189,7 @@ exports.computeGroupActivityScores = functions
     // comments cost one lookup, not 50.
     const commentsSnap = await db.collectionGroup('comments')
       .where('timestamp', '>=', cutoff)
-      .limit(ACTIVITY_COMMENTS_SCAN_LIMIT)
+      .limit(commentsScanLimit)
       .get();
 
     const commentTimestampsByPostId = new Map();
@@ -198,7 +218,7 @@ exports.computeGroupActivityScores = functions
       const groupId = postIdToGroupId.get(postId);
       if (!groupId) continue; // comment on a post outside any group — irrelevant here
       let sum = commentScoreByGroupId.get(groupId) || 0;
-      for (const ts of timestamps) sum += 2 * activityDecayWeight(ts.toDate(), nowMs);
+      for (const ts of timestamps) sum += 2 * activityDecayWeight(ts.toDate(), nowMs, halfLifeHours);
       commentScoreByGroupId.set(groupId, sum);
     }
 
@@ -216,31 +236,31 @@ exports.computeGroupActivityScores = functions
         const [messagesSnap, postsSnap, newMembersSnap] = await Promise.all([
           db.collection('chats').doc(chatId).collection('messages')
             .where('server_timestamp', '>=', cutoff)
-            .limit(ACTIVITY_SIGNAL_LIMIT)
+            .limit(signalLimit)
             .get(),
           db.collection('posts')
             .where('groupId', '==', groupId)
             .where('timestamp', '>=', cutoff)
-            .limit(ACTIVITY_SIGNAL_LIMIT)
+            .limit(signalLimit)
             .get(),
           groupDoc.ref.collection('members')
             .where('joined_at', '>=', cutoff)
-            .limit(ACTIVITY_SIGNAL_LIMIT)
+            .limit(signalLimit)
             .get(),
         ]);
 
         let score = commentScoreByGroupId.get(groupId) || 0;
         for (const m of messagesSnap.docs) {
           const ts = m.data().server_timestamp;
-          if (ts) score += 1 * activityDecayWeight(ts.toDate(), nowMs);
+          if (ts) score += 1 * activityDecayWeight(ts.toDate(), nowMs, halfLifeHours);
         }
         for (const p of postsSnap.docs) {
           const ts = p.data().timestamp;
-          if (ts) score += 3 * activityDecayWeight(ts.toDate(), nowMs);
+          if (ts) score += 3 * activityDecayWeight(ts.toDate(), nowMs, halfLifeHours);
         }
         for (const mem of newMembersSnap.docs) {
           const ts = mem.data().joined_at;
-          if (ts) score += 5 * activityDecayWeight(ts.toDate(), nowMs);
+          if (ts) score += 5 * activityDecayWeight(ts.toDate(), nowMs, halfLifeHours);
         }
 
         batch.update(groupDoc.ref, {
@@ -251,9 +271,9 @@ exports.computeGroupActivityScores = functions
         scored++;
 
         // Firestore batches cap at 500 writes — flush defensively well
-        // under that. ACTIVITY_GROUPS_PER_RUN (200) never actually reaches
-        // this today; the check just keeps this safe if that cap changes
-        // without this loop being revisited.
+        // under that. groups.activity_groups_per_run's default (200) never
+        // actually reaches this today; the check just keeps this safe if
+        // that cap is raised without this loop being revisited.
         if (batchCount >= 400) {
           await batch.commit();
           batch = db.batch();
@@ -393,4 +413,15 @@ exports.seedOfficialGroups = functions.https.onCall(async (data, context) => {
 
   functions.logger.info('seedOfficialGroups: done', { created, skipped, adminUid });
   return { created, skipped };
+});
+
+// Faz A (config migration) — export names kept stable, see presence.js's
+// identical comment.
+Object.assign(module.exports, {
+  ACTIVITY_WINDOW_HOURS: ACTIVITY_WINDOW_HOURS_DEFAULT,
+  ACTIVITY_HALF_LIFE_HOURS: ACTIVITY_HALF_LIFE_HOURS_DEFAULT,
+  ACTIVITY_GROUPS_PER_RUN: ACTIVITY_GROUPS_PER_RUN_DEFAULT,
+  ACTIVITY_SIGNAL_LIMIT: ACTIVITY_SIGNAL_LIMIT_DEFAULT,
+  ACTIVITY_COMMENTS_SCAN_LIMIT: ACTIVITY_COMMENTS_SCAN_LIMIT_DEFAULT,
+  groupsConfig,
 });

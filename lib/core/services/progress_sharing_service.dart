@@ -276,9 +276,12 @@ class ProgressSharingService {
   /// another user's `progress_sharing` doc directly (owner-only rule), so
   /// this is the only way to filter a member LIST by consent without one
   /// `generateMemberProgressSummary` call per member. Backs the at-risk
-  /// list (§4.3: scoped to tier>=1 consenters) and the k-anonymity-gated
-  /// aggregate card (caller averages already-visible check-in data over
-  /// this set, client-side, and hides the result below 5 included members).
+  /// list (§4.3: scoped to tier>=1 consenters), which is intentionally NOT
+  /// k-anonymity-gated (it names specific consenting members by design).
+  /// For the k-anonymity-gated AGGREGATE statistic, see
+  /// [getGymSharingAggregate] below — a fix, not the original design: this
+  /// method used to also back that aggregate, with the caller averaging
+  /// already-visible check-in data over this set client-side.
   Future<Set<String>> getConsentingMemberUids(
       ProgressSharingScope scope) async {
     try {
@@ -296,6 +299,35 @@ class ProgressSharingService {
       // never fall back to "show everyone unscoped," which would silently
       // reopen the exact leak (§4.3) this method exists to close.
       return const {};
+    }
+  }
+
+  /// Invokes `getGymSharingAggregate` (`functions/summaries.js`) — fixes a
+  /// client-side-only k-anonymity gate. The server computes the two
+  /// averages itself from data it fetches server-side (never handed the
+  /// data this app already has, and never handing back per-member data in
+  /// return) and simply omits them from the response below
+  /// [GymAnalyticsModel.kAnonymityThreshold] included members — the
+  /// hiding is now a guarantee the response shape enforces, not a
+  /// client-side rendering choice a modified client could bypass.
+  ///
+  /// Gym-only today (mirrors [GymAnalyticsService]/[GymAnalyticsModel],
+  /// which have no coach equivalent) — pass a [ProgressSharingScope.gym].
+  Future<GymSharingAggregateResult> getGymSharingAggregate(
+      ProgressSharingScope scope) async {
+    try {
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('getGymSharingAggregate')
+          .call<Map<String, dynamic>>({'scopeId': scope.scopeId});
+      return GymSharingAggregateResult.fromCallable(result.data);
+    } catch (e, st) {
+      debugPrint('ProgressSharingService.getGymSharingAggregate error: $e');
+      unawaited(CrashlyticsService().recordError(e, st,
+          reason:
+              'ProgressSharingService.getGymSharingAggregate scopeId=${scope.scopeId}'));
+      // Fails CLOSED (gated), matching getConsentingMemberUids above — a
+      // transient error must never fall back to showing an aggregate.
+      return GymSharingAggregateResult.gatedFallback;
     }
   }
 

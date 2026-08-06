@@ -29,8 +29,13 @@ class AIService {
   static const String _defaultVisionModel =
       'meta-llama/llama-3.2-11b-vision-instruct:free';
   String _visionModel = _defaultVisionModel;
-  static const int _maxRetries = 3;
-  static const Duration _retryDelay = Duration(seconds: 2);
+  // Faz A Faz 4 — no longer `static const`: both are overridden live via
+  // [applyRemoteConfig] once `app_config`'s `ai.max_retries`/`ai.retry_delay_s`
+  // (AppConfig.ai.maxRetries/retryDelayS) load. These two values default here
+  // to the same numbers config_schema.json declares as their fallback — keep
+  // both in sync if either ever changes.
+  int _maxRetries = 3;
+  Duration _retryDelay = const Duration(seconds: 2);
 
   String? _apiKey;
 
@@ -93,6 +98,8 @@ class AIService {
     String? visionModel,
     int? timeoutSeconds,
     String? proxyUrl,
+    int? maxRetries,
+    int? retryDelaySeconds,
   }) {
     final m = textModel?.trim() ?? '';
     if (m.isNotEmpty) _model = m;
@@ -102,6 +109,10 @@ class AIService {
       _textTimeout = Duration(seconds: timeoutSeconds);
     }
     if (proxyUrl != null) setProxyUrl(proxyUrl);
+    if (maxRetries != null && maxRetries >= 0) _maxRetries = maxRetries;
+    if (retryDelaySeconds != null && retryDelaySeconds >= 0) {
+      _retryDelay = Duration(seconds: retryDelaySeconds);
+    }
   }
 
   // ─── Public API ────────────────────────────────────────────────────────────
@@ -287,7 +298,7 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
       }
     }
     throw lastError ??
-        const AIJsonParseException(
+        AIJsonParseException(
             'Failed to parse JSON after $_maxRetries attempts');
   }
 
@@ -335,7 +346,7 @@ Rules: No markdown formatting. No ```json. No explanatory text. Raw JSON only.
       }
     }
     throw lastError ??
-        const AIJsonParseException(
+        AIJsonParseException(
             'Failed to parse vision JSON after $_maxRetries attempts');
   }
 

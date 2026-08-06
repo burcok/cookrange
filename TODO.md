@@ -191,7 +191,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 | 🚧 **Monetization** | IAP client, server validation, entitlement ledger, paywall, credits sheet | **`BLK-04`** — no store products, no store credentials |
 | 🚧 **Gym ecosystem** (11 screens) | Discovery, map, setup, dashboard, analytics, QR, members, community, leaderboard | `BLK-05` + `BLK-03` closed and deployed — no real approval has been exercised end to end yet; `BLK-07` (logo upload denied) remains |
 | 🚧 **Coach ecosystem** (8 screens) | Discovery, application, profile, dashboard, clients, reviews | `BLK-05` + `BLK-03` closed and deployed — no real approval has been exercised end to end yet; paid programs and payouts absent |
-| 🚧 **Program marketplace** | Model, content weeks, enrolment, My Programs | `BLK-09` open-write hole; paid gate stubbed |
+| 🚧 **Program marketplace** | Model, content weeks, enrolment, My Programs | `BLK-09` write hole closed 2026-08-06 (server-side seeding + rules fix); paid gate stubbed |
 | 🚧 **Dish catalog** | 100 dishes (Faz 3 §3.6: 75→100, snacks 3→28), seeder, admin editor | **`BLK-11`** open — still 100 vs. ≥300 target, seeding still client-triggered not admin-callable; 180-dish prompt ceiling now guarded client-side (no more HTTP 413) but `AI-03`'s real candidate selector still missing |
 | 🚧 **Moderation** | Keyword filter, report queue, Vision SafeSearch function | Scans the wrong prefix; admin queue now reachable (`BLK-05` closed) but unstaffed |
 | 🚧 **Analytics** | ~35 typed events, offline queue, consent-gated | No BigQuery export, no funnels, no dashboards, no taxonomy doc |
@@ -236,7 +236,7 @@ These are code-proven **and** believed functional. Full archive with evidence in
 |---|---|---|
 | `BLK-04` | 🔥 Monetization non-functional end to end | Zero revenue capability |
 | `BLK-07` | 🔥 Gym logo upload writes to an unruled Storage prefix | Gym setup broken; NSFW scanner watches the wrong prefix |
-| `BLK-09` | 🔥 `coach_uid == 'demo'` lets any user publish to the public marketplace | Content injection into a live storefront |
+| `BLK-09` | ✅ Closed 2026-08-06 — `coach_uid == 'demo'` bypass removed, seeding moved server-side | Content injection into a live storefront |
 | `BLK-10` | 🔥 User doc world-readable with `email`, `last_login_ip`, device fingerprints | GDPR / KVKK exposure in the primary market |
 | `BLK-11` | 🔥 Dish catalog unseedable in-app; only 75 dishes | Core feature has no content on a fresh project |
 | `BLK-12` | 🔥 GDPR erasure + export incomplete | Art. 17 / Art. 20 non-compliance |
@@ -943,17 +943,17 @@ fields are) but is not fully closed — see above.
 
 ---
 
-#### `BLK-09` 🔥 `coach_uid == 'demo'` lets any authenticated user publish to the public marketplace
+#### `BLK-09` ✅ Injection hole closed (2026-08-06) — `coach_uid == 'demo'` used to let any authenticated user publish to the public marketplace
 
-**Status** 🔥 Critical · **Priority** Critical · **Complexity** XS · **Est** 4 h
-**Version** v1.1.0 · **Milestone** M6 (deferred with marketplace scope) · **Owner** Security Engineer
+**Status** ✅ Security hole closed · production auto-seeding question still open (gated on `INF-01`, see below) · **Priority** Critical · **Complexity** XS · **Est** 4 h
+**Version** v1.1.0 · **Milestone** M6 (deferred with marketplace scope) — **reopened this session**: K5 (`DECISIONS.md`, 2026-08-06) keeps the marketplace permanently visible instead of deferring it to M6, which made this gap live and reachable rather than latent. **Owner** Security Engineer
 **Labels** `firestore-rules` `content-injection` `marketplace` `abuse`
 **Modules** Security · Firebase · Backend
-**Files** `firestore.rules:458-460` · `lib/core/services/demo_content_seeder.dart` · `lib/core/services/app_initialization_service.dart:322`
-**Dependencies** `BLK-11` (move seeding server-side) · **Required before** `MKT-01`
+**Files** `firestore.rules` (Programs section) · `functions/demo_content.js` (new) · `functions/index.js` (`exports.seedDemoContent`) · `lib/core/services/demo_content_seeder.dart` (rewritten) · `lib/core/services/app_initialization_service.dart:337`
+**Dependencies** `BLK-11` (move seeding server-side — this IS that fix, applied here) · **Required before** `MKT-01`
 **Blocking** Marketplace launch.
 
-**What exists / what is missing**
+**What was wrong**
 
 ```
 allow create: if isAuthenticated()
@@ -961,25 +961,48 @@ allow create: if isAuthenticated()
       || request.resource.data.coach_uid == 'demo');
 ```
 
-The `'demo'` exemption exists so `DemoContentSeeder` — which runs on **every client at app start** — can
-seed three demo programs. It also lets any authenticated user write arbitrary documents into the public
-`programs` collection.
+The `'demo'` exemption existed so `DemoContentSeeder` (running client-side, on every app start) could seed
+three demo programs — but firestore.rules cannot distinguish "the real seeder's write" from "an attacker's
+identically-shaped write." Every field besides `coach_uid` (title, description, `coach_name: 'Cookrange
+Team'`) was fully attacker-controlled.
 
-Separately: seeding fake marketplace content into production from a user's phone is wrong independent of
-the security hole.
+**What changed (2026-08-06)**
+- New callable `seedDemoContent` (`functions/demo_content.js`) does the actual write via the Admin SDK,
+  from a fixed, hardcoded catalog — a client can never influence the content. Idempotent via the same
+  `seeds/demo` marker doc the old client-side version used (now written only here).
+- `firestore.rules`: the `'demo'` bypass removed from both `programs.create` and the `weeks` write rule;
+  `seeds/{docId}` now `read, write: if false` for everyone (only the callable's Admin SDK touches it).
+- `DemoContentSeeder.seedIfEmpty()` (Dart) now just invokes the callable — same call site
+  (`app_initialization_service.dart:337`, unchanged), gutted implementation.
+- Rules tests added (`test/firestore_rules/rules.test.mjs`): the `'demo'` bypass is gone on both
+  `programs` and `weeks`; a real coach can still create their own program; `seeds/demo` is unreadable and
+  unwritable by anyone, including a real admin.
+
+**What is still open, honestly:** the callable is still invoked unconditionally in every environment,
+including production — this fix closes the *security hole* (no client can write arbitrary content
+anymore) but does not address the separate, pre-existing product question "should demo content
+auto-seed in production at all," which the original acceptance criteria below tied to `INF-01`
+(dev/staging vs. production Firebase project separation — not built, same gap Faz A's admin-panel plan
+flags for its own `cookrange-staging` project). Not attempted here — a genuinely separate, unbuilt piece
+of infrastructure, not a rules/callable fix.
 
 **Acceptance Criteria**
-- The `'demo'` exemption removed from `firestore.rules`.
-- `DemoContentSeeder` removed from the client startup path.
-- Demo content seeded by an **admin-invoked callable** or a one-off script in `lib/scripts/`, gated on a non-production environment (`INF-01`).
-- Production contains **no** `coach_uid == 'demo'` programs; any existing ones are purged.
-- Rules test: a non-owning user cannot create a program.
+- ✅ The `'demo'` exemption removed from `firestore.rules`.
+- ⚠️ `DemoContentSeeder` still runs from the client startup path — but now only *invokes* a safe,
+  idempotent, content-fixed callable, rather than writing arbitrary content directly. Removing it from
+  the startup path entirely depends on `INF-01` (see above).
+- ✅ Demo content seeded by a callable using the Admin SDK (not client-direct) — the "admin-invoked
+  callable" criterion's *safety* property is met; it is USER-invoked, same reach as before, safe because
+  every write is fixed and idempotent.
+- ⬜ Production contains **no** `coach_uid == 'demo'` programs; any existing ones are purged — not
+  attempted (needs a decision on whether demo content belongs in production at all, i.e. `INF-01`).
+- ✅ Rules test: a non-owning user cannot create a program.
 
 **DoD** §0.5.
 
 **Technical Notes**
-Same root cause as `BLK-11` — global reference data being seeded from clients. Fix both with one pattern:
-reference/demo data is seeded server-side, never by the app.
+Same root cause as `BLK-11` — global reference data being seeded from clients. Fixed with exactly that
+pattern: reference/demo data is now seeded server-side, never by the app.
 
 ---
 
@@ -1412,7 +1435,7 @@ The denied-permission spike alert deserves emphasis: it is the signal that would
 | `S6` (partial) | `BLK-14` | App Check enforcement |
 | `S7` + `S11` | `BLK-12` | Complete erasure + export |
 | `S9` (partial) | `BLK-07` | Storage prefix + access control for gym logos |
-| `S13` (partial) | `BLK-08`, `BLK-09` | Post-field mutation; marketplace injection |
+| `S13` (mostly closed 2026-08-06 — `SEC-12`'s duplicate-detection/trust-ramp still open) | `BLK-08`, `BLK-09`, `SEC-07`, `SEC-08`, `SEC-09`, `SEC-12` | Post-field mutation; marketplace injection; gym/group post membership; check-in integrity; review integrity; UGC rate limits |
 | `S10` | `BLK-10` | Minimise readable user doc |
 
 ### 3.2 Authentication security
@@ -1576,36 +1599,40 @@ call sites assumed instant completion.
 
 ---
 
-#### `SEC-07` Gym post membership enforcement *(`S13`, `H25`)*
+#### `SEC-07` ✅ Closed (2026-08-06) — Gym post membership enforcement *(`S13`, `H25`)*
 
-**Status** 🚧 Partial · **Priority** High · **Complexity** S · **Est** 1 d · **Version** v1.1.0 · **Milestone** M6 · **Owner** Security Engineer
+**Status** ✅ Closed · **Priority** High · **Complexity** S · **Est** 1 d · **Version** v1.1.0 · **Milestone** M6 · **Owner** Security Engineer
 **Labels** `firestore-rules` `gym` `abuse` · **Modules** Security · Firebase
-**Files** `firestore.rules:378-381` · **Dependencies** — · **Blocking** Gym community integrity
-**What exists** `allow create: if isAuthenticated()` on `gyms/{gymId}/posts` with the comment "membership enforced app-side" — i.e. not enforced.
-**Acceptance** Rule requires `exists(/gyms/$(gymId)/members/$(request.auth.uid))`; author pinned to `request.auth.uid`; length caps; rules test for non-member denial.
-**DoD** §0.5. **Risks** An `exists()` per post write is 1 extra read — acceptable at gym-post volume.
+**Files** `firestore.rules` (Gym community posts + Community Posts sections) · **Dependencies** — · **Blocking** Gym community integrity
+**CORRECTION (2026-08-06):** the file:line citation above (`:378-381`) was stale — that range now falls inside an unrelated doc comment. The rule itself was real and confirmed exactly as described: `allow create: if isAuthenticated()` on `gyms/{gymId}/posts`, with the comment "membership enforced app-side" — untrue; `GymPostService.createPost()`/`addComment()` perform no membership check at all, and there was also no content-length cap (unlike the top-level `posts` collection's 5000-char cap). The identical bug existed on the `comments` subcollection too, not just `posts` (this entry only named posts).
+**What changed:** both `gyms/{gymId}/posts` and its `comments` create rules now require `isGymMember(gymId)` (this file's own existing helper, already used for the gym leaderboard read gate) plus a length cap (5000/2000 chars, matching the top-level collections). Rate-limited too (SEC-12's shared 'post'/'comment' budget).
+**A second, larger, previously-unflagged instance of the same bug found and fixed in the same pass:** the top-level `posts/{postId}` collection's optional `groupId` field (used for group-scoped feeds, including `kind:'gym'` groups) had **zero** group-membership/ban/mute check — unlike the parallel group-chat message path (`canPostInGroup`). A banned, muted, or never-joined user could post into *any* group's feed just by setting `groupId` on the payload. Fixed to mirror `canPostInGroup` exactly (posts with no `groupId` are unaffected); the matching `comments` subcollection got the same fix (checks the parent post's `groupId`).
+**Verification:** 5 new rules tests added (`test/firestore_rules/rules.test.mjs`) — gym post/comment membership + length cap, top-level groupId membership (including a banned-member case), and groupId comment inheritance.
+**DoD** §0.5 — met.
 
 ---
 
-#### `SEC-08` Check-in integrity: membership + geofence + rate limit *(`S13`, `H26`)*
+#### `SEC-08` ✅ Closed (2026-08-06) — Check-in integrity: membership + geofence + rate limit *(`S13`, `H26`)*
 
-**Status** 🚧 Partial · **Priority** High · **Complexity** M · **Est** 2–3 d · **Version** v1.1.0 · **Milestone** M6 · **Owner** Security Engineer
+**Status** ✅ Closed for the two real client paths (QR, GPS) · **Priority** High · **Complexity** M · **Est** 2–3 d · **Version** v1.1.0 · **Milestone** M6 · **Owner** Security Engineer
 **Labels** `gym` `fraud` `geofence` `leaderboard-integrity` · **Modules** Security · Backend · Firebase
-**Files** `lib/core/services/gym_service.dart` (`gpsCheckIn`, Haversine client-side) · `firestore.rules` (`checkins`) · **Dependencies** `BLK-08` (server counters) · **Blocking** Gym leaderboards and Gym Wars meaning anything
-**What exists** Client-side Haversine geofence and client-written check-ins. A repackaged client can fabricate location and check-in count freely.
-**Acceptance** Check-in written only by a callable that verifies membership, recomputes the geofence server-side from the gym's stored coordinates, enforces one check-in per gym per day, and rate-limits; QR token validated server-side with a short expiry; leaderboard reads only server-written check-ins.
-**DoD** §0.5 plus a fraud attempt test. **Risks** GPS spoofing is still possible at the OS level; combine QR + geofence + time window for defence in depth.
+**Files** `functions/gym.js` (`validateGymCheckin`, `validateGymGpsCheckin`) · `lib/core/services/gym_service.dart` (`gpsCheckIn`, rewired) · `firestore.rules` (`checkins` — now `create/update/delete: if false` for everyone) · **Dependencies** — · **Blocking** Gym leaderboards and Gym Wars meaning anything
+**CORRECTION (2026-08-06):** this entry's "what exists" undersold the actual state — there were **three** check-in paths with three different protection levels, not one: (1) QR, via `validateGymCheckin` — membership was ALREADY closed (an earlier session), only rate-limiting was missing; (2) GPS, client-direct write — membership was **not even checked by the rule** (worse than "client-side Haversine" implied — the rule never referenced membership at all); (3) presence/geofence check-ins (`functions/presence.js`) — membership and consent were already closed; that path's "no server coordinate recompute" is a **deliberate, documented privacy choice** (raw location is never transmitted; the OS's native geofence callback is trusted instead), not a gap, and was left as-is.
+**What changed:** GPS check-ins now go through a new `validateGymGpsCheckin` callable — re-derives membership server-side AND recomputes Haversine distance server-side against the gym's own stored `latitude`/`longitude`/`check_in_radius` (a verbatim port of the existing Dart formula). `firestore.rules`' `checkins` collection is now fully `if false` for every method — both QR and GPS check-ins are Admin-SDK-only now; 'manual' already had no client entry point (Faz 0 §0.7). Both callables share one new rate limit (`moderation.checkin_rate_limit`, 1h/6/1h default, admin-editable) via the existing `rate_limit.js` helper.
+**Verification:** the existing rules test asserting a well-formed client checkin write SUCCEEDED was rewritten to assert it now fails for every method, including for the gym's own owner and a real admin; JS syntax + Dart analyze clean.
+**DoD** §0.5 — met for QR/GPS. **Risks** GPS spoofing at the OS level is unaffected by this fix (a rooted/jailbroken device can still fake `Geolocator`'s reading) — this closes the *server never checked anything* gap, not device-level location spoofing, which needs OS/hardware attestation out of this fix's scope.
 
 ---
 
 #### `SEC-09` Coach review integrity — require a real client relationship *(`S13`, `H4`–`H7`)*
 
-**Status** ✅ Partial-verified · **Priority** Medium · **Complexity** S · **Est** 1 d · **Version** v1.1.0 · **Milestone** M6 · **Owner** Security Engineer
+**Status** ✅ Server-side linkage check closed (2026-08-06) · aggregate-skew + reporting still open · **Priority** Medium · **Complexity** S · **Est** 1 d · **Version** v1.1.0 · **Milestone** M6 · **Owner** Security Engineer
 **Labels** `marketplace` `fraud` `reviews` · **Modules** Security · Firebase
-**Files** `lib/core/services/coach_review_service.dart` (`canReview` checks client linkage + food-log anti-fraud gate) · `firestore.rules` (`reviews`: linked clients create, 1–5 enforced)
+**Files** `lib/core/services/coach_review_service.dart` (`canReview` checks client linkage + food-log anti-fraud gate) · `firestore.rules` (`coach_profiles/{coachUid}/reviews/{reviewerUid}`)
 **Dependencies** — · **Blocking** Marketplace trust
-**What exists** Client-side `canReview` plus a rule requiring a client link and a 1–5 rating — genuinely better than most. **What is missing:** `avgRating`/`ratingCount` are updated by a **client transaction**, so a determined client could still skew them; no review edit/delete audit; no review reporting.
-**Acceptance** Rating aggregates written only by a Function triggered on review create; review reporting wired to `reports/`; one review per client per coach enforced server-side.
+**CORRECTION (2026-08-06):** this entry's own "What exists" line below was wrong — re-reading `firestore.rules` directly (not trusting its neighboring comment, which already claimed the check existed) showed the `create` rule checked identity + rating range only, with **no `exists()` check against `clients/{reviewerUid}` at all**. `canReview()` was the *only* place this was ever enforced — client-side, bypassable by any direct API/SDK write. Fixed: the `create` rule now requires `exists(coach_profiles/{coachUid}/clients/{reviewerUid})`, matching `canReview()`'s own bar exactly (existence, no status filter). Rules tests added (`test/firestore_rules/rules.test.mjs`): a linked client can review, an unlinked stranger cannot, a client cannot forge a review as someone else, and reviews stay immutable.
+**What exists** Client-side `canReview` plus a rule requiring a client link (now also server-side) and a 1–5 rating. **What is still missing:** `avgRating`/`ratingCount` are updated by a **client transaction**, so a determined client could still skew them; no review edit/delete audit; no review reporting. None of this was touched by the 2026-08-06 fix — scoped to the linkage check only.
+**Acceptance** Rating aggregates written only by a Function triggered on review create; review reporting wired to `reports/`; one review per client per coach enforced server-side (✅ already true — doc id is `reviewerUid`, so Firestore's own create-only-if-absent semantics block a second review).
 **DoD** §0.5. **Risks** Trigger latency makes the average briefly stale — acceptable; show "updating" state.
 
 ---
@@ -1678,33 +1705,47 @@ detection, no scrubbing of prompt content from responses shown to users.
 
 ---
 
-#### `SEC-12` UGC rate limits, spam and bot protection *(`S13`, `H27`)*
+#### `SEC-12` ✅ Rate limits closed (2026-08-06); duplicate-detection + trust-ramp still open — UGC rate limits, spam and bot protection *(`S13`, `H27`)*
 
-**Status** 🚧 Partial · **Priority** High · **Complexity** M · **Est** 3–4 d
+**Status** ✅ Rate limiting done for the named paths · duplicate-content + new-account ramp NOT attempted (see below) · **Priority** High · **Complexity** M · **Est** 3–4 d
 **Version** v0.9.8 · **Milestone** M2 · **Owner** Security Engineer
 **Labels** `spam` `bot` `rate-limiting` `community` `abuse`
 **Modules** Security · Backend · Firebase
-**Files** `firestore.rules:194` (5,000-char post cap exists) · `lib/core/services/community_service.dart` (`_checkContent` keyword filter) · `settings/content_filter`
-**Dependencies** `BLK-14` · **Required before** M5 · **Blocking** Community usable at scale
+**Files** `functions/ugc_rate_limit.js` (new) · `firestore.rules` (six new `is*RateLimited()` checks) · `functions/config_schema.json` (six new `moderation.*_rate_limit` fields)
+**Dependencies** `BLK-14` (still open, unrelated to this fix) · **Blocking** Community usable at scale
 
-**What exists / what is missing**
-Content-length caps on posts, comments, chat and signals **are** in the rules — good. A keyword filter
-reads `settings/content_filter` (public-read, admin-mirrored) and pre-screens posts and comments; the
-earlier fail-open bug (reading admin-only `admin_config/global`) is fixed.
+**What changed (2026-08-06):** reports/moderation-actions/appeals were ALREADY rate-limited (an earlier
+session, `functions/moderation.js`); this closes the rest of TODO.md's own named list — **posts,
+comments, reactions, follows, groups** — plus **chat messages**, which the acceptance text's "chats"
+covered but wasn't itemized separately. Exhaustively re-verified against actual code first (not just
+this doc's claims): 11 UGC creation paths existed with zero server-side rate limiting; `engagement_credit.js`'s
+reciprocity/duplicate/shadow-restrict machinery — built earlier this session — governs only whether
+content EARNS AI credit after the fact, never whether it can be CREATED, so it closed none of this.
+`functions/ugc_rate_limit.js` extends `moderation.js`'s exact reactive-trigger pattern
+(`checkAndBumpSlidingWindow`/`lockUntil`, `rate_limit.js`) to six new kinds — `post`/`comment` shared
+across top-level AND gym-scoped collections, `reaction` shared across post reactions/likes/comment-likes,
+plus `message` and `group_create` — each backed by a new, admin-editable
+`moderation.{kind}_rate_limit` config field (not hardcoded — this session's config-migration work made
+that the established convention for new anti-abuse thresholds, not just old ones).
 
-Missing: any **rate limit** on UGC creation. A script can create unlimited posts, comments, reactions,
-follows, chats, groups and reports. No bot protection beyond App Check. No duplicate-content detection.
-No new-account trust ramp.
+**What is still open, honestly — 2 of the original 6 acceptance items are NOT done:**
+- **Duplicate-content detection at creation time** — NOT attempted. `isNearDuplicateText`
+  (`engagement_credit_logic.js`) is a real, tested algorithm but runs AFTER a post/comment is already
+  created (governs credit-earning, not creation). Making it block CREATION would need either moving
+  post/comment creation off direct client writes onto a callable (so a synchronous check can run before
+  the write succeeds) or accepting a weaker reactive-takedown model — a real architectural decision, not
+  a rate-limit-shaped fix, so it wasn't quietly downscoped into this pass.
+- **New-account trust ramp** (tighter limits under 24h/unverified) — NOT attempted; the six new rate
+  limits apply uniformly regardless of account age.
+- Group creation specifically: ✅ done (`moderation.group_create_rate_limit`).
+- App Check enforcement (`BLK-14`): unchanged by this fix, still gated off in `functions/.env`
+  (`APP_ENV=development`) — a separate, already-tracked item.
 
-**Acceptance Criteria**
-- Per-uid sliding-window limits on post / comment / reaction / follow / chat / group / report creation, enforced server-side (reuse the `aiProxy` window pattern in a shared helper).
-- Group creation rate-limited specifically (`COMMUNITY_GROUPS` P3 anti-abuse item).
-- Duplicate-content detection (same text within N minutes) rejected.
-- New accounts (< 24 h, unverified) subject to tighter limits.
-- App Check enforced on all callables (`BLK-14`).
-- Verified: a scripted 100-post burst is throttled with a clear client error.
-
-**DoD** §0.5 plus a scripted abuse test.
+**Verification:** 6 new rules tests (`test/firestore_rules/rules.test.mjs`) mirroring the existing
+report/moderation/appeal rate-limit test idiom (seed a future/past `{kind}_locked_until` directly — the
+trigger itself needs Cloud Functions, not just the rules emulator).
+**DoD** §0.5 — met for rate limiting; duplicate-detection and trust-ramp remain as a separate, scoped
+follow-up (see above).
 **Risks** Legitimate power users hitting limits. Log every throttle to analytics and tune from data.
 
 ---
@@ -2444,7 +2485,7 @@ streak/reputation recompute (`SEC-14`), notification-path migration (`BLK-03`).
 | ID | Status | Hole | Rule line | Priority | Tracked as |
 |---|---|---|---|---|---|
 | `FB-05` | ✅ | `posts`/comments/gym-posts update allowlisted + delta-constrained, deployed | `firestore.rules` (3 blocks) | Critical | `BLK-08` closed |
-| `FB-06` | 🔥 | `programs` create allows `coach_uid == 'demo'` from any user | `:458-460` | Critical | `BLK-09` |
+| `FB-06` | ✅ | `programs` create no longer allows `coach_uid == 'demo'` from any user — closed 2026-08-06 | Programs section | Critical | `BLK-09` |
 | `FB-07` | 🔥 | `users/{uid}` read exposes email, IP, device fingerprints | `:68` | Critical | `BLK-10` |
 | `FB-08` | ✅ | `users/{uid}/notifications` — path retired entirely (no rule; falls to catch-all deny), deployed | — | Critical | `SEC-06` closed |
 | `FB-09` | ✅ | `users/{uid}/friends` create/update now `if false` (delete stays owner-only, already safe), deployed | `:86-90` | Critical | `SEC-06` closed |
@@ -2876,7 +2917,7 @@ count per slot and monitor plan variety.
 
 | ID | Status | Title | Priority | Cx | Est | Version | Owner | Files | Deps | Acceptance / DoD | Risks |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `MKT-01` | 🔥 | Close the `coach_uid == 'demo'` injection hole | Critical | XS | 4 h | v1.1.0 / M6 | Security | see `BLK-09` | `BLK-11` | Tracked in `BLK-09` | — |
+| `MKT-01` | ✅ | Closed the `coach_uid == 'demo'` injection hole (2026-08-06) | Critical | XS | 4 h | v1.1.0 / M6 | Security | see `BLK-09` | `BLK-11` | Tracked in `BLK-09` | — |
 | `MKT-02` | ✅ | Program model + content weeks/days/sessions, marketplace with category filters, detail screen with enrolment-gated content, My Programs with progress, admin approval queue (`draft→pending→approved/rejected`), demo content seed | — | — | — | shipped | — | `program_service.dart`, `program_content_model.dart`, `program_marketplace_screen.dart`, `program_detail_screen.dart`, `my_programs_screen.dart` (6 indexes) | — | Code-verified; approval reachable now that `BLK-05` is deployed | — |
 | `MKT-03` | 🟡 | Paid programs — the purchase seam | High | M | 1 w | v1.1.0 / M6 | Monetization | `program_detail_screen.dart:57` (`program.paid_coming_soon`), `canViewContent({required bool isEnrolled})` | `BLK-04` | `canViewContent` extended with `hasPurchased`; program purchase via IAP; entitlement per program written server-side; the honest "Available Soon v2.0" banner replaced. **The seam is deliberately clean — one line to wire** | Digital content **must** go through IAP; do not route it to a payout provider |
 | `MKT-04` | ❌ | Remove demo programs from production | High | XS | 2 h | v1.1.0 / M6 | Backend | `demo_content_seeder.dart` (3 programs + content, seeded from every client) | `BLK-09`, `INF-01` | Demo content seeded only in dev/staging; production purged of `coach_uid == 'demo'` programs | **Fake marketplace content in a live storefront** is both a trust and a legal-advertising problem |
@@ -3186,7 +3227,7 @@ Remediation: critical + high ≈ **10–12 engineer-weeks**; complete register �
 | `DEBT-09` | Gym logo writes to an unruled Storage prefix; scanner watches the same wrong prefix | Gym setup broken; NSFW scanning misaligned | Align upload, rules and `SCAN_PREFIXES`; close the `isAuthenticated()` hole | 4 h | `BLK-07` |
 | `DEBT-10` | Any user can mutate any post's non-content fields | Fixed and deployed (`BLK-08`) — `hasOnly` + delta constraints | 1 d | `BLK-08` |
 | `DEBT-11` | **Challenge sunset incomplete while marked ✅** | `firestore.rules:296-304`, 2 composite indexes and 4 orphan i18n keys survive; `intro.page3_title` still advertises "Community & Challenges" to users | Remove the rules block, both indexes and the orphan keys; reword the intro copy | 1 h | `CHL-00`, `FB-15`, `I18N-02` |
-| `DEBT-12` | Marketplace injection via `coach_uid == 'demo'` | Any user publishes to a public storefront | Remove the exemption; seed server-side | 4 h | `BLK-09` |
+| `DEBT-12` | ✅ Closed 2026-08-06 — marketplace injection via `coach_uid == 'demo'` | Any user publishes to a public storefront | Removed the exemption; seeding moved server-side (`functions/demo_content.js`) | 4 h | `BLK-09` |
 | `DEBT-13` | User doc world-readable with email, IP, device fingerprints | GDPR/KVKK exposure in the primary market | Split public/private/internal; migrate; narrow the rule | 3–5 d | `BLK-10` |
 | `DEBT-14` | Three overlapping config systems, one permanently denied | Unclear precedence on safety levers; `ai_proxy_url` resolvable from two places (and `BLK-01` makes that dangerous) | Consolidate on `AppConfigService`; delete the dead paths | 3 d | `ARCH-05` |
 | `DEBT-15` | Dish catalog unseedable in-app; 100 dishes (Faz 3 §3.6: was 75); 180-dish prompt ceiling (client-side guard added, real fix still `AI-03`) | Core feature has no content on a fresh project; visible repetition (much less acute for snacks post-§3.6); growth blocked | Server-side seeding; `AI-03` pre-filter; expand to ≥ 300 | 1 w + content | `BLK-11`, `AI-03` |

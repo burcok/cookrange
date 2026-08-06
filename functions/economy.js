@@ -26,25 +26,40 @@ const functions = require('firebase-functions');
 const { grantPremium, purchaseCorrelationKey } = require('./entitlements');
 const { APP_CHECK_ENFORCE } = require('./config');
 const { writeNotification } = require('./notifications');
+const { getConfig } = require('./app_config');
 
-const REFERRAL_REWARD_DAYS = 7;
-const REFERRAL_MAX_USES = 10;
-const REFERRAL_COMMISSION_TRY = 5;
+// Faz A Faz 4 — these are now FALLBACK defaults, not the primary source.
+// Each is read live from app_config/server's `economy.*` fields (see
+// economyConfig() below) once that doc has been seeded and observed live
+// in production (PLAN.md Faz A's governing rule: a hardcoded default is
+// never DELETED until the config path has been live and observed — so
+// these stay, as the value every consumer falls back to if the config
+// field is absent, which is true unconditionally until Faz 3's seeding
+// actually runs against production).
+const REFERRAL_REWARD_DAYS_DEFAULT = 7;
+const REFERRAL_MAX_USES_DEFAULT = 10;
+const REFERRAL_COMMISSION_TRY_DEFAULT = 5;
 
 // Faz 6 §6.6 — flat TRY commission per validated PREMIUM purchase (never the
 // AI-credits consumable) made by a user previously attributed to a gym.
-// Flat, like REFERRAL_COMMISSION_TRY above, rather than a true percentage:
-// purchases.js's store verification (verifyApple/verifyGoogle) never
-// surfaces the actual price the user paid today — only productId/expiry/
-// revocation — so there is no real price server-side to take a cut of. This
-// is a placeholder rate pending the gym contract's business/legal sign-off
-// (assets/legal/marketplace_terms_{en,tr}.md's gym commission section
-// deliberately describes the mechanism, not a hardcoded number, and points
-// back here as the one place the actual rate lives — change it here only).
-const GYM_COMMISSION_TRY = {
+// Flat, like REFERRAL_COMMISSION_TRY_DEFAULT above, rather than a true
+// percentage: purchases.js's store verification (verifyApple/verifyGoogle)
+// never surfaces the actual price the user paid today — only productId/
+// expiry/revocation — so there is no real price server-side to take a cut
+// of. This used to be THE place to hand-edit pending the gym contract's
+// legal sign-off; now that role belongs to app_config/server's
+// `economy.gym_commission_try` (editable via the admin panel, no redeploy)
+// — this map is only the fallback if that field is absent.
+const GYM_COMMISSION_TRY_DEFAULT = {
   'com.cookrange.premium.monthly': 15,
   'com.cookrange.premium.yearly': 120,
 };
+
+/** Live app_config/server `economy.*` fields, or {} if unset/unreachable. */
+async function economyConfig() {
+  const cfg = await getConfig();
+  return (cfg && cfg.economy) || {};
+}
 
 exports.applyReferral = functions.https.onCall(async (data, context) => {
   const uid = context.auth && context.auth.uid;
@@ -75,6 +90,13 @@ exports.applyReferral = functions.https.onCall(async (data, context) => {
     ? data.source
     : 'in_app';
 
+  // Read once, outside the transaction — config isn't part of the
+  // referral doc's transactional state, so there's no reason to re-fetch
+  // it on a transaction retry.
+  const econ = await economyConfig();
+  const maxUsesDefault = typeof econ.referral_max_uses === 'number'
+    ? econ.referral_max_uses : REFERRAL_MAX_USES_DEFAULT;
+
   const db = admin.firestore();
   const refRef = db.collection('referrals').doc(code);
   const userRef = db.collection('users').doc(uid);
@@ -86,7 +108,7 @@ exports.applyReferral = functions.https.onCall(async (data, context) => {
     const ref = refSnap.data();
     const ownerUid = ref.owner_uid;
     const usedBy = Array.isArray(ref.used_by_uids) ? ref.used_by_uids : [];
-    const maxUses = typeof ref.max_uses === 'number' ? ref.max_uses : REFERRAL_MAX_USES;
+    const maxUses = typeof ref.max_uses === 'number' ? ref.max_uses : maxUsesDefault;
 
     if (ownerUid === uid) return { error: 'own_code' };
     if (usedBy.includes(uid)) return { error: 'already_used_this' };
@@ -176,7 +198,11 @@ exports.applyReferral = functions.https.onCall(async (data, context) => {
   }
 
   const ownerUid = result.ownerUid;
-  const expiresAt = new Date(Date.now() + REFERRAL_REWARD_DAYS * 86400000);
+  const rewardDays = typeof econ.referral_reward_days === 'number'
+    ? econ.referral_reward_days : REFERRAL_REWARD_DAYS_DEFAULT;
+  const commissionTry = typeof econ.referral_commission_try === 'number'
+    ? econ.referral_commission_try : REFERRAL_COMMISSION_TRY_DEFAULT;
+  const expiresAt = new Date(Date.now() + rewardDays * 86400000);
 
   // Reward both parties via the server-only entitlements writer.
   await grantPremium(uid, { source: 'referral', expiresAt });
@@ -195,7 +221,7 @@ exports.applyReferral = functions.https.onCall(async (data, context) => {
   // exempt from the reversal feature, not a remaining gap in it.
   await db.collection('users').doc(ownerUid).collection('commissions').add({
     type: 'referral',
-    amount: REFERRAL_COMMISSION_TRY,
+    amount: commissionTry,
     currency: 'TRY',
     referee_uid: uid,
     status: 'pending',
@@ -208,11 +234,11 @@ exports.applyReferral = functions.https.onCall(async (data, context) => {
     type: 'referral',
     actorUid: uid,
     relatedId: code,
-    metadata: { rewardDays: REFERRAL_REWARD_DAYS },
+    metadata: { rewardDays },
   });
 
   functions.logger.info('applyReferral: ok', { uid, ownerUid, code });
-  return { ok: true, type: result.type, rewardDays: REFERRAL_REWARD_DAYS };
+  return { ok: true, type: result.type, rewardDays };
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -247,7 +273,10 @@ exports.previewReferralCode = functions.https.onCall(async (data, context) => {
 
   const ref = snap.data();
   const usedBy = Array.isArray(ref.used_by_uids) ? ref.used_by_uids : [];
-  const maxUses = typeof ref.max_uses === 'number' ? ref.max_uses : REFERRAL_MAX_USES;
+  const econ = await economyConfig();
+  const maxUsesDefault = typeof econ.referral_max_uses === 'number'
+    ? econ.referral_max_uses : REFERRAL_MAX_USES_DEFAULT;
+  const maxUses = typeof ref.max_uses === 'number' ? ref.max_uses : maxUsesDefault;
   if (usedBy.length >= maxUses) return { valid: false }; // exhausted, or voided (max_uses:0)
 
   const type = ref.type || 'user';
@@ -290,7 +319,10 @@ exports.previewReferralCode = functions.https.onCall(async (data, context) => {
 // correlate it against — see the comment at its own write site.
 // ─────────────────────────────────────────────────────────────────────────────
 async function maybeAwardGymCommission(uid, productId, platform, token) {
-  const amount = GYM_COMMISSION_TRY[productId];
+  const econ = await economyConfig();
+  const gymCommissionTry = (econ.gym_commission_try && typeof econ.gym_commission_try === 'object')
+    ? econ.gym_commission_try : GYM_COMMISSION_TRY_DEFAULT;
+  const amount = gymCommissionTry[productId];
   if (!amount) return; // not a commission-eligible product (e.g. AI credits)
 
   const db = admin.firestore();
@@ -359,3 +391,15 @@ async function maybeAwardGymCommission(uid, productId, platform, token) {
 }
 
 module.exports.maybeAwardGymCommission = maybeAwardGymCommission;
+
+// Faz A (config migration) — exported so functions/test/config_schema_defaults.test.js
+// can assert config_schema.json's defaults equal these FALLBACK values
+// (Faz 4 renamed them *_DEFAULT once the live-config read path above was
+// wired in — the equality this test proves hasn't changed, only the name).
+Object.assign(module.exports, {
+  REFERRAL_REWARD_DAYS: REFERRAL_REWARD_DAYS_DEFAULT,
+  REFERRAL_MAX_USES: REFERRAL_MAX_USES_DEFAULT,
+  REFERRAL_COMMISSION_TRY: REFERRAL_COMMISSION_TRY_DEFAULT,
+  GYM_COMMISSION_TRY: GYM_COMMISSION_TRY_DEFAULT,
+  economyConfig,
+});

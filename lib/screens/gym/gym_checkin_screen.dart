@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -90,13 +91,14 @@ class _GymCheckInScreenState extends State<GymCheckInScreen> {
         ),
       );
 
+      // SEC-08 fix: the server now sources the gym's coordinates/radius
+      // itself and recomputes the distance — widget.gymLat/gymLng/
+      // checkInRadius are no longer sent (they were only ever the
+      // client's own copy of the same data the server already has).
       await GymService().gpsCheckIn(
         widget.gymId,
-        widget.gymLat!,
-        widget.gymLng!,
         pos.latitude,
         pos.longitude,
-        widget.checkInRadius,
       );
 
       if (mounted) {
@@ -105,13 +107,20 @@ class _GymCheckInScreenState extends State<GymCheckInScreen> {
           if (mounted) Navigator.of(context).pop();
         });
       }
-    } catch (e) {
+    } on FirebaseFunctionsException catch (e) {
       if (mounted) {
         final l10n = AppLocalizations.of(context);
-        final msg = e.toString().contains('Too far')
-            ? l10n.translate('gym.checkin_gps_too_far')
-            : l10n.translate('gym.checkin_gps_error');
+        final msg = switch (e.message) {
+          'too_far_from_gym' => l10n.translate('gym.checkin_gps_too_far'),
+          'checkin_rate_limited' => l10n.translate('gym.checkin_rate_limited'),
+          _ => l10n.translate('gym.checkin_gps_error'),
+        };
         AppSnackBar.error(context, msg);
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.error(
+            context, AppLocalizations.of(context).translate('gym.checkin_gps_error'));
       }
     } finally {
       if (mounted) setState(() => _gpsLoading = false);
@@ -335,6 +344,15 @@ class _QrScannerPageState extends State<_QrScannerPage> {
       if (mounted) {
         setState(() => _processing = false);
         _showSuccess();
+      }
+    } on FirebaseFunctionsException catch (e) {
+      if (mounted) {
+        setState(() => _processing = false);
+        final l10n = AppLocalizations.of(context);
+        final msg = e.message == 'checkin_rate_limited'
+            ? l10n.translate('gym.checkin_rate_limited')
+            : l10n.translate('gym.checkin_invalid_qr');
+        AppSnackBar.error(context, msg);
       }
     } catch (e) {
       if (mounted) {

@@ -9,7 +9,6 @@ import '../models/gym_member_model.dart';
 import '../models/checkin_model.dart';
 import '../models/gym_qr_token_model.dart';
 import '../data/test_data_library.dart';
-import '../utils/haversine.dart';
 import 'analytics_service.dart';
 import 'test_mode_service.dart';
 
@@ -348,54 +347,27 @@ class GymService {
         .call<Map<String, dynamic>>({'gymId': gymId, 'token': token});
   }
 
+  /// SEC-08 fix: used to compute Haversine distance client-side and, if
+  /// "close enough," write `checkins/*` directly — firestore.rules' create
+  /// rule only ever checked uid/timestamp/method shape, so a modified
+  /// client could self-report any distance (or skip the check entirely).
+  /// Now calls `validateGymGpsCheckin` (functions/gym.js), which re-derives
+  /// membership AND recomputes the distance server-side against the gym's
+  /// own stored coordinates — the client's GPS reading is the only
+  /// untrusted input now, exactly like `validateQRCheckIn`'s token is the
+  /// only untrusted input for the QR path.
   Future<void> gpsCheckIn(
     String gymId,
-    double gymLat,
-    double gymLng,
     double userLat,
     double userLng,
-    int radiusMeters,
   ) async {
-    // Faz 0 §0.7: was a private re-implementation of the same formula
-    // already shared as haversineKm (core/utils/haversine.dart, also used
-    // by coach/gym discovery's distance sort) — now reuses it directly.
-    final distanceM = haversineKm(gymLat, gymLng, userLat, userLng) * 1000;
-    if (distanceM <= radiusMeters) {
-      await _recordCheckIn(gymId, CheckInMethod.gps);
-    } else {
-      throw Exception('Too far from gym (${distanceM.toStringAsFixed(0)} m)');
-    }
-  }
-
-  Future<void> _recordCheckIn(String gymId, CheckInMethod method) async {
-    final uid = _uid;
-    if (uid == null) throw Exception('Not authenticated');
-    final user = FirebaseAuth.instance.currentUser!;
-
-    final batch = _db.batch();
-    final checkinDoc = _checkins(gymId).doc();
-    // The `timestamp` field is overridden to a server timestamp after
-    // building the map — firestore.rules requires
-    // `request.resource.data.timestamp == request.time` on create, so a
-    // client-supplied DateTime would be rejected. The DateTime.now() above
-    // only satisfies CheckInModel's local (non-nullable) constructor field
-    // and is never read back before being overwritten here.
-    final checkinData = CheckInModel(
-      id: checkinDoc.id,
-      uid: uid,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      timestamp: DateTime.now(),
-      method: method,
-    ).toFirestore()
-      ..['timestamp'] = FieldValue.serverTimestamp();
-    batch.set(checkinDoc, checkinData);
-    batch.update(_members(gymId).doc(uid), {
-      'last_check_in': FieldValue.serverTimestamp(),
+    await FirebaseFunctions.instance
+        .httpsCallable('validateGymGpsCheckin')
+        .call<Map<String, dynamic>>({
+      'gymId': gymId,
+      'userLat': userLat,
+      'userLng': userLng,
     });
-    await batch.commit();
-    debugPrint(
-        '[GymService] CheckIn recorded uid=$uid gym=$gymId method=${method.name}');
   }
 
   Stream<List<CheckInModel>> getRecentCheckInsStream(String gymId,

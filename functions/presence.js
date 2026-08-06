@@ -29,25 +29,35 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const { assertCallable, writeNotification, fetchActor } = require('./notifications');
-const { awardXp, XP_TABLE } = require('./progress');
+const { awardXp, xpEntry } = require('./progress');
+const { getConfig } = require('./app_config');
 
+// Faz A Faz 4 — FALLBACK defaults; app_config/server's `presence.*` fields
+// are the live source once seeded (see presenceConfig() below).
+//
 // A client clock more than this far from server time is rejected outright —
 // catches a spoofed or badly-drifted device rather than trusting it.
-const TIMESTAMP_SKEW_MS = 5 * 60 * 1000;
+const TIMESTAMP_SKEW_MS_DEFAULT = 5 * 60 * 1000;
 // Same gym, same user: a dwell within this long of their last exit is
 // rejected (GPS flicker re-triggering the boundary right after leaving).
-const RATE_LIMIT_REENTRY_MS = 10 * 60 * 1000;
+const RATE_LIMIT_REENTRY_MS_DEFAULT = 10 * 60 * 1000;
 // Absolute safety-net expiry from entered_at — nobody's single gym visit
 // legitimately runs longer than this; closeStalePresenceSessions sweeps
 // anything that outlives it (app killed, phone died, OS killed background
 // execution) so a presence doc can never stay "live" forever.
-const PRESENCE_TTL_MS = 4 * 60 * 60 * 1000;
-const STALE_SWEEP_LIMIT = 200;
+const PRESENCE_TTL_MS_DEFAULT = 4 * 60 * 60 * 1000;
+const STALE_SWEEP_LIMIT_DEFAULT = 200;
 
-function checkTimestampSkew(clientTimestamp) {
+/** Live app_config/server `presence.*` fields, or {} if unset/unreachable. */
+async function presenceConfig() {
+  const cfg = await getConfig();
+  return (cfg && cfg.presence) || {};
+}
+
+function checkTimestampSkew(clientTimestamp, skewMs) {
   if (clientTimestamp === undefined || clientTimestamp === null) return;
   const t = new Date(clientTimestamp).getTime();
-  if (!Number.isFinite(t) || Math.abs(Date.now() - t) > TIMESTAMP_SKEW_MS) {
+  if (!Number.isFinite(t) || Math.abs(Date.now() - t) > skewMs) {
     throw new functions.https.HttpsError('invalid-argument', 'timestamp_skew');
   }
 }
@@ -128,7 +138,7 @@ async function closeSession(db, uid, gymId, endedBy) {
     // itself server-verified (the whole point of Faz 1 §1.5's geofence
     // hardening), so no additional trust is extended here. A courtesy call:
     // failure never unwinds the already-committed check-in.
-    const t = XP_TABLE.check_in;
+    const t = await xpEntry('check_in');
     await awardXp(db, uid, 'check_in', checkinRef.id, t.points, t.dailyCap).catch((e) => {
       functions.logger.error('closeSession: awardXp(check_in) failed', { uid, gymId, error: e.message });
     });
@@ -144,7 +154,14 @@ exports.recordPresenceEvent = functions.https.onCall(async (data, context) => {
   if (!gymId || !['enter', 'dwell', 'exit'].includes(type)) {
     throw new functions.https.HttpsError('invalid-argument', 'gymId and a valid type are required');
   }
-  checkTimestampSkew(data && data.clientTimestamp);
+  // Read once, outside any transaction — config isn't part of this call's
+  // transactional state, so there's no reason to re-fetch it on a retry.
+  const pCfg = await presenceConfig();
+  const skewMs = typeof pCfg.timestamp_skew_ms === 'number' ? pCfg.timestamp_skew_ms : TIMESTAMP_SKEW_MS_DEFAULT;
+  const reentryMs = typeof pCfg.rate_limit_reentry_ms === 'number'
+    ? pCfg.rate_limit_reentry_ms : RATE_LIMIT_REENTRY_MS_DEFAULT;
+  const ttlMs = typeof pCfg.presence_ttl_ms === 'number' ? pCfg.presence_ttl_ms : PRESENCE_TTL_MS_DEFAULT;
+  checkTimestampSkew(data && data.clientTimestamp, skewMs);
 
   const db = admin.firestore();
 
@@ -200,14 +217,14 @@ exports.recordPresenceEvent = functions.https.onCall(async (data, context) => {
   if (!lastSessionSnap.empty) {
     const last = lastSessionSnap.docs[0].data();
     const lastExit = last.exited_at && last.exited_at.toDate ? last.exited_at.toDate() : null;
-    if (lastExit && (Date.now() - lastExit.getTime()) < RATE_LIMIT_REENTRY_MS) {
+    if (lastExit && (Date.now() - lastExit.getTime()) < reentryMs) {
       throw new functions.https.HttpsError('resource-exhausted', 'rate_limited');
     }
   }
 
   const userData = userSnap.exists ? (userSnap.data() || {}) : {};
   const nowTs = admin.firestore.FieldValue.serverTimestamp();
-  const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + PRESENCE_TTL_MS);
+  const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + ttlMs);
 
   await db.runTransaction(async (tx) => {
     // Re-check inside the transaction: a concurrent duplicate dwell could
@@ -242,9 +259,12 @@ exports.closeStalePresenceSessions = functions
   .onRun(async (_context) => {
     const db = admin.firestore();
     const now = admin.firestore.Timestamp.now();
+    const pCfg = await presenceConfig();
+    const sweepLimit = typeof pCfg.stale_sweep_limit === 'number'
+      ? pCfg.stale_sweep_limit : STALE_SWEEP_LIMIT_DEFAULT;
     const snap = await db.collectionGroup('presence')
       .where('expires_at', '<=', now)
-      .limit(STALE_SWEEP_LIMIT)
+      .limit(sweepLimit)
       .get();
 
     if (snap.empty) {
@@ -286,19 +306,30 @@ exports.closeStalePresenceSessions = functions
 // Defensive cap on the friends list this fan-out reads, independent of any
 // cap (or lack of one) on how many friends a user can actually have —
 // mirrors the "no unbounded query" discipline from Faz 0 §0.5.
-const MAX_FRIENDS_FANOUT = 300;
+const MAX_FRIENDS_FANOUT_DEFAULT = 300;
 // One notification per (receiver, arriving friend, gym) per calendar day.
-const NOTIFY_LOG_TTL_DAYS = 2;
+const NOTIFY_LOG_TTL_DAYS_DEFAULT = 2;
 // Turkey has used a fixed UTC+3 offset with no DST since 2016 — this is the
 // app's only real market today, so a fixed offset is accurate, not merely an
-// approximation. Revisit if the app expands beyond Türkiye.
-const LOCAL_UTC_OFFSET_HOURS = 3;
-const QUIET_HOURS_START = 7;
-const QUIET_HOURS_END = 23;
+// approximation. Revisit if the app expands beyond Türkiye. Shared with (not
+// imported from — see progress.js's own comment) progress.js/
+// engagement_credit_logic.js; config_schema.json's `gamification.
+// local_utc_offset_hours` note documents all three call sites and requires
+// they consolidate onto this ONE live value.
+const LOCAL_UTC_OFFSET_HOURS_DEFAULT = 3;
+const QUIET_HOURS_START_DEFAULT = 7;
+const QUIET_HOURS_END_DEFAULT = 23;
 
-function isWithinNotifyWindow(date) {
-  const localHour = (date.getUTCHours() + LOCAL_UTC_OFFSET_HOURS) % 24;
-  return localHour >= QUIET_HOURS_START && localHour < QUIET_HOURS_END;
+/** Live app_config/server `gamification.local_utc_offset_hours`, or the fallback. */
+async function liveLocalUtcOffsetHours() {
+  const cfg = await getConfig();
+  const v = cfg && cfg.gamification && cfg.gamification.local_utc_offset_hours;
+  return typeof v === 'number' ? v : LOCAL_UTC_OFFSET_HOURS_DEFAULT;
+}
+
+function isWithinNotifyWindow(date, offsetHours, quietStart, quietEnd) {
+  const localHour = (date.getUTCHours() + offsetHours) % 24;
+  return localHour >= quietStart && localHour < quietEnd;
 }
 
 function dayKeyFor(date) {
@@ -318,7 +349,18 @@ exports.onGymPresenceCreated = functions
     const db = admin.firestore();
     const now = new Date();
 
-    if (!isWithinNotifyWindow(now)) {
+    // Read once — none of this is part of any transaction's retry state.
+    const [pCfg, offsetHours] = await Promise.all([presenceConfig(), liveLocalUtcOffsetHours()]);
+    const quietStart = typeof pCfg.quiet_hours_start === 'number'
+      ? pCfg.quiet_hours_start : QUIET_HOURS_START_DEFAULT;
+    const quietEnd = typeof pCfg.quiet_hours_end === 'number'
+      ? pCfg.quiet_hours_end : QUIET_HOURS_END_DEFAULT;
+    const maxFriendsFanout = typeof pCfg.max_friends_fanout === 'number'
+      ? pCfg.max_friends_fanout : MAX_FRIENDS_FANOUT_DEFAULT;
+    const notifyLogTtlDays = typeof pCfg.notify_log_ttl_days === 'number'
+      ? pCfg.notify_log_ttl_days : NOTIFY_LOG_TTL_DAYS_DEFAULT;
+
+    if (!isWithinNotifyWindow(now, offsetHours, quietStart, quietEnd)) {
       functions.logger.info('onGymPresenceCreated: outside notify window, skipping', {
         gymId, arrivingUid,
       });
@@ -340,11 +382,11 @@ exports.onGymPresenceCreated = functions
     const gymName = gymSnap.data().name || '';
 
     const friendsSnap = await db.collection('users').doc(arrivingUid)
-      .collection('friends').limit(MAX_FRIENDS_FANOUT).get();
+      .collection('friends').limit(maxFriendsFanout).get();
     if (friendsSnap.empty) return;
-    if (friendsSnap.size === MAX_FRIENDS_FANOUT) {
+    if (friendsSnap.size === maxFriendsFanout) {
       functions.logger.warn('onGymPresenceCreated: friends list truncated at cap', {
-        arrivingUid, cap: MAX_FRIENDS_FANOUT,
+        arrivingUid, cap: maxFriendsFanout,
       });
     }
     const friendUids = friendsSnap.docs.map((d) => d.id);
@@ -379,7 +421,7 @@ exports.onGymPresenceCreated = functions
           day_key: dayKey,
           created_at: admin.firestore.FieldValue.serverTimestamp(),
           expires_at: admin.firestore.Timestamp.fromMillis(
-            now.getTime() + NOTIFY_LOG_TTL_DAYS * 24 * 60 * 60 * 1000),
+            now.getTime() + notifyLogTtlDays * 24 * 60 * 60 * 1000),
         });
 
         await writeNotification(db, {
@@ -403,3 +445,19 @@ exports.onGymPresenceCreated = functions
       gymId, arrivingUid, candidates: memberFriendUids.length, sent,
     });
   });
+
+// Faz A (config migration) — export names kept stable for
+// functions/test/config_schema_defaults.test.js (Faz 4 renamed the INTERNAL
+// constants *_DEFAULT once the live-config read path above was wired in;
+// the equality this test proves hasn't changed).
+Object.assign(module.exports, {
+  TIMESTAMP_SKEW_MS: TIMESTAMP_SKEW_MS_DEFAULT,
+  RATE_LIMIT_REENTRY_MS: RATE_LIMIT_REENTRY_MS_DEFAULT,
+  PRESENCE_TTL_MS: PRESENCE_TTL_MS_DEFAULT,
+  STALE_SWEEP_LIMIT: STALE_SWEEP_LIMIT_DEFAULT,
+  MAX_FRIENDS_FANOUT: MAX_FRIENDS_FANOUT_DEFAULT,
+  NOTIFY_LOG_TTL_DAYS: NOTIFY_LOG_TTL_DAYS_DEFAULT,
+  QUIET_HOURS_START: QUIET_HOURS_START_DEFAULT,
+  QUIET_HOURS_END: QUIET_HOURS_END_DEFAULT,
+  presenceConfig,
+});

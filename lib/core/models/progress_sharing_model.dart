@@ -292,3 +292,51 @@ class ProgressShareInviteResult {
       outcome == ProgressShareInviteOutcome.sent ||
       outcome == ProgressShareInviteOutcome.alreadyInvited;
 }
+
+/// Typed view over `getGymSharingAggregate`'s callable response
+/// (`functions/summaries.js`) — fixes a client-side-only k-anonymity gate.
+///
+/// Previously, `GymAnalyticsService.computeAnalytics` fetched every
+/// member's raw check-in timestamps directly (a separate, intentionally
+/// consent-independent read — see that service's own comment on why gym
+/// check-ins are legitimate owner-visible data) and computed this
+/// aggregate's two averages ITSELF, client-side, hiding them on-screen
+/// below [GymAnalyticsModel.kAnonymityThreshold] included members. That
+/// hiding was a UI decision only, not a server-enforced guarantee — a
+/// modified client could compute and show the same small-sample average
+/// regardless of count. This model's data now comes from a callable that
+/// computes the aggregate server-side and simply never includes the
+/// averages in its response below the threshold — there is nothing in
+/// [gated] `== true`'s response for a modified client to recover.
+class GymSharingAggregateResult {
+  final bool gated;
+  final int includedCount;
+  final double avgCheckInFrequencyPerWeek;
+  final double avgStreakWeeks;
+
+  const GymSharingAggregateResult({
+    required this.gated,
+    required this.includedCount,
+    this.avgCheckInFrequencyPerWeek = 0,
+    this.avgStreakWeeks = 0,
+  });
+
+  factory GymSharingAggregateResult.fromCallable(Map<dynamic, dynamic> data) {
+    return GymSharingAggregateResult(
+      gated: data['gated'] == true,
+      includedCount: (data['includedCount'] as num?)?.toInt() ?? 0,
+      avgCheckInFrequencyPerWeek:
+          (data['avgCheckInFrequencyPerWeek'] as num?)?.toDouble() ?? 0,
+      avgStreakWeeks: (data['avgStreakWeeks'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  /// Fail-closed default for a transient callable error — matches
+  /// `ProgressSharingService.getConsentingMemberUids`'s own fail-closed
+  /// (empty set, not "show everyone") discipline: a network hiccup must
+  /// never fall back to showing an aggregate.
+  static const gatedFallback = GymSharingAggregateResult(
+    gated: true,
+    includedCount: 0,
+  );
+}

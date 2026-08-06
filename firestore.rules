@@ -360,6 +360,42 @@ service cloud.firestore {
         && request.time < get(/databases/$(database)/documents/rate_limits/$(request.auth.uid)).data.get('appeal_locked_until', request.time);
     }
 
+    // SEC-12 — same pattern, six new kinds (functions/ugc_rate_limit.js).
+    // 'post'/'comment'/'reaction' budgets are each shared across more than
+    // one collection (top-level + gym-scoped posts/comments; reactions +
+    // likes + comment-likes) — one spam budget per user per ACTION KIND,
+    // not one per collection path.
+    function isPostRateLimited() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/rate_limits/$(request.auth.uid))
+        && request.time < get(/databases/$(database)/documents/rate_limits/$(request.auth.uid)).data.get('post_locked_until', request.time);
+    }
+    function isCommentRateLimited() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/rate_limits/$(request.auth.uid))
+        && request.time < get(/databases/$(database)/documents/rate_limits/$(request.auth.uid)).data.get('comment_locked_until', request.time);
+    }
+    function isMessageRateLimited() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/rate_limits/$(request.auth.uid))
+        && request.time < get(/databases/$(database)/documents/rate_limits/$(request.auth.uid)).data.get('message_locked_until', request.time);
+    }
+    function isGroupCreateRateLimited() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/rate_limits/$(request.auth.uid))
+        && request.time < get(/databases/$(database)/documents/rate_limits/$(request.auth.uid)).data.get('group_create_locked_until', request.time);
+    }
+    function isFollowRateLimited() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/rate_limits/$(request.auth.uid))
+        && request.time < get(/databases/$(database)/documents/rate_limits/$(request.auth.uid)).data.get('follow_locked_until', request.time);
+    }
+    function isReactionRateLimited() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/rate_limits/$(request.auth.uid))
+        && request.time < get(/databases/$(database)/documents/rate_limits/$(request.auth.uid)).data.get('reaction_locked_until', request.time);
+    }
+
     // Validate that only allowed fields are being written
     function hasNoExtraFields(allowedFields) {
       return request.resource.data.keys().hasOnly(allowedFields);
@@ -745,9 +781,22 @@ service cloud.firestore {
     // ─── Community Posts ─────────────────────────────────────────────────────
     match /posts/{postId} {
       allow read: if isAuthenticated();
+      // SEC-07 fix: this collection's optional `groupId` field (per
+      // community_service.dart's own comment, "enables group-scoped
+      // feeds") had NO group-membership check at all — unlike the parallel
+      // group-chat message path (canPostInGroup), which correctly enforces
+      // ban/mute/announcement-only. A banned/muted/never-joined user could
+      // post into ANY group's feed (including a kind:'gym' group) just by
+      // setting groupId on the payload. Mirrors canPostInGroup exactly when
+      // groupId is present; posts with no groupId (personal/public feed)
+      // are unaffected. SEC-12: rate-limited (shared 'post' budget with the
+      // gym-scoped posts rule below).
       allow create: if isAuthenticated()
         && request.resource.data.authorId == request.auth.uid
-        && request.resource.data.get('content', '').size() <= 5000;
+        && request.resource.data.get('content', '').size() <= 5000
+        && (request.resource.data.get('groupId', null) == null
+            || canPostInGroup(request.resource.data.groupId))
+        && !isPostRateLimited();
       // BLK-08: update was a denylist (only authorId/content/imageUrls/tags
       // blocked) so any authenticated user could write ANY other field —
       // groupId, is_announcement-style flags, metadata, timestamp, etc.
@@ -760,9 +809,17 @@ service cloud.firestore {
       // Comments
       match /comments/{commentId} {
         allow read: if isAuthenticated();
+        // SEC-07/SEC-12: if the parent post is group-scoped, the same
+        // membership bar as posting applies to commenting — a banned/
+        // muted/never-joined user has no legitimate standing to comment
+        // either. Rate-limited (shared 'comment' budget with the gym-scoped
+        // comments rule below).
         allow create: if isAuthenticated()
           && request.resource.data.authorId == request.auth.uid
-          && request.resource.data.get('content', '').size() <= 2000;
+          && request.resource.data.get('content', '').size() <= 2000
+          && (get(/databases/$(database)/documents/posts/$(postId)).data.get('groupId', null) == null
+              || canPostInGroup(get(/databases/$(database)/documents/posts/$(postId)).data.groupId))
+          && !isCommentRateLimited();
         // BLK-08: same denylist bug as the post-level rule above.
         allow update: if isAuthenticated()
           && (resource.data.authorId == request.auth.uid
@@ -770,10 +827,12 @@ service cloud.firestore {
         allow delete: if isAuthenticated()
           && resource.data.authorId == request.auth.uid;
 
-        // Comment likes
+        // Comment likes. SEC-12: create is rate-limited (shared 'reaction'
+        // budget with post likes/reactions below); un-liking is not.
         match /likes/{userId} {
           allow read: if isAuthenticated();
-          allow write: if isOwner(userId);
+          allow create: if isOwner(userId) && !isReactionRateLimited();
+          allow update, delete: if isOwner(userId);
         }
 
         // Faz 5 §5.2 — fully server-only bookkeeping: the cached content-
@@ -787,16 +846,19 @@ service cloud.firestore {
         }
       }
 
-      // Post likes
+      // Post likes. SEC-12: create is rate-limited (shared 'reaction'
+      // budget with post reactions and comment likes); un-liking is not.
       match /likes/{userId} {
         allow read: if isAuthenticated();
-        allow write: if isOwner(userId);
+        allow create: if isOwner(userId) && !isReactionRateLimited();
+        allow update, delete: if isOwner(userId);
       }
 
-      // Post reactions
+      // Post reactions. SEC-12: same shared 'reaction' budget.
       match /reactions/{userId} {
         allow read: if isAuthenticated();
-        allow write: if isOwner(userId);
+        allow create: if isOwner(userId) && !isReactionRateLimited();
+        allow update, delete: if isOwner(userId);
       }
 
       // Faz 5 §5.2 — post-level equivalent of the comment credit_progress
@@ -857,11 +919,13 @@ service cloud.firestore {
         allow read: if isAuthenticated()
           && (isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data)
               || canAccessGroupChat(get(/databases/$(database)/documents/chats/$(chatId)).data));
+        // SEC-12: rate-limited (functions/ugc_rate_limit.js).
         allow create: if isAuthenticated()
           && isValidNewMessage()
           && (isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data)
               || (isGroupBackedChat(get(/databases/$(database)/documents/chats/$(chatId)).data)
-                  && canPostInGroup(get(/databases/$(database)/documents/chats/$(chatId)).data.groupId)));
+                  && canPostInGroup(get(/databases/$(database)/documents/chats/$(chatId)).data.groupId)))
+          && !isMessageRateLimited();
         // Faz 2 §2.6: a group-backed chat's update additionally accepts a
         // moderator takedown of someone ELSE's message
         // (canModeratorDeleteMessage) — the only one of the three update
@@ -1079,10 +1143,14 @@ service cloud.firestore {
       // values when present; absent defaults to 'public'/'open' so every
       // pre-Faz-2.3 create call site (which never sends these fields) keeps
       // working unchanged.
+      // SEC-12: rate-limited (functions/ugc_rate_limit.js) — groups are
+      // created rarely in genuine use, so this is a pure anti-flood
+      // backstop, not a real constraint on any real workflow.
       allow create: if isAuthenticated()
         && (request.resource.data.owner_uid == request.auth.uid || isAdmin())
         && request.resource.data.get('kind', 'public') in ['public', 'private', 'gym']
-        && request.resource.data.get('join_policy', 'open') in ['open', 'request', 'invite'];
+        && request.resource.data.get('join_policy', 'open') in ['open', 'request', 'invite']
+        && !isGroupCreateRateLimited();
       // Owner/admin can edit freely; any member may bump only the counter
       // fields (member_count / last_activity_at) on join/leave/post, and
       // member_count only by ±1 per write (canUpdateGroupCounters). A
@@ -1369,9 +1437,20 @@ service cloud.firestore {
       match /posts/{postId} {
         // Any authenticated user can read posts
         allow read: if isAuthenticated();
-        // Any authenticated user can create a post (membership enforced app-side)
+        // SEC-07 fix: this used to say "membership enforced app-side," but
+        // GymPostService.createPost() (lib/core/services/gym_post_service.dart)
+        // performs no membership check at all — at most a UI-level
+        // affordance, trivially bypassed by any direct write. Also had no
+        // content-length cap at all (contrast the top-level posts/{postId}
+        // rule's 5000-char cap). isGymMember() mirrors this file's own
+        // existing helper (used for the gym leaderboard read gate) rather
+        // than inventing new logic. SEC-12: rate-limited (shared 'post'
+        // budget with the top-level posts rule above).
         allow create: if isAuthenticated()
-          && request.resource.data.author_uid == request.auth.uid;
+          && request.resource.data.author_uid == request.auth.uid
+          && isGymMember(gymId)
+          && request.resource.data.get('content', '').size() <= 5000
+          && !isPostRateLimited();
         // Author can update their own post content; owner can update any field;
         // any authenticated user can update like/comment counters only (BLK-08:
         // was a denylist that let anyone flip is_announcement/is_pinned too).
@@ -1386,8 +1465,14 @@ service cloud.firestore {
         // Post comments
         match /comments/{commentId} {
           allow read: if isAuthenticated();
+          // SEC-07/SEC-12: same fix as the parent posts rule above — was
+          // missing membership + a length cap entirely; now rate-limited
+          // (shared 'comment' budget with the top-level comments rule).
           allow create: if isAuthenticated()
-            && request.resource.data.author_uid == request.auth.uid;
+            && request.resource.data.author_uid == request.auth.uid
+            && isGymMember(gymId)
+            && request.resource.data.get('content', '').size() <= 2000
+            && !isCommentRateLimited();
           allow update: if isAuthenticated()
             && resource.data.author_uid == request.auth.uid;
           allow delete: if isAuthenticated()
@@ -1420,15 +1505,21 @@ service cloud.firestore {
       // 'qr' method is now written only by validateGymCheckin (Admin SDK,
       // bypasses this rule) — this create rule still gates the 'gps'/
       // 'manual' paths, which remain direct client writes (Faz 1.5).
+      // SEC-08 fix: this create rule only ever checked uid/timestamp/method
+      // shape — no membership check at all, and for 'gps'/'manual' no
+      // server-side proximity check either (the client computed Haversine
+      // itself and self-reported "close enough"). Both real client
+      // check-in paths (QR, GPS) now go through validateGymCheckin/
+      // validateGymGpsCheckin (functions/gym.js) — membership + (for GPS)
+      // distance recompute server-side, Admin SDK is the only writer.
+      // 'manual' had no client entry point already (Faz 0 §0.7); a future
+      // front-desk flow would need its own callable too, not a rules
+      // exemption.
       match /checkins/{checkinId} {
         allow read: if isAuthenticated()
           && (get(/databases/$(database)/documents/gyms/$(gymId)).data.owner_uid == request.auth.uid
               || request.auth.uid == resource.data.uid);
-        allow create: if isAuthenticated()
-          && request.resource.data.uid == request.auth.uid
-          && request.resource.data.timestamp == request.time
-          && request.resource.data.method in ['qr', 'gps', 'manual'];
-        allow update, delete: if false;
+        allow create, update, delete: if false;
       }
 
       // Faz 1 §1.4: live gym-presence doc, doc id == the member's own uid.
@@ -1550,11 +1641,17 @@ service cloud.firestore {
     match /programs/{programId} {
       // Any authenticated user can browse published programs
       allow read: if isAuthenticated();
-      // Coach creates their own programs; 'demo' coach_uid is reserved for the
-      // DemoContentSeeder which writes demo marketplace content on first install.
+      // BLK-09 fix: coach_uid == 'demo' used to be a client-writable bypass
+      // ("reserved for the DemoContentSeeder") — but a rule can never tell
+      // "the real seeder" apart from "an attacker copying the same write";
+      // both are ordinary authenticated writes with an identical shape, and
+      // every OTHER field (title, description, coach_name: 'Cookrange
+      // Team', ...) was fully attacker-controlled. Demo content is now
+      // seeded server-side only, via the seedDemoContent callable
+      // (functions/demo_content.js, Admin SDK) — a coach can only ever
+      // create a program under their OWN uid.
       allow create: if isAuthenticated()
-        && (request.resource.data.coach_uid == request.auth.uid
-            || request.resource.data.coach_uid == 'demo');
+        && request.resource.data.coach_uid == request.auth.uid;
       // Owning coach can update/delete; admin can update status (approve/reject).
       allow update: if isAuthenticated()
         && (resource.data.coach_uid == request.auth.uid || isAdmin());
@@ -1562,12 +1659,13 @@ service cloud.firestore {
         && resource.data.coach_uid == request.auth.uid;
 
       // Week content subcollection — any enrolled user or owner may read.
-      // Writes restricted to the owning coach or demo seeder.
+      // Writes restricted to the owning coach — see the BLK-09 fix above;
+      // the same reasoning applies here (demo week content is seeded
+      // server-side by the same callable, never client-direct).
       match /weeks/{weekId} {
         allow read: if isAuthenticated();
         allow write: if isAuthenticated()
-          && (get(/databases/$(database)/documents/programs/$(programId)).data.coach_uid == request.auth.uid
-              || get(/databases/$(database)/documents/programs/$(programId)).data.coach_uid == 'demo');
+          && get(/databases/$(database)/documents/programs/$(programId)).data.coach_uid == request.auth.uid;
       }
     }
 
@@ -1623,9 +1721,15 @@ service cloud.firestore {
     // Used by client-side seeders (DemoContentSeeder, etc.) to record completed
     // seed runs. Any authenticated user may read or write — the seeder checks the
     // flag before writing, so this is safe to leave open to authenticated clients.
+    // BLK-09 fix: `seeds/demo` used to be client-writable (the old
+    // DemoContentSeeder set its own completion marker directly) — now
+    // written only by the seedDemoContent callable (Admin SDK). No client
+    // needs to read it either: the callable is unconditionally invoked on
+    // every app start and decides internally whether there's anything left
+    // to seed, exactly like app_config's admin-write lockdown elsewhere in
+    // this file.
     match /seeds/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if false;
     }
 
     // Program enrollments: owner-only
@@ -1848,13 +1952,18 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // ─── Admin Config (feature flags + maintenance + AI model) ───────────────
-    // Admin reads/writes; app reads only maintenance_mode and min_version via
-    // admin_status_service (Firestore-first, RC fallback). No user access.
-    match /admin_config/{docId} {
-      allow read: if isAuthenticated() && isAdmin();
-      allow write: if isAuthenticated() && isAdmin();
-    }
+    // Faz A §A9 — `admin_config/{docId}` rule REMOVED. The collection was an
+    // orphaned second config surface next to app_config/*: its only writer
+    // (AdminService.updateAdminConfig) had zero callers (deleted alongside
+    // this rule), and this rule's own comment — claiming
+    // admin_status_service read maintenance_mode/min_version from here —
+    // was stale; that service actually reads Firebase Remote Config, never
+    // this collection. No matching rule now = denied by default, matching
+    // this file's own "no catch-all" discipline elsewhere (see app_config/*
+    // above). `settings/content_filter` (unaffected, unrelated rule further
+    // up) is where the one real value this ever held —
+    // `blocked_keywords` — now lives, written by the `updateContentFilter`
+    // callable.
 
     // ─── Broadcasts (admin push + in-app announcements) ───────────────────────
     // Admins create and read; Cloud Functions update status/counts; nobody deletes.
@@ -1883,23 +1992,40 @@ service cloud.firestore {
 
     // ─── Coach Reviews ────────────────────────────────────────────────────────
     // Path: coach_profiles/{coachUid}/reviews/{reviewerUid}
-    // Linked clients create one review (doc id = reviewerUid); all authenticated
-    // users read; reviews are immutable once submitted (no update/delete).
+    // Linked clients create one review (doc id = reviewerUid, so Firestore's
+    // own create-only-if-absent semantics already block a second review from
+    // the same reviewer); all authenticated users read; reviews are immutable
+    // once submitted (no update/delete).
+    //
+    // SEC-09 fix: this comment always said "linked clients create one
+    // review," but nothing below actually checked the linkage — only
+    // CoachReviewService.canReview() did, client-side (lib/core/services/
+    // coach_review_service.dart), which a direct API/SDK write bypasses
+    // entirely. The exists() check mirrors canReview()'s own bar exactly
+    // (existence of coach_profiles/{coachUid}/clients/{reviewerUid}, no
+    // status filter) — matching the app's own already-established
+    // definition of "eligible to review" rather than inventing a stricter
+    // one that would reject a review the client UI thought was allowed.
     match /coach_profiles/{coachUid}/reviews/{reviewerUid} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated()
         && request.auth.uid == reviewerUid
         && request.resource.data.reviewerUid == reviewerUid
         && request.resource.data.rating >= 1
-        && request.resource.data.rating <= 5;
+        && request.resource.data.rating <= 5
+        && exists(/databases/$(database)/documents/coach_profiles/$(coachUid)/clients/$(reviewerUid));
       allow update, delete: if false;
     }
 
     // ─── Follow relationships ─────────────────────────────────────────────────
     // Following list: owner writes their own; any authenticated user reads.
+    // SEC-12: create is rate-limited (functions/ugc_rate_limit.js) — delete
+    // (unfollowing) is deliberately NOT limited, mirroring how every other
+    // rate limit in this file gates content CREATION, never its removal.
     match /users/{uid}/following/{targetUid} {
       allow read: if isAuthenticated();
-      allow create, delete: if isOwner(uid);
+      allow create: if isOwner(uid) && !isFollowRateLimited();
+      allow delete: if isOwner(uid);
       allow update: if false;
     }
 
@@ -1933,18 +2059,85 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // ─── Remote app config (admin-editable settings) ─────────────────────────
-    // Public-read so every client can load it on launch; admin-only write.
-    // Holds NO secrets (model names/limits/flags/URLs only).
-    match /app_config/{doc} {
+    // ─── Remote app config — Faz A §A2/§A5 audience-split + write lockdown ───
+    // Each doc's read audience is the ONLY thing distinguishing it —
+    // `critical` (kill-switches/maintenance/version/announcement/rollout) is
+    // public so a logged-out client can still see maintenance mode and the
+    // pre-auth onboarding fields (min age, referral-code TTL); `client` needs
+    // auth because it also carries AI quota numbers; `server` (commission
+    // rates, XP tables, anti-abuse thresholds, model pricing) is admin-only —
+    // publishing THOSE would hand out a printed manual for evading every
+    // anti-abuse threshold in the product (PLAN.md Faz A's own context §5).
+    //
+    // ALL THREE are write:false — no client, admin included, writes here
+    // directly anymore. functions/app_config_admin.js's updateAppConfig
+    // callable (Admin SDK, bypasses these rules entirely) is the only path
+    // in: it validates every key against config_schema.json, enforces
+    // cross-field invariants, rate-limits writes, and audits every change.
+    // A blanket `allow write: if isAdmin()` — the OLD rule — accepted any
+    // shape from any admin; with ~120 settings including money and
+    // anti-abuse thresholds now living here, that is no longer defensible.
+    //
+    // No catch-all `match /app_config/{doc}` — Firestore grants a request if
+    // ANY matching rule allows it, so a catch-all could never DENY anything;
+    // its absence is what makes an unmatched/mistyped doc id (including the
+    // legacy `global` below) deny-by-default rather than silently permissive.
+    match /app_config/critical {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if false;
+    }
+    match /app_config/client {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+    match /app_config/server {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // ─── Remote app config — LEGACY doc, Faz A transition period ─────────────
+    // `app_config/global` is the pre-migration doc — still the ACTIVE one
+    // until Faz A §A8 Faz 3 seeds real data into critical/client/server
+    // above. Read stays public (unchanged behavior for the current
+    // production client). Write is ALSO locked to false, matching the three
+    // docs above: the whole point of this phase is that nobody writes
+    // app_config/* directly anymore, this doc included. See PLAN.md's own
+    // note on deploy ordering — this doc's write lockdown and the new
+    // callable's rollout must not leave a window with no admin path to
+    // change config at all.
+    match /app_config/global {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ─── Config change history — Faz A §A6, immutable, admin-readable only ───
+    // Written exclusively by updateAppConfig/rollbackAppConfig (Admin SDK).
+    match /app_config_versions/{versionId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     // ─── Admin roles (the real admin gate; server/console-written) ───────────
     // `admin_roles/{uid}.is_admin == true` grants admin. Owner may read own;
     // never client-writable (self-grant would be privilege escalation).
     match /admin_roles/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // ─── Fine-grained admin permissions (DECISIONS.md ADR-024, M1.4) ─────────
+    // Layers ON TOP of admin_roles above, does not replace it: admin_roles/
+    // the `admin` custom claim it mirrors is still the coarse "is this account
+    // an admin at all" gate every callable already checks. This doc answers
+    // the narrower "which of cookrange-admin's screens/actions can THIS admin
+    // reach" question — role + per-uid grants/denials, read by the web admin
+    // panel's server-side requireAdmin() helper via the Admin SDK (which
+    // bypasses these rules entirely). The rule below exists only to keep
+    // every OTHER client (the Flutter app, a browser devtools session) from
+    // reading or forging it directly — same console/Admin-SDK-only posture
+    // as admin_roles, for the same reason (self-grant would be privilege
+    // escalation).
+    match /admin_users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
       allow write: if false;
     }

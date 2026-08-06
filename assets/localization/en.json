@@ -2311,6 +2311,7 @@
     "checkin_invalid_qr": "Invalid or expired QR code",
     "checkin_gps_error": "Could not verify your location",
     "checkin_gps_too_far": "You're too far from the gym",
+    "checkin_rate_limited": "Too many check-in attempts — please try again shortly",
     "checkin_generate_qr": "Generate QR Code",
     "checkin_regenerate_qr": "Regenerate QR",
     "checkin_qr_expires": "Expires in",

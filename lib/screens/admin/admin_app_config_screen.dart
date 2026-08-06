@@ -7,12 +7,19 @@ import '../../core/services/admin_service.dart';
 import '../../core/services/app_config_service.dart';
 import '../../core/widgets/ds/ds.dart';
 
-/// Admin-only editor for the remote app config (`app_config/global`).
+/// Admin-only editor for the remote app config (`app_config/{critical,
+/// client,server}` — Faz A Faz 4; was a single direct `app_config/global`
+/// write, now routed through the `updateAppConfig` callable per doc, since
+/// firestore.rules denies every direct `app_config/*` write unconditionally).
 ///
-/// Loads the current nested config on init, exposes each section as an
-/// [AppCard] of controls, and writes a merge patch back via
-/// [AdminService.updateAppConfig] — then refreshes [AppConfigService] so
-/// changes take effect immediately for the running client.
+/// Loads the current merged config on init, exposes each section as an
+/// [AppCard] of controls, prompts for a reason, and writes a per-doc patch
+/// back via [AdminService.updateAppConfig] — then refreshes
+/// [AppConfigService] so changes take effect immediately for the running
+/// client. Predates `config_schema.json`'s `rollout`/`limits` groups (does
+/// not edit them) — this is the stopgap Faz B7 slates for full deletion
+/// once the real web admin panel (DECISIONS.md ADR-024) ships, not a rebuild
+/// target for that broader coverage.
 class AdminAppConfigScreen extends StatefulWidget {
   const AdminAppConfigScreen({super.key});
 
@@ -29,8 +36,6 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
   final _aiTimeoutCtrl = TextEditingController();
   final _aiFreeLimitCtrl = TextEditingController();
   final _aiPremiumLimitCtrl = TextEditingController();
-  bool _aiPhotoEnabled = true;
-  bool _aiRecapEnabled = true;
 
   // ── Version ─────────────────────────────────────────────────────────────
   final _verMinAndroidCtrl = TextEditingController();
@@ -81,6 +86,14 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
     'gym_invite_codes',
     // Faz 6 §6.5/§6.6 — attribution funnel stats + gym earnings screen.
     'gym_attribution',
+    // Faz A Faz 4 — REPLACE ai.photo_analysis_enabled/weekly_recap_enabled
+    // below: those two fields had zero readers anywhere in the app (the
+    // real gate has always been this features.* map, via
+    // AppConfig.isFeatureEnabled) — confirmed dead, folded in here instead
+    // of kept as a second, non-functional toggle. See
+    // config_schema.json's features.photo_analysis/weekly_recap notes.
+    'photo_analysis',
+    'weekly_recap',
   ];
   final Map<String, bool> _features = {};
 
@@ -161,8 +174,6 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
     _aiTimeoutCtrl.text = _str(ai['timeout_s']);
     _aiFreeLimitCtrl.text = _str(ai['free_daily_limit']);
     _aiPremiumLimitCtrl.text = _str(ai['premium_daily_limit']);
-    _aiPhotoEnabled = ai['photo_analysis_enabled'] as bool? ?? true;
-    _aiRecapEnabled = ai['weekly_recap_enabled'] as bool? ?? true;
 
     final version = _mapOf(cfg['version']);
     _verMinAndroidCtrl.text = _str(version['min_supported_android']);
@@ -227,8 +238,6 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
     _putInt(ai, 'timeout_s', _aiTimeoutCtrl.text);
     _putInt(ai, 'free_daily_limit', _aiFreeLimitCtrl.text);
     _putInt(ai, 'premium_daily_limit', _aiPremiumLimitCtrl.text);
-    ai['photo_analysis_enabled'] = _aiPhotoEnabled;
-    ai['weekly_recap_enabled'] = _aiRecapEnabled;
 
     final updateMessage = <String, dynamic>{};
     _putStr(updateMessage, 'en', _verMsgEnCtrl.text);
@@ -279,14 +288,60 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
     };
   }
 
+  /// [AdminService.updateAppConfig] forwards this to the `updateAppConfig`
+  /// Cloud Function callable, which requires >=10 chars for any `sensitive`
+  /// field — enforced here too so a save never round-trips just to fail on
+  /// that. Not localized (see [AdminService.updateAppConfig]'s own doc
+  /// comment: this screen predates and isn't part of any localization
+  /// pass — matches its actual, already-unlocalized `admin.appconfig.*`
+  /// strings rather than adding one partially-localized dialog to an
+  /// otherwise-unlocalized screen).
+  Future<String?> _promptForReason() {
+    final ctrl = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final trimmedLength = ctrl.text.trim().length;
+          return AlertDialog(
+            title: const Text('Değişiklik nedeni'),
+            content: TextField(
+              controller: ctrl,
+              autofocus: true,
+              maxLines: 3,
+              onChanged: (_) => setDialogState(() {}),
+              decoration: const InputDecoration(
+                hintText: 'Bu değişikliği neden yapıyorsunuz? (en az 10 karakter)',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('İptal'),
+              ),
+              TextButton(
+                onPressed: trimmedLength < 10
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(ctrl.text.trim()),
+                child: const Text('Kaydet'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _save() async {
     if (_saving) return;
+    final reason = await _promptForReason();
+    if (reason == null || !mounted) return;
     setState(() => _saving = true);
     final l10n = AppLocalizations.of(context);
     try {
       final patch = _buildPatch();
       debugPrint('AdminAppConfigScreen: saving patch keys=${patch.keys}');
-      await AdminService().updateAppConfig(patch);
+      await AdminService().updateAppConfig(patch, reason: reason);
       await AppConfigService().refresh();
       if (!mounted) return;
       AppSnackBar.success(context, l10n.translate('admin.appconfig.saved'));
@@ -374,10 +429,6 @@ class _AdminAppConfigScreenState extends State<AdminAppConfigScreen> {
                 l10n.translate('admin.appconfig.ai_free_limit')),
             _numField(_aiPremiumLimitCtrl,
                 l10n.translate('admin.appconfig.ai_premium_limit')),
-            _switch(l10n.translate('admin.appconfig.ai_photo'), _aiPhotoEnabled,
-                (v) => setState(() => _aiPhotoEnabled = v), palette, t),
-            _switch(l10n.translate('admin.appconfig.ai_recap'), _aiRecapEnabled,
-                (v) => setState(() => _aiRecapEnabled = v), palette, t),
           ],
         ),
         // ── Version ───────────────────────────────────────────────

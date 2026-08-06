@@ -1,4 +1,5 @@
-/// Remote, admin-editable application configuration (`app_config/global`).
+/// Remote, admin-editable application configuration (`app_config/global`,
+/// `app_config/client`, `app_config/critical` — see [AppConfigService]).
 ///
 /// Fetched once per session and cached (see [AppConfigService]). Every field
 /// falls back to a safe default so a missing/partial/corrupt doc can NEVER
@@ -6,6 +7,8 @@
 /// names, limits, flags, URLs. Money-touching values are ALSO enforced
 /// server-side (`aiProxy`); the client copy is advisory.
 library;
+
+import '../config/app_config_defaults.g.dart';
 
 /// Small helper for a `{en: ..., tr: ...}` localized string map stored in config.
 class LocalizedText {
@@ -39,6 +42,16 @@ String _str(dynamic v, String d) => v is String && v.isNotEmpty ? v : d;
 Map<String, dynamic> _map(dynamic v) =>
     v is Map ? v.map((k, val) => MapEntry('$k', val)) : const {};
 
+/// The schema-declared default for a bool-typed dotted key
+/// (`kConfigDefaults`, generated from `functions/config_schema.json`), or
+/// `false` if the key isn't in the schema at all or isn't bool-typed —
+/// never a blanket `true`. See [AppConfig.isFeatureEnabled]'s doc comment
+/// for why this fail-CLOSED direction is the fix, not the bug.
+bool _boolSchemaDefault(String key) {
+  final v = kConfigDefaults[key];
+  return v is bool ? v : false;
+}
+
 // ─── AI ───────────────────────────────────────────────────────────────────
 class AiConfig {
   final String textModel;
@@ -49,6 +62,7 @@ class AiConfig {
   final double temperature;
   final int timeoutS;
   final int maxRetries;
+  final int retryDelayS;
   final List<String> allowedModels;
   final int freeDailyLimit;
   final int premiumDailyLimit;
@@ -67,9 +81,18 @@ class AiConfig {
     this.temperature = 0.7,
     this.timeoutS = 90,
     this.maxRetries = 3,
+    this.retryDelayS = 2,
     this.allowedModels = const [],
-    this.freeDailyLimit = 5,
-    this.premiumDailyLimit = 50,
+    // Faz A Faz 0 — RESOLVED DRIFT: this used to say 5/50, but the server
+    // (functions/index.js's FREE_DAILY_LIMIT/PREMIUM_DAILY_LIMIT) and
+    // AiCreditModel both already enforce/display 2/20 — the server value
+    // is what's actually charged against, so it's the correct default, not
+    // the old one. See functions/config_schema.json's
+    // ai.free_daily_limit/premium_daily_limit entries and
+    // functions/test/config_schema_defaults.test.js's explicit assertion
+    // of this exact resolution.
+    this.freeDailyLimit = 2,
+    this.premiumDailyLimit = 20,
     this.photoAnalysisEnabled = true,
     this.weeklyRecapEnabled = true,
     this.fitnessTwinEnabled = true,
@@ -91,6 +114,7 @@ class AiConfig {
       temperature: _dbl(m['temperature'], d.temperature),
       timeoutS: _int(m['timeout_s'], d.timeoutS),
       maxRetries: _int(m['max_retries'], d.maxRetries),
+      retryDelayS: _int(m['retry_delay_s'], d.retryDelayS),
       allowedModels: (m['allowed_models'] is List)
           ? List<String>.from((m['allowed_models'] as List).map((e) => '$e'))
           : d.allowedModels,
@@ -212,8 +236,37 @@ class AppConfig {
     this.fetchedAt,
   });
 
-  /// A feature is enabled unless explicitly disabled (default-on, fail-safe).
-  bool isFeatureEnabled(String key) => features[key] ?? true;
+  /// Faz A Faz 1 — FIXES THE FAIL-OPEN BUG this whole config migration
+  /// exists to close. The old body was `features[key] ?? true` — a BLANKET
+  /// default-on, meaning every kill-switch (including `gym`/`coach`,
+  /// documented by ADR-012 as deferred-behind-a-switch) was silently always
+  /// enabled whenever the doc was missing, a field was absent, or the app
+  /// was in the first frames of a cold start before the background refresh
+  /// landed. Two independent audits this session confirmed gym/coach were
+  /// live in production for exactly this reason.
+  ///
+  /// The fix: an explicit admin override in [features] still wins (an
+  /// admin's decision is never second-guessed by a fallback). Absent that,
+  /// the fallback is the SCHEMA's own per-key declared default
+  /// (`functions/config_schema.json`'s `features.*` entries, generated into
+  /// [kConfigDefaults]) — NOT a blanket literal. A key that isn't even in
+  /// the schema (a typo, a future/removed flag) defaults to **disabled**,
+  /// per PLAN.md §A4's "bilinmeyen anahtar kapalı."
+  ///
+  /// K5: every currently-shipped feature key's schema default is `true` —
+  /// so today's user-visible behavior is UNCHANGED (gym/coach/programs/etc.
+  /// stay exactly as visible as they are right now). What changes is the
+  /// MECHANISM: that visibility is now a recorded, deliberate schema
+  /// decision instead of an accident of a missing-value fallback, and it is
+  /// now possible to actually kill a switch by writing `false` — which the
+  /// old `?? true` could never honor for an ABSENT key in the first place
+  /// (that path only mattered for a key present with a non-bool value).
+  bool isFeatureEnabled(String key) {
+    final explicit = features[key];
+    if (explicit != null) return explicit;
+    final schemaDefault = kConfigDefaults['features.$key'];
+    return schemaDefault is bool ? schemaDefault : false;
+  }
 
   int limit(String key, int fallback) => limits[key] ?? fallback;
 
@@ -224,7 +277,16 @@ class AppConfig {
       version: VersionConfig.fromMap(_map(m['version'])),
       maintenance: MaintenanceConfig.fromMap(_map(m['maintenance'])),
       announcement: AnnouncementConfig.fromMap(_map(m['announcement'])),
-      features: _map(m['features']).map((k, v) => MapEntry(k, _bool(v, true))),
+      // Faz A Faz 1 — same fix as isFeatureEnabled above, applied one layer
+      // deeper: a PRESENT key whose value is null or a non-bool garbage
+      // type (e.g. an admin wrote `features.gym: null`) must fall back to
+      // THIS key's schema default, not a blanket `true` — otherwise
+      // isFeatureEnabled's `explicit != null` check would see the coercer's
+      // own fail-open `true` here and never reach its schema-default
+      // fallback at all.
+      features: _map(m['features']).map(
+        (k, v) => MapEntry(k, _bool(v, _boolSchemaDefault('features.$k'))),
+      ),
       rollout: _map(m['rollout']).map((k, v) => MapEntry(k, _int(v, 100))),
       limits: _map(m['limits']).map((k, v) => MapEntry(k, _int(v, 0))),
       aiProxyUrl: _str(_map(m['endpoints'])['ai_proxy_url'], ''),

@@ -14,6 +14,7 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const { getConfig } = require('./app_config');
 
 let visionClient = null;
 try {
@@ -37,21 +38,37 @@ const UNSAFE = ['LIKELY', 'VERY_LIKELY'];
 
 // HARD cost ceiling: never call Cloud Vision more than this many times per day,
 // no matter the upload volume or abuse. Tune via VISION_DAILY_CAP in
-// functions/.env. At ~$1.5 / 1000 images, a cap of 1000/day bounds worst-case
-// spend to roughly $1.5/day.
-const VISION_DAILY_CAP = parseInt(process.env.VISION_DAILY_CAP || '1000', 10);
+// functions/.env, or (Faz A Faz 4) app_config/server's `media.vision_daily_cap`
+// — the live config value takes priority once seeded, admin-editable without
+// an env-var redeploy; the env var stays as the next fallback tier, then this
+// literal. At ~$1.5 / 1000 images, a cap of 1000/day bounds worst-case spend
+// to roughly $1.5/day.
+const VISION_DAILY_CAP_DEFAULT = parseInt(process.env.VISION_DAILY_CAP || '1000', 10);
+
+// Faz A (config migration) — see index.js's identical comment. Placed here
+// (before first use) rather than at file end since this module has no
+// existing exports block to append to.
+module.exports.VISION_DAILY_CAP = VISION_DAILY_CAP_DEFAULT;
+
+/** Live app_config/server `media.vision_daily_cap`, or the fallback chain. */
+async function liveVisionDailyCap() {
+  const cfg = await getConfig();
+  const v = cfg && cfg.media && cfg.media.vision_daily_cap;
+  return typeof v === 'number' ? v : VISION_DAILY_CAP_DEFAULT;
+}
 
 /// Returns true if today's scan count is under the cap (and reserves one slot).
 async function underDailyCap() {
   const db = admin.firestore();
   const ref = db.collection('system').doc('vision_usage');
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+  const cap = await liveVisionDailyCap();
   try {
     return await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       const d = snap.exists ? snap.data() || {} : {};
       const count = d.date === today ? d.count || 0 : 0;
-      if (count >= VISION_DAILY_CAP) return false;
+      if (count >= cap) return false;
       tx.set(ref, { date: today, count: count + 1 }, { merge: true });
       return true;
     });

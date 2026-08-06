@@ -19,6 +19,8 @@ import '../models/gym_application_model.dart';
 import '../models/gym_model.dart';
 import '../models/user_model.dart';
 import '../data/test_data_library.dart';
+import '../config/app_config_schema.g.dart';
+import '../utils/deep_merge.dart';
 import 'firestore_service.dart';
 import 'test_mode_service.dart';
 
@@ -856,23 +858,93 @@ class AdminService {
     ));
   }
 
-  /// Reads the current remote app config (`app_config/global`) for editing.
+  /// Reads the current remote app config, merged from `app_config/critical`
+  /// + `client` + `server` — Faz A Faz 4. Replaces the old direct read
+  /// against the now-frozen legacy `app_config/global` doc: Faz 3 seeded
+  /// real values into the three schema-driven docs, and nothing writes
+  /// `global` anymore, so reading it here would show stale data. An admin's
+  /// own Firestore read permissions already cover all three (critical/
+  /// client: broader; server: `isAdmin()`), so no callable is needed for
+  /// the read side — only writes are gated (see [updateAppConfig] below).
   Future<Map<String, dynamic>> getAppConfig() async {
-    final snap = await _db.collection('app_config').doc('global').get();
-    return snap.data() ?? {};
+    final snaps = await Future.wait([
+      _db.collection('app_config').doc('critical').get(),
+      _db.collection('app_config').doc('client').get(),
+      _db.collection('app_config').doc('server').get(),
+    ]);
+    return deepMergeMaps(snaps.map((s) => s.data() ?? <String, dynamic>{}).toList());
   }
 
-  /// Merges [patch] into `app_config/global` (admin-only per rules) + audits.
-  Future<void> updateAppConfig(Map<String, dynamic> patch) async {
-    await _db
-        .collection('app_config')
-        .doc('global')
-        .set(patch, SetOptions(merge: true));
-    await logAuditAction(
-      action: 'update_app_config',
-      targetUid: 'app_config/global',
-      metadata: {'keys': patch.keys.toList()},
-    );
+  /// Splits [patch] — the screen's flat, nested shape (`{'ai': {...},
+  /// 'version': {...}, ...}`, matching `config_schema.json`'s own dotted-key
+  /// sections) — into per-key dotted entries, routes each to its
+  /// schema-declared doc via [kConfigSchema], and issues one
+  /// `updateAppConfig` callable call per doc that has at least one changed
+  /// key. Faz A Faz 4: replaces the old direct `app_config/global`
+  /// merge-write — firestore.rules denies that unconditionally as of the
+  /// Faz 2 callable lockdown (`app_config/*` is `write: if false` for
+  /// everyone, admin included); `updateAppConfig`
+  /// (functions/app_config_admin.js) is the only remaining write path.
+  ///
+  /// [reason] is required and forwarded as-is (the callable enforces
+  /// >=10 chars for any `sensitive` field). `confirm`/`force` are passed
+  /// unconditionally on every call rather than trying to detect per-field
+  /// sensitivity or change-size client-side — this screen has no UI for
+  /// either, and the real safety net here is the audit trail + version
+  /// history the callable itself writes on every call, not a client-side
+  /// confirmation dialog (that richer UX belongs to the real web admin
+  /// panel, DECISIONS.md ADR-024 — this screen is a stopgap Faz B7 slates for
+  /// full deletion once that panel ships, not a rebuild target).
+  ///
+  /// A per-doc call failing (schema validation, a cross-field invariant)
+  /// throws and stops there — any doc already written in this same
+  /// invocation stays written; this is a deliberate, accepted change from
+  /// the old single-doc atomic write, since splitting across 3
+  /// independently-validated docs has no atomic multi-doc callable to lean
+  /// on without a materially larger change than this fix's scope.
+  Future<void> updateAppConfig(
+    Map<String, dynamic> patch, {
+    required String reason,
+  }) async {
+    final keyToDoc = {for (final f in kConfigSchema) f.key: f.doc.name};
+    final byDoc = <String, Map<String, dynamic>>{
+      'critical': {},
+      'client': {},
+      'server': {},
+    };
+
+    void flatten(String prefix, Map<String, dynamic> node) {
+      for (final entry in node.entries) {
+        final key = prefix.isEmpty ? entry.key : '$prefix.${entry.key}';
+        final value = entry.value;
+        final doc = keyToDoc[key];
+        if (doc != null) {
+          // A known schema leaf — even if its own value happens to be a Map
+          // (e.g. version.update_message: {en, tr}), it's the VALUE for
+          // this one dotted key, not a section to recurse into further.
+          byDoc[doc]![key] = value;
+        } else if (value is Map) {
+          flatten(key, Map<String, dynamic>.from(value));
+        }
+        // Neither a known key nor a Map to descend into — not a real
+        // schema field (shouldn't happen from this screen's own
+        // schema-shaped patch); silently dropped rather than sent to a
+        // callable that would reject it anyway.
+      }
+    }
+
+    flatten('', patch);
+
+    for (final entry in byDoc.entries) {
+      if (entry.value.isEmpty) continue;
+      await FirebaseFunctions.instance.httpsCallable('updateAppConfig').call({
+        'doc': entry.key,
+        'patch': entry.value,
+        'reason': reason,
+        'confirm': true,
+        'force': true,
+      });
+    }
   }
 
   Stream<List<Map<String, dynamic>>> auditLogStream() {
@@ -1034,48 +1106,15 @@ class AdminService {
   }
 
   // ── Admin Config ───────────────────────────────────────────────────────────
-
-  Stream<Map<String, dynamic>?> adminConfigStream() {
-    return _db
-        .collection('admin_config')
-        .doc('global')
-        .snapshots()
-        .map((d) => d.exists ? d.data() : null)
-        .handleError((Object e) {
-      debugPrint('AdminService: adminConfigStream error — $e');
-    });
-  }
-
-  Future<void> updateAdminConfig(Map<String, dynamic> updates) async {
-    final adminUid = _auth.currentUser?.uid ?? '';
-    debugPrint(
-        'AdminService: updateAdminConfig keys=${updates.keys.join(",")}');
-    await _db.collection('admin_config').doc('global').set(
-      {
-        ...updates,
-        'updated_at': FieldValue.serverTimestamp(),
-        'updated_by': adminUid,
-      },
-      SetOptions(merge: true),
-    );
-    // Mirror the moderation word-list to a PUBLIC-read settings doc, because
-    // admin_config is admin-read-only — the client content filter (all users)
-    // must read the list from somewhere they can access.
-    if (updates.containsKey('blocked_keywords')) {
-      await _db.collection('settings').doc('content_filter').set(
-        {
-          'blocked_keywords': updates['blocked_keywords'],
-          'updated_at': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-    }
-    await logAuditAction(
-      action: 'update_admin_config',
-      targetUid: adminUid,
-      metadata: {'keys': updates.keys.toList()},
-    );
-  }
+  // Faz A §A9 — `adminConfigStream()`/`updateAdminConfig()` deleted: zero
+  // callers anywhere in lib/ (re-confirmed directly before deletion), and
+  // `admin_config/global` was an orphaned second config surface next to
+  // app_config/*. Its one real, live effect — mirroring `blocked_keywords`
+  // into the PUBLIC `settings/content_filter` doc that
+  // community_service.dart actually reads — moved to a working writer:
+  // the `updateContentFilter` callable (functions/app_config_admin.js),
+  // on the same admin/audit/rate-limit path as the rest of app_config's
+  // write side, rather than through this now-deleted, never-called method.
 
   // ── AI Credits Admin ───────────────────────────────────────────────────────
 

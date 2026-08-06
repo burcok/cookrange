@@ -988,6 +988,48 @@ test('posts: oversized content is rejected, normal content allowed', async () =>
   );
 });
 
+// SEC-07 fix: the optional `groupId` field on a top-level post (used for
+// group-scoped feeds, per community_service.dart's own comment) had NO
+// group-membership check at all — a banned/muted/never-joined user could
+// post into ANY group's feed, unlike the parallel group-chat message path
+// (canPostInGroup). Posts with no groupId (personal/public feed) are
+// unaffected.
+test('posts: a groupId post requires real, active, unmuted group membership (SEC-07)', async () => {
+  await seed('community_groups/gr1', { owner_uid: 'owner1', member_count: 2, announcement_only: false });
+  await seed('community_groups/gr1/members/u2', { role: 'member' });
+  await assertSucceeds(
+    setDoc(doc(db('u2'), 'posts/p1'), { authorId: 'u2', content: 'hi group', groupId: 'gr1' })
+  );
+  // u3 was never a member of gr1 at all.
+  await assertFails(
+    setDoc(doc(db('u3'), 'posts/p2'), { authorId: 'u3', content: 'sneaking in', groupId: 'gr1' })
+  );
+  // A post with no groupId at all is entirely unaffected by this check.
+  await assertSucceeds(
+    setDoc(doc(db('u3'), 'posts/p3'), { authorId: 'u3', content: 'personal feed post' })
+  );
+});
+
+test('posts: a BANNED group member cannot post into that group via groupId (SEC-07)', async () => {
+  await seed('community_groups/gr1', { owner_uid: 'owner1', member_count: 2, announcement_only: false });
+  await seed('community_groups/gr1/members/u2', { role: 'member', banned: true });
+  await assertFails(
+    setDoc(doc(db('u2'), 'posts/p1'), { authorId: 'u2', content: 'let me back in', groupId: 'gr1' })
+  );
+});
+
+test('posts/comments: commenting on a group post requires the SAME group membership as posting (SEC-07)', async () => {
+  await seed('community_groups/gr1', { owner_uid: 'owner1', member_count: 2, announcement_only: false });
+  await seed('community_groups/gr1/members/u2', { role: 'member' });
+  await seed('posts/p1', { authorId: 'u2', content: 'group post', groupId: 'gr1' });
+  await assertSucceeds(
+    setDoc(doc(db('u2'), 'posts/p1/comments/c1'), { authorId: 'u2', content: 'nice' })
+  );
+  await assertFails(
+    setDoc(doc(db('u3'), 'posts/p1/comments/c2'), { authorId: 'u3', content: 'not a member' })
+  );
+});
+
 // ─── Post/comment/gym-post engagement lockdown (BLK-08) ─────────────────────
 
 test('posts: non-owner CANNOT touch groupId, content, or make an arbitrary likesCount jump', async () => {
@@ -1053,6 +1095,38 @@ test('post comments: non-owner CANNOT rewrite content or jump likesCount, CAN +1
   );
 });
 
+// SEC-07 fix: this create rule used to say "membership enforced app-side"
+// but had no such check, and no content-length cap at all.
+test('gym posts: create requires real gym membership + a content cap (SEC-07)', async () => {
+  await seed('gyms/g1', { owner_uid: 'owner1' });
+  await seed('gyms/g1/members/u2', { tier: 'standard' });
+  await assertSucceeds(
+    setDoc(doc(db('u2'), 'gyms/g1/posts/p1'), { author_uid: 'u2', content: 'hi gym' })
+  );
+  // u3 has no gyms/g1/members/u3 doc at all.
+  await assertFails(
+    setDoc(doc(db('u3'), 'gyms/g1/posts/p2'), { author_uid: 'u3', content: 'not a member' })
+  );
+  await assertFails(
+    setDoc(doc(db('u2'), 'gyms/g1/posts/p3'), { author_uid: 'u2', content: 'x'.repeat(6000) })
+  );
+});
+
+test('gym posts/comments: comment create requires real gym membership + a content cap (SEC-07)', async () => {
+  await seed('gyms/g1', { owner_uid: 'owner1' });
+  await seed('gyms/g1/members/u2', { tier: 'standard' });
+  await seed('gyms/g1/posts/p1', { author_uid: 'u2', content: 'hi gym' });
+  await assertSucceeds(
+    setDoc(doc(db('u2'), 'gyms/g1/posts/p1/comments/c1'), { author_uid: 'u2', content: 'nice' })
+  );
+  await assertFails(
+    setDoc(doc(db('u3'), 'gyms/g1/posts/p1/comments/c2'), { author_uid: 'u3', content: 'not a member' })
+  );
+  await assertFails(
+    setDoc(doc(db('u2'), 'gyms/g1/posts/p1/comments/c3'), { author_uid: 'u2', content: 'x'.repeat(3000) })
+  );
+});
+
 test('gym posts: non-owner/non-author CANNOT flip is_announcement or is_pinned, CAN +1 like_count', async () => {
   await seed('gyms/g1', { owner_uid: 'owner1' });
   await seed('gyms/g1/posts/p1', {
@@ -1079,7 +1153,8 @@ test('gym posts: non-owner/non-author CANNOT flip is_announcement or is_pinned, 
 test('admin/status: a user CANNOT self-grant admin', async () => {
   // admin/status/{uid}/flags (per firestore.rules:32) — 4 segments, a valid
   // document reference. No match block exists for this path at all (only
-  // admin_roles/admin_audit/admin_config do), so this exercises the implicit
+  // admin_roles/admin_audit do — admin_config's rule was removed outright,
+  // Faz A §A9, not merely absent here), so this exercises the implicit
   // default-deny at the bottom of firestore.rules, same as a real client
   // attempt against this not-yet-built path would hit.
   await assertFails(
@@ -1102,18 +1177,49 @@ test('admin-only collections: provisioned admin reads, non-admin denied (BLK-05)
   // Seed it directly to simulate a console-provisioned admin — this is the
   // only way it's ever created for real too. u2 has no admin_roles doc, i.e.
   // the default state of every account before BLK-05.
+  //
+  // admin_config REMOVED from this list (Faz A §A9) — it's no longer an
+  // "admin-only" collection, it's a "nobody, not even an admin" collection
+  // now that its rule has been deleted outright (see the dedicated
+  // admin_config test further down).
   await seed('admin_roles/u1', { is_admin: true });
   await seed('admin_audit/a1', { action: 'test', admin_uid: 'u1' });
   await seed('ai_usage_logs/l1', { uid: 'u2', cost: 1 });
-  await seed('admin_config/global', { maintenance_mode: false });
 
   await assertSucceeds(getDoc(doc(db('u1'), 'admin_audit/a1')));
   await assertSucceeds(getDoc(doc(db('u1'), 'ai_usage_logs/l1')));
-  await assertSucceeds(getDoc(doc(db('u1'), 'admin_config/global')));
 
   await assertFails(getDoc(doc(db('u2'), 'admin_audit/a1')));
   await assertFails(getDoc(doc(db('u2'), 'ai_usage_logs/l1')));
-  await assertFails(getDoc(doc(db('u2'), 'admin_config/global')));
+});
+
+test('admin_users: write is denied to everyone via client SDK, even an admin (M1.4)', async () => {
+  // admin_users/{uid} (fine-grained permissions, layered on top of the
+  // admin_roles coarse gate — DECISIONS.md ADR-024) follows the exact same
+  // console/Admin-SDK-only posture as admin_roles: self-granting a role or
+  // permission would be privilege escalation.
+  await seed('admin_roles/u1', { is_admin: true });
+  await assertFails(
+    setDoc(doc(db('u1'), 'admin_users/u2'), { role: 'owner' })
+  );
+});
+
+test('admin_users: owner reads own doc, any admin reads others\', neither for a stranger (M1.4)', async () => {
+  await seed('admin_roles/u1', { is_admin: true });
+  await seed('admin_users/u2', {
+    role: 'engineer',
+    grants: [],
+    denials: [],
+    status: 'active',
+    permissions_version: 1,
+  });
+
+  // u1: admin (via admin_roles), not the doc's owner — isAdmin() branch.
+  await assertSucceeds(getDoc(doc(db('u1'), 'admin_users/u2')));
+  // u2: the doc's owner, no admin_roles doc of their own — isOwner() branch.
+  await assertSucceeds(getDoc(doc(db('u2'), 'admin_users/u2')));
+  // u3: neither owner nor admin.
+  await assertFails(getDoc(doc(db('u3'), 'admin_users/u2')));
 });
 
 // ─── Notifications / friends / follow (BLK-03, SEC-06) ──────────────────────
@@ -1289,34 +1395,43 @@ test('gym members: a fellow member CAN read another member\'s doc directly AND l
   await assertFails(getDocs(membersCol('u4')));
 });
 
-test('gym checkins: create requires a server timestamp and a real method (S13 restated)', async () => {
+test('gym checkins: SEC-08 fix — no client write of ANY shape succeeds anymore, not even a well-formed one', async () => {
   await seed('gyms/g1', { owner_uid: 'owner1' });
-  await assertSucceeds(
+  // This exact payload shape used to succeed (create only checked
+  // uid/timestamp/method) — the whole point of the SEC-08 fix is that it
+  // no longer does. Both real check-in paths (QR, GPS) now go through
+  // validateGymCheckin/validateGymGpsCheckin (functions/gym.js, Admin SDK).
+  await assertFails(
     setDoc(doc(db('u2'), 'gyms/g1/checkins/c1'), {
       uid: 'u2', timestamp: serverTimestamp(), method: 'qr',
     })
   );
-  // Client-supplied clock value instead of the server sentinel — rejected.
   await assertFails(
     setDoc(doc(db('u2'), 'gyms/g1/checkins/c2'), {
-      uid: 'u2', timestamp: new Date(), method: 'qr',
+      uid: 'u2', timestamp: serverTimestamp(), method: 'gps',
     })
   );
-  // Method outside the allowlist — rejected.
   await assertFails(
     setDoc(doc(db('u2'), 'gyms/g1/checkins/c3'), {
-      uid: 'u2', timestamp: serverTimestamp(), method: 'geofence',
+      uid: 'u2', timestamp: serverTimestamp(), method: 'manual',
     })
   );
-  // Forging another user's uid — rejected.
+  // Not even the gym's own owner, or a real admin, can write one directly —
+  // mirrors this file's app_config lockdown precedent exactly.
+  await seed('admin_roles/admin1', { is_admin: true });
   await assertFails(
-    setDoc(doc(db('u2'), 'gyms/g1/checkins/c4'), {
-      uid: 'someone-else', timestamp: serverTimestamp(), method: 'qr',
+    setDoc(doc(db('owner1'), 'gyms/g1/checkins/c4'), {
+      uid: 'owner1', timestamp: serverTimestamp(), method: 'qr',
     })
   );
   await assertFails(
-    updateDoc(doc(db('u2'), 'gyms/g1/checkins/c1'), { method: 'gps' })
+    setDoc(doc(db('admin1'), 'gyms/g1/checkins/c5'), {
+      uid: 'admin1', timestamp: serverTimestamp(), method: 'qr',
+    })
   );
+  await seed('gyms/g1/checkins/c6', { uid: 'u2', timestamp: new Date(), method: 'qr' });
+  await assertFails(updateDoc(doc(db('u2'), 'gyms/g1/checkins/c6'), { method: 'gps' }));
+  await assertFails(deleteDoc(doc(db('u2'), 'gyms/g1/checkins/c6')));
 });
 
 // ─── Faz 1 §1.4: gym presence (geofence check-in), server-authoritative ────
@@ -2434,6 +2549,60 @@ test('moderation_appeals: create is denied while the appellant is appeal-rate-li
   );
 });
 
+// ─── SEC-12: UGC rate limits, six new kinds (functions/ugc_rate_limit.js) ──
+// Same "seed the resulting rate_limits/{uid} doc directly" idiom as
+// reports/moderation/appeals above — the trigger itself needs Cloud
+// Functions, not just the rules emulator.
+
+test('posts: create is denied while the author is post-rate-limited', async () => {
+  await seed('rate_limits/u1', { post_locked_until: new Date(Date.now() + 60000) });
+  await assertFails(setDoc(doc(db('u1'), 'posts/pLocked'), { authorId: 'u1', content: 'spam' }));
+  await seed('rate_limits/u2', { post_locked_until: new Date(Date.now() - 60000) });
+  await assertSucceeds(setDoc(doc(db('u2'), 'posts/pOk'), { authorId: 'u2', content: 'fine' }));
+});
+
+test('posts/comments: create is denied while the author is comment-rate-limited', async () => {
+  await seed('posts/p1', { authorId: 'owner1', content: 'hi' });
+  await seed('rate_limits/u1', { comment_locked_until: new Date(Date.now() + 60000) });
+  await assertFails(
+    setDoc(doc(db('u1'), 'posts/p1/comments/cLocked'), { authorId: 'u1', content: 'spam' })
+  );
+});
+
+test('chat messages: create is denied while the sender is message-rate-limited', async () => {
+  await seed('chats/c1', { participants: ['u1', 'u2'], type: 'private', unreadCounts: { u1: 0, u2: 0 } });
+  await seed('rate_limits/u1', { message_locked_until: new Date(Date.now() + 60000) });
+  await assertFails(
+    setDoc(doc(db('u1'), 'chats/c1/messages/mLocked'), {
+      id: 'mLocked', senderId: 'u1', type: 'text', body: 'spam',
+      server_timestamp: serverTimestamp(), timestamp: serverTimestamp(), client_id: 'mLocked',
+    })
+  );
+});
+
+test('community_groups: create is denied while the owner is group-create-rate-limited', async () => {
+  await seed('rate_limits/u1', { group_create_locked_until: new Date(Date.now() + 60000) });
+  await assertFails(
+    setDoc(doc(db('u1'), 'community_groups/grLocked'), { owner_uid: 'u1', name: 'Spam Group' })
+  );
+});
+
+test('following: create is denied while the follower is follow-rate-limited; unfollowing is unaffected', async () => {
+  await seed('rate_limits/u1', { follow_locked_until: new Date(Date.now() + 60000) });
+  await assertFails(setDoc(doc(db('u1'), 'users/u1/following/u2'), {}));
+  // Unfollowing (delete) is deliberately not gated by this lock.
+  await seed('users/u1/following/u3', {});
+  await assertSucceeds(deleteDoc(doc(db('u1'), 'users/u1/following/u3')));
+});
+
+test('post reactions/likes: create is denied while the user is reaction-rate-limited; un-reacting is unaffected', async () => {
+  await seed('rate_limits/u1', { reaction_locked_until: new Date(Date.now() + 60000) });
+  await assertFails(setDoc(doc(db('u1'), 'posts/p1/reactions/u1'), { emoji: '🔥' }));
+  await assertFails(setDoc(doc(db('u1'), 'posts/p1/likes/u1'), {}));
+  await seed('posts/p1/likes/u2', {});
+  await assertSucceeds(deleteDoc(doc(db('u2'), 'posts/p1/likes/u2')));
+});
+
 // ─── Faz 2 §2.6: rate_limits ledger is fully server-only ───────────────────
 
 test('rate_limits: fully denied to any client read or write, even the doc\'s own uid', async () => {
@@ -2854,6 +3023,101 @@ test('coach progress_share_invites: no client can write it directly', async () =
   );
 });
 
+// SEC-09 — a review used to have no server-side check that the reviewer is
+// (or ever was) a real client of that coach; CoachReviewService.canReview()
+// checked this client-side only, which a direct API/SDK write bypasses.
+test('coach reviews: a linked client CAN create a review; an unlinked stranger CANNOT (SEC-09)', async () => {
+  await seed('coach_profiles/coach1', { bio: 'x' });
+  await seed('coach_profiles/coach1/clients/u2', { status: 'active' });
+  await assertSucceeds(
+    setDoc(doc(db('u2'), 'coach_profiles/coach1/reviews/u2'), {
+      reviewerUid: 'u2', rating: 5, comment: 'great coach',
+    })
+  );
+  // u3 has no coach_profiles/coach1/clients/u3 doc at all.
+  await assertFails(
+    setDoc(doc(db('u3'), 'coach_profiles/coach1/reviews/u3'), {
+      reviewerUid: 'u3', rating: 5, comment: 'never actually a client',
+    })
+  );
+});
+
+test('coach reviews: a linked client cannot forge a review AS someone else', async () => {
+  await seed('coach_profiles/coach1', { bio: 'x' });
+  await seed('coach_profiles/coach1/clients/u2', { status: 'active' });
+  await assertFails(
+    setDoc(doc(db('u2'), 'coach_profiles/coach1/reviews/u4'), {
+      reviewerUid: 'u4', rating: 5, comment: 'forged',
+    })
+  );
+});
+
+test('coach reviews: immutable once created — no update or delete, even by the reviewer', async () => {
+  await seed('coach_profiles/coach1', { bio: 'x' });
+  await seed('coach_profiles/coach1/clients/u2', { status: 'active' });
+  await seed('coach_profiles/coach1/reviews/u2', { reviewerUid: 'u2', rating: 5 });
+  await assertFails(
+    updateDoc(doc(db('u2'), 'coach_profiles/coach1/reviews/u2'), { rating: 1 })
+  );
+  await assertFails(deleteDoc(doc(db('u2'), 'coach_profiles/coach1/reviews/u2')));
+});
+
+// ─── Programs (marketplace) — BLK-09 ───────────────────────────────────────
+// The `coach_uid == 'demo'` client-write bypass ("reserved for the
+// DemoContentSeeder") is removed: it could never distinguish the real
+// seeder from an attacker copying the same write, so ANY authenticated
+// user could inject fake "Cookrange Team" listings. Demo content now
+// seeds server-side only, via seedDemoContent (functions/demo_content.js).
+
+test('programs: an authenticated user CAN create their own program; a stranger cannot forge coach_uid', async () => {
+  await assertSucceeds(
+    setDoc(doc(db('coach1'), 'programs/p1'), {
+      coach_uid: 'coach1', coach_name: 'Coach One', title: 'Real Program',
+      difficulty: 'beginner', category: 'lifestyle',
+    })
+  );
+  await assertFails(
+    setDoc(doc(db('coach1'), 'programs/p2'), {
+      coach_uid: 'someone_else', coach_name: 'Coach One', title: 'Forged owner',
+    })
+  );
+});
+
+test("programs: the 'demo' coach_uid bypass is GONE — no authenticated user can write it directly (BLK-09)", async () => {
+  await assertFails(
+    setDoc(doc(db('attacker1'), 'programs/fake1'), {
+      coach_uid: 'demo', coach_name: 'Cookrange Team', title: 'Fake spam listing',
+      difficulty: 'beginner', category: 'lifestyle', is_published: true,
+    })
+  );
+});
+
+test("programs/weeks: the 'demo' coach_uid bypass is GONE on week content too (BLK-09)", async () => {
+  await seed('programs/demoProgram1', { coach_uid: 'demo', title: 'Pre-existing demo program' });
+  await assertFails(
+    setDoc(doc(db('attacker1'), 'programs/demoProgram1/weeks/w1'), {
+      week_number: 1, title: 'Injected fake week',
+    })
+  );
+});
+
+test('programs/weeks: the owning coach CAN write their own program\'s week content; a stranger cannot', async () => {
+  await seed('programs/p1', { coach_uid: 'coach1', title: 'Real Program' });
+  await assertSucceeds(
+    setDoc(doc(db('coach1'), 'programs/p1/weeks/w1'), { week_number: 1, title: 'Week 1' })
+  );
+  await assertFails(
+    setDoc(doc(db('u2'), 'programs/p1/weeks/w2'), { week_number: 2, title: 'Injected' })
+  );
+});
+
+test('seeds/demo: nobody can read or write it directly — the seedDemoContent callable (Admin SDK) is the only path (BLK-09)', async () => {
+  await seed('admin_roles/admin1', { is_admin: true });
+  await assertFails(getDoc(doc(db('u1'), 'seeds/demo')));
+  await assertFails(setDoc(doc(db('u1'), 'seeds/demo'), { demo_programs_v1: true }));
+  await assertFails(getDoc(doc(db('admin1'), 'seeds/demo')));
+});
+
 // ─── Faz 5 §5.2: received-engagement credit ────────────────────────────────
 
 test('engagement_credit_events: owner reads their own ledger, a stranger CANNOT, and NOBODY can write it directly', async () => {
@@ -3042,4 +3306,142 @@ test('unauthenticated access is denied', async () => {
   await seed('users/u1', { displayName: 'A' });
   const anon = env.unauthenticatedContext().firestore();
   await assertFails(getDoc(doc(anon, 'users/u1')));
+});
+
+// ─── app_config/* — Faz A §A2 audience split + §A5 write lockdown ───────────
+//
+// The KEY assertion across this whole section: even a real admin
+// (admin_roles/{uid}.is_admin == true) cannot write app_config/* directly
+// anymore — updateAppConfig/rollbackAppConfig (functions/app_config_admin.js,
+// Admin SDK) are the only path in. That is what actually closes the gap the
+// old `allow write: if isAdmin()` left open for ~120 settings including
+// money and anti-abuse thresholds.
+
+test('app_config/critical: anonymous CAN read (public — kill-switches/maintenance must work pre-login)', async () => {
+  await seed('app_config/critical', { maintenance: { enabled: false } });
+  const anon = env.unauthenticatedContext().firestore();
+  await assertSucceeds(getDoc(doc(anon, 'app_config/critical')));
+});
+
+test('app_config/critical: write is denied to everyone, including a real admin', async () => {
+  await seed('admin_roles/admin1', { is_admin: true });
+  await assertFails(
+    setDoc(doc(db('admin1'), 'app_config/critical'), { maintenance: { enabled: true } })
+  );
+  await assertFails(
+    setDoc(doc(db('u1'), 'app_config/critical'), { maintenance: { enabled: true } })
+  );
+});
+
+test('app_config/client: anonymous CANNOT read (carries AI quota numbers)', async () => {
+  await seed('app_config/client', { ai: { free_daily_limit: 2 } });
+  const anon = env.unauthenticatedContext().firestore();
+  await assertFails(getDoc(doc(anon, 'app_config/client')));
+});
+
+test('app_config/client: a plain authenticated (non-admin) user CAN read', async () => {
+  await seed('app_config/client', { ai: { free_daily_limit: 2 } });
+  await assertSucceeds(getDoc(doc(db('u1'), 'app_config/client')));
+});
+
+test('app_config/client: write is denied to everyone, including a real admin', async () => {
+  await seed('admin_roles/admin1', { is_admin: true });
+  await assertFails(
+    setDoc(doc(db('admin1'), 'app_config/client'), { ai: { free_daily_limit: 999 } })
+  );
+});
+
+test('app_config/server: a plain authenticated (non-admin) user CANNOT read (commission rates, XP table, anti-abuse thresholds — publishing these is a printed manual for evading every abuse defense)', async () => {
+  await seed('app_config/server', { economy: { referral_commission_try: 5 } });
+  await assertFails(getDoc(doc(db('u1'), 'app_config/server')));
+});
+
+test('app_config/server: a real admin CAN read', async () => {
+  await seed('admin_roles/admin1', { is_admin: true });
+  await seed('app_config/server', { economy: { referral_commission_try: 5 } });
+  await assertSucceeds(getDoc(doc(db('admin1'), 'app_config/server')));
+});
+
+test('app_config/server: write is denied to everyone, including a real admin', async () => {
+  await seed('admin_roles/admin1', { is_admin: true });
+  await assertFails(
+    setDoc(doc(db('admin1'), 'app_config/server'), { economy: { referral_commission_try: 999999 } })
+  );
+});
+
+test('app_config/global (legacy): read stays public — unchanged production behavior', async () => {
+  await seed('app_config/global', { ai: { text_model: 'openai/gpt-4o-mini' } });
+  const anon = env.unauthenticatedContext().firestore();
+  await assertSucceeds(getDoc(doc(anon, 'app_config/global')));
+});
+
+test('app_config/global (legacy): write is now denied even to a real admin — THE behavior change from before this migration (old rule: allow write: if isAdmin())', async () => {
+  await seed('admin_roles/admin1', { is_admin: true });
+  await assertFails(
+    setDoc(doc(db('admin1'), 'app_config/global'), { ai: { text_model: 'attacker-model' } })
+  );
+});
+
+test('app_config: an unmatched/mistyped doc id is denied by default (no catch-all rule exists to accidentally permit it)', async () => {
+  await seed('admin_roles/admin1', { is_admin: true });
+  const anon = env.unauthenticatedContext().firestore();
+  await assertFails(getDoc(doc(anon, 'app_config/this_doc_id_does_not_exist')));
+  await assertFails(getDoc(doc(db('admin1'), 'app_config/this_doc_id_does_not_exist')));
+  await assertFails(
+    setDoc(doc(db('admin1'), 'app_config/this_doc_id_does_not_exist'), { x: 1 })
+  );
+});
+
+test('app_config: update() and delete() are equally denied, not just create/set, for a real admin', async () => {
+  await seed('admin_roles/admin1', { is_admin: true });
+  await seed('app_config/critical', { maintenance: { enabled: false } });
+  await assertFails(
+    updateDoc(doc(db('admin1'), 'app_config/critical'), { 'maintenance.enabled': true })
+  );
+  await assertFails(deleteDoc(doc(db('admin1'), 'app_config/critical')));
+});
+
+// ─── app_config_versions/{id} — Faz A §A6, immutable change history ────────
+
+test('app_config_versions: a real admin CAN read', async () => {
+  await seed('admin_roles/admin1', { is_admin: true });
+  await seed('app_config_versions/v1', { doc: 'critical', version: 1 });
+  await assertSucceeds(getDoc(doc(db('admin1'), 'app_config_versions/v1')));
+});
+
+test('app_config_versions: a plain authenticated (non-admin) user CANNOT read (a diff can reveal server-only values mid-transition)', async () => {
+  await seed('app_config_versions/v1', { doc: 'critical', version: 1 });
+  await assertFails(getDoc(doc(db('u1'), 'app_config_versions/v1')));
+});
+
+test('app_config_versions: anonymous CANNOT read', async () => {
+  await seed('app_config_versions/v1', { doc: 'critical', version: 1 });
+  const anon = env.unauthenticatedContext().firestore();
+  await assertFails(getDoc(doc(anon, 'app_config_versions/v1')));
+});
+
+test('app_config_versions: write is denied to everyone, including a real admin — only updateAppConfig/rollbackAppConfig (Admin SDK) ever write this', async () => {
+  await seed('admin_roles/admin1', { is_admin: true });
+  await assertFails(
+    setDoc(doc(db('admin1'), 'app_config_versions/fake'), { doc: 'critical', version: 999 })
+  );
+});
+
+test('app_config_versions: a forged/backdated version cannot be inserted by an admin to fake history', async () => {
+  await seed('admin_roles/admin1', { is_admin: true });
+  await assertFails(
+    setDoc(doc(db('admin1'), 'app_config_versions/backdated'), {
+      doc: 'critical', version: 1, actor_uid: 'admin1', created_at: new Date(2000, 0, 1),
+    })
+  );
+});
+
+// ─── admin_config — Faz A §A9, orphaned second config surface, removed ─────
+
+test('admin_config: denied by default now that its rule is removed — even a real admin', async () => {
+  await seed('admin_roles/admin1', { is_admin: true });
+  await assertFails(getDoc(doc(db('admin1'), 'admin_config/global')));
+  await assertFails(
+    setDoc(doc(db('admin1'), 'admin_config/global'), { blocked_keywords: ['x'] })
+  );
 });

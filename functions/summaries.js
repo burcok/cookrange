@@ -21,7 +21,7 @@
 //
 // Exported as a FACTORY — createSummariesModule({ ...aiProxy's own helpers })
 // — rather than a plain object of triggers, so this file can reuse aiProxy's
-// already-battle-tested quota/cost machinery (getAppConfig, isPremium,
+// already-battle-tested quota/cost machinery (getConfig, isPremium,
 // enforceRateLimitAndQuota, rollbackConsume, recordUsage — the block
 // index.js's own header comment flags "SECURITY MODEL (do not regress)")
 // WITHOUT duplicating it (two copies touching the same ai_credits/{uid}
@@ -44,29 +44,62 @@ const functions = require('firebase-functions');
 const fetch = require('node-fetch');
 const { assertCallable, fetchActor, writeNotification } = require('./notifications');
 const { checkAndBumpSlidingWindow } = require('./rate_limit');
+const { computeCheckInFrequencyAndStreak } = require('./checkin_stats');
+const { getConfig } = require('./app_config');
 
 const OPENROUTER_URL_FALLBACK = 'https://openrouter.ai/api/v1/chat/completions';
 
+// Faz A Faz 4 — FALLBACK defaults; app_config/server's `summaries.*` fields
+// (and `privacy.k_anonymity_threshold`, a differently-scoped doc — see
+// privacyConfig() below) are the live source once seeded. Module-scope
+// `getConfig` above (not the factory-injected `aiHelpers.getConfig` used
+// inside callAiForNarrative below) so module-scope functions like
+// resolveConsentingMemberUids — defined outside createSummariesModule's
+// closure — can read it too; both references are the SAME cached singleton
+// (Node's require cache), so this costs nothing extra.
+//
 // One generation per (caller, member) per rolling 24h (§4.2 point 8) —
 // independent of, and far tighter than, aiProxy's general per-uid daily AI
 // quota. Reuses rate_limit.js's exact sliding-window shape (Faz 2 §2.6)
 // rather than inventing a second rate-limit mechanism; keyed by a composite
 // bucket since this is a (caller, member) PAIR limit, unlike that module's
 // other three callers (report/moderation/appeal), which are plain per-uid.
-const GEN_RATE_WINDOW_MS = 24 * 60 * 60 * 1000;
-const GEN_RATE_MAX_IN_WINDOW = 1;
+const GEN_RATE_WINDOW_MS_DEFAULT = 24 * 60 * 60 * 1000;
+const GEN_RATE_MAX_IN_WINDOW_DEFAULT = 1;
 
 // §4.2 point 6: "TTL 7 gün" — same expires_at + scheduled-sweep shape as
 // presence.js's closeStalePresenceSessions / templates.js's expirePlanOffers,
 // not a new convention.
-const SUMMARY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const STALE_SWEEP_LIMIT = 300;
+const SUMMARY_TTL_MS_DEFAULT = 7 * 24 * 60 * 60 * 1000;
+const STALE_SWEEP_LIMIT_DEFAULT = 300;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // §4.3 point 3/4 (getConsentingMemberUids) — candidate scan cap, matching
 // gym_analytics_service.dart's memberCap=500 convention exactly (same
 // "bounded, logged if hit" discipline, not a new number invented here).
-const MAX_SCOPE_MEMBERS_SCAN = 500;
+const MAX_SCOPE_MEMBERS_SCAN_DEFAULT = 500;
+
+// getGymSharingAggregate's k-anonymity floor — mirrors
+// GymAnalyticsModel.kAnonymityThreshold (Dart, gym_analytics_model.dart:42)
+// exactly; the two must agree since the Dart side surfaces this same number
+// in its UI copy ("under 5 members, nothing is shown") even though the
+// actual gating decision now lives here, server-side. Lives in `client`
+// (app_config/client's `privacy.k_anonymity_threshold`, readable by the
+// Dart side too, for that UI copy) — the ONE config value both runtimes
+// read, per this constant's own long-standing TODO, now resolved.
+const GYM_SHARING_K_ANONYMITY_THRESHOLD_DEFAULT = 5;
+
+/** Live app_config `summaries.*` fields, or {} if unset/unreachable. */
+async function summariesConfig() {
+  const cfg = await getConfig();
+  return (cfg && cfg.summaries) || {};
+}
+
+/** Live app_config `privacy.*` fields, or {} if unset/unreachable. */
+async function privacyConfig() {
+  const cfg = await getConfig();
+  return (cfg && cfg.privacy) || {};
+}
 
 // ─── Prompt-injection guard — ported from PromptService (Dart) ─────────────
 // lib/core/services/ai/prompt_service.dart's injectionGuard/fence/
@@ -174,6 +207,47 @@ async function verifyScopeOwnership(db, callerUid, scope) {
   return scope.scopeOwnerId === callerUid;
 }
 
+// Shared by getConsentingMemberUids and getGymSharingAggregate — both need
+// "which of this scope's members have granted tier>=1," just for different
+// end uses (the former lists them unconditionally, the latter only uses the
+// COUNT to decide whether to compute an aggregate at all — see that
+// function's own doc comment). A per-member direct GET, not a
+// collectionGroup query: progress_sharing docs carry no scope_id FIELD
+// (only the scopeId baked into the doc ID), so there is nothing a
+// collectionGroup query could filter on without changing the
+// already-shipped, already-tested §4.1 write shape. Bounded to
+// MAX_SCOPE_MEMBERS_SCAN candidates, same cap discipline as
+// gym_analytics_service.dart's memberCap.
+async function resolveConsentingMemberUids(db, scope, scopeId) {
+  const sCfg = await summariesConfig();
+  const scanCap = typeof sCfg.max_scope_members_scan === 'number'
+    ? sCfg.max_scope_members_scan : MAX_SCOPE_MEMBERS_SCAN_DEFAULT;
+
+  let candidateUids;
+  if (scope.scopeType === 'gym') {
+    const snap = await db.collection('gyms').doc(scope.scopeOwnerId)
+      .collection('members').limit(scanCap).get();
+    candidateUids = snap.docs.map((d) => d.id);
+  } else {
+    const snap = await db.collection('coach_profiles').doc(scope.scopeOwnerId)
+      .collection('clients').where('status', '==', 'active')
+      .limit(scanCap).get();
+    candidateUids = snap.docs.map((d) => d.id);
+  }
+  if (candidateUids.length >= scanCap) {
+    functions.logger.warn('resolveConsentingMemberUids: candidate list capped', {
+      scopeId, cap: scanCap,
+    });
+  }
+
+  const sharingSnaps = await Promise.all(candidateUids.map((uid) => db.collection('users')
+    .doc(uid).collection('progress_sharing').doc(scopeId).get()));
+  return candidateUids.filter((_, i) => {
+    const snap = sharingSnaps[i];
+    return snap.exists && (Number(snap.data().level) || 0) >= 1;
+  });
+}
+
 // ─── Tier-gated data aggregation — server-side only (§4.2 point 3) ─────────
 // Tier 1: check-in frequency + streak + last visit. Tier 2 adds logging
 // regularity (+ plan adherence — see honesty note below). Tier 3 adds weight
@@ -233,20 +307,11 @@ async function aggregateGymFields(db, gymId, memberUid, tier) {
     .map((d) => d.data().timestamp)
     .filter((t) => t && t.toDate)
     .map((t) => t.toDate().getTime());
-  const last30d = timestamps.filter((t) => now - t <= 30 * DAY_MS);
-  const checkInFrequencyPerWeek = Math.round((last30d.length / 30) * 7 * 10) / 10;
-
-  // Consecutive-week streak, walking backward from the current week while
-  // every week has >=1 checkin. Bounded by the 60-row fetch above (R1) — 8
-  // weeks is a reasonable cap for a "current streak" figure.
-  let streakWeeks = 0;
-  for (let w = 0; w < 8; w++) {
-    const weekStart = now - (w + 1) * 7 * DAY_MS;
-    const weekEnd = now - w * 7 * DAY_MS;
-    const hasVisit = timestamps.some((t) => t > weekStart && t <= weekEnd);
-    if (!hasVisit) break;
-    streakWeeks++;
-  }
+  // Bounded by the 60-row fetch above (R1). Math extracted to
+  // checkin_stats.js — see that file's header for why (shared with
+  // getGymSharingAggregate below, and independently unit-tested).
+  const { checkInFrequencyPerWeek, currentStreakWeeks: streakWeeks } =
+    computeCheckInFrequencyAndStreak(timestamps, now);
 
   const lastVisitAt = timestamps.length
     ? admin.firestore.Timestamp.fromMillis(timestamps[0])
@@ -341,13 +406,15 @@ function extractNarrative(data) {
 // functions, passed in by reference (not re-implemented).
 function createSummariesModule(aiHelpers) {
   const {
-    getAppConfig, isPremium, enforceRateLimitAndQuota, rollbackConsume,
+    getConfig, isPremium, enforceRateLimitAndQuota, rollbackConsume,
     recordUsage, DEFAULT_MODEL, OPENROUTER_URL,
   } = aiHelpers;
 
   async function callAiForNarrative({ tier, scopeType, fields, memberName, locale, callerUid }) {
     const premium = await isPremium(callerUid);
-    const cfg = await getAppConfig();
+    // { fast: true } — a money-touching AI path, same reasoning as
+    // index.js's aiProxy (PLAN.md Faz A §A7).
+    const cfg = await getConfig({ fast: true });
     const aiCfg = (cfg && cfg.ai) || {};
     const model = (aiCfg.model_by_type && aiCfg.model_by_type.coach_report)
       || aiCfg.text_model || DEFAULT_MODEL;
@@ -359,6 +426,8 @@ function createSummariesModule(aiHelpers) {
     const gate = await enforceRateLimitAndQuota(callerUid, premium, {
       free: aiCfg.free_daily_limit,
       premium: aiCfg.premium_daily_limit,
+      windowMs: aiCfg.rate_window_ms,
+      maxInWindow: aiCfg.rate_max_in_window,
     });
     if (!gate.ok) {
       throw new functions.https.HttpsError(
@@ -406,6 +475,7 @@ function createSummariesModule(aiHelpers) {
     // Best-effort, off the response path — mirrors aiProxy's own .catch(() => {}).
     recordUsage(callerUid, {
       type: 'coach_report', model, usage: data && data.usage, premium, consumed: gate.consumed,
+      pricingTable: (aiCfg.model_pricing && typeof aiCfg.model_pricing === 'object') ? aiCfg.model_pricing : undefined,
     }).catch(() => {});
 
     return extractNarrative(data);
@@ -438,6 +508,12 @@ function createSummariesModule(aiHelpers) {
     }
 
     const db = admin.firestore();
+    const sCfg = await summariesConfig();
+    const genRateWindowMs = typeof sCfg.gen_rate_window_ms === 'number'
+      ? sCfg.gen_rate_window_ms : GEN_RATE_WINDOW_MS_DEFAULT;
+    const genRateMaxInWindow = typeof sCfg.gen_rate_max_in_window === 'number'
+      ? sCfg.gen_rate_max_in_window : GEN_RATE_MAX_IN_WINDOW_DEFAULT;
+    const summaryTtlMs = typeof sCfg.ttl_ms === 'number' ? sCfg.ttl_ms : SUMMARY_TTL_MS_DEFAULT;
 
     // 1. Re-derive authority server-side — never trust a client claim.
     const authorized = await verifyCallerAuthority(db, callerUid, scope, memberUid);
@@ -458,7 +534,7 @@ function createSummariesModule(aiHelpers) {
     // 3. Rate limit — only real (authorized, tier>0) attempts count against
     // the caller's daily allowance for this member.
     const { limited } = await checkAndBumpSlidingWindow(
-      db, `${callerUid}_${memberUid}`, 'progress_summary', GEN_RATE_WINDOW_MS, GEN_RATE_MAX_IN_WINDOW,
+      db, `${callerUid}_${memberUid}`, 'progress_summary', genRateWindowMs, genRateMaxInWindow,
     );
     if (limited) {
       throw new functions.https.HttpsError('resource-exhausted', 'generation_rate_limited');
@@ -502,7 +578,7 @@ function createSummariesModule(aiHelpers) {
 
     // 6. Write the cache (7-day TTL) + 7. log the access, in one batch.
     const now = admin.firestore.FieldValue.serverTimestamp();
-    const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + SUMMARY_TTL_MS);
+    const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + summaryTtlMs);
     const batch = db.batch();
     batch.set(summaryDocRef(db, scope, memberUid), {
       tier, method, narrative, fields,
@@ -617,23 +693,18 @@ function createSummariesModule(aiHelpers) {
    * getConsentingMemberUids({scopeId}) — Faz 4 §4.3.
    *
    * Returns the uids of this scope's members who have granted tier>=1 —
-   * nothing more (no tier value, no field data). Backs two client-side
-   * features, both of which filter data the caller ALREADY has legitimate
-   * access to (gym check-ins are the gym's own operational records,
-   * unrelated to the progress_sharing gate itself — see docs/DATABASE.md):
-   *   - the at-risk list (§4.3): scoped to tier>=1 consenters only, instead
-   *     of the previously ungated full member list (audit finding, still
-   *     live in gym_analytics_service.dart before this change)
-   *   - the k-anonymity-gated aggregate card (§4.3): the caller averages
-   *     already-visible check-in data over this allowed set client-side,
-   *     and hides the result entirely below 5 included members
-   *
-   * A per-member direct GET, not a collectionGroup query: progress_sharing
-   * docs carry no scope_id FIELD (only the scopeId baked into the doc ID),
-   * so there is nothing a collectionGroup query could filter on without
-   * changing the already-shipped, already-tested §4.1 write shape — out of
-   * this task's scope. Bounded to MAX_SCOPE_MEMBERS_SCAN candidates, same
-   * cap discipline as gym_analytics_service.dart's memberCap.
+   * nothing more (no tier value, no field data). Backs the at-risk list
+   * (§4.3): scoped to tier>=1 consenters only, instead of the previously
+   * ungated full member list (audit finding, still live in
+   * gym_analytics_service.dart before that change). That list is
+   * intentionally NOT k-anonymity-gated — it names specific consenting
+   * members by design (an at-risk list of one real person is exactly the
+   * point), which is a different privacy posture from an AGGREGATE
+   * STATISTIC computed over the group (see getGymSharingAggregate below,
+   * which is gated, and used to compute the k-anonymity-gated aggregate
+   * card that a prior version of this comment incorrectly described as
+   * computed client-side — it no longer is; see that function's own doc
+   * comment for the full correction).
    */
   const getConsentingMemberUids = functions.https.onCall(async (data, context) => {
     const callerUid = assertCallable(context);
@@ -649,31 +720,99 @@ function createSummariesModule(aiHelpers) {
       throw new functions.https.HttpsError('permission-denied', 'not_authorized_for_scope');
     }
 
-    let candidateUids;
-    if (scope.scopeType === 'gym') {
-      const snap = await db.collection('gyms').doc(scope.scopeOwnerId)
-        .collection('members').limit(MAX_SCOPE_MEMBERS_SCAN).get();
-      candidateUids = snap.docs.map((d) => d.id);
-    } else {
-      const snap = await db.collection('coach_profiles').doc(scope.scopeOwnerId)
-        .collection('clients').where('status', '==', 'active')
-        .limit(MAX_SCOPE_MEMBERS_SCAN).get();
-      candidateUids = snap.docs.map((d) => d.id);
-    }
-    if (candidateUids.length >= MAX_SCOPE_MEMBERS_SCAN) {
-      functions.logger.warn('getConsentingMemberUids: candidate list capped', {
-        scopeId, cap: MAX_SCOPE_MEMBERS_SCAN,
-      });
-    }
-
-    const sharingSnaps = await Promise.all(candidateUids.map((uid) => db.collection('users')
-      .doc(uid).collection('progress_sharing').doc(scopeId).get()));
-    const uids = candidateUids.filter((_, i) => {
-      const snap = sharingSnaps[i];
-      return snap.exists && (Number(snap.data().level) || 0) >= 1;
-    });
-
+    const uids = await resolveConsentingMemberUids(db, scope, scopeId);
     return { uids };
+  });
+
+  /**
+   * getGymSharingAggregate({scopeId}) — fixes a client-side-only
+   * k-anonymity gate. Prior design (see the corrected comment on
+   * getConsentingMemberUids above): the client called
+   * getConsentingMemberUids for the consenting uid SET, then fetched
+   * gyms/{gymId}/checkins directly (an intentionally broad,
+   * consent-independent read — gym check-ins are the gym's own
+   * operational records, see docs/DATABASE.md and the checkins rule in
+   * firestore.rules, unchanged by this fix and NOT the thing being closed
+   * here) and computed the "average check-in frequency / streak among
+   * consenting members" statistic ITSELF, hiding it on-screen below 5
+   * included members. That hiding was a client-side UI decision only — the
+   * app choosing not to render a number, not a server-enforced guarantee.
+   * Nothing stopped a modified client (or a direct callable/REST call) from
+   * computing and displaying that same small-sample aggregate regardless of
+   * count, undermining the "≥5 members" privacy commitment
+   * gym_analytics_model.dart's own doc comment makes.
+   *
+   * This callable computes the aggregate SERVER-SIDE instead and returns
+   * either the finished numbers or a bare `{gated:true}` flag — never a
+   * per-member breakdown, and never below the threshold. The client no
+   * longer needs (and after this fix, no longer receives) raw per-member
+   * check-in timestamps for the consenting set in order to render this
+   * specific card. Reuses aggregateGymFields' per-member check-in query
+   * shape via checkin_stats.js's computeCheckInFrequencyAndStreak, rather
+   * than a third hand-copy of that math.
+   */
+  const getGymSharingAggregate = functions.https.onCall(async (data, context) => {
+    const callerUid = assertCallable(context);
+    const scopeId = data && typeof data.scopeId === 'string' ? data.scopeId : '';
+    const scope = parseScopeId(scopeId);
+    if (!scope || scope.scopeType !== 'gym') {
+      // Only gyms have this feature today (GymAnalyticsService/
+      // GymAnalyticsModel are gym-specific) — a coach scopeId is a caller
+      // error, not a "not yet supported, degrade gracefully" case.
+      throw new functions.https.HttpsError('invalid-argument', 'invalid_scope_id');
+    }
+
+    const db = admin.firestore();
+    const authorized = await verifyScopeOwnership(db, callerUid, scope);
+    if (!authorized) {
+      throw new functions.https.HttpsError('permission-denied', 'not_authorized_for_scope');
+    }
+
+    const pCfg = await privacyConfig();
+    const kThreshold = typeof pCfg.k_anonymity_threshold === 'number'
+      ? pCfg.k_anonymity_threshold : GYM_SHARING_K_ANONYMITY_THRESHOLD_DEFAULT;
+
+    const consentingUids = await resolveConsentingMemberUids(db, scope, scopeId);
+    if (consentingUids.length < kThreshold) {
+      // No averages computed at all below the floor — not merely withheld
+      // from the response after being computed. There is nothing in this
+      // return value a client could ever use to reconstruct a per-member
+      // number, regardless of how it's parsed.
+      return {
+        gated: true,
+        threshold: kThreshold,
+        includedCount: consentingUids.length,
+      };
+    }
+
+    const now = Date.now();
+    const perMember = await Promise.all(consentingUids.map(async (uid) => {
+      const checkinsSnap = await db.collection('gyms').doc(scope.scopeOwnerId)
+        .collection('checkins')
+        .where('uid', '==', uid)
+        .orderBy('timestamp', 'desc')
+        .limit(60)
+        .get();
+      const timestamps = checkinsSnap.docs
+        .map((d) => d.data().timestamp)
+        .filter((t) => t && t.toDate)
+        .map((t) => t.toDate().getTime());
+      return computeCheckInFrequencyAndStreak(timestamps, now);
+    }));
+
+    const avgCheckInFrequencyPerWeek = perMember.reduce(
+      (sum, f) => sum + f.checkInFrequencyPerWeek, 0,
+    ) / perMember.length;
+    const avgStreakWeeks = perMember.reduce(
+      (sum, f) => sum + f.currentStreakWeeks, 0,
+    ) / perMember.length;
+
+    return {
+      gated: false,
+      includedCount: consentingUids.length,
+      avgCheckInFrequencyPerWeek,
+      avgStreakWeeks,
+    };
   });
 
   /**
@@ -717,9 +856,12 @@ function createSummariesModule(aiHelpers) {
     .onRun(async (_context) => {
       const db = admin.firestore();
       const now = admin.firestore.Timestamp.now();
+      const sCfg = await summariesConfig();
+      const sweepLimit = typeof sCfg.stale_sweep_limit === 'number'
+        ? sCfg.stale_sweep_limit : STALE_SWEEP_LIMIT_DEFAULT;
       const snap = await db.collectionGroup('member_summaries')
         .where('expires_at', '<=', now)
-        .limit(STALE_SWEEP_LIMIT)
+        .limit(sweepLimit)
         .get();
 
       if (snap.empty) {
@@ -736,8 +878,17 @@ function createSummariesModule(aiHelpers) {
 
   return {
     generateMemberProgressSummary, onProgressSharingWrite, expireMemberProgressSummaries,
-    sendProgressShareInvite, getConsentingMemberUids,
+    sendProgressShareInvite, getConsentingMemberUids, getGymSharingAggregate,
   };
 }
 
 module.exports = createSummariesModule;
+// Faz A (config migration) — the module's primary export is a factory
+// function (see this file's own header comment for why), so a plain
+// constant needed by functions/test/config_schema_defaults.test.js is
+// attached as a static property rather than requiring a second export
+// shape. Does not affect createSummariesModule's own behavior as a factory.
+// Export name kept stable, see presence.js's identical comment.
+module.exports.GYM_SHARING_K_ANONYMITY_THRESHOLD = GYM_SHARING_K_ANONYMITY_THRESHOLD_DEFAULT;
+module.exports.summariesConfig = summariesConfig;
+module.exports.privacyConfig = privacyConfig;

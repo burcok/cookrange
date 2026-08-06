@@ -64,16 +64,28 @@ class GymAnalyticsService {
     // Faz 4 §4.3 — the uids of members who granted progress_sharing tier>=1
     // for THIS gym. A client can never read another member's
     // progress_sharing doc directly (owner-only rule); this is the only
-    // legitimate way to scope the at-risk list / aggregate below. Fetched
-    // in parallel with the reads above, not sequenced after — same R1
-    // discipline as everything else in this method.
+    // legitimate way to scope the at-risk list below (see the k-anonymity
+    // note further down for why the AGGREGATE numbers no longer come from
+    // this set client-side). Fetched in parallel with the reads above, not
+    // sequenced after — same R1 discipline as everything else in this
+    // method.
     final consentingFuture = ProgressSharingService()
         .getConsentingMemberUids(ProgressSharingScope.gym(gymId));
+    // k-anonymity-gated aggregate (§4.3) — computed server-side (fixes a
+    // client-side-only k-anonymity gate: see GymSharingAggregateResult's
+    // doc comment for the full story). Also fetched in parallel — it does
+    // its own independent server-side check-in query, scoped only to the
+    // consenting set, rather than reusing this method's own `checkins`
+    // fetch (which covers every member, not just consenting ones, for the
+    // heatmap/retention/top5 metrics below).
+    final sharingAggregateFuture = ProgressSharingService()
+        .getGymSharingAggregate(ProgressSharingScope.gym(gymId));
 
     final totalCountSnap = await countFuture;
     final membersSnap = await membersFuture;
     final checkinsSnap = await checkinsFuture;
     final consentingUids = await consentingFuture;
+    final sharingAggregate = await sharingAggregateFuture;
 
     final members = membersSnap.docs.map(GymMemberModel.fromFirestore).toList();
     final checkins = checkinsSnap.docs.map(CheckInModel.fromFirestore).toList();
@@ -142,46 +154,20 @@ class GymAnalyticsService {
             !uidsCheckedIn14.contains(m.uid) && consentingUids.contains(m.uid))
         .toList();
 
-    // k-anonymity-gated aggregate (§4.3) — averaged over the SAME
-    // already-fetched 60-day `checkins` (no second query), restricted to
-    // the consenting set. Below GymAnalyticsModel.kAnonymityThreshold
-    // members, both averages are left at 0 and `sharingAggregateGated`
-    // tells the screen to render nothing rather than a number that could
-    // de-anonymize a tiny pool.
-    final sharingIncludedCount = consentingUids.length;
-    final sharingGated =
-        sharingIncludedCount < GymAnalyticsModel.kAnonymityThreshold;
-    var sharingAvgFreq = 0.0;
-    var sharingAvgStreak = 0.0;
-    if (!sharingGated) {
-      final byUid = <String, List<DateTime>>{};
-      for (final c in checkins) {
-        if (!consentingUids.contains(c.uid)) continue;
-        (byUid[c.uid] ??= []).add(c.timestamp);
-      }
-      var totalFreq = 0.0;
-      var totalStreak = 0.0;
-      for (final uid in consentingUids) {
-        final times = byUid[uid] ?? const <DateTime>[];
-        final last30 = times.where((t) => t.isAfter(since30)).length;
-        totalFreq += last30 / 30 * 7;
-        // Consecutive-week streak, same walk-backward-while-visited shape
-        // as functions/summaries.js's aggregateGymFields — kept in sync
-        // deliberately, not shared, since one is Dart and one is Node.
-        var streakWeeks = 0;
-        for (var w = 0; w < 8; w++) {
-          final weekStart = now.subtract(Duration(days: (w + 1) * 7));
-          final weekEnd = now.subtract(Duration(days: w * 7));
-          final hasVisit =
-              times.any((t) => t.isAfter(weekStart) && !t.isAfter(weekEnd));
-          if (!hasVisit) break;
-          streakWeeks++;
-        }
-        totalStreak += streakWeeks;
-      }
-      sharingAvgFreq = totalFreq / sharingIncludedCount;
-      sharingAvgStreak = totalStreak / sharingIncludedCount;
-    }
+    // k-anonymity-gated aggregate (§4.3) — now computed server-side by
+    // `getGymSharingAggregate` (`functions/summaries.js`), which never
+    // returns the two averages at all below
+    // `GymAnalyticsModel.kAnonymityThreshold` included members. Prior
+    // versions of this method fetched every member's raw check-in
+    // timestamps and computed this average ITSELF, hiding it on-screen
+    // below the threshold — a client-side rendering choice, not a
+    // server-enforced guarantee (a modified client could compute and show
+    // the same small-sample average regardless of count). See
+    // GymSharingAggregateResult's doc comment for the full story.
+    final sharingIncludedCount = sharingAggregate.includedCount;
+    final sharingGated = sharingAggregate.gated;
+    final sharingAvgFreq = sharingAggregate.avgCheckInFrequencyPerWeek;
+    final sharingAvgStreak = sharingAggregate.avgStreakWeeks;
 
     // Top members this month
     final monthCounts = <String, int>{};
