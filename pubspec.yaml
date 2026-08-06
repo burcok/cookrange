@@ -13,7 +13,7 @@ android:
 
 # iOS Configuration
 ios:
-  bundle-id: com.cookrange_ios.app
+  bundle-id: com.cookrange-ios.app
   minimum-ios-version: "14.0"
 
 
