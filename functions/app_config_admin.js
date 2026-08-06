@@ -132,6 +132,123 @@ function validateType(key, entry, value) {
   }
 }
 
+/**
+ * One field of a `value_shape.fields` descriptor (see config_schema.json's
+ * own `value_shape` doc in `_meta.fields`), checked against one leaf value.
+ * Deliberately a small, closed set of primitive types (int/double/string/
+ * enum) — this exists to catch a wrong LEAF type inside an object/map field
+ * (M3.5's own motivating example: `purchases.products`'s `days` arriving as
+ * the string `"31"` instead of the int `31`), not to become a second,
+ * parallel JSON-Schema implementation.
+ */
+function validateShapeField(key, fieldName, fieldSpec, value) {
+  const path = `${key}.${fieldName}`;
+  if (value === undefined) {
+    if (!fieldSpec.optional) {
+      throw new functions.https.HttpsError('invalid-argument', `${path}: required field is missing`);
+    }
+    return;
+  }
+  if (value === null) {
+    if (!fieldSpec.nullable) {
+      throw new functions.https.HttpsError('invalid-argument', `${path}: null is not allowed here`);
+    }
+    return;
+  }
+  switch (fieldSpec.type) {
+    case 'int':
+      if (typeof value !== 'number' || !Number.isInteger(value)) {
+        throw new functions.https.HttpsError('invalid-argument', `${path}: expected an integer`);
+      }
+      break;
+    case 'double':
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        throw new functions.https.HttpsError('invalid-argument', `${path}: expected a number`);
+      }
+      break;
+    case 'string':
+      if (typeof value !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', `${path}: expected a string`);
+      }
+      break;
+    case 'enum':
+      if (typeof value !== 'string' || !Array.isArray(fieldSpec.enum) || !fieldSpec.enum.includes(value)) {
+        throw new functions.https.HttpsError(
+          'invalid-argument', `${path}: expected one of ${JSON.stringify(fieldSpec.enum || [])}`,
+        );
+      }
+      break;
+    default:
+      throw new functions.https.HttpsError('invalid-argument', `${path}: unknown value_shape field type "${fieldSpec.type}"`);
+  }
+  if (typeof value === 'number') {
+    if (typeof fieldSpec.min === 'number' && value < fieldSpec.min) {
+      throw new functions.https.HttpsError('invalid-argument', `${path}: below minimum ${fieldSpec.min}`);
+    }
+    if (typeof fieldSpec.max === 'number' && value > fieldSpec.max) {
+      throw new functions.https.HttpsError('invalid-argument', `${path}: above maximum ${fieldSpec.max}`);
+    }
+  }
+}
+
+// Every key in `obj` must be declared in `shape.fields` — not just every
+// declared field being present. A typo'd key (e.g. `lockMS` instead of
+// `lockMs`) would otherwise pass silently as an "extra" key while the real
+// `lockMs` field falls back to missing-but-optional-or-not, which is a much
+// more confusing failure mode than rejecting the typo outright.
+function validateFixedObjectAgainstShape(key, shape, obj) {
+  for (const [fieldName, fieldSpec] of Object.entries(shape.fields)) {
+    validateShapeField(key, fieldName, fieldSpec, obj[fieldName]);
+  }
+  for (const presentKey of Object.keys(obj)) {
+    if (!Object.prototype.hasOwnProperty.call(shape.fields, presentKey)) {
+      throw new functions.https.HttpsError('invalid-argument', `${key}: unexpected field "${presentKey}"`);
+    }
+  }
+}
+
+/**
+ * Enforces `entry.value_shape` (present on exactly the 15 object/
+ * map<string,object> schema entries that have one — the other ~114 scalar/
+ * array entries have no value_shape and this is a no-op for them). Runs
+ * AFTER validateType has already confirmed `value` is at least an object —
+ * this only ever sees something validateType already accepted.
+ *
+ *   kind: "fixed_object" — `value` itself must match `shape.fields`
+ *     (the 10 moderation.*_rate_limit entries, cost.pricing).
+ *   kind: "map_of_fixed_object" — `value`'s KEYS are arbitrary (a model
+ *     name, a store product ID, an XP event name); each of `value`'s
+ *     VALUES must match `shape.fields` (ai.model_pricing, purchases.
+ *     products, gamification.xp_table, engagement.credit_table).
+ *
+ * Known simplification: purchases.products' real shape has `kind`-
+ * conditional required fields (subscription needs tier+days, consumable
+ * needs bonusCredits) that this does not enforce — every field for that
+ * entry is declared `optional` instead, so a same-shape mix-up (a
+ * consumable missing bonusCredits) still passes. What this DOES catch is
+ * the concrete gap the plan called out: a wrong LEAF TYPE, e.g. `days`
+ * arriving as `"31"` instead of `31`.
+ */
+function validateValueShape(key, entry, value) {
+  const shape = entry.value_shape;
+  if (!shape) return;
+  if (shape.kind === 'fixed_object') {
+    validateFixedObjectAgainstShape(key, shape, value);
+    return;
+  }
+  if (shape.kind === 'map_of_fixed_object') {
+    for (const [mapKey, mapValue] of Object.entries(value)) {
+      const path = `${key}.${mapKey}`;
+      if (mapValue === null || typeof mapValue !== 'object' || Array.isArray(mapValue)) {
+        throw new functions.https.HttpsError('invalid-argument', `${path}: expected an object`);
+      }
+      validateFixedObjectAgainstShape(path, shape, mapValue);
+    }
+    return;
+  }
+  throw new functions.https.HttpsError('invalid-argument', `${key}: unknown value_shape.kind "${shape.kind}"`);
+}
+
 // Cross-field invariants no per-field rule can catch — checked against the
 // RESULTING full document (current data + patch applied), since a rule
 // can depend on a field this particular patch doesn't even touch. See each
@@ -257,6 +374,7 @@ const updateAppConfig = functions.https.onCall(async (data, context) => {
       );
     }
     validateType(key, entry, value);
+    validateValueShape(key, entry, value);
     if (entry.sensitive) anySensitive = true;
 
     if (typeof value === 'number') {
@@ -413,25 +531,46 @@ const rollbackAppConfig = functions.https.onCall(async (data, context) => {
 });
 
 /**
- * updateContentFilter({ blockedKeywords, reason?, confirm? }) — Faz A §A9.
- * Moves `admin_config/global`'s only real, still-live effect (mirroring
- * `blocked_keywords` into `settings/content_filter`, which
+ * updateContentFilter({ blockedKeywords, reason, confirm }) — Faz A §A9,
+ * hardened per M3.5. Moves `admin_config/global`'s only real, still-live
+ * effect (mirroring `blocked_keywords` into `settings/content_filter`, which
  * community_service.dart reads with a fail-closed default) onto the same
  * admin/audit/rate-limit path as the rest of this file, since
  * `AdminService.updateAdminConfig` — the old writer — has zero callers and
  * is being deleted (Faz A §A9), not fixed. Content moderation word lists
  * are unstructured, admin-curated strings, not bounded scalars, so this is
  * deliberately NOT part of config_schema.json's typed settings.
+ *
+ * M3.5 fixes three real gaps this callable shipped with: `confirm`/`reason`
+ * were accepted but never actually enforced (any caller could silently
+ * rewrite the entire moderation word list with no confirmation step at
+ * all — unlike every field in updateAppConfig, which at minimum requires
+ * `sensitive: true` fields to pass confirm+reason); the settings write and
+ * its audit entry were two independent Promise.all calls, not atomic (an
+ * audit-write failure after a successful content_filter write would leave
+ * the change unlogged); and there was no version-history entry at all, so
+ * a bad word-list edit had no "what did it look like before" trail besides
+ * admin_audit's own before/after counts. This callable is inherently
+ * consequential (it moderates content for every user) so confirm+reason
+ * are now unconditionally required, not gated on a `sensitive` flag the
+ * way config fields are.
  */
 const updateContentFilter = functions.https.onCall(async (data, context) => {
   const blockedKeywords = Array.isArray(data && data.blockedKeywords) ? data.blockedKeywords : null;
   const reason = data && typeof data.reason === 'string' ? data.reason.trim() : '';
+  const confirm = data && data.confirm === true;
 
   if (!blockedKeywords || !blockedKeywords.every((k) => typeof k === 'string' && k.trim().length > 0)) {
     throw new functions.https.HttpsError('invalid-argument', 'blockedKeywords must be a list of non-empty strings');
   }
   if (blockedKeywords.length > 2000) {
     throw new functions.https.HttpsError('invalid-argument', 'blockedKeywords exceeds the 2000-entry sanity cap');
+  }
+  if (!confirm) {
+    throw new functions.https.HttpsError('failed-precondition', 'content_filter_change_requires_confirm');
+  }
+  if (reason.length < 10) {
+    throw new functions.https.HttpsError('failed-precondition', 'content_filter_change_requires_reason');
   }
 
   const db = admin.firestore();
@@ -442,21 +581,39 @@ const updateContentFilter = functions.https.onCall(async (data, context) => {
   const ref = db.collection('settings').doc('content_filter');
   const beforeSnap = await ref.get();
   const before = beforeSnap.exists ? (beforeSnap.data() || {}) : {};
+  const beforeKeywords = before.blocked_keywords || [];
 
-  await Promise.all([
-    ref.set({ blocked_keywords: normalized, updated_at: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }),
-    db.collection('admin_audit').add({
-      action: 'update_content_filter',
-      targetUid: 'settings:content_filter',
-      adminUid: callerUid,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      metadata: {
-        before_count: (before.blocked_keywords || []).length,
-        after_count: normalized.length,
-        reason: reason || null,
-      },
-    }),
-  ]);
+  const batch = db.batch();
+  batch.set(ref, { blocked_keywords: normalized, updated_at: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  // Reuses app_config_versions for a history trail, same shape as
+  // updateAppConfig's own version entries -- but NOT restorable through
+  // rollbackAppConfig, which only ever looks up doc IN ('critical','client',
+  // 'server'). A bad word-list change is undone by calling this callable
+  // again with a corrected list, not by a generic rollback; extending
+  // rollbackAppConfig to cover this doc too is a bigger scope increase than
+  // this fix, not something to sneak in unannounced.
+  batch.set(db.collection('app_config_versions').doc(), {
+    doc: 'content_filter',
+    version: null,
+    before: { blocked_keywords: beforeKeywords },
+    after: { blocked_keywords: normalized },
+    diff: [{ key: 'blocked_keywords', from: `${beforeKeywords.length} kelime`, to: `${normalized.length} kelime` }],
+    actor_uid: callerUid,
+    reason,
+    created_at: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  batch.set(db.collection('admin_audit').doc(), {
+    action: 'update_content_filter',
+    targetUid: 'settings:content_filter',
+    adminUid: callerUid,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    metadata: {
+      before_count: beforeKeywords.length,
+      after_count: normalized.length,
+      reason,
+    },
+  });
+  await batch.commit();
 
   functions.logger.info('updateContentFilter: ok', { callerUid, count: normalized.length });
   return { ok: true, count: normalized.length };
@@ -471,4 +628,5 @@ module.exports = {
   getNestedValue,
   crossFieldInvariantErrors,
   schemaEntriesForDoc,
+  validateValueShape,
 };

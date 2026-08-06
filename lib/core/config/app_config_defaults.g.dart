@@ -4,9 +4,11 @@
 // Regenerate:       node scripts/gen_config_schema.js
 //
 // Any change to a setting's default, bounds, or metadata belongs in
-// functions/config_schema.json, never in this file directly — a hand-edit here
-// will be silently overwritten (and CI's `git diff --exit-code` check on
-// these generated files will catch a stale regeneration either way).
+// functions/config_schema.json, never in this file directly — a hand-edit here will be
+// silently overwritten by the next regeneration. Neither this repo's CI nor
+// cookrange-admin's checks this automatically today; cookrange-admin has a
+// local, manually-run freshness check (`npm run verify:config-schema`) --
+// see that repo's e2e/README.md for why it isn't wired into CI yet.
 
 library;
 

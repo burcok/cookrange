@@ -12,8 +12,9 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  setNestedValue, getNestedValue, crossFieldInvariantErrors, schemaEntriesForDoc,
+  setNestedValue, getNestedValue, crossFieldInvariantErrors, schemaEntriesForDoc, validateValueShape,
 } = require('../app_config_admin');
+const schema = require('../config_schema.json');
 
 describe('setNestedValue / getNestedValue', () => {
   test('sets a top-level key', () => {
@@ -136,7 +137,6 @@ describe('schemaEntriesForDoc', () => {
   });
 
   test('critical/client/server partition config_schema.json exhaustively (every non-_meta key lands in exactly one)', () => {
-    const schema = require('../config_schema.json');
     const allKeys = Object.keys(schema).filter((k) => k !== '_meta');
     const covered = new Set([
       ...schemaEntriesForDoc('critical').keys(),
@@ -144,5 +144,163 @@ describe('schemaEntriesForDoc', () => {
       ...schemaEntriesForDoc('server').keys(),
     ]);
     assert.equal(covered.size, allKeys.length);
+  });
+});
+
+// M3.5 — the 15 object/map<string,object> entries used to accept ANY object
+// shape at all (validateType only checked "is this an object"). validateType
+// itself is unchanged (still not exported — see file header); these tests
+// go straight at validateValueShape, the new second pass that actually
+// checks what's INSIDE the object, against the real schema entries rather
+// than hand-rolled fixtures, so a future edit to one of these 15 entries'
+// value_shape is what these tests actually exercise.
+describe('validateValueShape', () => {
+  test('every one of the 15 object/map<string,object> schema entries declares a value_shape', () => {
+    const objectEntries = Object.entries(schema).filter(
+      ([k, e]) => k !== '_meta' && (e.type === 'object' || e.type === 'map<string,object>'),
+    );
+    assert.equal(objectEntries.length, 15, 'expected exactly 15 object-shaped entries as of M3.1/M3.5');
+    for (const [key, entry] of objectEntries) {
+      assert.ok(entry.value_shape, `${key} is missing value_shape`);
+    }
+  });
+
+  test('a no-op for entries with no value_shape (the other ~114 scalar/array entries)', () => {
+    assert.doesNotThrow(() => validateValueShape('ai.free_daily_limit', schema['ai.free_daily_limit'], 2));
+  });
+
+  describe('fixed_object — moderation.*_rate_limit (all 10 share one shape)', () => {
+    const entry = schema['moderation.post_rate_limit'];
+
+    test('accepts the real default shape', () => {
+      assert.doesNotThrow(() => validateValueShape('moderation.post_rate_limit', entry, entry.default));
+    });
+
+    test('rejects a string where an int is expected (windowMs)', () => {
+      assert.throws(
+        () => validateValueShape('moderation.post_rate_limit', entry, { windowMs: '600000', max: 20, lockMs: 900000 }),
+        /windowMs: expected an integer/,
+      );
+    });
+
+    test('rejects a missing required field', () => {
+      assert.throws(
+        () => validateValueShape('moderation.post_rate_limit', entry, { windowMs: 600000, lockMs: 900000 }),
+        /max: required field is missing/,
+      );
+    });
+
+    test('rejects an extra/typo\'d field even when every real required field is also present', () => {
+      // A missing-required check runs before the extra-key check (report
+      // the more fundamental problem first) -- so this fixture keeps the
+      // real `lockMs` AND adds a typo'd extra `lockMS`, rather than
+      // renaming it, to isolate the extra-key path specifically.
+      assert.throws(
+        () => validateValueShape('moderation.post_rate_limit', entry, { windowMs: 600000, max: 20, lockMs: 900000, lockMS: 900000 }),
+        /unexpected field "lockMS"/,
+      );
+    });
+
+    test('rejects max: 0 (below the >=1 floor -- would disable the rate limit)', () => {
+      assert.throws(
+        () => validateValueShape('moderation.post_rate_limit', entry, { windowMs: 600000, max: 0, lockMs: 900000 }),
+        /max: below minimum 1/,
+      );
+    });
+
+    test('every one of the 10 rate_limit entries shares the identical value_shape', () => {
+      const keys = [
+        'moderation.report_rate_limit', 'moderation.action_rate_limit', 'moderation.appeal_rate_limit',
+        'moderation.post_rate_limit', 'moderation.comment_rate_limit', 'moderation.message_rate_limit',
+        'moderation.group_create_rate_limit', 'moderation.follow_rate_limit', 'moderation.reaction_rate_limit',
+        'moderation.checkin_rate_limit',
+      ];
+      for (const key of keys) {
+        assert.doesNotThrow(() => validateValueShape(key, schema[key], schema[key].default), key);
+      }
+    });
+  });
+
+  describe('fixed_object — cost.pricing', () => {
+    test('accepts the real default', () => {
+      const entry = schema['cost.pricing'];
+      assert.doesNotThrow(() => validateValueShape('cost.pricing', entry, entry.default));
+    });
+
+    test('rejects storeCutFraction above 1 (it is a fraction, not a percent)', () => {
+      const entry = schema['cost.pricing'];
+      const bad = { ...entry.default, storeCutFraction: 15 };
+      assert.throws(() => validateValueShape('cost.pricing', entry, bad), /storeCutFraction: above maximum 1/);
+    });
+  });
+
+  describe('map_of_fixed_object — ai.model_pricing (arbitrary model-name keys, fixed per-value shape)', () => {
+    const entry = schema['ai.model_pricing'];
+
+    test('accepts the real default (multiple arbitrary model-name keys)', () => {
+      assert.doesNotThrow(() => validateValueShape('ai.model_pricing', entry, entry.default));
+    });
+
+    test('rejects a negative price', () => {
+      assert.throws(
+        () => validateValueShape('ai.model_pricing', entry, { 'some/model': { in: -0.1, out: 0.4 } }),
+        /some\/model\.in: below minimum 0/,
+      );
+    });
+
+    test('rejects a non-object value under an arbitrary key', () => {
+      assert.throws(
+        () => validateValueShape('ai.model_pricing', entry, { 'some/model': 'free' }),
+        /some\/model: expected an object/,
+      );
+    });
+  });
+
+  describe('map_of_fixed_object — purchases.products (the plan\'s own motivating example)', () => {
+    const entry = schema['purchases.products'];
+
+    test('accepts the real default (mixed subscription/consumable shapes)', () => {
+      assert.doesNotThrow(() => validateValueShape('purchases.products', entry, entry.default));
+    });
+
+    test('rejects days as a string -- the exact drift this was built to catch ({days: "31"} instead of 31)', () => {
+      assert.throws(
+        () => validateValueShape('purchases.products', entry, {
+          'com.cookrange.premium.monthly': { kind: 'subscription', tier: 'premium', days: '31' },
+        }),
+        /days: expected an integer/,
+      );
+    });
+
+    test('rejects an unknown "kind"', () => {
+      assert.throws(
+        () => validateValueShape('purchases.products', entry, {
+          'x': { kind: 'giftcard' },
+        }),
+        /kind: expected one of/,
+      );
+    });
+  });
+
+  describe('map_of_fixed_object — gamification.xp_table (dailyCap is nullable)', () => {
+    const entry = schema['gamification.xp_table'];
+
+    test('accepts the real default, including a null dailyCap (template_accepted)', () => {
+      assert.doesNotThrow(() => validateValueShape('gamification.xp_table', entry, entry.default));
+    });
+
+    test('rejects a negative points value', () => {
+      assert.throws(
+        () => validateValueShape('gamification.xp_table', entry, { meal_logged: { points: -5, dailyCap: 4 } }),
+        /points: below minimum 0/,
+      );
+    });
+  });
+
+  describe('map_of_fixed_object — engagement.credit_table (per-key optional fields genuinely vary)', () => {
+    test('accepts the real default, including weekly_group_top3\'s weeklyCap-instead-of-dailyCap shape', () => {
+      const entry = schema['engagement.credit_table'];
+      assert.doesNotThrow(() => validateValueShape('engagement.credit_table', entry, entry.default));
+    });
   });
 });

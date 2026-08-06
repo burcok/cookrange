@@ -13,10 +13,10 @@
  *     each call site.
  *
  *   lib/core/config/app_config_schema.g.dart
- *     A const list of field descriptors (key/type/doc/group/label/sensitive/
- *     min/max/enum) — drives the schema-generated admin config editor and the
- *     read-side bounds clamp. Carries no `default` (that's the file above);
- *     the two are deliberately separate concerns.
+ *     A const list of field descriptors (key/type/doc/group/label/description/
+ *     impact/sensitive/min/max/enum) — drives the schema-generated admin
+ *     config editor and the read-side bounds clamp. Carries no `default`
+ *     (that's the file above); the two are deliberately separate concerns.
  *
  * There is NO codegen step for the JS (Cloud Functions) side — functions/
  * app_config.js just `require()`s config_schema.json directly at module load.
@@ -29,14 +29,22 @@
  *
  *   scripts/generated/config-schema.ts
  *     A TS mirror of app_config_schema.g.dart — same fields (key/type/doc/
- *     group/label/sensitive/min/max/enumValues), no `default` (same
- *     deliberate split as the Dart pair above). `doc` is a plain string
- *     union (`'critical' | 'client' | 'server'`) rather than an enum with a
- *     parse helper — TS doesn't need Dart's runtime string→enum conversion
- *     since the literal type already covers the value. Consumed by
- *     cookrange-admin (the web admin panel, DECISIONS.md ADR-024): copy this
- *     file to cookrange-admin/src/lib/config-schema.ts after regenerating.
- *     No shared npm package between the two repos for M1 — see ADR-024.
+ *     group/label/description/impact/sensitive/min/max/enumValues), no
+ *     `default` on ConfigField itself (same deliberate split as the Dart pair
+ *     above) — instead a SEPARATE `configDefaults: Record<string, unknown>`
+ *     export mirrors kConfigDefaults, so the admin panel can show "current
+ *     value" against "default value" without re-deriving it. `doc` is a
+ *     plain string union (`'critical' | 'client' | 'server'`) rather than an
+ *     enum with a parse helper — TS doesn't need Dart's runtime string→enum
+ *     conversion since the literal type already covers the value. `type` is
+ *     likewise the literal union `ConfigFieldType` (all 11 values actually
+ *     used across the schema), not a bare `string` — this is what lets a
+ *     `switch (field.type)` in the panel's form-widget dispatch get real
+ *     exhaustiveness checking from `tsc` when an 12th type is ever added.
+ *     Consumed by cookrange-admin (the web admin panel, DECISIONS.md
+ *     ADR-024): copy this file to cookrange-admin/src/lib/config-schema.ts
+ *     after regenerating. No shared npm package between the two repos for M1
+ *     — see ADR-024.
  *
  * Usage:
  *   node scripts/gen_config_schema.js
@@ -64,9 +72,11 @@ const GENERATED_BANNER = (sourceFile) => `// GENERATED FILE — DO NOT EDIT BY H
 // Regenerate:       node scripts/gen_config_schema.js
 //
 // Any change to a setting's default, bounds, or metadata belongs in
-// ${sourceFile}, never in this file directly — a hand-edit here
-// will be silently overwritten (and CI's \`git diff --exit-code\` check on
-// these generated files will catch a stale regeneration either way).
+// ${sourceFile}, never in this file directly — a hand-edit here will be
+// silently overwritten by the next regeneration. Neither this repo's CI nor
+// cookrange-admin's checks this automatically today; cookrange-admin has a
+// local, manually-run freshness check (\`npm run verify:config-schema\`) --
+// see that repo's e2e/README.md for why it isn't wired into CI yet.
 `;
 
 // ── Dart literal rendering ──────────────────────────────────────────────────
@@ -209,6 +219,30 @@ function tsString(s) {
   return `'${String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')}'`;
 }
 
+/**
+ * Renders any JSON value (default value or nested map/object entry) as a TS
+ * literal. Unlike the Dart side, TS has no int/double distinction to infer,
+ * so this is one function for every shape instead of Dart's top-level/nested
+ * split — a plain JS number already prints the same whether it's a top-level
+ * `economy.referral_commission_try: 5` or a nested `cost.pricing` field.
+ * Object keys are always quoted (not just when they aren't valid bare
+ * identifiers) since some are store product IDs like
+ * 'com.cookrange.premium.monthly' that aren't valid identifiers anyway —
+ * one rule, not a per-key identifier check.
+ */
+function renderTsValue(value) {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'string') return tsString(value);
+  if (Array.isArray(value)) return `[${value.map(renderTsValue).join(', ')}]`;
+  if (typeof value === 'object') {
+    const entries = Object.entries(value).map(([k, v]) => `${tsString(k)}: ${renderTsValue(v)}`);
+    return `{ ${entries.join(', ')} }`;
+  }
+  throw new Error(`Cannot render TS value: ${JSON.stringify(value)}`);
+}
+
 // ── Load + validate ─────────────────────────────────────────────────────────
 
 function loadSchema() {
@@ -217,10 +251,16 @@ function loadSchema() {
   const entries = [];
   for (const [key, entry] of Object.entries(schema)) {
     if (key === '_meta') continue;
-    for (const required of ['type', 'doc', 'group', 'label']) {
+    for (const required of ['type', 'doc', 'group', 'label', 'description', 'impact']) {
       if (entry[required] === undefined) {
         throw new Error(`${key}: missing required field "${required}"`);
       }
+    }
+    if (typeof entry.description !== 'string' || entry.description.trim().length < 10) {
+      throw new Error(`${key}: "description" must be a real sentence (>=10 chars), not a placeholder`);
+    }
+    if (typeof entry.impact !== 'string' || entry.impact.trim().length < 5) {
+      throw new Error(`${key}: "impact" must be a real sentence (>=5 chars), not a placeholder`);
     }
     if (!['critical', 'client', 'server'].includes(entry.doc)) {
       throw new Error(`${key}: invalid doc "${entry.doc}" (must be critical|client|server)`);
@@ -280,6 +320,8 @@ function generateSchemaDart(entries) {
   lines.push('  final ConfigDoc doc;');
   lines.push('  final String group;');
   lines.push('  final String label;');
+  lines.push('  final String description;');
+  lines.push('  final String impact;');
   lines.push('  final bool sensitive;');
   lines.push('  final num? min;');
   lines.push('  final num? max;');
@@ -291,6 +333,8 @@ function generateSchemaDart(entries) {
   lines.push('    required this.doc,');
   lines.push('    required this.group,');
   lines.push('    required this.label,');
+  lines.push('    required this.description,');
+  lines.push('    required this.impact,');
   lines.push('    this.sensitive = false,');
   lines.push('    this.min,');
   lines.push('    this.max,');
@@ -306,6 +350,8 @@ function generateSchemaDart(entries) {
       `doc: ConfigDoc.${entry.doc}`,
       `group: ${dartString(entry.group)}`,
       `label: ${dartString(entry.label)}`,
+      `description: ${dartString(entry.description)}`,
+      `impact: ${dartString(entry.impact)}`,
     ];
     if (entry.sensitive) parts.push('sensitive: true');
     if (entry.min !== undefined) parts.push(`min: ${entry.min}`);
@@ -321,19 +367,36 @@ function generateSchemaDart(entries) {
 }
 
 function generateSchemaTs(entries) {
+  // All 11 `type` values actually used across the schema today, derived from
+  // the real data rather than hand-maintained separately — if a 12th type is
+  // ever added to config_schema.json, this list (and therefore every
+  // exhaustive `switch (field.type)` the panel writes against it) updates on
+  // the next regeneration instead of silently missing it.
+  const typeValues = [...new Set(entries.map((e) => e.type))].sort();
+
   const lines = [];
   lines.push(GENERATED_BANNER('functions/config_schema.json'));
   lines.push("export type ConfigDoc = 'critical' | 'client' | 'server';");
+  lines.push('');
+  lines.push('// Every `type` value used across the schema today — see this generator\'s');
+  lines.push('// own header comment for why this is a literal union, not `string`.');
+  lines.push(`export type ConfigFieldType = ${typeValues.map(tsString).join(' | ')};`);
   lines.push('');
   lines.push('// Which `app_config/{doc}` a setting is read from — see DECISIONS.md ADR-023');
   lines.push('// (placement rule: a setting lives in the most restrictive doc that still');
   lines.push('// contains every one of its readers).');
   lines.push('export interface ConfigField {');
   lines.push('  key: string;');
-  lines.push('  type: string;');
+  lines.push('  type: ConfigFieldType;');
   lines.push('  doc: ConfigDoc;');
   lines.push('  group: string;');
   lines.push('  label: string;');
+  lines.push('  // Admin-facing (Turkish): what this setting controls and what changing it');
+  lines.push('  // does, written for someone reading the panel, not the code. Distinct from');
+  lines.push('  // config_schema.json\'s own `note` field, which stays developer-facing.');
+  lines.push('  description: string;');
+  lines.push('  // Admin-facing (Turkish), one line: the concrete risk of changing this.');
+  lines.push('  impact: string;');
   lines.push('  sensitive: boolean;');
   lines.push('  min?: number;');
   lines.push('  max?: number;');
@@ -342,8 +405,8 @@ function generateSchemaTs(entries) {
   lines.push('');
   lines.push('// One schema-declared field descriptor per admin-editable setting — drives');
   lines.push('// the config editor\'s form generation and validation (DECISIONS.md ADR-023).');
-  lines.push('// Carries no `default`, same deliberate split as kConfigDefaults in');
-  lines.push('// app_config_defaults.g.dart (the Dart counterpart of this file).');
+  lines.push('// Carries no `default` — see configDefaults below, same deliberate split as');
+  lines.push('// kConfigDefaults/kConfigSchema in the Dart counterpart of this file.');
   lines.push('export const configSchema: ConfigField[] = [');
   for (const entry of entries) {
     const parts = [
@@ -352,6 +415,8 @@ function generateSchemaTs(entries) {
       `doc: ${tsString(entry.doc)}`,
       `group: ${tsString(entry.group)}`,
       `label: ${tsString(entry.label)}`,
+      `description: ${tsString(entry.description)}`,
+      `impact: ${tsString(entry.impact)}`,
       `sensitive: ${entry.sensitive ? 'true' : 'false'}`,
     ];
     if (entry.min !== undefined) parts.push(`min: ${entry.min}`);
@@ -362,6 +427,20 @@ function generateSchemaTs(entries) {
     lines.push(`  { ${parts.join(', ')} },`);
   }
   lines.push('];');
+  lines.push('');
+  lines.push('// Dotted-key defaults for every setting, keyed exactly as configSchema above');
+  lines.push('// and as the Firestore `app_config/*` documents themselves — the TS mirror of');
+  lines.push('// kConfigDefaults (app_config_defaults.g.dart). This is what makes a "reset to');
+  lines.push('// default" control and a "differs from default" badge in the config editor');
+  lines.push('// possible at all; before this export, the panel had no way to know what a');
+  lines.push('// setting\'s default even was. `unknown`, not a per-key union, since the shapes');
+  lines.push('// genuinely vary (bool/number/string/array/nested object per entry) — callers');
+  lines.push('// narrow using the matching configSchema entry\'s `type`.');
+  lines.push('export const configDefaults: Record<string, unknown> = {');
+  for (const entry of entries) {
+    lines.push(`  ${tsString(entry.key)}: ${renderTsValue(entry.default)},`);
+  }
+  lines.push('};');
   lines.push('');
   return lines.join('\n');
 }
