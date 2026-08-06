@@ -13,16 +13,22 @@
 // first admin is still a manual console step — see docs/SECURITY.md §4 for the
 // runbook — this function only keeps the claim in sync once that doc exists.
 //
-// Both triggers below also write an admin_audit entry recording what changed
-// and when. NEITHER can record WHO made the change: admin_roles/{uid} and
-// admin_users/{uid} are both console/Admin-SDK-only (no callable exists for
-// either), and a Firestore onWrite trigger receives no caller identity at
-// all — that's fundamentally different from an onCall function's
-// context.auth. Google Cloud's own Audit Logs record which Google account
-// touched a document via Console, but that's a separate system this
-// function doesn't reach into. If "who granted this" ever needs to live
-// inside admin_audit itself, that requires a real write path (a callable)
-// that knows its caller — not a bigger change to this trigger.
+// Both triggers below also write an admin_audit entry recording what
+// changed and when. A Firestore onWrite trigger receives no caller
+// identity of its own — that's fundamentally different from an onCall
+// function's context.auth or a Next.js Server Action's own request
+// context — so WHO made the change comes from a last_changed_by field on
+// the document itself instead: cookrange-admin's admin_users Server
+// Action (src/lib/admin-users-actions.ts, upsertAdminUser/setAdminRole --
+// writes directly via the Admin SDK, same as this repo's own Cloud
+// Functions do; firestore.rules' write:false only blocks the client SDK)
+// sets it on every write it makes, in the same batch as the real change,
+// so `change.after` already carries it by the time this trigger runs. A
+// write that bypasses that action (Console, a one-off Admin SDK script)
+// won't set that field, and falls back to null exactly as before — Google
+// Cloud's own Audit Logs record which Google account touched a document
+// via Console, but that's a separate system this function doesn't reach
+// into.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const admin = require('firebase-admin');
@@ -42,12 +48,20 @@ function diffDocs(before, after) {
 }
 exports.diffDocs = diffDocs;
 
-async function writeAdminAuditEntry({ action, targetUid, metadata }) {
+// null for a write that bypassed cookrange-admin's admin_users Server
+// Action (Console, a one-off Admin SDK script, or a delete -- `after`
+// doesn't exist then either way). See file header.
+function actorUidFromWrite(after) {
+  return (after && after.last_changed_by) || null;
+}
+exports.actorUidFromWrite = actorUidFromWrite;
+
+async function writeAdminAuditEntry({ action, targetUid, adminUid, metadata }) {
   try {
     await admin.firestore().collection('admin_audit').add({
       action,
       targetUid,
-      adminUid: null, // see file header — no caller identity available here
+      adminUid: adminUid || null,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       metadata,
     });
@@ -82,14 +96,17 @@ exports.syncAdminClaim = functions
       : before && !after
         ? 'revoke_admin_role'
         : 'update_admin_role';
-    await writeAdminAuditEntry({ action, targetUid: uid, metadata: { before, after } });
+    await writeAdminAuditEntry({
+      action, targetUid: uid, adminUid: actorUidFromWrite(after), metadata: { before, after },
+    });
   });
 
 // Records every change to the fine-grained admin_users/{uid} doc (role,
 // grants, denials, status — DECISIONS.md ADR-024) as an admin_audit entry.
-// No write path/callable exists for this doc yet (Console/Admin-SDK-only,
-// same as admin_roles) — this trigger only observes and logs, it doesn't
-// validate or reject anything.
+// The write path is cookrange-admin's admin_users Server Action
+// (Console/Admin-SDK direct writes still work too, same as admin_roles)
+// — this trigger only observes and logs, it doesn't validate or reject
+// anything itself; that's that action's job.
 exports.logAdminUsersChange = functions
   .firestore
   .document('admin_users/{uid}')
@@ -102,5 +119,7 @@ exports.logAdminUsersChange = functions
       : before && !after
         ? 'revoke_admin_permissions'
         : 'update_admin_permissions';
-    await writeAdminAuditEntry({ action, targetUid: uid, metadata: { diff: diffDocs(before, after) } });
+    await writeAdminAuditEntry({
+      action, targetUid: uid, adminUid: actorUidFromWrite(after), metadata: { diff: diffDocs(before, after) },
+    });
   });

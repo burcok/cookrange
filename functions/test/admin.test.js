@@ -11,7 +11,7 @@
 
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const { diffDocs } = require('../admin');
+const { diffDocs, actorUidFromWrite } = require('../admin');
 
 describe('diffDocs', () => {
   test('no before, some after: every field is a from:null diff', () => {
@@ -47,5 +47,19 @@ describe('diffDocs', () => {
 
   test('both null (a delete-of-nonexistent edge case) produces an empty diff', () => {
     assert.deepEqual(diffDocs(null, null), []);
+  });
+});
+
+describe('actorUidFromWrite', () => {
+  test('returns last_changed_by when the write set it (the admin_users Server Action path)', () => {
+    assert.equal(actorUidFromWrite({ role: 'owner', last_changed_by: 'uid-1' }), 'uid-1');
+  });
+
+  test('returns null when last_changed_by is absent (a Console/Admin-SDK-direct write)', () => {
+    assert.equal(actorUidFromWrite({ role: 'owner' }), null);
+  });
+
+  test('returns null for a delete (after is null)', () => {
+    assert.equal(actorUidFromWrite(null), null);
   });
 });
