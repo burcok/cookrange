@@ -1319,6 +1319,7 @@ exports.scanImage = media.scanImage;
 
 const adminRoles = require('./admin');
 exports.syncAdminClaim = adminRoles.syncAdminClaim;
+exports.logAdminUsersChange = adminRoles.logAdminUsersChange;
 
 const progress = require('./progress');
 exports.syncProgress = progress.syncProgress;

@@ -2,6 +2,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_nutrition_profile.dart';
 import 'subscription_model.dart';
 
+// UserRole.admin is DISPLAY-ONLY, never an authorization signal. Nothing in
+// this codebase writes 'admin' into user_role/user_roles today (grep every
+// write site: admin_service.dart, firestore_service.dart, coach_service.dart
+// only ever write consumer/gym_owner/coach) — this case exists for parsing
+// whatever pre-BLK-05 rows may still carry it (see admin.js's own comment:
+// admin_roles/{uid} + the `admin` custom claim replaced this array
+// specifically BECAUSE it's client-writable and was once (mis)used as the
+// real admin gate). isAdmin() in firestore.rules and every server-side
+// admin check reads ONLY admin_roles/{uid}.is_admin — never this enum. Do
+// not add a new check against UserRole.admin/user_role=='admin' anywhere;
+// it proves nothing about real admin status.
 enum UserRole { consumer, gymOwner, coach, admin }
 
 extension UserRoleX on UserRole {
