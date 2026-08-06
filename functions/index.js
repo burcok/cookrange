@@ -146,12 +146,17 @@ async function recordUsage(uid, { type, model, usage, premium, consumed, pricing
         by_type: { [tKey]: { requests: inc(1), cost_usd: inc(cost) } },
         updated_at: now,
       }, { merge: true }),
-      // Daily bucket for the trend line.
+      // Daily bucket for the trend line. unpriced_count added for M5.1's
+      // admin_stats rollup (computeAiDayStats copies this doc verbatim) —
+      // before this, `unpriced` was recorded per-request in ai_usage_logs
+      // but never aggregated anywhere, so a daily "how many unpriced
+      // requests" count was only ever answerable via a full log scan.
       db.collection('ai_usage_stats').doc(`day_${dayKey}`).set({
         day: dayKey,
         requests: inc(1),
         tokens: inc(tt),
         cost_usd: inc(cost),
+        unpriced_count: inc(pr.known ? 0 : 1),
         updated_at: now,
       }, { merge: true }),
       // Per-user lifetime totals on the server-only ledger.
@@ -426,6 +431,19 @@ exports.aiProxy = functions
         res.status(429).json({ error: 'rate_limited' });
         return;
       }
+      // M5.1 (admin_stats rollup) — before this, a quota rejection left NO
+      // trace anywhere (not even a log line), so a daily "kota reddi" count
+      // was fully unanswerable. Fire-and-forget, mirroring recordUsage's
+      // own best-effort posture: never let a stats write add latency to,
+      // or fail, the 402 response the caller is already waiting on.
+      const dayKey = new Date().toISOString().slice(0, 10);
+      admin.firestore().collection('ai_usage_stats').doc(`day_${dayKey}`).set({
+        day: dayKey,
+        quota_rejections: admin.firestore.FieldValue.increment(1),
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true }).catch((e) => {
+        functions.logger.error('quota_rejections increment failed', { uid, error: e.message });
+      });
       res.status(402).json({ error: 'quota_exceeded' });
       return;
     }
@@ -1495,6 +1513,12 @@ exports.awardWeeklyGroupTop3 = engagementCredit.awardWeeklyGroupTop3;
 // Faz 5 §5.3 — denormalized group-contribution leaderboard (see
 // engagement_credit.js's header comment for the data model).
 exports.computeGroupContributionLeaderboards = engagementCredit.computeGroupContributionLeaderboards;
+
+// M5.1 — cross-domain daily admin_stats rollup (see admin_stats.js's own
+// header for the full design; generalizes this file's own recordUsage/
+// ai_usage_stats on-write pattern to the other 7 metric domains).
+const adminStats = require('./admin_stats');
+exports.computeAdminStatsRollup = adminStats.computeAdminStatsRollup;
 
 // Faz A (config migration) — exported so functions/test/
 // config_schema_defaults.test.js can assert config_schema.json's defaults

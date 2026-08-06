@@ -2289,5 +2289,16 @@
     "impact": "Bu alanın şu anda hiçbir etkisi yok.",
     "sensitive": false,
     "note": "M3.7 (ops_cron.*) -- gerçek zamanlama summaries.js:855 expireMemberProgressSummaries, .schedule('every 60 minutes'), sabit kod. Bu alan henüz okunmuyor."
+  },
+  "ops_cron.admin_stats_rollup_schedule": {
+    "type": "string",
+    "default": "0 2 * * *",
+    "doc": "server",
+    "group": "ops_cron",
+    "label": "Admin istatistik özeti -- zamanlama (cron)",
+    "description": "Bir önceki günün kullanıcı/abonelik/topluluk/salon/koç/moderasyon/sistem metriklerini admin_stats/day_YYYY-MM-DD ve admin_stats/global'e yazan görevin ne zaman çalıştığını temsil eder (cron sözdizimi -- varsayılan '0 2 * * *' her gün UTC 02:00 anlamına gelir, bir önceki günün tamamen kapanmış olmasını beklemek için). Bu alan bugün hiçbir zamanlanmış görev tarafından okunmuyor -- Google Cloud Scheduler zamanlamaları fonksiyon dağıtımı (deploy) sırasında sabitlenir ve çalışan bir fonksiyonun kendi tetiklenme sıklığını Firestore'dan okuyup değiştirmesi mümkün değildir. Bu alan, ileride ilgili göreve kendi içinde bir 'yeterince zaman geçti mi' kontrolü eklenip zamanlamanın fiilen buradan okunması durumunda kullanılacak zemin olarak eklenmiştir; bugün değiştirmenin gözlemlenebilir hiçbir etkisi yoktur.",
+    "impact": "Bu alanın şu anda hiçbir etkisi yok.",
+    "sensitive": false,
+    "note": "M5.1 (ops_cron.*) -- gerçek zamanlama functions/admin_stats.js computeAdminStatsRollup, .schedule('0 2 * * *'), sabit kod. Bu alan henüz okunmuyor."
   }
 }

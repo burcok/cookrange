@@ -100,6 +100,26 @@ exports.deleteUserAccount = functions.https.onCall(async (data, context) => {
     // 5. Finally remove the Firebase Auth identity.
     await admin.auth().deleteUser(uid);
 
+    // M5.1 (admin_stats rollup) — nothing else records that an account
+    // deletion happened; this recursive erasure + the Auth delete above
+    // are the only trace otherwise. A day-bucket increment, mirroring
+    // index.js's recordUsage/ai_usage_stats pattern. Best-effort: a
+    // stats-write hiccup must never fail a GDPR/KVKK erasure that has
+    // already succeeded.
+    const dayKey = new Date().toISOString().slice(0, 10);
+    await db
+      .collection('admin_stats')
+      .doc(`day_${dayKey}`)
+      .set(
+        {
+          day: dayKey,
+          users: { account_deletions: admin.firestore.FieldValue.increment(1) },
+          updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+      .catch((e) => functions.logger.error('deleteUserAccount: admin_stats increment failed', { uid, error: e.message }));
+
     functions.logger.info('deleteUserAccount: done', { uid });
     return { ok: true };
   } catch (e) {

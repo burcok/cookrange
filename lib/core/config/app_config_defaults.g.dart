@@ -117,6 +117,7 @@ const Map<String, dynamic> kConfigDefaults = {
   'moderation.reciprocity_min_pair_sample': 4,
   'moderation.reciprocity_ratio_threshold': 0.5,
   'moderation.report_rate_limit': <String, dynamic>{'windowMs': 600000, 'max': 8, 'lockMs': 900000},
+  'ops_cron.admin_stats_rollup_schedule': '0 2 * * *',
   'ops_cron.broadcast_drain_period_min': 5,
   'ops_cron.group_activity_score_period_min': 15,
   'ops_cron.gym_wars_end_check_period_min': 60,

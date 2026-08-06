@@ -2157,6 +2157,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ─── Admin cross-domain daily rollup (Faz B M5.1) ────────────────────────
+    // Server-written only: on-write increments from account.js's
+    // deleteUserAccount / rate_limit.js's lockUntil throughout the day, plus
+    // admin_stats.js's own scheduled aggregation pass once daily. Admin-read
+    // only, same posture as ai_usage_stats above.
+    match /admin_stats/{doc} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // ─── Notifications (canonical path; BLK-03/SEC-06) ───────────────────────
     // Fans out to push via the onInAppNotificationCreated trigger. Written only
     // by Cloud Functions (functions/notifications.js, social.js, economy.js,

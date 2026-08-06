@@ -23,6 +23,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const admin = require('firebase-admin');
+const functions = require('firebase-functions');
 
 /**
  * Atomically checks + bumps a per-uid sliding-window counter. Returns
@@ -68,6 +69,31 @@ async function lockUntil(db, uid, kind, lockMs) {
   await ref.set({
     [`${kind}_locked_until`]: admin.firestore.Timestamp.fromMillis(Date.now() + lockMs),
   }, { merge: true });
+
+  // M5.1 (admin_stats rollup) — a day-bucket increment mirroring index.js's
+  // recordUsage/ai_usage_stats pattern. Nothing before this wrote ANY
+  // Firestore-visible signal that a rate limit was actually TRIGGERED
+  // (_locked_until only stores a future expiry, not a "this happened"
+  // event) — one shared edit point here covers every caller (gym.js's
+  // checkin limit, moderation.js's report/moderation/appeal limits)
+  // instead of four separate call-site edits. Best-effort: never let a
+  // stats write fail the rate-limit enforcement it's reporting on.
+  const dayKey = new Date().toISOString().slice(0, 10);
+  await db
+    .collection('admin_stats')
+    .doc(`day_${dayKey}`)
+    .set(
+      {
+        day: dayKey,
+        moderation: {
+          rate_limit_triggers: admin.firestore.FieldValue.increment(1),
+          [`rate_limit_triggers_by_kind.${kind}`]: admin.firestore.FieldValue.increment(1),
+        },
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    )
+    .catch((e) => functions.logger.error('lockUntil: admin_stats increment failed', { uid, kind, error: e.message }));
 }
 
 module.exports = { checkAndBumpSlidingWindow, lockUntil };
