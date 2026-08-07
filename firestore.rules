@@ -222,9 +222,15 @@ service cloud.firestore {
     // (Faz 2 §2.1 — see canMarkOwnUnreadZero() just below for the one
     // narrow carve-out). Message-level immutability is handled separately,
     // in the messages/{messageId} match block (Faz 2 §2.1).
+    //
+    // Chat Upgrade Phase 2 — `typingUsers` added to the forbidden list:
+    // typing now lives on Realtime Database (`PresenceService.setTyping`,
+    // `database.rules.json`'s `/typing/{chatId}` node), not this field.
+    // Nothing client-side writes it anymore; forbidding it here is defense
+    // in depth against a stale/rogue client build still trying to.
     function canUpdateChatMeta() {
       let diff = request.resource.data.diff(resource.data).affectedKeys();
-      return !diff.hasAny(['participants', 'type', 'createdBy', 'unreadCounts']);
+      return !diff.hasAny(['participants', 'type', 'createdBy', 'unreadCounts', 'typingUsers']);
     }
 
     // Faz 2 §2.1: unreadCounts INCREMENTS are exclusively server-side now
@@ -258,7 +264,7 @@ service cloud.firestore {
       return d.senderId == request.auth.uid
         && d.server_timestamp == request.time
         && d.timestamp == request.time
-        && d.type in ['text', 'image', 'system', 'plan_offer', 'announcement']
+        && d.type in ['text', 'image', 'system', 'plan_offer', 'announcement', 'voice']
         && d.get('body', '').size() <= 5000
         && d.get('attachments', []).size() <= 10
         && d.get('mentions', []).size() <= 50
@@ -745,6 +751,31 @@ service cloud.firestore {
         allow read: if isOwner(uid) || isAdmin();
         allow write: if isOwner(uid);
       }
+
+      // Chat Upgrade Phase 1 — multi-device session registry (replaces the
+      // old single-session `current_session_id` kickout in AuthService).
+      // One doc per installation (DeviceRegistryService,
+      // lib/core/services/device_registry_service.dart) — the owner may
+      // create/read/update their own devices, but `revoked`/`revoked_at`
+      // are server-write-only: only the `revokeDevice` callable
+      // (functions/devices.js, Admin SDK) may set them, because a bare
+      // Firestore flag can't actually invalidate a session — only revoking
+      // the Firebase Auth refresh token does that. No delete: a revoked
+      // device doc is kept as an audit trail, not tidied away by the client.
+      match /devices/{deviceId} {
+        allow read: if isOwner(uid);
+        // SEC-29-style forbid-list (see touchesProtectedUserFields()'s cross
+        // reference above): diff() only applies on `update`, never `create`,
+        // so a client could otherwise CREATE this doc with `revoked: true`
+        // already baked in. Forbidding the keys outright on create is the
+        // correct fix here, not bounding them.
+        allow create: if isOwner(uid)
+          && !request.resource.data.keys().hasAny(['revoked', 'revoked_at']);
+        allow update: if isOwner(uid)
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['platform', 'model', 'app_version', 'os_version', 'last_seen_at', 'push_token']);
+        allow delete: if false;
+      }
     }
 
     // ─── Logs (auth/session/activity audit trail) ───────────────────────────
@@ -939,6 +970,19 @@ service cloud.firestore {
                   && canModeratorDeleteMessage(get(/databases/$(database)/documents/chats/$(chatId)).data.groupId)));
         allow delete: if false;
       }
+
+      // Faz 3+4 — the cold "last message preview" doc `onChatMessageCreated`
+      // (functions/index.js) writes on every new message, replacing the old
+      // full `lastMessage` embed (attachments and all) on the parent chat
+      // doc — one small doc, one write per message regardless of recipient
+      // count, instead of re-delivering the whole message to every
+      // participant's chat-list listener. Server-only write.
+      match /state/{docId} {
+        allow read: if isAuthenticated()
+          && (isParticipant(get(/databases/$(database)/documents/chats/$(chatId)).data)
+              || canAccessGroupChat(get(/databases/$(database)/documents/chats/$(chatId)).data));
+        allow write: if false;
+      }
     }
 
     // ─── Signals (ephemeral social broadcasts) ────────────────────────────────
@@ -1024,6 +1068,31 @@ service cloud.firestore {
     // reads back through the client SDK.
     match /rate_limits/{uid} {
       allow read, write: if false;
+    }
+
+    // Faz 3+4 — idempotency ledger for `onChatMessageCreated`
+    // (functions/index.js). Doc id = the trigger's own `context.eventId`; a
+    // `create()` throwing ALREADY_EXISTS is how the function detects and
+    // skips a retried/duplicate delivery. No other purpose, no client
+    // access at all.
+    match /chat_fanout_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    // Faz 3 — per-user chat discovery/unread read-model
+    // (`onChatMessageCreated`'s tiered fan-out). Fixes the structural bug
+    // where a group-backed chat's `participants` array only ever holds the
+    // owner: this row exists for every REAL member, so `ChatService
+    // .getUserChats`'s merge (see its own doc comment) can discover a
+    // group-backed chat for a non-owner member and show a real unread
+    // count — see `docs/DATABASE.md` for the full read-model design.
+    match /users/{uid}/chat_inbox/{chatId} {
+      allow read: if isOwner(uid);
+      allow create, delete: if false; // server-only fan-out write
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unread', 'unread_dirty', 'last_read_at'])
+        && request.resource.data.get('unread', 0) == 0
+        && request.resource.data.get('unread_dirty', false) == false;
     }
 
     // ─── Block list (per-user, full CRUD by owner only) ──────────────────────

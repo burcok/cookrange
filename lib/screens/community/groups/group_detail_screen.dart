@@ -13,6 +13,7 @@ import '../../../core/services/sharing_service.dart';
 import '../../../core/widgets/ds/ds.dart';
 import '../post_detail_screen.dart';
 import '../widgets/glass_post_card.dart';
+import 'group_info_screen.dart';
 import 'group_leaderboard_screen.dart';
 import 'group_members_screen.dart';
 
@@ -108,8 +109,22 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       color: palette.textPrimary, size: 20),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
-                title: Text(group.name,
-                    style: t.titleM.copyWith(fontWeight: FontWeight.w800)),
+                // Faz 5 (Piece A) — WhatsApp-style "tap header -> group
+                // info" entry point. `GroupInfoScreen` owns everything the
+                // plan asks for beyond what this feed screen already shows
+                // (creation date/creator/admin list/shared media/mute
+                // toggle/security disclosure) — a dedicated sub-screen
+                // rather than more sections on this already-dense feed.
+                title: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.push(
+                    context,
+                    AppTransitions.slideRight(
+                        GroupInfoScreen(groupId: widget.groupId)),
+                  ),
+                  child: Text(group.name,
+                      style: t.titleM.copyWith(fontWeight: FontWeight.w800)),
+                ),
                 // Faz 2 §2.6 — member list + moderation entry point. Purely
                 // additive (a new app-bar action); the join/leave button
                 // below is join_policy-aware (_HeaderState).

@@ -26,8 +26,12 @@ import '../../screens/onboarding/v2/onboarding_flow_screen.dart';
 import '../../screens/onboarding/meal_plan_generation_screen.dart';
 import '../../screens/discover/discover_hub_screen.dart';
 import '../../screens/community/streak_squad_screen.dart';
+import '../../screens/profile/device_management_screen.dart';
 import '../models/chat_model.dart';
+import '../widgets/ds/ds.dart';
 import '../widgets/error_fallback_widget.dart';
+import 'chat_service.dart';
+import '../../screens/common/generic_error_screen.dart';
 
 /// Service to manage route configuration and navigation
 class RouteConfigurationService {
@@ -60,8 +64,22 @@ class RouteConfigurationService {
         return RouteGuard(child: AIChatScreen(initialMessage: args));
       },
       AppRoutes.chatDetail: (context) {
-        final chat = ModalRoute.of(context)!.settings.arguments as ChatModel;
-        return RouteGuard(child: ChatDetailScreen(chat: chat));
+        // Faz 0 §0.4 — every in-app navigation already has the full
+        // `ChatModel` in hand and keeps using it directly (zero extra
+        // fetch). A push notification's data payload carries only a bare
+        // `chatId` (`functions/index.js`'s `onChatMessageCreated`), so that
+        // case resolves it via `_ChatDetailByIdLoader` instead of forcing
+        // every caller through an async load.
+        final args = ModalRoute.of(context)!.settings.arguments;
+        if (args is ChatModel) {
+          return RouteGuard(child: ChatDetailScreen(chat: args));
+        }
+        if (args is String) {
+          return RouteGuard(child: _ChatDetailByIdLoader(chatId: args));
+        }
+        throw ArgumentError(
+            'AppRoutes.chatDetail requires a ChatModel or a chat id String, '
+            'got ${args.runtimeType}');
       },
       AppRoutes.favorites: (context) =>
           const RouteGuard(child: FavoritesScreen()),
@@ -86,6 +104,8 @@ class RouteConfigurationService {
           const RouteGuard(child: MealPlanGenerationScreen()),
       AppRoutes.streakSquads: (context) =>
           const RouteGuard(child: StreakSquadScreen()),
+      AppRoutes.deviceManagement: (context) =>
+          const RouteGuard(child: DeviceManagementScreen()),
     };
   }
 
@@ -178,5 +198,37 @@ class RouteConfigurationService {
         (route) => false,
       );
     }
+  }
+}
+
+/// Resolves a bare chat id — the only thing a push notification's data
+/// payload carries — into the real `ChatModel` before handing off to
+/// `ChatDetailScreen` (Faz 0 §0.4). `ChatService` is a singleton
+/// (`static final _instance`), so constructing it here is cheap and shares
+/// state with every other call site.
+class _ChatDetailByIdLoader extends StatelessWidget {
+  final String chatId;
+  const _ChatDetailByIdLoader({required this.chatId});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<ChatModel>(
+      stream: ChatService().getChat(chatId),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Scaffold(
+            body: SafeArea(
+              child: GenericErrorScreen(errorCode: 'chat_not_found'),
+            ),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Scaffold(
+            body: SafeArea(child: AppSkeletonList()),
+          );
+        }
+        return ChatDetailScreen(chat: snapshot.data!);
+      },
+    );
   }
 }

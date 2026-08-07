@@ -1,10 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../models/message_model.dart';
 import '../../../theme/app_dimensions.dart';
 import '../../../theme/app_palette.dart';
+import 'app_chat_attachment_image.dart';
 
 /// One flattened grid cell — a single attachment plus a pointer back to its
 /// parent message (multi-attachment messages contribute more than one item).
@@ -69,22 +69,18 @@ class AppMediaGrid extends StatelessWidget {
             return Container(color: palette.shimmerBase);
           }
           final item = items[index];
-          final url = item.attachment.thumbUrl ?? item.attachment.url;
 
+          // Faz 5 — ChatAttachmentImage is the shared resolve point for both
+          // attachment shapes (already-resolved `chat_images/` URLs AND
+          // scoped `chat_media/` storage paths that need the
+          // `getChatMediaUrl` callable) — see its own doc comment.
           return GestureDetector(
             onTap: () {
               HapticFeedback.selectionClick();
               onTapItem(index);
             },
-            child: CachedNetworkImage(
-              imageUrl: url,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => Container(color: palette.shimmerBase),
-              errorWidget: (_, __, ___) => Container(
-                color: palette.shimmerBase,
-                child: Icon(Icons.broken_image_outlined,
-                    color: palette.textTertiary, size: AppSize.iconMd.r),
-              ),
+            child: ChatAttachmentImage(
+              attachment: item.attachment,
             ),
           );
         },

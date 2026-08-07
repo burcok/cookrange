@@ -7,21 +7,49 @@ import 'package:cookrange/core/models/chat_model.dart';
 import 'package:cookrange/core/models/message_model.dart';
 import 'package:cookrange/core/models/user_model.dart';
 import 'package:cookrange/core/providers/user_provider.dart';
+import 'package:cookrange/core/services/active_chat_tracker.dart';
+import 'package:cookrange/core/services/chat_send_failure_store.dart';
 import 'package:cookrange/core/services/chat_service.dart';
 import 'package:cookrange/core/services/community_group_service.dart';
+import 'package:cookrange/core/services/crashlytics_service.dart';
 import 'package:cookrange/core/services/permission_service.dart';
 import 'package:cookrange/core/services/plan_offer_service.dart';
+import 'package:cookrange/core/services/presence_service.dart';
 import 'package:cookrange/core/services/storage_upload_service.dart';
+import 'package:cookrange/core/services/voice_playback_service.dart';
+import 'package:cookrange/core/utils/chat_message_merge.dart';
+import 'package:cookrange/core/utils/message_status.dart';
 import 'package:cookrange/core/utils/profile_navigation.dart';
+import 'package:cookrange/core/utils/waveform_downsample.dart';
 import 'package:cookrange/core/widgets/ds/ds.dart';
 import 'package:cookrange/screens/chat/widgets/media_gallery_screen.dart';
+import 'package:cookrange/screens/community/groups/group_info_screen.dart';
 import 'package:cookrange/screens/plan_offers/offer_preview_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:record/record.dart';
+
+/// A one-line, kind-aware preview for any non-text message — reply
+/// previews, context-menu previews, and the pinned-message banner all show
+/// the same "📷 Photo"/"🎤 Voice message" style summary instead of raw body
+/// text (which is empty for these types anyway). Top-level (not a method on
+/// `_ChatDetailScreenState`) so `_PinnedBannerResolver` below, a separate
+/// widget, can share it without duplicating the branch.
+String previewTextFor(AppLocalizations l10n, MessageModel m) {
+  switch (m.type) {
+    case MessageType.image:
+      return l10n.translate('chat.preview.photo');
+    case MessageType.voice:
+      return l10n.translate('chat.preview.voice');
+    default:
+      return m.body;
+  }
+}
 
 /// Faz 2 §2.2 — chat screen rebuild. Replaces the old ad-hoc private-method
 /// bubble rendering with the reusable `lib/core/widgets/ds/chat/` components:
@@ -47,6 +75,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final FocusNode _composerFocusNode = FocusNode();
   final ChatService _chatService = ChatService();
   final CommunityGroupService _groupService = CommunityGroupService();
+  final ChatSendFailureStore _failureStore = ChatSendFailureStore();
   final String _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
   final Map<String, GlobalKey> _messageKeys = {};
 
@@ -59,6 +88,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Timer? _typingDebounce;
   Timer? _highlightTimer;
   bool _isUploading = false;
+
+  // Faz 6 — voice message recording state. The composer's mic button owns
+  // the actual press/drag/release gesture (see `AppMessageComposer`'s doc
+  // comment on `onMicPressStart` for why); this screen just holds the
+  // recording session itself.
+  AudioRecorder? _voiceRecorder;
+  Timer? _voiceElapsedTimer;
+  Duration _voiceElapsed = Duration.zero;
+  final List<double> _voiceRawAmplitudes = [];
+  StreamController<double>? _voiceAmplitudeController;
+  StreamSubscription<Amplitude>? _voiceAmplitudeSub;
+  bool _isRecordingVoice = false;
+  bool _isVoiceLocked = false;
+  double _voiceDragDx = 0;
+  double _voiceDragDy = 0;
+  String? _voiceRecordingPath;
 
   Stream<List<MessageModel>>? _messageStream;
   Stream<UserModel>? _otherUserStream;
@@ -102,6 +147,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
+    ActiveChatTracker().setActive(widget.chat.id);
     _messageStream =
         _chatService.getChatMessages(widget.chat.id, limit: _pageSize);
     _chatStream = _chatService.getChat(widget.chat.id);
@@ -144,6 +190,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   @override
   void dispose() {
+    ActiveChatTracker().clear(widget.chat.id);
     _messageController.removeListener(_onTextChanged);
     _messageController.dispose();
     _searchController.dispose();
@@ -153,8 +200,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _typingDebounce?.cancel();
     _highlightTimer?.cancel();
     if (_otherUserId.isNotEmpty) {
-      _chatService.setTypingStatus(widget.chat.id, _currentUserId, false);
+      PresenceService().setTyping(widget.chat.id, _currentUserId, false);
     }
+    _voiceElapsedTimer?.cancel();
+    _voiceAmplitudeSub?.cancel();
+    _voiceAmplitudeController?.close();
+    _voiceRecorder?.dispose();
+    // App-wide singleton — must not keep playing a voice note after this
+    // screen closes (VoicePlaybackService's own class doc).
+    unawaited(VoicePlaybackService().stop());
     super.dispose();
   }
 
@@ -172,9 +226,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   void _onTextChanged() {
     if (_typingDebounce?.isActive ?? false) _typingDebounce!.cancel();
-    _chatService.setTypingStatus(widget.chat.id, _currentUserId, true);
+    PresenceService().setTyping(widget.chat.id, _currentUserId, true);
     _typingDebounce = Timer(const Duration(milliseconds: 1500), () {
-      _chatService.setTypingStatus(widget.chat.id, _currentUserId, false);
+      PresenceService().setTyping(widget.chat.id, _currentUserId, false);
     });
     _updateMentionCandidates();
   }
@@ -254,8 +308,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     String preview;
     if (m.isDeletedFor(_currentUserId)) {
       preview = _l10n.translate('chat.message.deleted_placeholder');
-    } else if (m.type == MessageType.image) {
-      preview = _l10n.translate('chat.preview.photo');
+    } else if (m.type == MessageType.image || m.type == MessageType.voice) {
+      preview = previewTextFor(_l10n, m);
     } else {
       preview = m.body.length > 120 ? '${m.body.substring(0, 120)}…' : m.body;
     }
@@ -292,24 +346,116 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       return;
     }
 
-    final replyTo = _replyingTo;
-    await _chatService.sendMessage(
-      chatId: widget.chat.id,
-      senderId: _currentUserId,
-      body: text,
-      replyTo: replyTo != null ? _buildReplyTo(replyTo) : null,
-      mentions: _extractMentions(text),
-    );
+    final replyTo = _replyingTo != null ? _buildReplyTo(_replyingTo!) : null;
+    final mentions = _extractMentions(text);
+    final clientId = _chatService.newClientId();
 
+    // Faz 0 §0.2 — clear the composer synchronously and fire the send
+    // unawaited. Firestore's own offline mutation queue
+    // (`persistenceEnabled: true`) echoes the pending write to this
+    // screen's own `getChatMessages` listener immediately and retries every
+    // recoverable failure automatically, including across an app restart —
+    // there is nothing to wait on here. Only a hard rejection needs custom
+    // handling, via `_handleSendFailure` below.
     _messageController.clear();
     _typingDebounce?.cancel();
     unawaited(
-        _chatService.setTypingStatus(widget.chat.id, _currentUserId, false));
+        PresenceService().setTyping(widget.chat.id, _currentUserId, false));
     setState(() {
       _replyingTo = null;
       _mentionCandidates = [];
     });
     _scrollToBottom();
+
+    unawaited(_chatService
+        .sendMessage(
+      chatId: widget.chat.id,
+      senderId: _currentUserId,
+      body: text,
+      replyTo: replyTo,
+      mentions: mentions,
+      clientId: clientId,
+    )
+        .catchError((Object error) {
+      _handleSendFailure(
+        clientId: clientId,
+        type: MessageType.text,
+        body: text,
+        replyTo: replyTo,
+        mentions: mentions,
+        error: error,
+      );
+    }));
+  }
+
+  /// A hard-rejected send never reaches Firestore's cache, so it needs a
+  /// synthetic bubble the user can see and retry — `_buildMessageList`
+  /// merges this store's contents in via `ChatMessageMerge` (Faz 0 §0.2).
+  /// Anything else `sendMessage` can throw is not a
+  /// `ChatSendRejectedException` (the service itself only rethrows a
+  /// recoverable failure), which Firestore's own mutation queue is already
+  /// retrying — reporting or remembering that here would just be noise.
+  void _handleSendFailure({
+    required String clientId,
+    required MessageType type,
+    required String body,
+    List<MessageAttachment> attachments = const [],
+    MessageReplyTo? replyTo,
+    List<MessageMention> mentions = const [],
+    required Object error,
+  }) {
+    if (error is! ChatSendRejectedException) return;
+
+    _failureStore.add(PendingSendFailure(
+      clientId: clientId,
+      chatId: widget.chat.id,
+      senderId: _currentUserId,
+      type: type,
+      body: body,
+      attachments: attachments,
+      replyTo: replyTo,
+      mentions: mentions,
+      createdAt: DateTime.now(),
+      errorCode: error.code,
+    ));
+
+    debugPrint(
+        'ChatDetailScreen: send rejected chatId=${widget.chat.id} code=${error.code}');
+    unawaited(CrashlyticsService().recordError(
+      error,
+      StackTrace.current,
+      reason:
+          'ChatDetailScreen.sendMessage rejected chatId=${widget.chat.id} code=${error.code}',
+    ));
+  }
+
+  /// Re-sends a failed message with the SAME clientId — `ChatMessageMerge`
+  /// treats a live doc bearing that id as superseding its own failure
+  /// record, so a successful retry replaces the failed bubble in place.
+  void _retryFailedSend(MessageModel m) {
+    _failureStore.remove(widget.chat.id, m.clientId);
+    unawaited(_chatService
+        .sendMessage(
+      chatId: widget.chat.id,
+      senderId: m.senderId,
+      body: m.body,
+      type: m.type,
+      attachments: m.attachments,
+      replyTo: m.replyTo,
+      mentions: m.mentions,
+      clientId: m.clientId,
+    )
+        .catchError((Object error) {
+      _handleSendFailure(
+        clientId: m.clientId,
+        type: m.type,
+        body: m.body,
+        attachments: m.attachments,
+        replyTo: m.replyTo,
+        mentions: m.mentions,
+        error: error,
+      );
+    }));
   }
 
   String _chatImageScope() {
@@ -342,11 +488,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     try {
       final attachments = <MessageAttachment>[];
       for (final file in picked) {
-        final url = await StorageUploadService().uploadChatImage(
+        // Faz 5 (Piece C) — uploadChatImage now also returns a thumbnail
+        // URL + the full image's pixel dimensions, generated from the same
+        // decode pass as the full-size image (storage_upload_service.dart).
+        final uploaded = await StorageUploadService().uploadChatImage(
           chatScopeId: _chatImageScope(),
           imageFile: File(file.path),
         );
-        attachments.add(MessageAttachment(kind: 'image', url: url));
+        attachments.add(MessageAttachment(
+          kind: 'image',
+          url: uploaded.url,
+          thumbUrl: uploaded.thumbUrl,
+          width: uploaded.width,
+          height: uploaded.height,
+        ));
       }
       if (!mounted) return;
       final replyTo = _replyingTo;
@@ -580,7 +735,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     unawaited(HapticFeedback.mediumImpact());
     if (everyone) {
       await _chatService.deleteMessageForEveryone(
-          chatId: widget.chat.id, messageId: m.id);
+          chatId: widget.chat.id, messageId: m.id, attachments: m.attachments);
     } else {
       await _chatService.deleteMessageForMe(
           chatId: widget.chat.id, messageId: m.id, uid: _currentUserId);
@@ -790,6 +945,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   void _showContextMenu(MessageModel m,
       {required bool isPinned, required bool isStarred}) {
+    // A synthetic failed-send entry was never actually persisted — none of
+    // reply/forward/pin/star/edit/moderator-delete are meaningful on it.
+    if (m.sendFailed) {
+      _showFailedMessageMenu(m);
+      return;
+    }
+
     final withinEditWindow =
         DateTime.now().difference(m.timestamp) < const Duration(minutes: 15);
     final canEdit = m.senderId == _currentUserId &&
@@ -877,12 +1039,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     AppMessageContextMenu.show(
       context,
       previewSenderLabel: _labelFor(m.senderId),
-      previewText: m.type == MessageType.image
-          ? _l10n.translate('chat.preview.photo')
-          : m.body,
+      previewText: previewTextFor(_l10n, m),
       onReact: (emoji) => _toggleReaction(m, emoji),
       onMoreReactions: () => _showMoreReactionsDialog(m),
       actions: actions,
+    );
+  }
+
+  void _showFailedMessageMenu(MessageModel m) {
+    AppMessageContextMenu.show(
+      context,
+      previewSenderLabel: _labelFor(m.senderId),
+      previewText: previewTextFor(_l10n, m),
+      onReact: (_) {},
+      actions: [
+        AppMessageContextMenuAction(
+          icon: Icons.refresh_rounded,
+          label: _l10n.translate('chat.context_menu.retry'),
+          onTap: () => _retryFailedSend(m),
+        ),
+        AppMessageContextMenuAction(
+          icon: Icons.delete_outline_rounded,
+          label: _l10n.translate('chat.context_menu.delete_failed'),
+          destructive: true,
+          onTap: () => _failureStore.remove(widget.chat.id, m.clientId),
+        ),
+      ],
     );
   }
 
@@ -1026,23 +1208,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _jumpToMessage(m.id, m.timestamp);
   }
 
-  // ─── Delivery/read tick computation ────────────────────────────────────────
+  // ─── Send/delivery status ──────────────────────────────────────────────────
 
-  bool _isDelivered(MessageModel m, ChatModel chat) {
-    if (chat.type == ChatType.private) {
-      return _otherUserId.isNotEmpty && m.isDeliveredTo(_otherUserId);
-    }
-    final others = chat.participants.where((p) => p != _currentUserId);
-    return others.any((u) => m.isDeliveredTo(u));
-  }
-
-  bool _isRead(MessageModel m, ChatModel chat) {
-    if (chat.type == ChatType.private) {
-      return _otherUserId.isNotEmpty && m.isReadBy(_otherUserId);
-    }
-    final others = chat.participants.where((p) => p != _currentUserId).toList();
-    if (others.isEmpty) return false;
-    return others.every((u) => m.isReadBy(u));
+  /// Faz 0 §0.3 — delegates to the pure, unit-tested
+  /// `MessageStatusResolver`, which also fixes the group-backed correctness
+  /// gap the old inline `_isRead` had: `chat.participants` only ever holds
+  /// the OWNER for a `chat.groupId != null` chat, so requiring every
+  /// participant to have read it could never be true for a real group.
+  MessageSendState _resolveStatus(MessageModel m, ChatModel chat) {
+    final others = chat.type == ChatType.private
+        ? (_otherUserId.isEmpty ? const <String>[] : [_otherUserId])
+        : chat.participants.where((p) => p != _currentUserId).toList();
+    return MessageStatusResolver.resolve(
+      message: m,
+      otherParticipantIds: others,
+      isCommunityGroupChat: chat.groupId != null,
+    );
   }
 
   // ─── Build ─────────────────────────────────────────────────────────────────
@@ -1231,7 +1412,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Widget _buildGroupTitle(AppPalette palette) {
-    return Row(
+    final row = Row(
       children: [
         widget.chat.image != null
             ? CircleAvatar(
@@ -1264,6 +1445,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ),
         ),
       ],
+    );
+
+    // Faz 5 — "clicking group name/photo opens the group info screen"
+    // (WhatsApp's own header gesture). Only meaningful for a
+    // community-group-backed chat; an ad-hoc multi-party chat has no
+    // `GroupInfoScreen` to show.
+    final groupId = widget.chat.groupId;
+    if (groupId == null) return row;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.of(context)
+          .push(AppTransitions.slideRight(GroupInfoScreen(groupId: groupId))),
+      child: row,
     );
   }
 
@@ -1319,9 +1513,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       );
     }
     if (_searchResults.isEmpty) {
+      // Faz 7 — the same "searching your most recent messages" caveat shown
+      // above before a query is typed also belongs here: an empty result
+      // is ambiguous between "not found" and "outside the bounded search
+      // window" without it.
       return AppEmptyState(
         icon: Icons.search_off_rounded,
         title: _l10n.translate('chat.search.no_results'),
+        message: _l10n.translate('chat.search.scope_note'),
       );
     }
     return Column(
@@ -1422,37 +1621,55 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           : _messagesListView(_jumpMessages!, chatData);
     }
 
-    return StreamBuilder<List<MessageModel>>(
-      stream: _messageStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasData) {
-          return const AppSkeletonList();
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return AppEmptyState(
-            icon: Icons.chat_bubble_outline_rounded,
-            title: _l10n.translate('chat.no_messages_yet'),
-          );
-        }
+    return ValueListenableBuilder<List<PendingSendFailure>>(
+      valueListenable: _failureStore.watch(widget.chat.id),
+      builder: (context, failed, _) {
+        return StreamBuilder<List<MessageModel>>(
+          stream: _messageStream,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting &&
+                !snapshot.hasData) {
+              return const AppSkeletonList();
+            }
 
-        _liveMessagesCache = snapshot.data!;
-        if (!_unreadDividerComputed) {
-          _unreadDividerComputed = true;
-          final capturedUnread = widget.chat.unreadCounts[_currentUserId] ?? 0;
-          if (capturedUnread > 0) {
-            for (final m in _liveMessagesCache) {
-              if (m.senderId != _currentUserId && !m.isReadBy(_currentUserId)) {
-                _unreadDividerBeforeId = m.id;
-                _unreadDividerCount = capturedUnread;
-                break;
+            // `_liveMessagesCache` stays exactly what Firestore returned
+            // (unmerged) — `_loadOlder`'s pagination cursor and
+            // `_allLoadedMessages()` both anchor on real doc ids, and a
+            // synthetic failed-send entry (id = a local clientId, no
+            // matching doc) must never become that anchor.
+            _liveMessagesCache = snapshot.data ?? const [];
+            if (_liveMessagesCache.isEmpty && failed.isEmpty) {
+              return AppEmptyState(
+                icon: Icons.chat_bubble_outline_rounded,
+                title: _l10n.translate('chat.no_messages_yet'),
+              );
+            }
+
+            if (!_unreadDividerComputed) {
+              _unreadDividerComputed = true;
+              final capturedUnread =
+                  widget.chat.unreadCounts[_currentUserId] ?? 0;
+              if (capturedUnread > 0) {
+                for (final m in _liveMessagesCache) {
+                  if (m.senderId != _currentUserId &&
+                      !m.isReadBy(_currentUserId)) {
+                    _unreadDividerBeforeId = m.id;
+                    _unreadDividerCount = capturedUnread;
+                    break;
+                  }
+                }
               }
             }
-          }
-        }
 
-        final combined = [..._liveMessagesCache, ..._olderMessages];
-        return _messagesListView(combined, chatData);
+            final mergedLive = ChatMessageMerge.merge(
+              live: _liveMessagesCache,
+              failed: failed,
+              currentUid: _currentUserId,
+            );
+            final combined = [...mergedLive, ..._olderMessages];
+            return _messagesListView(combined, chatData);
+          },
+        );
       },
     );
   }
@@ -1522,8 +1739,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         senderLabel: showSenderLabel
                             ? _labelFor(message.senderId)
                             : null,
-                        isDelivered: _isDelivered(message, chatData),
-                        isRead: _isRead(message, chatData),
+                        status: _resolveStatus(message, chatData),
                         isPinned: chatData.pinnedMessageId == message.id,
                         isStarred: starredIds.contains(message.id),
                         resolveSenderLabel: _labelFor,
@@ -1567,7 +1783,169 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     return AppTypingIndicator(visible: typingUids.isNotEmpty, names: names);
   }
 
+  // ─── Voice messages (Faz 6) ────────────────────────────────────────────────
+
+  Future<void> _startVoiceRecording() async {
+    final granted = await PermissionService().requestMicrophone(context);
+    if (!mounted || !granted) return;
+
+    final recorder = AudioRecorder();
+    final dir = await getTemporaryDirectory();
+    final path =
+        '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+    try {
+      await recorder.start(
+        const RecordConfig(bitRate: 64000), // encoder defaults to aacLc
+        path: path,
+      );
+    } catch (e, st) {
+      unawaited(CrashlyticsService()
+          .recordError(e, st, reason: 'ChatDetailScreen._startVoiceRecording'));
+      if (mounted) AppSnackBar.error(context, e.toString());
+      return;
+    }
+
+    _voiceRecorder = recorder;
+    _voiceRecordingPath = path;
+    _voiceRawAmplitudes.clear();
+    _voiceAmplitudeController = StreamController<double>.broadcast();
+
+    setState(() {
+      _isRecordingVoice = true;
+      _isVoiceLocked = false;
+      _voiceElapsed = Duration.zero;
+      _voiceDragDx = 0;
+      _voiceDragDy = 0;
+    });
+
+    _voiceElapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _voiceElapsed += const Duration(seconds: 1));
+    });
+
+    _voiceAmplitudeSub =
+        recorder.onAmplitudeChanged(const Duration(milliseconds: 100)).listen(
+      (amp) {
+        _voiceRawAmplitudes.add(amp.current);
+        // Same floor as WaveformDownsampler.silenceFloorDb — normalizes the
+        // LIVE waveform bar the same way the final downsample will.
+        final normalized =
+            ((amp.current.clamp(WaveformDownsampler.silenceFloorDb, 0.0) -
+                    WaveformDownsampler.silenceFloorDb) /
+                (-WaveformDownsampler.silenceFloorDb) *
+                100);
+        _voiceAmplitudeController?.add(normalized);
+      },
+      onError: (Object e, StackTrace st) {
+        _log(e, st, 'onAmplitudeChanged');
+      },
+    );
+  }
+
+  void _log(Object e, StackTrace st, String where) {
+    unawaited(CrashlyticsService()
+        .recordError(e, st, reason: 'ChatDetailScreen.$where'));
+  }
+
+  Future<void> _cancelVoiceRecording() async {
+    unawaited(HapticFeedback.mediumImpact());
+    _voiceElapsedTimer?.cancel();
+    unawaited(_voiceAmplitudeSub?.cancel());
+    unawaited(_voiceAmplitudeController?.close());
+    try {
+      await _voiceRecorder?.stop();
+    } catch (_) {
+      // Best-effort — we're discarding the recording either way.
+    }
+    final path = _voiceRecordingPath;
+    if (path != null) {
+      unawaited(File(path).delete().catchError((_) => File(path)));
+    }
+    unawaited(_voiceRecorder?.dispose());
+    _voiceRecorder = null;
+    _voiceRecordingPath = null;
+    if (mounted) {
+      setState(() {
+        _isRecordingVoice = false;
+        _isVoiceLocked = false;
+      });
+    }
+  }
+
+  Future<void> _finishVoiceRecordingAndSend() async {
+    _voiceElapsedTimer?.cancel();
+    unawaited(_voiceAmplitudeSub?.cancel());
+    unawaited(_voiceAmplitudeController?.close());
+
+    String? path;
+    try {
+      path = await _voiceRecorder?.stop();
+    } catch (e, st) {
+      _log(e, st, '_finishVoiceRecordingAndSend.stop');
+    }
+    unawaited(_voiceRecorder?.dispose());
+    _voiceRecorder = null;
+
+    final durationMs = _voiceElapsed.inMilliseconds;
+    final peaks = WaveformDownsampler.downsample(_voiceRawAmplitudes);
+
+    if (!mounted || path == null || durationMs < 1000) {
+      // Under 1s is almost certainly an accidental tap, not a real note —
+      // discard silently rather than sending a near-zero-length recording.
+      if (path != null) {
+        unawaited(File(path).delete().catchError((_) => File(path!)));
+      }
+      if (mounted) {
+        setState(() {
+          _isRecordingVoice = false;
+          _isVoiceLocked = false;
+        });
+      }
+      return;
+    }
+
+    setState(() {
+      _isRecordingVoice = false;
+      _isVoiceLocked = false;
+      _isUploading = true;
+    });
+
+    try {
+      final url = await StorageUploadService().uploadChatVoice(
+          chatScopeId: _chatImageScope(), audioFile: File(path));
+      final replyTo = _replyingTo;
+      await _chatService.sendMessage(
+        chatId: widget.chat.id,
+        senderId: _currentUserId,
+        type: MessageType.voice,
+        attachments: [
+          MessageAttachment(
+              kind: 'audio', url: url, durationMs: durationMs, peaks: peaks),
+        ],
+        replyTo: replyTo != null ? _buildReplyTo(replyTo) : null,
+      );
+      if (mounted) setState(() => _replyingTo = null);
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) AppSnackBar.error(context, e.toString());
+    } finally {
+      unawaited(File(path).delete().catchError((_) => File(path!)));
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
   Widget _buildComposer() {
+    if (_isRecordingVoice) {
+      return AppVoiceRecorder(
+        elapsed: _voiceElapsed,
+        amplitudeStream: _voiceAmplitudeController?.stream,
+        dragDx: _voiceDragDx,
+        dragDy: _voiceDragDy,
+        onCancel: _cancelVoiceRecording,
+        onLock: () => setState(() => _isVoiceLocked = true),
+        onRelease: _finishVoiceRecordingAndSend,
+      );
+    }
     return AppMessageComposer(
       controller: _messageController,
       focusNode: _composerFocusNode,
@@ -1579,19 +1957,34 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ? _l10n.translate('chat.edit_message.editing_label')
           : (_replyingTo != null ? _labelFor(_replyingTo!.senderId) : null),
       replyingToPreview: _editingMessage?.body ??
-          (_replyingTo != null
-              ? (_replyingTo!.type == MessageType.image
-                  ? _l10n.translate('chat.preview.photo')
-                  : _replyingTo!.body)
-              : null),
-      replyingToIcon: (_replyingTo?.type == MessageType.image)
-          ? Icons.image_outlined
-          : null,
+          (_replyingTo != null ? previewTextFor(_l10n, _replyingTo!) : null),
+      replyingToIcon: switch (_replyingTo?.type) {
+        MessageType.image => Icons.image_outlined,
+        MessageType.voice => Icons.mic_none_rounded,
+        _ => null,
+      },
       onCancelReply: _editingMessage != null
           ? _cancelEdit
           : (_replyingTo != null ? _cancelReply : null),
       mentionCandidates: _mentionCandidates,
       onSelectMention: _onSelectMention,
+      onMicPressStart: _startVoiceRecording,
+      onMicDragUpdate: (dx, dy) {
+        setState(() {
+          _voiceDragDx = dx;
+          _voiceDragDy = dy;
+        });
+      },
+      onMicPressEnd: () {
+        if (!_isRecordingVoice || _isVoiceLocked) return;
+        // Locked mode is hands-free — the recorder bar's own send/delete
+        // buttons take over from here (AppVoiceRecorder.onRelease/onCancel).
+        if (_voiceDragDy >= AppVoiceRecorder.lockThresholdPx ||
+            _voiceDragDx >= AppVoiceRecorder.cancelThresholdPx) {
+          return;
+        }
+        _finishVoiceRecordingAndSend();
+      },
     );
   }
 }
@@ -1661,10 +2054,12 @@ class _PinnedBannerResolverState extends State<_PinnedBannerResolver> {
 
     return AppPinnedBanner(
       senderLabel: widget.labelFor(message.senderId),
-      previewText: message.type == MessageType.image
-          ? widget.l10n.translate('chat.preview.photo')
-          : message.body,
-      kindIcon: message.type == MessageType.image ? Icons.image_outlined : null,
+      previewText: previewTextFor(widget.l10n, message),
+      kindIcon: switch (message.type) {
+        MessageType.image => Icons.image_outlined,
+        MessageType.voice => Icons.mic_none_rounded,
+        _ => null,
+      },
       onTap: () => widget.onTap(message),
       onUnpin: widget.onUnpin,
     );

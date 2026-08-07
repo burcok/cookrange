@@ -770,9 +770,12 @@ class FirestoreService {
   /// Refreshes the device/system context on the user doc when the app opens or
   /// is resumed — a lightweight sibling of [handleUserLogin] WITHOUT the streak
   /// recompute or login-history write. A cached session (auto-login) never runs
-  /// [handleUserLogin], so without this the doc would only ever get `is_online`
-  /// refreshed and the phone/app-version data would go stale. `getSystemContext`
-  /// caches the device info and the IP (4h), so this is cheap to call on resume.
+  /// [handleUserLogin], so without this the phone/app-version/IP data on the
+  /// user doc would go stale. `getSystemContext` caches the device info and
+  /// the IP (4h), so this is cheap to call on resume. Does NOT touch
+  /// `is_online`/`last_active_at` (Chat Upgrade Phase 2 — see this method's
+  /// body comment); those are `AppLifecycleService`/`PresenceService`'s
+  /// territory exclusively.
   Future<void> syncDeviceContext(String uid) async {
     _log.info('Syncing device context for user: $uid', service: _serviceName);
     try {
@@ -781,8 +784,15 @@ class FirestoreService {
       final ip = ctx['ip_address'];
       final deviceModel = ctx['device_model'];
       await _firestore.collection('users').doc(uid).set({
-        'is_online': true,
-        'last_active_at': FieldValue.serverTimestamp(),
+        // Chat Upgrade Phase 2 — `is_online`/`last_active_at` deliberately
+        // NOT written here anymore. Both are now mirrored exclusively by
+        // functions/chat_presence.js's `mirrorPresence` from RTDB
+        // (`PresenceService`'s `onDisconnect`-backed presence), which is the
+        // only thing that can actually detect a killed app. Writing them
+        // here too would recreate the exact race
+        // `AppLifecycleService`'s header comment describes — this method
+        // must stay a pure device/context-audit write (IP, device model,
+        // app version, etc.), never a second presence writer.
         if (ip != null) 'last_login_ip': ip,
         if (deviceModel != null) ...{
           'last_login_device': deviceModel,

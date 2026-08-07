@@ -6,6 +6,7 @@ const fetch = require('node-fetch');
 const { APP_CHECK_ENFORCE } = require('./config');
 const { getFcmToken, writeNotification } = require('./notifications');
 const { getConfig } = require('./app_config');
+const chatFanoutLogic = require('./chat_fanout_logic');
 
 admin.initializeApp();
 
@@ -839,92 +840,301 @@ exports.onInAppNotificationCreated = functions
 async function resolveChatRecipients(chatId, chatData, senderId) {
   const groupId = chatData.groupId;
   if (groupId) {
-    const membersSnap = await admin.firestore()
-      .collection('community_groups').doc(groupId).collection('members')
-      .select('banned')
-      .get();
-    return membersSnap.docs
-      .filter((d) => d.data().banned !== true)
-      .map((d) => d.id)
-      .filter((uid) => uid !== senderId);
+    const uids = [];
+    let cursor = null;
+    // Faz 3+4: paged in chunks (was one unbounded `.get()`) — a very large
+    // group no longer risks one oversized read; each page is a cheap,
+    // independent round-trip. `.select('banned')` still limits the read to
+    // that one field per doc.
+    for (;;) {
+      let q = admin.firestore()
+        .collection('community_groups').doc(groupId).collection('members')
+        .select('banned')
+        .orderBy(admin.firestore.FieldPath.documentId())
+        .limit(chatFanoutLogic.MEMBER_PAGE_SIZE);
+      if (cursor) q = q.startAfter(cursor);
+      const page = await q.get();
+      if (page.empty) break;
+      for (const d of page.docs) {
+        if (d.data().banned !== true) uids.push(d.id);
+      }
+      if (page.docs.length < chatFanoutLogic.MEMBER_PAGE_SIZE) break;
+      cursor = page.docs[page.docs.length - 1].id;
+    }
+    return uids.filter((uid) => uid !== senderId);
   }
   const participants = chatData.participants || [];
   return participants.filter((p) => p !== senderId);
 }
 
 /**
+ * Every push token for [uid] across every non-revoked registered device
+ * (Faz 1's `users/{uid}/devices/{deviceId}`, Faz 4 upgrade from a single
+ * `private/account.fcm_token`) — a phone AND a tablet both ring now. Falls
+ * back to the legacy single-token path (`getFcmToken`) when the registry is
+ * empty (a session that hasn't gone through a fresh login/resume since Faz 1
+ * landed), so this never regresses an existing install to zero push. The
+ * devices subcollection is tiny per user (a handful of rows at most) — a
+ * plain `.get()` with no query filter is simplest and needs no new index.
+ */
+async function resolveDeviceTokensForUid(db, uid) {
+  const devicesSnap = await db.collection('users').doc(uid).collection('devices').get();
+  const tokens = devicesSnap.docs
+    .map((d) => d.data())
+    .filter((d) => d.revoked !== true && typeof d.push_token === 'string' && d.push_token)
+    .map((d) => d.push_token);
+  if (tokens.length > 0) return Array.from(new Set(tokens));
+
+  const legacy = await getFcmToken(db, uid);
+  return legacy ? [legacy] : [];
+}
+
+/**
+ * Chunked multicast push to every device token in [tokens], removing a
+ * stale token from whichever device doc owns it (mirrors `sendFcm`'s single-
+ * token stale-token cleanup, generalized to the multi-device registry).
+ * Returns aggregate counts only — never logs a uid/token at info level (§6).
+ */
+async function sendMulticastToDevices(db, uid, tokens, title, body, data) {
+  let sent = 0;
+  let failed = 0;
+  let stalePruned = 0;
+  const dataStr = Object.fromEntries(
+    Object.entries(data)
+      .filter(([, v]) => v !== null && v !== undefined && v !== '')
+      .map(([k, v]) => [k, String(v)]),
+  );
+
+  for (const tokenChunk of chatFanoutLogic.chunk(tokens, chatFanoutLogic.MULTICAST_CHUNK_SIZE)) {
+    let response;
+    try {
+      response = await admin.messaging().sendEachForMulticast({
+        tokens: tokenChunk,
+        notification: { title, body },
+        data: dataStr,
+        android: { priority: 'high', notification: { channelId: 'cookrange_default', sound: 'default' } },
+        apns: { payload: { aps: { badge: 1, sound: 'default' } } },
+      });
+    } catch (e) {
+      failed += tokenChunk.length;
+      functions.logger.warn('sendMulticastToDevices: chunk send failed', { uid, error: e.message });
+      continue;
+    }
+
+    const staleTokens = [];
+    response.responses.forEach((r, i) => {
+      if (r.success) {
+        sent += 1;
+        return;
+      }
+      failed += 1;
+      const code = r.error && r.error.code;
+      if (code === 'messaging/registration-token-not-registered'
+          || code === 'messaging/invalid-registration-token') {
+        staleTokens.push(tokenChunk[i]);
+      }
+    });
+
+    if (staleTokens.length > 0) {
+      try {
+        const devicesSnap = await db.collection('users').doc(uid).collection('devices')
+          .where('push_token', 'in', staleTokens.slice(0, 10)) // Firestore `in` caps at 10
+          .get();
+        const bw = db.bulkWriter();
+        devicesSnap.docs.forEach((d) => bw.update(d.ref, { push_token: admin.firestore.FieldValue.delete() }));
+        await bw.close();
+        stalePruned += devicesSnap.size;
+      } catch (e) {
+        functions.logger.warn('sendMulticastToDevices: stale-token prune failed', { uid, error: e.message });
+      }
+    }
+  }
+
+  return { sent, failed, stalePruned };
+}
+
+/**
  * Firestore trigger: on every new `chats/{chatId}/messages/{msgId}` doc,
- * (1) fans out a push notification to every other real recipient, and
- * (2) increments `chats/{chatId}.unreadCounts` for every recipient.
+ * (1) writes the cold `chats/{chatId}/state/live` preview doc, (2) fans out
+ * a tiered `chat_inbox` row + unread signal to every recipient, (3) keeps
+ * dual-writing the legacy `unreadCounts` map for one release
+ * (`ChatModel`/`ChatService` still fall back to it), and (4) multicasts a
+ * push to every one of each recipient's registered devices.
  *
- * Faz 2 §2.1: (2) is new — unreadCounts increments moved here (server-only)
- * so a participant can never forge their own or anyone else's count;
- * `ChatService.sendMessage` no longer touches unreadCounts at all, and
- * `ChatService.markChatAsRead` may only ever zero its OWN key
- * (firestore.rules' canMarkOwnUnreadZero()). Both this function and that
- * client write share this same chat doc but never the same field-write, so
- * there's no double-counting.
+ * Faz 3+4 rewrite. What changed and why, against the PREVIOUS version of
+ * this function (Faz 2 §2.1/§2.4):
  *
- * Faz 2 §2.4: "recipients" is no longer just `chatData.participants` — see
- * `resolveChatRecipients`'s doc comment for the group-chat gap this closes.
- * This is also what makes `ChatService.getUnreadMessageCountStream` (the
- * plan's "sunucu tarafı toplam okunmamış sayacı") correct for group/gym
- * chats, not just DMs: that stream just sums `unreadCounts[uid]` across the
- * caller's chats, so once this function populates a real key for every real
- * member, the sum is automatically right — no client-side change needed.
+ * - **Idempotency** (`chat_fanout_events/{context.eventId}.create()`): the
+ *   old version had none — a retried/duplicate trigger delivery would
+ *   double-increment unread and double-push. `create()` throwing
+ *   ALREADY_EXISTS is the signal a duplicate arrived; we return early.
+ * - **Staleness bail**: if this ever runs behind a genuinely stale retry
+ *   (only possible once retry is enabled at deploy time — not something
+ *   this code change turns on; see the header note on `.runWith` below), a
+ *   poison event is dropped rather than reprocessed for days.
+ * - **Chunked member paging** (`resolveChatRecipients`): was one unbounded
+ *   `.get()` — now paged, so a very large group's fan-out no longer risks
+ *   one oversized read.
+ * - **Tiered inbox writes** replace the single hot `chats/{id}` doc's
+ *   `lastMessage` (a FULL message embed, attachments and all) +
+ *   `unreadCounts` map, which every participant's chat-list listener
+ *   re-received on every message regardless of how many other participants
+ *   there were. See `chat_fanout_logic.fanoutTier`'s doc comment for the
+ *   `per_user`/`cursor` split and the honest simplification the `cursor`
+ *   tier makes.
+ * - **Multi-device push** (`resolveDeviceTokensForUid`/
+ *   `sendMulticastToDevices`): was a single `getFcmToken` read + one-token
+ *   `sendFcm` — now every one of a recipient's non-revoked registered
+ *   devices (Faz 1) gets the push, chunked via `sendEachForMulticast` with
+ *   per-token error isolation, so one bad token can never fail the whole
+ *   batch the way an unbounded `Promise.all` of individual sends could.
+ * - **Top-level try/catch, logged, never rethrown** (R4): the old version
+ *   had no outer catch at all — an unhandled rejection anywhere in the
+ *   `Promise.all` failed the WHOLE fan-out silently (no push AND no unread
+ *   bump for anyone in that batch, with nothing surfaced anywhere). Now
+ *   every failure is logged with enough context to investigate, and a
+ *   partial failure in one phase (e.g. the legacy dual-write) doesn't
+ *   prevent the phases that already succeeded.
  *
- * `msg.body` replaces the old `msg.text` read for the push preview (the v2
- * schema renamed the field) — `msg.text` is kept as a fallback purely so a
- * pre-migration doc (impossible to actually hit here, since onCreate only
- * ever fires for brand-new docs, but kept defensive/cheap) never regresses
- * to a blank preview.
+ * `.runWith` bumps memory/timeout for the largest configured group
+ * (`app_config/server.chat.max_group_members`, default 1000 — see
+ * `docs/DATABASE.md`) — comfortably inside these limits per the fan-out
+ * ceiling analysis in this phase's design notes. Retry-on-failure for a
+ * background trigger is a deploy-time/console setting, not something the
+ * function definition itself toggles — deliberately left at its current
+ * (disabled) setting in this change; the idempotency guard above is what
+ * makes turning it on safe later, not a signal that it already is on.
  */
 exports.onChatMessageCreated = functions
+  .runWith({ memory: '512MB', timeoutSeconds: 300 })
   .firestore
   .document('chats/{chatId}/messages/{msgId}')
   .onCreate(async (snap, context) => {
     const chatId = context.params.chatId;
     const msg = snap.data();
     const senderId = msg.senderId;
-    const text = (msg.body || msg.text || '').slice(0, 100);
-    if (!senderId) return;
+    if (!senderId) return null;
 
-    const chatSnap = await admin.firestore().collection('chats').doc(chatId).get();
-    if (!chatSnap.exists) return;
-    const chatData = chatSnap.data();
+    const db = admin.firestore();
 
-    const recipients = await resolveChatRecipients(chatId, chatData, senderId);
-    if (!recipients.length) return;
-
-    // Faz 2 §2.1: server-only unreadCounts increment — see doc comment above.
-    const unreadIncrements = {};
-    for (const uid of recipients) {
-      unreadIncrements[`unreadCounts.${uid}`] = admin.firestore.FieldValue.increment(1);
+    // Idempotency guard — chat_fanout_events/{eventId} is fully server-only
+    // (firestore.rules: read/write false), a bare marker doc with no other
+    // purpose than this create()-throws-on-duplicate check.
+    const eventRef = db.collection('chat_fanout_events').doc(context.eventId);
+    try {
+      await eventRef.create({ processed_at: admin.firestore.FieldValue.serverTimestamp() });
+    } catch (e) {
+      if (e.code === 6 || e.code === 'already-exists') {
+        functions.logger.info('onChatMessageCreated: duplicate delivery, skipping', {
+          chatId, eventId: context.eventId,
+        });
+        return null;
+      }
+      throw e;
     }
 
-    // Fetch sender display name (one extra read; cached inside Promises below)
-    const senderSnap = await admin.firestore().collection('users').doc(senderId).get();
-    const senderName = senderSnap.exists
-      ? (senderSnap.data().displayName || 'Someone')
-      : 'Someone';
+    if (chatFanoutLogic.isEventStale(context.timestamp, Date.now())) {
+      functions.logger.warn('onChatMessageCreated: event too stale, dropping', { chatId });
+      return null;
+    }
 
-    await Promise.all([
-      admin.firestore().collection('chats').doc(chatId).update(unreadIncrements),
-      ...recipients.map(async (uid) => {
-        const token = await getFcmToken(admin.firestore(), uid);
-        if (!token) return;
+    try {
+      const chatSnap = await db.collection('chats').doc(chatId).get();
+      if (!chatSnap.exists) return null;
+      const chatData = chatSnap.data();
+      const groupId = chatData.groupId || null;
 
-        await sendFcm(uid, token, senderName, text || '📷 Image', {
+      const recipients = await resolveChatRecipients(chatId, chatData, senderId);
+      if (!recipients.length) {
+        functions.logger.info('onChatMessageCreated: no recipients', { chatId });
+        return null;
+      }
+
+      const senderSnap = await db.collection('users').doc(senderId).get();
+      const senderName = senderSnap.exists ? (senderSnap.data().displayName || 'Someone') : 'Someone';
+      const preview = chatFanoutLogic.buildLastMessagePreview({ senderId, senderName, msg });
+      const now = admin.firestore.FieldValue.serverTimestamp();
+
+      // (1) Cold state/live doc — one small write regardless of recipient count.
+      await db.collection('chats').doc(chatId).collection('state').doc('live').set({
+        last_message_preview: preview,
+        updated_at: now,
+      });
+
+      // (2) Tiered chat_inbox fan-out.
+      const tier = chatFanoutLogic.fanoutTier(recipients.length);
+      const chatType = chatData.type || (groupId ? 'group' : 'private');
+      const titleSnapshot = groupId ? (chatData.name || null) : senderName;
+      const avatarSnapshot = groupId
+        ? (chatData.image || null)
+        : (senderSnap.exists ? (senderSnap.data().photoURL || null) : null);
+
+      const bulkWriter = db.bulkWriter();
+      for (const uid of recipients) {
+        const inboxRef = db.collection('users').doc(uid).collection('chat_inbox').doc(chatId);
+        const inboxData = {
+          chat_id: chatId,
+          chat_type: chatType,
+          group_id: groupId,
+          title_snapshot: titleSnapshot,
+          avatar_snapshot: avatarSnapshot,
+          last_message_preview: preview,
+          updated_at: now,
+        };
+        if (tier === 'per_user') {
+          inboxData.unread = admin.firestore.FieldValue.increment(1);
+        } else {
+          // See fanoutTier's doc comment — the honest simplification for a
+          // very large group: no per-message unread increment, just a dirty
+          // flag the client resolves via a count() aggregation on open.
+          inboxData.unread_dirty = true;
+        }
+        bulkWriter.set(inboxRef, inboxData, { merge: true });
+      }
+      await bulkWriter.close();
+
+      // (3) Legacy dual-write — kept for one release so ChatModel/ChatService's
+      // fallback path (pre-chat_inbox clients) still sees a correct count.
+      // Faz 3's migration discipline: read-path adapts, nothing is rewritten;
+      // this write is the one to delete once the min-version floor clears.
+      const unreadIncrements = {};
+      for (const uid of recipients) {
+        unreadIncrements[`unreadCounts.${uid}`] = admin.firestore.FieldValue.increment(1);
+      }
+      await db.collection('chats').doc(chatId).update(unreadIncrements);
+
+      // (4) Multi-device push.
+      let pushSent = 0;
+      let pushFailed = 0;
+      let stalePruned = 0;
+      for (const uid of recipients) {
+        const tokens = await resolveDeviceTokensForUid(db, uid);
+        if (!tokens.length) continue;
+        const result = await sendMulticastToDevices(db, uid, tokens, senderName, preview.text, {
           type: 'chat',
           chatId,
           actorUid: senderId,
         });
-      }),
-    ]);
+        pushSent += result.sent;
+        pushFailed += result.failed;
+        stalePruned += result.stalePruned;
+      }
 
-    functions.logger.info('onChatMessageCreated', {
-      chatId, recipients: recipients.length, groupBacked: !!chatData.groupId,
-    });
+      functions.logger.info('onChatMessageCreated', {
+        chatId, recipients: recipients.length, tier, groupBacked: !!groupId,
+        pushSent, pushFailed, stalePruned,
+      });
+      return null;
+    } catch (e) {
+      // R4: logged with enough context to investigate, never silently
+      // swallowed — but also not rethrown, since retry isn't enabled for
+      // this trigger (see the doc comment above); a thrown error here would
+      // just be an uncaught-rejection log line with less context than this.
+      functions.logger.error('onChatMessageCreated: fan-out failed', {
+        chatId, eventId: context.eventId, error: e.message, stack: e.stack,
+      });
+      return null;
+    }
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1421,6 +1631,32 @@ const groups = require('./groups');
 exports.redeemGroupInvite = groups.redeemGroupInvite;
 exports.computeGroupActivityScores = groups.computeGroupActivityScores;
 exports.seedOfficialGroups = groups.seedOfficialGroups;
+
+// Chat Upgrade Phase 1 — multi-device session registry (see
+// functions/devices.js's header comment for the honest revokeRefreshTokens
+// per-user-not-per-device limitation).
+const devices = require('./devices');
+exports.revokeDevice = devices.revokeDevice;
+
+// Chat Upgrade Phase 2 — Realtime Database-backed presence/typing, mirrored
+// onto users/{uid}.is_online/.last_active_at (functions/chat_presence.js's
+// header comment). Infra note: RTDB is not yet provisioned for this project
+// (no database.rules.json/firebase.json `database` block existed before this
+// change) — these two exports will not receive any events until an operator
+// enables Realtime Database in the Firebase console.
+const chatPresence = require('./chat_presence');
+exports.mirrorPresence = chatPresence.mirrorPresence;
+exports.reconcileStalePresence = chatPresence.reconcileStalePresence;
+
+// Chat Upgrade Phase 5 — server-authored group system messages
+// ("X joined", "Admin renamed the group") and the group-chat storage-
+// scoping fix's signed-URL callable.
+const groupSystemMessages = require('./group_system_messages');
+exports.onGroupMemberWritten = groupSystemMessages.onGroupMemberWritten;
+exports.onGroupDocUpdated = groupSystemMessages.onGroupDocUpdated;
+
+const chatMedia = require('./chat_media');
+exports.getChatMediaUrl = chatMedia.getChatMediaUrl;
 
 // BLK-09 fix — server-side demo marketplace content seeding, replacing the
 // client-direct write firestore.rules' `programs`/`weeks` `'demo'` bypass

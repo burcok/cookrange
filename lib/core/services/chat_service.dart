@@ -8,8 +8,38 @@ import '../models/message_model.dart';
 import '../models/user_model.dart';
 import 'firestore_service.dart';
 import 'log_service.dart';
+import 'storage_upload_service.dart';
+
+/// Thrown by [ChatService.sendMessage] when Firestore permanently rejected
+/// the write (rules/App Check/unauthenticated) rather than merely queuing it
+/// for retry. Firestore's own offline mutation queue
+/// (`persistenceEnabled: true`) already retries every recoverable network
+/// failure automatically, including across an app restart, so a plain
+/// dropped-connection or timeout never reaches a caller as this type — only
+/// a rejection Firestore has already given up on does. Deliberately NOT a
+/// `FirebaseException` re-throw: keeping the Firebase-specific error-code
+/// classification inside this service, not the screen, is what lets
+/// `chat_detail_screen.dart` catch a plain Dart type instead of importing
+/// `cloud_firestore` itself (architecture rule — UI never touches Firebase).
+class ChatSendRejectedException implements Exception {
+  final String code;
+  final Object cause;
+  const ChatSendRejectedException(this.code, this.cause);
+
+  @override
+  String toString() => 'ChatSendRejectedException($code): $cause';
+}
 
 class ChatService {
+  // Faz 0 §0.5 — every call site already used the zero-arg `ChatService()`
+  // constructor (grep-confirmed across the app), so this is a pure internal
+  // change: no caller needs to change, and every screen now shares one
+  // instance instead of silently duplicating state (`docs/SERVICES.md`'s
+  // `static final _instance` pattern, §5.2).
+  static final ChatService _instance = ChatService._internal();
+  factory ChatService() => _instance;
+  ChatService._internal();
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Uuid _uuid = const Uuid();
   final LogService _logger = LogService();
@@ -17,18 +47,163 @@ class ChatService {
   // Get all chats for a user, sorted by update time. Capped (Faz 0 §0.5 —
   // this had no bound at all; also the underlying stream for
   // getUserChatsWithStatus below, so this is the real chat-list path).
+  /// Faz 3 — merges the legacy `participants arrayContains` query with the
+  /// new `chat_inbox` read-model, rather than switching to `chat_inbox`
+  /// outright. Why both are still needed:
+  ///
+  /// - The legacy query is exactly right for a DM, an ad-hoc multi-party
+  ///   chat (`participants` genuinely lists everyone there), and a
+  ///   group-backed chat's OWNER (who IS in `participants` — see
+  ///   `CommunityGroupService.createGroup`). Zero regression risk for any
+  ///   of those; unchanged behavior.
+  /// - It structurally CANNOT surface a group-backed chat for any
+  ///   non-owner member — `chats/{id}.participants` only ever holds the
+  ///   owner for that shape (`firestore.rules`' `canAccessGroupChat()` note)
+  ///   — which is exactly `PROJECT_STATE.md`'s tracked "group unread is
+  ///   structurally always zero for non-owners" defect. `chat_inbox`
+  ///   (server-authored by `onChatMessageCreated`, seeded on every message
+  ///   AND on every join/leave/rename via Faz 5's system messages) is the
+  ///   real fix: a row exists there for every real member the moment they
+  ///   join or any activity happens after this deployment.
+  /// - Known, accepted gap (not silently ignored — stated here): a member
+  ///   who joined a group BEFORE this deployment and whose group has had no
+  ///   activity since won't have a `chat_inbox` row yet, so their view of
+  ///   that one chat stays exactly as broken as it already was. A backfill
+  ///   sweep closes that; not built in this pass since this app has zero
+  ///   real users to backfill for yet (`PROJECT_STATE.md`) — tracked as a
+  ///   pre-launch follow-up, not a silent omission.
+  ///
+  /// Where a chatId appears in BOTH sources, the `chat_inbox` row's `unread`
+  /// count wins (it's the one Cloud Functions actually keeps correct now —
+  /// the legacy doc's own `unreadCounts` map is a dual-write kept only for
+  /// clients still on the fallback path, see `onChatMessageCreated`'s doc
+  /// comment) and its `updated_at` is preferred for sort order, since it's
+  /// server-timestamped at the moment of the SAME event.
   Stream<List<ChatModel>> getUserChats(String userId, {int limit = 200}) {
-    return _firestore
+    final legacy$ = _firestore
         .collection('chats')
         .where('participants', arrayContains: userId)
         .orderBy('updatedAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => ChatModel.fromJson(doc.data(), doc.id))
-          .toList();
+        .map((snapshot) => {
+              for (final doc in snapshot.docs)
+                doc.id: ChatModel.fromJson(doc.data(), doc.id),
+            });
+
+    final inbox$ = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('chat_inbox')
+        .orderBy('updated_at', descending: true)
+        .limit(limit)
+        .snapshots()
+        .asyncMap((snapshot) => _hydrateInboxRows(snapshot, userId));
+
+    return _combineChatSources(legacy$, inbox$, limit: limit);
+  }
+
+  /// Combines the two `Map<chatId, ChatModel>` streams above into one
+  /// sorted, deduped list — re-emitting whenever EITHER source updates, so
+  /// a group's inbox-only row and a DM's legacy-only row both stay live.
+  Stream<List<ChatModel>> _combineChatSources(
+    Stream<Map<String, ChatModel>> legacy$,
+    Stream<Map<String, ChatModel>> inbox$, {
+    required int limit,
+  }) {
+    final controller = StreamController<List<ChatModel>>();
+    var legacyChats = <String, ChatModel>{};
+    var inboxChats = <String, ChatModel>{};
+    var haveLegacy = false;
+    var haveInbox = false;
+    StreamSubscription? legacySub;
+    StreamSubscription? inboxSub;
+
+    void emit() {
+      if (controller.isClosed || !haveLegacy || !haveInbox) return;
+      // inbox entries win on chatId collision — see doc comment above.
+      final merged = {...legacyChats, ...inboxChats};
+      final sorted = merged.values.toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      controller.add(sorted.take(limit).toList());
+    }
+
+    legacySub = legacy$.listen((chats) {
+      legacyChats = chats;
+      haveLegacy = true;
+      emit();
+    }, onError: (Object e, StackTrace s) {
+      _logger.error('getUserChats: legacy stream error',
+          service: 'ChatService', error: e, stackTrace: s);
     });
+    inboxSub = inbox$.listen((chats) {
+      inboxChats = chats;
+      haveInbox = true;
+      emit();
+    }, onError: (Object e, StackTrace s) {
+      _logger.error('getUserChats: chat_inbox stream error',
+          service: 'ChatService', error: e, stackTrace: s);
+      // A chat_inbox failure must never blank the whole list — degrade to
+      // legacy-only rather than waiting forever on a stream that errored.
+      haveInbox = true;
+      emit();
+    });
+
+    controller.onCancel = () {
+      legacySub?.cancel();
+      inboxSub?.cancel();
+      controller.close();
+    };
+    return controller.stream;
+  }
+
+  /// Resolves each `chat_inbox` row into a real `ChatModel` via a
+  /// `whereIn`-chunked batch-get of `chats/{id}` (chunk size 10 — mirrors
+  /// `getUserChatsWithStatus`'s existing whereIn chunk size below), then
+  /// overrides `unreadCounts[userId]` and `updatedAt` from the inbox row
+  /// (the source of truth for both, per this method's doc comment). A
+  /// chatId whose `chats/{id}` doc is missing/unreadable is skipped rather
+  /// than crashing the whole list.
+  Future<Map<String, ChatModel>> _hydrateInboxRows(
+    QuerySnapshot<Map<String, dynamic>> inboxSnapshot,
+    String userId,
+  ) async {
+    if (inboxSnapshot.docs.isEmpty) return {};
+
+    final inboxByChatId = <String, Map<String, dynamic>>{
+      for (final d in inboxSnapshot.docs) d.id: d.data(),
+    };
+    final chatIds = inboxByChatId.keys.toList();
+
+    final rawChats = <String, ChatModel>{};
+    for (var i = 0; i < chatIds.length; i += 10) {
+      final chunk = chatIds.sublist(i, (i + 10).clamp(0, chatIds.length));
+      try {
+        final snap = await _firestore
+            .collection('chats')
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+        for (final doc in snap.docs) {
+          rawChats[doc.id] = ChatModel.fromJson(doc.data(), doc.id);
+        }
+      } catch (e, s) {
+        _logger.error('getUserChats: chat_inbox hydration chunk failed',
+            service: 'ChatService', error: e, stackTrace: s);
+      }
+    }
+
+    final result = <String, ChatModel>{};
+    for (final entry in inboxByChatId.entries) {
+      final base = rawChats[entry.key];
+      if (base == null) continue;
+      final unread = (entry.value['unread'] as num?)?.toInt() ?? 0;
+      final updatedAt = entry.value['updated_at'];
+      result[entry.key] = base.copyWith(
+        unreadCounts: {...base.unreadCounts, userId: unread},
+        updatedAt: updatedAt is Timestamp ? updatedAt.toDate() : base.updatedAt,
+      );
+    }
+    return result;
   }
 
   // Combined stream for chats + online status
@@ -50,28 +225,15 @@ class ChatService {
             final userData = userDataMap[otherId]!;
             final newMetadata = Map<String, dynamic>.from(chat.metadata ?? {});
 
-            // Online Status Verification Logic
-            final bool isOnlineFlag = userData['is_online'] ?? false;
-            final Timestamp? lastActiveTs =
-                userData['last_active_at'] as Timestamp?;
-            final DateTime? lastActiveAt = lastActiveTs?.toDate();
-
-            bool isActuallyOnline = false;
-            if (isOnlineFlag) {
-              if (lastActiveAt != null) {
-                final difference = DateTime.now().difference(lastActiveAt);
-                // 2 minutes threshold for faster stale detection
-                if (difference.inMinutes < 2) {
-                  isActuallyOnline = true;
-                }
-              } else {
-                // If online but no timestamp (legacy?), assume online or decide strict
-                // Let's assume offline to be safe against ghost sessions
-                isActuallyOnline = false;
-              }
-            }
-
-            newMetadata['is_online'] = isActuallyOnline;
+            // Chat Upgrade Phase 2 — `is_online` is now mirrored from RTDB's
+            // real `onDisconnect()`-backed presence by
+            // `functions/chat_presence.js`'s `mirrorPresence`
+            // (`PresenceService`, `presence_aggregate.dart`), not a raw
+            // client-written flag with no disconnect detection. The old
+            // 2-minute client-side staleness re-verification was a hedge
+            // against exactly the ghost-session problem RTDB's onDisconnect
+            // now solves at the source — trusting the field directly here.
+            newMetadata['is_online'] = userData['is_online'] ?? false;
 
             return chat.copyWith(
               name: userData['displayName'],
@@ -126,7 +288,11 @@ class ChatService {
     return controller.stream;
   }
 
-  // Get messages for a specific chat
+  // Get messages for a specific chat. `includeMetadataChanges: true` +
+  // per-doc `metadata.hasPendingWrites` (Faz 0 §0.2) is what lets the UI
+  // distinguish "sent, waiting on the server" from "server-acked" — without
+  // it, a locally-queued write is indistinguishable from a synced one until
+  // the ack silently swaps it out from under the list.
   Stream<List<MessageModel>> getChatMessages(String chatId, {int limit = 50}) {
     return _firestore
         .collection('chats')
@@ -134,13 +300,21 @@ class ChatService {
         .collection('messages')
         .orderBy('timestamp', descending: true)
         .limit(limit)
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .map((snapshot) {
       return snapshot.docs
-          .map((doc) => MessageModel.fromJson(doc.data()))
+          .map((doc) => MessageModel.fromJson(
+                doc.data(),
+                hasPendingWrites: doc.metadata.hasPendingWrites,
+              ))
           .toList();
     });
   }
+
+  /// A fresh idempotency key for a new send — reused unchanged on retry so
+  /// `ChatMessageMerge` can tell a retried send apart from a duplicate one
+  /// (Faz 0 §0.2).
+  String newClientId() => _uuid.v4();
 
   // Doc ref helper for the message-mutation methods below.
   DocumentReference<Map<String, dynamic>> _messageRef(
@@ -196,7 +370,21 @@ class ChatService {
         if (anchor.exists) query = query.startAfterDocument(anchor);
       }
 
-      final snapshot = await query.get();
+      // Faz 7 — cache-first: scroll-back into history is very likely
+      // already in the live listener's local cache. An empty cache result
+      // is ambiguous ("not cached yet" vs. "genuinely the oldest page,
+      // nothing more exists"), so both fall back to the normal server read
+      // — accepted cost: the true last page of a chat's history pays one
+      // extra server read the first time it's paged to.
+      QuerySnapshot<Map<String, dynamic>> snapshot;
+      try {
+        snapshot = await query.get(const GetOptions(source: Source.cache));
+        if (snapshot.docs.isEmpty) {
+          snapshot = await query.get();
+        }
+      } catch (_) {
+        snapshot = await query.get();
+      }
       final messages =
           snapshot.docs.map((d) => MessageModel.fromJson(d.data())).toList();
       return (
@@ -255,7 +443,16 @@ class ChatService {
         if (anchor.exists) query = query.startAfterDocument(anchor);
       }
 
-      final snapshot = await query.get();
+      // Faz 7 — cache-first, same fallback shape as getMessagesPage above.
+      QuerySnapshot<Map<String, dynamic>> snapshot;
+      try {
+        snapshot = await query.get(const GetOptions(source: Source.cache));
+        if (snapshot.docs.isEmpty) {
+          snapshot = await query.get();
+        }
+      } catch (_) {
+        snapshot = await query.get();
+      }
       final media =
           snapshot.docs.map((d) => MessageModel.fromJson(d.data())).toList();
       return (
@@ -555,7 +752,26 @@ class ChatService {
       'lastMessage': messageData,
       'updatedAt': serverNow,
     });
-    await batch.commit();
+
+    // Faz 0 §0.2 — a rules/App-Check/auth rejection is the one failure mode
+    // Firestore's own offline mutation queue will NOT retry (it has already
+    // rolled the local doc back by the time this throws); everything else
+    // (network-request-failed, unavailable, deadline-exceeded) is left to
+    // resolve itself via the queue, so it's deliberately rethrown unchanged
+    // rather than reported here.
+    try {
+      await batch.commit();
+    } on FirebaseException catch (e) {
+      const hardRejectionCodes = {
+        'permission-denied',
+        'invalid-argument',
+        'unauthenticated',
+      };
+      if (hardRejectionCodes.contains(e.code)) {
+        throw ChatSendRejectedException(e.code, e);
+      }
+      rethrow;
+    }
   }
 
   // Faz 0 §0.5's crash: the old isRead-batch query had no cap at all and
@@ -656,10 +872,24 @@ class ChatService {
   /// "Delete for everyone" (WhatsApp-style) — sender only within the same
   /// 15-minute window as `editMessage`, enforced by firestore.rules. Clears
   /// body/attachments so a stale client can't keep rendering the removed
-  /// content from cache.
+  /// content from cache, and best-effort deletes each attachment's
+  /// underlying Storage object(s) — `CHAT-05` (`TODO.md`): the Firestore
+  /// reference was cleared here for a while with nothing ever removing the
+  /// actual file, an orphan that also mattered for `BLK-12` (GDPR erasure
+  /// completeness), not just storage cost.
+  ///
+  /// [attachments] is the CALLER's own already-loaded copy (every call site
+  /// already has the full `MessageModel`) — no extra read needed just to
+  /// learn what to delete. Runs AFTER the Firestore update succeeds, not
+  /// before: a failed Storage delete must never block the message itself
+  /// from being marked deleted, and is fire-and-forget (`unawaited`) for the
+  /// same reason — `StorageUploadService.deleteByUrl`/`deleteByPath` already
+  /// swallow-and-log their own errors, so there's nothing more for this
+  /// caller to usefully do with one beyond what's already logged.
   Future<void> deleteMessageForEveryone({
     required String chatId,
     required String messageId,
+    List<MessageAttachment> attachments = const [],
   }) async {
     await _messageRef(chatId, messageId).update({
       'is_deleted': true,
@@ -667,6 +897,18 @@ class ChatService {
       'body': '',
       'attachments': <Map<String, dynamic>>[],
     });
+
+    final storage = StorageUploadService();
+    for (final a in attachments) {
+      if (a.url.isNotEmpty) unawaited(storage.deleteByUrl(a.url));
+      if (a.thumbUrl != null) unawaited(storage.deleteByUrl(a.thumbUrl!));
+      if (a.storagePath != null) {
+        unawaited(storage.deleteByPath(a.storagePath!));
+      }
+      if (a.thumbStoragePath != null) {
+        unawaited(storage.deleteByPath(a.thumbStoragePath!));
+      }
+    }
   }
 
   /// Faz 2 §2.6 — a group owner/admin (or site admin) takes down ANOTHER
@@ -708,14 +950,13 @@ class ChatService {
     });
   }
 
-  // Set typing status
-  Future<void> setTypingStatus(
-      String chatId, String userId, bool isTyping) async {
-    final chatRef = _firestore.collection('chats').doc(chatId);
-    await chatRef.update({
-      'typingUsers.$userId': isTyping,
-    });
-  }
+  // Chat Upgrade Phase 2 — typing status moved off Firestore entirely onto
+  // RTDB (`PresenceService.setTyping`, `presence_service.dart`): every
+  // keystroke previously wrote `chats/{id}.typingUsers.$userId` on the
+  // SHARED chat doc, fanning that write to every participant's chat-list
+  // listener, and had no TTL — a killed app left a permanent "still typing"
+  // ghost. `setTypingStatus` (formerly here) is gone; `chat_detail_screen
+  // .dart` calls `PresenceService().setTyping` directly now.
 
   /// Wraps `FirestoreService.getUserDocStream` and maps straight to
   /// `UserModel` — keeps `cloud_firestore` (and the `DocumentSnapshot` cast)
@@ -894,19 +1135,30 @@ class ChatService {
     return ChatModel.fromJson(doc.data()!, doc.id);
   }
 
-  /// Preload chats to warm up cache
+  /// Preload chats to warm up cache. Best-effort — a failure here must
+  /// never block app startup (`splash_screen.dart` already calls this
+  /// fire-and-forget), but it must not vanish silently either (R4): the
+  /// previous bare `catch { // Ignore }` is now a real logged failure,
+  /// matching every other catch block in this file.
   Future<void> preloadChats() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     try {
-      await _firestore
+      final chats = await _firestore
           .collection('chats')
           .where('participants', arrayContains: uid)
           .orderBy('updatedAt', descending: true)
           .limit(10)
           .get();
-    } catch (e) {
-      // Ignore
+
+      // Faz 0 §0.5 — also warm the first message page of the few most-
+      // recent chats (the same cursor-paginated query `ChatDetailScreen`
+      // itself issues on open), not just the list row — that's the data
+      // actually needed the moment a chat opens.
+      await Future.wait(chats.docs.take(3).map((d) => getMessagesPage(d.id)));
+    } catch (e, st) {
+      _logger.error('preloadChats failed',
+          service: 'ChatService', error: e, stackTrace: st);
     }
   }
 }

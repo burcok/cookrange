@@ -770,7 +770,25 @@
     "friend_added": "Artık {name} ile arkadaşsınız",
     "share_profile": "Profili Paylaş",
     "level_badge": "Seviye {level} · {into}/{forNext} XP",
-    "pro_verified_badge": "Pro"
+    "pro_verified_badge": "Pro",
+    "devices": {
+      "title": "Cihazlar",
+      "subtitle": "Hesabınızda şu anda oturum açmış cihazlar.",
+      "this_device": "Bu cihaz",
+      "sign_out_device": "Oturumu kapat",
+      "sign_out_all_others": "Diğer tüm cihazlardan çıkış yap",
+      "sign_out_device_confirm_title": "Bu cihazın oturumu kapatılsın mı?",
+      "sign_out_device_confirm_message": "Bu cihazın oturumu hemen kapatılacak.",
+      "sign_out_all_others_confirm_title": "Diğer tüm cihazlardan çıkış yapılsın mı?",
+      "sign_out_all_others_confirm_message": "Hesabınızda oturum açmış diğer tüm cihazların oturumu hemen kapatılacak.",
+      "last_seen": "Son aktif",
+      "last_seen_now": "Şu anda aktif",
+      "empty_title": "Cihaz bulunamadı",
+      "empty_message": "Hesabınızda oturum açmış herhangi bir cihaz bulamadık.",
+      "error_generic": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+      "success_signed_out": "Cihazın oturumu kapatıldı.",
+      "success_signed_out_all": "Diğer cihazların oturumu kapatıldı."
+    }
   },
   "offline": {
     "title": "Çevrimdışı Mod",
@@ -903,7 +921,8 @@
       "change_password_success": "Şifre başarıyla değiştirildi.",
       "export_data": "Verilerimi İndir",
       "export_data_subtitle": "Tüm verilerinizi JSON olarak dışa aktarın (GDPR)",
-      "export_error": "Veri dışa aktarılamadı. Lütfen tekrar deneyin."
+      "export_error": "Veri dışa aktarılamadı. Lütfen tekrar deneyin.",
+      "manage_devices": "Cihazları yönet"
     },
     "referral": {
       "title": "Arkadaşını Davet Et",
@@ -1551,7 +1570,20 @@
       "export_paywall_desc": "Premium grup yöneticileri üye listesini CSV olarak dışa aktarabilir.",
       "export_success": "Üye listesi dışa aktarıldı.",
       "export_error": "Üye listesi dışa aktarılamadı. Tekrar dene.",
-      "invite_only": "Yalnızca davetle"
+      "invite_only": "Yalnızca davetle",
+      "info": {
+        "title": "Grup bilgisi",
+        "created_label": "Oluşturulma",
+        "creator_label": "Oluşturan",
+        "view_all_members": "Tüm üyeleri gör",
+        "admins_section": "Yöneticiler",
+        "media_section": "Paylaşılan medya",
+        "media_view_all": "Tümünü gör",
+        "media_empty": "Henüz paylaşılan medya yok",
+        "mute_notifications": "Bildirimleri sessize al",
+        "security_section_title": "Sohbet güvenliği",
+        "security_body": "Bu sohbetteki mesajlar iletim sırasında (TLS) ve depolamada (Google yönetimli AES-256) şifrelenir. Bu uygulama uçtan uca şifreleme kullanmaz. Sunucu tarafı moderasyon — anahtar kelime taraması, moderatör kaldırma işlemleri ve kötüye kullanım bildirimleri — mesaj içeriğini okuyabilmeyi gerektirdiğinden, grup sohbetlerinde tam uçtan uca şifreleme sunulmamaktadır."
+      }
     },
     "no_posts": "Gönderi bulunamadı. İlk paylaşan sen ol!",
     "all_posts_loaded": "Tüm gönderileri gördünüz",
@@ -1746,7 +1778,8 @@
       "attach": "Medya ekle",
       "send": "Mesaj gönder",
       "camera": "Kamera",
-      "gallery": "Galeri"
+      "gallery": "Galeri",
+      "record_voice": "Sesli mesaj kaydet"
     },
     "filters": {
       "all": "Hepsi",
@@ -1777,7 +1810,8 @@
     "offline": "Çevrimdışı",
     "online": "Çevrimiçi",
     "preview": {
-      "photo": "Fotoğraf"
+      "photo": "Fotoğraf",
+      "voice": "Sesli mesaj"
     },
     "recipe_group": {
       "new_recipes": "{count} Yeni Tarif"
@@ -1818,7 +1852,9 @@
       "delete_for_me": "Benden Sil",
       "delete_for_everyone": "Herkesten Sil",
       "delete_as_moderator": "Mesajı Kaldır",
-      "report": "Mesajı Bildir"
+      "report": "Mesajı Bildir",
+      "retry": "Tekrar Dene",
+      "delete_failed": "Sil"
     },
     "delete_confirm": {
       "title": "Mesaj silinsin mi?",
@@ -1892,6 +1928,22 @@
       "label": "Beslenme Planı",
       "view_cta": "Teklifi Gör",
       "not_found": "Bu teklif artık mevcut değil."
+    },
+    "system": {
+      "member_joined": "{name} gruba katıldı",
+      "member_left": "{name} gruptan ayrıldı",
+      "member_banned": "{name} gruptan yasaklandı",
+      "group_renamed": "Grup adı \"{new_name}\" olarak değiştirildi",
+      "group_photo_changed": "Grup fotoğrafı değiştirildi"
+    },
+    "voice_recorder": {
+      "slide_to_cancel": "İptal etmek için kaydırın",
+      "delete": "Kaydı sil"
+    },
+    "voice_player": {
+      "play": "Sesli mesajı oynat",
+      "pause": "Sesli mesajı duraklat",
+      "speed_control": "Oynatma hızı"
     }
   },
   "signal": {
@@ -2919,7 +2971,11 @@
       "title": "İzin Gerekli",
       "message": "Bu özelliği kullanmak için lütfen Ayarlar'dan bu izni etkinleştirin."
     },
-    "open_settings": "Ayarları Aç"
+    "open_settings": "Ayarları Aç",
+    "microphone": {
+      "title": "Mikrofon Erişimi",
+      "rationale": "Cookrange, sohbette sesli mesaj kaydedip gönderebilmek için mikrofon erişimine ihtiyaç duyar."
+    }
   },
   "admin": {
     "panel_title": "Admin Paneli",

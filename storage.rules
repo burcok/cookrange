@@ -17,6 +17,13 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // Faz 6 — voice messages. Max 10MB (vs images' 5MB — a few minutes of
+    // AAC audio can run larger per second than a compressed photo).
+    function isValidAudio() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('audio/.*');
+    }
+
     // ─── Profile Photos ───────────────────────────────────────────────────────
     // Path: profile_photos/{uid}.jpg
     match /profile_photos/{uid} {
@@ -50,6 +57,37 @@ service firebase.storage {
       allow delete: if isAuthenticated()
         && (scopeId.split('_').size() != 2
             || request.auth.uid in scopeId.split('_'));
+    }
+
+    // ─── Chat Voice Messages ─────────────────────────────────────────────────
+    // Path: chat_audio/{scopeId}/{filename} — mirrors chat_images' participant-
+    // scoping exactly (Faz 6). Capped at 10MB, audio/* content-type only.
+    match /chat_audio/{scopeId}/{fileName} {
+      allow read: if isAuthenticated()
+        && (scopeId.split('_').size() != 2
+            || request.auth.uid in scopeId.split('_'));
+      allow write: if isAuthenticated()
+        && (scopeId.split('_').size() != 2
+            || request.auth.uid in scopeId.split('_'))
+        && isValidAudio();
+      allow delete: if isAuthenticated()
+        && (scopeId.split('_').size() != 2
+            || request.auth.uid in scopeId.split('_'));
+    }
+
+    // ─── Chat Media (Faz 5 — group-chat storage-scoping fix) ─────────────────
+    // Path: chat_media/{chatId}/{uid}/{fileName}
+    // `chat_images/{scopeId}/` above degrades to "any authenticated user can
+    // read" for a GROUP chat (scopeId has no '_' for the participants-pair
+    // check). New group-chat uploads go here instead: write-only for the
+    // uploading owner, NEVER directly readable — reads go ONLY through the
+    // `getChatMediaUrl` callable (functions/chat_media.js), which
+    // re-verifies real chat participant/group-member status in Firestore
+    // before minting a short-lived signed URL.
+    match /chat_media/{chatId}/{uid}/{fileName} {
+      allow read: if false;
+      allow write: if isOwner(uid) && isValidImage();
+      allow delete: if isOwner(uid);
     }
 
     // ─── Gym application documents ───────────────────────────────────────────

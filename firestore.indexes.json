@@ -85,56 +85,6 @@
       ]
     },
     {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "onboarding_data.streak",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "favorites",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "savedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "meal_plan_history",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "archivedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "recent_foods",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "lastLoggedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "recent_foods",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "logCount",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "exercise_logs",
       "queryScope": "COLLECTION",
       "fields": [
@@ -144,16 +94,6 @@
         },
         {
           "fieldPath": "loggedAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "gyms",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "owner_uid",
           "order": "ASCENDING"
         }
       ]
@@ -173,16 +113,6 @@
       ]
     },
     {
-      "collectionGroup": "members",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "joined_at",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "posts",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
@@ -193,36 +123,6 @@
         {
           "fieldPath": "created_at",
           "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "posts",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "created_at",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "checkins",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "timestamp",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "checkins",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "timestamp",
-          "order": "ASCENDING"
         }
       ]
     },
@@ -351,26 +251,6 @@
       ]
     },
     {
-      "collectionGroup": "commissions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "created_at",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "commissions",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "purchase_key",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "ai_twin_projections",
       "queryScope": "COLLECTION",
       "fields": [
@@ -436,16 +316,6 @@
         },
         {
           "fieldPath": "submittedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "admin_audit",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
@@ -736,16 +606,6 @@
         },
         {
           "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "following",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "followedAt",
           "order": "DESCENDING"
         }
       ]
@@ -1051,26 +911,6 @@
       ]
     },
     {
-      "collectionGroup": "account",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "email",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "presence",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "expires_at",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "presence_sessions",
       "queryScope": "COLLECTION",
       "fields": [
@@ -1085,11 +925,15 @@
       ]
     },
     {
-      "collectionGroup": "presence_sessions",
+      "collectionGroup": "chats",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "entered_at",
+          "fieldPath": "participants",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "updatedAt",
           "order": "DESCENDING"
         }
       ]
@@ -1104,6 +948,20 @@
         },
         {
           "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "server_timestamp",
           "order": "DESCENDING"
         }
       ]
@@ -1235,16 +1093,6 @@
         {
           "fieldPath": "timestamp",
           "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "member_summaries",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "expires_at",
-          "order": "ASCENDING"
         }
       ]
     },

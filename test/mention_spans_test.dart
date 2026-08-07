@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cookrange/core/models/message_model.dart';
@@ -125,6 +126,117 @@ void main() {
       // absorbed into the following plain-text remainder.
       expect(children.first.style?.color, mentionColor);
       expect(children.first.text, '@AliVel');
+    });
+
+    test('a body with only a URL renders it as a single tappable link span',
+        () {
+      const body = 'check out https://example.com for more';
+      final span = buildMentionSpans(
+        body: body,
+        mentions: const [],
+        baseStyle: base,
+        mentionColor: mentionColor,
+      );
+      expect(flatten(span), body);
+      final children = span.children!.cast<TextSpan>();
+      expect(children.map((c) => c.text),
+          ['check out ', 'https://example.com', ' for more']);
+      final link = children[1];
+      expect(link.style?.color, mentionColor);
+      expect(link.style?.decoration, TextDecoration.underline);
+      expect(link.recognizer, isA<TapGestureRecognizer>());
+    });
+
+    test('a bare www. link (no scheme) is also detected as a link', () {
+      const body = 'visit www.example.com today';
+      final span = buildMentionSpans(
+        body: body,
+        mentions: const [],
+        baseStyle: base,
+        mentionColor: mentionColor,
+      );
+      expect(flatten(span), body);
+      final children = span.children!.cast<TextSpan>();
+      expect(
+          children.map((c) => c.text), ['visit ', 'www.example.com', ' today']);
+      expect(children[1].recognizer, isA<TapGestureRecognizer>());
+    });
+
+    test('a body with both a mention and a URL renders both, in order', () {
+      const body = 'hey @Ali check https://example.com please';
+      const mention = MessageMention(uid: 'u1', offset: 4, len: 4); // "@Ali"
+      final span = buildMentionSpans(
+        body: body,
+        mentions: [mention],
+        baseStyle: base,
+        mentionColor: mentionColor,
+      );
+      expect(flatten(span), body);
+      final children = span.children!.cast<TextSpan>();
+      expect(children.map((c) => c.text),
+          ['hey ', '@Ali', ' check ', 'https://example.com', ' please']);
+      // The mention stays bold/tinted, not underlined; the link is
+      // underlined/tinted, not bold — the two styles must not bleed together.
+      expect(children[1].style?.fontWeight, FontWeight.w700);
+      expect(children[1].style?.decoration, isNot(TextDecoration.underline));
+      expect(children[3].style?.decoration, TextDecoration.underline);
+      expect(children[3].recognizer, isA<TapGestureRecognizer>());
+    });
+
+    test(
+        'trailing punctuation (period, comma, closing paren) is not swallowed into the link',
+        () {
+      const period = 'see https://example.com. Thanks';
+      final periodSpan = buildMentionSpans(
+        body: period,
+        mentions: const [],
+        baseStyle: base,
+        mentionColor: mentionColor,
+      );
+      expect(flatten(periodSpan), period);
+      expect(periodSpan.children!.cast<TextSpan>().map((c) => c.text),
+          ['see ', 'https://example.com', '. Thanks']);
+
+      const comma = 'try https://example.com, it works';
+      final commaSpan = buildMentionSpans(
+        body: comma,
+        mentions: const [],
+        baseStyle: base,
+        mentionColor: mentionColor,
+      );
+      expect(flatten(commaSpan), comma);
+      expect(commaSpan.children!.cast<TextSpan>().map((c) => c.text),
+          ['try ', 'https://example.com', ', it works']);
+
+      const paren = 'docs (https://example.com) are here';
+      final parenSpan = buildMentionSpans(
+        body: paren,
+        mentions: const [],
+        baseStyle: base,
+        mentionColor: mentionColor,
+      );
+      expect(flatten(parenSpan), paren);
+      expect(parenSpan.children!.cast<TextSpan>().map((c) => c.text),
+          ['docs (', 'https://example.com', ') are here']);
+    });
+
+    test(
+        'a URL containing a balanced parenthesis (wiki-style) keeps its closing paren',
+        () {
+      const body = 'see https://en.wikipedia.org/wiki/Foo_(bar) now';
+      final span = buildMentionSpans(
+        body: body,
+        mentions: const [],
+        baseStyle: base,
+        mentionColor: mentionColor,
+      );
+      expect(flatten(span), body);
+      final children = span.children!.cast<TextSpan>();
+      expect(children.map((c) => c.text), [
+        'see ',
+        'https://en.wikipedia.org/wiki/Foo_(bar)',
+        ' now',
+      ]);
     });
   });
 }

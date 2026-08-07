@@ -28,6 +28,7 @@ export 'app_transitions.dart';
 export 'permission_primer.dart';
 
 // Faz 2 §2.2 — chat components.
+export 'chat/app_chat_attachment_image.dart';
 export 'chat/app_date_separator.dart';
 export 'chat/app_media_grid.dart';
 export 'chat/app_message_bubble.dart';
@@ -38,3 +39,5 @@ export 'chat/app_reaction_bar.dart';
 export 'chat/app_reply_preview.dart';
 export 'chat/app_typing_indicator.dart';
 export 'chat/app_unread_divider.dart';
+export 'chat/app_voice_player.dart';
+export 'chat/app_voice_recorder.dart';

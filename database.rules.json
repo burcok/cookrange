@@ -1,0 +1,43 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "presence": {
+      "$uid": {
+        "$device": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.child('state').isString() && (newData.child('state').val() === 'online' || newData.child('state').val() === 'away' || newData.child('state').val() === 'offline')"
+        }
+      }
+    },
+
+    "typing": {
+      "$chatId": {
+        ".read": "auth != null && root.child('chat_members/' + $chatId + '/' + auth.uid).exists()",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+
+    "chat_members": {
+      "$chatId": {
+        ".read": "auth != null && root.child('chat_members/' + $chatId + '/' + auth.uid).exists()",
+        ".write": false
+      }
+    },
+
+    "private_state": {
+      "$uid": {
+        ".read": false,
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "mirror_state": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

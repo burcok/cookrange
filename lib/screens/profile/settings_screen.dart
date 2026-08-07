@@ -39,6 +39,7 @@ import 'dietary_preferences_screen.dart';
 import 'privacy_request_screen.dart';
 import '../community/groups/moderation_appeal_screen.dart';
 import 'credit_restriction_screen.dart';
+import 'device_management_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -1494,6 +1495,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               .translate('settings.account.change_password'),
                           palette: palette,
                           onTap: () => _showChangePasswordDialog(context),
+                          trailing: Icon(Icons.chevron_right,
+                              color: palette.textSecondary),
+                        ),
+                        _buildSettingsRow(
+                          context,
+                          icon: Icons.devices_other_rounded,
+                          iconColor: palette.info,
+                          iconBgColor: palette.isDark
+                              ? palette.info.withValues(alpha: 0.2)
+                              : palette.info.withValues(alpha: 0.15),
+                          title: appLoc
+                              .translate('settings.account.manage_devices'),
+                          palette: palette,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const DeviceManagementScreen(),
+                            ),
+                          ),
                           trailing: Icon(Icons.chevron_right,
                               color: palette.textSecondary),
                         ),

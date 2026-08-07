@@ -66,7 +66,7 @@ Flows are documented in [`AUTHENTICATION.md`](AUTHENTICATION.md); this is the se
 | Password policy, live validation | ✅ |
 | Email verification as a hard route gate | ✅ `RouteGuard` §C |
 | Apple + Google OAuth (Apple mandatory where Google is offered) | ✅ |
-| Concurrent-login / session monitoring | ✅ |
+| Concurrent-login / session monitoring | **Changed 2026-08-07 (Chat Upgrade Faz 1)** — no longer a single-session kickout. Multiple devices may now be signed in simultaneously by design (needed for presence); each is tracked in `users/{uid}/devices/{deviceId}` and independently revocable via the `revokeDevice` callable (Admin SDK — `revoked`/`revoked_at` are client-unwritable), which also calls `admin.auth().revokeRefreshTokens`. **Known limitation**: that revocation is per-user, not per-device — see `API.md`'s `revokeDevice` entry and `DECISIONS.md` ADR-025 before changing any related UX copy |
 | Real-time ban check on every route | ✅ but reads a doc nothing creates (`BLK-05`) |
 | `failed_login_attempts` locked to server-only | ✅ (was unauthenticated-writable) |
 | **Login throttling / lockout** | ❌ `AUTH-04` |
@@ -184,7 +184,8 @@ A secret-scanning pre-commit + CI gate (gitleaks/trufflehog) is still to be adde
 |---|---|
 | Health PII isolated in owner-only `users/{uid}/private/nutrition` | ✅ (ADR-009) |
 | Hive local boxes AES-256, key in `flutter_secure_storage` | ✅ |
-| Firestore + Storage encrypted at rest, TLS in transit | ✅ platform default |
+| Firestore + Storage encrypted at rest, TLS in transit | ✅ platform default — **no end-to-end encryption**, deliberate (Chat Upgrade Faz 5): group-chat moderation (keyword pre-screen, moderator takedown, abuse reports) requires the server to read message content. Stated plainly to the user in `GroupInfoScreen`'s security section rather than left implicit or oversold |
+| Group-chat image Storage scoping | **Partially fixed, Chat Upgrade Faz 5** (`CHAT-03`/`SEC-13`) — new uploads go through a signed-URL path (`chat_media/{chatId}/{uid}/{fileName}`, `storage.rules`: `read: if false`, resolved only via the `getChatMediaUrl` callable after a real server-side membership check). The legacy `chat_images/{scopeId}/` path remains readable by any authenticated user for a group chat (unguessable filename only) — not migrated, see `TODO.md`'s `CHAT-03` row |
 | Image uploads: resize, compress, **EXIF/GPS strip**, off-thread | ✅ |
 | Analytics/Crashlytics collection **privacy-by-default OFF**, consent-gated | ✅ |
 | Email removed from analytics events | ✅ |

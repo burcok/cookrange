@@ -39,6 +39,31 @@ class PermissionService {
     return result.isGranted;
   }
 
+  // ── Microphone ────────────────────────────────────────────────────────────
+
+  /// Faz 6 — voice messages. Mirrors [requestCamera] exactly (status check →
+  /// permanently-denied branch → primer sheet → request → post-request
+  /// permanently-denied branch). `NSMicrophoneUsageDescription`/
+  /// `RECORD_AUDIO` already ship in native config for `speech_to_text` — no
+  /// platform-config change needed for this second consumer of the same
+  /// permission.
+  Future<bool> requestMicrophone(BuildContext context) async {
+    final status = await Permission.microphone.status;
+    if (status.isGranted) return true;
+    if (status.isPermanentlyDenied) {
+      if (context.mounted) _showSettingsSheet(context, _PermType.microphone);
+      return false;
+    }
+    if (!context.mounted) return false;
+    final proceed = await _showPrimer(context, type: _PermType.microphone);
+    if (!proceed) return false;
+    final result = await Permission.microphone.request();
+    if (!result.isGranted && context.mounted && result.isPermanentlyDenied) {
+      _showSettingsSheet(context, _PermType.microphone);
+    }
+    return result.isGranted;
+  }
+
   // ── Photos ────────────────────────────────────────────────────────────────
 
   Future<bool> requestPhotos(BuildContext context) async {
@@ -166,7 +191,14 @@ class PermissionService {
 
 // ── Enum helpers ────────────────────────────────────────────────────────────
 
-enum _PermType { camera, photos, location, locationAlways, notifications }
+enum _PermType {
+  camera,
+  photos,
+  location,
+  locationAlways,
+  notifications,
+  microphone,
+}
 
 extension _PermTypeExt on _PermType {
   IconData get icon => switch (this) {
@@ -175,6 +207,7 @@ extension _PermTypeExt on _PermType {
         _PermType.location => Icons.location_on_rounded,
         _PermType.locationAlways => Icons.fitness_center_rounded,
         _PermType.notifications => Icons.notifications_rounded,
+        _PermType.microphone => Icons.mic_rounded,
       };
 
   Color color(BuildContext context) => switch (this) {
@@ -183,6 +216,7 @@ extension _PermTypeExt on _PermType {
         _PermType.location => AppPalette.of(context).warning,
         _PermType.locationAlways => AppPalette.of(context).warning,
         _PermType.notifications => Theme.of(context).primaryColor,
+        _PermType.microphone => AppPalette.of(context).info,
       };
 
   String get titleKey => switch (this) {
@@ -191,6 +225,7 @@ extension _PermTypeExt on _PermType {
         _PermType.location => 'permission.location.title',
         _PermType.locationAlways => 'permission.location_always.title',
         _PermType.notifications => 'permission.notifications.title',
+        _PermType.microphone => 'permission.microphone.title',
       };
 
   String get rationaleKey => switch (this) {
@@ -199,6 +234,7 @@ extension _PermTypeExt on _PermType {
         _PermType.location => 'permission.location.rationale',
         _PermType.locationAlways => 'permission.location_always.rationale',
         _PermType.notifications => 'permission.notifications.rationale',
+        _PermType.microphone => 'permission.microphone.rationale',
       };
 }
 

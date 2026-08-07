@@ -9,7 +9,8 @@ enum MessageType {
   image('image'),
   system('system'),
   planOffer('plan_offer'),
-  announcement('announcement');
+  announcement('announcement'),
+  voice('voice');
 
   final String wireValue;
   const MessageType(this.wireValue);
@@ -23,8 +24,23 @@ enum MessageType {
 }
 
 /// One piece of media/file attached to a message. `kind` is a free string
-/// (today only ever `'image'` — chat_detail_screen.dart's only sender) so a
-/// future `'video'`/`'file'`/`'audio'` doesn't need another schema bump.
+/// (`'image'` for photos, `'audio'` for a `MessageType.voice` note's
+/// attachment — chat_detail_screen.dart's senders) so a future `'video'`/
+/// `'file'` doesn't need another schema bump.
+///
+/// Faz 5 — [storagePath]/[thumbStoragePath] are ADDITIVE, not a replacement
+/// for [url]/[thumbUrl]. Two upload shapes coexist by design
+/// (`StorageUploadService.uploadChatImage` vs `.uploadGroupChatMedia`):
+///  - Legacy/current (`chat_images/{scopeId}/` uploads): [url]/[thumbUrl]
+///    are already-resolved `https://` download URLs, rendered directly.
+///  - New (`chat_media/{chatId}/{uid}/{fileName}` uploads — the group-chat
+///    storage-scoping fix): that Storage path's `read` rule is always
+///    `false`, so there IS no direct download URL — [storagePath]/
+///    [thumbStoragePath] carry the bare path instead, resolved at render
+///    time through `ChatMediaUrlCache` (`getChatMediaUrl` callable, which
+///    re-verifies chat membership server-side before minting a short-lived
+///    signed URL). See `ChatAttachmentImage` (the one place both shapes are
+///    reconciled for rendering).
 class MessageAttachment {
   final String kind;
   final String url;
@@ -35,6 +51,21 @@ class MessageAttachment {
   final String? thumbUrl;
   final String? caption;
 
+  /// Voice-note duration in milliseconds. Null for every non-audio kind.
+  final int? durationMs;
+
+  /// Voice-note waveform, downsampled to a fixed-length (48-bucket)
+  /// `List<int>` of 0-100 normalized amplitudes by
+  /// `WaveformDownsampler.downsample` at record time
+  /// (`waveform_downsample.dart`). Denormalized onto the SENDER's own
+  /// attachment so `AppVoicePlayer` can render the static waveform straight
+  /// from Firestore — audio is never decoded client-side just to draw one.
+  /// Null for every non-audio kind.
+  final List<int>? peaks;
+
+  final String? storagePath;
+  final String? thumbStoragePath;
+
   const MessageAttachment({
     required this.kind,
     required this.url,
@@ -44,6 +75,10 @@ class MessageAttachment {
     this.size,
     this.thumbUrl,
     this.caption,
+    this.durationMs,
+    this.peaks,
+    this.storagePath,
+    this.thumbStoragePath,
   });
 
   factory MessageAttachment.fromJson(Map<String, dynamic> json) {
@@ -56,6 +91,10 @@ class MessageAttachment {
       size: (json['size'] as num?)?.toInt(),
       thumbUrl: json['thumb_url'] as String?,
       caption: json['caption'] as String?,
+      durationMs: (json['duration_ms'] as num?)?.toInt(),
+      peaks: (json['peaks'] as List?)?.map((e) => (e as num).toInt()).toList(),
+      storagePath: json['storage_path'] as String?,
+      thumbStoragePath: json['thumb_storage_path'] as String?,
     );
   }
 
@@ -69,6 +108,10 @@ class MessageAttachment {
       if (size != null) 'size': size,
       if (thumbUrl != null) 'thumb_url': thumbUrl,
       if (caption != null) 'caption': caption,
+      if (durationMs != null) 'duration_ms': durationMs,
+      if (peaks != null) 'peaks': peaks,
+      if (storagePath != null) 'storage_path': storagePath,
+      if (thumbStoragePath != null) 'thumb_storage_path': thumbStoragePath,
     };
   }
 }
@@ -219,6 +262,29 @@ class MessageModel {
   /// type (see [MessagePlanOfferInfo]'s doc comment for why this is a
   /// snapshot, not a live reference).
   final MessagePlanOfferInfo? planOfferInfo;
+
+  /// Faz 5 — set only for `type == MessageType.system`. An event KEY (e.g.
+  /// `'member_joined'`, `'group_renamed'`), never a pre-rendered string —
+  /// `AppMessageBubble` localizes the actual sentence from this +
+  /// [systemParams] via `AppLocalizations` at render time, in the READER's
+  /// own language (this app has EN/TR parity everywhere; a server-baked
+  /// English string would break that). Written ONLY by
+  /// `functions/group_system_messages.js` using the Admin SDK with
+  /// `senderId: '__system__'` — deliberately NOT in `isValidNewMessage()`'s
+  /// client-writable allowlist (`firestore.rules`), since a client-writable
+  /// system-message-authorship path would be a straightforward impersonation
+  /// vector. Null for every other type, and null for a pre-Faz-5 system doc
+  /// (there are none yet, but `body` stays a valid plain-English fallback if
+  /// one is ever hand-written or migrated in).
+  final String? systemEvent;
+
+  /// Named placeholders for [systemEvent]'s localized template (e.g.
+  /// `{'display_name': 'Ayşe'}` for `member_joined`) — a plain
+  /// `Map<String, dynamic>`, not a typed class, since each event shape is
+  /// small and this never round-trips through anything but
+  /// `AppLocalizations.translate`'s `variables` substitution.
+  final Map<String, dynamic>? systemParams;
+
   final Map<String, List<String>> reactions;
   final DateTime? editedAt;
   final bool isDeleted;
@@ -231,6 +297,20 @@ class MessageModel {
   final List<MessageMention> mentions;
   final DateTime? serverTimestamp;
   final String clientId;
+
+  /// Transient, client-only — never in `toJson`/Firestore. True while this
+  /// message's write is still in the SDK's local mutation queue, not yet
+  /// ack'd by the server. Sourced from `DocumentSnapshot.metadata
+  /// .hasPendingWrites` via `ChatService.getChatMessages`'s
+  /// `includeMetadataChanges: true` listener (Faz 0 §0.2).
+  final bool hasPendingWrites;
+
+  /// Transient, client-only — never in `toJson`/Firestore. True ONLY for a
+  /// synthetic entry built by `PendingSendFailure.toMessageModel()`
+  /// (`chat_send_failure_store.dart`) representing a send Firestore
+  /// permanently rejected and rolled back from its cache — it never reaches
+  /// `fromJson` at all. See `ChatMessageMerge`.
+  final bool sendFailed;
 
   // Set only when parsed from a pre-v2 doc that had no `read_by` key at all —
   // its single global `isRead` bool carried no per-uid information. Never
@@ -246,6 +326,8 @@ class MessageModel {
     this.replyTo,
     this.forwardedFrom,
     this.planOfferInfo,
+    this.systemEvent,
+    this.systemParams,
     Map<String, List<String>>? reactions,
     this.editedAt,
     this.isDeleted = false,
@@ -256,6 +338,8 @@ class MessageModel {
     this.serverTimestamp,
     required this.clientId,
     bool legacyIsRead = false,
+    this.hasPendingWrites = false,
+    this.sendFailed = false,
   })  : reactions = reactions ?? const {},
         deliveredTo = deliveredTo ?? const [],
         readBy = readBy ?? const [],
@@ -292,7 +376,10 @@ class MessageModel {
   /// that would crash the viewer's chat on a pending write.
   DateTime get timestamp => serverTimestamp ?? DateTime.now();
 
-  factory MessageModel.fromJson(Map<String, dynamic> json) {
+  factory MessageModel.fromJson(
+    Map<String, dynamic> json, {
+    bool hasPendingWrites = false,
+  }) {
     final rawTs = json['server_timestamp'] ?? json['timestamp'];
     final hasReadBy = json['read_by'] != null;
 
@@ -318,6 +405,10 @@ class MessageModel {
           ? MessagePlanOfferInfo.fromJson(
               Map<String, dynamic>.from(json['plan_offer'] as Map))
           : null,
+      systemEvent: json['system_event'] as String?,
+      systemParams: json['system_params'] != null
+          ? Map<String, dynamic>.from(json['system_params'] as Map)
+          : null,
       reactions: (json['reactions'] as Map?)?.map(
             (k, v) =>
                 MapEntry(k as String, List<String>.from(v as List? ?? [])),
@@ -342,6 +433,7 @@ class MessageModel {
       serverTimestamp: rawTs is Timestamp ? rawTs.toDate() : null,
       clientId: json['client_id'] as String? ?? json['id'] as String? ?? '',
       legacyIsRead: !hasReadBy && (json['isRead'] as bool? ?? false),
+      hasPendingWrites: hasPendingWrites,
     );
   }
 
@@ -361,6 +453,8 @@ class MessageModel {
       if (replyTo != null) 'reply_to': replyTo!.toJson(),
       if (forwardedFrom != null) 'forwarded_from': forwardedFrom!.toJson(),
       if (planOfferInfo != null) 'plan_offer': planOfferInfo!.toJson(),
+      if (systemEvent != null) 'system_event': systemEvent,
+      if (systemParams != null) 'system_params': systemParams,
       'reactions': reactions,
       if (editedAt != null) 'edited_at': Timestamp.fromDate(editedAt!),
       'is_deleted': isDeleted,
@@ -383,6 +477,8 @@ class MessageModel {
     List<String>? deliveredTo,
     List<String>? readBy,
     DateTime? serverTimestamp,
+    bool? hasPendingWrites,
+    bool? sendFailed,
   }) {
     return MessageModel(
       id: id,
@@ -393,6 +489,8 @@ class MessageModel {
       replyTo: replyTo,
       forwardedFrom: forwardedFrom,
       planOfferInfo: planOfferInfo,
+      systemEvent: systemEvent,
+      systemParams: systemParams,
       reactions: reactions ?? this.reactions,
       editedAt: editedAt ?? this.editedAt,
       isDeleted: isDeleted ?? this.isDeleted,
@@ -403,6 +501,8 @@ class MessageModel {
       serverTimestamp: serverTimestamp ?? this.serverTimestamp,
       clientId: clientId,
       legacyIsRead: _legacyIsRead,
+      hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
+      sendFailed: sendFailed ?? this.sendFailed,
     );
   }
 }

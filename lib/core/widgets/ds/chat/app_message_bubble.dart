@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -8,8 +8,12 @@ import '../../../theme/app_dimensions.dart';
 import '../../../theme/app_gradients.dart';
 import '../../../theme/app_palette.dart';
 import '../../../theme/app_typography.dart';
+import '../../../utils/message_status.dart';
+import '../../../utils/safe_url_launcher.dart';
+import 'app_chat_attachment_image.dart';
 import 'app_reaction_bar.dart';
 import 'app_reply_preview.dart';
+import 'app_voice_player.dart';
 
 /// Faz 2 §2.2 — the one chat bubble. Replaces chat_detail_screen.dart's old
 /// `_buildSentBubble`/`_buildReceivedBubble`/`_buildImageBubble` private
@@ -27,11 +31,10 @@ class AppMessageBubble extends StatefulWidget {
   /// consecutive run. Null/empty for private chats or a repeated sender.
   final String? senderLabel;
 
-  /// Delivery ticks — computed by the caller (private: `isReadBy(otherUid)`/
-  /// `isDeliveredTo(otherUid)`; group: read-by-everyone-else /
-  /// delivered-to-anyone) so this widget stays agnostic of chat type.
-  final bool isDelivered;
-  final bool isRead;
+  /// Send/delivery lifecycle — computed by the caller via
+  /// `MessageStatusResolver.resolve` so this widget stays agnostic of chat
+  /// type and receipt semantics. Only rendered when [isMe] is true.
+  final MessageSendState status;
 
   final bool isPinned;
   final bool isStarred;
@@ -62,8 +65,7 @@ class AppMessageBubble extends StatefulWidget {
     required this.isMe,
     required this.currentUid,
     this.senderLabel,
-    this.isDelivered = false,
-    this.isRead = false,
+    this.status = MessageSendState.sent,
     this.isPinned = false,
     this.isStarred = false,
     this.onLongPress,
@@ -138,8 +140,16 @@ class _AppMessageBubbleState extends State<AppMessageBubble>
     final message = widget.message;
     final isDeleted = message.isDeletedFor(widget.currentUid);
 
-    if (message.type == MessageType.system ||
-        message.type == MessageType.announcement) {
+    // Faz 5 — a system message's `body` is a plain-English fallback only;
+    // the real, LOCALIZED sentence renders from `system_event`/
+    // `system_params` (see `_systemMessageText`'s doc comment). An
+    // `announcement`-typed message has no such event/params pair (it's an
+    // admin broadcast, not a group-membership/settings event) so it keeps
+    // rendering `body` directly, unchanged.
+    if (message.type == MessageType.system) {
+      return _SystemMessagePill(text: _systemMessageText(context, message));
+    }
+    if (message.type == MessageType.announcement) {
       return _SystemMessagePill(text: message.body);
     }
 
@@ -147,8 +157,7 @@ class _AppMessageBubbleState extends State<AppMessageBubble>
       return _PlanOfferCard(
         message: message,
         isMe: widget.isMe,
-        isDelivered: widget.isDelivered,
-        isRead: widget.isRead,
+        status: widget.status,
         // Only the recipient's own bubble is tappable — see the field doc
         // comment on `onTapPlanOffer` for why the sender's copy never is.
         onTap: widget.isMe ? null : widget.onTapPlanOffer,
@@ -175,8 +184,7 @@ class _AppMessageBubbleState extends State<AppMessageBubble>
             onTapImage: widget.onTapImage,
             onTapReplyPreview: widget.onTapReplyPreview,
             resolveSenderLabel: widget.resolveSenderLabel,
-            isDelivered: widget.isDelivered,
-            isRead: widget.isRead,
+            status: widget.status,
           );
 
     Widget row = Column(
@@ -294,8 +302,7 @@ class _BubbleBody extends StatelessWidget {
   final void Function(int)? onTapImage;
   final VoidCallback? onTapReplyPreview;
   final String Function(String uid)? resolveSenderLabel;
-  final bool isDelivered;
-  final bool isRead;
+  final MessageSendState status;
 
   const _BubbleBody({
     required this.message,
@@ -306,8 +313,7 @@ class _BubbleBody extends StatelessWidget {
     required this.onTapImage,
     required this.onTapReplyPreview,
     required this.resolveSenderLabel,
-    required this.isDelivered,
-    required this.isRead,
+    required this.status,
   });
 
   @override
@@ -322,8 +328,18 @@ class _BubbleBody extends StatelessWidget {
         br: br,
         palette: palette,
         onTapImage: onTapImage,
-        isDelivered: isDelivered,
-        isRead: isRead,
+        status: status,
+      );
+    }
+
+    if (message.type == MessageType.voice && message.attachments.isNotEmpty) {
+      return _VoiceBubble(
+        message: message,
+        isMe: isMe,
+        br: br,
+        theme: theme,
+        palette: palette,
+        status: status,
       );
     }
 
@@ -392,8 +408,7 @@ class _BubbleBody extends StatelessWidget {
                   ? Colors.white.withValues(alpha: 0.75)
                   : palette.textTertiary,
               readTint: isMe ? palette.info : palette.textTertiary,
-              isDelivered: isDelivered,
-              isRead: isRead,
+              status: status,
             ),
           ],
         ),
@@ -410,8 +425,7 @@ class _ImageBubble extends StatelessWidget {
   final BorderRadius br;
   final AppPalette palette;
   final void Function(int)? onTapImage;
-  final bool isDelivered;
-  final bool isRead;
+  final MessageSendState status;
 
   const _ImageBubble({
     required this.message,
@@ -419,8 +433,7 @@ class _ImageBubble extends StatelessWidget {
     required this.br,
     required this.palette,
     required this.onTapImage,
-    required this.isDelivered,
-    required this.isRead,
+    required this.status,
   });
 
   @override
@@ -439,22 +452,10 @@ class _ImageBubble extends StatelessWidget {
             if (!showGrid)
               GestureDetector(
                 onTap: () => onTapImage?.call(0),
-                child: CachedNetworkImage(
-                  imageUrl: attachments.first.thumbUrl ?? attachments.first.url,
-                  fit: BoxFit.cover,
+                child: ChatAttachmentImage(
+                  attachment: attachments.first,
                   width: 240.w,
-                  placeholder: (_, __) => SizedBox(
-                    width: 240.w,
-                    height: 180.h,
-                    child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2)),
-                  ),
-                  errorWidget: (_, __, ___) => SizedBox(
-                    width: 240.w,
-                    height: 180.h,
-                    child:
-                        Icon(Icons.broken_image, color: palette.textTertiary),
-                  ),
+                  height: 180.h,
                 ),
               )
             else
@@ -473,8 +474,7 @@ class _ImageBubble extends StatelessWidget {
                   isMe: isMe,
                   tint: Colors.white,
                   readTint: palette.info,
-                  isDelivered: isDelivered,
-                  isRead: isRead,
+                  status: status,
                 ),
               ),
             ),
@@ -515,9 +515,8 @@ class _MiniGrid extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                CachedNetworkImage(
-                  imageUrl: shown[i].thumbUrl ?? shown[i].url,
-                  fit: BoxFit.cover,
+                ChatAttachmentImage(
+                  attachment: shown[i],
                 ),
                 if (isLastOverflow)
                   Container(
@@ -540,26 +539,99 @@ class _MiniGrid extends StatelessWidget {
   }
 }
 
+/// Faz 6 — a `MessageType.voice` bubble: same gradient/glass decoration as
+/// the text bubble, `AppVoicePlayer` as the content, `_MetaRow` for the
+/// delivery tick. `hasBeenPlayed`/`onFirstPlay` persistence (device-scoped,
+/// R3) is intentionally left unwired here — every note renders as unplayed
+/// until the app restarts, a minor, acceptable gap, not a functional bug.
+class _VoiceBubble extends StatelessWidget {
+  final MessageModel message;
+  final bool isMe;
+  final BorderRadius br;
+  final ThemeData theme;
+  final AppPalette palette;
+  final MessageSendState status;
+
+  const _VoiceBubble({
+    required this.message,
+    required this.isMe,
+    required this.br,
+    required this.theme,
+    required this.palette,
+    required this.status,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final attachment = message.attachments.first;
+
+    return Container(
+      constraints: BoxConstraints(maxWidth: 260.w),
+      decoration: BoxDecoration(
+        gradient: isMe ? AppGradients.brand(theme.primaryColor) : null,
+        color: isMe ? null : palette.glassFill,
+        borderRadius: br,
+        border:
+            isMe ? null : Border.all(color: palette.glassStroke, width: 0.5),
+        boxShadow: [
+          BoxShadow(
+            color: (isMe ? theme.primaryColor : palette.shadow)
+                .withValues(alpha: isMe ? 0.25 : 0.05),
+            blurRadius: 6.r,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm.w + 4, vertical: AppSpacing.xs.h + 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppVoicePlayer(
+              messageId: message.id,
+              url: attachment.url,
+              durationMs: attachment.durationMs,
+              peaks: attachment.peaks,
+              isMe: isMe,
+            ),
+            SizedBox(height: 3.h),
+            _MetaRow(
+              message: message,
+              isMe: isMe,
+              tint: isMe
+                  ? Colors.white.withValues(alpha: 0.75)
+                  : palette.textTertiary,
+              readTint: isMe ? palette.info : palette.textTertiary,
+              status: status,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _MetaRow extends StatelessWidget {
   final MessageModel message;
   final bool isMe;
   final Color tint;
   final Color readTint;
-  final bool isDelivered;
-  final bool isRead;
+  final MessageSendState status;
 
   const _MetaRow({
     required this.message,
     required this.isMe,
     required this.tint,
     required this.readTint,
-    required this.isDelivered,
-    required this.isRead,
+    required this.status,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final palette = AppPalette.of(context);
     final ts = message.timestamp;
     final time =
         '${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}';
@@ -576,16 +648,38 @@ class _MetaRow extends StatelessWidget {
         Text(time, style: TextStyle(fontSize: 10.sp, color: tint)),
         if (isMe) ...[
           SizedBox(width: 4.w),
-          Icon(
-            isRead
-                ? Icons.done_all_rounded
-                : (isDelivered ? Icons.done_all_rounded : Icons.done_rounded),
-            size: 14.r,
-            color: isRead ? readTint : tint,
-          ),
+          Icon(_statusIcon, size: 14.r, color: _statusColor(palette)),
         ],
       ],
     );
+  }
+
+  IconData get _statusIcon {
+    switch (status) {
+      case MessageSendState.sending:
+        return Icons.access_time_rounded;
+      case MessageSendState.sent:
+        return Icons.done_rounded;
+      case MessageSendState.delivered:
+        return Icons.done_all_rounded;
+      case MessageSendState.read:
+        return Icons.done_all_rounded;
+      case MessageSendState.failed:
+        return Icons.error_outline_rounded;
+    }
+  }
+
+  Color _statusColor(AppPalette palette) {
+    switch (status) {
+      case MessageSendState.read:
+        return readTint;
+      case MessageSendState.failed:
+        return palette.error;
+      case MessageSendState.sending:
+      case MessageSendState.sent:
+      case MessageSendState.delivered:
+        return tint;
+    }
   }
 }
 
@@ -663,15 +757,13 @@ class _DeletedPlaceholder extends StatelessWidget {
 class _PlanOfferCard extends StatelessWidget {
   final MessageModel message;
   final bool isMe;
-  final bool isDelivered;
-  final bool isRead;
+  final MessageSendState status;
   final void Function(MessagePlanOfferInfo info)? onTap;
 
   const _PlanOfferCard({
     required this.message,
     required this.isMe,
-    required this.isDelivered,
-    required this.isRead,
+    required this.status,
     required this.onTap,
   });
 
@@ -764,13 +856,54 @@ class _PlanOfferCard extends StatelessWidget {
               isMe: isMe,
               tint: palette.textTertiary,
               readTint: palette.info,
-              isDelivered: isDelivered,
-              isRead: isRead,
+              status: status,
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+/// Faz 5 — the reader-language rendering of a `system`-typed message.
+/// [MessageModel.systemEvent]/[systemParams] are an event KEY + named
+/// placeholders written by `functions/group_system_messages.js` (Admin SDK,
+/// `senderId: '__system__'`) — never a pre-rendered string, so EN and TR
+/// readers of the SAME doc each see it in their own language via
+/// `AppLocalizations`, matching this app's everywhere-EN/TR-parity rule
+/// (CLAUDE.md R6). Falls back to [MessageModel.body] whenever [systemEvent]
+/// is null (defensive: covers any future/legacy system doc this app might
+/// ever encounter that predates this event-key scheme) or unrecognized.
+String _systemMessageText(BuildContext context, MessageModel message) {
+  final event = message.systemEvent;
+  if (event == null || event.isEmpty) return message.body;
+
+  final l10n = AppLocalizations.of(context);
+  final params = message.systemParams ?? const {};
+  String p(String key) => (params[key] as String?) ?? '';
+
+  switch (event) {
+    case 'member_joined':
+      return l10n.translate('chat.system.member_joined',
+          variables: {'name': p('display_name')});
+    case 'member_left':
+      return l10n.translate('chat.system.member_left',
+          variables: {'name': p('display_name')});
+    case 'member_banned':
+      return l10n.translate('chat.system.member_banned',
+          variables: {'name': p('display_name')});
+    case 'group_renamed':
+      return l10n.translate('chat.system.group_renamed', variables: {
+        'old_name': p('old_name'),
+        'new_name': p('new_name'),
+      });
+    case 'group_photo_changed':
+      return l10n.translate('chat.system.group_photo_changed');
+    default:
+      // Unrecognized event key (e.g. written by a future app version this
+      // client predates) — fall back to the plain-English body rather than
+      // rendering a raw, untranslated event key to the user.
+      return message.body;
   }
 }
 
@@ -802,15 +935,102 @@ class _SystemMessagePill extends StatelessWidget {
   }
 }
 
-/// Renders `message.body` with each `MessageMention` span bolded/tinted.
+/// UTF-16 code-unit range within `body`, tagged with which highlight source
+/// produced it. Lets [buildMentionSpans] merge two independently-computed
+/// span sources — mentions and links — into one correctly-ordered walk
+/// instead of bolting a second pass on top of the first with its own
+/// separate cursor.
+enum _HighlightKind { mention, link }
+
+class _Highlight {
+  final int start;
+  final int end;
+  final _HighlightKind kind;
+  const _Highlight(
+      {required this.start, required this.end, required this.kind});
+}
+
+/// `http(s)://` or scheme-less `www.` — the two prefixes treated as "this is
+/// a link" for tap-to-open purposes. Detection only: see [buildMentionSpans]
+/// doc for why this deliberately never fetches/unfurls.
+final RegExp _urlPattern =
+    RegExp(r'(https?://|www\.)\S+', caseSensitive: false);
+
+/// Trailing characters trimmed off a raw regex match before it's treated as
+/// the link's real extent. Sentence punctuation right after a URL — "check
+/// example.com." or "see example.com, then..." — is not part of the URL and
+/// must not be swallowed into the tappable span.
+const String _trailingPunctuation = '.,!?;:\'"';
+
+/// Closing brackets get separate handling from [_trailingPunctuation]: only
+/// trimmed when they don't balance an opening bracket earlier in the SAME
+/// match (so a `wiki/Foo_(bar)`-style URL keeps its `)`) — otherwise a
+/// trailing `)`/`]`/`}` is almost always closing a surrounding sentence, e.g.
+/// "(see https://example.com)".
+const Map<String, String> _closingToOpening = {')': '(', ']': '[', '}': '{'};
+
+List<_Highlight> _findLinkHighlights(String body) {
+  final highlights = <_Highlight>[];
+  for (final match in _urlPattern.allMatches(body)) {
+    final start = match.start;
+    var end = match.end;
+
+    while (end > start && _trailingPunctuation.contains(body[end - 1])) {
+      end--;
+    }
+    while (end > start && _closingToOpening.containsKey(body[end - 1])) {
+      final closer = body[end - 1];
+      final opener = _closingToOpening[closer]!;
+      final span = body.substring(start, end);
+      final opens = span.split(opener).length - 1;
+      final closes = span.split(closer).length - 1;
+      if (closes <= opens) break;
+      end--;
+    }
+
+    if (end > start) {
+      highlights
+          .add(_Highlight(start: start, end: end, kind: _HighlightKind.link));
+    }
+  }
+  return highlights;
+}
+
+/// A bare `www.` match (this file's regex intentionally matches scheme-less
+/// `www.` links too, so they still render as tappable) has no scheme for
+/// `Uri.tryParse` to key off, so [safeLaunchUrl] would silently drop it. A
+/// `http://` match is passed through unchanged — `safeLaunchUrl` only
+/// allowlists `https`, and relaxing that policy isn't this function's call.
+String _normalizeLinkUrl(String rawUrl) {
+  final lower = rawUrl.toLowerCase();
+  if (lower.startsWith('http://') || lower.startsWith('https://')) {
+    return rawUrl;
+  }
+  return 'https://$rawUrl';
+}
+
+/// Renders `message.body` with each `MessageMention` span bolded/tinted AND
+/// each `http(s)://`/`www.` URL underlined/tinted and made tappable via
+/// [safeLaunchUrl]. Link handling is detection-and-tap ONLY — deliberately no
+/// fetch/preview card: resolving the sender's URL client-side to build a
+/// preview would leak the recipient's IP to whatever the sender linked, which
+/// the parent chat-upgrade plan explicitly keeps out of scope.
+///
 /// `MessageMention.offset`/`len` are UTF-16 code-unit indices (the model's own
 /// doc comment — Dart's `String` indexing is already UTF-16), so a direct
 /// `substring` is correct. Defensive against stale offsets (e.g. a mention
 /// recorded before a later edit shifted the text) — any span that no longer
 /// fits inside `body` is simply skipped rather than throwing.
 ///
+/// Mentions and links are found independently, then merged into a single
+/// sorted walk over `body`: whichever range starts first wins, and anything
+/// starting before the current cursor is dropped. In practice the two never
+/// overlap (a mention always starts with `@`, a URL never does), but the
+/// merge guards it the same way the original mention-only version guarded
+/// against overlapping mentions.
+///
 /// Public (not `_`-private) specifically so it's unit-testable without a
-/// widget harness — pure function, zero Firebase/Flutter-binding dependency
+/// widget harness — pure function, zero Firebase-binding dependency
 /// (`CLAUDE.md` §8: "new pure logic gets a unit test... has no excuse").
 /// See `test/mention_spans_test.dart`.
 TextSpan buildMentionSpans({
@@ -819,30 +1039,47 @@ TextSpan buildMentionSpans({
   required TextStyle baseStyle,
   required Color mentionColor,
 }) {
-  if (mentions.isEmpty) {
+  final mentionHighlights = mentions
+      .where(
+          (m) => m.offset >= 0 && m.len > 0 && m.offset + m.len <= body.length)
+      .map((m) => _Highlight(
+          start: m.offset, end: m.offset + m.len, kind: _HighlightKind.mention))
+      .toList();
+  final linkHighlights = _findLinkHighlights(body);
+
+  final all = [...mentionHighlights, ...linkHighlights]
+    ..sort((a, b) => a.start.compareTo(b.start));
+
+  if (all.isEmpty) {
     return TextSpan(text: body, style: baseStyle);
   }
 
-  final valid = mentions
-      .where(
-          (m) => m.offset >= 0 && m.len > 0 && m.offset + m.len <= body.length)
-      .toList()
-    ..sort((a, b) => a.offset.compareTo(b.offset));
+  final mentionStyle =
+      baseStyle.copyWith(color: mentionColor, fontWeight: FontWeight.w700);
+  final linkStyle = baseStyle.copyWith(
+    color: mentionColor,
+    decoration: TextDecoration.underline,
+    decorationColor: mentionColor,
+  );
 
   final spans = <TextSpan>[];
   var cursor = 0;
-  final mentionStyle =
-      baseStyle.copyWith(color: mentionColor, fontWeight: FontWeight.w700);
-
-  for (final m in valid) {
-    if (m.offset < cursor) continue; // overlapping/duplicate — skip
-    if (m.offset > cursor) {
+  for (final h in all) {
+    if (h.start < cursor) continue; // overlapping/duplicate — skip
+    if (h.start > cursor) {
       spans.add(
-          TextSpan(text: body.substring(cursor, m.offset), style: baseStyle));
+          TextSpan(text: body.substring(cursor, h.start), style: baseStyle));
     }
-    spans.add(TextSpan(
-        text: body.substring(m.offset, m.offset + m.len), style: mentionStyle));
-    cursor = m.offset + m.len;
+    final text = body.substring(h.start, h.end);
+    spans.add(h.kind == _HighlightKind.mention
+        ? TextSpan(text: text, style: mentionStyle)
+        : TextSpan(
+            text: text,
+            style: linkStyle,
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => safeLaunchUrl(_normalizeLinkUrl(text)),
+          ));
+    cursor = h.end;
   }
   if (cursor < body.length) {
     spans.add(TextSpan(text: body.substring(cursor), style: baseStyle));

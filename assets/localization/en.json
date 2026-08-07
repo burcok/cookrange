@@ -770,7 +770,25 @@
     "friend_added": "You and {name} are now friends",
     "share_profile": "Share Profile",
     "level_badge": "Lvl {level} · {into}/{forNext} XP",
-    "pro_verified_badge": "Pro"
+    "pro_verified_badge": "Pro",
+    "devices": {
+      "title": "Devices",
+      "subtitle": "Devices currently signed in to your account.",
+      "this_device": "This device",
+      "sign_out_device": "Sign out",
+      "sign_out_all_others": "Sign out all other devices",
+      "sign_out_device_confirm_title": "Sign out this device?",
+      "sign_out_device_confirm_message": "This device will be signed out immediately.",
+      "sign_out_all_others_confirm_title": "Sign out all other devices?",
+      "sign_out_all_others_confirm_message": "Every other device signed in to your account will be signed out immediately.",
+      "last_seen": "Last active",
+      "last_seen_now": "Active now",
+      "empty_title": "No devices found",
+      "empty_message": "We couldn't find any devices signed in to your account.",
+      "error_generic": "Something went wrong. Please try again.",
+      "success_signed_out": "Device signed out.",
+      "success_signed_out_all": "Other devices have been signed out."
+    }
   },
   "offline": {
     "title": "Offline Mode",
@@ -903,7 +921,8 @@
       "change_password_success": "Password changed successfully.",
       "export_data": "Download My Data",
       "export_data_subtitle": "Export all your data as a JSON file (GDPR)",
-      "export_error": "Failed to export data. Please try again."
+      "export_error": "Failed to export data. Please try again.",
+      "manage_devices": "Manage devices"
     },
     "referral": {
       "title": "Refer a Friend",
@@ -1551,7 +1570,20 @@
       "export_paywall_desc": "Premium group admins can export the member list as CSV.",
       "export_success": "Member list exported.",
       "export_error": "Couldn't export the member list. Try again.",
-      "invite_only": "Invite only"
+      "invite_only": "Invite only",
+      "info": {
+        "title": "Group info",
+        "created_label": "Created",
+        "creator_label": "Created by",
+        "view_all_members": "View all members",
+        "admins_section": "Admins",
+        "media_section": "Shared media",
+        "media_view_all": "View all",
+        "media_empty": "No shared media yet",
+        "mute_notifications": "Mute notifications",
+        "security_section_title": "Chat security",
+        "security_body": "Messages in this chat are encrypted in transit (TLS) and at rest (Google-managed AES-256). This app does not use end-to-end encryption. Because server-side moderation — keyword screening, moderator takedown, and abuse reports — needs to be able to read message content, full end-to-end encryption isn’t offered for group chats."
+      }
     },
     "no_posts": "No posts found. Be the first to share!",
     "all_posts_loaded": "You've seen all posts",
@@ -1746,7 +1778,8 @@
       "attach": "Attach media",
       "send": "Send message",
       "camera": "Camera",
-      "gallery": "Gallery"
+      "gallery": "Gallery",
+      "record_voice": "Record voice message"
     },
     "filters": {
       "all": "All",
@@ -1777,7 +1810,8 @@
     "offline": "Offline",
     "online": "Online",
     "preview": {
-      "photo": "Photo"
+      "photo": "Photo",
+      "voice": "Voice message"
     },
     "recipe_group": {
       "new_recipes": "{count} New Recipes"
@@ -1818,7 +1852,9 @@
       "delete_for_me": "Delete for Me",
       "delete_for_everyone": "Delete for Everyone",
       "delete_as_moderator": "Remove Message",
-      "report": "Report Message"
+      "report": "Report Message",
+      "retry": "Retry",
+      "delete_failed": "Delete"
     },
     "delete_confirm": {
       "title": "Delete message?",
@@ -1892,6 +1928,22 @@
       "label": "Meal Plan",
       "view_cta": "View Offer",
       "not_found": "This offer is no longer available."
+    },
+    "system": {
+      "member_joined": "{name} joined the group",
+      "member_left": "{name} left the group",
+      "member_banned": "{name} was banned from the group",
+      "group_renamed": "Group name changed to \"{new_name}\"",
+      "group_photo_changed": "Group photo was changed"
+    },
+    "voice_recorder": {
+      "slide_to_cancel": "Slide to cancel",
+      "delete": "Delete recording"
+    },
+    "voice_player": {
+      "play": "Play voice message",
+      "pause": "Pause voice message",
+      "speed_control": "Playback speed"
     }
   },
   "signal": {
@@ -2919,7 +2971,11 @@
       "title": "Permission Required",
       "message": "Please enable this permission in Settings to use this feature."
     },
-    "open_settings": "Open Settings"
+    "open_settings": "Open Settings",
+    "microphone": {
+      "title": "Microphone Access",
+      "rationale": "Cookrange needs microphone access to record and send voice messages in chat."
+    }
   },
   "admin": {
     "panel_title": "Admin Panel",

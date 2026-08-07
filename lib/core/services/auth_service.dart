@@ -11,11 +11,12 @@ import 'package:crypto/crypto.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/services/analytics_service.dart';
 import 'crashlytics_service.dart';
+import 'device_identity_service.dart';
+import 'device_registry_service.dart';
 import 'firestore_service.dart';
 import 'log_service.dart';
 import '../models/user_model.dart';
 import 'package:uuid/uuid.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthException implements Exception {
   final String code;
@@ -125,8 +126,17 @@ class AuthService {
   }
 
   // Session Management
-  String? _currentSessionId;
-  StreamSubscription<DocumentSnapshot>? _sessionSubscription;
+  //
+  // The `sessionId:` argument passed to `_firestoreService.handleUserLogin`
+  // below is UNCHANGED by the Faz — multi-device registry rework:
+  // `handleUserLogin` still writes it to `private/account.current_session_id`
+  // purely as a login-history value. What changed is
+  // _startSessionMonitoring/_handleDeviceRevoked below, which used to keep it
+  // in an instance field (`_currentSessionId`, now removed) to compare
+  // against the remote doc and detect a second device logging in — that
+  // comparison, and the field it needed, are both gone; see
+  // _startSessionMonitoring's comment.
+  StreamSubscription<bool>? _sessionSubscription;
   final Uuid _uuid = const Uuid();
 
   // Email & Password Login
@@ -146,7 +156,6 @@ class AuthService {
 
       // Generate Session ID
       final sessionId = _uuid.v4();
-      _currentSessionId = sessionId;
 
       // Delegate login handling to FirestoreService with Session ID
       _log.info(
@@ -181,30 +190,42 @@ class AuthService {
     }
   }
 
+  // Multi-device session registry (replaces the old single-session
+  // `current_session_id` kickout): each installation registers its own
+  // `users/{uid}/devices/{deviceId}` doc (DeviceRegistryService) and this
+  // device watches ONLY that doc for `revoked`. Logging in from a second
+  // device no longer signs the first one out — every device is independent,
+  // which is what makes multi-device support (needed for presence, a later
+  // phase) possible. A device is force-signed-out only when an explicit
+  // revoke happens (device_management_screen.dart's "sign out" actions →
+  // functions/devices.js's `revokeDevice` callable), never merely because
+  // another device logged in.
   void _startSessionMonitoring(String uid) {
     _sessionSubscription?.cancel();
-    // `current_session_id` lives on `private/account`, not the main doc
-    // (audit N1) — it's a session/device fingerprint, the same class of
-    // data the rest of that migration moved off the world-readable doc.
-    _sessionSubscription =
-        _firestoreService.getPrivateAccountStream(uid).listen((snapshot) {
-      if (!snapshot.exists || snapshot.data() == null) return;
-
-      final data = snapshot.data() as Map<String, dynamic>;
-      final remoteSessionId = data['current_session_id'] as String?;
-
-      // If remote session ID exists and differs from local, log out
-      if (remoteSessionId != null &&
-          _currentSessionId != null &&
-          remoteSessionId != _currentSessionId) {
-        _log.warning('Session mismatch detected. Logging out.',
-            service: _serviceName);
-        _handleSessionMismatch();
-      }
-    });
+    unawaited(_registerAndWatchThisDevice(uid));
   }
 
-  void _handleSessionMismatch() {
+  Future<void> _registerAndWatchThisDevice(String uid) async {
+    try {
+      final deviceId = await DeviceIdentityService().deviceId;
+      await DeviceRegistryService().registerOrTouchThisDevice(uid: uid);
+      _sessionSubscription = DeviceRegistryService()
+          .watchThisDeviceRevoked(uid, deviceId)
+          .listen((revoked) {
+        if (revoked) {
+          _log.warning(
+              'This device ($deviceId) was revoked remotely. Logging out.',
+              service: _serviceName);
+          _handleDeviceRevoked();
+        }
+      });
+    } catch (e, s) {
+      _log.error('Failed to register/monitor this device for user $uid',
+          service: _serviceName, error: e, stackTrace: s);
+    }
+  }
+
+  void _handleDeviceRevoked() {
     _sessionSubscription?.cancel();
     _sessionSubscription = null;
     signOut();
@@ -389,7 +410,6 @@ class AuthService {
 
       if (user != null) {
         final sessionId = _uuid.v4();
-        _currentSessionId = sessionId;
 
         // Delegate login handling to FirestoreService
         _log.info(
@@ -661,7 +681,6 @@ class AuthService {
         }
 
         final sessionId = _uuid.v4();
-        _currentSessionId = sessionId;
         await _firestoreService.handleUserLogin(user, sessionId: sessionId);
         _startSessionMonitoring(user.uid);
         unawaited(CrashlyticsService().setCustomKeys(userTier: 'free'));

@@ -923,6 +923,115 @@ resolving `S0` — it is still the hard blocker on this panel (or anything else)
 
 ---
 
+## ADR-025 — Multi-device session registry replaces single-session kickout
+
+**Date:** 2026-08-07 · **Status:** Accepted
+
+**Context.** `AuthService` force-signed-out any OTHER device the moment a new one logged in
+(`users/{uid}/private/account.current_session_id` comparison). This made multi-device presence
+(ADR-026) structurally impossible and gave users no visibility into or control over their own active
+sessions.
+
+**Decision.** Each installation registers its own `users/{uid}/devices/{deviceId}` doc
+(`DeviceRegistryService`) and watches only that doc for `revoked`. A new `revokeDevice` callable
+(`functions/devices.js`) is the only path that can flip `revoked`/`revoked_at` — client-unwritable by
+rule — and additionally calls `admin.auth().revokeRefreshTokens(uid)` to actually invalidate the
+session, not just flag it. A "your devices" screen surfaces this to the user.
+
+**Reason.** A bare Firestore flag can't invalidate a session; only revoking the Auth refresh token
+does. Per-device docs let concurrent sessions coexist (needed for presence) while keeping the
+security value the old kickout had (visibility + forced remote sign-out) — now opt-in per device
+instead of automatic and total.
+
+**Alternatives.** Keep single-session (rejected — blocks all multi-device work) · a custom
+claim/token-version scheme for true per-device revocation (rejected — real added complexity for a
+limitation, below, that's rare in practice and honestly documented instead).
+
+**Consequences.** ✅ Multi-device support unblocked; a compliance-relevant device-transparency screen
+exists. ⚠️ `revokeRefreshTokens` is per-USER, not per-device: "sign out all other devices" also
+invalidates the caller's own token once it next refreshes (documented in `functions/devices.js` and
+must not be oversold in UI copy). ⚠️ Not verified against a real second device in this environment.
+
+---
+
+## ADR-026 — Realtime Database for presence/typing, mirrored into Firestore
+
+**Date:** 2026-08-07 · **Status:** Accepted
+
+**Context.** `is_online`/`last_active_at` were plain client-written `users/{uid}` fields with no
+disconnect detection — a killed app left `is_online: true` forever, papered over only by a 2-minute
+client-side staleness re-check on read. `typingUsers` (on the shared `chats/{id}` doc) had the same
+problem plus a write-storm cost: one Firestore write per keystroke, fanned to every listener.
+
+**Decision.** Add Firebase Realtime Database for presence + typing ONLY (`PresenceService`,
+`database.rules.json`, new). RTDB's `onDisconnect()` — server-side, fires even if the client never
+runs again — is the only primitive that solves this. `functions/chat_presence.js`'s `mirrorPresence`
+copies the aggregate result back onto the SAME `users/{uid}.is_online`/`.last_active_at` fields every
+existing reader already uses, so no downstream Dart file needed to change. A `reconcileStalePresence`
+sweep is the backstop for a disconnect `onDisconnect` somehow misses.
+
+**Reason.** Firestore has no disconnect primitive at all; RTDB is the standard Firebase-native fix
+for exactly this problem, and mirroring back onto the existing fields means adopting it costs nothing
+downstream.
+
+**Alternatives.** A heartbeat-only Firestore scheme (rejected — still can't distinguish "briefly
+backgrounded" from "process is gone" without a disconnect signal) · a third-party presence service
+(rejected — one more moving part for a problem Firebase already solves natively).
+
+**Consequences.** ✅ Presence and typing both become structurally correct (no permanent ghosts) and
+typing stops being a per-keystroke Firestore write. ⚠️ A new Firebase product to provision, monitor,
+and (eventually) pay for. ⚠️ **Not yet provisioned in the Firebase console as of this ADR** — every
+line of `PresenceService`/`chat_presence.js` is written against the documented RTDB contract but
+unverified end-to-end, the same evidentiary status this project already applies to gym geofencing
+(needs a physical device). ⚠️ RTDB rules have no local test harness in this repo at all.
+
+---
+
+## ADR-027 — Chat read-model split (`chat_inbox`) and a rewritten, idempotent fan-out
+
+**Date:** 2026-08-07 · **Status:** Accepted
+
+**Context.** `chats/{id}` was a hot document: every message wrote a FULL `lastMessage` embed
+(attachments and all) plus an `unreadCounts` map, re-delivered to every listener on every message.
+Worse, for a `community_groups`-backed chat, `participants` only ever holds the group's OWNER (set
+once at creation, never updated by join/leave/kick/ban) — so `ChatService.getUserChats`'s
+`arrayContains` discovery query structurally could never surface that chat for a real non-owner
+member, and their `unreadCounts` entry, however correctly the server wrote it, was unreachable.
+Separately, `onChatMessageCreated` had no idempotency guard, no chunking of a large group's member
+list, and a single unhandled rejection silently failed push AND unread for every recipient in that
+batch.
+
+**Decision.** New `chats/{id}/state/live` (cold preview doc, server-only) and
+`users/{uid}/chat_inbox/{chatId}` (per-recipient discovery + unread row, server-only, tiered:
+`per_user` exact incrementing at ≤200 recipients, a lighter `unread_dirty` signal above that).
+`onChatMessageCreated` rewritten: a `chat_fanout_events/{eventId}` idempotency guard, chunked member
+paging, a top-level try/catch (logged, never silently dropped), and multicast push across every
+device in the ADR-025 registry. Client-side, `ChatService.getUserChats` merges the legacy
+`participants` query (unchanged, zero regression for DMs/ad-hoc groups/group owners) with
+`chat_inbox` (the only source that can discover a group-backed chat for a non-owner member) rather
+than switching over outright.
+
+**Reason.** The legacy `unreadCounts` dual-write and merge-not-replace client read are the "read-path
+adapts, nothing gets rewritten" migration discipline this codebase already applies elsewhere
+(`docs/DATABASE.md` §10) — a clean, additive fix rather than a breaking schema cutover.
+
+**Alternatives.** Fully denormalize `chat_inbox` (title/avatar snapshots resolved once, list renders
+with zero extra reads) — rejected for this pass as a further optimization once real usage exists, not
+a pre-launch requirement · a hard cutover off `unreadCounts` — rejected, no reason to break the
+fallback path before a version floor guarantees every client reads the new field.
+
+**Consequences.** ✅ Fixes a real, structural correctness bug (group unread silently zero for
+non-owners) that predates this session. ✅ Fan-out survives a duplicate delivery and a partial
+failure without silently dropping a whole batch. ⚠️ A member who joined a group before this deploy
+and whose group has had zero activity since won't have a `chat_inbox` row yet until a backfill sweep
+runs (not built this pass — zero real users to backfill for). ⚠️ `getUserChats` now costs a chunked
+`whereIn` hydration read per chat_inbox-discovered chat — accepted, not the eventual zero-extra-read
+design chat_inbox's own schema could support. ⚠️ No Firestore rules emulator run was possible in this
+environment (Java unavailable) — the new rule blocks are pattern-consistent with the existing 182-test
+suite but not locally re-verified against it.
+
+---
+
 ## Recording a new decision
 
 Append at the end. Use the next ID. Keep it to the seven headings:

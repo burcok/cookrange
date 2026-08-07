@@ -233,6 +233,74 @@
   sorting the list itself (segment, unread-only, search, archive/delete visibility, pinned-first
   ordering) is a separate, Firebase-free, unit-tested pure function,
   `lib/core/utils/chat_list_filter.dart`'s `ChatListFilter.apply` — not part of this service.
+  **Faz 0 §0.1–§0.5** (production-integrity/UX hardening pass — see `PROJECT_STATE.md` §4's chat row
+  for the full defect list this closes): now a proper singleton (`static final _instance` — every
+  screen already used the zero-arg constructor, so this was a pure internal change, no caller
+  touched); `getChatMessages` listens with `includeMetadataChanges: true` and stamps each
+  `MessageModel.hasPendingWrites` from `DocumentSnapshot.metadata` (§0.2); `sendMessage`'s
+  `batch.commit()` is now wrapped — a hard rules/App-Check/auth rejection throws the new
+  `ChatSendRejectedException` (a plain Dart type, not a rethrown `FirebaseException`, so callers never
+  need to import `cloud_firestore` to classify it) instead of vanishing silently, while every
+  recoverable failure (network, timeout) is left untouched for Firestore's own offline mutation queue
+  to retry; `newClientId()` — a fresh idempotency key for a send, reused unchanged on retry. New pure
+  utils this pass introduced: `lib/core/utils/chat_message_merge.dart`'s `ChatMessageMerge.merge` —
+  combines the live stream with any locally hard-failed sends (`ChatSendFailureStore`, below) into one
+  correctly-ordered timeline, re-deriving sort order itself rather than trusting Firestore's — a
+  pending write's `server_timestamp` reads back `null` (`Query.snapshots()` has no
+  `serverTimestampBehavior` param, confirmed absent from the installed `cloud_firestore` package), and
+  treating that as "now" is what puts an in-flight send at the top instead of the bottom; and
+  `lib/core/utils/message_status.dart`'s `MessageStatusResolver.resolve` — replaces the old inline
+  `_isDelivered`/`_isRead` in `chat_detail_screen.dart` with a `MessageSendState` enum
+  (`sending`/`sent`/`delivered`/`read`/`failed`), fixing a real correctness gap along the way: a
+  group-backed chat's `participants` array holds only the group's OWNER (`DATABASE.md`'s
+  `canAccessGroupChat` note), so the old "read by every other participant" could never be true for a
+  real multi-member group — now degrades to "read by anyone" for `groupId != null` chats specifically,
+  while an ad-hoc multi-party chat (no `groupId`, `participants` genuinely lists everyone) keeps the
+  stricter "everyone" semantics. **`ChatSendFailureStore`** (`chat_send_failure_store.dart`, new
+  singleton) — per-chat `ValueNotifier<List<PendingSendFailure>>` memory of hard-failed sends, keyed
+  by `clientId` so a retry supersedes its own failure record; deliberately NOT Hive-persisted, since a
+  hard rejection replays identically after a restart and would just produce a zombie bubble instead of
+  disappearing when the user leaves the chat. `preloadChats`'s old `catch { // Ignore }` (R4 violation)
+  now logs via `LogService` and additionally warms the first message page (`getMessagesPage`) of the 3
+  most-recently-updated chats, not just the list row. **Chat Upgrade Faz 3**: `getUserChats` now merges
+  the legacy `participants arrayContains` query with `users/{uid}/chat_inbox` (server-authored by the
+  rewritten `onChatMessageCreated`) rather than switching over outright — see `DATABASE.md`'s
+  `chat_inbox` row and `DECISIONS.md` ADR-027 for why both sources are still needed. `setTypingStatus`
+  is gone — typing moved to `PresenceService`/RTDB (below); the 2-minute client-side online-staleness
+  re-verification in `getUserChatsWithStatus` is gone too, now that `is_online` is mirrored from a real
+  `onDisconnect()` signal instead of a raw client-written flag.
+- **DeviceIdentityService** `device_identity_service.dart` (new, Chat Upgrade Faz 1) — mints and
+  persists a stable per-install device id in `flutter_secure_storage`, cached in memory after first read.
+- **DeviceRegistryService** `device_registry_service.dart` (new, Faz 1) — owns `users/{uid}/devices/{deviceId}`:
+  `registerOrTouchThisDevice` (merge-writes platform/model/app_version/os_version/push_token/last_seen_at,
+  never `revoked`/`revoked_at`), `watchThisDeviceRevoked`, `watchMyDevices`,
+  `signOutThisDevice`/`signOutAllOtherDevices`/`signOutDevice` (all three go through the `revokeDevice`
+  callable — a client can never flip its own `revoked` flag). Replaces `AuthService`'s old
+  `current_session_id` single-session kickout — see `DECISIONS.md` ADR-025.
+- **PresenceService** `presence_service.dart` (new, Faz 2) — Realtime Database-backed presence
+  (`/presence/{uid}/{deviceId}`, per-device, aggregated online>away>offline) and typing
+  (`/typing/{chatId}/{uid}`), both with real `onDisconnect()` cleanup. `AppLifecycleService` is now the
+  sole driver of `goOnline`/`goAway`/`goOffline`; `functions/chat_presence.js`'s `mirrorPresence` copies
+  the aggregate back onto `users/{uid}.is_online`/`.last_active_at` — every existing reader
+  (`chat_list_screen.dart`, `profile_screen.dart`, `select_friend_sheet.dart`) needed zero changes. See
+  `DECISIONS.md` ADR-026 for why RTDB (not Firestore) and the honest infra-not-yet-provisioned caveat.
+- **VoicePlaybackService** `voice_playback_service.dart` (new, Faz 6) — one shared `just_audio` player
+  app-wide (starting a note stops whatever was playing), `play`/`pause`/`seek`/`setSpeed`/`stop`. Stopped
+  in `ChatDetailScreen.dispose`.
+- **ChatMediaUrlCache** `chat_media_url_cache.dart` (new, Faz 5) — in-memory, TTL-aware cache resolving
+  a `chat_media/{chatId}/{uid}/{fileName}` storage path (never directly readable — see
+  `storage.rules`) into a signed URL via the `getChatMediaUrl` callable (`functions/chat_media.js`,
+  re-verifies real chat membership server-side before minting a 24h V4 signed URL). Additive: existing
+  `chat_images/` uploads/URLs are untouched.
+- **New Cloud Functions files** (`functions/`, all new this pass — see `API.md` for callable contracts
+  where applicable): `devices.js` (`revokeDevice`), `chat_presence.js` (`mirrorPresence`,
+  `reconcileStalePresence`), `group_system_messages.js` (`onGroupMemberWritten`, `onGroupDocUpdated` —
+  server-authored "X joined"/"group renamed" system messages, `senderId: '__system__'`, unforgeable
+  because that field is deliberately off `isValidNewMessage()`'s client-writable allowlist),
+  `chat_media.js` (`getChatMediaUrl`), `chat_fanout_logic.js` (pure decision logic for the rewritten
+  `onChatMessageCreated` — tiering threshold, chunk sizes, staleness bail, kind-aware preview text;
+  unit-tested at `functions/test/chat_fanout_logic.test.js` since the trigger itself has no functional
+  harness, `CLAUDE.md` §8).
 - **FollowService** `follow_service.dart` — Following/followers counts, isFollowing stream (reads
   stay client-direct). **Write is server-authoritative** (`BLK-03`/`SEC-06`) — `follow`/`unfollow` call
   the `followUser`/`unfollowUser` callables, which write both edge sides and the follow notification
@@ -438,7 +506,19 @@
   count})` uses `zonedSchedule` (`matchDateTimeComponents.time`, **inexact** alarms — no Android 13+
   exact-alarm permission) at clock times evenly spread across the wake→sleep window (handles midnight
   wrap), over a reserved id block (7001–7012). `cancelWaterReminder()` clears the block. Spread math is
-  pure + unit-tested (`PushNotificationService.spreadReminderTimes`).
+  pure + unit-tested (`PushNotificationService.spreadReminderTimes`). **Faz 0 §0.4**: a chat
+  notification's tap-routing (`_navigateFromData`) now opens the actual conversation
+  (`AppRoutes.chatDetail`, `arguments: chatId`) instead of just the chat list — `chatId` was already in
+  every chat push's data payload (`functions/index.js`'s `onChatMessageCreated`) but discarded before
+  this fix; `main` is pushed first so Back from the conversation lands in the app. Foreground
+  suppression: `_handleForegroundMessage` skips showing a local notification (haptic instead) when the
+  incoming chat push's `chatId` matches `ActiveChatTracker().isActive(chatId)` — safe to key on that
+  alone since `FirebaseMessaging.onMessage` only ever fires while the app is foregrounded, so no
+  separate foreground/background signal is needed.
+- **ActiveChatTracker** `active_chat_tracker.dart` (new, Faz 0 §0.4) — a one-field singleton (no
+  Firebase, no Provider) recording which chat id, if any, is the front-most screen; set/cleared by
+  `ChatDetailScreen.initState`/`dispose`. Sole consumer today is `PushNotificationService`'s
+  foreground-suppression check above.
 - **PermissionService** `permission_service.dart` — Runtime permission requests (camera/GPS/notif).
 - **ATTConsentService** `att_consent_service.dart` — iOS App Tracking Transparency (one-shot,
   `att_prompted` SharedPref key).

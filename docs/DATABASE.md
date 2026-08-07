@@ -23,6 +23,19 @@ users/{uid}                                   public profile + onboarding_data, 
   ├─ private/chat_prefs                        Faz 2 §2.4 — per-chat pin/archive/mute/delete (map
                                                 keyed by chatId → Timestamp of the action; presence of
                                                 the key is the on/off signal)
+  ├─ devices/{deviceId}                         Chat Upgrade Faz 1 — multi-device session registry,
+                                                replaces the old single-session `current_session_id`
+                                                kickout. `platform`/`model`/`app_version`/`os_version`/
+                                                `last_seen_at`/`push_token` owner-writable;
+                                                `revoked`/`revoked_at` server-only (`revokeDevice`
+                                                callable, `functions/devices.js` — also revokes the
+                                                Firebase Auth refresh token). No delete — audit trail.
+  ├─ chat_inbox/{chatId}                        Chat Upgrade Faz 3 — per-user chat discovery/unread
+                                                read-model, server-authored by `onChatMessageCreated`.
+                                                Fixes group-backed chats being undiscoverable for
+                                                non-owner members (see `chats/{id}` row below). Client
+                                                may only reset `unread`/`unread_dirty` to 0/false and
+                                                bump `last_read_at`
   ├─ meal_plans/current                        current weekly plan (+ generationPromptHash)
   ├─ meal_plan_history/{YYYY-MM-DD}            archived weekly plans
   ├─ plan_offers/{id}                           Faz 3 §3.2 — a meal_plan_templates/{id} sent to this
@@ -99,6 +112,11 @@ posts/{id}                                    community posts  (+ /comments, /li
 chats/{id}/messages/{id}                      chat threads + messages (v2 schema — Faz 2 §2.1).
                                                A group's own chat is one of these (`groupId` set) —
                                                see community_groups/{id} below
+  └─ state/live                                Chat Upgrade Faz 3+4 — cold "last message preview" doc
+                                               (`onChatMessageCreated`, server-only), replacing the old
+                                               full `lastMessage` embed (attachments and all) on the
+                                               parent chat doc — one small write per message regardless
+                                               of recipient count
 signals/{id}                                  ephemeral broadcasts (TTL via expiresAt)
 community_groups/{id}                         unified groups (Faz 2 §2.3): public/private/gym, paired
                                                1:1 chat, announcement-only, join policy, invites
@@ -123,6 +141,11 @@ moderation_appeals/{id}                       Faz 2 §2.6 — appeal against one
                                                moderation/{autoId} entry, doc id == that entry's id
 rate_limits/{uid}                             Faz 2 §2.6 — server-only sliding-window ledger for
                                                reports/moderation actions/appeals abuse throttling
+chat_fanout_events/{eventId}                  Chat Upgrade Faz 3+4 — fully server-only idempotency
+                                               ledger for `onChatMessageCreated`; doc id = the
+                                               trigger's own `context.eventId`, `create()` throwing
+                                               ALREADY_EXISTS is how a retried/duplicate delivery is
+                                               detected and skipped
 referrals/{code}                              referral codes (personal/coach-vanity/gym — Faz 6 §6.1)
 
 gyms/{id}                                     gym profiles (+ /members, /posts, /checkins,
@@ -222,7 +245,14 @@ failed_login_attempts/{id} SERVER-ONLY        brute-force tracking
 | `users/{uid}/private/chat_prefs` | Faz 2 §2.4 — per-user, per-chat list-view state: `pinned_chats`/`archived_chats`/`muted_chats`/`deleted_chats`, each a map of `chatId → Timestamp` (key presence = on; value = when). `deleted_chats` is a soft, client-computed hide, not a tombstone: a chat reappears the moment its own `updatedAt` moves past the stored deletion instant (`ChatPrefsModel.isDeleted`) — the chat doc itself can never be deleted client-side (`allow delete: if false` above), so "delete" here honestly means "hide until new activity" | Covered by the existing generic `private/{docId}` wildcard rule — owner read/write, no rule change needed (regression-tested in `rules.test.mjs`, matching the `presence_prefs` precedent) |
 | `users/{uid}/private/attribution_prefs` | Faz 6 §6.5 — `hidden: bool`, the user's one-tap "disconnect" from the gym-attribution banner on their own profile (`ReferralService.setAttributionHidden`). DISPLAY-only: never touches `gym_attributions/{uid}` itself (immutable by design — see that collection's row above), so the gym's already-earned/earning commission is completely unaffected either way | Covered by the existing generic `private/{docId}` wildcard rule — owner read/write, no rule change needed (same precedent as `chat_prefs`/`presence_prefs`) |
 | `chats/{id}/messages/{id}` create, group-backed only | Additionally gated by `canPostInGroup()`: the sender must be an active, non-muted member, and — when the group's `announcement_only` is on — owner or a group-level `admin`. Reading and reacting (`canUpdateMessageEngagement`) are **not** gated by `announcement_only` — "diğerleri okur + tepki verir" | Same `isValidNewMessage()`/`canEditOwnMessage()`/`canUpdateMessageEngagement()` as every other chat — reused verbatim, not reinvented |
-| `chats/{id}/messages/{id}` | **Message model v2** (Faz 2 §2.1): `id`, `senderId`, `type` (text/image/system/plan_offer/announcement), `body` (replaces old `text` — media never goes here anymore), `attachments[]` (`kind`/`url`/`mime`/`width`/`height`/`size`/`thumb_url`/`caption`), `reply_to`, `forwarded_from` (`hops`-counted), `reactions` (`{emoji: [uid]}`), `edited_at`, `is_deleted`, `deleted_for` (`'everyone'` or a per-uid array — "delete for me"), `delivered_to[]`/`read_by[]` (per-uid, not the old single global `isRead`), `mentions[]`, `server_timestamp` (serverTimestamp() — client clock is never trusted), `client_id`. **Faz 3 §3.5**: `plan_offer` — set only when `type == 'plan_offer'` (`{offer_id, template_id, template_name, target_calories, from_name}`, denormalized so both chat participants render an identical card even though `plan_offers` read is recipient-only); written exclusively by the `sendPlanOffer` Cloud Function via Admin SDK, which bypasses `isValidNewMessage`'s client-facing allowlist entirely — no client ever writes this field, so the allowlist was never extended for it. A deprecated `timestamp` field is written alongside `server_timestamp` as a compatibility mirror (same instant) purely so the existing `orderBy('timestamp')` message stream keeps surfacing old AND new docs without a backfill — see `ChatService.sendMessage`'s doc comment. **Faz 2 §2.2 deliberately did NOT drop the `timestamp` mirror**, despite that comment's original aspiration: `getMessagesPage`/`getChatMediaPage`/`getMessagesAround` (cursor pagination, media gallery, jump-to-date) all still order by `timestamp`, not `server_timestamp` — switching would silently exclude every pre-v2 message (no `server_timestamp` field at all) from history, pagination, and the gallery, the exact silent-exclusion class this same section already warns about for `markChatAsRead`. Safe to switch only after a real backfill migration writes `server_timestamp` onto every legacy doc (out of scope). **Migration discipline**: pre-v2 (6-field) docs are adapted entirely on the read path (`MessageModel.fromJson`) and never rewritten — see §10. | Participants only. Create requires the full v2 shape (`isValidNewMessage`) with an exhaustive field allowlist and a `server_timestamp == request.time` anti-spoof check; update is split between the sender's own 15-minute content-edit window (`body`/`edited_at`/`is_deleted`/`deleted_for`-as-`'everyone'`), any participant's engagement touches (`reactions`/`read_by`/`delivered_to`/`deleted_for`-as-array — "delete for me"), and — **Faz 2 §2.6**, group-backed chats only — a group owner/group-admin/site-admin's `canModeratorDeleteMessage()` takedown of ANOTHER member's message: `is_deleted`/`deleted_for`-as-`'everyone'` ONLY, no time window, `body` is deliberately left untouched in Firestore (never rendered once `is_deleted` is true, per `MessageModel.isDeletedFor`, but preserved for audit/appeal review rather than wiped like the sender's own delete). Content-length capped. |
+| `chats/{id}/messages/{id}` | **Message model v2** (Faz 2 §2.1): `id`, `senderId`, `type` (text/image/system/plan_offer/announcement), `body` (replaces old `text` — media never goes here anymore), `attachments[]` (`kind`/`url`/`mime`/`width`/`height`/`size`/`thumb_url`/`caption`), `reply_to`, `forwarded_from` (`hops`-counted), `reactions` (`{emoji: [uid]}`), `edited_at`, `is_deleted`, `deleted_for` (`'everyone'` or a per-uid array — "delete for me"), `delivered_to[]`/`read_by[]` (per-uid, not the old single global `isRead`), `mentions[]`, `server_timestamp` (serverTimestamp() — client clock is never trusted), `client_id`.
+**Faz 0 §0.2/§0.3** added two client-only, transient fields that never appear in `toJson()`/Firestore
+at all: `has_pending_writes` (sourced from `DocumentSnapshot.metadata.hasPendingWrites` via
+`getChatMessages`'s `includeMetadataChanges: true` listener — lets the UI render a "sending" tick
+before the server acks) and `send_failed` (set only on a synthetic, locally-constructed
+`MessageModel` built by `PendingSendFailure.toMessageModel()`, `chat_send_failure_store.dart`,
+representing a hard-rejected send Firestore rolled back and will never re-deliver — see
+`docs/SERVICES.md`'s `ChatMessageMerge`/`MessageStatusResolver` entries). **Faz 3 §3.5**: `plan_offer` — set only when `type == 'plan_offer'` (`{offer_id, template_id, template_name, target_calories, from_name}`, denormalized so both chat participants render an identical card even though `plan_offers` read is recipient-only); written exclusively by the `sendPlanOffer` Cloud Function via Admin SDK, which bypasses `isValidNewMessage`'s client-facing allowlist entirely — no client ever writes this field, so the allowlist was never extended for it. A deprecated `timestamp` field is written alongside `server_timestamp` as a compatibility mirror (same instant) purely so the existing `orderBy('timestamp')` message stream keeps surfacing old AND new docs without a backfill — see `ChatService.sendMessage`'s doc comment. **Faz 2 §2.2 deliberately did NOT drop the `timestamp` mirror**, despite that comment's original aspiration: `getMessagesPage`/`getChatMediaPage`/`getMessagesAround` (cursor pagination, media gallery, jump-to-date) all still order by `timestamp`, not `server_timestamp` — switching would silently exclude every pre-v2 message (no `server_timestamp` field at all) from history, pagination, and the gallery, the exact silent-exclusion class this same section already warns about for `markChatAsRead`. Safe to switch only after a real backfill migration writes `server_timestamp` onto every legacy doc (out of scope). **Migration discipline**: pre-v2 (6-field) docs are adapted entirely on the read path (`MessageModel.fromJson`) and never rewritten — see §10. **`CHAT-05` fix (2026-08-07)**: `ChatService.deleteMessageForEveryone` now also best-effort deletes each attachment's underlying Storage object (`StorageUploadService.deleteByUrl`/`deleteByPath`, covering both the legacy `chat_images/` URL shape and the new `chat_media/` bare-path shape) — clearing the Firestore `attachments` array alone used to leave the file itself orphaned in Storage indefinitely, a real gap for cost and for `BLK-12` GDPR-erasure completeness. Not backfilled for messages deleted before this fix. | Participants only. Create requires the full v2 shape (`isValidNewMessage`) with an exhaustive field allowlist and a `server_timestamp == request.time` anti-spoof check; update is split between the sender's own 15-minute content-edit window (`body`/`edited_at`/`is_deleted`/`deleted_for`-as-`'everyone'`), any participant's engagement touches (`reactions`/`read_by`/`delivered_to`/`deleted_for`-as-array — "delete for me"), and — **Faz 2 §2.6**, group-backed chats only — a group owner/group-admin/site-admin's `canModeratorDeleteMessage()` takedown of ANOTHER member's message: `is_deleted`/`deleted_for`-as-`'everyone'` ONLY, no time window, `body` is deliberately left untouched in Firestore (never rendered once `is_deleted` is true, per `MessageModel.isDeletedFor`, but preserved for audit/appeal review rather than wiped like the sender's own delete). Content-length capped. |
 | `signals/{id}` | Ephemeral social broadcasts (TTL via expiresAt) | Read any auth · create owner · delete owner. Content-length capped. |
 | `community_groups/{id}` | **Unified groups** (Faz 2 §2.3 — P1 fields `name`/`description`/`city`/`district`/`cover_image_url`/`owner_uid`/`member_count`/`is_public`/`tags`/`created_at`/`updated_at`/`last_activity_at` unchanged; new: `chat_id` — the paired `chats/{chat_id}` doc, always == this doc's own id; `kind` (`public`\|`private`\|`gym`); `gym_id?`; `announcement_only`; `invite_enabled` (the invite CODE itself is never here — see `secrets/invite` below); `join_policy` (`open`\|`request`\|`invite`); `rules_text`; `pinned_message_id`. A `kind:'gym'` group + its owner membership + its paired chat are auto-created by `AdminService.approveGymApplication`, same batch, same id as the gym itself. **Faz 2 §2.5**: `activity_score`/`activity_updated_at` — recency-weighted engagement signal (messages×1 + posts×3 + comments×2 + new members×5 in the trailing 24h, each event exponentially decayed by age, 6h half-life — see `functions/groups.js: computeGroupActivityScores`'s header comment for the exact formula and why), written ONLY by that scheduled function (every 15 min, `is_public` groups only) — never client-computed, matching this session's `reputation_score`/`live_occupancy` server-authority pattern exactly (`touchesProtectedGroupFields()` blocks even the owner's otherwise-blanket update rule; `isAdmin()` stays exempt, consistent with every other protected-field check in this file) | Read any auth (discovery) · create: `owner_uid == auth.uid` **or** `isAdmin()` (the gym auto-create path runs under the approving admin's auth, not the gym owner's) · update: owner (not `activity_score`/`activity_updated_at`) /admin, or any member for counter-only fields (`canUpdateGroupCounters`) · delete: owner/admin |
 | `community_groups/{id}/members/{uid}` | `role` (`owner`\|`admin`\|`moderator`\|`member` — `moderator` remains unassigned by any service method, same as before this change; `admin` is new and real, assignable via `CommunityGroupService.setMemberRole`), `muted_until?` (mute expiry, checked on every message create), `banned?` (kept — not deleted — so a banned uid can never self-recreate this doc) | Read any auth · create: self as `member` (only when `join_policy == 'open'`) or self as `owner` (only the group's real `owner_uid`), **or** owner/group-admin/site-admin adding someone else (never as `role: 'owner'` — no ownership-transfer path here) · update: owner/site-admin (any field) or a group-level `admin` (`muted_until`/`banned` ONLY — role changes stay owner-only) · delete: self (leave), or owner/group-admin/site-admin (kick). **Faz 2 §2.6**: a `muted_until`/`banned` update or a non-self delete (kick) by the owner/group-admin is ADDITIONALLY denied while `isModerationRateLimited()` (see `moderation/{autoId}` row) — `isAdmin()` and a member's own self-leave are exempt |
@@ -437,23 +467,33 @@ failed_login_attempts/{id} SERVER-ONLY        brute-force tracking
 
 ---
 
-## 5. Composite Indexes (`firestore.indexes.json`, ~88)
+## 5. Composite Indexes (`firestore.indexes.json`, 76)
 
 Add an index here for **every new query shape** (`where` + `orderBy` combos). Current families:
 
 - **posts**: createdAt DESC · authorId+timestamp DESC · tags(array)+timestamp DESC ·
   is_announcement+created_at DESC (collection-group)
 - **signals**: expiresAt ASC + createdAt DESC
+- **chats** (Faz 0 §0.1 — a real gap, not a stylistic choice like the "needs nothing" cases below):
+  `ChatService.getUserChats` runs `where('participants', arrayContains: uid)
+  .orderBy('updatedAt', descending: true)` — an array-contains filter combined with an `orderBy` on a
+  different field, which Firestore never auto-indexes, and **no entry for it existed in this file**
+  despite the query being the app's primary chat-list read. It evidently worked only because someone
+  created the index by hand in the Firebase console at some point and it was never exported back to
+  source control — a clean `firebase deploy` from this repo alone would have failed the query with
+  `FAILED_PRECONDITION`. Added: `participants CONTAINS + updatedAt DESC` (`COLLECTION` scope)
 - **messages**: plain `orderBy('timestamp')` (live stream, `getMessagesPage` pagination,
   `getMessagesAround` jump-to-date) needs nothing — single-field queries are auto-indexed (Faz 2
   §2.1 removed the old dead `createdAt` collection-group entry, which indexed a field no message doc
-  has ever written). **One composite IS needed**: `type ASC, timestamp DESC` (Faz 2 §2.2,
+  has ever written). **Two composites exist**: `type ASC, timestamp DESC` (Faz 2 §2.2,
   `ChatService.getChatMediaPage` — the media-gallery query, `where('type','==','image')
   .orderBy('timestamp')`, mixes an equality filter with an `orderBy` on a different field, which
-  Firestore never auto-indexes) — added as a `COLLECTION`-scope entry (per-chat, not a
-  collection-group scan) · **starred_messages**: none needed (plain `orderBy('starred_at')`, and
-  today nothing even queries it — the UI only ever reads the aggregate id set via
-  `streamStarredMessageIds`)
+  Firestore never auto-indexes) and, added alongside it (Faz 0 §0.1, restorative — not yet a live
+  query, added ahead of the `getChatMediaPage`/pagination read-path migration to `server_timestamp`
+  the file's own §10 migration-discipline note describes), `type ASC, server_timestamp DESC` — both
+  `COLLECTION`-scope entries (per-chat, not a collection-group scan) · **starred_messages**: none
+  needed (plain `orderBy('starred_at')`, and today nothing even queries it — the UI only ever reads
+  the aggregate id set via `streamStarredMessageIds`)
 - **food_logs**: date DESC + loggedAt DESC · **exercise_logs**: date+loggedAt
 - **challenges**: isPublic+endDate · participantIds(array)+createdAt
 - **favorites**: savedAt DESC · **recent_foods**: lastLoggedAt DESC, logCount DESC ·
@@ -526,8 +566,10 @@ Add an index here for **every new query shape** (`where` + `orderBy` combos). Cu
   (collection-group): `expires_at ASC` — same shape as `presence`'s TTL-sweep entry above, and for the
   same reason: `expireMemberProgressSummaries` scans BOTH `gyms/{id}/member_summaries` and
   `coach_profiles/{id}/member_summaries` in one `collectionGroup('member_summaries')` query since they
-  share a subcollection name, which (like every other collection-group query in this file) needs an
-  explicit entry even for a single field.
+  share a subcollection name — **correction, see the end of this section**: a single-field entry like
+  this one is actually rejected by Firestore's composite-index API outright, regardless of scope; it
+  never took effect, and if `expireMemberProgressSummaries` truly needs collection-group range
+  querying on `expires_at`, the correct mechanism is a `fieldOverrides` entry, not this array.
 - **xp_events** (Faz 5 §5.1, `queryScope: COLLECTION` — always queried within one `users/{uid}`'s own
   subtree, never cross-user): `kind ASC + created_at ASC` — `awardXp`'s daily-cap check,
   `where('kind','==',kind).where('created_at','>=',startOfLocalDay).limit(dailyCap)`, an equality
@@ -558,6 +600,31 @@ Add an index here for **every new query shape** (`where` + `orderBy` combos). Cu
   list query (now reachable by any fellow member, not just the owner) and `community_groups`'
   unconditioned scan (`computeGroupContributionLeaderboards`) are both the exact same unfiltered
   `.limit(n)` shape `awardWeeklyGroupTop3`/`computeGroupActivityScores` already run today.
+
+**Correction (Chat Upgrade Faz 1–7 deploy, this file's first real production `firebase deploy` since
+most of the bullets above were written) — 18 entries removed as structurally invalid, none of them
+chat-related:** several bullets above (`posts: createdAt DESC`, `favorites: savedAt DESC`,
+`recent_foods: lastLoggedAt DESC`/`logCount DESC`, `meal_plan_history: archivedAt DESC`, `gyms:
+owner_uid`, `members: joined_at`, `checkins: timestamp DESC`/`timestamp ASC`, `commissions: created_at
+DESC`, `commissions` (collection-group) `purchase_key ASC`, `admin_audit: createdAt DESC`,
+`following: followedAt DESC`, `users: onboarding_data.streak DESC`, `account` (collection-group)
+`email ASC`, `presence` (collection-group) `expires_at ASC`, `member_summaries` (collection-group)
+`expires_at ASC`, `presence_sessions: entered_at DESC`) describe single-field entries in this file's
+`indexes` array. **Firestore's composite-index API rejects these outright** — confirmed against the
+live project during this deploy (`HTTP 400: this index is not necessary, configure using single field
+index controls`) — a composite index, by definition, needs 2+ fields; single-field index behavior is
+either automatic (silently free, for plain `COLLECTION`-scope queries — true for most of the bullets
+above, which needed nothing this whole time) or configured via the separate `fieldOverrides` array
+(needed only for a genuine `COLLECTION_GROUP`-scope single-field query, which auto-indexing does not
+cover). None of these 18 had ever actually deployed — they sat in the file, inert, since whenever they
+were added, silently blocking every *other* pending index behind them on the next full-file deploy
+(that is how they were found: they blocked this session's two new chat entries). They were deleted
+rather than migrated. **Open gap, not fixed here**: if `posts`' collection-group `created_at`
+sweep, `presence`'s and `member_summaries`'s TTL sweeps, `commissions`' `purchase_key` reversal
+lookup, or `account`'s collection-group `email` lookup are genuinely exercised as
+`collectionGroup(...)` queries in production, they need a real `fieldOverrides` entry — that has not
+been added, and whether each of those five is actually live-queried was not re-audited as part of
+this chat-focused deploy.
 
 ---
 

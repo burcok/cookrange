@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -8,6 +11,7 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../utils/app_routes.dart';
+import 'active_chat_tracker.dart';
 
 /// Background message handler — MUST be a top-level function.
 @pragma('vm:entry-point')
@@ -338,6 +342,19 @@ class PushNotificationService {
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
+    // Faz 0 §0.4 — `onMessage` (this callback) only ever fires while the app
+    // is foregrounded, so "is this chat the one currently open" is already
+    // a complete suppression signal; a haptic instead of a banner mirrors
+    // WhatsApp's behaviour for a chat you're actively reading.
+    final data = message.data;
+    if (data['type'] == 'chat') {
+      final chatId = data['chatId'];
+      if (chatId != null && ActiveChatTracker().isActive(chatId)) {
+        unawaited(HapticFeedback.lightImpact());
+        return;
+      }
+    }
+
     final notification = message.notification;
     if (notification == null) return;
 
@@ -365,8 +382,13 @@ class PushNotificationService {
 
   /// Routes the user to the appropriate screen based on notification type.
   ///
-  /// chat  → /chat_list (user sees the conversation with new message at top)
-  /// other → /main      (home screen; notification feed accessible from there)
+  /// chat  → the specific conversation (Faz 0 §0.4 — `chatId` was already in
+  ///          every chat push's data payload, `functions/index.js`'s
+  ///          `onChatMessageCreated`, but discarded here before this fix).
+  ///          `/main` is pushed first and the chat detail route on top of
+  ///          it, so Back from the conversation lands in the app, not on an
+  ///          empty stack.
+  /// other → /main (home screen; notification feed accessible from there)
   void _navigateFromData(Map<String, dynamic> data) {
     final nav = _navigatorKey?.currentState;
     if (nav == null) {
@@ -376,8 +398,14 @@ class PushNotificationService {
     }
 
     final type = data['type'] as String? ?? '';
+    final chatId = data['chatId'] as String?;
 
-    if (type == 'chat') {
+    if (type == 'chat' && chatId != null && chatId.isNotEmpty) {
+      nav.pushNamedAndRemoveUntil(AppRoutes.main, (r) => false);
+      nav.pushNamed(AppRoutes.chatDetail, arguments: chatId);
+    } else if (type == 'chat') {
+      // Defensive only — the server always includes chatId; a malformed or
+      // legacy payload falls back to the list instead of crashing routing.
       nav.pushNamed(AppRoutes.chatList);
     } else {
       nav.pushNamedAndRemoveUntil(AppRoutes.main, (r) => false);

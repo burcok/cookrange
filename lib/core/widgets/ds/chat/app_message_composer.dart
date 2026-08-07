@@ -41,6 +41,19 @@ class AppMessageComposer extends StatelessWidget {
   final List<AppMentionCandidate> mentionCandidates;
   final ValueChanged<AppMentionCandidate>? onSelectMention;
 
+  /// Faz 6 — when the composer's text is empty AND [onMicPressStart] is
+  /// non-null, the send button is replaced with a mic button. The whole
+  /// press→drag→release gesture is tracked HERE (not inside a separate
+  /// recorder widget) because Flutter binds a pointer's entire down→move→up
+  /// sequence to whichever widget was hit-tested at pointer-DOWN — the
+  /// active-recording bar (`AppVoiceRecorder`) only mounts once recording
+  /// has already started, so it could never receive this same pointer's
+  /// later move/end events. See `AppVoiceRecorder`'s own doc comment for the
+  /// other half of this design.
+  final VoidCallback? onMicPressStart;
+  final void Function(double dragDx, double dragDy)? onMicDragUpdate;
+  final VoidCallback? onMicPressEnd;
+
   const AppMessageComposer({
     super.key,
     required this.controller,
@@ -55,6 +68,9 @@ class AppMessageComposer extends StatelessWidget {
     this.onCancelReply,
     this.mentionCandidates = const [],
     this.onSelectMention,
+    this.onMicPressStart,
+    this.onMicDragUpdate,
+    this.onMicPressEnd,
   });
 
   bool get _isReplying =>
@@ -181,32 +197,84 @@ class AppMessageComposer extends StatelessWidget {
                         ),
                       ),
                       SizedBox(width: AppSpacing.xs.w),
-                      Semantics(
-                        button: true,
-                        label: l10n.translate('chat.actions.send'),
-                        child: GestureDetector(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            onSend();
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(AppSpacing.xs.r + 2),
-                            decoration: BoxDecoration(
-                              gradient: AppGradients.brand(theme.primaryColor),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: theme.primaryColor
-                                      .withValues(alpha: 0.35),
-                                  blurRadius: 8.r,
-                                  offset: const Offset(0, 3),
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: controller,
+                        builder: (context, value, _) {
+                          final showMic = value.text.trim().isEmpty &&
+                              onMicPressStart != null;
+                          if (showMic) {
+                            return Semantics(
+                              button: true,
+                              label:
+                                  l10n.translate('chat.actions.record_voice'),
+                              child: GestureDetector(
+                                onLongPressStart: (_) {
+                                  HapticFeedback.mediumImpact();
+                                  onMicPressStart?.call();
+                                },
+                                onLongPressMoveUpdate: (details) {
+                                  // Positive dragDx/dragDy grow toward
+                                  // cancel(left)/lock(up) — screen
+                                  // coordinates grow right/down, so both
+                                  // are sign-flipped from `offsetFromOrigin`.
+                                  onMicDragUpdate?.call(
+                                    -details.localOffsetFromOrigin.dx,
+                                    -details.localOffsetFromOrigin.dy,
+                                  );
+                                },
+                                onLongPressEnd: (_) => onMicPressEnd?.call(),
+                                child: Container(
+                                  padding: EdgeInsets.all(AppSpacing.xs.r + 2),
+                                  decoration: BoxDecoration(
+                                    gradient:
+                                        AppGradients.brand(theme.primaryColor),
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: theme.primaryColor
+                                            .withValues(alpha: 0.35),
+                                        blurRadius: 8.r,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(Icons.mic_rounded,
+                                      color: Colors.white,
+                                      size: AppSize.iconSm.r),
                                 ),
-                              ],
+                              ),
+                            );
+                          }
+                          return Semantics(
+                            button: true,
+                            label: l10n.translate('chat.actions.send'),
+                            child: GestureDetector(
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                onSend();
+                              },
+                              child: Container(
+                                padding: EdgeInsets.all(AppSpacing.xs.r + 2),
+                                decoration: BoxDecoration(
+                                  gradient:
+                                      AppGradients.brand(theme.primaryColor),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: theme.primaryColor
+                                          .withValues(alpha: 0.35),
+                                      blurRadius: 8.r,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(Icons.arrow_upward_rounded,
+                                    color: Colors.white,
+                                    size: AppSize.iconSm.r),
+                              ),
                             ),
-                            child: Icon(Icons.arrow_upward_rounded,
-                                color: Colors.white, size: AppSize.iconSm.r),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     ],
                   ),

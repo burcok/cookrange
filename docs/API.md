@@ -53,7 +53,12 @@ deployed 2026-08-01, confirmed via `firebase functions:list`). Project `cookrang
 > callable, ID token, full contracts in §3 below) — same reasoning again. Also missing
 > `syncProgress`/`backfillProgress` (`progress.js`, Faz 0 §0.4, extended Faz 5 §5.1 — callable, ID
 > token, full contract in §3 below) — this one predates the table too (Faz 0), the gap just hadn't
-> been noticed until this change substantially extended the callable's contract.
+> been noticed until this change substantially extended the callable's contract. Also now missing
+> `revokeDevice` (`devices.js`, Chat Upgrade Faz 1 — callable, ID token, full contract in §3 below) and
+> `getChatMediaUrl` (`chat_media.js`, Faz 5 — callable, ID token, full contract in §3 below); and, as
+> triggers/scheduled jobs rather than callables (§5), `mirrorPresence`/`reconcileStalePresence`
+> (`chat_presence.js`, Faz 2 — RTDB trigger + scheduled) and `onGroupMemberWritten`/
+> `onGroupDocUpdated` (`group_system_messages.js`, Faz 5 — Firestore triggers).
 
 `entitlements.js` exposes **internal** server-only helpers (`grantPremium`, `revokePremium`,
 `grantBonusCredits`, `claimPurchaseToken`, `purchaseCorrelationKey`, `reverseCommissionsForPurchase`)
@@ -225,6 +230,50 @@ caller isn't already a member or banned, atomically creates their `community_gro
 Errors: `unauthenticated` · `invalid-argument` (code too short) · `failed-precondition` with
 `code_not_found` / `code_inactive` / `group_not_found` / `invite_disabled` / `banned` /
 `already_member`.
+
+### `revokeDevice` (`devices.js`, Chat Upgrade Faz 1)
+```jsonc
+// sign out one device (may or may not be the caller's own)
+{ "deviceId": "d1", "allOthers": false }  →  { "ok": true, "revokedCount": 1 }
+// sign out every device EXCEPT the caller's own (client passes its own current deviceId to spare it)
+{ "deviceId": "d1", "allOthers": true }   →  { "ok": true, "revokedCount": 3 }
+```
+Scoped automatically to `users/{context.auth.uid}/devices` — a caller can only ever name a device
+under their own uid, so no separate ownership check exists beyond the auth check. Batch-sets
+`revoked: true, revoked_at: serverTimestamp()` on the target doc(s) (client-unwritable by
+`firestore.rules`), then calls `admin.auth().revokeRefreshTokens(uid)` once. **Important, honest
+limitation**: that revocation is per-USER, not per-device — Firebase Auth has no API to invalidate a
+single refresh token in isolation. "Sign out this device" is exactly right (the targeted device IS
+the one whose token should die). "Sign out all other devices" is subtly less clean: the CALLER's own
+token is also invalidated once it next needs to refresh (can happen within the hour), even though the
+Firestore-flag-driven local sign-out only fires on the targeted devices. See the function's own header
+comment before changing any UX copy that promises the caller's session survives indefinitely — it
+doesn't. If `revokedCount` would be 0 (e.g. "all others" with no other devices registered), the
+function skips both the batch commit and the token revocation entirely, so it never pointlessly signs
+the caller out.
+
+Errors: `unauthenticated` · `invalid-argument` (missing `deviceId`) · `not-found`
+(`device_not_found`, single-device path only).
+
+### `getChatMediaUrl` (`chat_media.js`, Faz 5)
+```jsonc
+{ "chatId": "c1", "storagePath": "chat_media/c1/u2/170...jpg" }  →  { "url": "https://...&Expires=..." }
+```
+The read-side of the group-chat image storage-scoping fix (`storage.rules`'
+`chat_media/{chatId}/{uid}/{fileName}` is `allow read: if false` unconditionally — this callable is
+the ONLY way to ever resolve one). Re-verifies the caller is a real participant of `chatId` (plain
+`participants` array) or an active, non-banned member of its backing `community_groups` doc if
+group-backed — the same access model `firestore.rules`' `isParticipant()`/`canAccessGroupChat()`
+encode, reimplemented here against Firestore via the Admin SDK since Storage rules can't call
+Firestore themselves. Also rejects a `storagePath` that doesn't start with `chat_media/{chatId}/` —
+without that check, a caller who legitimately belongs to one chat could name an unrelated chat's
+media path and have it resolved anyway. On success, mints a 24h V4 signed URL via
+`admin.storage().bucket()`. Client-side, `ChatMediaUrlCache` caches the result until just before
+expiry so a re-render doesn't re-call this on every build.
+
+Errors: `unauthenticated` · `invalid-argument` (missing `chatId`/`storagePath`, or `storagePath` not
+scoped to `chatId`) · `permission-denied` (`not_a_participant`) · `internal` (`sign_failed` — the
+signed-URL mint itself failed).
 
 ### `deleteUserAccount`
 ```jsonc
@@ -419,7 +468,11 @@ entitlement.
 | Function | Fires on | Does |
 |---|---|---|
 | `onInAppNotificationCreated` | new doc at `notifications/{uid}/items/{docId}` | FCM fan-out, localized (recipient's `locale`), respecting per-group mute prefs |
-| `onChatMessageCreated` | `chats/{id}/messages/{id}` | Push to the other participants + (Faz 2 §2.1) increments each recipient's `unreadCounts` key — the only writer of that increment |
+| `onChatMessageCreated` | `chats/{id}/messages/{id}` | **Rewritten, Chat Upgrade Faz 3+4**: idempotency-guarded (`chat_fanout_events/{context.eventId}.create()`), chunked group-member paging, writes the cold `chats/{id}/state/live` preview doc, a tiered `chat_inbox` fan-out per recipient (exact `unread` increment ≤200 recipients, a lighter `unread_dirty` signal above that), a dual-write of the legacy `unreadCounts` map for one release, and a multicast push across every one of each recipient's registered devices (`users/{uid}/devices`, Faz 1) — see `SERVICES.md`'s `ChatService` entry and `DECISIONS.md` ADR-027. Pure tiering/chunking/preview-text decisions live in `chat_fanout_logic.js`, unit-tested (`functions/test/chat_fanout_logic.test.js`) since the trigger itself has no functional harness |
+| `mirrorPresence` (`chat_presence.js`, Faz 2) | RTDB write to `/presence/{uid}/{deviceId}` | Aggregates all of that uid's device presence nodes (online > away > offline) and writes the result onto `users/{uid}.is_online`/`.last_active_at` — the SAME fields every existing Firestore reader already used, so no downstream Dart file needed to change. Skips the write if the aggregate is unchanged. **Not yet live** — RTDB isn't provisioned for this project yet |
+| `reconcileStalePresence` (`chat_presence.js`, Faz 2) | schedule, every 1 min | Backstop for a disconnect `onDisconnect()` somehow missed — flips any device stale >90s to offline in RTDB and re-runs the Firestore mirror for affected uids, batched at 400/commit |
+| `onGroupMemberWritten` (`group_system_messages.js`, Faz 5) | `community_groups/{groupId}/members/{uid}` write | Server-authored system message (`senderId: '__system__'`, unforgeable by any client) into the group's paired chat: create → `member_joined`, delete → `member_left`, `banned` false→true on update → `member_banned` |
+| `onGroupDocUpdated` (`group_system_messages.js`, Faz 5) | `community_groups/{groupId}` update | Same system-message mechanism for `name` changes (`group_renamed`) and `cover_image_url` changes (`group_photo_changed`) — diffs old vs. new itself so it never fires on an unrelated field write (e.g. the 15-minute `activity_score` bump) |
 | `onBroadcastCreated` | new broadcast doc | Dispatch to the audience (all / coaches / gymOwners / single uid) |
 | `drainScheduledBroadcasts` | schedule | Send broadcasts whose time has arrived |
 | `streakAtRiskNotifier` | daily 17:00 UTC | Nudge users with no `food_logs.date == today`. Respects `notification_muted.reminders`; capped at 500 users |
